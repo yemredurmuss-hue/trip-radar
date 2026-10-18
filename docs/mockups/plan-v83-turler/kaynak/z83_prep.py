@@ -64,7 +64,7 @@ def prep_section():
             E(p['t']), E(p['w']), tag, day, shop(p.get('shop', '')), SV['x'])
     n = len(items)
     nx = next((p for p in items if not p.get('done') and p.get('day')), None)
-    kw = 'Gezi öncesi %d iş%s' % (n, (' · sıradaki: %s, %s' % (nx['t'], nx['day'])) if nx else '')
+    kw = 'Gezi öncesi %d iş%s' % (n, (' · sıradaki: %s' % nx['t']) if nx else '')
     return ('<section class="q-sec q-prep" id="cat-prep" style="--c:#475467"><button type="button" class="q-row1" aria-expanded="false"><span class="q-ic" aria-hidden="true">%s</span><span class="q-tt"><b>Hazırlık</b><small class="q-kw">%s</small></span><span class="q-ths"></span><span class="q-prog"><span class="q-bar"><i class="bk" style="width:%d%%"></i></span><small class="q-pl1 q-pcount">%d/%d hazır</small></span><span class="q-bud"><b class="q-spent"></b><small>&nbsp;</small></span><span class="q-chev" aria-hidden="true">%s</span></button>'
             '<div class="q-fold">%s<div class="q-ph1"><span class="q-pc2">%d/%d hazır</span><small>güne göre sıralı</small><span class="q-sp"></span><button type="button" class="q-phide">Hazırları gizle</button><button type="button" class="q-ai sm">%s Daha fazla öner</button></div><ul class="q-prows">%s%s</ul></div></section>') % (
         ic('list', 20, 2), E(kw), round(done * 100 / n), done, n, ic('chev', 18, 2.2), bilmen_html(P['bilmen']), done, n, ic('spark', 14, 2), rows, bavul_html(P['bavul']))

@@ -5,13 +5,14 @@ for c in CATS:
     for it in c['intents']:
         if it['id'] == 's4':
             it['est'] = '€90–160 / gece'
+            it['etitle'] = "Osaka'da nerede kalınır"
             it.pop('guide', None)
         if it['id'] == 's2':
             it['state'] = 'ai'
             it['sel'] = 's2a'
         if it['id'] == 'd2':
             it['est'] = '€25–45'
-            it['etitle'] = 'Japonya için seyahat sağlık sigortası'
+            it['etitle'] = 'Japonya seyahat sigortası'
             it['enote'] = 'zorunlu değil, önerilir'
             it['nohint'] = True
             it.pop('guide', None)
@@ -45,7 +46,7 @@ for c in CATS:
     if c['key'] == 'todo' and not any(i['id'] == 't2' for i in c['intents']):
         c['intents'].append(dict(id='t2', kind='todo', multi=1, word='Yapılacak', img='restoran', name='Kyoto', vals=['5–9 Nis', '2 kişi'], wants=[('kaiseki', 'want')], links=[('Google Haritalar', '#ea4335', 'G'), ('TableCheck', '#d33a2c', 'T')], state='opts', picked=['t2a', 't2b'], booked=[],
                                  opts=[dict(id='t2a', src='emre', name='Gion Karyo', sub='Gion · kaiseki', tag='Restoran', img='restoran', res=dict(when='6 Nis 19:30 · 2 kişi', code='TC-4471')),
-                                       dict(id='t2b', src='emre', name='JR ofisi', sub='Pass değişimi: Kyoto İst. Hachijo çıkışı', tag='Not', img='not'),
+                                       dict(id='t2b', src='emre', name='JR ofisi', sub='Pass değişimi · Hachijo çıkışı', tag='Not', img='not'),
                                        dict(id='t2c', src='ai', name='Nishiki pazarı', sub='öğle yemeği için', tag='Gezilecek', img='yapilacak'),
                                        dict(id='t2d', src='ai', name='Pontocho sokağı', sub='akşam yürüyüşü', tag='Gezilecek', img='yapilacak')]))
 # gezi sırasında senaryosu için alınmışlar
@@ -104,7 +105,7 @@ HERO = dict(
     city_tiles=[('photos/shibuya.jpg', 'Tokyo', '3 gece'), ('photos/inari.jpg', 'Kyoto', '4 gece'), ('photos/onsen.jpg', 'Hakone', '3 gece'), ('photos/dotonbori.jpg', 'Osaka', '4 gece')],
     dates=('1–16 Nisan', '~1–16 Nisan', '16 gün · 178 gün kaldı'), days_tip='Tokyo 2–5 · Kyoto 5–9 · Hakone 9–12 · Osaka 12–16 Nisan',
     me='E', who=[('E', 'Emre', 'sen', "Hyatt Centric Ginza'yı seçti", '1 sa önce'), ('S', 'Sabine', '', "Gora Kadan'ı rezerve etti", 'dün')], people='2 kişi',
-    prog=(61, 33, 7, "Omurganın %61'i planda (18 ihtiyaçtan 11'i), %33'ü alındı (6). 7 karar bekliyor.", "18 ihtiyaç · 5'inde önerimiz var"),
+    prog=(61, 33, 7, "Omurganın %61'i planda (18 ihtiyaçtan 11'i), %33'ü alındı (6). 7 karar bekliyor.", "18 ihtiyaç · 5 önerimiz var"),
     budget=dict(total='€8.000', est='~€6.900', lines=[('bk', 'Rezerve', '€2.766'), ('pl', 'Planlanan', '€849'), ('fr', 'Boşta', '€4.385')],
                 cats=[('Uçuş', '€1.580'), ('Konaklama', '€1.539'), ('Ulaşım', '€316'), ('Etkinlik', '€180')],
                 note='Karar bekleyenler seçilince yaklaşık €3.280 daha eklenir (Osaka oteli ve sigorta tahmini dahil). Tahmini toplam ~€6.900, bütçeye sığar · €1.100 pay.'),

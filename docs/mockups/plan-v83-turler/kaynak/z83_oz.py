@@ -56,7 +56,7 @@ CATS = [
                    dict(id='s1b', src='ai', best=1, name='Maverick City Lodge', brand=BK, rate='8,9', sub='Kazinczy · hostel, özel oda', price='€70', unit='/ gece', tot='1 gece · €70', img='otel', rev='3.400 yorum', cancel='Ücretsiz iptal'),
                    dict(id='s1c', src='link', name='Andrássy dairesi', brand=AB, rate='★ 4,8', sub='Terézváros · tüm daire', price='€95', unit='/ gece', tot='1 gece · €95', img='ev-daire', rev='160 yorum', cancel='Kısmi iade')]),
         dict(id='s2', kind='stay', word='Kamp', img='otel', art='<span class="z-art-svg">%s</span>' % tent_svg(), name='Ozora · festival kampı', vals=['6 gece', '27 Tem – 2 Ağu', '2 kişi'], wants=[('kendi çadırımız', 'want')], links=[('Ozora', '#7a3fd1', 'O')], state='arr', opts=[],
-             arr=dict(family='stay', st='inc', media=tent_svg(), t='Çadır konaklama · festival kampı', l2='27 Tem – 2 Ağu · 6 gece · kendi çadırın', chips=['Duş ve su noktaları', 'Kamp alanı seçimi girişte'],
+             arr=dict(family='stay', st='inc', media=tent_svg(), t='Çadır konaklama', l2='27 Tem – 2 Ağu · 6 gece · kendi çadırın', chips=['Duş ve su noktaları', 'Kamp alanı seçimi girişte'],
                       by='festival biletiyle', bybtn='Festival biletini aç', goto='int-e1', row='<a class="q-alk" href="#" onclick="return false">Hazır çadır kirala · +€190 ↗</a>',
                       name='Çadır konaklama · festival kampı', sub='festival biletine dahil')),
     ]),
@@ -77,7 +77,7 @@ CATS = [
              opts=[dict(id='d1a', src='ai', best=1, name='Airalo · 10 GB', brand=('Airalo', '#111111'), rate='', sub='15 gün · Avrupa', price='€17', unit='/ kişi', tot='2 kişi · €34', img='esim', rev='', cancel=''),
                    dict(id='d1b', src='ai', name='Holafly · sınırsız', brand=('Holafly', '#e11d48'), rate='', sub='7 gün · Avrupa', price='€29', unit='/ kişi', tot='2 kişi · €58', img='esim', rev='', cancel='')]),
         dict(id='d2', kind='stay', word='Sigorta', img='sigorta', name='Sağlık sigortası', vals=['26 Tem – 2 Ağu', '2 kişi'], wants=[], links=[('Google', '#4285f4', 'G')], state='opts', opts=[],
-             est='€15–30', etitle='Schengen seyahat sağlık sigortası', enote='vize için zorunlu', nohint=True),
+             est='€15–30', etitle='Schengen sağlık sigortası', enote='vize için zorunlu', nohint=True),
     ]),
 ]
 LOGO.update({'Ozora': ('#7a3fd1', 'O'), 'Ozora Shuttle': ('#7a3fd1', 'O'), 'Discover Cars': ('#2b7a3f', 'D'), 'Wizz Air': ('#c6007e', 'W'), 'Hepsiburada': ('#ff6000', 'h')})
@@ -110,7 +110,7 @@ HERO = dict(
     title='Ozora festivali', cities='Budapeşte · Ozora', cover=fest_cover(), thumb=fest_svg('ht'), tiles=[], city_tiles=None,
     dates=('26 Tem – 2 Ağu', '~ Temmuz sonu', '8 gün · 281 gün kaldı'), days_tip='Budapeşte 26–27 · Ozora 27 Tem – 2 Ağu',
     me='E', who=[('E', 'Emre', 'sen', 'Festival biletini aldı', '2 gün önce'), ('D', 'Deniz', '', 'Budapeşte otelini önerdi', 'dün')], people='2 kişi',
-    prog=(44, 22, 5, "Omurganın %44'ü planda (9 ihtiyaçtan 4'ü), %22'si alındı (2). 5 karar bekliyor.", '9 ihtiyaç · 5\'inde önerimiz var'),
+    prog=(44, 22, 5, "Omurganın %44'ü planda (9 ihtiyaçtan 4'ü), %22'si alındı (2). 5 karar bekliyor.", '9 ihtiyaç · 5 önerimiz var'),
     budget=None, next=('Sıradaki: vize randevusu', 'Sıradaki: vize randevusu'),
     chips=[('pin', 'Macaristan', "Ozora, Dádpuszta · Budapeşte'ye 2 sa"), ('sun', '15–29°', 'Temmuz ortalaması · gündüz 29°, gece 15° · yağışlı gün 6/31'),
            ('eur', 'Forint', '1 € ≈ 395 Ft · festivalde kart geçer'), ('plug', 'C/F priz', 'Adaptör gerekmez'), ('clock', '−1 saat', 'Sende 12:00 iken orada 11:00.'),

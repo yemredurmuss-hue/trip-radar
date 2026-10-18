@@ -120,7 +120,7 @@ function progress(){var L=$$('.q-int').filter(function(i){return !i.classList.co
   var pl=N?Math.round(P/N*100):0,al=N?Math.round(A/N*100):0;
   $$('.x-bar,.h-bar').forEach(function(b){var bk=$('.bk',b),ch=$('.ch',b);if(bk)bk.style.width=al+'%';if(ch)ch.style.width=(pl-al)+'%';});
   var f=$('.x-ps.f-full');if(f)f.innerHTML='<b>%'+pl+' planda</b> · %'+al+' alındı';
-  var fr=$('.x-ps.f-fresh');if(fr)fr.textContent=N+' ihtiyaç'+(AI?' · '+AI+"'"+loc(AI)+' önerimiz var':'');
+  var fr=$('.x-ps.f-fresh');if(fr)fr.textContent=N+' ihtiyaç'+(AI?' · '+AI+' önerimiz var':'');
   var pg=$('.x-prog');if(pg)pg.setAttribute('data-tip','Omurganın %'+pl+"'"+sfx(pl)+' planda ('+N+' ihtiyaçtan '+P+"'"+sfx(P)+'), %'+al+"'"+sfx(al)+' alındı ('+A+'). '+(K?K+' karar bekliyor.':'Karar bekleyen yok.'));
   var mb=$('.h-mini small b');if(mb){mb.textContent='%'+pl+' planda';if(mb.nextSibling)mb.nextSibling.textContent=' · '+K+' karar';}
   var pb=$('.q-pbn');if(pb)pb.textContent=K?K+' karar bekliyor':'karar bekleyen yok';

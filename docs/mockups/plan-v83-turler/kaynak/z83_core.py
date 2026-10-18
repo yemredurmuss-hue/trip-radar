@@ -115,8 +115,8 @@ def opt_card_stay(it, o):
 
 
 def kcard(cls, data, pic, l1, t, l2, foot, extra=''):
-    return ('<article class="%s z-k" %s><div class="z-kp">%s</div><div class="z-kb"><span class="z-l1">%s</span><h3 class="z-t">%s</h3><span class="z-l2">%s</span>'
-            '<div class="z-kf">%s</div></div>%s</article>') % (cls, data, pic, l1, t, l2, foot, extra)
+    return ('<article class="%s z-k" %s><div class="z-kp">%s</div><div class="z-kb"><span class="z-l1">%s</span><h3 class="z-t" title="%s">%s</h3><span class="z-l2">%s</span>'
+            '<div class="z-kf">%s</div></div>%s</article>') % (cls, data, pic, l1, re.sub('<[^>]+>', '', t), t, l2, foot, extra)
 
 
 def opt_card_ev(it, o):
