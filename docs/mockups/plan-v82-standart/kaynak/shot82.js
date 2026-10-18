@@ -1,0 +1,31 @@
+const { chromium } = require('/home/user/trip-radar/node_modules/playwright-core');
+const SP=process.argv[2], W=+(process.argv[3]||1440), O=SP+'/v82/';
+(async()=>{const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium-1194/chrome-linux/chrome'});
+ const p=await b.newPage({viewport:{width:W,height:1000},deviceScaleFactor:W<700?2:1}); const errs=[];
+ p.on('pageerror',e=>errs.push(e.message)); p.on('console',m=>{if(m.type()==='error')errs.push(m.text())});
+ await p.goto('file://'+O+'index.html'); await p.waitForTimeout(800);
+ await p.evaluate(()=>{document.querySelector('.q-ctrl').style.visibility='hidden';});
+ const sh=async(n,sel)=>{const el=await p.$(sel);await el.screenshot({path:O+n+'-'+W+'.png'});};
+ const ev=(f,a)=>p.evaluate(f,a);
+ await p.screenshot({path:O+'top-'+W+'.png'});
+ await ev(()=>document.querySelector('.h-mini').style.display='none');
+ for(const k of ['flight','stay','transport','activity','todo','other']){await ev(k=>document.querySelector('#cat-'+k+' .q-row1').click(),k);await p.waitForTimeout(250);await sh('o-'+k,'#cat-'+k);}
+ // değiştir modu
+ await ev(()=>document.querySelector('#cat-stay .q-row1').click());await p.waitForTimeout(200);
+ await ev(()=>document.querySelector('#int-s1 .q-form:not([hidden]) .q-chg').click());await p.waitForTimeout(200);await sh('chg','#int-s1');
+ await ev(()=>document.querySelector('#int-s1 .q-cancel').click());
+ await ev(()=>document.querySelector('#int-s3 .q-form:not([hidden]) .z-ib').click());await p.waitForTimeout(150);await sh('det','#int-s3');
+ await ev(()=>document.querySelector('#int-s3 .q-form:not([hidden]) .z-dx').click());
+ await ev(()=>window.scrollTo(0,0));await p.waitForTimeout(200);
+ await ev(()=>document.querySelector('.x-prefb').click());await p.waitForTimeout(150);await p.screenshot({path:O+'pop-pref-'+W+'.png',clip:{x:0,y:0,width:W,height:1000}});
+ await ev(()=>document.querySelector('.x-budb').click());await p.waitForTimeout(150);await p.screenshot({path:O+'pop-bud-'+W+'.png',clip:{x:0,y:0,width:W,height:1000}});
+ await ev(()=>document.body.click());
+ await p.hover('.x-chip:nth-child(2)');await p.waitForTimeout(150);await p.screenshot({path:O+'tip-'+W+'.png',clip:{x:0,y:0,width:W,height:1000}});
+ await ev(()=>document.querySelector('.x-fold').click());await p.waitForTimeout(150);await p.screenshot({path:O+'fold-'+W+'.png',clip:{x:0,y:0,width:W,height:700}});
+ await ev(()=>document.querySelector('.x-unfold').click());
+ await ev(()=>document.querySelector('.q-seg [data-view="trip"]').click()); await p.waitForTimeout(300); await sh('trip','.q-trip');
+ await ev(()=>document.querySelector('.q-seg [data-view="cat"]').click());
+ const ov=await ev(()=>document.documentElement.scrollWidth>innerWidth);
+ const hs=await ev(()=>Array.from(document.querySelectorAll('.q-int.z-int')).filter(i=>!i.classList.contains('multi')).map(i=>{const s=i.closest('.q-sec');const was=s.classList.contains('open');s.classList.add('open');const v=[...i.querySelector('.q-body').children].filter(c=>!c.hidden&&c.offsetHeight>0);const h=Math.round(i.getBoundingClientRect().height);if(!was)s.classList.remove('open');return i.id+':'+i.dataset.st+':'+h;}));
+ console.log(W,'overflow',ov,'errors',JSON.stringify(errs));console.log(hs.join(' '));
+ await b.close();})();

@@ -1,0 +1,557 @@
+<title>Bali İlk Ekran Akışı</title>
+<style>
+/* Layout: üç kare yan yana (yatay kaydırma, snap); her kare = tetikleyen sohbet + pano (hero + kategori bölümleri) + "bu karede" notları. */
+:root {
+  --bg: #f4f2fa; --surface: #ffffff; --card: #f7f5f1; --tile: #fbfaf7;
+  --ink: #1c1a33; --muted: #6b6790; --line: #e7e4dd; --line2: #efece7;
+  --accent: #5b45e0; --accent-ink: #4a35cc; --accent-soft: #ece8ff;
+  --mint: #eaf7f2; --mintbar: #2cc79a; --ok: #1f8f4e; --ok-soft: #e6f5ec; --warn: #9a6400;
+  --c-fly: #6a4fe0; --c-stay: #23998b; --c-move: #c58a2e; --c-exp: #a8336f; --c-esim: #3b6fd1; --c-ins: #0f8a6a;
+  --b-booking: #003b95; --b-airbnb: #ff385c; --b-google: #1a73e8; --b-sky: #0770e3; --b-viator: #186b6d; --b-airalo: #e5484d; --b-klook: #ff5b00; --b-trip: #00aa6c;
+  --on-brand: #ffffff; --on-accent: #ffffff;
+  --glow: rgba(91, 69, 224, .42);
+  --shadow: 0 1px 2px rgba(28, 26, 51, .05), 0 10px 28px -14px rgba(28, 26, 51, .22);
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f0e17; --surface: #191826; --card: #211f30; --tile: #efede8;
+  --ink: #eeecfb; --muted: #aaa6c9; --line: #302e43; --line2: #2a2839;
+  --accent: #9a8bff; --accent-ink: #b3a8ff; --accent-soft: #2b2652;
+  --mint: #15302a; --mintbar: #2cc79a; --ok: #4cc584; --ok-soft: #163325; --warn: #e3a94f;
+  --c-fly: #9d8bff; --c-stay: #3fc4b4; --c-move: #e2ab52; --c-exp: #e866a6; --c-esim: #77a3f3; --c-ins: #3fc79f;
+  --glow: rgba(154, 139, 255, .5); --on-accent: #16132e;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 12px 30px -14px rgba(0, 0, 0, .7);
+  color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --bg: #0f0e17; --surface: #191826; --card: #211f30; --tile: #efede8;
+  --ink: #eeecfb; --muted: #aaa6c9; --line: #302e43; --line2: #2a2839;
+  --accent: #9a8bff; --accent-ink: #b3a8ff; --accent-soft: #2b2652;
+  --mint: #15302a; --mintbar: #2cc79a; --ok: #4cc584; --ok-soft: #163325; --warn: #e3a94f;
+  --c-fly: #9d8bff; --c-stay: #3fc4b4; --c-move: #e2ab52; --c-exp: #e866a6; --c-esim: #77a3f3; --c-ins: #3fc79f;
+  --glow: rgba(154, 139, 255, .5); --on-accent: #16132e;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 12px 30px -14px rgba(0, 0, 0, .7);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+::selection { background: var(--accent-soft); color: var(--ink); }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+a { color: var(--accent-ink); text-underline-offset: 3px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* Sayfa başı */
+.page { padding: 28px clamp(16px, 3vw, 40px) 48px; display: grid; gap: 22px; }
+.page > * { min-width: 0; }
+.page { grid-template-columns: minmax(0, 1fr); }
+.intro { display: grid; gap: 10px; max-width: 76ch; }
+.intro h1 { font-family: var(--font-display); font-size: clamp(26px, 3.2vw, 36px); line-height: 1.1; letter-spacing: -0.02em; margin: 0; text-wrap: balance; }
+.intro p { margin: 0; color: var(--muted); }
+.prompt { display: inline-flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; width: fit-content; max-width: 100%; color: var(--ink); }
+.prompt svg { color: var(--accent); }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 7px; }
+.sw { width: 22px; height: 14px; border-radius: 4px; display: inline-block; }
+.sw.intent { background: var(--surface); border: 1.5px dashed var(--muted); }
+.sw.sug { background: var(--accent-soft); border: 1px solid var(--accent-soft); }
+.sw.ai { background: var(--surface); border: 1px solid var(--accent); }
+.sw.fresh { background: var(--surface); box-shadow: 0 0 0 3px var(--glow); }
+
+/* Kareler */
+.frames { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(330px, 520px); gap: 22px; overflow-x: auto; padding: 4px 4px 18px; scroll-snap-type: x mandatory; scrollbar-color: var(--line) transparent; }
+@media (max-width: 600px) { .frames { grid-auto-columns: 88vw; } }
+.frame { scroll-snap-align: start; display: grid; align-content: start; gap: 14px; min-width: 0; }
+.fhead { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.step { font-family: var(--font-display); font-weight: 700; font-size: 13px; color: var(--accent-ink); background: var(--accent-soft); border-radius: 999px; padding: 3px 10px; }
+.fhead h2 { margin: 0; font-family: var(--font-display); font-size: 20px; letter-spacing: -0.01em; }
+.replay { margin-left: auto; font-size: 13px; color: var(--accent-ink); display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 8px; }
+.replay:hover { background: var(--accent-soft); }
+
+/* Tetikleyen sohbet */
+.chat { display: grid; gap: 8px; }
+.msg { max-width: 92%; padding: 10px 13px; border-radius: 14px; font-size: 14px; }
+.msg.me { justify-self: end; background: var(--accent); color: var(--on-accent); border-bottom-right-radius: 5px; }
+.msg.ai { background: var(--surface); border: 1px solid var(--line); border-bottom-left-radius: 5px; }
+.msg.ai b { font-weight: 650; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chip { font-size: 13px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--accent); color: var(--accent-ink); }
+.chip.on { background: var(--accent); color: var(--on-accent); }
+.msg .link-pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; margin: 2px 2px 0 0; border-radius: 8px; background: color-mix(in srgb, var(--on-accent) 18%, transparent); font-size: 13px; }
+
+/* Pano yüzeyi */
+.app { background: var(--surface); border-radius: 22px; box-shadow: var(--shadow); overflow: hidden; }
+
+/* Hero (v9'un dar hâli, aynen) */
+.hero { padding: 14px 14px 16px; display: grid; gap: 12px; }
+.photo { position: relative; border-radius: 16px; overflow: hidden; aspect-ratio: 1.92 / 1; max-width: 100%; }
+.photo svg { display: block; width: 100%; height: 100%; }
+.cities { position: absolute; top: 10px; left: 10px; display: flex; gap: 2px; padding: 3px; background: rgba(255,255,255,.88); border-radius: 999px; font-size: 13px; color: #6b6790; }
+.cities span { padding: 3px 10px; border-radius: 999px; }
+.cities span.on { background: #fff; color: #1c1a33; font-weight: 650; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.hero h3 { margin: 2px 0 0; font-family: var(--font-display); font-size: 28px; line-height: 1.1; letter-spacing: -0.02em; }
+.hline { display: flex; align-items: center; gap: 7px; color: var(--ink); font-size: 14px; }
+.hline svg { color: var(--muted); width: 16px; height: 16px; }
+.tone { margin: 0; color: var(--muted); font-size: 14px; text-wrap: pretty; }
+.who { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.avs { display: flex; }
+.av { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: var(--accent-ink); background: var(--accent-soft); border: 2px solid var(--surface); }
+.av + .av { margin-left: -8px; }
+.who .names { font-size: 13px; margin-right: 4px; }
+.style { font-size: 12.5px; padding: 3px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-ink); display: inline-flex; gap: 5px; align-items: center; }
+.style svg { width: 14px; height: 14px; }
+.cells { display: grid; grid-template-columns: repeat(4, auto); justify-content: space-between; gap: 6px; padding: 2px 2px; }
+.cell { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; white-space: nowrap; }
+.cell svg { width: 17px; height: 17px; }
+@media (max-width: 420px) { .cells { grid-template-columns: repeat(2, auto); justify-content: start; column-gap: 18px; } }
+.progress { background: var(--mint); border-radius: 14px; padding: 12px 14px; display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; align-items: center; }
+.progress b { font-size: 14.5px; }
+.progress .pc { font-size: 13px; color: var(--muted); text-align: right; }
+.track { grid-column: 1 / -1; height: 7px; border-radius: 99px; background: color-mix(in srgb, var(--mintbar) 18%, transparent); overflow: hidden; }
+.track i { display: block; height: 100%; background: var(--mintbar); border-radius: 99px; transition: width .6s cubic-bezier(.2, .8, .2, 1); }
+.tabs { display: flex; justify-content: center; gap: 22px; border-top: 1px solid var(--line2); padding-top: 10px; font-size: 14px; color: var(--muted); }
+.tabs span.on { color: var(--ink); font-weight: 650; box-shadow: inset 0 -3px 0 var(--accent); padding-bottom: 6px; }
+
+/* Plan başlığı ve sıralama anahtarı (K9) */
+.planbar { display: flex; align-items: center; gap: 10px; padding: 12px 16px 6px; }
+.planbar strong { font-size: 17px; }
+.seg { margin-left: auto; display: inline-flex; background: var(--card); border-radius: 10px; padding: 3px; font-size: 12.5px; }
+.seg span { padding: 4px 9px; border-radius: 8px; color: var(--muted); }
+.seg span.on { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+
+/* Kategori bölümleri: tek yüzey, ince çizgiyle ayrılır */
+.sec { border-top: 1px solid var(--line2); padding: 14px 16px 16px; display: grid; gap: 10px; }
+.sec-h { display: flex; align-items: center; gap: 10px; }
+.sec-h h4 { margin: 0; font-size: 17px; font-weight: 650; }
+.sec-h .sp { flex: 1; }
+.bar { width: 72px; height: 6px; border-radius: 99px; background: var(--line2); overflow: hidden; }
+.bar i { display: block; height: 100%; border-radius: 99px; }
+.cnt { font-size: 14px; min-width: 2.6em; text-align: right; color: var(--muted); }
+.cnt b { color: var(--ink); font-weight: 650; }
+.fikir { font-size: 13px; color: var(--muted); }
+.sec-why { margin: -4px 0 0; font-size: 13px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+.sec-why svg { width: 14px; height: 14px; color: var(--accent); }
+
+/* Niyet kartı (pahalı, kıyaslanan) */
+.intent { position: relative; border: 1.5px dashed color-mix(in srgb, var(--muted) 55%, transparent); border-radius: 16px; padding: 12px; display: grid; grid-template-columns: 76px 1fr; gap: 4px 12px; background: var(--surface); transition: box-shadow .3s; }
+.intent.chosen { border-style: solid; border-color: var(--line); }
+.illus { width: 76px; height: 58px; border-radius: 10px; background: var(--tile); object-fit: contain; padding: 3px; grid-row: span 2; }
+.itop { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.itop h5 { margin: 0; font-size: 17px; font-weight: 680; letter-spacing: -0.01em; }
+.state { margin-left: auto; font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+.state.cand { color: var(--accent-ink); }
+.isub { margin: 0; font-size: 14px; color: var(--ink); min-width: 0; }
+.imeta { grid-column: 2; margin: 0; font-size: 13px; color: var(--muted); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.date { color: var(--ink); font-weight: 600; }
+.adddate { font-size: 12.5px; color: var(--accent-ink); border: 1px dashed var(--accent); border-radius: 999px; padding: 1px 8px; display: inline-flex; align-items: center; gap: 4px; }
+.adddate svg { width: 12px; height: 12px; }
+.why { grid-column: 1 / -1; margin: 4px 0 0; font-size: 13px; color: var(--accent-ink); display: flex; gap: 6px; align-items: flex-start; }
+.why svg { width: 14px; height: 14px; margin-top: 2px; }
+.wants { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 0; padding: 0; list-style: none; }
+.wants li { font-size: 12.5px; padding: 3px 9px; border-radius: 999px; background: var(--card); color: var(--ink); }
+.legs { grid-column: 2; display: grid; gap: 2px; font-size: 13.5px; }
+.legs div { display: flex; gap: 8px; justify-content: space-between; }
+.legs span:first-child { color: var(--muted); }
+.ifoot { grid-column: 1 / -1; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; margin-top: 8px; padding-top: 10px; border-top: 1px solid var(--line2); font-size: 13px; }
+.ifoot .ara { color: var(--muted); }
+.brandlink { display: inline-flex; align-items: center; gap: 5px; color: var(--ink); text-decoration: none; padding: 3px 6px 3px 3px; border-radius: 8px; }
+.brandlink:hover { background: var(--card); }
+.brandlink svg { width: 12px; height: 12px; color: var(--muted); }
+.bm { width: 18px; height: 18px; border-radius: 5px; color: var(--on-brand); font-size: 10.5px; font-weight: 800; display: grid; place-items: center; }
+.addcand { margin-left: auto; color: var(--accent-ink); display: inline-flex; gap: 4px; align-items: center; padding: 3px 8px; border-radius: 8px; }
+.addcand:hover { background: var(--accent-soft); }
+.addcand svg { width: 14px; height: 14px; }
+.aicands { grid-column: 1 / -1; display: flex; align-items: center; gap: 7px; width: 100%; margin-top: 2px; padding: 8px 10px; border-radius: 10px; background: var(--accent-soft); color: var(--accent-ink); font-size: 13.5px; text-align: left; }
+.aicands .sub { color: var(--muted); font-size: 12.5px; margin-left: 2px; }
+.aicands .chev { margin-left: auto; transition: transform .2s; }
+.aicands[aria-expanded="true"] .chev { transform: rotate(180deg); }
+.aicands svg { width: 15px; height: 15px; }
+
+/* Aday tepsisi + AI hakem */
+.tray { grid-column: 1 / -1; display: grid; gap: 8px; margin-top: 6px; }
+.judge { margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--card); font-size: 13.5px; display: flex; gap: 8px; }
+.judge svg { color: var(--accent); width: 16px; height: 16px; margin-top: 2px; }
+.cand { display: grid; grid-template-columns: 56px 1fr auto; gap: 2px 10px; align-items: center; padding: 8px; border: 1px solid var(--line); border-radius: 12px; }
+.cand.best { border-color: var(--accent); }
+.thumb { width: 56px; height: 56px; border-radius: 9px; grid-row: span 3; }
+.cname { font-size: 14.5px; font-weight: 650; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.pick { font-size: 11.5px; font-weight: 650; color: var(--on-accent); background: var(--accent); border-radius: 6px; padding: 1px 6px; }
+.csrc { font-size: 12.5px; color: var(--muted); display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
+.csrc .bm { width: 15px; height: 15px; font-size: 9px; border-radius: 4px; }
+.cmarks { font-size: 12.5px; display: flex; gap: 8px; flex-wrap: wrap; }
+.y { color: var(--ok); } .n { color: var(--muted); text-decoration: line-through; } .q { color: var(--muted); }
+.cprice { grid-row: 1 / span 2; grid-column: 3; text-align: right; font-size: 15px; font-weight: 700; }
+.cprice small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
+.btn { border-radius: 999px; padding: 5px 14px; font-size: 13.5px; font-weight: 600; }
+.btn.primary { background: var(--ink); color: var(--surface); }
+.btn.ghost { border: 1px solid var(--line); }
+.cand .btn { grid-column: 3; justify-self: end; }
+
+/* Transfer satırları (küçük niyetler) */
+.rows { border: 1.5px dashed color-mix(in srgb, var(--muted) 55%, transparent); border-radius: 16px; position: relative; }
+.row { display: grid; grid-template-columns: auto 1fr auto; gap: 2px 10px; align-items: center; padding: 10px 12px; }
+.row + .row { border-top: 1px solid var(--line2); }
+.row svg.i { color: var(--c-move); }
+.row b { font-size: 14.5px; font-weight: 650; }
+.row .rs { grid-column: 2; font-size: 13px; color: var(--muted); }
+.row .ra { grid-row: 1 / span 2; grid-column: 3; display: grid; justify-items: end; gap: 2px; font-size: 12.5px; color: var(--muted); }
+.row .ra a { font-size: 13px; }
+
+/* Öneri (ucuz, keşif): satır */
+.city { font-size: 12.5px; color: var(--muted); margin: 4px 0 -2px; display: flex; align-items: center; gap: 5px; }
+.city svg { width: 13px; height: 13px; }
+.sug { position: relative; display: grid; grid-template-columns: 54px 1fr auto; gap: 1px 10px; align-items: center; padding: 8px 8px 8px 8px; border-radius: 14px; background: color-mix(in srgb, var(--accent-soft) 55%, var(--surface)); transition: background .25s, opacity .25s; }
+.sug.aiidea { background: var(--surface); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); }
+.sug img { width: 54px; height: 54px; border-radius: 10px; background: var(--tile); object-fit: contain; padding: 2px; grid-row: span 3; }
+.sug .st { font-size: 14.5px; font-weight: 620; line-height: 1.3; }
+.sug .sm { font-size: 12.5px; color: var(--muted); display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.sug .sw2 { font-size: 12.5px; color: var(--accent-ink); }
+.src { display: inline-flex; align-items: center; gap: 4px; }
+.src .bm { width: 15px; height: 15px; font-size: 9px; border-radius: 4px; }
+.aitag { font-size: 11.5px; font-weight: 650; color: var(--accent-ink); border: 1px solid var(--accent); border-radius: 6px; padding: 0 5px; display: inline-flex; gap: 3px; align-items: center; }
+.aitag svg { width: 11px; height: 11px; }
+.acts { grid-row: 1 / span 3; grid-column: 3; display: flex; align-items: center; gap: 4px; }
+.add { background: var(--ink); color: var(--surface); border-radius: 999px; padding: 5px 13px; font-size: 13px; font-weight: 600; display: inline-flex; gap: 5px; align-items: center; }
+.add svg { width: 14px; height: 14px; }
+.sug.added { background: var(--ok-soft); }
+.sug.added .add { background: transparent; color: var(--ok); padding-inline: 6px; }
+.xbtn { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); }
+.xbtn:hover { color: #c62828; background: var(--card); }
+.xbtn svg { width: 14px; height: 14px; }
+.gone { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 12px; border: 1px dashed var(--line); font-size: 13px; color: var(--muted); }
+.gone button { color: var(--accent-ink); font-weight: 600; }
+.more { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; padding-top: 2px; }
+.more button { color: var(--accent-ink); display: inline-flex; gap: 5px; align-items: center; padding: 3px 6px; border-radius: 8px; }
+.more button:hover { background: var(--accent-soft); }
+.more svg { width: 14px; height: 14px; }
+.more .muted { color: var(--muted); }
+
+/* Parlama (K5): cevaptan sonra değişen kart */
+.fresh { position: relative; }
+.fresh.play { animation: glow 2.2s cubic-bezier(.16, 1, .3, 1) 2; }
+@keyframes glow { 0% { box-shadow: 0 0 0 0 var(--glow); } 35% { box-shadow: 0 0 0 5px var(--glow); } 100% { box-shadow: 0 0 0 12px transparent; } }
+.ftag { position: absolute; top: -9px; right: 12px; font-size: 11px; font-weight: 700; color: var(--on-accent); background: var(--accent); border-radius: 6px; padding: 1px 7px; opacity: 0; pointer-events: none; }
+.fresh.play .ftag { animation: tag 4.4s ease-out 1 forwards; }
+@keyframes tag { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
+.fresh.text.play { animation: hl 2.4s ease-out 1; border-radius: 6px; }
+@keyframes hl { 0%, 40% { background: var(--accent-soft); } 100% { background: transparent; } }
+@media (prefers-reduced-motion: reduce) {
+  .fresh.play, .fresh.text.play { animation: none; box-shadow: 0 0 0 3px var(--glow); }
+  .fresh.play .ftag { animation: none; opacity: 1; }
+  .track i { transition: none; }
+}
+
+/* Notlar */
+.notes { display: grid; gap: 6px; margin: 0; padding: 12px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; font-size: 13.5px; list-style: none; }
+.notes li { display: grid; grid-template-columns: 30px 1fr; gap: 8px; align-items: baseline; }
+.k { font-size: 11.5px; font-weight: 700; color: var(--accent-ink); background: var(--accent-soft); border-radius: 6px; text-align: center; padding: 1px 0; }
+.foot { font-size: 12.5px; color: var(--muted); text-align: center; }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-plane" viewBox="0 0 24 24"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></symbol>
+  <symbol id="i-bed" viewBox="0 0 24 24"><path d="M2 20v-8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8M4 10V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4M12 4v6M2 17h20"/></symbol>
+  <symbol id="i-car" viewBox="0 0 24 24"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2M9 17h6"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8-6.2-3.2-6.2 3.2L7 14.2 2 9.3l6.9-1z"/></symbol>
+  <symbol id="i-sim" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2.5"/><path d="M12 18h.01"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.7 9a1 1 0 0 1-.6 0C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.2-2.7a1.2 1.2 0 0 1 1.6 0C14.5 3.8 17 5 19 5a1 1 0 0 1 1 1z"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9zM19 3v4M21 5h-4"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-ext" viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4L21 8M21 3v5h-5"/></symbol>
+  <symbol id="i-heart" viewBox="0 0 24 24"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7z"/></symbol>
+  <symbol id="i-gem" viewBox="0 0 24 24"><path d="M6 3h12l4 6-10 12L2 9zM2 9h20M12 21 8 9l4-6 4 6z"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></symbol>
+  <symbol id="i-msg" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></symbol>
+</svg>
+
+<main class="page">
+  <header class="intro">
+    <h1>Bali İlk Ekran Akışı</h1>
+    <div class="prompt"><svg class="i"><use href="#i-msg"/></svg><span>“Bali'de 3 hafta sevgilimle 15 gün lüks tatil”</span></div>
+    <p>Bu tek cümleden sonra pano üç anda nasıl değişir? Hero bugünkü hâliyle (dar ekran), kategori bölümleri yeni tasarım. Kareler soldan sağa: her biri bir sohbet cevabıyla başlar.</p>
+    <div class="legend">
+      <span><i class="sw intent"></i>Niyet kartı · pahalı, kıyaslanan</span>
+      <span><i class="sw sug"></i>Öneri · kaynaklı, ucuz, keşif</span>
+      <span><i class="sw ai"></i>AI fikri · kaynaksız, fiyatsız</span>
+      <span><i class="sw fresh"></i>Cevaptan sonra değişen kart</span>
+    </div>
+  </header>
+
+  <section class="frames" id="frames" aria-label="Akış kareleri"></section>
+
+  <p class="foot">Tasarım örneği · otel adları, fiyatlar ve etkinlikler temsilîdir.</p>
+</main>
+
+<script>
+const I = (id, cls = "i") => `<svg class="${cls}"><use href="#i-${id}"/></svg>`;
+const BR = {
+  booking: ["B.", "var(--b-booking)", "Booking"], airbnb: ["A", "var(--b-airbnb)", "Airbnb"],
+  google: ["G", "var(--b-google)", "Google Flights"], sky: ["S", "var(--b-sky)", "Skyscanner"],
+  viator: ["V", "var(--b-viator)", "Viator"], airalo: ["A", "var(--b-airalo)", "Airalo"],
+  klook: ["K", "var(--b-klook)", "Klook"], trip: ["T", "var(--b-trip)", "Tripadvisor"]
+};
+const bm = k => `<span class="bm" style="background:${BR[k][1]}">${BR[k][0]}</span>`;
+const blink = (k, label) => `<a class="brandlink" href="#" onclick="return false">${bm(k)}${label || BR[k][2]}${I("ext")}</a>`;
+const fresh = (on, extra = "") => on ? ` fresh ${extra}` : "";
+const ftag = on => on ? `<span class="ftag">Güncellendi</span>` : "";
+
+/* Bali sahnesi: Agung volkanı ve pirinç terasları (fotoğraf yerine) */
+const scene = `<svg viewBox="0 0 480 250" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+  <defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffcf9e"/><stop offset=".55" stop-color="#f7a98c"/><stop offset="1" stop-color="#e98f8a"/></linearGradient></defs>
+  <rect width="480" height="250" fill="url(#sky)"/>
+  <circle cx="340" cy="92" r="30" fill="#fff1d6" opacity=".9"/>
+  <path d="M120 150 L232 52 Q240 46 248 52 L372 150 Z" fill="#8f6f8c" opacity=".75"/>
+  <path d="M0 150 Q120 128 240 146 T480 138 V250 H0Z" fill="#6f9b6a"/>
+  <path d="M0 172 Q140 150 260 168 T480 160 V250 H0Z" fill="#5c8a57"/>
+  <path d="M0 196 Q120 176 250 192 T480 186 V250 H0Z" fill="#7fae5f"/>
+  <path d="M0 222 Q150 202 270 218 T480 212 V250 H0Z" fill="#9bc46a"/>
+  <path d="M0 176 Q140 156 260 172 T480 165" stroke="#d9ecb0" stroke-width="1.4" fill="none" opacity=".7"/>
+  <path d="M0 200 Q120 180 250 196 T480 190" stroke="#e3f1bd" stroke-width="1.4" fill="none" opacity=".7"/>
+  <path d="M0 226 Q150 206 270 222 T480 216" stroke="#eef7c8" stroke-width="1.4" fill="none" opacity=".7"/>
+  <path d="M60 250 Q64 196 70 160" stroke="#3f5a35" stroke-width="4" fill="none"/>
+  <path d="M70 160 q-26 -4 -40 10 M70 160 q-14 -18 -36 -16 M70 160 q8 -22 30 -22 M70 160 q24 -6 38 8 M70 160 q2 -24 -6 -34" stroke="#3f5a35" stroke-width="5" fill="none" stroke-linecap="round"/>
+</svg>`;
+
+function hero(f) {
+  const d = f.dated;
+  return `<div class="hero">
+    <div class="photo">${scene}<div class="cities"><span class="on">Ubud</span><span>Seminyak</span><span>Uluwatu</span></div></div>
+    <h3>Bali'de 15 gün</h3>
+    <div class="hline${fresh(f.glowDate, "text")}">${I("cal")}<span class="num">${d ? "12–27 Mart · 15 gün" : "15 gün"}</span></div>
+    <p class="tone">Ubud'un ormanından Uluwatu'nun uçurumlarına, ikinize sakin ve lüks bir Bali.</p>
+    <div class="who"><span class="avs"><span class="av">E</span><span class="av">S</span></span><span class="names">Emre & Sabine</span>
+      <span class="style">${I("gem")}Lüks</span><span class="style">${I("heart")}Romantik</span></div>
+    <div class="cells">
+      <span class="cell" style="color:var(--c-fly)">${I("plane")}<span style="color:var(--ink)">2 uçuş</span></span>
+      <span class="cell" style="color:var(--c-stay)">${I("bed")}<span style="color:var(--ink)">3 konaklama</span></span>
+      <span class="cell" style="color:var(--c-move)">${I("car")}<span style="color:var(--ink)">3 ulaşım</span></span>
+      <span class="cell" style="color:var(--c-exp)">${I("star")}<span style="color:var(--ink)">${f.exp} deneyim</span></span>
+    </div>
+    <div class="progress"><b>Bali planın şekilleniyor</b><span class="pc num">${f.done}/9 seçildi</span><span class="track"><i style="width:${Math.max(3, f.done / 9 * 100)}%"></i></span></div>
+    <div class="tabs"><span class="on">Plan</span><span>Gün gün</span><span>Belgeler</span></div>
+  </div>`;
+}
+
+function secHead(icon, color, name, done, total) {
+  return `<header class="sec-h"><span style="color:${color}">${I(icon)}</span><h4>${name}</h4><span class="sp"></span>
+    <span class="bar"><i style="width:${done / total * 100}%;background:${color}"></i></span><span class="cnt num"><b>${done}</b>/${total}</span></header>`;
+}
+
+function flights(f) {
+  const d = f.dated;
+  return `<section class="sec">${secHead("plane", "var(--c-fly)", "Uçuş", 0, 2)}
+    <article class="intent${fresh(f.glow)}">${ftag(f.glow)}
+      <img class="illus" src="illus/ucus.png" alt="">
+      <div class="itop"><h5>İstanbul ⇄ Bali</h5><span class="state">${d ? "Aranıyor" : ""}</span></div>
+      <div class="legs num">
+        <div><span>Gidiş · IST → DPS</span><span class="${d ? "date" : ""}">${d ? "12 Mart" : `<button class="adddate">${I("plus")}Tarih</button>`}</span></div>
+        <div><span>Dönüş · DPS → IST</span><span class="${d ? "date" : ""}">${d ? "27 Mart" : ""}</span></div>
+      </div>
+      <p class="why">${I("spark")}Uzun yol; lüks dediğin için rahat koltuk ve kısa aktarma</p>
+      <ul class="wants"><li>En çok 1 aktarma</li><li>Business'a da bak</li><li>2 kişi</li></ul>
+      <div class="ifoot"><span class="ara">Ara:</span>${blink("google")}${blink("sky")}
+        <button class="addcand">${I("plus")}Aday ekle</button></div>
+      ${d ? `<button class="aicands" aria-expanded="false">${I("spark")}Senin için 3 uçuş <span class="sub num">en uygunu €1.840 · 2 kişi</span>${I("chev", "i chev")}</button>` : ""}
+    </article></section>`;
+}
+
+const STAYS = [
+  { k: "ubud", city: "Ubud", n: 5, dates: "12–17 Mart", img: "ev-daire", sub: "Orman içinde, özel havuzlu villa", why: "Sevgilinle, sakin ve lüks dediğin için", wants: ["Özel havuz", "Orman manzarası", "Kahvaltı dahil"], from: "€190" },
+  { k: "sem", city: "Seminyak", n: 4, dates: "17–21 Mart", img: "otel", sub: "Sahile yürüme mesafesinde butik otel", why: "Gün batımı ve akşam yemekleri için", wants: ["Sahile 5 dk", "Spa", "Rooftop"], from: "€160" },
+  { k: "ulu", city: "Uluwatu", n: 5, dates: "21–26 Mart", img: "otel", sub: "Okyanusa bakan uçurum oteli", why: "Gezinin finali; romantik dediğin için", wants: ["Okyanus manzarası", "Infinity havuz", "Yetişkinlere özel"], from: "€230" }
+];
+const loc = c => ({ Ubud: "Ubud'da", Seminyak: "Seminyak'ta", Uluwatu: "Uluwatu'da" }[c]);
+
+function tray() {
+  const c = (best, name, src, srcLabel, price, total, marks, grad) => `<div class="cand${best ? " best" : ""}">
+    <span class="thumb" style="background:${grad}"></span>
+    <span class="cname">${name}${best ? `<span class="pick">Önerim</span>` : ""}</span>
+    <span class="csrc">${bm(src)}${srcLabel}</span>
+    <span class="cmarks">${marks}</span>
+    <span class="cprice num">${price}<small>${total}</small></span>
+    <button class="btn ${best ? "primary" : "ghost"}">Seç</button></div>`;
+  return `<div class="tray">
+    <p class="judge">${I("spark")}<span><b>Villa Sawah</b> iki şartını da tutuyor (özel havuz, orman manzarası) ve en sessizi. Kayu Retreat €45 daha ucuz ama havuzu ortak.</span></p>
+    ${c(true, "Villa Sawah", "booking", "Senin linkin · Booking · 9,4", "€240", "5 gece · €1.200", `<span class="y">✓ Özel havuz</span><span class="y">✓ Orman</span><span class="y">✓ Kahvaltı</span>`, "linear-gradient(135deg,#7fae5f,#2f6b4f)")}
+    ${c(false, "Kayu Retreat", "airbnb", "Senin linkin · Airbnb · 4,9", "€195", "5 gece · €975", `<span class="n">Özel havuz</span><span class="y">✓ Orman</span><span class="q">? Kahvaltı</span>`, "linear-gradient(135deg,#d7b48a,#8a5a3c)")}
+    ${c(false, "Alas Suites", "trip", "✨ AI adayı · Tripadvisor · 4,8", "€275", "5 gece · €1.375", `<span class="y">✓ Özel havuz</span><span class="q">? Orman</span><span class="y">✓ Kahvaltı</span>`, "linear-gradient(135deg,#9fc7d8,#3f6f8a)")}
+  </div>`;
+}
+
+function stays(f) {
+  const d = f.dated;
+  const done = f.ubudOpen ? 0 : 0;
+  return `<section class="sec">${secHead("bed", "var(--c-stay)", "Konaklama", done, 3)}
+    ${STAYS.map(s => {
+      const open = f.ubudOpen && s.k === "ubud";
+      const state = open ? `<span class="state cand">3 aday</span>` : `<span class="state">${d ? "Aranıyor" : ""}</span>`;
+      return `<article class="intent${fresh(f.glow || (open && f.glowTray))}">${ftag(f.glow || (open && f.glowTray))}
+      <img class="illus" src="illus/${s.img}.png" alt="">
+      <div class="itop"><h5>${loc(s.city)} ${s.n} gece</h5>${state}</div>
+      <p class="isub">${s.sub}</p>
+      <p class="imeta num">${d ? `<span class="date">${s.dates}</span> ·` : ""} 2 kişi</p>
+      <p class="why">${I("spark")}${s.why}</p>
+      <ul class="wants">${s.wants.map(w => `<li>${w}</li>`).join("")}</ul>
+      <div class="ifoot"><span class="ara">Ara:</span>${blink("booking")}${blink("airbnb")}
+        <button class="addcand">${I("plus")}Aday ekle</button></div>
+      ${d ? `<button class="aicands" aria-expanded="${open}">${I("spark")}${open ? "Adaylar" : "Senin için 3 aday"} <span class="sub num">${open ? "2'si senin linkin, 1'i AI" : s.from + "'dan / gece"}</span>${I("chev", "i chev")}</button>` : ""}
+      ${open ? tray() : ""}
+    </article>`;
+    }).join("")}
+  </section>`;
+}
+
+function transfers(f) {
+  const d = f.dated;
+  const r = (a, b, sub, date) => `<div class="row">${I("car")}<b>${a} → ${b}</b>
+    <span class="rs">${sub}</span><span class="ra num">${d ? `<span class="date">${date}</span>` : ""}<a href="#" onclick="return false">Ara ↗</a></span></div>`;
+  return `<section class="sec">${secHead("car", "var(--c-move)", "Ulaşım", 0, 3)}
+    <p class="sec-why">${I("spark")}Lüks dediğin için her yol özel araçla</p>
+    <div class="rows${fresh(f.glow)}">${ftag(f.glow)}
+      ${r("Havalimanı", "Ubud", "Özel transfer · ~1,5 sa", "12 Mart")}
+      ${r("Ubud", "Seminyak", "Özel şoför · ~1 sa", "17 Mart")}
+      ${r("Seminyak", "Uluwatu", "Özel şoför · ~50 dk", "21 Mart")}
+    </div></section>`;
+}
+
+function sug(o) {
+  if (o.gone) return `<div class="gone" data-id="${o.id}">${o.title} kaldırıldı · <button data-undo>Geri al</button></div>`;
+  return `<div class="sug${o.ai ? " aiidea" : ""}${o.added ? " added" : ""}${fresh(o.glow)}" data-id="${o.id}">${ftag(o.glow)}
+    <img src="illus/${o.img}.png" alt="">
+    <span class="st">${o.title}</span>
+    <span class="sm num">${o.ai ? `<span class="aitag">${I("spark")}AI fikri</span>` : `<span class="src">${bm(o.src)}${BR[o.src][2]}</span>`}${o.meta ? `<span>${o.meta}</span>` : ""}</span>
+    <span class="sw2">${o.why}</span>
+    <span class="acts">${o.added ? `<button class="add" data-add>${I("check")}Eklendi</button>` : `<button class="add" data-add>${I("plus")}Ekle</button>`}
+      <button class="xbtn" data-x aria-label="${o.title} önerisini kaldır">${I("x")}</button></span>
+  </div>`;
+}
+
+function experiences(f) {
+  const groups = {};
+  f.ideas.forEach(o => (groups[o.city] = groups[o.city] || []).push(o));
+  const added = f.ideas.filter(o => o.added).length;
+  return `<section class="sec" data-sec="exp"><header class="sec-h"><span style="color:var(--c-exp)">${I("star")}</span><h4>Deneyimler</h4><span class="sp"></span>
+      <span class="fikir num">${f.ideas.filter(o => !o.gone).length} fikir${added ? ` · ${added} plana eklendi` : ""}</span></header>
+    ${Object.entries(groups).map(([c, list]) => `<div class="city">${I("pin")}${c}</div>${list.map(sug).join("")}`).join("")}
+    <div class="more"><span class="muted">+3 fikir daha</span><button data-refresh>${I("refresh")}Yeni öneriler</button></div>
+  </section>`;
+}
+
+function other(f) {
+  const d = f.dated;
+  return `<section class="sec">${secHead("shield", "var(--c-ins)", "Sigorta ve internet", 0, 1)}
+    <article class="intent${fresh(f.glow)}">${ftag(f.glow)}
+      <img class="illus" src="illus/sigorta.png" alt="">
+      <div class="itop"><h5>Seyahat sağlık sigortası</h5><span class="state">${d ? "Aranıyor" : ""}</span></div>
+      <p class="isub">Endonezya · 2 kişi</p>
+      <p class="imeta num">${d ? `<span class="date">12–27 Mart</span> ·` : ""} 15 gün</p>
+      <p class="why">${I("spark")}Yurt dışında 15 gün; dalış ve scooter kapsamına bak</p>
+      <div class="ifoot"><span class="ara">Ara:</span><a class="brandlink" href="#" onclick="return false">Sigorta karşılaştır${I("ext")}</a></div>
+    </article>
+    ${sug({ id: "esim", img: "esim", title: "Endonezya eSIM · 10 GB", src: "airalo", meta: "15 gün · €17", why: "Gezinin süresine göre paket", glow: f.glow })}
+  </section>`;
+}
+
+/* Kareler */
+const baseIdeas = () => [
+  { id: "teras", city: "Ubud", img: "yapilacak", title: "Tegallalang terasları, gün doğumu turu", src: "viator", meta: "€38 · kişi başı", why: "Kalabalıktan önce, sakin saatte" },
+  { id: "spa", city: "Ubud", img: "etkinlik-tur", title: "Çiftlere Bali masajı, orman manzaralı spa", ai: true, why: "Romantik dediğin için" },
+  { id: "kecak", city: "Uluwatu", img: "etkinlik-tur", title: "Uluwatu tapınağında gün batımı ve Kecak dansı", src: "viator", meta: "€30 · kişi başı", why: "Gezinin finaline yakışır" },
+  { id: "jimbaran", city: "Uluwatu", img: "restoran", title: "Jimbaran'da kumda deniz ürünleri akşamı", ai: true, meta: "Maps ↗", why: "İkiniz için gün batımında masa" }
+];
+
+const FRAMES = [
+  {
+    step: "1", title: "Prompt'tan hemen sonra", dated: false, done: 0, exp: 4,
+    chat: `<div class="msg me">Bali'de 3 hafta sevgilimle 15 gün lüks tatil</div>
+      <div class="msg ai">Sakin ve lüks bir Bali kurdum: <b>Ubud → Seminyak → Uluwatu</b>. Önce şunu netleştirelim: <b>15 gün mü, 3 hafta mı?</b>
+        <div class="chips"><span class="chip on">15 gün</span><span class="chip">3 hafta</span></div></div>`,
+    ideas: baseIdeas(),
+    notes: [["K4", "İlk soru çelişki (15 gün / 3 hafta). Sonraki soru tarih, çünkü en çok kartı o açar."],
+      ["K2", "Her ihtiyaç ayrı kart: 3 konaklama, 3 transfer. Neyi tutman gerektiği ilk bakışta görünür."],
+      ["K1", "Uçuş, otel, transfer, sigorta niyet kartı. Deneyim ve eSIM doğrudan öneri, yanında Ekle."],
+      ["K6", "Her kartta tek “neden” satırı, senin kelimelerinle: lüks, sevgilinle, romantik."],
+      ["K11", "Tarih yokken eksik diye bağırmaz; uçuşta yalnız küçük bir “+ Tarih” durur."]]
+  },
+  {
+    step: "2", title: "Tarih verildi", dated: true, glow: true, glowDate: true, done: 0, exp: 5, replay: true,
+    chat: `<div class="msg ai">Ne zaman çıkmayı düşünüyorsunuz? Kabaca bir ay da yeter.
+        <div class="chips"><span class="chip">Şubat</span><span class="chip on">Mart</span><span class="chip">Nisan</span><span class="chip">Henüz bilmiyoruz</span></div></div>
+      <div class="msg me">12 Mart'ta çıkalım</div>
+      <div class="msg ai">Uçuşu, 3 konaklamayı ve transferleri <b>12–27 Mart</b>'a yerleştirdim. Otellerde ilk adaylar geldi; Ubud'da tarihine denk gelen bir konser var.</div>`,
+    ideas: [...baseIdeas().slice(0, 2), { id: "gamelan", city: "Ubud", img: "etkinlik-tur", title: "Ubud Sarayı'nda gamelan ve Legong gösterisi · 14 Mart", src: "viator", meta: "€12 · kişi başı", why: "Tarihine denk geliyor", glow: true }, ...baseIdeas().slice(2)],
+    notes: [["K5", "Tek cevap, sekiz kart değişti. Değişen her kart kısa parlar, hero'daki tarih vurgulanır."],
+      ["K1", "Tarihle gerçek kaynaklar açılır: uçuş fiyatı, otel adayları. AI adayları kapalı satırda; açmazsan dayatmaz."],
+      ["K3", "Tarihe denk gelen etkinlik kaynaklı öneri olarak gelir (Viator)."],
+      ["K9", "Sıralama kategoriye göre; “Yolculuk” tek dokunuşla aynı kartları gün sırasına dizer."]]
+  },
+  {
+    step: "3", title: "Adaylar toplandı", dated: true, ubudOpen: true, glowTray: true, done: 0, exp: 5, replay: true,
+    chat: `<div class="msg me">Şu ikisine baktım<br><span class="link-pill">booking.com/hotel/villa-sawah</span><span class="link-pill">airbnb.com/rooms/kayu</span></div>
+      <div class="msg ai">İkisini <b>Ubud'da 5 gece</b>ye ekledim. Bir de benim adayım var. Şartlarına göre <b>Villa Sawah</b> önde; seçersen bu kart kapanır.</div>`,
+    ideas: (() => { const a = baseIdeas(); a[0].added = true; a[3] = { ...a[3], gone: true };
+      a.splice(2, 0, { id: "gamelan", city: "Ubud", img: "etkinlik-tur", title: "Ubud Sarayı'nda gamelan ve Legong gösterisi · 14 Mart", src: "viator", meta: "€12 · kişi başı", why: "Tarihine denk geliyor" });
+      a.push({ id: "yemek", city: "Uluwatu", img: "restoran", title: "Uçurumda özel akşam yemeği", ai: true, why: "Jimbaran yerine; ikinize daha sakin", glow: true }); return a; })(),
+    notes: [["P8", "Senin linklerin ve AI'nın adayı aynı tepside, aynı statüde. Kaynağı her satırda yazar."],
+      ["P9", "AI hakem tek cümle ve yalnız senin şartlarınla konuşur. Seç ile bu ihtiyaç kapanır, sayaç ilerler."],
+      ["K8", "Öneride Ekle plana koyar (yeşil), × kaldırır ve geri alınabilir. “Yeni öneriler” boşalan yeri doldurur."]]
+  }
+];
+
+function render() {
+  document.getElementById("frames").innerHTML = FRAMES.map((f, i) => `<article class="frame" data-f="${i}">
+    <div class="fhead"><span class="step">${f.step}</span><h2>${f.title}</h2>${f.replay ? `<button class="replay" data-replay>${I("refresh")}Tekrar oynat</button>` : ""}</div>
+    <div class="chat">${f.chat}</div>
+    <div class="app">${hero(f)}
+      <div class="planbar"><strong>Plan</strong><span class="seg"><span class="on">Kategori</span><span>Yolculuk</span></span></div>
+      ${flights(f)}${stays(f)}${transfers(f)}${experiences(f)}${other(f)}
+    </div>
+    <ul class="notes">${f.notes.map(([k, t]) => `<li><span class="k">${k}</span><span>${t}</span></li>`).join("")}</ul>
+  </article>`).join("");
+  play(document);
+}
+
+function play(root) {
+  root.querySelectorAll(".fresh").forEach(el => { el.classList.remove("play"); void el.offsetWidth; el.classList.add("play"); });
+}
+
+document.addEventListener("click", e => {
+  const frameEl = e.target.closest(".frame");
+  if (!frameEl) return;
+  const f = FRAMES[+frameEl.dataset.f];
+  if (e.target.closest("[data-replay]")) { play(frameEl); return; }
+  const tog = e.target.closest(".aicands");
+  if (tog) { const open = tog.getAttribute("aria-expanded") === "true"; tog.setAttribute("aria-expanded", String(!open));
+    const t = tog.parentElement.querySelector(".tray"); if (t) t.hidden = open; return; }
+  const row = e.target.closest("[data-id]");
+  const find = () => f.ideas.find(o => o.id === row.dataset.id);
+  if (e.target.closest("[data-add]") && row) { const o = find(); if (o) { o.added = !o.added; o.glow = false; rerender(frameEl, f); } return; }
+  if (e.target.closest("[data-x]") && row) { const o = find(); if (o) { o.gone = true; rerender(frameEl, f); } return; }
+  if (e.target.closest("[data-undo]") && row) { const o = find(); if (o) { o.gone = false; rerender(frameEl, f); } return; }
+  if (e.target.closest("[data-refresh]")) {
+    const pool = [
+      { id: "r1", city: "Seminyak", img: "yapilacak", title: "Seminyak'ta gün batımı beach club", src: "klook", meta: "€25 · kişi başı", why: "Seminyak gecelerine" },
+      { id: "r2", city: "Ubud", img: "restoran", title: "Ubud'da Bali yemekleri kursu", src: "viator", meta: "€42 · kişi başı", why: "Mutfağı birlikte öğrenmek için" }
+    ];
+    const next = pool.find(p => !f.ideas.some(o => o.id === p.id));
+    if (next) { f.ideas.forEach(o => o.glow = false); f.ideas.push({ ...next, glow: true }); rerender(frameEl, f); }
+  }
+});
+
+function rerender(frameEl, f) {
+  const sec = frameEl.querySelector('[data-sec="exp"]');
+  sec.outerHTML = experiences(f);
+  play(frameEl.querySelector('[data-sec="exp"]'));
+}
+
+render();
+</script>

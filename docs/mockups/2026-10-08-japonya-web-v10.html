@@ -1,0 +1,1353 @@
+<title>Japonya Planı</title>
+<style>
+/* Layout: senaryo seçici; eklentinin web panosu: solda sohbet, sağda bugünkü hero v9 + gezinin şekli + açılır/kapanır bölümler.
+   Bölüm sırası (incumbent): Uçuş · Konaklama · Ulaşım · Deneyimler · Belgeler ve internet · Hazırlık.
+   Pahalı olan kutucuk (niyet), ucuz olan kare fikir (doğrudan Ekle). Renk: kategori rengi ikonda ve bölüm başlığının küçük karesinde; amber seçildi; yeşil rezerve. */
+:root {
+  --bg: #eeecf5; --app: #ffffff; --soft: #f7f5f1; --tile: #fbfaf7;
+  --ink: #1c1a33; --muted: #6b6790; --line: #e7e4dd; --line2: #efece7; --dash: #b9b5cf;
+  --accent: #5b45e0; --accent-ink: #4a35cc; --lav: #ece8ff; --on-accent: #ffffff;
+  --mint: #eaf7f2; --mintbar: #2cc79a; --planbar: #f0a53a;
+  --plan-bg: #fbf6ea; --plan-line: #e9d29a; --plan-ink: #8a5a00; --plan-dot: #e09422;
+  --book-bg: #eef8f1; --book-line: #b9e0c7; --book-ink: #1b7f45;
+  --plus: #1b7f45; --minus: #c62828; --best: #e9f6ee;
+  --c-fly: #6a4fe0; --c-stay: #1d8577; --c-move: #b5761c; --c-exp: #c0256b; --c-doc: #0f7a5e; --c-prep: #475467; --c-todo: #1f7a45;
+  --b-web: #475467; --b-tk: #c8102e; --b-qr: #5c0632; --b-ek: #b5121b; --b-booking: #003b95; --b-airbnb: #c8174f; --b-jr: #2a7a46; --b-klook: #b23c00; --b-airalo: #b82a30; --b-ubigi: #0a6c74; --b-holafly: #5b2d90; --b-google: #1765cc; --b-sky: #0062e3; --b-amazon: #232f3e; --b-viator: #186b6d; --b-trip: #00744e; --b-maps: #1e8e3e; --b-yt: #c00000; --b-ig: #b0216e;
+  --on-brand: #ffffff;
+  --p-e: #5b45e0; --p-s: #1d8577;
+  --glow: rgba(91, 69, 224, .4); --scrim: rgba(28, 26, 51, .38);
+  --shadow: 0 1px 2px rgba(28, 26, 51, .05), 0 16px 40px -22px rgba(28, 26, 51, .28);
+  --shadow-sm: 0 1px 2px rgba(28, 26, 51, .06), 0 6px 18px -10px rgba(28, 26, 51, .25);
+  --shadow-lg: 0 30px 80px -20px rgba(28, 26, 51, .45);
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", system-ui, sans-serif;
+  --display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0d0c14; --app: #17161f; --soft: #201e2c; --tile: #efede8;
+  --ink: #eeecfb; --muted: #aaa6c9; --line: #2f2d40; --line2: #292737; --dash: #4d4a66;
+  --accent: #9a8bff; --accent-ink: #b5aaff; --lav: #2a2550; --on-accent: #16132e;
+  --mint: #142d27; --planbar: #f0a53a;
+  --plan-bg: #2a2416; --plan-line: #5c4a1f; --plan-ink: #f0bf63; --plan-dot: #f0a53a;
+  --book-bg: #142a1e; --book-line: #26583a; --book-ink: #5fd393; --plus: #5fd393; --minus: #ff8a80; --best: #163325;
+  --c-fly: #9d8bff; --c-stay: #3fc4b4; --c-move: #e2ab52; --c-exp: #ec6aa4; --c-doc: #3fc79f; --c-prep: #aab3c5; --c-todo: #4cc584;
+  --p-e: #9a8bff; --p-s: #3fc4b4;
+  --glow: rgba(154, 139, 255, .5); --scrim: rgba(0, 0, 0, .55);
+  --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 18px 44px -22px rgba(0, 0, 0, .8);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 20px -10px rgba(0, 0, 0, .7);
+  --shadow-lg: 0 30px 80px -20px rgba(0, 0, 0, .9);
+  color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --bg: #0d0c14; --app: #17161f; --soft: #201e2c; --tile: #efede8;
+  --ink: #eeecfb; --muted: #aaa6c9; --line: #2f2d40; --line2: #292737; --dash: #4d4a66;
+  --accent: #9a8bff; --accent-ink: #b5aaff; --lav: #2a2550; --on-accent: #16132e;
+  --mint: #142d27; --planbar: #f0a53a;
+  --plan-bg: #2a2416; --plan-line: #5c4a1f; --plan-ink: #f0bf63; --plan-dot: #f0a53a;
+  --book-bg: #142a1e; --book-line: #26583a; --book-ink: #5fd393; --plus: #5fd393; --minus: #ff8a80; --best: #163325;
+  --c-fly: #9d8bff; --c-stay: #3fc4b4; --c-move: #e2ab52; --c-exp: #ec6aa4; --c-doc: #3fc79f; --c-prep: #aab3c5; --c-todo: #4cc584;
+  --p-e: #9a8bff; --p-s: #3fc4b4;
+  --glow: rgba(154, 139, 255, .5); --scrim: rgba(0, 0, 0, .55);
+  --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 18px 44px -22px rgba(0, 0, 0, .8);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 20px -10px rgba(0, 0, 0, .7);
+  --shadow-lg: 0 30px 80px -20px rgba(0, 0, 0, .9);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+::selection { background: var(--lav); color: var(--ink); }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 0; }
+a { color: var(--accent-ink); text-underline-offset: 3px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.num { font-variant-numeric: tabular-nums; }
+.page { padding-block: 20px 48px; padding-inline: clamp(16px, 2.4vw, 32px); display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); max-width: 1560px; margin: 0 auto; }
+.page > * { min-width: 0; }
+
+/* Senaryo seçici */
+.switch { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 30; display: grid; gap: 8px; padding: 10px 12px; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); border-radius: 16px; }
+.switch-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.switch h1 { margin: 0 8px 0 4px; font-family: var(--display); font-size: 17px; letter-spacing: -0.01em; }
+.seg-c { display: flex; gap: 4px; flex-wrap: wrap; background: var(--app); padding: 4px; border-radius: 12px; box-shadow: var(--shadow); }
+.seg-c button { padding: 6px 12px; border-radius: 9px; font-size: 13.5px; color: var(--muted); display: inline-flex; gap: 6px; align-items: center; }
+.seg-c button b { font-weight: 700; color: var(--accent-ink); }
+.seg-c button[aria-selected="true"] { background: var(--ink); color: var(--app); }
+.seg-c button[aria-selected="true"] b { color: var(--app); }
+.motion { margin-left: auto; font-size: 13px; color: var(--muted); display: inline-flex; gap: 6px; align-items: center; padding: 6px 10px; border-radius: 9px; }
+.motion:hover { background: var(--app); }
+.sc-desc { margin: 0 4px; font-size: 14px; color: var(--muted); }
+.sc-desc b { color: var(--ink); font-weight: 600; }
+
+/* Kabuk */
+.shell { background: var(--app); border-radius: 22px; box-shadow: var(--shadow); overflow: hidden; }
+.topbar { display: flex; align-items: center; gap: 14px; padding: 12px 20px; border-bottom: 1px solid var(--line2); flex-wrap: wrap; }
+.logo { display: inline-flex; align-items: center; gap: 8px; font-weight: 750; font-size: 17px; }
+.logo svg { width: 22px; height: 22px; color: var(--accent); }
+.tripsel { font-size: 14px; display: inline-flex; gap: 4px; align-items: center; padding-left: 14px; border-left: 1px solid var(--line); }
+.topnav { display: flex; gap: 24px; margin: 0 auto; font-size: 14.5px; }
+.topnav button { padding: 4px 0; color: var(--muted); display: inline-flex; gap: 6px; align-items: center; }
+.topnav button.on { color: var(--accent-ink); font-weight: 650; box-shadow: inset 0 -2px 0 var(--accent); }
+.badge { font-size: 11.5px; font-weight: 700; background: var(--lav); color: var(--accent-ink); border-radius: 999px; padding: 0 7px; }
+.cols { display: grid; grid-template-columns: 320px minmax(0, 1fr); }
+@media (max-width: 1100px) { .cols { grid-template-columns: minmax(0, 1fr); } .chat { border-right: 0; border-bottom: 1px solid var(--line2); } }
+
+/* Kişiler */
+.av { width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 10.5px; font-weight: 800; color: var(--on-accent); flex: none; border: 2px solid var(--app); }
+.av.ai { background: var(--lav); color: var(--accent-ink); }
+.av.ai svg { width: 11px; height: 11px; stroke-width: 2.2; }
+.av.lg { width: 34px; height: 34px; font-size: 13px; }
+.avs { display: inline-flex; }
+.avs .av + .av { margin-left: -6px; }
+.saver { display: inline-flex; gap: 6px; align-items: center; font-size: 12.5px; color: var(--muted); }
+.saver b { color: var(--ink); font-weight: 600; }
+
+/* Sohbet */
+.chat { border-right: 1px solid var(--line2); padding: 18px 16px 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.chat h2 { margin: 0; font-size: 16px; display: flex; gap: 8px; align-items: center; }
+.chat h2 svg { color: var(--accent); }
+.msgs { display: grid; gap: 10px; align-content: start; flex: 1; }
+.msg { padding: 10px 12px; border-radius: 14px; font-size: 14px; min-width: 0; animation: rise .45s cubic-bezier(.16, 1, .3, 1); }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.msg.me { background: var(--lav); border-top-left-radius: 5px; }
+.msg.ai { background: var(--soft); border-top-left-radius: 5px; }
+.msg.act { background: var(--app); border: 1px dashed var(--accent); color: var(--accent-ink); font-weight: 600; display: flex; gap: 8px; align-items: center; }
+.msg.act svg { width: 15px; height: 15px; }
+.msg b { font-weight: 650; }
+.who-l { font-size: 12px; color: var(--muted); margin-bottom: 3px; display: flex; gap: 6px; align-items: center; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chip { font-size: 13px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--accent); color: var(--accent-ink); background: var(--app); }
+.links { display: grid; gap: 4px; margin-top: 8px; }
+.links .lk { display: flex; gap: 7px; align-items: center; font-size: 12.5px; background: var(--app); border-radius: 8px; padding: 4px 7px; min-width: 0; }
+.links .lk .u { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); min-width: 0; flex: 1; }
+.links .lk .to { color: var(--accent-ink); font-weight: 600; white-space: nowrap; flex: none; }
+.working { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); padding: 2px 4px; }
+.dots { display: inline-flex; gap: 3px; }
+.dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); animation: bob 1.2s ease-in-out infinite; }
+.dots i:nth-child(2) { animation-delay: .15s; } .dots i:nth-child(3) { animation-delay: .3s; }
+@keyframes bob { 0%, 80%, 100% { transform: translateY(0); opacity: .4; } 40% { transform: translateY(-3px); opacity: 1; } }
+.input { display: flex; gap: 8px; align-items: center; border: 1px solid var(--line); border-radius: 14px; padding: 8px 8px 8px 12px; color: var(--muted); font-size: 14px; }
+.input .send { margin-left: auto; width: 32px; height: 32px; border-radius: 10px; background: var(--lav); color: var(--accent-ink); display: grid; place-items: center; }
+
+/* Hero v9 (bugünkü, aynen) */
+.main { padding: 20px 24px 28px; display: grid; gap: 20px; min-width: 0; }
+.hero { display: grid; grid-template-columns: minmax(0, 62fr) minmax(0, 34fr); gap: 4%; }
+@media (max-width: 760px) { .hero { grid-template-columns: minmax(0, 1fr); gap: 16px; } }
+.story { display: grid; gap: 12px; align-content: start; min-width: 0; }
+.photo { position: relative; border-radius: 20px; overflow: hidden; aspect-ratio: 1.92 / 1; max-width: 100%; }
+.photo svg { display: block; width: 100%; height: 100%; }
+.citysel { position: absolute; top: 12px; left: 12px; display: flex; padding: 4px; background: rgba(255,255,255,.9); border-radius: 999px; font-size: 13.5px; color: #6b6790; }
+.citysel span { padding: 4px 10px; border-radius: 999px; }
+.citysel span.on { background: #fff; color: #1c1a33; font-weight: 700; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.pills { position: absolute; top: 12px; right: 12px; }
+.pills span { background: #ece8ff; color: #4a35cc; font-size: 13px; padding: 5px 11px; border-radius: 999px; }
+.story h3 { margin: 4px 0 0; font-family: var(--display); font-size: clamp(28px, 3vw, 40px); line-height: 1.05; letter-spacing: -0.025em; }
+.dline { display: flex; gap: 8px; align-items: center; font-size: 16px; flex-wrap: wrap; }
+.est { font-size: 12.5px; color: var(--muted); border: 1px dashed var(--dash); border-radius: 999px; padding: 1px 8px; }
+.tone { margin: 0; color: var(--muted); font-size: 16px; text-wrap: pretty; }
+.cells { display: flex; flex-wrap: wrap; }
+.cell { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px 6px 0; margin-right: 16px; border-right: 1px solid var(--line); font-size: 16px; white-space: nowrap; }
+.cell:last-child { border-right: 0; }
+.cell svg { width: 20px; height: 20px; }
+.prog { background: var(--mint); border-radius: 16px; padding: 14px 16px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 18px; align-items: center; }
+.prog b { font-size: 16px; }
+.legend { font-size: 13px; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+.seg { display: flex; height: 8px; border-radius: 99px; overflow: hidden; background: color-mix(in srgb, var(--mintbar) 16%, transparent); }
+.seg i { display: block; height: 100%; transition: width .8s cubic-bezier(.16, 1, .3, 1); }
+.prog .cta { grid-row: 1 / span 3; grid-column: 2; background: var(--ink); color: var(--app); border-radius: 12px; padding: 10px 16px; font-weight: 600; font-size: 14.5px; white-space: nowrap; }
+@media (max-width: 560px) { .prog { grid-template-columns: minmax(0, 1fr); } .prog .cta { grid-row: auto; grid-column: auto; justify-self: start; } }
+.card { background: var(--soft); border-radius: 20px; padding: 18px; display: grid; gap: 14px; align-content: start; min-width: 0; }
+.card .blk + .blk { border-top: 1px solid var(--line); padding-top: 14px; }
+.people { display: flex; gap: 12px; align-items: center; }
+.people small { display: block; color: var(--muted); font-size: 13.5px; }
+.styles { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.style { font-size: 13.5px; padding: 5px 12px; border-radius: 999px; display: inline-flex; gap: 6px; align-items: center; background: var(--app); }
+.style svg { width: 15px; height: 15px; }
+.kv { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; font-size: 14.5px; }
+.kv .h { font-weight: 700; font-size: 17px; }
+.kv .m { color: var(--muted); }
+.kv .r { text-align: right; }
+.country { display: flex; gap: 8px; align-items: center; font-size: 14.5px; }
+.flag { width: 24px; height: 16px; border-radius: 3px; background: radial-gradient(circle at 50% 50%, #bc002d 30%, #fff 31%); box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); display: inline-block; }
+.wx { display: flex; gap: 16px; font-size: 14px; margin-top: 8px; flex-wrap: wrap; }
+.wx span { display: inline-flex; gap: 6px; align-items: center; }
+.wx svg { width: 16px; height: 16px; color: var(--c-move); }
+.facts { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 12.5px; color: var(--muted); }
+.ptabs { display: flex; justify-content: center; gap: 28px; font-size: 15px; color: var(--muted); }
+.ptabs span.on { color: var(--ink); font-weight: 650; box-shadow: inset 0 -3px 0 var(--accent); padding-bottom: 8px; }
+
+/* Gezinin şekli */
+.journey { display: grid; align-items: start; padding: 6px 4px 0; }
+.jstop { position: relative; display: grid; justify-items: center; gap: 3px; text-align: center; outline: none; }
+.jnode { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: var(--tile); border: 2px dashed var(--dash); transition: transform .35s cubic-bezier(.16, 1, .3, 1); }
+.jnode img { width: 32px; height: 26px; object-fit: contain; }
+.jstop.j-plan .jnode { border: 2px solid var(--plan-dot); }
+.jstop.j-rez .jnode { border: 2px solid var(--book-ink); }
+.jstop:hover .jnode, .jstop:focus-visible .jnode { transform: translateY(-3px) scale(1.06); }
+.jstop b { font-size: 13px; white-space: nowrap; }
+.jstop small { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.jtip { position: absolute; top: calc(100% + 8px); left: 50%; width: 210px; transform: translate(-50%, -6px) scale(.96); opacity: 0; pointer-events: none; z-index: 5; background: var(--app); border-radius: 14px; box-shadow: var(--shadow-lg); padding: 10px 12px; text-align: left; font-size: 13px; display: grid; gap: 5px; transition: opacity .2s, transform .3s cubic-bezier(.16, 1, .3, 1); }
+.jstop:first-child .jtip { left: 0; transform: translate(0, -6px); }
+.jstop:last-child .jtip { left: auto; right: 0; transform: translate(0, -6px); }
+.jstop:hover .jtip, .jstop:focus-visible .jtip { opacity: 1; transform: translate(-50%, 0) scale(1); }
+.jstop:first-child:hover .jtip, .jstop:first-child:focus-visible .jtip, .jstop:last-child:hover .jtip, .jstop:last-child:focus-visible .jtip { transform: none; }
+.jtip .r { display: flex; gap: 6px; align-items: flex-start; }
+.jtip .r svg { width: 14px; height: 14px; color: var(--muted); margin-top: 2px; }
+.jhop { position: relative; height: 46px; display: grid; place-items: center; color: var(--muted); font-size: 11.5px; overflow: hidden; }
+.jhop::before { content: ""; position: absolute; left: 6px; right: 6px; top: 50%; border-top: 2px dotted var(--dash); }
+.jhop .lbl { position: absolute; top: calc(50% + 8px); background: var(--app); padding: 0 4px; white-space: nowrap; }
+.jhop .mover { position: absolute; top: calc(50% - 9px); left: 0; width: 18px; height: 18px; background: var(--app); animation: travel 6s cubic-bezier(.45, 0, .55, 1) infinite; }
+.jhop .mover.fly { color: var(--c-fly); } .jhop .mover.rail { color: var(--c-move); animation-duration: 5s; }
+@keyframes travel { 0% { left: 0; opacity: 0; } 12% { opacity: 1; } 88% { opacity: 1; } 100% { left: calc(100% - 18px); opacity: 0; } }
+@media (max-width: 620px) { .jstop small, .jhop .lbl { display: none; } .jnode { width: 36px; height: 36px; } .jstop b { font-size: 11.5px; } }
+
+/* Plan başlığı */
+.planbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.planbar strong { font-size: 20px; font-family: var(--display); letter-spacing: -0.01em; }
+.sortsw { display: inline-flex; background: var(--soft); border-radius: 10px; padding: 3px; font-size: 13px; }
+.sortsw span { padding: 4px 10px; border-radius: 8px; color: var(--muted); }
+.sortsw span.on { background: var(--app); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.key { margin-left: auto; display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); }
+.key span { display: inline-flex; gap: 6px; align-items: center; }
+.sw { width: 26px; height: 16px; border-radius: 5px; display: inline-block; }
+.sw.bos { background: var(--app); border: 1.5px dashed var(--dash); }
+.sw.plan { background: var(--plan-bg); border: 1px solid var(--plan-line); }
+.sw.rez { background: var(--book-bg); border: 1px solid var(--book-line); }
+
+/* Durum çemberi */
+.sd { width: 18px; height: 18px; border-radius: 50%; display: inline-grid; place-items: center; flex: none; }
+.sd.bos { border: 1.5px dashed var(--dash); background: var(--app); }
+.sd.plan { border: 2px solid var(--plan-dot); background: var(--app); }
+.sd.rez { background: var(--book-ink); color: var(--app); }
+.sd.rez svg { width: 11px; height: 11px; stroke-width: 3; }
+
+/* Bölümler: belirgin, açılır kapanır, sayı ve bütçe başlıkta */
+.secs { display: grid; gap: 12px; }
+.sec { border: 1px solid var(--line2); border-radius: 20px; overflow: hidden; background: var(--app); }
+.sec-h { width: 100%; text-align: left; display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto auto; gap: 2px 14px; align-items: center; padding: 14px 18px; cursor: pointer; transition: background .2s; }
+.sec-h:hover { background: var(--soft); }
+.sec.closed .sec-h { background: var(--soft); }
+.sec-ic { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; grid-row: span 2; }
+.sec-ic svg { width: 20px; height: 20px; }
+.sec-h h4 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; display: flex; gap: 8px; align-items: baseline; }
+.sec-h h4 .n { font-size: 14px; font-weight: 600; color: var(--muted); }
+.sec-h .st { grid-column: 2; font-size: 13px; color: var(--muted); }
+.sec-h .bud { grid-row: 1 / span 2; grid-column: 4; text-align: right; font-size: 13px; color: var(--muted); }
+.sec-h .bud b { display: block; font-size: 15px; color: var(--ink); }
+.sec-h .mini { grid-row: 1 / span 2; grid-column: 3; width: 110px; height: 6px; border-radius: 99px; background: var(--line2); display: flex; overflow: hidden; }
+.sec-h .mini i { display: block; height: 100%; transition: width .8s cubic-bezier(.16, 1, .3, 1); }
+.sec-h .chev { grid-row: 1 / span 2; grid-column: 5; color: var(--muted); transition: transform .3s cubic-bezier(.16, 1, .3, 1); }
+.sec.closed .sec-h .chev { transform: rotate(-90deg); }
+@media (max-width: 640px) { .sec-h { grid-template-columns: auto minmax(0, 1fr) auto; } .sec-h .mini { display: none; } .sec-h .bud { grid-column: 3; } .sec-h .chev { display: none; } }
+.sec-b { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .45s cubic-bezier(.16, 1, .3, 1); }
+.sec.closed .sec-b { grid-template-rows: 0fr; }
+.sec-b > div { overflow: hidden; }
+.sec-in { padding: 4px 18px 18px; display: grid; gap: 14px; }
+.note { margin: 0; font-size: 13.5px; color: var(--accent-ink); display: flex; gap: 6px; align-items: flex-start; }
+.note svg { width: 14px; height: 14px; margin-top: 2px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); gap: 14px; align-items: start; }
+.grid3 { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr)); gap: 12px; align-items: start; }
+
+/* Kutucuk */
+.slot { position: relative; text-align: left; width: 100%; border-radius: 18px; padding: 14px 16px; display: grid; gap: 10px; align-content: start; min-width: 0; cursor: pointer; transition: background .5s, border-color .5s, box-shadow .25s, transform .25s cubic-bezier(.16, 1, .3, 1); }
+.slot:hover { box-shadow: var(--shadow-sm); }
+.m-bos { background: var(--app); border: 1.5px dashed var(--dash); }
+.m-plan { background: var(--plan-bg); border: 1px solid var(--plan-line); }
+.m-rez { background: var(--book-bg); border: 1px solid var(--book-line); }
+.top { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); min-width: 0; }
+.top .ty { display: inline-flex; gap: 5px; align-items: center; font-weight: 650; color: var(--ink); white-space: nowrap; }
+.top .ty .ic { display: inline-flex; }
+.top .ty svg { width: 15px; height: 15px; }
+.top .sp { flex: 1; }
+.top .lab { font-size: 12.5px; font-weight: 650; white-space: nowrap; }
+.m-bos .top .lab { color: var(--muted); font-weight: 500; }
+.m-plan .top .lab { color: var(--plan-ink); }
+.m-rez .top .lab { color: var(--book-ink); }
+.row { display: grid; grid-template-columns: 60px minmax(0, 1fr); gap: 12px; align-items: center; }
+.art { width: 60px; height: 50px; border-radius: 12px; background: var(--tile); object-fit: contain; padding: 4px; }
+.what { font-size: 18px; font-weight: 750; letter-spacing: -0.015em; line-height: 1.2; }
+.sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+.sub svg { width: 13px; height: 13px; vertical-align: -2px; margin-right: 3px; }
+.moons { display: inline-flex; gap: 3px; vertical-align: 1px; margin-right: 6px; }
+.moons i { width: 7px; height: 7px; border-radius: 50%; background: var(--c-stay); opacity: .35; }
+.m-plan .moons i { background: var(--plan-dot); opacity: 1; }
+.m-rez .moons i { background: var(--book-ink); opacity: 1; }
+.wants { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.wants li { font-size: 12.5px; padding: 3px 9px; border-radius: 999px; background: var(--soft); }
+.why { margin: 0; font-size: 13px; color: var(--accent-ink); display: flex; gap: 6px; align-items: flex-start; }
+.why svg { width: 14px; height: 14px; margin-top: 2px; }
+.self { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: 13px; }
+.self .k { font-weight: 650; margin-right: 2px; }
+.blink { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px 4px 4px; border-radius: 9px; color: var(--ink); text-decoration: none; background: var(--app); border: 1px solid var(--line); font-size: 13px; transition: border-color .2s, transform .2s; }
+.blink:hover { border-color: var(--accent); transform: translateY(-1px); }
+.blink svg { width: 12px; height: 12px; color: var(--muted); }
+.foot { display: flex; align-items: center; gap: 8px; min-height: 34px; padding-top: 10px; border-top: 1px solid color-mix(in srgb, var(--dash) 40%, transparent); font-size: 13px; }
+.foot .sp { flex: 1; }
+.dd { display: inline-flex; gap: 6px; align-items: center; color: var(--accent-ink); font-weight: 650; padding: 4px 8px 4px 4px; border-radius: 8px; }
+.dd:hover { background: var(--lav); }
+.dd svg.chev { width: 15px; height: 15px; transition: transform .3s cubic-bezier(.16, 1, .3, 1); }
+.dd[aria-expanded="true"] svg.chev { transform: rotate(180deg); }
+.searching { display: inline-flex; gap: 8px; align-items: center; color: var(--muted); }
+.searching .bar { width: 44px; height: 6px; border-radius: 99px; background: linear-gradient(90deg, var(--line2) 25%, var(--lav) 50%, var(--line2) 75%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.price { font-size: 16px; font-weight: 750; }
+.price small { font-size: 12.5px; font-weight: 400; color: var(--muted); }
+.proof { display: inline-flex; gap: 5px; align-items: center; font-weight: 650; color: var(--book-ink); min-width: 0; }
+.proof svg { width: 14px; height: 14px; }
+.more { color: var(--muted); display: inline-flex; gap: 3px; align-items: center; font-size: 12.5px; white-space: nowrap; }
+.more svg { width: 14px; height: 14px; }
+.ask { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: var(--accent-ink); background: var(--lav); transition: transform .25s cubic-bezier(.16, 1, .3, 1); }
+.ask:hover { transform: rotate(-12deg) scale(1.08); }
+.ask svg { width: 15px; height: 15px; }
+.go { display: inline-flex; gap: 6px; align-items: center; background: var(--ink); color: var(--app); border-radius: 999px; padding: 7px 14px; font-size: 13.5px; font-weight: 600; white-space: nowrap; text-decoration: none; }
+.bm { width: 18px; height: 18px; border-radius: 5px; color: var(--on-brand); font-size: 10px; font-weight: 800; display: inline-grid; place-items: center; flex: none; }
+.stamp { position: absolute; right: 16px; top: 44px; width: 42px; height: 42px; border-radius: 50%; border: 2px solid var(--book-ink); color: var(--book-ink); display: grid; place-items: center; transform: rotate(-12deg); opacity: .4; pointer-events: none; }
+.stamp svg { width: 16px; height: 16px; stroke-width: 2.4; }
+.m-rez .row { padding-right: 50px; }
+
+/* Kartın içinde açılan seçenekler */
+.drop { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .4s cubic-bezier(.16, 1, .3, 1); margin-top: -4px; }
+.drop.open { grid-template-rows: 1fr; }
+.drop > div { overflow: hidden; }
+.drop .in { display: grid; gap: 6px; padding-top: 6px; }
+.mo { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto auto; gap: 1px 10px; align-items: center; padding: 7px 8px; border-radius: 12px; background: var(--soft); }
+.mo.cur { background: var(--plan-bg); outline: 1px solid var(--plan-line); }
+.mo .th { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; background: var(--app); grid-row: span 2; position: relative; }
+.mo .th .av { position: absolute; right: -6px; bottom: -6px; width: 18px; height: 18px; font-size: 9.5px; }
+.mo .nm { font-size: 13.5px; font-weight: 650; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mo .sb { font-size: 12px; color: var(--muted); grid-column: 2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.mo .pr { grid-row: span 2; font-weight: 700; font-size: 14px; text-align: right; }
+.mo .pr small { display: block; font-size: 11px; color: var(--muted); font-weight: 400; }
+.mo .pk { grid-row: span 2; }
+.pick { display: inline-flex; gap: 5px; align-items: center; background: var(--ink); color: var(--app); border-radius: 999px; padding: 5px 12px; font-size: 13px; font-weight: 600; }
+.pick svg { width: 13px; height: 13px; }
+.all { justify-self: start; font-size: 13px; color: var(--accent-ink); font-weight: 600; display: inline-flex; gap: 4px; align-items: center; padding: 2px 4px; }
+.all svg { width: 14px; height: 14px; }
+
+/* v10 · kart sabit: seçenekler kartın altında açılan şeritte */
+.opts { display: inline-flex; gap: 8px; align-items: center; font-weight: 650; color: var(--accent-ink); padding: 4px 10px 4px 5px; border-radius: 999px; background: color-mix(in srgb, var(--lav) 55%, transparent); white-space: nowrap; }
+.opts:hover { background: var(--lav); }
+.opts .avs { display: inline-flex; }
+.opts .avs .av { width: 20px; height: 20px; font-size: 10px; margin-left: -6px; box-shadow: 0 0 0 2px var(--app); }
+.opts .avs .av:first-child { margin-left: 0; }
+.opts svg.chev { width: 15px; height: 15px; transition: transform .3s cubic-bezier(.16, 1, .3, 1); }
+.opts[aria-expanded="true"] svg.chev { transform: rotate(180deg); }
+.opts .nw { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+.slot.has-tray { outline: 2px solid var(--accent); outline-offset: 3px; }
+.tray { grid-column: 1 / -1; background: var(--soft); border-radius: 18px; padding: 14px; display: grid; gap: 10px; min-width: 0; animation: rise .4s cubic-bezier(.16, 1, .3, 1); }
+.tray-h { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.tray-h b { font-size: 15px; }
+.tray-h small { font-size: 13px; color: var(--muted); }
+.tray-h .sp { flex: 1; }
+.tray-h .tx { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); background: var(--app); }
+.tray-h .tx svg { width: 13px; height: 13px; }
+.tray-row { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(200px, 228px); gap: 10px; overflow-x: auto; padding-bottom: 4px; scroll-snap-type: x proximity; }
+.ot { scroll-snap-align: start; display: grid; gap: 4px; align-content: start; background: var(--app); border: 1px solid var(--line); border-radius: 14px; padding: 12px; }
+.ot.cur { border-color: var(--plan-dot); background: var(--plan-bg); }
+.ot.new { animation: newlink 2.6s cubic-bezier(.16, 1, .3, 1) 2; }
+.ot .hd { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--muted); min-width: 0; }
+.ot .hd .av { width: 18px; height: 18px; font-size: 9.5px; }
+.ot b { font-size: 14px; line-height: 1.3; }
+.ot .sb { font-size: 12px; color: var(--muted); }
+.ot .ft2 { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }
+.ot .pr { font-weight: 750; font-size: 15px; }
+.ot .pr small { margin-left: 3px; font-size: 11.5px; font-weight: 400; color: var(--muted); }
+/* v10 · hero yan kart canlıdaki gibi: bloklar eşit dağılır, küçük bilgiler 2×2 */
+.card { display: flex; flex-direction: column; gap: 0; }
+.card > .blk { flex: 2 1 auto; }
+.card > .blk:not(.kv) { display: flex; flex-direction: column; justify-content: center; }
+.card > .blk.kv { align-content: center; }
+.card > .blk:first-child { flex-grow: 1; justify-content: flex-start; align-content: start; }
+.card > .blk:last-child { flex-grow: 1; justify-content: flex-end; }
+.card > .blk + .blk { margin-top: 14px; }
+.country { font-size: 15.5px; gap: 10px; font-weight: 600; }
+.country .flag { width: 28px; height: 19px; }
+.wx { column-gap: 0; row-gap: 8px; margin: 10px 0 0 -14px; overflow: hidden; }
+.wx > span { min-height: 30px; margin-left: -1px; padding: 0 14px; border-left: 1px solid var(--line); font-size: 15px; white-space: nowrap; }
+.wx svg { width: 20px; height: 20px; color: #f0a020; }
+.minis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 8px; margin-left: -10px; overflow: hidden; font-size: 14px; line-height: 1.35; color: var(--muted); }
+.minis span { display: flex; align-items: center; gap: 7px; min-width: 0; margin-left: -1px; padding: 0 10px; border-left: 1px solid var(--line); }
+.minis span:nth-child(odd) { border-left-color: transparent; }
+.minis svg { width: 18px; height: 18px; flex: none; color: var(--ink); }
+/* v10 · Yapılacak şeyler: etkinlikler gibi kare */
+.tile.t-food .pic { background: color-mix(in srgb, #f2b37a 20%, var(--tile)); }
+.tile .add.on { background: var(--book-bg); color: var(--book-ink); border-color: var(--book-line); }
+.qa-tile { border: 1.5px dashed var(--dash); background: none; display: grid; align-content: center; justify-items: center; gap: 8px; text-align: center; color: var(--muted); min-height: 200px; cursor: text; font-size: 13px; padding: 14px; }
+.qa-tile:hover { transform: none; box-shadow: none; }
+.qa-tile > span { color: var(--accent-ink); display: inline-flex; }
+.qa-tile input { border: 0; background: var(--soft); border-radius: 10px; padding: 9px 10px; font: inherit; font-size: 13px; color: var(--ink); width: 100%; outline: none; }
+.qa-tile input:focus { box-shadow: 0 0 0 2px var(--accent); }
+.qa-tile small { font-size: 11.5px; line-height: 1.35; }
+/* Kaldır (×), Aldım, belge */
+.kx { width: 24px; height: 24px; border-radius: 50%; display: inline-grid; place-items: center; color: var(--muted); background: var(--app); border: 1px solid var(--line); opacity: 0; transition: opacity .18s, color .18s; flex: none; }
+.kx svg { width: 12px; height: 12px; }
+.kx:hover { color: var(--minus); }
+.slot:hover .kx, .slot:focus-within .kx, .prow:hover .kx, .prow:focus-within .kx { opacity: 1; }
+@media (hover: none) { .kx { opacity: .6; } }
+.aldim-top { display: inline-flex; gap: 5px; align-items: center; font-size: 12.5px; font-weight: 650; color: var(--plan-ink); border: 1.5px solid var(--plan-dot); background: var(--app); border-radius: 999px; padding: 3px 10px; white-space: nowrap; transition: background .2s; }
+.aldim-top:hover { background: var(--plan-bg); }
+.aldim-top svg { width: 12px; height: 12px; stroke-width: 2.6; }
+.docchip { display: inline-flex; gap: 4px; align-items: center; font-size: 12px; color: var(--book-ink); border: 1px solid var(--book-line); background: var(--app); border-radius: 999px; padding: 2px 8px; margin-left: 8px; white-space: nowrap; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+.docchip svg, .docmiss svg { width: 12px; height: 12px; }
+.docmiss { display: inline-flex; gap: 4px; align-items: center; font-size: 12px; font-weight: 650; color: var(--plan-ink); background: var(--plan-bg); border: 1px solid var(--plan-line); border-radius: 999px; padding: 2px 8px; margin-left: 8px; white-space: nowrap; }
+.hid { display: grid; gap: 6px; }
+.hid > button { justify-self: start; font-size: 13px; color: var(--muted); border-bottom: 1px dotted var(--dash); padding-bottom: 1px; }
+.hidrow { display: flex; gap: 10px; align-items: center; font-size: 13px; padding: 7px 10px; border-radius: 10px; background: var(--soft); }
+.hidrow span { color: var(--muted); }
+.hidrow button { margin-left: auto; color: var(--accent-ink); font-weight: 600; }
+.next-hint { grid-column: 1 / -1; font-size: 12.5px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+.next-hint b { color: var(--ink); font-weight: 600; }
+.next-hint svg { width: 13px; height: 13px; }
+.addbtn { display: inline-flex; gap: 6px; align-items: center; font-size: 13.5px; font-weight: 600; border: 1px solid var(--line); border-radius: 10px; padding: 5px 11px; }
+.addbtn svg { width: 14px; height: 14px; }
+/* Fikir havuzu (canlıdaki gibi) */
+.qa { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 8px 12px; border: 1px dashed var(--dash); border-radius: 12px; }
+.qa > span:first-child { color: var(--accent-ink); display: inline-flex; }
+.qa input { flex: 1; min-width: 200px; border: 0; background: none; font: inherit; font-size: 14px; color: var(--ink); outline: none; }
+.qa input::placeholder { color: var(--muted); }
+.qa .hint { font-size: 12px; color: var(--muted); }
+.tabs2 { display: inline-flex; gap: 2px; background: var(--soft); border-radius: 10px; padding: 3px; }
+.tabs2 button { font-size: 13px; padding: 4px 10px; border-radius: 8px; color: var(--muted); }
+.tabs2 button b { font-weight: 700; margin-left: 2px; }
+.tabs2 button[aria-pressed="true"] { background: var(--app); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.lr .nm { text-decoration: none; color: var(--ink); }
+.lr .nm:hover { color: var(--accent-ink); }
+.mapb, .okb { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; color: var(--muted); }
+.mapb:hover, .okb:hover { background: var(--app); color: var(--ink); }
+.mapb svg, .okb svg { width: 15px; height: 15px; }
+.okb.on { color: var(--app); background: var(--book-ink); }
+.lr.done { opacity: .7; }
+.lr.done .nm { color: var(--muted); }
+.note2 { margin: 0; font-size: 12.5px; color: var(--muted); }
+/* İlham */
+.inspo { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 10px; }
+.ins { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 2px 10px; align-items: center; padding: 8px; border-radius: 14px; background: var(--soft); }
+.ins .v { width: 88px; height: 56px; border-radius: 10px; display: grid; place-items: center; grid-row: span 2; color: #fff; }
+.ins .v svg { width: 20px; height: 20px; fill: #fff; stroke: none; }
+.ins b { font-size: 13.5px; line-height: 1.25; }
+.ins span { font-size: 12px; color: var(--muted); display: flex; gap: 5px; align-items: center; }
+/* Onay penceresi ve rezervasyon ayrıntısı */
+.confirm { width: min(440px, 100%); background: var(--app); border-radius: 20px; box-shadow: var(--shadow-lg); padding: 20px; display: grid; gap: 12px; transform: translateY(12px) scale(.98); transition: transform .35s cubic-bezier(.16, 1, .3, 1); }
+.scrim.on .confirm { transform: none; }
+.confirm h3 { margin: 0; font-size: 18px; }
+.confirm p { margin: 0; color: var(--muted); font-size: 14px; }
+.confirm .bt { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.btn-danger { background: var(--minus); color: #fff; border-radius: 999px; padding: 7px 14px; font-size: 13.5px; font-weight: 600; }
+.det-hero { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 2px 12px; align-items: center; padding: 12px; border-radius: 14px; background: var(--book-bg); }
+.det-hero .bm { width: 34px; height: 34px; font-size: 14px; border-radius: 10px; grid-row: span 2; }
+.det-hero b { font-size: 16px; }
+.det-hero small { color: var(--muted); font-size: 12.5px; grid-column: 2; }
+.det-hero .lab { grid-row: span 2; font-size: 12.5px; font-weight: 700; color: var(--book-ink); }
+.docrow { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); text-decoration: none; color: var(--ink); font-size: 14px; }
+.docrow svg { width: 16px; height: 16px; color: var(--muted); }
+.docrow span { margin-left: auto; color: var(--accent-ink); font-size: 13px; font-weight: 600; }
+.prow[data-ev-open] { cursor: pointer; }
+.prow .r .kx { margin-left: 4px; }
+
+/* Kartta görünen kaydettikleriniz */
+.mine { display: grid; gap: 6px; padding: 10px; border-radius: 14px; background: color-mix(in srgb, var(--lav) 45%, var(--app)); }
+.mine-h { font-size: 12.5px; font-weight: 700; color: var(--accent-ink); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.mine-h svg { width: 14px; height: 14px; }
+.mine-h span { font-weight: 500; color: var(--muted); }
+.mine .mo { background: var(--app); }
+.mo.new { animation: newlink 2.6s cubic-bezier(.16, 1, .3, 1) 2; }
+@keyframes newlink { 0%, 40% { box-shadow: 0 0 0 3px var(--glow); } 100% { box-shadow: 0 0 0 0 transparent; } }
+.nolink { font-size: 12.5px; font-weight: 600; color: var(--accent-ink); white-space: nowrap; }
+.aldim { display: inline-flex; gap: 5px; align-items: center; font-size: 13px; font-weight: 600; color: var(--ink); border: 1px solid var(--line); background: var(--app); border-radius: 999px; padding: 6px 11px; }
+.aldim svg { width: 13px; height: 13px; color: var(--book-ink); }
+.adddoc { display: inline-flex; gap: 4px; align-items: center; font-size: 12.5px; color: var(--accent-ink); font-weight: 600; margin-left: 8px; }
+.adddoc svg { width: 13px; height: 13px; }
+/* Gezilecek ve yemek: kayıt listesi (plana sayılmaz) */
+.cities { display: grid; gap: 14px; }
+.cgrp { display: grid; gap: 6px; }
+.cgrp h6 { margin: 0; font-size: 13px; font-weight: 700; display: flex; gap: 6px; align-items: center; }
+.cgrp h6 svg { width: 14px; height: 14px; color: var(--muted); }
+.cgrp h6 span { font-weight: 500; color: var(--muted); }
+.lrows { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 400px), 1fr)); gap: 6px; }
+.lr .mapb, .lr .xx { opacity: 0; transition: opacity .18s; }
+.lr:hover .mapb, .lr:hover .xx, .lr:focus-within .mapb, .lr:focus-within .xx { opacity: 1; }
+@media (hover: none) { .lr .mapb, .lr .xx { opacity: .7; } }
+.lr { position: relative; display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 1px 10px; align-items: center; padding: 7px 8px; border-radius: 12px; background: var(--soft); animation: rise .4s cubic-bezier(.16, 1, .3, 1); }
+.lr .ic { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--app); grid-row: span 2; color: var(--c-todo); }
+.lr .ic svg { width: 17px; height: 17px; }
+.lr .nm { font-size: 14px; font-weight: 650; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lr .mt { grid-column: 2; font-size: 12px; color: var(--muted); display: flex; gap: 5px; align-items: center; min-width: 0; overflow: hidden; white-space: nowrap; }
+.lr .acts { grid-row: span 2; display: flex; gap: 4px; align-items: center; }
+.lr .day { font-size: 12.5px; font-weight: 600; color: var(--accent-ink); padding: 4px 8px; border-radius: 8px; white-space: nowrap; }
+.lr .day:hover { background: var(--lav); }
+.lr .day.on { color: var(--plan-ink); background: var(--plan-bg); }
+.lr .xx { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); opacity: 0; transition: opacity .18s; }
+.lr .xx svg { width: 12px; height: 12px; }
+.lr:hover .xx, .lr:focus-within .xx { opacity: 1; }
+@media (hover: none) { .lr .xx { opacity: 1; } }
+/* Hero bilgi satırı (bugünkü gibi ikonlu) */
+.factrow { display: flex; flex-wrap: wrap; gap: 8px 0; font-size: 13px; color: var(--ink); }
+.factrow span { display: inline-flex; gap: 5px; align-items: center; padding: 0 9px; border-left: 1px solid var(--line); white-space: nowrap; }
+.factrow span:first-child { padding-left: 0; border-left: 0; }
+.factrow svg { width: 16px; height: 16px; color: var(--muted); }
+
+/* Biniş kartı */
+.tkw { container-type: inline-size; min-width: 0; }
+.tk { padding: 0; grid-template-columns: minmax(0, 1fr) 150px; gap: 0; display: grid; }
+.tk-main { padding: 14px 16px; display: grid; gap: 8px; min-width: 0; }
+.route { display: grid; grid-template-columns: auto minmax(50px, 1fr) auto; align-items: center; gap: 8px; }
+.route .c b { display: block; font-size: 21px; font-weight: 750; letter-spacing: -0.02em; line-height: 1.1; }
+.route .c small { font-size: 12.5px; color: var(--muted); }
+.route .c .t { font-size: 14px; font-weight: 700; }
+.route .c.r { text-align: right; }
+.route .sil { width: 100%; height: 44px; color: var(--c-fly); }
+.m-bos .route .sil { opacity: .45; }
+.tk-stub { position: relative; border-left: 1.5px dashed var(--dash); padding: 14px; display: grid; gap: 3px; align-content: center; min-width: 0; font-size: 13px; }
+.tk-stub::before, .tk-stub::after { content: ""; position: absolute; left: -10px; width: 18px; height: 18px; border-radius: 50%; background: var(--app); }
+.tk-stub::before { top: -10px; } .tk-stub::after { bottom: -10px; }
+.stub-k { font-size: 12px; color: var(--muted); }
+.stub-v { font-size: 15px; font-weight: 750; }
+.tk .stamp { right: 12px; top: auto; bottom: 10px; width: 36px; height: 36px; }
+@container (max-width: 480px) { .tk { grid-template-columns: minmax(0, 1fr); } .tk-stub { border-left: 0; border-top: 1.5px dashed var(--dash); } .tk-stub::before, .tk-stub::after { display: none; } }
+
+/* Deneyimler: planda olanlar satır, fikirler kare */
+.planned { display: grid; gap: 8px; }
+.prow { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 1px 12px; align-items: center; padding: 8px 10px 8px 8px; border-radius: 14px; animation: rise .45s cubic-bezier(.16, 1, .3, 1); }
+.prow img { width: 48px; height: 48px; border-radius: 10px; background: var(--tile); object-fit: contain; padding: 2px; grid-row: span 2; }
+.prow .t { font-size: 14.5px; font-weight: 650; }
+.prow .m { grid-column: 2; font-size: 12.5px; color: var(--muted); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.prow .r { grid-row: 1 / span 2; grid-column: 3; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.back { font-size: 13px; color: var(--muted); display: inline-flex; gap: 4px; align-items: center; }
+.back:hover { color: var(--accent-ink); }
+.back svg { width: 14px; height: 14px; }
+.ideas-h { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--muted); flex-wrap: wrap; }
+.ideas-h b { color: var(--ink); }
+.ideas-h .sp { flex: 1; }
+.filters { display: flex; gap: 6px; flex-wrap: wrap; }
+.filters button { font-size: 13px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.filters button[aria-pressed="true"] { background: var(--ink); color: var(--app); border-color: var(--ink); }
+.shelf { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr)); gap: 12px; }
+.tile { position: relative; display: grid; gap: 4px; padding: 8px 8px 10px; border-radius: 16px; align-content: start; background: var(--app); border: 1px solid var(--line); transition: transform .25s cubic-bezier(.16, 1, .3, 1), box-shadow .25s; animation: rise .45s cubic-bezier(.16, 1, .3, 1); }
+.tile:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+.tile .pic { height: 92px; border-radius: 11px; background: var(--tile); display: grid; place-items: center; overflow: hidden; position: relative; }
+.tile .pic img { height: 80px; object-fit: contain; }
+.tile .kind { position: absolute; left: 6px; bottom: 6px; font-size: 11px; font-weight: 700; color: #1c1a33; background: rgba(255,255,255,.92); border-radius: 6px; padding: 1px 6px; display: inline-flex; gap: 4px; align-items: center; }
+.tile .kind svg { width: 11px; height: 11px; }
+.tile .t { font-size: 13.5px; font-weight: 650; line-height: 1.3; margin-top: 2px; }
+.tile .m { font-size: 12px; color: var(--muted); display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
+.tile .who { position: absolute; top: 14px; left: 14px; }
+.tile .x { position: absolute; top: 14px; right: 14px; width: 26px; height: 26px; border-radius: 50%; background: var(--app); color: var(--muted); display: grid; place-items: center; opacity: 0; transition: opacity .18s; box-shadow: var(--shadow-sm); }
+.tile .x svg { width: 12px; height: 12px; }
+.tile:hover .x, .tile:focus-within .x { opacity: 1; }
+@media (hover: none) { .tile .x { opacity: 1; } }
+.tile .add { justify-self: start; margin-top: 4px; display: inline-flex; gap: 5px; align-items: center; font-size: 13px; font-weight: 600; border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); color: var(--accent-ink); border-radius: 999px; padding: 4px 11px; }
+.tile .add svg { width: 13px; height: 13px; }
+.morebtn { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; font-weight: 600; color: var(--accent-ink); background: var(--lav); border-radius: 999px; padding: 5px 12px; }
+.morebtn svg { width: 14px; height: 14px; }
+
+/* Belgeler satırları */
+.drow { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 2px 12px; align-items: center; padding: 10px 12px; border-radius: 14px; }
+.drow img { width: 40px; height: 40px; object-fit: contain; grid-row: span 2; }
+.drow b { font-size: 15px; }
+.drow .ts { grid-column: 2; font-size: 13px; color: var(--muted); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.drow .tr { grid-row: 1 / span 2; grid-column: 3; display: flex; gap: 8px; align-items: center; }
+.info-row { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 14px; background: var(--book-bg); color: var(--book-ink); font-size: 14px; font-weight: 600; }
+.info-row svg { width: 16px; height: 16px; }
+.info-row span { color: var(--ink); font-weight: 400; }
+
+/* Hazırlık: işaretlenen “Hazır”a taşınır */
+.checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: 8px; }
+.ck { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 12px; background: var(--soft); font-size: 14px; cursor: pointer; animation: rise .4s cubic-bezier(.16, 1, .3, 1); }
+.ck .box { width: 22px; height: 22px; border-radius: 7px; border: 1.5px solid var(--dash); background: var(--app); display: grid; place-items: center; flex: none; color: transparent; transition: background .25s, border-color .25s; }
+.ck .box svg { width: 13px; height: 13px; stroke-width: 3; }
+.ck .ct { flex: 1; min-width: 0; display: grid; }
+.ck small { font-size: 12px; color: var(--muted); }
+.ck .buy { font-size: 12px; display: inline-flex; gap: 4px; align-items: center; color: var(--accent-ink); white-space: nowrap; }
+.ck .buy .bm { width: 15px; height: 15px; font-size: 9px; }
+.ready-h { font-size: 13px; font-weight: 650; color: var(--book-ink); display: flex; gap: 6px; align-items: center; }
+.ready-h svg { width: 15px; height: 15px; }
+.ck.ok { background: var(--app); border: 1px solid var(--book-line); }
+.ck.ok .box { background: var(--book-ink); border-color: var(--book-ink); color: var(--app); }
+.ck.ok .tag { font-size: 11.5px; font-weight: 700; color: var(--book-ink); background: var(--book-bg); border-radius: 999px; padding: 1px 8px; }
+
+/* Seçim penceresi */
+.scrim { position: fixed; inset: 0; background: var(--scrim); z-index: 60; display: grid; place-items: center; padding: 24px 16px; opacity: 0; transition: opacity .25s; }
+.scrim.on { opacity: 1; }
+.picker { width: min(640px, 100%); max-height: min(88vh, 860px); overflow: auto; background: var(--app); border-radius: 22px; box-shadow: var(--shadow-lg); transform: translateY(16px) scale(.98); transition: transform .4s cubic-bezier(.16, 1, .3, 1); }
+.scrim.on .picker { transform: none; }
+.pk-h { position: sticky; top: 0; background: var(--app); z-index: 2; padding: 18px 20px 14px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 2px 12px; align-items: center; border-bottom: 1px solid var(--line2); }
+.pk-h .ic { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; grid-row: span 2; }
+.pk-h .ic svg { width: 20px; height: 20px; }
+.pk-h h3 { margin: 0; font-size: 19px; letter-spacing: -0.01em; }
+.pk-h p { margin: 0; font-size: 13.5px; color: var(--muted); grid-column: 2; }
+.pk-h .close { grid-row: 1 / span 2; grid-column: 3; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; border: 1px solid var(--line); }
+.pk-b { padding: 16px 20px 18px; display: grid; gap: 14px; }
+.foryou { padding: 12px 14px; border-radius: 14px; background: var(--lav); font-size: 14px; display: grid; gap: 2px; }
+.foryou b { font-weight: 700; }
+.pk-sec { display: grid; gap: 8px; }
+.pk-sec h6 { margin: 0; font-size: 12.5px; font-weight: 700; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+.pk-sec h6 svg { width: 14px; height: 14px; }
+.opt { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 2px 12px; align-items: center; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--line); transition: border-color .2s, background .2s; animation: rise .45s cubic-bezier(.16, 1, .3, 1); }
+.opt:hover { border-color: var(--accent); }
+.opt.cur { background: var(--plan-bg); border-color: var(--plan-line); }
+.opt.cur.rez { background: var(--book-bg); border-color: var(--book-line); }
+.score { width: 44px; height: 44px; border-radius: 50%; grid-row: span 3; display: grid; place-items: center; align-content: center; font-weight: 800; font-size: 16px; line-height: 1; background: var(--soft); }
+.score small { font-size: 9px; font-weight: 600; color: var(--muted); margin-top: 2px; }
+.score.hi { background: var(--lav); color: var(--accent-ink); }
+.opt .on { font-size: 15px; font-weight: 700; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.rozet { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 6px; background: var(--lav); color: var(--accent-ink); }
+.opt .os { font-size: 12.5px; color: var(--muted); display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
+.opt .meta { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); }
+.reacts { display: inline-flex; gap: 5px; align-items: center; }
+.reacts svg { width: 14px; height: 14px; }
+.opt .pr { grid-row: 1 / span 2; grid-column: 3; text-align: right; font-weight: 750; font-size: 16px; }
+.opt .pr small { display: block; font-size: 12px; font-weight: 400; color: var(--muted); }
+.opt .act { grid-column: 3; grid-row: 3; justify-self: end; }
+.ghost { display: inline-flex; gap: 6px; align-items: center; border: 1px solid var(--line); background: var(--app); border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 600; }
+.ghost svg { width: 13px; height: 13px; }
+.chosen-ok { display: inline-flex; gap: 5px; align-items: center; font-size: 13px; font-weight: 650; color: var(--book-ink); }
+.chosen-ok svg { width: 14px; height: 14px; }
+.booked { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin: 0; }
+.booked div { padding: 10px 12px; border-radius: 12px; background: var(--book-bg); display: grid; gap: 1px; }
+.booked dt { font-size: 12px; color: var(--muted); }
+.booked dd { margin: 0; font-weight: 700; font-size: 15px; }
+.pk-f { position: sticky; bottom: 0; background: var(--app); border-top: 1px solid var(--line2); padding: 12px 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.pk-f .sp { flex: 1; }
+.empty { font-size: 13.5px; color: var(--muted); padding: 10px 12px; border-radius: 12px; background: var(--soft); }
+
+/* Hareket */
+.arrive .art { animation: drop .7s cubic-bezier(.16, 1, .3, 1); }
+@keyframes drop { 0% { transform: translateY(-14px) scale(.85); opacity: 0; } 100% { transform: none; opacity: 1; } }
+.arrive .sil { animation: takeoff 1.1s cubic-bezier(.16, 1, .3, 1); }
+@keyframes takeoff { 0% { transform: translate(-40%, 8px) rotate(-6deg); opacity: 0; } 60% { transform: translate(6%, -4px) rotate(-3deg); opacity: 1; } 100% { transform: none; } }
+.arrive .lab { animation: pop .5s cubic-bezier(.2, 1.6, .4, 1); display: inline-block; }
+@keyframes pop { 0% { transform: scale(.6); opacity: 0; } 100% { transform: none; opacity: 1; } }
+.arrive { animation: glow 1.6s cubic-bezier(.16, 1, .3, 1); }
+@keyframes glow { 0% { box-shadow: 0 0 0 0 var(--glow); } 35% { box-shadow: 0 0 0 6px var(--glow); } 100% { box-shadow: 0 0 0 14px transparent; } }
+
+/* Pano */
+.pano { padding: 22px 26px 28px; display: grid; gap: 16px; }
+.pano-h { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.pano-h h3 { margin: 0; font-family: var(--display); font-size: 34px; letter-spacing: -0.025em; }
+.pano-h .cnt { color: var(--muted); font-size: 15px; }
+.pano-h .sp { flex: 1; }
+.pbtn { display: inline-flex; gap: 8px; align-items: center; border: 1px solid var(--line); border-radius: 12px; padding: 8px 14px; font-size: 14px; }
+.pbtn.primary { background: var(--lav); border-color: color-mix(in srgb, var(--accent) 40%, transparent); color: var(--accent-ink); font-weight: 600; }
+.pbtn svg { width: 16px; height: 16px; }
+.view { display: inline-flex; background: var(--soft); border-radius: 12px; padding: 3px; }
+.view button { padding: 6px 12px; border-radius: 9px; font-size: 13.5px; color: var(--muted); display: inline-flex; gap: 6px; align-items: center; }
+.view button svg { width: 15px; height: 15px; }
+.view button[aria-pressed="true"] { background: var(--app); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); font-weight: 600; }
+.cats { display: flex; gap: 6px 20px; border-bottom: 1px solid var(--line2); flex-wrap: wrap; align-items: center; }
+.cats button { display: inline-flex; gap: 8px; align-items: center; padding: 8px 2px 10px; font-size: 14.5px; }
+.cats button span { color: var(--muted); }
+.cats button.on { color: var(--accent-ink); box-shadow: inset 0 -2px 0 var(--accent); }
+.cats svg { width: 19px; height: 19px; }
+.cats .fav svg { color: #e11d5b; }
+.cats .fav.on svg { fill: #e11d5b; }
+.group { display: grid; gap: 12px; }
+.group + .group { padding-top: 14px; border-top: 1px solid var(--line2); }
+.group-h { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.group-h b { font-size: 16px; }
+.group-h .s { font-size: 13px; color: var(--muted); display: inline-flex; gap: 5px; align-items: center; }
+.group-h .sp { flex: 1; }
+.pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap: 14px; align-items: start; }
+.pc { position: relative; background: var(--app); border-radius: 16px; overflow: hidden; border: 1px solid var(--line); box-shadow: var(--shadow-sm); display: grid; transition: transform .25s cubic-bezier(.16, 1, .3, 1), box-shadow .25s, border-color .4s; }
+.pc:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+.pc.inplan { border-color: var(--plan-dot); }
+.pc.isrez { border-color: var(--book-ink); }
+.pc .img { height: 112px; position: relative; display: grid; place-items: center; overflow: hidden; }
+.pc .img img { height: 88px; object-fit: contain; }
+.pc .rz { position: absolute; top: 10px; left: 10px; }
+.pc .heart { position: absolute; top: 8px; right: 8px; width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,.95); display: grid; place-items: center; color: #1c1a33; transition: transform .25s cubic-bezier(.2, 1.6, .4, 1); }
+.pc .heart:active { transform: scale(.85); }
+.pc .heart svg { width: 16px; height: 16px; }
+.pc .heart.on svg { fill: #e11d5b; stroke: #e11d5b; }
+.pc .sc { position: absolute; right: 10px; bottom: -20px; width: 44px; height: 44px; border-radius: 50%; background: var(--app); box-shadow: var(--shadow-sm); display: grid; place-items: center; align-content: center; font-weight: 800; font-size: 15px; line-height: 1; z-index: 1; }
+.pc .sc small { font-size: 9px; color: var(--muted); font-weight: 600; margin-top: 2px; }
+.pc .bd { padding: 14px 14px 8px; display: grid; gap: 4px; align-content: start; }
+.pc .need { font-size: 12px; font-weight: 650; color: var(--muted); display: inline-flex; gap: 5px; align-items: center; }
+.pc .need svg { width: 13px; height: 13px; }
+.pc .row1 { display: flex; gap: 6px; align-items: center; font-size: 12.5px; color: var(--muted); }
+.pc h5 { margin: 0; font-size: 16px; font-weight: 750; line-height: 1.25; padding-right: 40px; }
+.pc .meta { font-size: 13px; color: var(--muted); }
+.pc .row3 { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
+.pc .pr { font-size: 16.5px; font-weight: 750; }
+.pc .pr small { font-size: 12.5px; font-weight: 400; color: var(--muted); }
+.addp { display: inline-flex; gap: 6px; align-items: center; border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); color: var(--accent-ink); border-radius: 10px; padding: 5px 11px; font-size: 13.5px; font-weight: 600; }
+.addp svg { width: 14px; height: 14px; }
+.addp.on { background: var(--plan-bg); border-color: var(--plan-line); color: var(--plan-ink); }
+.addp.rez { background: var(--book-bg); border-color: var(--book-line); color: var(--book-ink); }
+.dest { font-size: 12px; color: var(--muted); display: flex; gap: 4px; align-items: center; }
+.dest svg { width: 12px; height: 12px; }
+.why2 { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 8px 14px; border-top: 1px solid var(--line2); font-size: 13px; color: var(--accent-ink); font-weight: 600; }
+.why2 svg { width: 15px; height: 15px; transition: transform .3s cubic-bezier(.16, 1, .3, 1); }
+.why2[aria-expanded="true"] svg { transform: rotate(180deg); }
+.detail { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .4s cubic-bezier(.16, 1, .3, 1); }
+.detail.open { grid-template-rows: 1fr; }
+.detail > div { overflow: hidden; }
+.detail .in { padding: 4px 14px 12px; display: grid; gap: 8px; font-size: 13px; }
+.pm-l { display: grid; gap: 3px; margin: 0; padding: 0; list-style: none; }
+.pm-l li { display: flex; gap: 6px; align-items: flex-start; }
+.pm-l .p { color: var(--plus); } .pm-l .m { color: var(--minus); }
+.pm-l li::before { font-weight: 800; width: 10px; flex: none; }
+.pm-l .p::before { content: "+"; } .pm-l .m::before { content: "−"; }
+.only { font-size: 10.5px; font-weight: 700; border-radius: 5px; padding: 0 5px; background: var(--lav); color: var(--accent-ink); white-space: nowrap; }
+.crit { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; color: var(--muted); }
+.crit b { color: var(--ink); font-weight: 600; }
+.crit .y { color: var(--plus); font-weight: 650; } .crit .n { color: var(--minus); font-weight: 650; } .crit .q { color: var(--muted); }
+.crit-h { font-size: 11.5px; font-weight: 700; color: var(--muted); margin-top: 2px; }
+.ele { justify-self: start; font-size: 12.5px; color: var(--muted); }
+.ele:hover { color: var(--minus); }
+.pc .ft { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px 10px; border-top: 1px solid var(--line2); font-size: 12.5px; color: var(--muted); gap: 8px; }
+.pc .ft span { display: inline-flex; gap: 6px; align-items: center; }
+.pc .ft svg { width: 15px; height: 15px; }
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 16px; }
+table.cmp { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 13.5px; }
+.cmp th, .cmp td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--line2); vertical-align: top; }
+.cmp thead th { background: var(--soft); font-size: 14px; }
+.cmp thead th .tn { display: flex; gap: 8px; align-items: center; }
+.cmp thead th small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
+.cmp tbody th { color: var(--muted); font-weight: 500; white-space: nowrap; width: 140px; }
+.cmp tr.part th { font-size: 11.5px; font-weight: 700; color: var(--accent-ink); background: color-mix(in srgb, var(--lav) 50%, var(--app)); padding: 6px 12px; }
+.cmp td.best { background: var(--best); color: var(--book-ink); font-weight: 700; }
+.cmp .y { color: var(--plus); font-weight: 650; } .cmp .n { color: var(--minus); font-weight: 650; } .cmp .q { color: var(--muted); }
+.cmp tr:last-child td, .cmp tr:last-child th { border-bottom: 0; }
+
+/* Bildirim */
+.toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%) translateY(20px); background: var(--ink); color: var(--app); padding: 10px 16px; border-radius: 14px; font-size: 14px; display: flex; gap: 12px; align-items: center; opacity: 0; pointer-events: none; transition: opacity .25s, transform .35s cubic-bezier(.16, 1, .3, 1); z-index: 80; max-width: calc(100vw - 32px); }
+.toast.on { opacity: 1; transform: translateX(-50%); pointer-events: auto; }
+.toast button { color: var(--lav); font-weight: 650; white-space: nowrap; }
+
+.pfoot { font-size: 12.5px; color: var(--muted); text-align: center; }
+.still *, .still *::before, .still *::after { animation: none !important; transition: none !important; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+/* v10 · Pano: 4 sütun, büyük görsel, az bilgi, düğmeler aynı hizada */
+.pano .pgrid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: 16px; align-items: stretch; }
+@media (min-width: 1100px) { .pano .pgrid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.pano .pc { display: flex; flex-direction: column; }
+.pano .pc .img { height: auto; aspect-ratio: 4 / 3; }
+.pano .pc .img img { height: 62%; }
+.pano .pc .bd { flex: 1; padding: 16px 16px 4px; gap: 6px; }
+.pano .pc h5 { font-size: 17px; }
+.pano .pc .meta { display: flex; gap: 6px; align-items: center; min-width: 0; }
+.pano .pc .meta span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pano .pc .act { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 16px 14px; min-height: 58px; }
+.pano .pc .ft .ups { margin-left: auto; margin-right: 10px; }
+.pano .pc .why3 { display: inline-flex; gap: 3px; align-items: center; font-size: 12.5px; font-weight: 600; color: var(--accent-ink); }
+.pano .pc .why3 svg { width: 14px; height: 14px; transition: transform .3s; }
+.pano .pc .why3[aria-expanded="true"] svg { transform: rotate(180deg); }
+
+.pano .addp { white-space: nowrap; }
+.pano .pc h5 { padding-right: 0; }
+
+.slot .foot { flex-wrap: wrap; row-gap: 6px; }
+.slot.m-rez .row > div { padding-right: 46px; }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs><pattern id="ht" width="4" height="4" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.05" fill="currentColor"/></pattern></defs>
+  <symbol id="i-plane" viewBox="0 0 24 24"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></symbol>
+  <symbol id="i-plane-r" viewBox="0 0 24 24"><path d="M2 13.5 4 12l4 1 3-4-4-6h2.5l6 6H20a2 2 0 0 1 0 4h-4.5l-6 6H7l4-6-3-4-4 1z"/></symbol>
+  <symbol id="i-bed" viewBox="0 0 24 24"><path d="M2 20v-8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8M4 10V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4M12 4v6M2 17h20"/></symbol>
+  <symbol id="i-train" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="15" rx="4"/><path d="M4 11h16M8 18l-2 3M16 18l2 3M8 14.5h.01M16 14.5h.01"/></symbol>
+  <symbol id="i-ticket" viewBox="0 0 24 24"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2zM13 5v2M13 17v2M13 11v2"/></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24"><path d="M9 3 3 6v15l6-3 6 3 6-3V3l-6 3zM9 3v15M15 6v15"/></symbol>
+  <symbol id="i-food" viewBox="0 0 24 24"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2M7 2v20M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/></symbol>
+  <symbol id="i-passport" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M8 17h8"/></symbol>
+  <symbol id="i-bag" viewBox="0 0 24 24"><path d="M6 20h12a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2zM9 7V5a3 3 0 0 1 6 0v2M9 12h6"/></symbol>
+  <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5M9 18h6M10 22h4"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="i-table" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10M15 10v10"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9zM19 3v4M21 5h-4"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-ext" viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-chev-r" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+  <symbol id="i-heart" viewBox="0 0 24 24"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7z"/></symbol>
+  <symbol id="i-flower" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.5"/><path d="M12 9.5c-1.5-3-1-5.5 0-6.5 1 1 1.5 3.5 0 6.5zM14.4 11.2c2.6-2.2 5-2.3 6.2-1.6-.4 1.4-2.5 2.8-5.8 3zM13.5 14.2c1.6 3 1.3 5.4.4 6.4-1.1-.9-1.8-3.3-.4-6.4zM10.5 14.2c-1.4 3.1-3.8 3.9-5.1 3.5.3-1.4 2-3.2 5.1-3.5zM9.6 11.2c-3.3-.2-5.4-1.6-5.8-3 1.2-.7 3.6-.6 5.8 3z"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></symbol>
+  <symbol id="i-clip" viewBox="0 0 24 24"><path d="m21 12-8.5 8.5a6 6 0 0 1-8.5-8.5l8.5-8.5a4 4 0 0 1 5.7 5.7l-8.5 8.5a2 2 0 0 1-2.8-2.8L15 7"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></symbol>
+  <symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16.2 7.8-2.1 6.3-6.3 2.1 2.1-6.3z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4v16l13-8z"/></symbol>
+  <symbol id="i-board" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="18" rx="2"/><rect x="14" y="3" width="7" height="11" rx="2"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M3 7v6h6M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-up-t" viewBox="0 0 24 24"><path d="M7 10v12M15 5.9 14 10h5.8a2 2 0 0 1 1.9 2.6l-2.3 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.8a2 2 0 0 0 1.8-1.1L12 2a3.1 3.1 0 0 1 3 3.9z"/></symbol>
+  <symbol id="i-yen" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m8 7 4 5 4-5M12 12v6M9 13h6M9 16h6"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></symbol><symbol id="i-wifi" viewBox="0 0 24 24"><path d="M2 9a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M12 19.5h.01"/></symbol><symbol id="i-plug" viewBox="0 0 24 24"><path d="M12 22v-5M9 8V2M15 8V2M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8z"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="sil-plane" viewBox="80 4 260 104"><g stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" fill="url(#ht)"><path d="M200 34 232 34 214 10 204 10z"/><path d="M104 56C104 48 116 44 132 44H284C304 44 322 50 330 58 322 66 304 72 284 72H132C116 72 104 66 104 56z"/><path d="M112 48 96 16H112L142 44z"/><path d="M108 56 84 50 94 66z"/><path d="M186 62H238L200 104H182z"/></g><g fill="#fff" fill-opacity=".85" stroke="currentColor" stroke-width="1.2"><rect x="150" y="52" width="8" height="7" rx="3"/><rect x="166" y="52" width="8" height="7" rx="3"/><rect x="182" y="52" width="8" height="7" rx="3"/><rect x="246" y="52" width="8" height="7" rx="3"/><rect x="262" y="52" width="8" height="7" rx="3"/><rect x="282" y="52" width="8" height="7" rx="3"/></g></symbol>
+</svg>
+
+<main class="page">
+  <nav class="switch" aria-label="Senaryolar">
+    <div class="switch-row"><h1>Japonya Planı</h1><div class="seg-c" role="tablist" id="tabs"></div>
+      <button class="motion" id="motion" aria-pressed="false"><svg class="i"><use href="#i-pause"/></svg><span>Hareketi duraklat</span></button></div>
+    <p class="sc-desc" id="desc"></p>
+  </nav>
+  <div id="view"></div>
+  <p class="pfoot">Tasarım örneği · tarihler ve sakura dönemi tahmini; fiyat, uyum puanı, konaklama adları ve saatler temsilîdir.</p>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div id="pickerRoot"></div>
+
+<script>
+const I = (id, cls = "i") => `<svg class="${cls}"><use href="#i-${id}"/></svg>`;
+const SIL = cls => `<svg class="${cls}" aria-hidden="true"><use href="#sil-plane"/></svg>`;
+const BR = { web: ["W", "Resmî site"], tk: ["T", "Turkish Airlines"], qr: ["Q", "Qatar Airways"], ek: ["E", "Emirates"], booking: ["B.", "Booking"], airbnb: ["A", "Airbnb"], jr: ["JR", "JR"], klook: ["K", "Klook"], airalo: ["A", "Airalo"], ubigi: ["U", "Ubigi"], holafly: ["H", "Holafly"], google: ["G", "Google Flights"], sky: ["S", "Skyscanner"], amazon: ["a", "Amazon"], viator: ["V", "Viator"], trip: ["T", "Tripadvisor"], maps: ["M", "Google Maps"], yt: ["▶", "YouTube"], ig: ["◎", "Instagram"] };
+const bm = k => `<span class="bm" style="background:var(--b-${k});${k === "jr" ? "font-size:8px" : ""}">${BR[k][0]}</span>`;
+const blink = (k, extra = "") => `<a class="blink" href="#" onclick="return false">${bm(k)}${BR[k][1]}${extra}${I("ext")}</a>`;
+const eur = n => n == null ? "—" : "€" + n.toLocaleString("tr-TR");
+const priceTxt = o => o.total == null ? `<span class="nolink">Fiyat linkte ↗</span>` : `${eur(o.total)}<small>toplam</small>`;
+const PEOPLE = { E: ["Emre", "e"], S: ["Sabine", "s"] };
+const av = (w, lg) => w === "AI" ? `<span class="av ai${lg ? " lg" : ""}" title="AI önerisi">${I("spark")}</span>` : `<span class="av${lg ? " lg" : ""}" style="background:var(--p-${PEOPLE[w][1]})" title="${PEOPLE[w][0]}">${w}</span>`;
+const saver = w => w === "AI" ? `<span class="saver">${av("AI")}AI önerisi</span>` : `<span class="saver">${av(w)}<b>${PEOPLE[w][0]}</b> kaydetti</span>`;
+const sd = m => `<span class="sd ${m}">${m === "rez" ? I("check") : ""}</span>`;
+const LAB = { bos: "Arıyoruz", plan: "Seçildi", rez: "Rezerve" };
+
+/* Bölümler: incumbent sırası; bütçe payı başlıkta */
+const SECS = [
+  { k: "fly", icon: "plane", color: "var(--c-fly)", name: "Uçuş", slots: ["out", "back"], budget: 3500, note: "Gidiş Tokyo'ya, dönüş Osaka'dan: aynı yolu geri gitmiyorsunuz, bir gün kazanıyorsunuz." },
+  { k: "stay", icon: "bed", color: "var(--c-stay)", name: "Konaklama", slots: ["tokyo", "hakone", "kyoto", "osaka"], budget: 3600 },
+  { k: "move", icon: "train", color: "var(--c-move)", name: "Ulaşım", slots: ["m0", "m1", "m2", "m3", "m4"], budget: 600, note: "Bu rotada JR Pass yerine tek tek bilet daha ucuz (yaklaşık hesap). Valizleri kargoyla göndermek trende rahat ettirir." },
+  { k: "exp", icon: "ticket", color: "var(--c-exp)", name: "Etkinlik ve turlar", budget: 500, ideas: true },
+  { k: "todo", icon: "map", color: "var(--c-todo)", name: "Yapılacak şeyler", list: true },
+  { k: "doc", icon: "shield", color: "var(--c-doc)", name: "Sigorta ve internet", slots: ["ins", "esim"], budget: 230 },
+  { k: "prep", icon: "bag", color: "var(--c-prep)", name: "Hazırlık", prep: true },
+  { k: "insp", icon: "play", color: "var(--c-exp)", name: "İlham", insp: true }
+];
+const SLOTS = {
+  out: { kind: "flight", type: "Gidiş", from: ["İstanbul", "IST"], to: ["Tokyo", "HND"], d: "1 Nis", n: "2 kişi", why: "Haneda şehre Narita'dan çok daha yakın", wants: ["Direkt", "Gece uçuşu olur"], self: [["google"], ["sky"]] },
+  back: { kind: "flight", type: "Dönüş", from: ["Osaka", "KIX"], to: ["İstanbul", "IST"], d: "16 Nis", n: "2 kişi", why: "Osaka'dan dönüş: Tokyo'ya geri gitmeye gerek yok", wants: ["Direkt", "Akşam kalkış"], self: [["google"], ["sky"]] },
+  tokyo: { kind: "stay", icon: "bed", color: "var(--c-stay)", type: "Konaklama", what: "Tokyo", nights: 5, place: "Asakusa ya da Shibuya", d: "1–6 Nis", n: "2 kişi", why: "İlk günler: metroya yakın, sakin bir semt", wants: ["Sakin semt", "Metroya 5 dk", "Ücretsiz iptal"], img: "otel", self: [["booking"], ["airbnb"]] },
+  hakone: { kind: "stay", icon: "bed", color: "var(--c-stay)", type: "Konaklama", what: "Hakone · ryokan", nights: 2, place: "Gora · onsen", d: "6–8 Nis", n: "2 kişi", why: "Romantik dediğin için: özel onsen ve kaiseki akşam yemeği", wants: ["Odada onsen", "Akşam yemeği dahil"], img: "ev-daire", self: [["booking"], ["web", " · ryokan rehberi"]] },
+  kyoto: { kind: "stay", icon: "bed", color: "var(--c-stay)", type: "Konaklama", what: "Kyoto", nights: 5, place: "Gion ya da Higashiyama", d: "8–13 Nis", n: "2 kişi", why: "Sakura sabahları için yürüyerek tapınaklara", wants: ["Yürüme mesafesi", "Sakin semt"], img: "ev-daire", self: [["booking"], ["airbnb"]] },
+  osaka: { kind: "stay", icon: "bed", color: "var(--c-stay)", type: "Konaklama", what: "Osaka", nights: 3, place: "Namba", d: "13–16 Nis", n: "2 kişi", why: "Yemek şehri; havalimanı trenine yakın", wants: ["Havalimanı trenine yakın"], img: "otel", self: [["booking"], ["airbnb"]] },
+  m0: { kind: "move", icon: "train", color: "var(--c-move)", type: "Ulaşım", what: "Haneda → Tokyo", place: "~40 dk", d: "1 Nis", n: "2 kişi + valiz", img: "taksi-transfer", self: [["web", " · Keikyu"]] },
+  m1: { kind: "move", icon: "train", color: "var(--c-move)", type: "Ulaşım", what: "Tokyo → Hakone", place: "~1,5 sa", d: "6 Nis", n: "2 kişi", img: "tren", self: [["web", " · Odakyu"]] },
+  m2: { kind: "move", icon: "train", color: "var(--c-move)", type: "Ulaşım", what: "Hakone → Kyoto", place: "~2,5 sa · Shinkansen", d: "8 Nis", n: "2 kişi", img: "tren", self: [["jr"]] },
+  m3: { kind: "move", icon: "train", color: "var(--c-move)", type: "Ulaşım", what: "Kyoto → Osaka", place: "~30 dk", d: "13 Nis", n: "2 kişi", img: "tren", self: [["jr"]] },
+  m4: { kind: "move", icon: "train", color: "var(--c-move)", type: "Ulaşım", what: "Osaka → Kansai Havalimanı", place: "~50 dk", d: "16 Nis", n: "2 kişi", img: "tren", self: [["web", " · Nankai"]] },
+  ins: { kind: "doc", icon: "shield", color: "var(--c-doc)", type: "Sigorta", what: "Seyahat sağlık sigortası", place: "Japonya'da sağlık pahalı", d: "1–16 Nis", n: "2 kişi", why: "Zorunlu değil ama önerilir", wants: ["€30.000+ teminat", "İki kişi tek poliçe"], img: "sigorta", self: [["web", " · karşılaştır"]] },
+  esim: { kind: "doc", icon: "wifi", color: "var(--c-doc)", type: "eSIM", what: "Japonya eSIM · 10 GB", place: "16 gün · 2 telefon", d: "1–16 Nis", n: "2 telefon", why: "İndiğin an internet; cep Wi-Fi kiralamaktan ucuz", wants: ["Telefon eSIM destekli olmalı"], img: "esim", self: [["airalo"]] }
+};
+/* Seçenekler: çekirdek alanlar (her türde aynı) + kişiye özel şartlar (tercihlerden) */
+const OPT = {
+  out: [{ id: "f-tk", who: "AI", name: "Turkish Airlines", time: ["01:55", "19:25"], src: "tk", p: 980, total: 1960, sub: "Direkt · 11 sa 30 dk · 2 × 23 kg", score: 89, badge: "Önerim", plus: [["Direkt, aktarmasız", 1], ["Akşam iner: otele girip uyursunuz", 0]], minus: [["En pahalısı", 0]], up: ["E", "S"], fav: true, a: { dur: "11 sa 30 dk", stops: "Direkt", bag: "2 × 23 kg" }, wants: { "Direkt": "y", "Gece uçuşu olur": "y" } },
+    { id: "f-qr", who: "S", name: "Qatar Airways", time: ["09:40", "07:15"], src: "qr", p: 820, total: 1640, sub: "Doha aktarmalı · 15 sa 35 dk", score: 76, badge: "En ucuz", plus: [["€320 daha ucuz", 1]], minus: [["Gece aktarması", 0]], up: ["S"], a: { dur: "15 sa 35 dk", stops: "1 · Doha", bag: "2 × 23 kg" }, wants: { "Direkt": "n", "Gece uçuşu olur": "y" } },
+    { id: "f-ek", who: "AI", name: "Emirates", time: ["16:05", "17:20"], src: "ek", p: 870, total: 1740, sub: "Dubai aktarmalı · 19 sa 15 dk", score: 64, plus: [["Öğleden sonra kalkış", 0]], minus: [["En uzun yolculuk", 1]], up: [], a: { dur: "19 sa 15 dk", stops: "1 · Dubai", bag: "2 × 25 kg" }, wants: { "Direkt": "n", "Gece uçuşu olur": "n" } }],
+  back: [{ id: "b-tk", who: "AI", name: "Turkish Airlines", time: ["22:30", "05:20"], src: "tk", p: 760, total: 1520, sub: "Kansai'den direkt · 12 sa 50 dk", score: 87, badge: "Önerim", plus: [["Son günü tam kullanırsınız", 1]], minus: [["Sabaha karşı varış", 0]], up: ["E"], a: { dur: "12 sa 50 dk", stops: "Direkt", bag: "2 × 23 kg" }, wants: { "Direkt": "y", "Akşam kalkış": "y" } },
+    { id: "b-qr", who: "AI", name: "Qatar Airways", time: ["23:55", "13:10"], src: "qr", p: 690, total: 1380, sub: "Doha aktarmalı · 19 sa", score: 72, badge: "En ucuz", plus: [["€140 daha ucuz", 0]], minus: [["Uzun aktarma", 0]], up: [], a: { dur: "19 sa", stops: "1 · Doha", bag: "2 × 23 kg" }, wants: { "Direkt": "n", "Akşam kalkış": "y" } }],
+  tokyo: [{ id: "t-asa", who: "S", name: "Asakusa Ryokan Hotel", src: "booking", p: 160, total: 800, sub: "Asakusa · 9,0 · tatami oda", score: 86, badge: "Önerim", plus: [["Senso-ji'ye 4 dk", 1]], minus: [["Oda küçük", 0]], up: ["S", "E"], fav: true, a: { rate: "Booking 9,0", loc: "Asakusa", cancel: "20 Mart'a kadar" }, wants: { "Sakin semt": "y", "Metroya 5 dk": "y", "Ücretsiz iptal": "y" } },
+    { id: "t-shi", who: "AI", name: "Shibuya Stream Hotel", src: "booking", p: 230, total: 1150, sub: "Shibuya · 9,2", score: 82, plus: [["İstasyonun üstünde", 1]], minus: [["En pahalısı", 0], ["Gece kalabalık", 0]], up: [], a: { rate: "Booking 9,2", loc: "Shibuya", cancel: "25 Mart'a kadar" }, wants: { "Sakin semt": "n", "Metroya 5 dk": "y", "Ücretsiz iptal": "y" } },
+    { id: "t-shj", who: "E", name: "Shinjuku daire", src: "airbnb", p: 140, total: 700, sub: "Shinjuku · 4,8 · mutfak", score: 74, badge: "En ucuz", plus: [["Mutfak var", 1]], minus: [["İptal yok", 0], ["4. kat, asansörsüz", 1]], up: ["E"], a: { rate: "Airbnb 4,8", loc: "Shinjuku", cancel: "Yok" }, wants: { "Sakin semt": "q", "Metroya 5 dk": "n", "Ücretsiz iptal": "n" } }],
+  hakone: [{ id: "h-yum", who: "AI", name: "Yumoto Onsen Ryokan", src: "booking", p: 420, total: 840, sub: "Gora · odada onsen · 9,5", score: 91, badge: "Önerim", plus: [["Odada özel onsen", 1], ["Kaiseki dahil", 0]], minus: [["Pahalı", 0]], up: ["S"], fav: true, a: { rate: "Booking 9,5", loc: "Gora", cancel: "1 Mart'a kadar" }, wants: { "Odada onsen": "y", "Akşam yemeği dahil": "y" } },
+    { id: "h-han", who: "S", name: "Hakone Hanaya", src: "booking", p: 310, total: 620, sub: "Miyanoshita · ortak onsen · 9,1", score: 79, plus: [["€220 daha ucuz", 0]], minus: [["Onsen ortak", 1]], up: ["S", "E"], a: { rate: "Booking 9,1", loc: "Miyanoshita", cancel: "10 Mart'a kadar" }, wants: { "Odada onsen": "n", "Akşam yemeği dahil": "y" } }],
+  kyoto: [{ id: "k-mac", who: "S", name: "Gion Machiya Evi", src: "airbnb", p: 210, total: 1050, sub: "Gion · geleneksel ev · 4,9", score: 88, badge: "Önerim", plus: [["Bütün ev sizin", 1], ["Gion'a 3 dk", 0]], minus: [["İptal yok", 0]], up: ["E", "S"], fav: true, a: { rate: "Airbnb 4,9", loc: "Gion", cancel: "Yok" }, wants: { "Yürüme mesafesi": "y", "Sakin semt": "q" } },
+    { id: "k-shi", who: "AI", name: "Kyoto Shijo Hotel", src: "booking", p: 180, total: 900, sub: "Shijo · 8,9", score: 80, badge: "En ucuz", plus: [["Metro kapıda", 0]], minus: [["Sıradan otel odası", 0]], up: [], a: { rate: "Booking 8,9", loc: "Shijo", cancel: "1 Nis'e kadar" }, wants: { "Yürüme mesafesi": "y", "Sakin semt": "n" } },
+    { id: "k-hig", who: "E", name: "Higashiyama Inn", src: "booking", p: null, total: null, sub: "Higashiyama · 9,3 · linkte tarih yok", score: 84, plus: [["Kiyomizu'ya 6 dk", 1]], minus: [["Yokuşlu sokak", 0]], up: ["S"], a: { rate: "Booking 9,3", loc: "Higashiyama", cancel: "28 Mart'a kadar" }, wants: { "Yürüme mesafesi": "y", "Sakin semt": "y" } }],
+  osaka: [{ id: "o-nam", who: "AI", name: "Namba Daire", src: "airbnb", p: 120, total: 360, sub: "Namba · 4,7", score: 78, plus: [["Nankai trenine 4 dk", 1]], minus: [["Küçük", 0]], up: [], a: { rate: "Airbnb 4,7", loc: "Namba", cancel: "Yok" }, wants: { "Havalimanı trenine yakın": "y" } }],
+  m0: [{ id: "m0-kk", who: "AI", name: "Keikyu treni", src: "web", p: 15, total: 30, sub: "~40 dk · IC kartla", score: 84, plus: [["Ucuz, hızlı", 0]], minus: [["Valizle aktarma", 0]], up: [], a: { dur: "~40 dk", book: "Gerekmez" } }],
+  m1: [{ id: "m1-rc", who: "AI", name: "Romancecar + Hakone Free Pass", src: "web", p: 70, total: 140, sub: "Shinjuku'dan · 2 gün sınırsız Hakone", score: 88, badge: "Önerim", plus: [["Teleferik ve tekne dahil", 1]], minus: [["Koltuk ayırtmak gerek", 0]], up: ["S"], a: { dur: "~1,5 sa", book: "Gerekli" } },
+    { id: "m1-jr", who: "AI", name: "Shinkansen + yerel tren", src: "jr", p: 45, total: 90, sub: "Odawara aktarmalı", score: 70, badge: "En ucuz", plus: [["Daha ucuz", 0]], minus: [["Hakone içi ulaşım ayrı", 0]], up: [], a: { dur: "~1,5 sa", book: "Gerekmez" } }],
+  m2: [{ id: "m2-sk", who: "AI", name: "Shinkansen Hikari", src: "jr", p: 95, total: 190, sub: "Odawara → Kyoto", score: 86, plus: [["Sağda Fuji manzarası", 1]], minus: [], up: [], a: { dur: "~2 sa", book: "Önerilir" } }],
+  m3: [{ id: "m3-jr", who: "AI", name: "JR Special Rapid", src: "jr", p: 5, total: 10, sub: "~30 dk · ayırtma gerekmez", score: 90, plus: [["IC kartla", 0]], minus: [], up: [], a: { dur: "~30 dk", book: "Gerekmez" } }],
+  m4: [{ id: "m4-nk", who: "AI", name: "Nankai Rapi:t", src: "web", p: 10, total: 20, sub: "Namba'dan · ~40 dk", score: 88, plus: [["Namba'dan kalkar", 1]], minus: [], up: [], a: { dur: "~40 dk", book: "Önerilir" } }],
+  esim: [{ id: "e-air", who: "AI", name: "Airalo · Moshi Moshi", src: "airalo", p: 16, total: 32, sub: "10 GB · 30 gün · telefon başı", score: 86, badge: "Önerim", plus: [["Kurulumu 2 dk", 1]], minus: [], up: [], a: {} },
+    { id: "e-ubi", who: "AI", name: "Ubigi Japonya", src: "ubigi", p: 19, total: 38, sub: "10 GB · 30 gün", score: 80, plus: [["Yedek numara", 1]], minus: [], up: [], a: {} },
+    { id: "e-hol", who: "AI", name: "Holafly sınırsız", src: "holafly", p: 34, total: 68, sub: "sınırsız · 16 gün", score: 72, plus: [["Sınırsız veri", 1]], minus: [["Paylaşım sınırlı", 0]], up: [], a: {} }],
+  ins: [{ id: "i-1", who: "AI", name: "Seyahat sağlık · Japonya", src: "web", p: 24, total: 48, sub: "16 gün · €50.000 teminat", score: 80, plus: [], minus: [], up: [], a: {} }]
+};
+const EXTRA = {
+  osaka: [{ id: "o-cro", who: "AI", name: "Cross Hotel Osaka", src: "booking", p: 150, total: 450, sub: "Shinsaibashi · 9,0", score: 84, badge: "Önerim", plus: [["Dotonbori'ye 2 dk", 1]], minus: [["Kalabalık sokak", 0]], up: [], a: { rate: "Booking 9,0", loc: "Shinsaibashi", cancel: "5 Nis'e kadar" }, wants: { "Havalimanı trenine yakın": "y" } },
+    { id: "o-ura", who: "AI", name: "Uramachi Machiya", src: "airbnb", p: 135, total: 405, sub: "Nakazakicho · 4,9", score: 80, plus: [["Sakin eski mahalle", 1]], minus: [["Havalimanına aktarmalı", 0]], up: [], a: { rate: "Airbnb 4,9", loc: "Nakazakicho" }, wants: { "Havalimanı trenine yakın": "n" } }],
+  kyoto: [{ id: "k-kin", who: "AI", name: "Ryokan Kinoshita", src: "booking", p: 260, total: 1300, sub: "Higashiyama · 9,6", score: 87, plus: [["Kahvaltı odada", 1]], minus: [["22:00'de kapı kapanıyor", 1]], up: [], a: { rate: "Booking 9,6", loc: "Higashiyama", cancel: "15 Mart'a kadar" }, wants: { "Yürüme mesafesi": "y", "Sakin semt": "y" } }]
+};
+/* Ucuz ve keşif: doğrudan kare fikir, “Plana ekle” */
+const IDEAS = {
+  miyako: { kind: "ev", img: "etkinlik-tur", t: "Miyako Odori · geyşa dansı", city: "Kyoto · 10 Nis", src: "web", p: "€35 · kişi", n: 35, who: "S", ticket: true },
+  teamlab: { kind: "ev", img: "etkinlik-tur", t: "teamLab Planets", city: "Tokyo · akşam", src: "klook", p: "€28 · kişi", n: 28, who: "AI", ticket: true },
+  sky: { kind: "ev", img: "etkinlik-tur", t: "Shibuya Sky · gün batımı", city: "Tokyo", src: "klook", p: "€22 · kişi", n: 22, who: "AI", ticket: true },
+  rikisha: { kind: "ev", img: "yapilacak", t: "Arashiyama'da rikşa turu", city: "Kyoto · 30 dk", src: "viator", p: "€40 · kişi", n: 40, who: "AI", ticket: true },
+  foodtour: { kind: "ev", img: "restoran", t: "Osaka gece yemek turu", city: "Osaka · rehberli", src: "viator", p: "€85 · kişi", n: 85, who: "AI", ticket: true },
+  sado: { kind: "ev", img: "etkinlik-tur", t: "Çay seremonisi", city: "Kyoto · 1 sa", src: "viator", p: "€30 · kişi", n: 30, who: "AI", ticket: true }
+};
+/* Gezilecek ve yemek: kaydedilen yerler (gidilmesi garanti değil, plana sayılmaz) */
+const PLACES = {
+  izakaya: { kind: "food", t: "Omoide Yokocho izakaya", city: "Tokyo", note: "Shinjuku · akşam", src: "maps", who: "E" },
+  sushi: { kind: "food", t: "Tsukiji'de sabah sushi", city: "Tokyo", note: "4,5 · erken git", src: "maps", who: "AI" },
+  meiji: { kind: "go", t: "Meiji Tapınağı", city: "Tokyo", note: "Harajuku · ücretsiz", src: "trip", who: "AI" },
+  yanaka: { kind: "go", t: "Yanaka eski sokakları", city: "Tokyo", note: "yürüyüş", src: "trip", who: "S" },
+  owaku: { kind: "go", t: "Owakudani buhar vadisi", city: "Hakone", note: "teleferikle", src: "trip", who: "AI" },
+  fushimi: { kind: "go", t: "Fushimi Inari, sabah 7'de", city: "Kyoto", note: "kalabalıktan önce", src: "trip", who: "AI" },
+  arashi: { kind: "go", t: "Arashiyama bambu ormanı", city: "Kyoto", note: "sabah erken", src: "trip", who: "S" },
+  nishiki: { kind: "food", t: "Nishiki pazarı", city: "Kyoto", note: "öğle atıştırma", src: "maps", who: "E" },
+  nara: { kind: "go", t: "Nara geyik parkı", city: "Kyoto", note: "45 dk · yarım gün", src: "trip", who: "AI" },
+  kuromon: { kind: "food", t: "Kuromon pazarı", city: "Osaka", note: "4,3 · öğle", src: "maps", who: "AI" },
+  dotonbori: { kind: "go", t: "Dotonbori akşam yürüyüşü", city: "Osaka", note: "ışıklar", src: "trip", who: "S" },
+  okonomi: { kind: "food", t: "Mizuno okonomiyaki", city: "Osaka", note: "sıra olur", src: "maps", who: "AI" }
+};
+const KIND = { ev: ["ticket", "Etkinlik"], go: ["map", "Gezilecek"], food: ["food", "Restoran"] };
+const CITIES = ["Tokyo", "Hakone", "Kyoto", "Osaka"];
+const FORYOU = {
+  out: ["Turkish Airlines", "Direkt ve akşam iner; Qatar €320 ucuz ama 4 saat daha uzun."],
+  tokyo: ["Asakusa Ryokan Hotel", "İkiniz de beğendiniz ve üç şartını da tutuyor; Shinjuku dairesi asansörsüz."],
+  hakone: ["Yumoto Onsen Ryokan", "Romantik dediğin için odada onsen; Hanaya €220 ucuz ama onsen ortak."],
+  kyoto: ["Gion Machiya Evi", "Bütün ev sizin, Gion'a 3 dk; iptal yok, kararı netleşince alın."],
+  back: ["Turkish Airlines", "Son günü tam kullanırsınız; Qatar €140 ucuz, 6 saat uzun."],
+  osaka: ["Cross Hotel Osaka", "Yemek sokağına 2 dk; Namba dairesi havalimanı trenine daha yakın."],
+  m1: ["Romancecar + Free Pass", "Hakone içindeki teleferik ve tekne de dahil; ayrı bilet derdi yok."]
+};
+const BOOKED = {
+  out: { proof: "PNR K7T2QX · 2 yolcu", rows: [["PNR", "K7T2QX"], ["Koltuk", "34A · 34B"], ["Bagaj", "2 × 23 kg"], ["Check-in", "31 Mar 01:55'te açılır"]] },
+  back: { proof: "PNR K7T2QX", rows: [["PNR", "K7T2QX"], ["Check-in", "15 Nis 22:30'da açılır"]] },
+  tokyo: { proof: "Giriş 1 Nis 15:00", rows: [["Giriş", "1 Nis 15:00"], ["Çıkış", "6 Nis 11:00"], ["Adres", "Asakusa 2-chome"], ["Onay", "BK-88120"]] },
+  m1: { proof: "Romancecar 6 Nis 10:00", rows: [["Tren", "Romancecar 10:00"], ["Koltuk", "5. vagon 7C-D"]] }
+};
+const BOOKED_EV = { miyako: [["Seans", "10 Nis 14:00"], ["Koltuk", "B-12 · B-13"], ["Bilet no", "MO-55120"]], rikisha: [["Saat", "9 Nis 09:30"], ["Buluşma", "Togetsukyo köprüsü"]], teamlab: [["Giriş", "3 Nis 19:00"], ["Bilet no", "TL-7781"]] };
+const INSP = [["i1", "yt", "Kyoto'da 3 gün: sakura rotası", "S", "linear-gradient(135deg,#f4a7bf,#8a5a7a)"], ["i2", "ig", "Hakone ryokan odası · Reels", "E", "linear-gradient(135deg,#a9c7d8,#4f7d6a)"]];
+const pool = (s, k) => [...OPT[k], ...(s.extra[k] || [])];
+const optOf = (s, k, id) => pool(s, k).find(o => o.id === id);
+
+/* Senaryolar */
+const base = () => ({ dated: true, people: ["E", "S"], slots: Object.fromEntries(Object.keys(SLOTS).map(k => [k, { m: "bos" }])), known: "all", extra: {}, shelf: ["miyako", "teamlab", "sky", "rikisha"], planned: [], list: ["izakaya", "sushi", "meiji", "owaku", "fushimi", "arashi", "nishiki", "kuromon"], ondays: {}, done: {}, pp: [], docs: {}, hidOpen: {}, hideReady: false, fav: {}, prep: {}, chat: [], closed: {} });
+const SC = {
+  A: { tab: "Yalnız prompt", desc: "<b>Tek cümle, çok şehir.</b> Pahalı olanlar kutucuk (Kendin ara önde, AI arıyor). Biletli etkinlik ve turlar kare fikir; yapılacak şeyler ve restoranlar da kare, plana eklenir ama bilet istemez. Bölümler açık gelir.",
+    make() { const s = base(); s.dated = false; s.known = "none"; s.searching = true; s.chat = [["E", "Nisan'da Sabine'yle Japonya'ya, sakura için iki hafta: Tokyo, Kyoto, Osaka"], ["AI", "Sakura haftaları! Rotayı <b>Tokyo 5 · Kyoto 5 · Osaka 3</b> gece kurdum, Osaka'dan dönüşle. Romantik bir ara durak önereyim: <b>Hakone'de 2 gece ryokan</b>. Ekleyeyim mi?", ["Hakone kalsın", "Gerek yok"]], ["E", "Kalsın"]]; return s; } },
+  B: { tab: "Prompt + linkler", desc: "<b>İlk mesajla link atıldı.</b> Kart sabit kalır: kaydettikleriniz ve AI önerileri kartın altındaki “2 kaydettiğiniz · 1 AI önerisi ▾” ile kartın altında açılan şeritte. 10 link de olsa kart bozulmaz. Fiyatı olmayan link “Fiyat linkte” der. “Bunu seçtik” denen Tokyo oteli doğrudan Seçildi; “Aldım” ile linke gitmeden rezerve işaretlenir.",
+    make() { const s = base(); s.slots.tokyo = { m: "plan", ref: "t-asa" }; s.fresh = ["k-mac", "k-hig"]; openDrop.add("kyoto");
+      s.chat = [["E", "Nisan'da Sabine'yle Japonya, sakura için 2 hafta. Tokyo'da bunu seçtik, Kyoto'ya da şunlara bakıyoruz.", null, [["booking.com/hotel/jp/asakusa-ryokan", "Tokyo · seçildi"], ["airbnb.com/rooms/gion-machiya", "Kyoto"], ["booking.com/hotel/jp/higashiyama-inn", "Kyoto"]]],
+        ["AI", "Tarihleri <b>1–16 Nisan</b> koydum. Tokyo'daki oteli <b>seçildi</b> olarak işaretledim. Kyoto'daki iki link kutusuna bağlandı, yanlarına bir öneri de ekledim. Osaka'ya henüz kimse bakmadı; ✨ ile istersen ararım."]]; return s; } },
+  C: { tab: "Karar ve rezerve", desc: "<b>Karar ve rezerve.</b> Rezerve karta basınca bilet/rezervasyon ayrıntısı ve belgeler açılır (Değiştir, İptal ettim). Belgeli ya da rezerve bir şeyi × ile kaldırmak önce sorar; diğerleri hemen gider, Gizlenenler’den geri gelir. Seçildi kartında “Aldım” üstte.",
+    make() { const s = base(); Object.assign(s.slots, { out: { m: "rez", ref: "f-tk" }, back: { m: "rez", ref: "b-tk" }, tokyo: { m: "rez", ref: "t-asa" }, hakone: { m: "plan", ref: "h-yum" }, kyoto: { m: "plan", ref: "k-mac" }, m1: { m: "rez", ref: "m1-rc" }, m2: { m: "plan", ref: "m2-sk" }, esim: { m: "plan", ref: "e-air" } });
+      s.planned = [["miyako", "rez"], ["rikisha", "plan"]]; s.shelf = ["teamlab", "sky", "foodtour"]; s.prep = { suica: 1, adapter: 1 }; s.pp = ["fushimi", "izakaya", "meiji"]; s.slots.m0 = { m: "rez", ref: "m0-kk" }; s.docs = { out: ["e-bilet-TK66.pdf"], back: ["e-bilet-TK66.pdf"], tokyo: ["booking-onay-88120.pdf"], "ev:miyako": ["miyako-odori-bilet.pdf"] };
+      s.chat = [["E", "Uçuşları ve Tokyo'yu aldık. Hakone'de Yumoto, Kyoto'da Gion evi olsun."], ["AI", "Uçuşlar, Tokyo ve Miyako Odori <b>rezerve</b>. Hakone ve Kyoto <b>seçildi</b>; Hakone'nin ücretsiz iptali 1 Mart'a kadar. Osaka boş: ✨ ile arayayım mı?"]]; return s; } }
+};
+let ST = {};
+const stateFor = k => (ST[k] ||= SC[k].make());
+const tally = s => { const v = Object.values(s.slots).map(x => x.m).filter(m => m !== "gone"); return { rez: v.filter(m => m === "rez").length, plan: v.filter(m => m === "plan").length, rest: v.filter(m => m === "bos").length, n: v.length }; };
+const known = (s, k) => s.known === "none" ? [] : pool(s, k);
+const ordered = (s, k) => known(s, k).slice().sort((a, b) => ((a.who === "AI") - (b.who === "AI")) || ((b.score || 0) - (a.score || 0)));
+
+const scene = `<svg viewBox="0 0 480 250" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs><linearGradient id="jsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9cc3e6"/><stop offset="1" stop-color="#f6d7e3"/></linearGradient></defs>
+  <rect width="480" height="250" fill="url(#jsky)"/><path d="M130 190 240 70l110 120z" fill="#7d8fb3"/><path d="M212 100 240 70l28 30-10 8-8-6-10 9-9-7z" fill="#fff"/>
+  <path d="M0 200 Q120 180 240 196 T480 188 V250 H0Z" fill="#8fae7c"/><g fill="#5a3b44"><rect x="372" y="120" width="8" height="90"/><path d="M354 132h44l-6-8h-32zM356 154h40l-5-7h-30zM358 176h36l-5-7h-26z"/></g>
+  <g fill="#f4a7bf"><circle cx="40" cy="70" r="22"/><circle cx="70" cy="56" r="18"/><circle cx="16" cy="96" r="16"/><circle cx="452" cy="60" r="20"/><circle cx="430" cy="40" r="14"/></g>
+  <g fill="#fbd1de"><circle cx="58" cy="78" r="12"/><circle cx="440" cy="74" r="12"/></g><path d="M0 222 Q240 210 480 222 V250 H0Z" fill="#6d8f5f"/></svg>`;
+function hero(s) {
+  const t = tally(s);
+  return `<section class="hero"><div class="story">
+      <div class="photo">${scene}<div class="citysel"><span class="on">Tokyo</span><span>Hakone</span><span>Kyoto</span><span>Osaka</span></div>${s.dated ? `<div class="pills"><span>~175 gün kaldı</span></div>` : ""}</div>
+      <h3>Japonya 2027</h3>
+      <div class="dline num">${I("cal")}<span>${s.dated ? "1–16 Nisan · 16 gün" : "Nisan · ~2 hafta"}</span><span class="est">sakura tahmini</span></div>
+      <p class="tone">Tokyo'nun ışıklarından Kyoto'nun sakura sabahlarına, ikinize sakin bir Japonya.</p>
+      <div class="cells"><span class="cell"><span style="color:var(--c-fly);display:inline-flex">${I("plane")}</span>2 uçuş</span><span class="cell"><span style="color:var(--c-stay);display:inline-flex">${I("bed")}</span>4 konaklama</span><span class="cell"><span style="color:var(--c-move);display:inline-flex">${I("train")}</span>5 ulaşım</span><span class="cell"><span style="color:var(--c-exp);display:inline-flex">${I("ticket")}</span>${s.planned.length} deneyim</span></div>
+      <div class="prog"><b>Japonya planın şekilleniyor</b><div class="seg"><i style="width:${t.rez / t.n * 100}%;background:var(--book-ink)"></i><i style="width:${t.plan / t.n * 100}%;background:var(--planbar)"></i></div>
+        <div class="legend num"><span><i class="dot" style="background:var(--book-ink)"></i>${t.rez} rezerve</span><span><i class="dot" style="background:var(--planbar)"></i>${t.plan} seçildi</span><span><i class="dot" style="background:var(--line)"></i>${t.rest} aranıyor</span></div>
+        <button class="cta" data-next>Planı tamamla →</button></div></div>
+    <aside class="card">
+      <div class="blk"><div class="people"><span class="avs">${av("E", true)}${av("S", true)}</span><div>Emre & Sabine<small>2 kişi</small></div></div>
+        <div class="styles"><span class="style"><span style="color:var(--c-exp);display:inline-flex">${I("flower")}</span>Sakura</span><span class="style"><span style="color:var(--c-exp);display:inline-flex">${I("heart")}</span>Romantik</span></div></div>
+      <div class="blk kv num"><span class="h">Bütçe</span><span class="h r">€9.000</span><span class="m"><i class="dot" style="background:var(--book-ink)"></i>Rezerve</span><span class="r">${eur(spent(s, "rez"))}</span><span class="m"><i class="dot" style="background:var(--planbar)"></i>Seçilen</span><span class="r">${eur(spent(s, "plan"))}</span></div>
+      <div class="blk kv"><span class="h" style="grid-column:1/-1">Tercihler</span><span class="m">Sakin semt</span><span class="r">Çok önemli</span><span class="m">Yürüme mesafesi</span><span class="r">Önemli</span><a href="#" onclick="return false" style="grid-column:1/-1;font-size:14px">+4 tercih ›</a></div>
+      <div class="blk"><div class="country"><span class="flag"></span>Japonya</div><div class="wx num"><span>Tokyo ${I("sun")}17°</span><span>Kyoto ${I("sun")}18°</span></div></div>
+      <div class="blk"><div class="minis"><span>${I("yen")}Yen</span><span>${I("plug")}A/B priz</span><span>${I("clock")}+6 saat</span><span>${I("chat")}Japonca</span></div></div></aside></section>
+  <div class="ptabs"><span class="on">Plan</span><span>Gün gün</span><span>Belgeler</span></div>`;
+}
+function nextOf(s) { const order = SECS.filter(x => x.slots).flatMap(x => x.slots); return order.find(k => s.slots[k].m === "bos") || order.find(k => s.slots[k].m === "plan"); }
+function nextHint(s) { const k = nextOf(s); if (!k) return `<span class="next-hint">${I("check")}Her şey hazır</span>`; const sl = s.slots[k];
+  return `<span class="next-hint">${I("arrow")}Sıradaki: <b>${sl.m === "bos" ? needName(k) + " için karar" : optOf(s, k, sl.ref).name + " rezervasyonu"}</b></span>`; }
+const spent = (s, m, keys) => (keys || Object.keys(s.slots)).reduce((a, k) => { const sl = s.slots[k]; return a + ((m ? sl.m === m : sl.m !== "bos") && sl.ref ? (optOf(s, k, sl.ref).total || 0) : 0); }, 0);
+
+function journey(s) {
+  const cls = k => s.slots[k].m === "bos" ? "" : "j-" + s.slots[k].m;
+  const nm = k => { const sl = s.slots[k]; return sl.ref ? `${optOf(s, k, sl.ref).name} · ${LAB[sl.m].toLowerCase()}` : "Henüz seçilmedi"; };
+  const tip = rows => `<span class="jtip">${rows.map(([ic, t]) => `<span class="r">${I(ic)}<span>${t}</span></span>`).join("")}</span>`;
+  const hop = (kind, lbl) => `<div class="jhop" aria-hidden="true">${I(kind === "fly" ? "plane-r" : "train", "i mover " + kind)}<span class="lbl">${lbl}</span></div>`;
+  const stop = (k, img, n, sm, rows) => `<div class="jstop ${cls(k)}" tabindex="0"><span class="jnode"><img src="illus/${img}.png" alt=""></span><b>${n}</b><small>${sm}</small>${tip(rows)}</div>`;
+  return `<div class="journey" style="grid-template-columns:auto minmax(14px,1fr) auto minmax(14px,1fr) auto minmax(14px,1fr) auto minmax(14px,1fr) auto minmax(14px,1fr) auto" aria-label="Yolculuk">
+    ${stop("out", "ucus", "İstanbul", s.dated ? "1 Nis" : "çıkış", [["plane", nm("out")]])}${hop("fly", "11 sa")}
+    ${stop("tokyo", "otel", "Tokyo", "5 gece", [["bed", nm("tokyo")]])}${hop("rail", "1,5 sa")}
+    ${stop("hakone", "ev-daire", "Hakone", "2 gece", [["bed", nm("hakone")], ["train", nm("m1")]])}${hop("rail", "2,5 sa")}
+    ${stop("kyoto", "ev-daire", "Kyoto", "5 gece", [["bed", nm("kyoto")]])}${hop("rail", "30 dk")}
+    ${stop("osaka", "otel", "Osaka", "3 gece", [["bed", nm("osaka")]])}${hop("fly", "13 sa")}
+    ${stop("back", "ucus", "İstanbul", s.dated ? "16 Nis" : "dönüş", [["plane", nm("back")]])}</div>`;
+}
+
+/* Kartta: kaydettikleriniz görünür (buradan seç), AI önerileri ▾ altında */
+let openDrop = new Set();
+function moRow(s, k, o) { const sl = s.slots[k];
+  return `<div class="mo${sl.ref === o.id ? " cur" : ""}${(s.fresh || []).includes(o.id) && !still ? " new" : ""}"><span class="th">${bm(o.src)}${av(o.who)}</span><span class="nm">${o.name}${o.time ? ` · ${o.time[0]}` : ""}</span><span class="pr num">${priceTxt(o)}</span>
+    <span class="pk">${sl.ref === o.id ? `<span class="chosen-ok">${I("check")}</span>` : `<button class="pick" data-pick="${k}:${o.id}">Seç</button>`}</span><span class="sb">${o.who === "AI" ? "AI önerisi" : PEOPLE[o.who][0] + " kaydetti"} · ${o.sub}</span></div>`; }
+function slotFoot(s, k) {
+  const sl = s.slots[k], list = known(s, k), o = sl.ref && optOf(s, k, sl.ref), busy = s.busy === k;
+  if (sl.m === "bos") {
+    const mine = list.filter(x => x.who !== "AI"), ai = list.filter(x => x.who === "AI"), open = openDrop.has(k);
+    const who = [...new Set(mine.map(x => x.who))], fresh = !open && list.some(x => (s.fresh || []).includes(x.id));
+    const left = busy ? `<span class="searching"><span class="bar"></span>AI arıyor…</span>`
+      : list.length ? `<button class="opts" data-dd="${k}" aria-expanded="${open}" aria-controls="tray-${k}">${who.length ? `<span class="avs">${who.map(w => av(w)).join("")}</span>` : av("AI")}${[mine.length && `${mine.length} kaydettiğiniz`, ai.length && `${ai.length} AI önerisi`].filter(Boolean).join(" · ")}${fresh ? `<span class="nw" aria-label="yeni"></span>` : ""}${I("chev", "i chev")}</button>`
+      : s.searching ? `<span class="searching"><span class="bar"></span>AI arıyor</span>` : `<span class="searching">${s.dated ? "Henüz kimse bakmadı" : "Tarih belli olunca"}</span>`;
+    return `<div class="foot">${left}<span class="sp"></span>${!busy && s.known !== "none" ? `<button class="ask" data-ask="${k}" aria-label="AI'dan öneri iste" title="AI'dan öneri iste">${I("spark")}</button>` : ""}</div>`; }
+  if (sl.m === "plan") return `<div class="foot"><span class="price num">${o.total == null ? `<span class="nolink">Fiyat linkte</span>` : `${eur(o.total)} <small>${SLOTS[k].n}</small>`}</span><span class="sp"></span><a class="go" href="#" data-stop>${bm(o.src)}Rezerve et ↗</a></div>`;
+  const b = BOOKED[k], docs = s.docs[k] || [];
+  return `<div class="foot">${SLOTS[k].kind === "flight" || !b ? "" : `<span class="proof">${I("check")}${b.proof}</span>`}${docs.length ? `<span class="docchip">${I("clip")}${docs[0]}</span>` : `<button class="docmiss" data-doc>${I("clip")}Belge eksik</button>`}<span class="sp"></span><span class="more">Ayrıntı${I("chev-r")}</span></div>`;
+}
+const topRight = (s, k, m) => `${m === "plan" ? `<button class="aldim-top" data-rez="${k}" title="Zaten rezerve ettim">${I("check")}Aldım</button>` : `<span class="lab">${LAB[m]}</span>`}<button class="kx" data-x="${k}" aria-label="Kaldır" title="${m === "rez" ? "Kaldır (önce sorar)" : "Gerek yok, kaldır"}">${I("x")}</button>`;
+function trayHtml(s, k) {
+  const list = known(s, k), sl = s.slots[k], mine = list.filter(x => x.who !== "AI"), ai = list.filter(x => x.who === "AI").sort((a, b) => (b.score || 0) - (a.score || 0));
+  const ot = o => `<div class="ot${sl.ref === o.id ? " cur" : ""}${(s.fresh || []).includes(o.id) && !still ? " new" : ""}"><span class="hd">${bm(o.src)}${o.who === "AI" ? `${av("AI")}AI önerisi` : `${av(o.who)}${PEOPLE[o.who][0]} kaydetti`}${o.badge ? ` <span class="rozet">${o.badge}</span>` : ""}</span><b>${o.name}${o.time ? ` · ${o.time[0]}` : ""}</b><span class="sb">${o.sub}</span>
+    <span class="ft2"><span class="pr num">${priceTxt(o)}</span>${sl.ref === o.id ? `<span class="chosen-ok">${I("check")}</span>` : `<button class="pick" data-pick="${k}:${o.id}">Seç</button>`}</span></div>`;
+  return `<div class="tray" id="tray-${k}" role="region" aria-label="${needName(k)} seçenekleri"><div class="tray-h"><b>${needName(k)}</b><small class="num">${[mine.length && `${mine.length} kaydettiğiniz`, ai.length && `${ai.length} AI önerisi`].filter(Boolean).join(" · ")}</small><span class="sp"></span>${list.length > 1 ? `<button class="all" data-open="${k}">Karşılaştır${I("chev-r")}</button>` : ""}<button class="tx" data-dd="${k}" aria-label="Kapat">${I("x")}</button></div>
+    <div class="tray-row">${[...mine, ...ai].map(ot).join("")}</div></div>`;
+}
+function selfRow(s, k) { const d = SLOTS[k]; return `<div class="self"><span class="k">Kendin ara</span>${d.self.map(([b, x]) => blink(b, x || (s.dated && d.kind === "stay" ? ` · ${d.d}` : ""))).join("")}</div>`; }
+function slotCard(s, k) {
+  const d = SLOTS[k], sl = s.slots[k], m = sl.m, o = sl.ref && optOf(s, k, sl.ref);
+  if (d.kind === "flight") return ticketCard(s, k);
+  const isStay = d.kind === "stay";
+  const title = m === "bos" ? (isStay ? `${d.what}${d.what.includes("·") ? "" : ""}` : d.what) : o.name;
+  const sub = m === "bos" ? (isStay ? `<span class="moons">${"<i></i>".repeat(d.nights)}</span>${d.nights} gece · ${d.place}` : `${I("pin")}${d.place}`) : (isStay ? `<span class="moons">${"<i></i>".repeat(d.nights)}</span>${d.what.split(" ·")[0]} · ${d.nights} gece` : `${d.what} · ${o.sub.split(" · ")[0]}`);
+  return `<article class="slot m-${m}${openDrop.has(k) && m === "bos" ? " has-tray" : ""}" data-slot="${k}" tabindex="0" role="button" aria-label="${d.what}: seçenekleri aç">
+    <div class="top">${sd(m)}<span class="ty"><span class="ic" style="color:${d.color}">${I(d.icon)}</span>${d.type}</span>${s.dated ? `<span class="num">· ${d.d}</span>` : ""}<span class="sp"></span>${topRight(s, k, m)}</div>
+    <div class="row"><img class="art" src="illus/${d.img}.png" alt=""><div><div class="what">${title}</div><div class="sub num">${sub}</div></div></div>
+    ${m === "bos" && d.wants ? `<ul class="wants">${d.wants.map(w => `<li>${w}</li>`).join("")}</ul>` : ""}
+    ${m === "bos" && d.why ? `<p class="why">${I("spark")}${d.why}</p>` : ""}
+    ${m === "bos" && d.kind !== "move" ? selfRow(s, k) : ""}
+    ${slotFoot(s, k)}${m === "rez" ? `<span class="stamp">${I("check")}</span>` : ""}</article>`;
+}
+function ticketCard(s, k) {
+  const d = SLOTS[k], sl = s.slots[k], m = sl.m, o = sl.ref && optOf(s, k, sl.ref);
+  const stub = m === "bos" ? `<span class="stub-k">Aradığımız</span><span class="stub-v">${d.wants[0]}</span><span class="stub-k">${d.wants[1]}</span>`
+    : m === "plan" ? `<span class="stub-k">${o.name}</span><span class="stub-v num">${eur(o.p)}</span><span class="stub-k">kişi başı</span>`
+    : `<span class="stub-k">${o.name}</span><span class="stub-v num">${BOOKED[k].rows[0][1]}</span><span class="stub-k">2 yolcu</span>`;
+  return `<div class="tkw"><article class="slot tk m-${m}${openDrop.has(k) && m === "bos" ? " has-tray" : ""}" data-slot="${k}" tabindex="0" role="button" aria-label="${d.type} uçuşu: seçenekleri aç">
+    <div class="tk-main"><div class="top">${sd(m)}<span class="ty"><span class="ic" style="color:var(--c-fly)">${I("plane")}</span>Uçuş · ${d.type}</span>${s.dated ? `<span class="num">· ${d.d}</span>` : ""}<span class="sp"></span>${topRight(s, k, m)}</div>
+      <div class="route"><div class="c"><b>${d.from[0]}</b>${o ? `<span class="t num">${o.time[0]}</span> ` : ""}<small>${d.from[1]}</small></div>${SIL("sil")}<div class="c r"><b>${d.to[0]}</b>${o ? `<span class="t num">${o.time[1]}</span> ` : ""}<small>${d.to[1]}</small></div></div>
+      ${m === "bos" ? `<p class="why">${I("spark")}${d.why}</p>${selfRow(s, k)}` : ""}${slotFoot(s, k)}</div>
+    <div class="tk-stub">${stub}</div>${m === "rez" ? `<span class="stamp">${I("check")}</span>` : ""}</article></div>`;
+}
+
+/* Etkinlik ve turlar: biletli, rezerve edilir. Planda olan satır, fikir kare */
+function expBody(s) {
+  const prow = ([k, m]) => { const x = IDEAS[k], docs = s.docs["ev:" + k] || [];
+    const r = m === "rez" ? `<span class="proof">${I("check")}Bilet alındı</span>${docs.length ? `<span class="docchip">${I("clip")}${docs[0]}</span>` : `<button class="docmiss" data-doc>${I("clip")}Belge eksik</button>`}<span class="more">Ayrıntı${I("chev-r")}</span>`
+      : `<button class="aldim-top" data-ev-rez="${k}">${I("check")}Aldım</button><a class="go" href="#" data-stop>${bm(x.src)}Bilet al ↗</a>`;
+    return `<div class="prow m-${m}"${m === "rez" ? ` data-ev-open="${k}" role="button" tabindex="0"` : ""}><img src="illus/${x.img}.png" alt=""><span class="t">${x.t}</span><span class="m num">${sd(m)}${x.city} · ${bm(x.src)}${x.p}</span><span class="r">${r}<button class="kx" data-ev-x="${k}" aria-label="${x.t} kaldır">${I("x")}</button></span></div>`; };
+  const tile = k => { const x = IDEAS[k];
+    return `<div class="tile"><span class="pic"><img src="illus/${x.img}.png" alt=""></span><span class="who">${av(x.who)}</span>
+      <button class="x" data-drop-idea="${k}" aria-label="${x.t} fikrini at">${I("x")}</button>
+      <span class="t">${x.t}</span><span class="m num">${I("pin")}${x.city} · ${bm(x.src)}${x.p}</span>
+      <button class="add" data-add-idea="${k}">${I("plus")}Plana ekle</button></div>`; };
+  return `${s.planned.length ? `<div class="planned">${s.planned.map(prow).join("")}</div>` : ""}
+    <div class="ideas-h"><b>Fikirler</b><span>bilet ya da rezervasyon gerektirenler</span><span class="sp"></span>${s.busy === "exp" ? `<span class="searching"><span class="bar"></span>AI arıyor…</span>` : `<button class="morebtn" data-ask="exp">${I("spark")}Daha fazla fikir</button>`}</div>
+    <div class="shelf">${s.shelf.map(tile).join("")}</div>`;
+}
+/* Yapılacak şeyler: etkinlikler gibi kare; plana eklenir, bilet istemez, günü Gün gün'de seçilir */
+let todoFilter = "all", todoTab = "all";
+const placeState = (s, k) => s.pp.includes(k) ? "plan" : "pool";
+function todoBody(s) {
+  const n = f => s.list.filter(k => f === "all" || PLACES[k].kind === f).length;
+  const items = s.list.filter(k => todoFilter === "all" || PLACES[k].kind === todoFilter).sort((a, b) => CITIES.indexOf(PLACES[a].city) - CITIES.indexOf(PLACES[b].city));
+  const tile = k => { const x = PLACES[k], on = s.pp.includes(k);
+    return `<div class="tile t-${x.kind}"><span class="pic"><img src="illus/${x.kind === "food" ? "restoran" : "yapilacak"}.png" alt="">${x.src === "maps" ? `<span class="kind">${bm("maps")}Maps</span>` : ""}</span><span class="who">${av(x.who)}</span>
+      <button class="x" data-drop-place="${k}" aria-label="${x.t} kaldır">${I("x")}</button>
+      <span class="t">${x.t}</span><span class="m num">${I("pin")}${x.city} · ${x.note}</span>
+      <button class="add${on ? " on" : ""}" data-pp="${k}" aria-pressed="${on}">${on ? `${I("check")}Planda` : `${I("plus")}Plana ekle`}</button></div>`; };
+  return `<div class="ideas-h"><span class="filters">${[["all", "Hepsi"], ["go", "Gezilecek yerler"], ["food", "Restoranlar"]].map(([f, nm]) => `<button data-tf="${f}" aria-pressed="${todoFilter === f}">${nm} <span class="num">${n(f)}</span></button>`).join("")}</span><span class="sp"></span>${s.busy === "todo" ? `<span class="searching"><span class="bar"></span>AI arıyor…</span>` : `<button class="morebtn" data-ask="todo">${I("spark")}Daha fazla öner</button>`}</div>
+    <div class="shelf"><label class="tile qa-tile"><span>${I("plus")}</span>Yer ya da restoran ekle<input id="qa" placeholder="Adını yaz ya da Maps linki yapıştır" autocomplete="off"><small>Enter'a bas; şehri ve türü ben bulurum</small></label>${items.map(tile).join("")}</div>
+    <p class="note2">Bilet istemeyen yerler. Plana eklediklerini Gün gün'de bir güne koyarsın. Google Maps'ten kaydettiklerin buraya ve Pano'ya düşer.</p>`;
+}
+function docBody(s) {
+  return `<div class="info-row">${I("check")}Vize gerekmiyor <span>· Türk pasaportuyla 90 güne kadar</span></div>
+    <div class="grid2">${s.slots.ins.m === "gone" ? "" : slotCard(s, "ins")}<div class="drow slot m-${s.esim ? "plan" : "bos"}" style="cursor:default"><img src="illus/esim.png" alt=""><b>Japonya eSIM · 10 GB</b><span class="ts num">${av("AI")}${bm("airalo")}Airalo · 16 gün · €16 · telefon başı</span>
+      <span class="tr">${s.esim ? `<span class="proof">${I("check")}Planda</span>` : `<button class="ghost" data-esim>${I("plus")}Plana ekle</button>`}</span></div></div>`;
+}
+const PREP = [["suica", "Suica ya da ICOCA kartı", "tren, metro, market", 0], ["adapter", "A tipi priz adaptörü", "Japonya 100V", 1], ["cash", "Nakit yen", "küçük yerler kart almıyor", 0], ["shoes", "Kolay çıkan rahat ayakkabı", "tapınak ve ryokanda çıkarılıyor", 1], ["kargo", "Valiz kargosu (takkyubin)", "Tokyo → Kyoto, 1 gün önce", 0], ["sock", "Temiz çorap", "ayakkabısız yerler çok", 1]];
+function prepBody(s) {
+  const done = PREP.filter(([k]) => s.prep[k]).length, list = s.hideReady ? PREP.filter(([k]) => !s.prep[k]) : PREP;
+  const item = ([k, t, sub, buy]) => { const ok = !!s.prep[k]; return `<div class="ck${ok ? " ok" : ""}" data-prep="${k}" role="checkbox" tabindex="0" aria-checked="${ok}"><span class="box">${I("check")}</span><span class="ct"><span>${t}</span><small>${sub}</small></span>${ok ? `<span class="tag">Hazır</span>` : buy ? `<a class="buy" href="#" onclick="event.stopPropagation();return false">${bm("amazon")}Amazon ↗</a>` : ""}</div>`; };
+  return `<div class="info-row">${I("check")}Vize gerekmiyor <span>· Türk pasaportuyla 90 güne kadar</span></div><div class="ideas-h"><span class="num"><b>${done}/${PREP.length}</b> hazır · Japonya'ya göre önerildi, sohbette “şunu da ekle” diyebilirsin</span><span class="sp"></span>${done ? `<button class="morebtn" style="background:none" data-hide-ready>${s.hideReady ? "Hazırları göster" : "Hazırları gizle"}</button>` : ""}<button class="morebtn" data-ask="prep">${I("spark")}Daha fazla öner</button></div>
+    <div class="checks">${list.map(item).join("")}</div>`;
+}
+function secBlock(s, sec) {
+  const closed = !!s.closed[sec.k];
+  let st = "", spentAmt = 0, count = 0, ms = [];
+  const live = sec.slots ? sec.slots.filter(k => s.slots[k].m !== "gone") : [], gone = sec.slots ? sec.slots.filter(k => s.slots[k].m === "gone") : [];
+  if (sec.slots) { ms = live.map(k => s.slots[k].m); count = live.length; spentAmt = spent(s, null, sec.slots); const r = ms.filter(m => m === "rez").length, p = ms.filter(m => m === "plan").length, b = count - r - p; st = [r && `${r} rezerve`, p && `${p} seçildi`, b && `${b} aranıyor`].filter(Boolean).join(" · "); }
+  if (sec.ideas) { count = s.planned.length; st = `${s.planned.length} planda · ${s.shelf.length} fikir`; spentAmt = s.planned.reduce((a, [k]) => a + IDEAS[k].n * 2, 0); }
+  if (sec.prep) { const d = PREP.filter(([k]) => s.prep[k]).length; count = PREP.length; st = `${d}/${PREP.length} hazır`; }
+  if (sec.list) { count = s.list.length; st = `${s.list.filter(k => PLACES[k].kind === "go").length} yer · ${s.list.filter(k => PLACES[k].kind === "food").length} restoran · ${s.pp.length} planda`; }
+  const r = ms.filter(m => m === "rez").length, p = ms.filter(m => m === "plan").length;
+  if (sec.insp) { count = INSP.length; st = "kaydettiğin video ve gönderiler"; }
+  const hidden = gone.length ? `<div class="hid"><button data-hid="${sec.k}">Gizlenenler · ${gone.length} ${s.hidOpen[sec.k] ? "gizle" : "göster"}</button>${s.hidOpen[sec.k] ? gone.map(k => `<div class="hidrow">${needName(k)} <span>· Gerek yok</span><button data-restore="${k}">Geri getir</button></div>`).join("") : ""}</div>` : "";
+  const bar = sec.slots ? `<span class="mini"><i style="width:${r / (count || 1) * 100}%;background:var(--book-ink)"></i><i style="width:${p / (count || 1) * 100}%;background:var(--planbar)"></i></span>` : `<span class="mini" style="background:none"></span>`;
+  const bud = sec.budget ? `<span class="bud num"><b>${spentAmt ? eur(spentAmt) : "—"}</b>${eur(sec.budget)} ayrıldı</span>` : `<span class="bud"></span>`;
+  const cols = sec.k === "move" ? 3 : 2, cards = live.map(k => slotCard(s, k)), ok = live.find(k => openDrop.has(k) && s.slots[k].m === "bos" && known(s, k).length);
+  if (ok) { const i = live.indexOf(ok); cards.splice(Math.min(live.length - 1, Math.floor(i / cols) * cols + cols - 1) + 1, 0, trayHtml(s, ok)); }
+  const body = sec.slots ? `${sec.note ? `<p class="note">${I("spark")}${sec.note}</p>` : ""}<div class="${sec.k === "move" ? "grid3" : "grid2"}">${cards.join("")}</div>${hidden}` : sec.ideas ? expBody(s) : sec.list ? todoBody(s) : sec.prep ? prepBody(s) : sec.insp ? inspBody(s) : docBody(s) + hidden;
+  return `<section class="sec${closed ? " closed" : ""}" data-sec="${sec.k}">
+    <button class="sec-h" data-toggle="${sec.k}" aria-expanded="${!closed}"><span class="sec-ic" style="background:color-mix(in srgb, ${sec.color} 13%, transparent);color:${sec.color}">${I(sec.icon)}</span>
+      <h4>${sec.name}<span class="n num">${count}</span></h4><span class="st num">${st}</span>${bar}${bud}${I("chev", "i chev")}</button>
+    <div class="sec-b"><div><div class="sec-in">${body}</div></div></div></section>`;
+}
+function inspBody(s) { return `<div class="inspo">${INSP.map(([id, src, t, who, g]) => `<a class="ins" href="#" onclick="return false"><span class="v" style="background:${g}">${I("play")}</span><b>${t}</b><span>${av(who)}${bm(src)}${BR[src][1]}</span></a>`).join("")}</div><p class="note2">Reels, TikTok, YouTube ve blog linkleri burada durur; plana eklenince Yapılacak şeyler'e geçer.</p>`; }
+function planView(s) {
+  return `${hero(s)}
+  <div class="planbar"><strong>Plan</strong><span class="sortsw"><span class="on">Kategoriye göre</span><span>Yolculuk sırasıyla</span></span>
+    <button class="addbtn" data-addt>${I("plus")}Ekle</button><span class="key"><span><i class="sw bos"></i>Arıyoruz</span><span><i class="sw plan"></i>Seçildi</span><span><i class="sw rez"></i>Rezerve</span></span></div>
+  ${journey(s)}<div class="secs">${SECS.map(sec => secBlock(s, sec)).join("")}</div>`;
+}
+
+function chatHtml(s) {
+  return `<aside class="chat"><h2>${I("spark")}Seyahat asistanı</h2><div class="msgs" id="msgs">${s.chat.map(([who, txt, chips, links, act]) => act ? `<div class="msg act">${I("spark")}<span>${txt}</span></div>` : `<div class="msg ${who === "AI" ? "ai" : "me"}"><span class="who-l">${av(who)}${who === "AI" ? "Asistan" : PEOPLE[who][0]}</span>${txt}
+      ${links ? `<div class="links">${links.map(([l, to]) => `<span class="lk">${I("link")}<span class="u">${l}</span><span class="to">→ ${to}</span></span>`).join("")}</div>` : ""}
+      ${chips ? `<div class="chips">${chips.map(c => `<span class="chip">${c}</span>`).join("")}</div>` : ""}</div>`).join("")}
+      ${s.searching || s.busy ? `<div class="working"><span class="dots"><i></i><i></i><i></i></span>${s.busy ? "Arıyorum: Booking, Airbnb ve kaydettiklerinize bakıyorum…" : "Uçuşlara ve otellere bakıyorum…"}</div>` : ""}</div>
+    <div class="input">${I("clip")}<span>Birlikte değerlendirelim…</span><span class="send">${I("up")}</span></div></aside>`;
+}
+function topbar(active, s) {
+  const n = Object.keys(OPT).reduce((a, k) => a + known(s, k).length, 0);
+  return `<div class="topbar"><span class="logo">${I("compass")}<span>Trip Radar</span></span><span class="tripsel">Japonya 2027 ${I("chev")}</span>
+    <span class="topnav"><button class="${active === "plan" ? "on" : ""}" data-go="plan">Plan</button><button>Gün gün</button><button class="${active === "pano" ? "on" : ""}" data-go="pano">Pano${n ? ` <span class="badge">${n}</span>` : ""}</button></span>
+    <span class="avs">${av("E", true)}${av("S", true)}</span></div>`;
+}
+const app = s => `<div class="shell">${topbar("plan", s)}<div class="cols">${chatHtml(s)}<div class="main">${planView(s)}</div></div></div>`;
+
+/* Seçim penceresi: hepsi (sizinkiler + AI), sade */
+let pk = null;
+const scoreHtml = o => o.score ? `<span class="score num${o.badge === "Önerim" ? " hi" : ""}">${o.score}<small>uyum</small></span>` : `<span class="score">${bm(o.src)}</span>`;
+function openPicker(k) {
+  if (cur === "P") return;
+  const s = stateFor(cur), d = SLOTS[k], sl = s.slots[k];
+  if (sl.m === "rez") return openDetail(k);
+  const title = d.kind === "flight" ? `${d.from[0]} → ${d.to[0]}` : d.kind === "stay" ? `${d.what.split(" ·")[0]} · ${d.nights} gece` : d.what, sub = `${s.dated ? d.d + " · " : ""}${d.n}`;
+  const list = ordered(s, k), mine = list.filter(o => o.who !== "AI"), ai = list.filter(o => o.who === "AI");
+  const row = o => { const isCur = sl.ref === o.id;
+    return `<div class="opt${isCur ? " cur" + (sl.m === "rez" ? " rez" : "") : ""}">${scoreHtml(o)}
+      <span class="on">${o.name}${o.time ? ` <span class="num" style="font-weight:500;color:var(--muted)">${o.time[0]} → ${o.time[1]}</span>` : ""}${o.badge ? `<span class="rozet">${o.badge}</span>` : ""}</span>
+      <span class="os num">${bm(o.src)}${o.sub}</span>
+      <span class="meta">${saver(o.who)}${o.up.length ? `<span class="reacts">${I("up-t")}<span class="avs">${o.up.map(w => av(w)).join("")}</span></span>` : ""}</span>
+      <span class="pr num">${priceTxt(o)}</span>
+      <span class="act">${isCur ? (sl.m === "rez" ? `<span class="chosen-ok">${I("check")}Rezerve</span>` : `<button class="ghost" data-rez="${k}">${I("check")}Rezerve ettim</button>`) : `<button class="pick" data-pick="${k}:${o.id}">${I("check")}Seç</button>`}</span></div>`; };
+  const fy = FORYOU[k] && list.length > 1 && sl.m !== "rez" ? `<div class="foryou"><b>Senin için: ${FORYOU[k][0]}</b>${FORYOU[k][1]}</div>` : "";
+  const booked = sl.m === "rez" && BOOKED[k] ? `<div class="pk-sec"><h6>${I("check")}Rezervasyon</h6><dl class="booked num">${BOOKED[k].rows.map(([a, b]) => `<div><dt>${a}</dt><dd>${b}</dd></div>`).join("")}</dl></div>` : "";
+  document.getElementById("pickerRoot").innerHTML = `<div class="scrim" id="scrim"><div class="picker" role="dialog" aria-modal="true" aria-labelledby="pkTitle">
+    <div class="pk-h"><span class="ic" style="background:color-mix(in srgb, ${d.color || "var(--c-fly)"} 13%, transparent);color:${d.color || "var(--c-fly)"}">${I(d.icon || "plane")}</span><h3 id="pkTitle">${title}</h3><p class="num">${sub}</p><button class="close" data-close aria-label="Kapat">${I("x")}</button></div>
+    <div class="pk-b">${booked}${fy}
+      ${mine.length ? `<div class="pk-sec"><h6>${I("users")}Kaydettikleriniz · ${mine.length}</h6>${mine.map(row).join("")}</div>` : ""}
+      ${ai.length ? `<div class="pk-sec"><h6>${I("spark")}AI önerisi · ${ai.length}</h6>${ai.map(row).join("")}</div>` : ""}
+      ${!list.length ? `<p class="empty">Henüz seçenek yok. ✨ ile AI'ya arat ya da kendin bak; eklentiyle kaydettiğin her link buraya gelir.</p>` : ""}
+      <div class="pk-sec"><h6>${I("search")}Kendin ara</h6><div class="self">${d.self.map(([b, x]) => blink(b, x || (s.dated ? ` · ${d.d}` : ""))).join("")}</div></div></div>
+    <div class="pk-f">${sl.m !== "bos" ? `<button class="ghost" data-clear="${k}">${I("undo")}Seçimi kaldır</button>` : `<button class="morebtn" data-ask="${k}">${I("spark")}Daha fazla öneri bul</button>`}<span class="sp"></span><button class="ghost" data-go="pano" data-pano-slot="${k}">${I("board")}Pano'da karşılaştır</button></div>
+  </div></div>`;
+  pk = k; requestAnimationFrame(() => document.getElementById("scrim").classList.add("on"));
+  setTimeout(() => document.querySelector(".picker .close")?.focus(), 50);
+}
+function dialog(html) { document.getElementById("pickerRoot").innerHTML = `<div class="scrim" id="scrim">${html}</div>`; requestAnimationFrame(() => document.getElementById("scrim")?.classList.add("on")); setTimeout(() => document.querySelector("#scrim button")?.focus(), 60); }
+let confirmFn = null;
+function confirmBox(title, text, okLabel, fn) { confirmFn = fn; dialog(`<div class="confirm" role="alertdialog" aria-modal="true" aria-labelledby="cfT"><h3 id="cfT">${title}</h3><p>${text}</p><div class="bt"><button class="ghost" data-close>Vazgeç</button><button class="btn-danger" data-confirm>${okLabel}</button></div></div>`); }
+function detailHtml(title, sub, icon, color, heroRow, rows, docs, foot) {
+  return `<div class="picker" role="dialog" aria-modal="true" aria-labelledby="pkTitle">
+    <div class="pk-h"><span class="ic" style="background:color-mix(in srgb, ${color} 13%, transparent);color:${color}">${I(icon)}</span><h3 id="pkTitle">${title}</h3><p class="num">${sub}</p><button class="close" data-close aria-label="Kapat">${I("x")}</button></div>
+    <div class="pk-b">${heroRow}
+      ${rows.length ? `<div class="pk-sec"><h6>${I("check")}Rezervasyon ayrıntısı</h6><dl class="booked num">${rows.map(([a, b]) => `<div><dt>${a}</dt><dd>${b}</dd></div>`).join("")}</dl></div>` : `<p class="empty">Ayrıntı yok; belgeyi eklersen PNR, saat ve tutarı ben okurum.</p>`}
+      <div class="pk-sec"><h6>${I("clip")}Belgeler</h6>${docs.length ? docs.map(n => `<a class="docrow" href="#" onclick="return false">${I("clip")}${n}<span>Aç ↗</span></a>`).join("") : `<button class="docmiss" style="margin:0;justify-self:start" data-doc>${I("clip")}Belge eksik · ekle</button>`}<p class="note2">Belgeler yalnız bu bilgisayarda durur; Belgeler sekmesinde de görünür.</p></div></div>
+    <div class="pk-f">${foot}</div></div>`;
+}
+function openDetail(k) {
+  const s = stateFor(cur), d = SLOTS[k], sl = s.slots[k], o = optOf(s, k, sl.ref), b = BOOKED[k], docs = s.docs[k] || [];
+  const title = d.kind === "flight" ? `${d.from[0]} → ${d.to[0]}` : d.kind === "stay" ? `${d.what.split(" ·")[0]} · ${d.nights} gece` : d.what;
+  pk = k; dialog(detailHtml(title, `${d.d} · ${d.n}`, d.icon || "plane", d.color || "var(--c-fly)",
+    `<div class="det-hero">${bm(o.src)}<b>${o.name}${o.time ? ` · ${o.time[0]} → ${o.time[1]}` : ""}</b><span class="lab">Rezerve${docs.length ? " · belgeli" : ""}</span><small class="num">${o.sub} · ${eur(o.total)}</small></div>`,
+    b ? b.rows : [], docs, `<button class="ghost" data-change="${k}">${I("undo")}Değiştir</button><button class="ghost" data-iptal="${k}">İptal ettim</button><span class="sp"></span><button class="ghost" data-close>Kapat</button>`));
+}
+function openEvDetail(k) {
+  const s = stateFor(cur), x = IDEAS[k], docs = s.docs["ev:" + k] || [];
+  dialog(detailHtml(x.t, `${x.city} · 2 kişi`, "ticket", "var(--c-exp)", `<div class="det-hero">${bm(x.src)}<b>${x.t}</b><span class="lab">Bilet alındı</span><small class="num">${BR[x.src][1]} · ${x.p}</small></div>`,
+    BOOKED_EV[k] || [], docs, `<button class="ghost" data-ev-iptal="${k}">İptal ettim</button><span class="sp"></span><button class="ghost" data-close>Kapat</button>`));
+}
+function closePicker() { const sc = document.getElementById("scrim"); if (!sc) return; sc.classList.remove("on"); setTimeout(() => { document.getElementById("pickerRoot").innerHTML = ""; }, 250); const k = pk; pk = null; if (k) document.querySelector(`[data-slot="${k}"]`)?.focus(); }
+
+/* Pano: Tümü önce; kutuya göre grup yalnız 2+ seçenek olunca; “Plana koy” nereye gittiğini söyler */
+let panoCat = "all", panoView = "cards", openDet = new Set();
+const CATS = { fly: ["plane", "Uçuşlar", "var(--c-fly)"], stay: ["bed", "Konaklama", "var(--c-stay)"], move: ["train", "Ulaşım", "var(--c-move)"], ev: ["ticket", "Etkinlik", "var(--c-exp)"], places: ["map", "Yapılacak", "var(--c-todo)"], doc: ["shield", "Sigorta ve eSIM", "var(--c-doc)"], insp: ["play", "İlham", "var(--c-exp)"] };
+const secOf = k => SECS.find(x => x.slots && x.slots.includes(k)).k;
+const isFav = (s, o) => s.fav[o.id] ?? !!o.fav;
+const needName = k => { const d = SLOTS[k]; return d.kind === "flight" ? `${d.type}: ${d.from[0]} → ${d.to[0]}` : d.kind === "stay" ? `${d.what.split(" ·")[0]} · ${d.nights} gece` : d.what; };
+const CORE = {
+  flight: [["Toplam (2 kişi)", o => eur(o.total), "min", o => o.total ?? Infinity], ["Kalkış → varış", o => `${o.time[0]} → ${o.time[1]}`], ["Süre", o => o.a.dur], ["Aktarma", o => o.a.stops], ["Bagaj", o => o.a.bag]],
+  stay: [["Toplam", o => eur(o.total), "min", o => o.total ?? Infinity], ["Gecelik", o => eur(o.p)], ["Puan", o => o.a.rate], ["Semt", o => o.a.loc], ["Ücretsiz iptal", o => o.a.cancel]],
+  move: [["Toplam (2 kişi)", o => eur(o.total), "min", o => o.total ?? Infinity], ["Süre", o => o.a.dur], ["Ayırtma", o => o.a.book]],
+  doc: [["Toplam", o => eur(o.total), "min", o => o.total ?? Infinity]]
+};
+const W = { y: ["y", "✓ var"], n: ["n", "✕ yok"], q: ["q", "? sayfada yok"] };
+function panoPage(s) {
+  const slotsAll = Object.keys(SLOTS).filter(k => known(s, k).length);
+  const all = slotsAll.flatMap(k => known(s, k).map(o => ({ k, o })));
+  const favN = all.filter(({ o }) => isFav(s, o)).length;
+  const card = (k, o, showNeed) => { const sl = s.slots[k], on = sl.ref === o.id, c = secOf(k), open = openDet.has(o.id), d = SLOTS[k];
+    const img = c === "fly" ? `<span class="img" style="background:var(--lav)"><svg viewBox="0 -60 300 225" style="width:100%;height:100%" aria-hidden="true"><path d="M50 82 Q150 10 250 56" fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="5 6"/><circle cx="50" cy="82" r="4" fill="var(--accent)"/><text x="20" y="108" font-size="16" font-weight="700" fill="var(--ink)">${d.from[0]}</text><text x="190" y="88" font-size="16" font-weight="700" fill="var(--ink)">${d.to[0]}</text></svg>` : `<span class="img" style="background:var(--tile)"><img src="illus/${d.img}.png" alt="">`;
+    const wants = o.wants ? Object.entries(o.wants) : [];
+    return `<article class="pc${on ? (sl.m === "rez" ? " isrez" : " inplan") : ""}" id="pc-${o.id}">${img}${o.badge ? `<span class="rz rozet">${o.badge}</span>` : ""}<button class="heart${isFav(s, o) ? " on" : ""}" data-fav="${o.id}" aria-label="Favori" aria-pressed="${isFav(s, o)}">${I("heart")}</button>${o.score ? `<span class="sc num">${o.score}<small>uyum</small></span>` : ""}</span>
+      <div class="bd">${showNeed ? `<span class="need"><span style="color:${CATS[c][2]};display:inline-flex">${I(CATS[c][0])}</span>${needName(k)}</span>` : ""}<h5>${o.name}${o.time ? ` · <span class="num">${o.time[0]}</span>` : ""}</h5><div class="meta num">${bm(o.src)}<span>${o.sub}</span></div></div>
+      <div class="act"><span class="pr num">${o.total == null ? `<span class="nolink">Fiyat linkte ↗</span>` : `${eur(o.total)} <small>toplam</small>`}</span>${on ? `<span class="addp ${sl.m === "rez" ? "rez" : "on"}">${I("check")}${sl.m === "rez" ? "Rezerve" : "Planda"}</span>` : `<button class="addp" data-pick="${k}:${o.id}">${I("plus")}Plana koy</button>`}</div>
+      <div class="ft num">${saver(o.who)}<span class="ups">${I("up-t")}${o.up.length}</span><button class="why3" data-det="${o.id}" aria-expanded="${open}">Neden?${I("chev")}</button></div>
+      <div class="detail${open ? " open" : ""}"><div><div class="in">
+        <ul class="pm-l">${o.plus.map(([t, only]) => `<li class="p">${t}${only ? ` <span class="only">yalnız bunda</span>` : ""}</li>`).join("")}${o.minus.map(([t, only]) => `<li class="m">${t}${only ? ` <span class="only">yalnız bunda</span>` : ""}</li>`).join("")}</ul>
+        ${wants.length ? `<span class="crit-h">Senin şartların</span><div class="crit">${wants.map(([w, v]) => `<span>${w}</span><span class="${W[v][0]}">${W[v][1]}</span>`).join("")}</div>` : ""}
+        <span class="crit-h">Herkes için</span><div class="crit num">${CORE[d.kind].slice(1).map(([l, f]) => `<span>${l}</span><b>${f(o) || "—"}</b>`).join("")}</div>
+        <button class="ele">Ele · bunu gösterme</button></div></div></div></article>`; };
+  const table = (k, list) => { const d = SLOTS[k], rows = CORE[d.kind];
+    const best = (fn, mode) => { const vals = list.map(fn); const v = mode === "min" ? Math.min(...vals) : Math.max(...vals); return list.map((o, i) => vals[i] === v); };
+    const wantKeys = [...new Set(list.flatMap(o => Object.keys(o.wants || {})))];
+    return `<div class="tablewrap"><table class="cmp num"><thead><tr><th></th>${list.map(o => `<th><span class="tn">${bm(o.src)}${o.name}${o.badge ? ` <span class="rozet">${o.badge}</span>` : ""}</span><small>${o.who === "AI" ? "AI önerisi" : PEOPLE[o.who][0] + " kaydetti"}</small></th>`).join("")}</tr></thead><tbody>
+      <tr><th>Uyum</th>${(() => { const b = best(o => o.score || 0, "max"); return list.map((o, i) => `<td class="${b[i] ? "best" : ""}">${o.score || "—"}</td>`).join(""); })()}</tr>
+      <tr class="part"><th colspan="${list.length + 1}">Herkes için · her ${d.kind === "flight" ? "uçuşta" : d.kind === "stay" ? "konaklamada" : "seçenekte"} aynı satırlar</th></tr>
+      ${rows.map(([l, f, mode, num]) => { const b = mode ? best(num, mode) : list.map(() => false); return `<tr><th>${l}</th>${list.map((o, i) => `<td class="${b[i] ? "best" : ""}">${f(o) || "—"}</td>`).join("")}</tr>`; }).join("")}
+      ${wantKeys.length ? `<tr class="part"><th colspan="${list.length + 1}">Senin şartların · tercihlerinden</th></tr>${wantKeys.map(w => `<tr><th>${w}</th>${list.map(o => { const v = (o.wants || {})[w] || "q"; return `<td class="${W[v][0]}">${W[v][1]}</td>`; }).join("")}</tr>`).join("")}` : ""}
+      <tr class="part"><th colspan="${list.length + 1}">Yorumlardan · yalnız bunda olanlar</th></tr>
+      <tr><th>Artılar</th>${list.map(o => `<td><ul class="pm-l">${o.plus.map(([t]) => `<li class="p">${t}</li>`).join("")}</ul></td>`).join("")}</tr>
+      <tr><th>Eksiler</th>${list.map(o => `<td><ul class="pm-l">${o.minus.map(([t]) => `<li class="m">${t}</li>`).join("") || "—"}</ul></td>`).join("")}</tr>
+      <tr><th>Beğenen</th>${list.map(o => `<td><span class="avs">${o.up.map(w => av(w)).join("") || "—"}</span></td>`).join("")}</tr>
+      <tr><th></th>${list.map(o => { const on = s.slots[k].ref === o.id, rz = s.slots[k].m === "rez"; return `<td>${on ? `<span class="addp ${rz ? "rez" : "on"}">${I("check")}${rz ? "Rezerve" : "Planda"}</span>` : `<button class="addp" data-pick="${k}:${o.id}">${I("plus")}Plana koy</button>`}</td>`; }).join("")}</tr>
+    </tbody></table></div>`; };
+  const evs = [...s.planned.map(([k]) => k), ...s.shelf], pls = s.list;
+  const mapImg = `<span class="img" style="background:#e8efe4"><svg viewBox="0 0 300 112" style="width:100%;height:100%" aria-hidden="true"><path d="M0 30h300M0 70h300M60 0v112M150 0v112M230 0v112" stroke="#cfdcc8" stroke-width="6"/><path d="M0 92 Q120 60 300 84" stroke="#b9d3ea" stroke-width="10" fill="none"/><path d="M150 26c-10 0-18 8-18 18 0 14 18 30 18 30s18-16 18-30c0-10-8-18-18-18z" fill="#d93025"/><circle cx="150" cy="44" r="6" fill="#fff"/></svg>`;
+  const xcard = (type, k) => {
+    const shell = (cls, img, need, title, meta, act, who) => `<article class="pc${cls}">${img}</span><div class="bd"><span class="need">${need}</span><h5>${title}</h5><div class="meta">${meta}</div></div><div class="act">${act}</div><div class="ft">${saver(who)}</div></article>`;
+    if (type === "places") { const x = PLACES[k], on = s.pp.includes(k);
+      return shell(on ? " inplan" : "", `<span class="img" style="background:${x.kind === "food" ? "color-mix(in srgb, #f2b37a 20%, var(--tile))" : "var(--tile)"}"><img src="illus/${x.kind === "food" ? "restoran" : "yapilacak"}.png" alt="">`, `<span style="color:var(--c-todo);display:inline-flex">${I(KIND[x.kind][0])}</span>${KIND[x.kind][1]} · ${x.city}`, x.t,
+        `${bm(x.src)}<span>${x.src === "maps" ? "Maps'ten · " : ""}${x.note}</span>`, `<span></span><button class="addp${on ? " on" : ""}" data-pp="${k}">${I(on ? "check" : "plus")}${on ? "Planda" : "Plana ekle"}</button>`, x.who); }
+    if (type === "ev") { const x = IDEAS[k], pl = s.planned.find(([p]) => p === k);
+      return shell(pl ? (pl[1] === "rez" ? " isrez" : " inplan") : "", `<span class="img" style="background:var(--tile)"><img src="illus/${x.img}.png" alt="">`, `<span style="color:var(--c-exp);display:inline-flex">${I("ticket")}</span>Etkinlik · ${x.city.split(" ·")[0]}`, x.t,
+        `${bm(x.src)}<span>${BR[x.src][1]}</span>`, `<span class="pr num">${x.p}</span>${pl ? `<span class="addp ${pl[1] === "rez" ? "rez" : "on"}">${I("check")}${pl[1] === "rez" ? "Bilet alındı" : "Planda"}</span>` : `<button class="addp" data-add-idea="${k}">${I("plus")}Plana ekle</button>`}`, x.who); }
+    const [id, src, t, who, g] = INSP.find(x => x[0] === k);
+    return shell("", `<span class="img" style="background:${g}"><svg class="i" style="width:48px;height:48px;fill:#fff;stroke:none"><use href="#i-play"/></svg>`, `${I("play")}İlham`, t, `${bm(src)}<span>${BR[src][1]}</span>`, `<span></span><a class="addp" href="#" onclick="return false">Aç ↗</a>`, who);
+  };
+  const extras = { ev: evs.map(k => xcard("ev", k)), places: pls.map(k => xcard("places", k)), insp: INSP.map(x => xcard("insp", x[0])) };
+  const xCount = { ev: evs.length, places: pls.length, insp: INSP.length };
+  let content = "";
+  if (["ev", "places", "insp"].includes(panoCat)) content = `<div class="pgrid">${extras[panoCat].join("")}</div>`;
+  else if (panoCat === "all" || panoCat === "fav") {
+    const items = panoCat === "fav" ? all.filter(({ o }) => isFav(s, o)) : all;
+    content = panoView === "table" && panoCat === "all" ? `<p class="empty">Karşılaştırma bir ihtiyaç içinde anlamlı: üstten Uçuşlar ya da Konaklama'yı seç.</p>` : `<div class="pgrid">${items.map(({ k, o }) => card(k, o, true)).join("")}${panoCat === "all" ? extras.ev.join("") + extras.places.join("") + extras.insp.join("") : ""}</div>`;
+  } else {
+    const keys = slotsAll.filter(k => secOf(k) === panoCat), multi = keys.filter(k => known(s, k).length > 1), single = keys.filter(k => known(s, k).length === 1);
+    content = multi.map(k => { const list = known(s, k).slice().sort((a, b) => (b.score || 0) - (a.score || 0));
+      return `<section class="group"><div class="group-h"><span style="color:${CATS[secOf(k)][2]};display:inline-flex">${I(CATS[secOf(k)][0])}</span><b>${needName(k)}</b><span class="s num">${SLOTS[k].d} · ${list.length} seçenek</span><span class="sp"></span>${s.slots[k].m !== "bos" ? `<span class="s">${sd(s.slots[k].m)}${LAB[s.slots[k].m]}</span>` : ""}</div>
+        ${FORYOU[k] ? `<div class="foryou"><b>Senin için: ${FORYOU[k][0]}</b>${FORYOU[k][1]}</div>` : ""}
+        ${panoView === "table" ? table(k, list) : `<div class="pgrid">${list.map(o => card(k, o, false)).join("")}</div>`}</section>`; }).join("")
+      + (single.length ? `<section class="group"><div class="group-h"><b>Tek seçenekli olanlar</b><span class="s">karşılaştıracak başka kayıt yok; ✨ ile AI'ya arat ya da link ekle</span></div><div class="pgrid">${single.map(k => card(k, known(s, k)[0], true)).join("")}</div></section>` : "");
+  }
+  return `<div class="shell">${topbar("pano", s)}<div class="pano">
+    <div class="pano-h"><h3>Pano</h3><span class="cnt num">${all.length + evs.length + pls.length + INSP.length} kayıt · çalışma masası</span><span class="sp"></span><span class="pbtn">${I("search")}Kayıtlarda ara</span>
+      <span class="view"><button data-view="cards" aria-pressed="${panoView === "cards"}">${I("grid")}Kartlar</button><button data-view="table" aria-pressed="${panoView === "table"}">${I("table")}Karşılaştır</button></span><span class="pbtn primary">${I("plus")}Link ekle</span></div>
+    <div class="cats"><button class="${panoCat === "all" ? "on" : ""}" data-cat="all">${I("grid")}Tümü <span>${all.length + evs.length + pls.length + INSP.length}</span></button>${Object.entries(CATS).map(([c, [ic, n, col]]) => `<button class="${panoCat === c ? "on" : ""}" data-cat="${c}"><span style="color:${col};display:inline-flex">${I(ic)}</span>${n} <span>${xCount[c] ?? all.filter(({ k }) => secOf(k) === c).length}</span></button>`).join("")}<button class="fav ${panoCat === "fav" ? "on" : ""}" data-cat="fav">${I("heart")}Favoriler <span>${favN}</span></button></div>
+    ${content || `<p class="empty">Burada henüz kayıt yok.</p>`}</div></div>`;
+}
+
+/* Yönetim */
+const ORDER = ["A", "B", "C", "P"];
+const DESC = { P: "<b>Pano.</b> Satırda 4 kart, büyük görsel, az yazı; düğmeler her kartta aynı yerde. Etkinlik, Yapılacak (Google Maps'ten kaydettiklerin, restoranlar) ve İlham da burada. “Tümü” önce: bütün kayıtlar, her kartta hangi ihtiyaca ait olduğu. Bir kategori seçince aynı ihtiyacın seçenekleri grupta; tek seçenekliler tek bir ızgarada. “Plana koy” altında nereye gideceğini yazar; bastıktan sonra bildirimdeki “Plan'da gör” seni o kutuya götürür. “Karşılaştır” tablosu iki parçalı: herkes için aynı satırlar + senin şartların." };
+let cur = "B", still = false, panoFrom = "B";
+const tabs = () => document.getElementById("tabs").innerHTML = ORDER.map(k => `<button role="tab" aria-selected="${k === cur}" data-k="${k}">${k === "P" ? `${I("board")}Pano` : `<b>${k}</b>${SC[k].tab}`}</button>`).join("");
+function show(k, keep) {
+  if (!keep) { cur = k; tabs(); }
+  document.getElementById("desc").innerHTML = DESC[k] || SC[k].desc;
+  const y = scrollY, s = k === "P" ? stateFor(panoFrom) : stateFor(k);
+  document.getElementById("view").innerHTML = k === "P" ? panoPage(s) : app(s);
+  if (keep) scrollTo(0, y);
+  try { localStorage.setItem("tr-jp10", k); } catch (e) {}
+}
+const rerender = () => show(cur, true);
+let toastT; function toast(msg, act) { const t = document.getElementById("toast"); t.innerHTML = `<span>${msg}</span>${act ? `<button id="tact">${act[0]}</button>` : ""}`; t.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("on"), 4200); if (act) document.getElementById("tact").onclick = () => { act[1](); t.classList.remove("on"); }; }
+const arrive = k => requestAnimationFrame(() => { if (still) return; const el = document.querySelector(`[data-slot="${k}"]`); if (el) { el.classList.add("arrive"); el.scrollIntoView({ block: "center", behavior: "smooth" }); setTimeout(() => el.classList.remove("arrive"), 1600); } });
+
+function askAI(k) {
+  const s = stateFor(cur); if (s.busy) return;
+  const label = k === "todo" ? "Gezilecek yer ve yemek öner" : k === "exp" ? "Daha fazla etkinlik ve tur öner" : k === "prep" ? "Hazırlık listesine öneri ekle" : `${needName(k)} için öneri bul`;
+  s.chat.push(["E", label, null, null, true]); s.busy = k; closePicker(); rerender();
+  setTimeout(() => {
+    s.busy = null;
+    if (k === "todo") { const fresh = Object.keys(PLACES).filter(x => !s.list.includes(x)).slice(0, 3); s.list.push(...fresh);
+      s.chat.push(["AI", fresh.length ? `${fresh.length} yer ekledim: <b>${fresh.map(f => PLACES[f].t).join("</b>, <b>")}</b>.` : "Listede aklıma gelen her şey var; bir semt söylersen ona göre bakarım."]); rerender(); return; }
+    if (k === "exp") { const fresh = Object.keys(IDEAS).filter(x => !s.shelf.includes(x) && !s.planned.some(([p]) => p === x)).slice(0, 2); s.shelf.push(...fresh);
+      s.chat.push(["AI", fresh.length ? `${fresh.length} fikir ekledim: <b>${fresh.map(f => IDEAS[f].t).join("</b>, <b>")}</b>.` : "Aklıma gelenlerin hepsi listede; bir şehir söylersen ona göre bakarım."]); rerender(); return; }
+    if (k === "prep") { s.chat.push(["AI", "Japonya'ya özel listeyi kurdum; bir şey eksikse “şunu da ekle” demen yeterli."]); rerender(); return; }
+    const have = new Set(pool(s, k).map(o => o.id)), add = (EXTRA[k] || []).filter(o => !have.has(o.id));
+    if (add.length) { s.extra[k] = [...(s.extra[k] || []), ...add]; openDrop.add(k);
+      s.chat.push(["AI", `<b>${needName(k)}</b> için ${add.length} aday buldum: ${add.map(o => `<b>${o.name}</b>`).join(", ")}. Kutuya ve Pano'ya ekledim${FORYOU[k] ? `; önerim <b>${FORYOU[k][0]}</b>` : ""}.`]); }
+    else s.chat.push(["AI", `Şartlarına uyan yeni bir şey bulamadım. Bütçeyi ya da semti biraz açarsan tekrar bakarım; Booking'de kendin de bakabilirsin.`]);
+    rerender(); arrive(k);
+  }, 1600);
+}
+
+document.getElementById("tabs").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; if (b.dataset.k === "P" && cur !== "P") panoFrom = cur; show(b.dataset.k); });
+document.getElementById("motion").addEventListener("click", e => { still = !still; document.body.classList.toggle("still", still); const b = e.currentTarget; b.setAttribute("aria-pressed", String(still)); b.innerHTML = still ? `${I("play")}<span>Hareketi oynat</span>` : `${I("pause")}<span>Hareketi duraklat</span>`; });
+document.addEventListener("keydown", e => {
+  if (e.key === "Enter" && e.target.id === "qa") { e.preventDefault(); const v = e.target.value.trim(); if (!v) return; const s = stateFor(cur), id = "u" + Date.now(), isMap = /maps\.app|google\.[a-z.]+\/maps/i.test(v);
+    const food = /yemek|restoran|ramen|sushi|kahve|izakaya|bar|pazar/i.test(v), city = CITIES.find(c => v.toLowerCase().includes(c.toLowerCase())) || "Tokyo";
+    PLACES[id] = { kind: food ? "food" : "go", t: isMap ? "Maps'ten kaydedilen yer" : v, city, note: isMap ? "adı Maps'ten okunacak" : "elle eklendi", src: isMap ? "maps" : "trip", who: "E" };
+    s.list.unshift(id); rerender(); toast(`${food ? "Restoran" : "Gezilecek yer"} · ${city} olarak eklendi.`); setTimeout(() => document.getElementById("qa")?.focus(), 30); return; }
+  if (e.key === "Escape") closePicker(); if ((e.key === "Enter" || e.key === " ") && e.target.matches?.("article[data-slot]")) { e.preventDefault(); openPicker(e.target.dataset.slot); } });
+document.addEventListener("click", e => {
+  const q = sel => e.target.closest(sel); let b;
+  if (q("[data-close]") || e.target.id === "scrim") { closePicker(); return; }
+  if ((b = q("[data-go]"))) { e.preventDefault(); closePicker(); if (b.dataset.go === "pano") { if (cur !== "P") panoFrom = cur; if (b.dataset.panoSlot) panoCat = secOf(b.dataset.panoSlot); show("P"); } else show(panoFrom); return; }
+  if ((b = q("[data-cat]"))) { panoCat = b.dataset.cat; rerender(); return; }
+  if ((b = q("[data-view]"))) { panoView = b.dataset.view; if (panoView === "table" && ["all", "fav", "ev", "places", "insp"].includes(panoCat)) panoCat = "stay"; rerender(); return; }
+  if ((b = q("[data-det]"))) { const id = b.dataset.det, d = b.closest(".pc").querySelector(".detail"), open = !openDet.has(id); open ? openDet.add(id) : openDet.delete(id); b.setAttribute("aria-expanded", String(open)); d.classList.toggle("open", open); return; }
+  const s = cur === "P" ? stateFor(panoFrom) : stateFor(cur);
+  if ((b = q("[data-toggle]"))) { const k = b.dataset.toggle; s.closed[k] = !s.closed[k]; const sec = b.closest(".sec"); sec.classList.toggle("closed", !!s.closed[k]); b.setAttribute("aria-expanded", String(!s.closed[k])); return; }
+  if ((b = q("[data-dd]"))) { e.stopPropagation(); const k = b.dataset.dd, open = !openDrop.has(k); openDrop = new Set(open ? [k] : []); rerender(); return; }
+  if ((b = q("[data-open]"))) { openPicker(b.dataset.open); return; }
+  if ((b = q("[data-fav]"))) { const id = b.dataset.fav, o = Object.keys(OPT).flatMap(k => pool(s, k)).find(x => x.id === id); s.fav[id] = !isFav(s, o); b.classList.toggle("on", s.fav[id]); b.setAttribute("aria-pressed", String(s.fav[id])); const c = document.querySelector('[data-cat="fav"] span'); if (c) c.textContent = Object.keys(OPT).reduce((a, k) => a + known(s, k).filter(x => isFav(s, x)).length, 0); return; }
+  if ((b = q("[data-ask]"))) { e.stopPropagation(); askAI(b.dataset.ask); return; }
+  if (q("[data-confirm]")) { const fn = confirmFn; confirmFn = null; closePicker(); fn && fn(); return; }
+  if ((b = q("[data-x]"))) { e.stopPropagation(); const k = b.dataset.x, sl = s.slots[k], prev = { ...sl };
+    const gone = () => { s.slots[k] = { m: "gone", prev }; rerender(); toast(`${needName(k)} kaldırıldı · Gizlenenler'de`, ["Geri al", () => { s.slots[k] = prev; rerender(); }]); };
+    if (sl.m === "rez") { const docs = (s.docs[k] || []).length; confirmBox("Bu rezervasyon onaylı", `${optOf(s, k, sl.ref).name} rezerve${docs ? " ve belgesi var" : ""}. Kaldırmadan önce: iptal ettin mi?${docs ? " Belgesi Belgeler sekmesinde kalır." : ""}`, "İptal ettim, kaldır", gone); }
+    else gone(); return; }
+  if ((b = q("[data-restore]"))) { const k = b.dataset.restore; s.slots[k] = s.slots[k].prev || { m: "bos" }; rerender(); arrive(k); return; }
+  if ((b = q("[data-hid]"))) { const k = b.dataset.hid; s.hidOpen[k] = !s.hidOpen[k]; rerender(); return; }
+  if ((b = q("[data-change]"))) { const k = b.dataset.change; confirmBox("Değiştirmeden önce", "Yeni bir seçeneğe geçmeden önce eskisini iptal ettin mi? İptal etmediysen iki rezervasyonun olur.", "İptal ettim, değiştir", () => { s.slots[k] = { m: "plan", ref: s.slots[k].ref }; rerender(); openPicker(k); }); return; }
+  if ((b = q("[data-iptal]"))) { const k = b.dataset.iptal, prev = { ...s.slots[k] }; closePicker(); s.slots[k] = { m: "bos" }; rerender(); arrive(k); toast("İptal edildi; seçenekler duruyor, belge Belgeler'de kaldı.", ["Geri al", () => { s.slots[k] = prev; rerender(); }]); return; }
+  if ((b = q("[data-ev-iptal]"))) { const k = b.dataset.evIptal; closePicker(); s.planned = s.planned.map(([x, m]) => [x, x === k ? "plan" : m]); rerender(); toast("Bilet iptal edildi; etkinlik planda kaldı."); return; }
+  if ((b = q("[data-ev-x]"))) { e.stopPropagation(); const k = b.dataset.evX, pl = s.planned.find(([x]) => x === k);
+    const drop = () => { s.planned = s.planned.filter(([x]) => x !== k); s.shelf.unshift(k); rerender(); toast(`${IDEAS[k].t} fikirlere döndü.`, ["Geri al", () => { s.shelf = s.shelf.filter(x => x !== k); s.planned.push(pl); rerender(); }]); };
+    if (pl[1] === "rez") confirmBox("Bilet alınmış", `${IDEAS[k].t} için bilet alındı. Kaldırmadan önce iptal ettin mi?`, "İptal ettim, kaldır", drop); else drop(); return; }
+  if ((b = q("[data-ev-open]")) && !q("a,button")) { openEvDetail(b.dataset.evOpen); return; }
+  if ((b = q("[data-done]"))) { const k = b.dataset.done; s.done[k] = s.done[k] ? 0 : 1; if (!s.done[k]) delete s.done[k]; rerender(); return; }
+  if ((b = q("[data-tt]"))) { todoTab = b.dataset.tt; rerender(); return; }
+  if (q("[data-hide-ready]")) { s.hideReady = !s.hideReady; rerender(); return; }
+  if (q("[data-next]")) { const k = nextOf(s); if (k) { arrive(k); setTimeout(() => openPicker(k), still ? 0 : 500); } return; }
+  if (q("[data-addt]")) { toast("Bugünkü “Ne eklemek istersin?” penceresi açılır: uçuş, tren, otel, restoran, not…"); return; }
+  if ((b = q("[data-pp]"))) { const k = b.dataset.pp, on = s.pp.includes(k); s.pp = on ? s.pp.filter(x => x !== k) : [...s.pp, k]; rerender(); toast(on ? `${PLACES[k].t} plandan çıktı.` : `${PLACES[k].t} planda · günü Gün gün'de seçersin.`, ["Geri al", () => { s.pp = on ? [...s.pp, k] : s.pp.filter(x => x !== k); rerender(); }]); return; }
+  if ((b = q("[data-tf]"))) { todoFilter = b.dataset.tf; rerender(); return; }
+  if ((b = q("[data-day]"))) { const k = b.dataset.day; if (s.ondays[k]) delete s.ondays[k]; else s.ondays[k] = ["3 Nis", "9 Nis", "10 Nis", "14 Nis"][Object.keys(s.ondays).length % 4] + (PLACES[k].kind === "food" ? " · akşam" : ""); rerender(); toast(s.ondays[k] ? `${PLACES[k].t} → ${s.ondays[k]}. Gün gün'de yerini alır.` : "Günden çıkarıldı."); return; }
+  if ((b = q("[data-drop-place]"))) { const k = b.dataset.dropPlace; s.list = s.list.filter(x => x !== k); rerender(); toast(`${PLACES[k].t} listeden çıktı.`, ["Geri al", () => { s.list.push(k); rerender(); }]); return; }
+  if ((b = q("[data-ev-rez]"))) { const k = b.dataset.evRez; s.planned = s.planned.map(([x, m]) => [x, x === k ? "rez" : m]); rerender(); toast("Bilet alındı olarak işaretlendi. Bileti istersen sonra ekle."); return; }
+  if (q("[data-doc]")) { e.stopPropagation(); toast("Onay mailini ya da PDF'i bırak; ayrıntıları ben okurum. Zorunlu değil."); return; }
+  if ((b = q("[data-pick]"))) { const [k, id] = b.dataset.pick.split(":"), prev = { ...s.slots[k] }; s.slots[k] = { m: "plan", ref: id }; openDrop.delete(k); closePicker();
+    if (cur === "P") { rerender(); const el = document.getElementById("pc-" + id); if (el && !still) { el.classList.add("arrive"); setTimeout(() => el.classList.remove("arrive"), 1600); }
+      toast(`${optOf(s, k, id).name} → ${needName(k)} kutusuna kondu.`, ["Plan'da gör", () => { show(panoFrom); arrive(k); }]); }
+    else { rerender(); arrive(k); toast(`${optOf(s, k, id).name} seçildi.`, ["Geri al", () => { s.slots[k] = prev; rerender(); }]); } return; }
+  if ((b = q("[data-rez]"))) { e.stopPropagation(); const k = b.dataset.rez; s.slots[k].m = "rez"; closePicker(); rerender(); arrive(k); toast("Rezerve olarak işaretlendi. Belgeyi istersen sonra eklersin; onay maili gelirse kendim bağlarım."); return; }
+  if ((b = q("[data-clear]"))) { const k = b.dataset.clear, prev = { ...s.slots[k] }; s.slots[k] = { m: "bos" }; closePicker(); rerender(); toast("Seçim kaldırıldı; seçenekler duruyor.", ["Geri al", () => { s.slots[k] = prev; rerender(); }]); return; }
+  if ((b = q("[data-stop]"))) { e.preventDefault(); e.stopPropagation(); toast("Sitede rezerve et; dönünce karta basıp “Rezerve ettim” de ya da onay mailini bırak."); return; }
+  if ((b = q("[data-add-idea]"))) { const k = b.dataset.addIdea; s.planned.push([k, "plan"]); s.shelf = s.shelf.filter(x => x !== k); rerender(); toast(`${IDEAS[k].t} plana eklendi.`, ["Geri al", () => { s.planned = s.planned.filter(([x]) => x !== k); s.shelf.unshift(k); rerender(); }]); return; }
+  if ((b = q("[data-drop-idea]"))) { const k = b.dataset.dropIdea; s.shelf = s.shelf.filter(x => x !== k); rerender(); toast(`${IDEAS[k].t} atıldı.`, ["Geri al", () => { s.shelf.push(k); rerender(); }]); return; }
+  if ((b = q("[data-unplan]"))) { const k = b.dataset.unplan; s.planned = s.planned.filter(([x]) => x !== k); s.shelf.unshift(k); rerender(); toast("Fikirlere geri döndü."); return; }
+  if ((b = q("[data-prep]")) && !q("a")) { const k = b.dataset.prep; s.prep[k] = s.prep[k] ? 0 : 1; rerender(); return; }
+  if (q("[data-esim]")) { s.esim = 1; rerender(); toast("eSIM plana eklendi."); return; }
+  if ((b = q("article[data-slot]")) && !q("a,button,input,label")) { openPicker(b.dataset.slot); return; }
+});
+try { const v = localStorage.getItem("tr-jp10"); if (ORDER.includes(v)) cur = v; } catch (e) {}
+tabs(); show(cur);
+</script>

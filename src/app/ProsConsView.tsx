@@ -1,0 +1,52 @@
+import { L } from "../lib/i18n";
+import type { ProCon, ProsCons } from "../lib/proscons";
+import { MineStar } from "./cards/MineStar";
+
+/**
+ * What speaks for an option (left) and against it (right), most important first. The reason it is
+ * out, if any, leads the right column. `limit` shows the top lines only (rows, comparison columns).
+ */
+export function ProsConsView({ pc, limit, stacked = false, mine }: { pc: ProsCons; limit?: number; stacked?: boolean; /** Gives a line its "★ öncelik" when what the traveller said stands behind it. */ mine?: (line: ProCon) => boolean }) {
+  const pros = limit ? pc.pros.slice(0, limit) : pc.pros;
+  const cons = limit ? pc.cons.slice(0, limit) : pc.cons;
+  if (!pros.length && !cons.length) return null;
+  return (
+    <span className={`pc${stacked ? " stacked" : ""}`}>
+      <span className="pc-col pros">
+        {pros.map((line) => (
+          <Line key={line.key} line={line} sign="+" compact={Boolean(limit)} mine={mine?.(line)} />
+        ))}
+        {limit && pc.pros.length > limit && <span className="pc-more">{moreLine(pc.pros.length - limit, "pro")}</span>}
+      </span>
+      <span className="pc-col cons">
+        {cons.map((line) => (
+          <Line key={line.key} line={line} sign="−" compact={Boolean(limit)} mine={mine?.(line)} />
+        ))}
+        {limit && pc.cons.length > limit && <span className="pc-more">{moreLine(pc.cons.length - limit, "con")}</span>}
+      </span>
+    </span>
+  );
+}
+
+const moreLine = (n: number, side: "pro" | "con") =>
+  side === "pro" ? L(`+${n} artı daha`, `+${n} more pro${n === 1 ? "" : "s"}`) : L(`+${n} eksi daha`, `+${n} more con${n === 1 ? "" : "s"}`);
+
+function Line({ line, sign, compact, mine }: { line: ProCon; sign: string; compact: boolean; mine?: boolean }) {
+  const classes = ["pc-line", line.decisive && "decisive", line.serious && "serious", line.unverified && "unverified", (line.stale || line.faded) && "stale", line.accepted && "accepted"]
+    .filter(Boolean)
+    .join(" ");
+  // In compact views only what was read carries its source ("7 yorum"); comparisons speak for themselves.
+  const detail = line.detail && (!compact || line.kind === "finding" || line.kind === "elimination") ? line.detail : null;
+  return (
+    <span className={classes} title={line.detail ?? undefined}>
+      <span className="pc-sign" aria-hidden>
+        {sign}
+      </span>
+      <span>
+        {line.text}
+        {mine && <MineStar />}
+        {detail && <span className="pc-detail"> · {detail}</span>}
+      </span>
+    </span>
+  );
+}

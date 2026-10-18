@@ -1,0 +1,11 @@
+{
+  "extDescription": {
+    "message": "Save travel options in one click; AI reads them, compares them and puts them in your plan."
+  },
+  "actionTitle": {
+    "message": "Save this page to a trip"
+  },
+  "commandSave": {
+    "message": "Save this page"
+  }
+}

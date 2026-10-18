@@ -1,0 +1,27 @@
+import { it } from "vitest";
+import { writeFileSync } from "node:fs";
+import { applyAnswer, fresh, setLang, typed } from "./lib";
+import { wouldMake } from "/home/user/trip-radar/src/lib/startCreate";
+import { tripFacts } from "/home/user/trip-radar/src/lib/tripFacts";
+import { budgetLevel, styleChips } from "/home/user/trip-radar/src/lib/tripStyle";
+import { cityKeyOf, sameCity } from "/home/user/trip-radar/src/lib/plan";
+import { photoKeys } from "/home/user/trip-radar/src/lib/startTrip";
+it("g2d", () => {
+  setLang("tr");
+  const out: Record<string, unknown> = {};
+  let s = typed(fresh(), "Temmuzda 3 hafta Avrupa Interrail", { destination: "Avrupa", start_date: "2027-07-01", duration_days: 22 });
+  s = applyAnswer(s, { q: "from", city: "İstanbul" }, 3);
+  const stops = [["Londra", "GB", 3], ["Paris", "FR", 4], ["Amsterdam", "NL", 3], ["Berlin", "DE", 4], ["Prag", "CZ", 3], ["Budapeşte", "HU", 4]] as const;
+  s = { ...s, route: { stops: stops.map(([city, code, nights]) => ({ city, code, nights })), arrive: "Londra", leave: "Budapeşte", confirmed: true, source: "user" as const } };
+  out.whereAfterText = s.where;
+  const w = wouldMake(s, 1)!;
+  out.title = w.trip.title;
+  out.facts = tripFacts(w.items, { passport: "TR", homeCurrency: "TRY", rates: { base: "EUR", date: "x", rates: { EUR: 1, TRY: 40, GBP: 0.85, CZK: 25, HUF: 400 } }, homeZone: "Europe/Istanbul", start: "2027-07-01" });
+  out.itemCountries = w.items.map((i) => `${i.name}:${i.countryCode}`);
+  out.photoKeysInterrail = photoKeys(s);
+  out.budgetNone = budgetLevel(null, 10, 2, null);
+  out.chipsNoBudget = styleChips(["culture"], null).map((c) => c.label);
+  out.cityKeys = ["Llanfairpwllgwyngyllgogerychwyrndrobwllllantysiliogogogoch", "Playa del Carmen", "Playa Del Carmen", "İstanbul", "Istanbul"].map((c) => `${c} → ${cityKeyOf(c)}`);
+  out.sameIst = sameCity("İstanbul", "Istanbul");
+  writeFileSync("out-g2d.json", JSON.stringify(out, null, 1));
+});

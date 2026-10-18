@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trip Radar · Günlük akış v3</title>
+<style>
+  /*
+    v3'ün üç kuralı
+    1. Rezervasyon bir ÖZELLİK, varsayım değil. Her saatli şeyin üç hali var:
+         alındı (ikonda yeşil ✓) · gerekiyor ama alınmadı (ikonda amber nokta + sağda "rezerve et") · gerekmiyor (sade).
+       Kim karar verir: bilet/tur sitesinden gelen → gerekiyor. Senin "20:30 akşam yemeği" dediğin → gerekmiyor.
+       AI rezervasyonu önerebilir ama İPUCU olarak (ayrıntıda ✦ satırı), durum olarak değil. Seni dürtmez.
+    2. Satır tek satır: saat · ikon · ad · (yalnız iş varsa) sağda kısa eylem. Alt yazı, fiyat, kaynak ayrıntıda.
+    3. Hiçbir şey çöpe gitmez. "Yapılmayacak" → Fikirlere geri koy / Yarına taşı / Sil. Alınmış olan → İptal ettim
+       (iade takibi kalır) / Kaçırdım. Gün bitince yapılmayan Diğer'ler ertesi güne "Dünden kalan" olarak sorulur.
+       Her değişiklikte 8 sn "Geri al".
+  */
+  :root {
+    --ink: #1d1d1f; --gray: #6e6e73; --line: #ecebe7; --bg: #faf8f4; --soft: #f5f3ef;
+    --amber: #8a5a00; --amber-dot: #e0a43a; --ok: #1f8f4e; --link: #1556d6; --now: #d9534f;
+    --flight: #6a4fe0; --taxi: #d29a00; --bike: #5d8a1c; --boat: #0e8fb0; --act: #a8336f; --food: #c0562b;
+    --place: #23998b; --todo: #1f8f4e; --music: #8a3ffc;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", system-ui, sans-serif;
+    color: var(--ink); -webkit-font-smoothing: antialiased;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); }
+  button, input { font-family: inherit; color: inherit; }
+  button { cursor: pointer; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 28px 16px 120px; }
+
+  .head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .head h1 { margin: 0; font-size: 30px; letter-spacing: -.02em; }
+  .seg { display: inline-flex; padding: 3px; border-radius: 10px; background: #eceae5; }
+  .seg button { border: 0; background: transparent; padding: 6px 12px; border-radius: 8px; font-size: 13px; color: var(--gray); }
+  .seg button.on { background: #fff; color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+  .legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; font-size: 13px; color: var(--gray); margin: 8px 0 20px; }
+  .legend > span { display: inline-flex; align-items: center; gap: 8px; }
+  .legend b { color: var(--amber); font-weight: 600; }
+
+  /* ---------- gün kartı ---------- */
+  .day { display: grid; grid-template-columns: 36% 1fr; height: 300px; margin-bottom: 16px; background: #fff; border-radius: 22px; overflow: hidden;
+         box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 0 0 1px rgba(0,0,0,.05); cursor: pointer; }
+  .day:hover { box-shadow: 0 4px 16px rgba(0,0,0,.07), 0 0 0 1px rgba(0,0,0,.07); }
+  .day.open { height: auto; min-height: 300px; cursor: default; }
+  .day.past:not(.open) { height: 60px; grid-template-columns: 110px 1fr; opacity: .7; }
+  .day.past:not(.open) .ph .date, .day.past:not(.open) .bd > :not(.ttl) { display: none; }
+  .day.past:not(.open) .bd { padding-top: 13px; }
+  .day.past:not(.open) .ph .no { top: 12px; left: 10px; padding: 3px 9px; font-size: 13px; }
+
+  .ph { position: relative; overflow: hidden; background: linear-gradient(135deg, #9cc3d5, #e9d7b4); }
+  .day.open .ph { align-self: start; position: sticky; top: 12px; height: 300px; border-radius: 0 0 22px 0; }
+  .ph img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .ph .no { position: absolute; top: 14px; left: 14px; padding: 6px 12px; border-radius: 999px; background: rgba(255,255,255,.92); font-size: 15px; font-weight: 700; }
+  .ph .date { position: absolute; left: 14px; bottom: 14px; padding: 4px 10px; border-radius: 999px; background: rgba(0,0,0,.45); color: #fff; font-size: 13px; font-weight: 500; backdrop-filter: blur(6px); }
+  .ph .date.today { background: var(--link); }
+
+  .bd { padding: 18px 22px 16px; min-width: 0; display: flex; flex-direction: column; }
+  .ttl { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .ttl h2 { margin: 0; font-size: 22px; line-height: 1.2; letter-spacing: -.015em; flex: 1; min-width: 0; }
+  .left { flex: none; padding: 2px 8px; border-radius: 8px; background: #fdf0d5; color: var(--amber); font-size: 13px; font-weight: 600; }
+  .gone { flex: none; font-size: 13px; color: var(--ok); font-weight: 600; }
+  .chev { flex: none; width: 28px; height: 28px; border: 0; border-radius: 8px; background: transparent; color: var(--gray); display: grid; place-items: center; transition: transform .2s; }
+  .day.open .chev { transform: rotate(180deg); }
+
+  /* ---------- satır: saat · ikon · ad · (eylem) ---------- */
+  .list { list-style: none; margin: 0; padding: 0; }
+  .r { display: grid; grid-template-columns: 50px 34px 1fr auto; align-items: center; gap: 0 12px; min-height: 42px; padding: 0 6px 0 0; border-radius: 12px; }
+  .day.open .r.tap { cursor: pointer; }
+  .day.open .r.tap:hover, .r.sel { background: var(--soft); }
+  .r .t { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+  .r .t.soft { color: var(--gray); font-weight: 500; font-size: 13.5px; }
+  .r .nm { font-size: 15.5px; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .day.open .r .nm { white-space: normal; }
+  .r .act { font-size: 13.5px; font-weight: 600; color: var(--amber); white-space: nowrap; }
+  .r .act.quiet { color: var(--gray); font-weight: 500; }
+  .r.info { min-height: 30px; }
+  .r.info .nm { font-size: 14px; color: var(--gray); }
+  .r.past { opacity: .42; }
+  .r.off .nm { text-decoration: line-through; color: var(--gray); }
+  .r.off .ic { filter: grayscale(1); opacity: .6; }
+
+  .ic { position: relative; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; color: var(--c); background: color-mix(in srgb, var(--c) 12%, #fff); }
+  .ic.sm { width: 28px; height: 28px; border-radius: 8px; }
+  .ic .b { position: absolute; right: -4px; bottom: -4px; width: 16px; height: 16px; border-radius: 50%; border: 2px solid #fff; display: grid; place-items: center; }
+  .ic .b.done { background: var(--ok); color: #fff; }
+  .ic .b.need { background: var(--amber-dot); }
+  .r.sel .ic .b, .r.tap:hover .ic .b { border-color: var(--soft); }
+
+  .nowline { position: relative; height: 0; margin: 6px 0; border-top: 2px solid var(--now); list-style: none; }
+  .nowline span { position: absolute; left: 0; top: -10px; padding: 1px 6px; border-radius: 6px; background: var(--now); color: #fff; font-size: 12px; font-weight: 700; }
+
+  /* kapalı kartın alt satırları */
+  .fold { display: grid; grid-template-columns: 50px 1fr; gap: 0 12px; align-items: center; min-height: 34px; font-size: 14px; color: var(--gray); }
+  .fold .lab { text-align: right; font-weight: 600; color: var(--ink); font-size: 13px; }
+  .fold .txt { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .fold .txt b { color: var(--ink); font-weight: 500; }
+  .chips { display: flex; gap: 6px; overflow: hidden; -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); mask-image: linear-gradient(90deg, #000 88%, transparent); }
+  .chip { flex: none; height: 26px; padding: 0 9px; border-radius: 8px; background: var(--soft); color: var(--ink); font-size: 13px; display: inline-flex; align-items: center; gap: 4px; }
+  .chip.mine { background: #eef4ff; }
+  .addday { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1.5px dashed #d5cfc5; border-radius: 10px; background: #fff; color: var(--gray); font-size: 14px; }
+  .addday:hover { border-color: var(--ink); color: var(--ink); }
+
+  /* ---------- açık gün ---------- */
+  .hd { display: flex; align-items: baseline; gap: 8px; margin: 18px 0 4px 62px; font-size: 13px; color: var(--gray); }
+  .hd b { font-size: 14px; color: var(--ink); }
+  .carry { margin: 0 0 10px; padding: 10px 12px; border-radius: 12px; background: #fff7e6; border: 1px solid #f3dfb0; font-size: 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+  .carry b { font-weight: 600; }
+  .carry .sp { flex: 1; }
+  .carry .btn { height: 30px; }
+
+  /* ayrıntı: sade, plan kartının özü */
+  .det { list-style: none; margin: 2px 0 10px 62px; padding: 14px 16px; border-radius: 16px; background: #fff; border: 1px solid var(--line); box-shadow: 0 2px 10px rgba(0,0,0,.04); animation: in .16s ease-out; cursor: default; }
+  @keyframes in { from { opacity: 0; transform: translateY(-3px); } }
+  .det .sline { font-size: 13.5px; font-weight: 600; color: var(--amber); }
+  .det .sline.ok { color: var(--ok); } .det .sline.none { color: var(--gray); font-weight: 500; }
+  .det .facts { margin: 8px 0 0; font-size: 14.5px; line-height: 1.6; color: #3a3a3c; }
+  .det .facts span { color: var(--gray); }
+  .det .hint { margin: 10px 0 0; padding: 8px 10px; border-radius: 10px; background: var(--soft); font-size: 14px; color: #3a3a3c; }
+  .det .hint i { font-style: normal; color: var(--gray); }
+  .acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; align-items: center; }
+  .btn { height: 34px; padding: 0 14px; border-radius: 999px; border: 0; background: var(--ink); color: #fff; font-size: 14px; font-weight: 600; }
+  .btn.sec { background: #fff; color: var(--ink); box-shadow: 0 0 0 1px rgba(0,0,0,.14); font-weight: 500; }
+  .quiet { display: flex; flex-wrap: wrap; gap: 2px 4px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 13.5px; }
+  .quiet button { border: 0; background: none; color: var(--gray); padding: 4px 8px; border-radius: 8px; }
+  .quiet button:hover { background: var(--soft); color: var(--ink); }
+  .quiet button.danger:hover { color: var(--now); }
+  .quiet .full { margin-left: auto; color: var(--link); }
+  .quiet .ask { width: 100%; color: var(--ink); padding: 4px 8px 6px; font-weight: 600; }
+  .quiet input[type=time] { height: 30px; border: 1px solid var(--line); border-radius: 8px; padding: 0 6px; }
+
+  /* Diğer */
+  .o { display: grid; grid-template-columns: 50px 34px 1fr auto; gap: 0 12px; align-items: center; min-height: 38px; padding-right: 6px; border-radius: 12px; }
+  .o:hover { background: var(--soft); }
+  .cb { justify-self: end; width: 20px; height: 20px; border-radius: 6px; border: 2px solid #cfc8bc; background: #fff; display: grid; place-items: center; padding: 0; color: #fff; }
+  .cb.on { background: var(--ok); border-color: var(--ok); }
+  .o .nm { font-size: 15.5px; }
+  .o.done .nm { text-decoration: line-through; color: var(--gray); }
+  .o .when { border: 0; background: none; color: var(--link); font-size: 13px; padding: 4px 6px; border-radius: 6px; opacity: 0; }
+  .o:hover .when { opacity: 1; }
+  .o input[type=time] { height: 30px; border: 1px solid var(--line); border-radius: 8px; padding: 0 6px; }
+
+  /* Notlar: tek satırlık sade liste */
+  .nt { display: grid; grid-template-columns: 50px 34px 1fr auto; gap: 0 12px; align-items: center; min-height: 34px; font-size: 14.5px; padding-right: 6px; }
+  .nt .e { text-align: center; font-size: 16px; }
+  .nt small { color: var(--gray); font-size: 12.5px; margin-left: 6px; }
+  .nt.mine .tx { color: #1a3f8f; }
+  .nt .x { border: 0; background: none; width: 24px; height: 24px; border-radius: 50%; color: #a19c94; opacity: 0; }
+  .nt:hover .x { opacity: 1; }
+  .noteadd { margin: 6px 0 0 108px; }
+  .noteadd input { width: 100%; height: 34px; border: 1px solid var(--line); border-radius: 10px; padding: 0 12px; font-size: 14px; }
+  .dayfoot { display: flex; align-items: center; gap: 10px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 13.5px; color: var(--gray); }
+  .dayfoot .addday { margin-left: auto; }
+
+  /* boş günler */
+  .sug { display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; align-items: center; min-height: 36px; font-size: 15px; }
+  .sug button { border: 0; background: none; color: var(--link); font-size: 14px; }
+
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); display: flex; gap: 14px; align-items: center; padding: 10px 12px 10px 16px; border-radius: 14px; background: #1d1d1f; color: #fff; font-size: 14px; box-shadow: 0 8px 24px rgba(0,0,0,.25); max-width: calc(100% - 32px); }
+  .toast button { border: 0; background: #fff; color: #1d1d1f; height: 30px; padding: 0 12px; border-radius: 999px; font-weight: 600; font-size: 13px; }
+
+  .spec { margin-top: 36px; padding: 20px; border-radius: 18px; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.05); font-size: 14px; line-height: 1.55; color: #3a3a3c; }
+  .spec h4 { margin: 14px 0 6px; font-size: 15px; color: var(--ink); }
+  .spec h4:first-child { margin-top: 0; }
+  .spec table { width: 100%; border-collapse: collapse; }
+  .spec td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .spec td:first-child { width: 40%; color: var(--ink); font-weight: 500; }
+
+  @media (max-width: 620px) {
+    .day { grid-template-columns: 1fr; grid-template-rows: 120px 1fr; height: 420px; }
+    .day.open { min-height: 420px; }
+    .day.open .ph { position: relative; top: 0; height: 120px; border-radius: 0; }
+    .day.past:not(.open) { grid-template-rows: none; grid-template-columns: 90px 1fr; }
+    .bd { padding: 14px 12px; }
+    .r, .o, .nt, .fold { grid-template-columns: 42px 30px 1fr auto; gap: 0 10px; }
+    .fold { grid-template-columns: 42px 1fr; }
+    .ic { width: 30px; height: 30px; }
+    .hd, .det { margin-left: 0; }
+    .noteadd { margin-left: 0; }
+    .o .when, .nt .x { opacity: 1; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <h1>Günlük akış</h1>
+    <div class="seg"><button data-mode="pre" class="on">Gezi öncesi</button><button data-mode="during">Gezi sırasında</button></div>
+  </div>
+  <div class="legend" id="legend"></div>
+  <div id="days"></div>
+
+  <div class="spec">
+    <h4>Rezervasyon gerekir mi: kim karar verir</h4>
+    <table>
+      <tr><td>Bilet/tur sitesinden kaydedilen (Douro turu, müze)</td><td>Gerekiyor. Amber nokta + "rezerve et".</td></tr>
+      <tr><td>Senin söylediğin ("20:30 Avillez'de akşam yemeği")</td><td>Gerekmiyor, sade durur. AI "Cuma akşamı dolu olur" diyorsa ayrıntıda ✦ ipucu olur, iş sayılmaz.</td></tr>
+      <tr><td>Senin "rezervasyon yapmam lazım" dediğin</td><td>Gerekiyor.</td></tr>
+      <tr><td>Saati belli, ücretsiz (açık hava konseri)</td><td>Gerekmiyor. Saatinde, sade.</td></tr>
+      <tr><td>Yanlış tahmin</td><td>Ayrıntıda tek dokunuş: "Gerek yok" ya da "Rezerve ettim". Düzenle penceresi yok.</td></tr>
+    </table>
+    <h4>Plan değişince</h4>
+    <table>
+      <tr><td>Rezervasyonsuz bir şey yapılmayacak</td><td>Fikirlere geri koy (varsayılan) · Yarına taşı · Sil. Hep "Geri al".</td></tr>
+      <tr><td>Alınmış bir şey yapılmayacak</td><td>İptal ettim → satır üstü çizili kalır, "iade bekleniyor €25" (para izi kaybolmaz) · Kaçırdım.</td></tr>
+      <tr><td>Saat kayıyor</td><td>Saati değiştir: satır yerine kayar. Saati kaldır: Diğer'e iner.</td></tr>
+      <tr><td>Gün bitti, Diğer'de yapılmayan var</td><td>Ertesi gün üstte: "Dünden kalan: … · Bugüne al · Fikirlere geri koy". Sormadan silinmez.</td></tr>
+      <tr><td>Saati geçti, rezervasyonu yoktu</td><td>"rezerve et" yerine "ne oldu?": Yaptım · Yapmadım (Fikirlere / yarına). İş sayısından düşer.</td></tr>
+      <tr><td>Uçuş saati değişti (kayıttan)</td><td>Satır yeni saatte, bağlı transfer satırında "uçuşun değişti, saatine bak" ipucu.</td></tr>
+    </table>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+const PX = (id) => `https://images.pexels.com/photos/${id}/pexels-photo-${id}.jpeg?auto=compress&cs=tinysrgb&w=900`;
+const IMG = { porto: PX(24879031), madeira: PX(9499007), douro: PX(13540077), whale: PX(17980729) };
+const ICONS = {
+  flight: '<path d="M10.5 13.5 3 11l1.2-1.2 8.3 1L16.8 6.5a1.6 1.6 0 0 1 2.3 2.3l-4.3 4.3 1 8.3L14.6 22.6l-2.5-7.5-3.4 3.4.3 2.6-1.2 1.2-1.4-3.6-3.6-1.4 1.2-1.2 2.6.3z"/>',
+  taxi: '<path d="M5 17h14M6.5 17v2M17.5 17v2M4 13l2-5h12l2 5v4H4z"/><circle cx="8" cy="14.5" r="1"/><circle cx="16" cy="14.5" r="1"/>',
+  bike: '<circle cx="6" cy="16" r="3.5"/><circle cx="18" cy="16" r="3.5"/><path d="M6 16l4-7h5l3 7M10 9l3 7M9 6h3"/>',
+  boat: '<path d="M3 17l2 3h14l2-3zM6 17V11h12v6M9 11V7h6v4M12 7V4"/>',
+  act: '<path d="M4 8a2 2 0 0 0 0 4v4h16v-4a2 2 0 0 1 0-4V4H4zM14 4v12" stroke-dasharray="2 2"/>',
+  food: '<path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M16 21V3c-2 1-3 4-3 8h3"/>',
+  place: '<path d="M3 20l6-9 4 5 3-4 5 8z"/><circle cx="16" cy="6" r="2"/>',
+  music: '<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',
+  todo: '<path d="M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/>',
+  shop: '<path d="M5 8h14l-1 12H6zM9 8V6a3 3 0 0 1 6 0v2"/>',
+  bed: '<path d="M3 18V7M3 14h18v4M21 14v-2a3 3 0 0 0-3-3h-7v5"/><circle cx="7" cy="11" r="1.6"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>', chev: '<path d="M6 9l6 6 6-6"/>',
+};
+const svg = (k, s = 17, sw = 1.8) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${ICONS[k]}</svg>`;
+const CV = { flight: "--flight", taxi: "--taxi", bike: "--bike", boat: "--boat", act: "--act", food: "--food", place: "--place", music: "--music", todo: "--todo", shop: "--todo", bed: "--place" };
+const check = '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>';
+const PART = { sabah: "08:00", "öğle": "12:30", "öğleden sonra": "15:00", "akşam": "19:00", gece: "22:00" };
+const key = (r) => r.t || PART[r.part] || "99";
+
+let DAYS = [
+  { id: "d1", no: "1. gün", date: "8 Eki Çar", title: "Porto'ya varış", route: "İstanbul → Porto", img: IMG.porto,
+    flow: [
+      { id: "a", t: "07:15", k: "flight", book: "done", title: "Uçuş IST → OPO", facts: "Pegasus PC1201 · 07:15 → 10:20<br><span>Bagaj</span> 15 kg + kabin", price: "€142", doc: true },
+      { id: "b", t: "10:50", est: true, k: "taxi", book: "need", title: "Havalimanı → Otel", facts: "Metro E · €2,60 · 40 dk, ya da taksi ~€28 · 25 dk", needText: "Nasıl gideceğini seç" },
+      { id: "c", t: "14:00", est: true, k: "bed", info: true, title: "Check-in · Jardim Stay" },
+    ],
+    other: [{ id: "o1", k: "food", title: "Francesinha · Café Santiago" }],
+    notes: [{ id: "n1", e: "🔌", short: "Priz F tipi", text: "Priz F tipi, adaptör gerekmez", src: "ülke bilgisi" }] },
+  { id: "d2", no: "2. gün", date: "9 Eki Cum", title: "Romantik bir Porto günü", route: "Porto", img: IMG.douro,
+    flow: [
+      { id: "a", t: "11:00", k: "act", book: "done", title: "Livraria Lello", facts: "Giriş bileti · 2 kişi<br><span>Not</span> 30 dk önce sıraya gir", price: "€20", doc: true },
+      { id: "b", t: "14:00", k: "boat", book: "need", title: "Douro altı köprü tekne turu", facts: "Ribeira iskelesi · 50 dk<br><span>İptal</span> 24 saat öncesine kadar ücretsiz", price: "€25", due: "⏳ 4 gün" },
+      { id: "c", t: "16:00", k: "bike", book: "done", title: "Porto şehir bisiklet turu", facts: "Buluşma Praça da Ribeira · 15:45<br><span>Süre</span> 3 saat · 14 km · sahil boyu<br><span>İptal</span> 9 Eki 16:00'ya kadar ücretsiz", price: "€35", doc: true },
+      { id: "d", part: "akşam", k: "place", book: "none", title: "Serra do Pilar'da gün batımı", facts: "Köprüden yürüyerek 15 dk · gün batımı 19:12" },
+      { id: "e", t: "20:30", k: "food", book: "none", title: "Avillez'de akşam yemeği", facts: "Cantinho do Avillez · R. Mouzinho da Silveira 166",
+        hint: "Cuma akşamı genelde dolu oluyor. Masa ayırtmak istersen:", hintLink: "Rezerve et ↗", hintSrc: "yorumlar" },
+    ],
+    other: [
+      { id: "o1", k: "food", title: "Casa Guedes" }, { id: "o2", k: "place", title: "Jardim do Morro" },
+      { id: "o3", k: "shop", title: "Eczaneden güneş kremi al" }, { id: "o4", k: "todo", title: "Kartpostal gönder" },
+    ],
+    notes: [
+      { id: "n0", mine: true, e: "📸", short: "Kamera şarjı", text: "Kameranın yedek bataryasını şarj et" },
+      { id: "n1", e: "☂️", short: "Şemsiye", text: "Öğleden sonra %60 yağmur, şemsiye al", src: "hava tahmini" },
+      { id: "n2", e: "👟", short: "Rahat ayakkabı", text: "Rahat ayakkabı: bisiklet turu 14 km", src: "bisiklet turu" },
+    ] },
+  { id: "d3", no: "3. gün", date: "10 Eki Cmt", title: "Bahçeler ve müzik", route: "Porto", img: IMG.porto,
+    flow: [
+      { id: "a", t: "18:00", k: "music", book: "none", title: "Palácio de Cristal'de açık hava konseri", facts: "Ücretsiz · bahçede, çimene otur<br><span>Kaynak</span> sohbette söyledin" },
+    ],
+    other: [{ id: "o1", k: "place", title: "Serralves Müzesi ve parkı" }, { id: "o2", k: "place", title: "Foz'da sahil yürüyüşü" }, { id: "o3", k: "food", title: "Majestic Café" }],
+    notes: [] },
+  { id: "d4", no: "4. gün", date: "11 Eki Paz", title: "Madeira'ya geçiş", route: "Porto → Madeira", img: IMG.madeira,
+    flow: [
+      { id: "a", t: "08:30", k: "bed", info: true, title: "Check-out · Jardim Stay" },
+      { id: "b", t: "09:00", est: true, k: "taxi", book: "need", title: "Otel → Havalimanı", facts: "En geç 09:05 çık (uçuş 11:05)", needText: "Nasıl gideceğini seç" },
+      { id: "c", t: "11:05", k: "flight", book: "done", title: "Uçuş OPO → FNC", facts: "TAP TP1715 · 11:05 → 12:50", price: "€96", doc: true },
+      { id: "d", t: "13:20", est: true, k: "taxi", book: "none", title: "Aerobus → Funchal", facts: "Her 30 dk · €5 · bilet şoförden" },
+      { id: "e", t: "15:00", k: "bed", info: true, title: "Check-in · Quinta das Vistas" },
+    ], other: [], notes: [] },
+  { id: "d56", free: true, no: "5–6. gün", date: "12–13 Eki", title: "2 boş gün", route: "Madeira", img: IMG.madeira,
+    sugs: [["place", "Levada do Caldeirão Verde yürüyüşü"], ["food", "Mercado dos Lavradores"], ["place", "Pico do Arieiro'da gün doğumu"]] },
+];
+const IDEAS = []; // Fikirler'e geri konanlar
+
+let mode = "pre", openDay = null, openRow = null, panel = null, timing = null, undoSnap = null, toastTimer;
+const NOW = { day: "d2", t: "15:10" };
+const dayById = (id) => DAYS.find((d) => d.id === id);
+const sorted = (d) => [...d.flow].sort((a, b) => key(a).localeCompare(key(b)));
+const isToday = (d) => mode === "during" && d.id === NOW.day;
+const gonePast = (d, r) => isToday(d) && key(r) < NOW.t;
+const needs = (d) => (d.flow || []).filter((r) => r.book === "need" && !r.off && !gonePast(d, r)).length;
+const isPast = (d) => mode === "during" && d.id === "d1";
+
+function snapshot() { undoSnap = JSON.stringify({ DAYS, IDEAS }); }
+function toast(msg) {
+  const el = document.getElementById("toast");
+  el.innerHTML = `<div class="toast"><span>${msg}</span><button data-undo>Geri al</button></div>`;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => (el.innerHTML = ""), 8000);
+}
+
+const icon = (r, sm) => `<span class="ic${sm ? " sm" : ""}" style="--c:var(${CV[r.k]})">${svg(r.k, sm ? 15 : 17)}${!sm && r.book === "done" ? `<i class="b done">${check}</i>` : !sm && r.book === "need" && !r.off ? `<i class="b need"></i>` : ""}</span>`;
+const tcell = (r) => r.part ? `<span class="t soft">${r.part}</span>` : `<span class="t${r.est ? " soft" : ""}">${r.est ? "~" : ""}${r.t}</span>`;
+
+function row(d, r, open) {
+  if (r.info) return `<li class="r info${isToday(d) && key(r) < NOW.t ? " past" : ""}">${tcell(r)}<span></span><span class="nm">${r.title}</span></li>`;
+  const past = isToday(d) && key(r) < NOW.t && !r.off ? " past" : "";
+  const sel = open && openRow === r.id;
+  let tail = "";
+  if (r.off) tail = `<span class="act quiet">${r.off}</span>`;
+  else if (r.book === "need" && gonePast(d, r)) tail = `<span class="act quiet">ne oldu?</span>`;
+  else if (r.book === "need") tail = `<span class="act">rezerve et</span>`;
+  return `<li class="r tap${past}${r.off ? " off" : ""}${sel ? " sel" : ""}" data-day="${d.id}" data-row="${r.id}">${tcell(r)}${icon(r)}<span class="nm">${r.title}</span>${tail}</li>${sel ? detail(d, r) : ""}`;
+}
+
+function detail(d, r) {
+  const st = r.off ? `<div class="sline none">${r.off}</div>`
+    : r.book === "done" ? `<div class="sline ok">✓ Alındı${r.price ? " · " + r.price : ""}</div>`
+    : r.book === "need" && gonePast(d, r) ? `<div class="sline none">Saati geçti · rezervasyonu yoktu. Ne oldu?</div>`
+    : r.book === "need" ? `<div class="sline">Rezervasyon gerekiyor${r.price ? " · " + r.price : ""}${r.due ? " · " + r.due : ""}</div>`
+    : `<div class="sline none">Rezervasyon gerekmiyor</div>`;
+  const hint = r.hint && r.book === "none" ? `<div class="hint">✦ ${r.hint} <a href="#" onclick="return false">${r.hintLink}</a> <i>· AI, ${r.hintSrc}</i></div>` : "";
+  let acts = "";
+  if (!r.off) {
+    if (r.book === "need" && gonePast(d, r)) acts = `<div class="acts"><button class="btn sec" data-a="booked">Yaptım (bileti oradan aldım)</button><button class="btn sec" data-a="panel-drop">Yapmadım</button></div>`;
+    else if (r.book === "need") acts = `<div class="acts"><button class="btn">${r.needText || "Rezerve et ↗"}</button><button class="btn sec" data-a="booked">Rezerve ettim</button><button class="btn sec" data-a="nobook">Gerek yok</button></div>`;
+    else if (r.book === "done" && r.doc) acts = `<div class="acts"><button class="btn sec">Belgeyi aç</button></div>`;
+  }
+  const k = `${d.id}:${r.id}`;
+  let quiet;
+  if (r.off) quiet = `<button data-a="restore">Geri getir</button>`;
+  else if (panel === "drop") quiet = r.book === "done"
+    ? `<span class="ask">Bu olmayacak. Ne yapalım?</span><button data-a="cancelled">İptal ettim (iadeyi takip et)</button><button data-a="missed">Kaçırdım</button><button data-a="panel-">Vazgeç</button>`
+    : `<span class="ask">Bu olmayacak. Ne yapalım?</span><button data-a="toideas">Fikirlere geri koy</button><button data-a="tomorrow">Yarına taşı</button><button class="danger" data-a="delete">Sil</button><button data-a="panel-">Vazgeç</button>`;
+  else if (panel === "time") quiet = `<span class="ask">Yeni saat:</span><input type="time" data-settime="${k}" value="${r.t || ""}"><button data-a="untime">Saati kaldır (Diğer'e)</button><button data-a="panel-">Vazgeç</button>`;
+  else quiet = `<button data-a="panel-time">Saati değiştir</button><button data-a="tomorrow">Başka güne</button><button data-a="panel-drop">Yapılmayacak</button>${r.book !== "need" && r.book !== "done" ? `<button data-a="needbook">Rezervasyon gerekiyor</button>` : ""}<button class="full">Tüm ayrıntı →</button>`;
+  return `<li class="det" data-key="${k}">${st}<div class="facts">${r.facts || ""}</div>${hint}${acts}<div class="quiet">${quiet}</div></li>`;
+}
+
+function otherRow(d, o, folded) {
+  const k = `${d.id}:${o.id}`;
+  const tail = folded ? "" : timing === k ? `<input type="time" data-othertime="${k}">` : `<button class="when" data-timeit="${k}">Saat ver</button>`;
+  return `<div class="o${o.done ? " done" : ""}"><button class="cb${o.done ? " on" : ""}" data-done="${k}" aria-label="Yapıldı">${o.done ? check : ""}</button>${icon(o, true)}<span class="nm">${o.title}</span>${tail}</div>`;
+}
+
+function folded(d) {
+  const flow = sorted(d).filter((r) => !r.info && !r.off);
+  const other = d.other.filter((o) => !o.done);
+  let slots = 6 - (d.notes.length ? 1 : 0) - (other.length && flow.length ? 1 : 0);
+  let h = "";
+  if (flow.length) {
+    const show = flow.length > slots ? flow.slice(0, slots - 1) : flow;
+    h += `<ul class="list">${show.map((r) => row(d, r, false)).join("")}${flow.length > show.length ? `<li class="fold"><span></span><span class="txt" style="color:var(--link)">+ ${flow.length - show.length} daha: ${flow.slice(show.length).map((r) => r.t || r.part).join(", ")}</span></li>` : ""}</ul>`;
+    if (other.length) h += `<div class="fold"><span class="lab">Diğer</span><span class="txt"><b>${other.slice(0, 2).map((o) => o.title).join(", ")}</b>${other.length > 2 ? ` +${other.length - 2}` : ""}</span></div>`;
+  } else if (other.length) h += other.slice(0, slots).map((o) => otherRow(d, o, true)).join("");
+  if (d.notes.length) h += `<div class="fold"><span class="lab">Notlar</span><span class="chips">${d.notes.slice(0, 3).map((n) => `<span class="chip${n.mine ? " mine" : ""}">${n.e} ${n.short}</span>`).join("")}</span></div>`;
+  const lines = Math.min(flow.length, slots) + (other.length && flow.length ? 1 : 0) + (d.notes.length ? 1 : 0);
+  if (lines < 5) h += `<div style="margin-top:auto;padding-left:62px"><button class="addday">${svg("plus", 15, 2)} Bu güne ekle</button></div>`;
+  return h;
+}
+
+function openBody(d) {
+  let h = "";
+  if (isToday(d)) {
+    const left = dayById("d1").other.filter((o) => !o.done);
+    if (left.length) h += `<div class="carry">Dünden kalan: <b>${left.map((o) => o.title).join(", ")}</b><span class="sp"></span><button class="btn sec" data-carry="today">Bugüne al</button><button class="btn sec" data-carry="ideas">Fikirlere geri koy</button></div>`;
+  }
+  const flow = sorted(d);
+  let rows = "", nowDone = !isToday(d);
+  for (const r of flow) {
+    if (!nowDone && key(r) > NOW.t) { rows += `<li class="nowline"><span>${NOW.t}</span></li>`; nowDone = true; }
+    rows += row(d, r, true);
+  }
+  h += flow.length ? `<ul class="list">${rows}</ul>` : `<p class="hd" style="margin-top:0">Saatli bir şey yok. Aşağıdan birine saat ver.</p>`;
+  if (d.other.length) h += `<div class="hd"><b>Diğer</b><span>saati yok</span></div>${d.other.map((o) => otherRow(d, o, false)).join("")}`;
+  h += `<div class="hd"><b>Notlar</b></div>${d.notes.map((n) => `<div class="nt${n.mine ? " mine" : ""}"><span></span><span class="e">${n.e}</span><span class="tx">${n.text}${n.src ? `<small>✦ ${n.src}</small>` : ""}</span><button class="x" data-dismiss="${d.id}:${n.id}" aria-label="Kaldır">×</button></div>`).join("")}
+    <div class="noteadd"><input data-note="${d.id}" placeholder="Not ekle, Enter"></div>`;
+  h += `<div class="dayfoot"><span>${needs(d) ? `${needs(d)} rezervasyon bekliyor` : "Bekleyen rezervasyon yok"}</span><button class="addday">${svg("plus", 15, 2)} Bu güne ekle</button></div>`;
+  return h;
+}
+
+function dayHTML(d) {
+  const open = openDay === d.id;
+  const n = d.free ? 0 : needs(d);
+  const head = `<div class="ttl"><h2>${d.title}</h2>${isPast(d) ? `<span class="gone">✓ geçti</span>` : n ? `<span class="left">${n} iş</span>` : ""}<button class="chev" data-close="${d.id}">${svg("chev", 18, 2)}</button></div>`;
+  const body = d.free ? d.sugs.map(([k, t]) => `<div class="sug">${icon({ k }, true)}<span>${t}</span><button>Güne ekle</button></div>`).join("") : open ? openBody(d) : folded(d);
+  return `<article class="day${open ? " open" : ""}${isPast(d) ? " past" : ""}" data-day="${d.id}">
+    <div class="ph"><img src="${d.img}" alt="" onerror="this.remove()"><span class="no">${d.no}</span><span class="date${isToday(d) ? " today" : ""}">${isToday(d) ? "Bugün · " : ""}${d.date} · ${d.route}</span></div>
+    <div class="bd">${head}${body}</div></article>`;
+}
+
+function render() {
+  document.getElementById("days").innerHTML = DAYS.map(dayHTML).join("");
+  const n = DAYS.reduce((s, d) => s + (d.flow ? needs(d) : 0), 0);
+  document.getElementById("legend").innerHTML = `<span><b>${n} rezervasyon bekliyor</b>${IDEAS.length ? ` · Fikirler'e dönen: ${IDEAS.map((i) => i.title).join(", ")}` : ""}</span>
+    <span>${icon({ k: "act", book: "done" })} alındı</span><span>${icon({ k: "act", book: "need" })} rezervasyon gerekiyor</span><span>${icon({ k: "act", book: "none" })} gerekmiyor</span>`;
+  const ti = document.querySelector("input[data-othertime]"); if (ti) ti.focus();
+}
+
+function act(a, d, r) {
+  snapshot();
+  const idx = DAYS.indexOf(d);
+  const next = DAYS.slice(idx + 1).find((x) => x.flow);
+  if (a === "booked") { r.book = "done"; toast(`${r.title}: alındı`); }
+  else if (a === "nobook") { r.book = "none"; toast(`${r.title}: rezervasyon gerekmiyor`); }
+  else if (a === "needbook") { r.book = "need"; toast(`${r.title}: rezervasyon gerekiyor`); }
+  else if (a === "toideas") { d.flow = d.flow.filter((x) => x !== r); IDEAS.push(r); openRow = null; toast(`${r.title} Fikirler'e geri döndü`); }
+  else if (a === "tomorrow") { d.flow = d.flow.filter((x) => x !== r); next.flow.push(r); openRow = null; toast(`${r.title} → ${next.no} (${next.date})`); }
+  else if (a === "delete") { d.flow = d.flow.filter((x) => x !== r); openRow = null; toast(`${r.title} silindi`); }
+  else if (a === "cancelled") { r.off = `iptal · ${r.price || ""} iade bekleniyor`; toast(`${r.title} iptal edildi, iade takipte`); }
+  else if (a === "missed") { r.off = "kaçırıldı"; toast(`${r.title} kaçırıldı olarak işaretlendi`); }
+  else if (a === "restore") { delete r.off; toast(`${r.title} geri geldi`); }
+  else if (a === "untime") { d.flow = d.flow.filter((x) => x !== r); d.other.push({ id: "x" + r.id, k: r.k, title: r.title }); openRow = null; toast(`${r.title} Diğer'e indi`); }
+  panel = null; render();
+}
+
+document.addEventListener("click", (e) => {
+  const t = e.target;
+  if (t.closest("[data-undo]")) { if (undoSnap) { const s = JSON.parse(undoSnap); DAYS = s.DAYS; IDEAS.length = 0; IDEAS.push(...s.IDEAS); undoSnap = null; } document.getElementById("toast").innerHTML = ""; return render(); }
+  const m = t.closest("[data-mode]");
+  if (m) { mode = m.dataset.mode; document.querySelectorAll("[data-mode]").forEach((b) => b.classList.toggle("on", b === m)); openDay = mode === "during" ? NOW.day : null; openRow = null; return render(); }
+  const c = t.closest("[data-close]");
+  if (c) { openDay = openDay === c.dataset.close ? null : c.dataset.close; openRow = null; panel = null; return render(); }
+  const carry = t.closest("[data-carry]");
+  if (carry) { snapshot(); const y = dayById("d1"), today = dayById(NOW.day); const left = y.other.filter((o) => !o.done); y.other = y.other.filter((o) => o.done);
+    if (carry.dataset.carry === "today") today.other.unshift(...left); else IDEAS.push(...left);
+    toast(carry.dataset.carry === "today" ? "Dünden kalanlar bugüne alındı" : "Dünden kalanlar Fikirler'e döndü"); return render(); }
+  const a = t.closest("[data-a]");
+  if (a) { const [di, ri] = a.closest(".det").dataset.key.split(":"); const d = dayById(di); const r = d.flow.find((x) => x.id === ri);
+    if (a.dataset.a.startsWith("panel-")) { panel = a.dataset.a.slice(6) || null; return render(); }
+    return act(a.dataset.a, d, r); }
+  const dn = t.closest("[data-done]");
+  if (dn) { const [di, oi] = dn.dataset.done.split(":"); const o = dayById(di).other.find((x) => x.id === oi); o.done = !o.done; return render(); }
+  const ti = t.closest("[data-timeit]");
+  if (ti) { timing = ti.dataset.timeit; return render(); }
+  const ds = t.closest("[data-dismiss]");
+  if (ds) { snapshot(); const [di, ni] = ds.dataset.dismiss.split(":"); const d = dayById(di); d.notes = d.notes.filter((n) => n.id !== ni); toast("Not kaldırıldı"); return render(); }
+  if (t.closest(".det, .addday, .sug, input, .nt, .o")) return;
+  const rowEl = t.closest(".r[data-row]"), day = t.closest(".day");
+  if (!day) return;
+  const id = day.dataset.day;
+  if (openDay !== id) { openDay = id; openRow = rowEl ? rowEl.dataset.row : null; panel = null; render(); document.querySelector(`.day[data-day="${id}"]`).scrollIntoView({ behavior: "smooth", block: "nearest" }); return; }
+  if (rowEl) { openRow = openRow === rowEl.dataset.row ? null : rowEl.dataset.row; panel = null; render(); }
+});
+document.addEventListener("change", (e) => {
+  const t = e.target;
+  if (t.matches("[data-settime]") && t.value) { snapshot(); const [di, ri] = t.dataset.settime.split(":"); const r = dayById(di).flow.find((x) => x.id === ri); r.t = t.value; delete r.part; delete r.est; panel = null; toast(`${r.title} → ${t.value}`); render(); }
+  if (t.matches("[data-othertime]") && t.value) { snapshot(); const [di, oi] = t.dataset.othertime.split(":"); const d = dayById(di); const o = d.other.find((x) => x.id === oi);
+    d.other = d.other.filter((x) => x !== o); d.flow.push({ id: "m" + oi, t: t.value, k: o.k, book: "none", title: o.title, facts: "Sen ekledin" }); timing = null; toast(`${o.title} akışa ${t.value}'da eklendi`); render(); }
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && e.target.matches("[data-note]") && e.target.value.trim()) { const d = dayById(e.target.dataset.note); const text = e.target.value.trim(); d.notes.unshift({ id: "u" + Date.now(), mine: true, e: "📝", short: text.length > 16 ? text.slice(0, 15) + "…" : text, text }); return render(); }
+  if (e.key === "Escape") { if (panel) panel = null; else if (timing) timing = null; else if (openRow) openRow = null; else openDay = null; render(); }
+});
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,653 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Trip Radar Etsy Analizi</title>
+<style>
+/* Layout: tek sütun rapor (max 980px), ekran taslakları Trip Radar'ın kendi bileşen diliyle; tablolar kendi kaydırma kutusunda */
+:root{
+  --bg:#f6f6f7; --card:#ffffff; --text:#111114; --muted:#6b665f; --line:#e6e5e9; --soft:#f1f1f4;
+  --accent:#1768ff; --accent-soft:#eef4ff; --success:#1f8f4e; --success-soft:#e8f5ee;
+  --warning:#b86e00; --warning-soft:#fdf3e2; --danger:#c62828; --danger-soft:#fdecec;
+  --ink:#2b2230; --on-ink:#ffffff; --frame:#1d1b20; --prep:#6b4fa0; --prep-soft:#f1ecf9;
+  --f-ui:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter","Segoe UI",system-ui,sans-serif;
+  --f-display:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --r:14px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111113; --card:#1b1b1f; --text:#f2f1f4; --muted:#a8a29b; --line:#2c2b31; --soft:#232328;
+  --accent:#5b95ff; --accent-soft:#17233d; --success:#3fbf74; --success-soft:#14291d;
+  --warning:#e3a040; --warning-soft:#2f2412; --danger:#ef6b6b; --danger-soft:#341818;
+  --ink:#ece6f1; --on-ink:#1b1b1f; --frame:#3a3840; --prep:#b39ae6; --prep-soft:#261f35; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111113; --card:#1b1b1f; --text:#f2f1f4; --muted:#a8a29b; --line:#2c2b31; --soft:#232328;
+  --accent:#5b95ff; --accent-soft:#17233d; --success:#3fbf74; --success-soft:#14291d;
+  --warning:#e3a040; --warning-soft:#2f2412; --danger:#ef6b6b; --danger-soft:#341818;
+  --ink:#ece6f1; --on-ink:#1b1b1f; --frame:#3a3840; --prep:#b39ae6; --prep-soft:#261f35; color-scheme:dark}
+body{background:var(--bg);color:var(--text);font-family:var(--f-ui);font-size:15.5px;line-height:1.6}
+.wrap{max-width:980px;margin:0 auto;padding-inline:20px;padding-block:28px 80px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;letter-spacing:-.02em;line-height:1.15;margin:0}
+h1{font-size:clamp(30px,5vw,44px);font-weight:750}
+h2{font-size:clamp(23px,3.4vw,30px);font-weight:720;margin-top:8px}
+h3{font-size:18px;font-weight:680}
+p{margin:0}
+.lede{font-size:18px;color:var(--muted);max-width:64ch}
+.eyebrow{font-size:12.5px;color:var(--muted);font-weight:600;letter-spacing:.02em}
+section{display:grid;gap:18px;padding-block:44px 8px;border-top:1px solid var(--line);margin-top:44px}
+section>p,section>.lede{max-width:70ch}
+.toc{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
+.toc a{font-size:13.5px;color:var(--text);text-decoration:none;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 12px}
+.toc a:hover,.toc a:focus-visible{border-color:var(--accent);color:var(--accent);outline:none}
+.muted{color:var(--muted)}
+.small{font-size:13.5px}
+.num{font-variant-numeric:tabular-nums}
+a{color:var(--accent)}
+
+/* özet */
+.verdict{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:22px;display:grid;gap:14px}
+.findings{display:grid;gap:12px;counter-reset:f;margin:0;padding:0;list-style:none}
+.findings li{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start}
+.findings li::before{counter-increment:f;content:counter(f);font-family:var(--f-mono);font-size:13px;color:var(--muted);border:1px solid var(--line);border-radius:8px;text-align:center;line-height:24px;height:24px}
+.moves{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.move{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:grid;gap:6px;align-content:start}
+.move .score{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+.move h3{font-size:17px}
+
+/* tablolar */
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--card)}
+table{border-collapse:collapse;width:100%;font-size:13.8px;min-width:720px}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--line)}
+th{font-size:12.5px;color:var(--muted);font-weight:600;background:var(--soft);position:sticky;top:0}
+tr:last-child td{border-bottom:0}
+td.r{text-align:right}
+tr.grp td{background:var(--soft);font-weight:650;font-size:13px;color:var(--text)}
+.chip{display:inline-block;font-size:11.5px;font-weight:650;border-radius:6px;padding:1px 7px;white-space:nowrap}
+.c-var{background:var(--success-soft);color:var(--success)}
+.c-ekle{background:var(--accent-soft);color:var(--accent)}
+.c-don{background:var(--prep-soft);color:var(--prep)}
+.c-alma{background:var(--soft);color:var(--muted);border:1px solid var(--line)}
+.c-sonra{background:var(--warning-soft);color:var(--warning)}
+
+/* format çubuğu */
+.bars{display:grid;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+.bar{display:grid;grid-template-columns:minmax(120px,190px) 1fr 40px;gap:12px;align-items:center;font-size:14px}
+.bar .t{height:12px;border-radius:6px;background:var(--soft);overflow:hidden}
+.bar .t i{display:block;height:100%;background:var(--ink);border-radius:6px}
+
+/* alıntı/sinyal kartları */
+.pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.box{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:grid;gap:10px;align-content:start}
+.box ul{margin:0;padding-left:18px;display:grid;gap:7px}
+.box.good h3{color:var(--success)} .box.bad h3{color:var(--danger)}
+
+/* işler */
+.jobs{display:grid;gap:12px}
+.job{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}
+.job .head{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:10px;align-items:baseline;justify-content:space-between}
+.job dl{margin:0;display:grid;gap:8px}
+.job dt{font-size:12.5px;color:var(--muted);font-weight:600}
+.job dd{margin:0;font-size:14.5px}
+@media (max-width:680px){.job{grid-template-columns:1fr}}
+
+/* ilkeler */
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin:0;padding:0;list-style:none}
+.rules li{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:grid;gap:6px}
+.rules b{font-size:15.5px}
+
+/* 3 an */
+.moments{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.moment{border:1px solid var(--line);border-radius:var(--r);background:var(--card);padding:16px;display:grid;gap:8px;align-content:start}
+.moment .when{font-family:var(--f-mono);font-size:12.5px;color:var(--muted)}
+.moment ul{margin:0;padding-left:18px;font-size:14px;display:grid;gap:4px}
+@media (max-width:720px){.moments{grid-template-columns:1fr}}
+
+/* ===== ekran taslakları (Trip Radar dili) ===== */
+.screens{display:grid;gap:26px}
+.screen{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:22px;align-items:start}
+.screen .why{display:grid;gap:10px;align-content:start}
+.screen .why ul{margin:0;padding-left:18px;display:grid;gap:6px;font-size:14.5px}
+@media (max-width:820px){.screen{grid-template-columns:1fr}}
+.tag{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.mock{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;display:grid;gap:14px;box-shadow:0 1px 0 var(--line)}
+.mock .ex{font-size:11.5px;color:var(--muted);justify-self:end;margin-top:-6px}
+.hero{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center}
+.hero .name{font-size:24px;font-weight:750;letter-spacing:-.02em}
+.hero .meta{font-size:14px;color:var(--muted)}
+.countdown{display:inline-flex;gap:6px;align-items:baseline;background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:3px 11px;font-size:13.5px;font-weight:650;margin-top:6px}
+.rings{width:112px;height:112px}
+.legend{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.legend div{border:1px solid var(--line);border-radius:12px;padding:8px 10px;display:grid;gap:2px}
+.legend b{font-size:17px;font-variant-numeric:tabular-nums}
+.legend span{font-size:12.5px;color:var(--muted)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:1px}
+.strip{display:flex;flex-wrap:wrap;gap:6px}
+.strip span{font-size:13px;border:1px solid var(--line);border-radius:999px;padding:4px 10px;background:var(--card)}
+.strip span.on{border-color:var(--prep);color:var(--prep);font-weight:650}
+.highlights{display:flex;gap:8px;flex-wrap:wrap}
+.highlights span{font-size:13px;background:var(--soft);border-radius:10px;padding:5px 10px}
+
+.sheet{display:grid;gap:12px}
+.sheet .title{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.sheet .title b{font-size:19px;letter-spacing:-.01em}
+.grp-label{font-size:12.5px;color:var(--muted);font-weight:650;margin-top:4px}
+.row{display:grid;grid-template-columns:22px 1fr auto;gap:10px;align-items:start;padding:9px 0;border-bottom:1px solid var(--line);font-size:14.5px}
+.row:last-child{border-bottom:0}
+.row .sub{font-size:12.5px;color:var(--muted)}
+.check{width:18px;height:18px;border-radius:50%;border:1.6px solid var(--line);margin-top:2px}
+.check.done{background:var(--success);border-color:var(--success);position:relative}
+.check.done::after{content:"";position:absolute;left:5px;top:2px;width:5px;height:9px;border:solid var(--on-ink);border-width:0 2px 2px 0;transform:rotate(45deg)}
+.check.q{border-style:dashed}
+.pill{font-size:12px;border-radius:999px;padding:2px 9px;white-space:nowrap;align-self:start}
+.p-now{background:var(--danger-soft);color:var(--danger)}
+.p-soon{background:var(--warning-soft);color:var(--warning)}
+.p-ok{background:var(--success-soft);color:var(--success)}
+.p-ai{background:var(--prep-soft);color:var(--prep)}
+.fold{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;justify-content:space-between;gap:10px;font-size:14px;align-items:center}
+.fold .prog{height:6px;border-radius:3px;background:var(--soft);width:90px;overflow:hidden}
+.fold .prog i{display:block;height:100%;background:var(--prep)}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
+.facts div{background:var(--soft);border-radius:10px;padding:8px 10px;font-size:13px;display:grid;gap:1px}
+.facts b{font-size:14px}
+
+.money-top{display:grid;gap:8px}
+.money-top .big{font-size:28px;font-weight:750;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.stack{display:flex;height:12px;border-radius:6px;overflow:hidden;background:var(--soft)}
+.stack i{display:block;height:100%}
+.keys{display:flex;flex-wrap:wrap;gap:12px;font-size:12.5px;color:var(--muted)}
+.amt{font-variant-numeric:tabular-nums;font-weight:650;white-space:nowrap}
+.settle{background:var(--soft);border-radius:12px;padding:12px 14px;display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:14.5px;flex-wrap:wrap}
+.btn{font:inherit;font-size:13.5px;border-radius:12px;padding:7px 13px;border:1px solid var(--line);background:var(--card);color:var(--text)}
+.btn.primary{background:var(--ink);color:var(--on-ink);border-color:var(--ink)}
+.btn.link{border:0;background:none;color:var(--accent);padding:0}
+
+/* telefon */
+.phones{display:flex;flex-wrap:wrap;gap:22px;justify-content:center}
+.phone{width:min(300px,100%);border:10px solid var(--frame);border-radius:40px;background:var(--card);overflow:hidden;display:grid}
+.phone .notch{height:22px;display:flex;justify-content:center;align-items:end;padding-bottom:2px}
+.phone .notch i{width:84px;height:6px;border-radius:3px;background:var(--frame)}
+.phone .in{padding:10px 16px 18px;display:grid;gap:12px}
+.cover{height:110px;border-radius:16px;background:linear-gradient(160deg,#c9d8e6 0%,#e9d2b4 55%,#c98d5e 100%);display:flex;align-items:end;padding:12px;color:#1b1b1f}
+.cover b{font-size:20px;letter-spacing:-.02em}
+.cover span{font-size:12px;display:block}
+.today{border:1.5px solid var(--accent);border-radius:16px;padding:12px;display:grid;gap:6px}
+.today .k{font-size:12px;color:var(--accent);font-weight:650}
+.today .t{font-size:17px;font-weight:700;letter-spacing:-.01em}
+.today .s{font-size:12.5px;color:var(--muted)}
+.today .acts{display:flex;gap:8px;flex-wrap:wrap}
+.tl{display:grid;gap:0}
+.tl .it{display:grid;grid-template-columns:48px 1fr;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+.tl .it:last-child{border-bottom:0}
+.tl .h{font-family:var(--f-mono);font-size:12px;color:var(--muted);padding-top:2px}
+.tl .it .sub{font-size:12px;color:var(--muted)}
+.foot{font-size:11.5px;color:var(--muted);text-align:center}
+.invite .who{display:flex;gap:6px}
+.invite .who i{width:30px;height:30px;border-radius:50%;background:var(--soft);display:grid;place-items:center;font-style:normal;font-size:12px;font-weight:650;border:1px solid var(--line)}
+.kv{display:grid;grid-template-columns:1fr auto;gap:6px 10px;font-size:13.5px}
+.kv span:nth-child(odd){color:var(--muted)}
+
+/* gün kartı */
+.day{display:grid;gap:10px}
+.day .dh{display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap}
+.day .dh b{font-size:17px}
+.slot{display:grid;grid-template-columns:70px 1fr;gap:12px;padding:10px 0;border-top:1px solid var(--line);font-size:14.5px}
+.slot .when{font-size:12.5px;color:var(--muted);font-weight:650;padding-top:2px}
+.slot .entry{display:grid;gap:3px}
+.slot .entry + .entry{margin-top:8px}
+.slot .sub{font-size:12.5px;color:var(--muted)}
+.warn{font-size:12.5px;color:var(--danger)}
+.ghost{border:1.5px dashed var(--line);border-radius:10px;padding:8px 10px;color:var(--muted);font-size:13.5px}
+.tray{background:var(--soft);border-radius:12px;padding:10px 12px;display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:14px;flex-wrap:wrap}
+
+/* yol haritası */
+.phases{display:grid;gap:12px}
+.phase{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:grid;gap:12px}
+.phase .ph{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;align-items:baseline}
+.items{display:grid;gap:8px}
+.item{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:12px;align-items:baseline;font-size:14.5px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.item:last-child{border-bottom:0;padding-bottom:0}
+.item .s{font-family:var(--f-mono);font-size:13px;white-space:nowrap}
+.item .e{font-size:12px;color:var(--muted);white-space:nowrap}
+.note{border-left:3px solid var(--warning);background:var(--warning-soft);border-radius:0 12px 12px 0;padding:14px 16px;display:grid;gap:6px}
+.note.blue{border-color:var(--accent);background:var(--accent-soft)}
+@media (prefers-reduced-motion:no-preference){.rings circle.p{transition:stroke-dasharray .6s ease}}
+</style>
+
+<div class="wrap">
+  <header style="display:grid;gap:12px">
+    <span class="eyebrow">Trip Radar · rakip araştırması · 5 Ekim 2026</span>
+    <h1>Etsy'deki seyahat planlayıcıları bize ne öğretiyor?</h1>
+    <p class="lede">Etsy'nin "travel planner" vitrinindeki 53 ürünü taradım, 16'sını ayrıntılı inceledim: açıklamalar, tüm ürün görselleri, yorumlar, düşük puanlı yorumlar ve bir canlı demo. Bu sayfa, o özelliklerin neden var olduğunu ve Trip Radar'a nasıl, en az ekranla gireceklerini anlatıyor. Önceki analizle birleştirildi; Trip Radar'ın bugünkü hâli olarak 0.31 yayını ve 0.32 tasarımı (Fikirler sekmesi) esas alındı.</p>
+    <nav class="toc" aria-label="İçindekiler">
+      <a href="#ozet">Özet</a><a href="#incelenen">İncelenenler</a><a href="#pazar">Pazar</a><a href="#yorumlar">Yorumlar</a><a href="#isler">8 iş</a><a href="#matris">Özellik matrisi</a><a href="#ilkeler">Tasarım ilkeleri</a><a href="#ekranlar">Ekran taslakları</a><a href="#yol">Yol haritası</a><a href="#riskler">Riskler</a>
+    </nav>
+  </header>
+
+  <section id="ozet">
+    <span class="eyebrow">Özet</span>
+    <h2>Beş bulgu, üç hamle</h2>
+    <div class="verdict">
+      <ol class="findings">
+        <li><p><b>Talep kanıtlı.</b> Boş bir tablo şablonu satan mağazalar 60–210 bin satışa ulaşmış. İnsanlar planlamaya para ödüyor, üstelik işi kendileri yapmak zorunda kaldıkları bir ürüne.</p></li>
+        <li><p><b>"Otomatik" denen şey aslında elle giriş.</b> Lider ürün 6 sekmeyi elle doldurtup 5 sekmeyi formülle kuruyor ve buna "no manual input" diyor. Trip Radar'ın tek tıkla kaydetmesi bu pazarda gerçekten yok.</p></li>
+        <li><p><b>En büyük şikâyet karmaşıklık.</b> Düşük puanlı yorumların neredeyse hepsi aynı: bunaltıcı, kullanıcı dostu değil, daha sade bekliyordum, otomasyonu kurmak elle yapmaktan uzun sürdü. Her lider ürün bir video eğitimle satılıyor. Bu, karmaşıklığın bedeli.</p></li>
+        <li><p><b>İkinci büyük kategori planın kendisi değil, sunumu.</b> Canva'da düzenlenen şık, telefonda açılan ve basılabilen gezi rehberleri ile arkadaş grubuna gönderilen "doğum günü gezisi" kartları 100 bin satışın üstünde. İnsanlar planı birine göstermek istiyor.</p></li>
+        <li><p><b>Yolculuk sırasında her şey telefonda.</b> Satıcıların hepsi "telefonda da çalışır" diye vurguluyor. Trip Radar şu an yalnız masaüstü Chrome'da; yolculuk anı ve gezi arkadaşları dışarıda kalıyor.</p></li>
+      </ol>
+    </div>
+    <div class="moves">
+      <div class="move"><span class="score">Önem 9/10 · büyük iş</span><h3>Gezi sayfası</h3><p class="small">Planın telefonda açılan, salt okunur, şık bir linki. Canva rehberinin yerini otomatik alır, yolculukta "Bugün" ekranı olur, Sabine eklenti kurmadan görür.</p></div>
+      <div class="move"><span class="score">Önem 8/10 · orta iş</span><h3>Hazırlık</h3><p class="small">Checklist, bavul ve belgeler yazılmadan gelir: gezi verisinden tarihli maddeler. "1 hafta önce" sekmeleri yerine her maddenin kendi günü olur.</p></div>
+      <div class="move"><span class="score">Önem 7/10 · orta iş</span><h3>Ödenecekler ve kişi başı</h3><p class="small">"Daha ne ödeyeceğim, ne zaman, ne kadar nakit" sorusu tek satırda. Gezi ortaklarında kişi başı ve "kim kime borçlu" bilgisi de burada.</p></div>
+    </div>
+  </section>
+
+  <section id="incelenen">
+    <span class="eyebrow">Kaynak</span>
+    <h2>İncelenen 16 ürün</h2>
+    <p class="muted small">Satış sayısı ürünün değil mağazanın toplamıdır; mağazaların çoğu başka ürünler de satıyor. Puan ve yorum sayısı ürünün kendisine ait. Fiyatlar Etsy Türkiye'de 61–1.370 ₺ arası, çoğu 300–750 ₺.</p>
+    <div class="tbl"><table>
+      <thead><tr><th>Mağaza · ürün</th><th>Format</th><th class="r">Mağaza satışı</th><th class="r">Ürün puanı</th><th>Bize ilginç olan</th></tr></thead>
+      <tbody class="num">
+        <tr><td><b>Exclusive Design Lab</b><br><span class="muted">Ultimate Travel Planner (senin görsellerin)</span></td><td>Google Sheets, 20 sekme</td><td class="r">212,4 bin</td><td class="r">4,6 (83)</td><td>Rezervasyondan otomatik program ve bütçe, bölüşme. Puanı en düşük olanı: bunaltıcı bulunuyor.</td></tr>
+        <tr><td><b>ShopRShop</b><br><span class="muted">Travel Itinerary Template</span></td><td>Canva → PDF, telefon + baskı, 30 sayfa</td><td class="r">116,4 bin</td><td class="r">264 yorum</td><td>İçindekiler ve linkli sayfalarla şık gezi rehberi. Seyahat acenteleri müşterisine veriyor.</td></tr>
+        <tr><td><b>Euphoric Raw Designs</b><br><span class="muted">Birthday Trip Itinerary</span></td><td>Canva, telefon hikâye boyu</td><td class="r">102,8 bin</td><td class="r">61 yorum</td><td>Arkadaşlara davet: kimler geliyor, otel, kapora ve toplam tutar, program, kıyafet ilhamı.</td></tr>
+        <tr><td><b>CreativeDreamersCo</b><br><span class="muted">All-in-One Travel Planner</span></td><td>Sheets / Excel, 7 sekme</td><td class="r">102,1 bin</td><td class="r">5,0 (55)</td><td>Destinasyon karşılaştırma (en iyi zaman, uçuş süresi, maliyet, dil), "daha ödenecekler" sayacı.</td></tr>
+        <tr><td><b>MyProductiveLifeCo</b><br><span class="muted">Ultimate Travel Planner</span></td><td>Sheets + Excel</td><td class="r">63,4 bin</td><td class="r">25 yorum</td><td>"En çok heyecanlandığın 6 şey" kutusu, aylık takvim, kur çevirici.</td></tr>
+        <tr><td><b>HeyMorning</b><br><span class="muted">Group Travel Planner</span></td><td>Sheets, 9 sekme</td><td class="r">62,2 bin</td><td class="r">yeni ürün</td><td>8 yolcu, kişi başı maliyet, kim kime borçlu, kısmi ödeme ve son ödeme günü, "eşyam hangi çantada".</td></tr>
+        <tr><td><b>Marvels</b><br><span class="muted">Digital Travel Journal</span></td><td>GoodNotes, 44 şablon</td><td class="r">29,1 bin</td><td class="r">53 yorum</td><td>Anı, hayal panosu, sticker, faydalı kelimeler, hediyelik eşya listesi.</td></tr>
+        <tr><td><b>World Traveler</b><br><span class="muted">Vacation Savings Challenge</span></td><td>Basılı, lamine</td><td class="r">11,1 bin</td><td class="r">86 yorum</td><td>Pasaport damgasıyla birikim oyunu.</td></tr>
+        <tr><td><b>AbbyOrganizes</b><br><span class="muted">Travel &amp; Vacation Planning (senin örneğin)</span></td><td>Sheets, 15 sekme</td><td class="r">9,8 bin</td><td class="r">4,9 (14)</td><td>3 program düzeni (saat saat ya da sabah/öğle/akşam), kalış süresine göre renkli harita, telefonda kart görünümü.</td></tr>
+        <tr><td><b>Exclusive Design Lab</b><br><span class="muted">Apple Numbers sürümü</span></td><td>Numbers</td><td class="r">7,4 bin</td><td class="r">2 yorum</td><td>Aynı ürün, başka platform: platform kilidi gerçek bir sorun.</td></tr>
+        <tr><td><b>Notion şablonu</b></td><td>Notion</td><td class="r">1,7 bin</td><td class="r">2 yorum</td><td>Ülke ve şehre göre ilham panosu.</td></tr>
+        <tr><td><b>Road Trip Planner</b><br><span class="muted">canlı demosu açıldı</span></td><td>Web uygulaması</td><td class="r">1,6 bin</td><td class="r">yeni ürün</td><td>"Sıradaki durak" kartı, sürüş süresi, çok sade arayüz.</td></tr>
+        <tr><td><b>Plannora</b><br><span class="muted">Notion Travel Planner</span></td><td>Notion</td><td class="r">138</td><td class="r">3 yorum</td><td>Yerler harita görünümünde, geziler zaman çizelgesinde, şehirlere puan ("tekrar gider miyim").</td></tr>
+        <tr><td><b>Japan Travel Guide</b></td><td>Canva, dolu rota</td><td class="r">89</td><td class="r">7 yorum</td><td>Hazır 14 günlük rota: "30 saat araştırmadan kurtul".</td></tr>
+        <tr><td><b>DesignBrandLab</b></td><td>Web uygulaması, çevrimdışı, 6 dil</td><td class="r">20</td><td class="r">yeni ürün</td><td>Etsy'de uygulama satma denemesi; henüz tutmamış.</td></tr>
+        <tr><td><b>Stress Free kit</b></td><td>Basılabilir PDF</td><td class="r">4</td><td class="r">yeni ürün</td><td>Konumlandırması "karmaşık günlük yok, sadece gerekenler". Pazar sadeliğe dönüyor.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section id="pazar">
+    <span class="eyebrow">Pazar</span>
+    <h2>Vitrin neyle dolu</h2>
+    <p>"travel planner" vitrininin ilk sayfasındaki 53 ürün formata göre şöyle dağılıyor. Tabloların ağırlığı, insanların bu işi "liste tutmak" diye gördüğünü gösteriyor. Canva rehberleri ise planı göstermek isteyenlere satılıyor.</p>
+    <div class="bars num" role="img" aria-label="53 ürünün formata göre dağılımı">
+      <div class="bar"><span>Google Sheets / Excel / Numbers</span><span class="t"><i style="width:45.3%"></i></span><b>24</b></div>
+      <div class="bar"><span>Canva rehber / basılabilir</span><span class="t"><i style="width:22.6%"></i></span><b>12</b></div>
+      <div class="bar"><span>Tablet günlüğü / etkileşimli</span><span class="t"><i style="width:13.2%"></i></span><b>7</b></div>
+      <div class="bar"><span>Notion</span><span class="t"><i style="width:9.4%"></i></span><b>5</b></div>
+      <div class="bar"><span>Basılı ürün (takvim, birikim, defter)</span><span class="t"><i style="width:7.5%"></i></span><b>4</b></div>
+      <div class="bar"><span>Web uygulaması</span><span class="t"><i style="width:1.9%"></i></span><b>1</b></div>
+    </div>
+    <p class="small muted">Satıcıların ortak satış dili: "hepsi tek yerde", "stressiz", "bir kez al, her gezide kullan", "video eğitim dahil", "otomatik". Bir Notion satıcısı Trip Radar'ın derdini birebir yazmış: gezi planlamak, sonu gelmeyen notlar, uygulamalar ve ekran görüntüleri arasında hokkabazlık olmamalı.</p>
+  </section>
+
+  <section id="yorumlar">
+    <span class="eyebrow">Alıcılar ne diyor</span>
+    <h2>Yorumlar: sevilen ve şikâyet edilen</h2>
+    <p>Yorumlar ürünlerin neden alındığını ve nerede tökezlendiğini gösteriyor. Aşağıdakiler alıcıların kendi sözlerinin Türkçe özetidir.</p>
+    <div class="pair">
+      <div class="box good"><h3>Sevilen</h3><ul>
+        <li>Planlamak, seyahatin keyfinin büyük kısmı. Tablo bunu daha eğlenceli yapıyor (bir uygulamaya abone olan alıcı bunu tercih etmiş).</li>
+        <li>Rezervasyondan önce fiyat karşılaştırabilmek.</li>
+        <li>Birden çok şehirli gezide işe yarıyor.</li>
+        <li>Nasıl kullanılır videosu çok yardımcı oldu.</li>
+        <li>Henüz kullanmadık ama eşimle çok beğendik, sıradaki tatili bekliyoruz. Satın alma anı heyecanı satıyor.</li>
+        <li>Tasarım güzel, sticker'lar tatlı. Estetik, satın alma kararının parçası.</li>
+      </ul></div>
+      <div class="box bad"><h3>Şikâyet edilen</h3><ul>
+        <li>İçindekilerin çokluğu biraz bunaltıcı. Neyse ki video var.</li>
+        <li>Basit bir hesap için fazla karmaşık.</li>
+        <li>Hiç kullanıcı dostu değil, para kaybı.</li>
+        <li>Çok daha sade bir tablo bekliyordum.</li>
+        <li>Otomatik eşitleme için gereken ek adımlarla uğraşacağına, biraz tablo bilen her şeyi elle daha hızlı yapar.</li>
+        <li>Excel istiyordum, bu Sheets çıktı. Sheets'i PDF'e çevirip GoodNotes'a koymak berbat. Platform kilidi.</li>
+        <li>Görsellerdeki gibi değil.</li>
+      </ul></div>
+    </div>
+    <div class="note blue"><b>Ne anlama geliyor</b><p class="small">Alıcının istediği bir sonuç: içi rahat bir gezi ve keyifli bir planlama süreci. Sekme sayısı satış görselini büyütüyor ama kullanımı zorlaştırıyor. Trip Radar'ın vaadi "20 sekme" değil, "sekme yok, sen sadece kaydet" olmalı.</p></div>
+  </section>
+
+  <section id="isler">
+    <span class="eyebrow">Neden var</span>
+    <h2>Bütün özellikler aslında 8 işe hizmet ediyor</h2>
+    <p>Bu ürünlerde 60'a yakın ayrı özellik saydım. Hepsi şu 8 işten birini görüyor. Trip Radar'a özellik değil iş taşımalıyız; her iş için en kısa yolu seçmeliyiz.</p>
+    <div class="jobs">
+      <article class="job"><div class="head"><h3>1 · Karşılaştırıp karar vermek</h3><span class="chip c-var">Trip Radar'ın çekirdeği</span></div>
+        <dl><dt>Etsy'de nasıl</dt><dd>Konaklama, uçuş, araç, etkinlik ve restoran için ayrı araştırma tabloları. Fiyat, puan, giriş saati elle girilir. "Rezerve" kutusu işaretlenince satır rezervasyon listesine düşer.</dd><dt>Neden var</dt><dd>Linkler ve ekran görüntüleri dağınık; seçenekleri yan yana görmek istiyorsun.</dd></dl>
+        <dl><dt>Trip Radar bugün</dt><dd>Tek tıkla kayıt, AI okuma, 0–100 puan, artı/eksi, sıralama. Burada açık ara öndeyiz.</dd><dt>Eklenecek</dt><dd>Yalnız "nereye gidelim" aşaması (Lizbon mu Sevilla mı). Yeni ekran açmadan sohbetle, aynı karar kartıyla.</dd></dl></article>
+      <article class="job"><div class="head"><h3>2 · Her şeyi bir bakışta görüp rahatlamak</h3><span class="chip c-ekle">küçük ekleme</span></div>
+        <dl><dt>Etsy'de nasıl</dt><dd>Dashboard: geri sayım, bugün, yolcular, kapak fotoğrafı, bütçe pastası, kalan görevler, yaklaşan rezervasyonlar, harita, "en çok heyecanlandığım 6 şey".</dd><dt>Neden var</dt><dd>İki duygu: içi rahat olmak ("her şey yolunda mı?") ve beklentinin keyfi.</dd></dl>
+        <dl><dt>Trip Radar bugün</dt><dd>0.30 kapağı: şehir fotoğrafı, geri sayım, künye, bütçe çubuğu, sıradaki adım. Altında yapılacaklar şeridi.</dd><dt>Eklenecek</dt><dd>Yalnız tek bakışta hazır olma durumu (üç halka) ve öne çıkan 3 an. Grafik yok.</dd></dl></article>
+      <article class="job"><div class="head"><h3>3 · Gün gün ne yapacağını bilmek</h3><span class="chip c-ekle">orta ekleme</span></div>
+        <dl><dt>Etsy'de nasıl</dt><dd>Saat saat ya da sabah/öğle/akşam programı, gün başlığında şehir ve hava, çakışma vurgusu, aylık takvim, "tarihi seç, o günün planı gelsin".</dd><dt>Neden var</dt><dd>Yolculukta rezervasyon kaçırmamak, günü önceden düşünmüş olmak.</dd></dl>
+        <dl><dt>Trip Radar bugün</dt><dd>Günlük akış, transferler, konaklama çakışması. 0.32'de Fikirler sekmesi rezervasyonsuz yerleri ve yapılacakları şehir şehir topluyor.</dd><dt>Eklenecek</dt><dd>Fikirler'deki tarihsiz yerleri "günlere dağıt", saat yoksa sabah/öğle/akşam, etkinlik çakışması ve kapalı gün, hava, rezervasyon no ve adres gün bloğunda.</dd></dl></article>
+      <article class="job"><div class="head"><h3>4 · Parayı kontrol etmek</h3><span class="chip c-ekle">orta ekleme</span></div>
+        <dl><dt>Etsy'de nasıl</dt><dd>Bütçe ve gerçekleşen, kategoriler, döviz işlemleri, kur tablosu, "daha ödenecek", kısmi ödeme, son ödeme günü, nakit ihtiyacı, kişi başı, ödeme yöntemine ve ülkeye göre harcama.</dd><dt>Neden var</dt><dd>Bütçeyi aşma kaygısı ve "otelde bir de şu kadar ödeyecekmişiz" sürprizi.</dd></dl>
+        <dl><dt>Trip Radar bugün</dt><dd>Tahmini toplam ve bütçe çubuğu (rezerve / seçili / karar bekleyen).</dd><dt>Eklenecek</dt><dd>Ödendi ve ödenecek (tarihiyle), nakit, kişi başı. Gerçek harcama girişi telefon sayfasıyla gelir.</dd></dl></article>
+      <article class="job"><div class="head"><h3>5 · Hiçbir şeyi unutmamak</h3><span class="chip c-ekle">yeni yüzey (çekmece)</span></div>
+        <dl><dt>Etsy'de nasıl</dt><dd>Aşamalı checklist (rezervasyon anı / 1 hafta / 1 gün / kalkış günü), kişiye görev, kişi başı bavul listesi ve kategorileri, "sipariş et / geldi / zaten var / orada al", alışveriş listesi, belgeler, acil bilgiler.</dd><dt>Neden var</dt><dd>Yola çıkmadan önceki kaygı. En çok satılan sayfalardan biri.</dd></dl>
+        <dl><dt>Trip Radar bugün</dt><dd>Kartlara bilet ve PDF eklenebiliyor (0.31). Gitmeden önceki hazırlık listesi yok.</dd><dt>Eklenecek</dt><dd>Gezi verisinden kendiliğinden çıkan, tarihli tek liste. Bavul AI ile bir kez hazırlanır. Vize ve pasaport kontrolü, bizim kullanıcımız için kritik.</dd></dl></article>
+      <article class="job"><div class="head"><h3>6 · Planı birine göstermek</h3><span class="chip c-ekle">en büyük fırsat</span></div>
+        <dl><dt>Etsy'de nasıl</dt><dd>Canva'da 30 sayfalık şık rehber (telefon ve baskı boyu, içindekiler, linkli sayfalar). Arkadaş grubuna davet kartı: kimler geliyor, kapora, toplam, program, kıyafet.</dd><dt>Neden var</dt><dd>Planı yapan kişi gezinin "organizatörü". Planı ailesine, sevgilisine, grubuna sunmak istiyor; onlar araç kurmayacak.</dd></dl>
+        <dl><dt>Trip Radar bugün</dt><dd>Paylaşım var ama karşı tarafın eklenti ve Gemini anahtarı kurması gerekiyor.</dd><dt>Eklenecek</dt><dd>Gezi sayfası: tek link, kurulumsuz, telefonda güzel, salt okunur. Tasarım otomatik, düzenleme yok.</dd></dl></article>
+      <article class="job"><div class="head"><h3>7 · Hayal etmek ve heveslenmek</h3><span class="chip c-sonra">sonra, hafif</span></div>
+        <dl><dt>Etsy'de nasıl</dt><dd>Bucket list, hayal ve ilham panoları, gidilen yerler haritası, "bu yıl yapılacak geziler", birikim oyunu.</dd><dt>Neden var</dt><dd>Gezi kararından önceki istek; satıcılar için tekrar satış kapısı.</dd></dl>
+        <dl><dt>Trip Radar bugün</dt><dd>Kayıtlar zaten gezi açıyor; tarihsiz gezi mümkün.</dd><dt>Eklenecek</dt><dd>Ayrı ekran yok. Tarihsiz gezi "Hayal" olarak listede durur, tarih gelince gezi olur.</dd></dl></article>
+      <article class="job"><div class="head"><h3>8 · Hatırlamak ve kapatmak</h3><span class="chip c-sonra">sonra, tek soru</span></div>
+        <dl><dt>Etsy'de nasıl</dt><dd>Anı ve fotoğraf sayfaları, seyahat günlüğü, gezi yorumu, şehir puanı, hediyelik eşya listesi.</dd><dt>Neden var</dt><dd>Kapanış duygusu ve "bir dahakine ne yapardım".</dd></dl>
+        <dl><dt>Trip Radar bugün</dt><dd>Yok.</dd><dt>Eklenecek</dt><dd>Dönüşte hesap kapanır, kaldığın her yer için tek soru: tekrar kalır mıydın? Cevap tercih profiline gider ve bir sonraki gezinin puanlamasını iyileştirir.</dd></dl></article>
+    </div>
+  </section>
+
+  <section id="matris">
+    <span class="eyebrow">Tam liste</span>
+    <h2>Özellik matrisi: 58 özellik, tek tek karar</h2>
+    <p class="small">
+      <span class="chip c-var">Var</span> Trip Radar'da zaten var ·
+      <span class="chip c-ekle">Ekle</span> aynı işi görecek sade hâliyle eklenir ·
+      <span class="chip c-don">Dönüştür</span> işi alınır, biçimi değişir ·
+      <span class="chip c-sonra">Sonra</span> telefon sayfası ya da gerçek kullanım verisinden sonra ·
+      <span class="chip c-alma">Alma</span> karar değeri yok ya da karmaşıklaştırır
+    </p>
+    <div class="tbl"><table>
+      <thead><tr><th style="width:24%">Etsy'deki özellik</th><th style="width:28%">Neden var</th><th style="width:9%">Karar</th><th>Trip Radar'da nasıl, nerede</th></tr></thead>
+      <tbody>
+        <tr class="grp"><td colspan="4">Kurulum ve kullanım</td></tr>
+        <tr><td>Kurulum sekmesi (para birimi, yolcular, ülkeler)</td><td>Şablon boş gelir, kullanıcı kendine uydurur</td><td><span class="chip c-alma">Alma</span></td><td>Gerek yok: tarih, ülke ve kişi sayısı kayıtlardan okunuyor.</td></tr>
+        <tr><td>Video eğitim, adım adım PDF</td><td>Ürün karmaşık</td><td><span class="chip c-don">Dönüştür</span></td><td>Hedef eğitimsiz kullanım. Her boş durumda tek cümlelik yönlendirme ("Bir otel sayfasında simgeye bas").</td></tr>
+        <tr><td>Renk temaları</td><td>Estetik, kişiselleştirme</td><td><span class="chip c-alma">Alma</span></td><td>Panoda tek tasarım dili. Tema yalnız gezi sayfasında, otomatik (gezinin fotoğrafından).</td></tr>
+        <tr><td>Bir kez al, her gezide kopyala</td><td>Yeniden kullanım</td><td><span class="chip c-var">Var</span></td><td>Her gezi zaten ayrı pano.</td></tr>
+        <tr><td>Platform seçimi (Sheets / Excel / Numbers / GoodNotes)</td><td>Herkesin aracı farklı; en çok şikâyet buradan</td><td><span class="chip c-don">Dönüştür</span></td><td>Tarayıcıda çalışıyor. Eksik olan telefon: gezi sayfası.</td></tr>
+        <tr><td>Çevrimdışı, uygulama gibi kurulum</td><td>Yolculukta internet yok</td><td><span class="chip c-sonra">Sonra</span></td><td>Gezi sayfası telefona "ana ekrana ekle" ile kaydedilir, son hâli önbellekte kalır.</td></tr>
+        <tr class="grp"><td colspan="4">Genel bakış</td></tr>
+        <tr><td>Geri sayım</td><td>Beklentinin keyfi</td><td><span class="chip c-var">Var</span></td><td>0.30 kapağında ("N gün kaldı", yolculukta "N. gün / T").</td></tr>
+        <tr><td>Bugünün tarihi</td><td>Yolculukta yön bulmak</td><td><span class="chip c-var">Var</span></td><td>"Seyahat başladı · 4. gün" ve Bugün etiketi.</td></tr>
+        <tr><td>Yolcular (yetişkin / çocuk / evcil)</td><td>Fiyat ve oda hesabı</td><td><span class="chip c-var">Var</span></td><td>Kişi sayısı linkten okunuyor; "köpeğimiz var" sohbetle şart olur.</td></tr>
+        <tr><td>Kapak fotoğrafı</td><td>Heyecan</td><td><span class="chip c-var">Var</span></td><td>Özetin küçük görseli; gezi sayfasında büyük kapak.</td></tr>
+        <tr><td>Harita (kalış süresine göre renkli)</td><td>Rotayı bir bakışta görmek</td><td><span class="chip c-sonra">Sonra</span></td><td>Bugün Google Maps rota linki var. Gezi sayfasına küçük statik harita.</td></tr>
+        <tr><td>"Rezerve edilen: konaklama 2, ulaşım 4"</td><td>İlerleme hissi</td><td><span class="chip c-var">Var</span></td><td>Özet satırı. Üç halkaya bağlanır.</td></tr>
+        <tr><td>Yaklaşan rezervasyonlar listesi</td><td>Sıradakini bilmek</td><td><span class="chip c-var">Var</span></td><td>Günlük akış; gezi sayfasında "Sıradaki" kartı.</td></tr>
+        <tr><td>Kalan görevler ve "daha ödenecekler"</td><td>Ne kaldı?</td><td><span class="chip c-ekle">Ekle</span></td><td>Yapılacaklar şeridine "Hazırlık" çipi; ödenecekler para çekmecesinde.</td></tr>
+        <tr><td>Pasta, çizgi ve sütun grafikleri</td><td>Satış görselini zengin göstermek</td><td><span class="chip c-alma">Alma</span></td><td>Tek cümle ve tek yığın çubuk yeter ("€2.140 / €2.400 · €260 kalıyor").</td></tr>
+        <tr><td>"En çok heyecanlandığın 6 şey"</td><td>Duygusal çapa</td><td><span class="chip c-ekle">Ekle</span></td><td>Seçilen etkinliklerden 3 tanesi kapakta, kendiliğinden. Elle seçim yok.</td></tr>
+        <tr class="grp"><td colspan="4">Araştırma ve karşılaştırma</td></tr>
+        <tr><td>Konaklama / uçuş / araç / ulaşım / etkinlik / restoran tabloları</td><td>Seçenekleri yan yana görmek</td><td><span class="chip c-var">Var</span></td><td>Çekirdek, Etsy'dekinden çok daha iyi (otomatik okuma, puan, kanıt).</td></tr>
+        <tr><td>Destinasyon karşılaştırma (en iyi zaman, uçuş süresi, maliyet, dil)</td><td>"Nereye gidelim" kararı</td><td><span class="chip c-sonra">Sonra</span></td><td>Sohbette "Lizbon mu Sevilla mı?" aynı karar kartıyla cevaplanır. Yeni ekran yok.</td></tr>
+        <tr><td>"Rezerve" kutusu → rezervasyon listesi</td><td>Kesinleşeni ayırmak</td><td><span class="chip c-var">Var</span></td><td>Rezerve ettim + onay ekranı görüntüsü otomatik rezerve eder.</td></tr>
+        <tr><td>Rezervasyon no, giriş/çıkış saatleri</td><td>Yolculukta lazım</td><td><span class="chip c-ekle">Ekle</span></td><td>Zaten okunuyor ama görünmüyor. Gün bloğunda ve gezi sayfasında gösterilir.</td></tr>
+        <tr><td>Etkinlik açılış saatleri, bilet fiyatı (yetişkin/çocuk)</td><td>Doğru güne koymak</td><td><span class="chip c-ekle">Ekle</span></td><td>Açılış saati ve kapalı gün okunur; yanlış güne düşerse uyarı satırı.</td></tr>
+        <tr><td>Restoran: rezervasyon gerekli mi</td><td>Kaçırmamak</td><td><span class="chip c-don">Dönüştür</span></td><td>Gerekliyse Hazırlık'a tarihli madde olur.</td></tr>
+        <tr><td>Sıralama ve filtre</td><td>Çok satırda bulmak</td><td><span class="chip c-var">Var</span></td><td>Otomatik sıralama; filtreye ihtiyaç bırakmıyor.</td></tr>
+        <tr class="grp"><td colspan="4">Program</td></tr>
+        <tr><td>Rezervasyonlardan otomatik program</td><td>Tekrar yazmamak</td><td><span class="chip c-var">Var</span></td><td>Plan ve Günlük akış.</td></tr>
+        <tr><td>Elle program satırı</td><td>Rezervasyonsuz planlar</td><td><span class="chip c-var">Var</span></td><td>Sohbetle ("11'ine taksi koyalım") ve 0.31'in "+ Ekle" şablonlarıyla.</td></tr>
+        <tr><td>Saat saat ya da sabah/öğle/akşam düzeni</td><td>Herkes saat vermek istemiyor</td><td><span class="chip c-ekle">Ekle</span></td><td>Saat yoksa kaba dilim: sabah / öğle / akşam. Daha az emekle plan.</td></tr>
+        <tr><td>Gün başlığında şehir ve hava</td><td>Günü hazırlamak</td><td><span class="chip c-ekle">Ekle</span></td><td>Şehir var; hava eklenir (16 gün içi tahmin, öncesi mevsim ortalaması).</td></tr>
+        <tr><td>Çakışma vurgusu</td><td>Aynı saate iki şey</td><td><span class="chip c-ekle">Ekle</span></td><td>Konaklamada var; etkinlik ve saat çakışması eklenir.</td></tr>
+        <tr><td>Aylık takvim, renk kodlu</td><td>Tüm geziyi takvimde görmek</td><td><span class="chip c-don">Dönüştür</span></td><td>Takvimi biz çizmeyiz: "Takvime aktar" ile telefon takvimine.</td></tr>
+        <tr><td>Günlük kıyafet planı</td><td>Estetik, grup gezisi</td><td><span class="chip c-alma">Alma</span></td><td>Bavul listesi hava ve etkinliklerden zaten çıkıyor.</td></tr>
+        <tr><td>"Programa ekle" (tarih, saat, süre)</td><td>İstek listesini güne çevirmek</td><td><span class="chip c-ekle">Ekle</span></td><td>"Günlere dağıt": Fikirler'deki tarihsiz yerleri AI konum ve açılış saatine göre günlere önerir, tek dokunuşla kabul.</td></tr>
+        <tr class="grp"><td colspan="4">Para</td></tr>
+        <tr><td>Bütçe ve tahmini toplam</td><td>Sınırı bilmek</td><td><span class="chip c-var">Var</span></td><td>Bütçe çubuğu.</td></tr>
+        <tr><td>Gerçek harcama kaydı (dövizle)</td><td>Yolculukta harcamayı izlemek</td><td><span class="chip c-sonra">Sonra</span></td><td>Telefon sayfasında tek satırlık giriş ya da fiş fotoğrafı. Masaüstünde değeri düşük.</td></tr>
+        <tr><td>Daha ödenecek, kısmi ödeme, son ödeme günü</td><td>Sürpriz ödeme yememek</td><td><span class="chip c-ekle">Ekle</span></td><td>Para çekmecesinde: ödendi / ödenecek (ne zaman) / karar bekleyen.</td></tr>
+        <tr><td>Kur tablosu ve çevirici</td><td>Yabancı fiyatı anlamak</td><td><span class="chip c-don">Dönüştür</span></td><td>Widget yok: fiyatın altında soluk ₺ karşılığı; kur "Bilmen gerekenler"de.</td></tr>
+        <tr><td>Nakit ihtiyacı</td><td>Yanına ne kadar alacağını bilmek</td><td><span class="chip c-ekle">Ekle</span></td><td>Ödeneceklerin içinde "bunun €60'ı nakit".</td></tr>
+        <tr><td>Ödeme yöntemine / ülkeye göre harcama</td><td>Muhasebe</td><td><span class="chip c-alma">Alma</span></td><td>Karar değiştirmiyor.</td></tr>
+        <tr><td>Kişi başı maliyet</td><td>Grup içinde adalet</td><td><span class="chip c-ekle">Ekle</span></td><td>Paylaşılan gezide tek satır.</td></tr>
+        <tr><td>Kim kime borçlu, tutar ya da yüzdeyle bölme</td><td>Hesaplaşma</td><td><span class="chip c-sonra">Sonra</span></td><td>Varsayılan eşit bölüşüm, istisna sohbetten. Gerçek harcama girişiyle birlikte gelir.</td></tr>
+        <tr><td>Bütçe aşımı uyarısı</td><td>Kontrol</td><td><span class="chip c-var">Var</span></td><td>Bütçe çubuğu ve "Uygun değil · bütçe tavanı".</td></tr>
+        <tr><td>Birikim takibi / birikim oyunu</td><td>Gezi öncesi motivasyon</td><td><span class="chip c-alma">Alma</span></td><td>Planlayıcının işi değil.</td></tr>
+        <tr class="grp"><td colspan="4">Hazırlık</td></tr>
+        <tr><td>Aşamalı checklist (rezervasyonda / 1 hafta / 1 gün / kalkış / sonra)</td><td>Yola çıkış kaygısı</td><td><span class="chip c-don">Dönüştür</span></td><td>Aşama sekmesi yok: her maddenin kendi tarihi var, gezi verisinden kendiliğinden çıkar.</td></tr>
+        <tr><td>Görev atama (kim yapacak)</td><td>Grupta iş bölümü</td><td><span class="chip c-sonra">Sonra</span></td><td>Paylaşılan gezide "bunu Sabine yapsın" sohbetle.</td></tr>
+        <tr><td>Kişi başı bavul listesi, kategoriler, ilerleme</td><td>Unutmamak</td><td><span class="chip c-ekle">Ekle</span></td><td>AI bir kez hazırlar (hava, etkinlik, süre); tek liste, istenirse kişi kişi.</td></tr>
+        <tr><td>Bavul durumları (sipariş et / geldi / zaten var / orada al), alışveriş listesi</td><td>Eksikleri almak</td><td><span class="chip c-don">Dönüştür</span></td><td>İki durum yeter: bavulda / alınacak. Alışveriş listesi "alınacak" görünümü.</td></tr>
+        <tr><td>"Eşyam hangi çantada"</td><td>Çanta karmaşası</td><td><span class="chip c-alma">Alma</span></td><td>Karar değeri yok, giriş yükü büyük.</td></tr>
+        <tr><td>Belgeler, acil bilgiler, ilaçlar</td><td>Yolda sorun yaşamamak</td><td><span class="chip c-ekle">Ekle</span></td><td>Bilet ve PDF ekleri 0.31'de var. Eksik olan kontrol: pasaport süresi, Schengen vizesi tarihi, sigorta. Acil numara "Bilmen gerekenler"de.</td></tr>
+        <tr><td>Bilmen gerekenler, faydalı kelimeler</td><td>Yerel bilgi</td><td><span class="chip c-ekle">Ekle</span></td><td>Ülke başına bir kart: para ve kur, dil ve 5 kelime, priz, bahşiş, acil numara.</td></tr>
+        <tr class="grp"><td colspan="4">Paylaşım ve sunum</td></tr>
+        <tr><td>Canva rehber (telefon ve baskı, içindekiler, linkli sayfalar)</td><td>Planı göstermek, yolda açmak</td><td><span class="chip c-ekle">Ekle</span></td><td>Gezi sayfası: otomatik, düzenlemesiz, telefonda şık; tarayıcıdan yazdırılabilir.</td></tr>
+        <tr><td>Davet kartı (kimler geliyor, kapora, toplam)</td><td>Grubu toplamak</td><td><span class="chip c-sonra">Sonra</span></td><td>Gezi sayfasının "davet" görünümü: kişi başı tutar ve son tarih.</td></tr>
+        <tr><td>Acentenin müşteriye verdiği rehber</td><td>Profesyonel kullanım</td><td><span class="chip c-sonra">Sonra</span></td><td>Ürünleşme fırsatı: aynı sayfa, rehber/acente adıyla.</td></tr>
+        <tr class="grp"><td colspan="4">Hayal ve anı</td></tr>
+        <tr><td>Bucket list, hayal ve ilham panosu</td><td>Gelecek gezi isteği</td><td><span class="chip c-don">Dönüştür</span></td><td>Tarihsiz gezi "Hayal" olarak listede. Ayrı ekran yok.</td></tr>
+        <tr><td>Gidilen yerler haritası</td><td>Gurur, koleksiyon</td><td><span class="chip c-alma">Alma</span></td><td>Planlamaya katkısı yok.</td></tr>
+        <tr><td>Anı, günlük, fotoğraf, sticker</td><td>Nostalji</td><td><span class="chip c-alma">Alma</span></td><td>Başka uygulamaların işi (Fotoğraflar, günlük).</td></tr>
+        <tr><td>Gezi yorumu, şehir puanı</td><td>Bir dahakine</td><td><span class="chip c-don">Dönüştür</span></td><td>Dönüşte kaldığın yer başına tek soru → tercih profili.</td></tr>
+        <tr><td>Hediyelik eşya listesi</td><td>Kimseyi unutmamak</td><td><span class="chip c-alma">Alma</span></td><td>Gerekirse sohbetle Hazırlık'a madde.</td></tr>
+        <tr><td>Hazır destinasyon rotası (Japonya 14 gün)</td><td>Araştırmadan kurtulmak</td><td><span class="chip c-sonra">Sonra</span></td><td>Gezgin Sırları içeriği AI taslak plan olarak: "Porto 4 gün taslağını getir".</td></tr>
+        <tr><td>Puan/mil karşılaştırması</td><td>Mil kullananlar</td><td><span class="chip c-alma">Alma</span></td><td>Niş.</td></tr>
+      </tbody>
+    </table></div>
+    <p class="small muted">Toplam: 14 Var · 15 Ekle · 9 Dönüştür · 9 Sonra · 11 Alma. 25'i zaten var ya da hiç alınmıyor; asıl iş 15 sade ekleme ve 9 dönüştürme.</p>
+  </section>
+
+  <section id="ilkeler">
+    <span class="eyebrow">Apple mantığı</span>
+    <h2>Tasarım ilkeleri</h2>
+    <ul class="rules">
+      <li><b>Doldurulacak alan yok.</b><span class="small">Her yüzey kayıtlardan ve sohbetten dolar. Kullanıcı yalnız onaylar, işaretler ya da düzeltir. Etsy'de 6 giriş sekmesi var, bizde sıfır.</span></li>
+      <li><b>Yeni sekme yok, an var.</b><span class="small">Plan · Günlük akış · Fikirler yeter. Gezi panosu tarihe göre değişir: önce karar ve hazırlık, yolculukta Bugün, dönüşte hesap. Kullanıcı mod seçmez. Cüzdan uygulamasında biniş kartının o gün öne çıkması gibi.</span></li>
+      <li><b>Grafik yerine cümle.</b><span class="small">"€2.140 / €2.400 · €260 kalıyor" bir pasta grafikten hızlı okunur. Rakam gerekiyorsa tek çubuk.</span></li>
+      <li><b>Bir yüzeyde bir ana eylem.</b><span class="small">DESIGN.md kuralı korunur: koyu dolgu buton bir alanda en fazla bir tane.</span></li>
+      <li><b>Yeni ekran değil, çekmece.</b><span class="small">Hazırlık ve Para, panonun üstüne açılan çekmecedir. Kapatınca pano yerinde. Tek yeni sayfa gezi sayfasıdır, o da başkaları için.</span></li>
+      <li><b>"Yapılacak" tek anlama gelsin.</b><span class="small">Bugün üç ayrı şey bu kelimeyi kullanıyor: şerit (Karar ver, Rezerve et), Fikirler'deki "yapılacaklar" (orada yapılacaklar) ve önerilen gitmeden önceki liste. Sonuncusunun adı hep "Hazırlık" olmalı.</span></li>
+      <li><b>Renklerin anlamı aynı kalır.</b><span class="small">Yeşil rezerve, amber planlanıyor, kırmızı risk, mavi öneri. Hazırlık için yeni bir ton (mor) yalnız ilerleme göstergesinde.</span></li>
+    </ul>
+    <h3 style="margin-top:10px">Bir gezi, üç an</h3>
+    <div class="moments">
+      <div class="moment"><span class="when">Gezi öncesi</span><b>Karar ver, hazırlan</b><ul><li>Kapakta geri sayım ve üç halka</li><li>Şerit: Karar ver · Rezerve et · Planla · Hazırlık · ⏳</li><li>Hazırlık ve Para çekmeceleri</li><li>Gezi sayfasını gönder</li></ul></div>
+      <div class="moment"><span class="when">Yolculukta</span><b>Bugün</b><ul><li>Pano Bugün'le açılır</li><li>Sıradaki şey: saat, adres, rezervasyon no, harita</li><li>Telefonda gezi sayfası</li><li>Harcama girişi (Faz 3)</li></ul></div>
+      <div class="moment"><span class="when">Dönüşte</span><b>Kapat</b><ul><li>Hesap: kim kime ne borçlu</li><li>Kaldığın yerlere tek soru</li><li>Gezi arşive iner, tercihlerin kalır</li></ul></div>
+    </div>
+  </section>
+
+  <section id="ekranlar">
+    <span class="eyebrow">UX ve UI</span>
+    <h2>Ekran taslakları</h2>
+    <p>Taslaklar Trip Radar'ın kendi tasarım dilinde (renkler, butonlar, yazı ölçeği). Örnek gezi README'deki Porto → Funchal gezisi; rakamlar örnektir.</p>
+    <div class="screens">
+
+      <div class="screen">
+        <div class="mock" aria-label="Gezi kapağı taslağı">
+          <div class="hero">
+            <svg class="rings" viewBox="0 0 120 120" role="img" aria-label="Karar 5/6, Rezervasyon 4/6, Hazırlık 7/12">
+              <g transform="rotate(-90 60 60)" fill="none" stroke-width="11" stroke-linecap="round">
+                <circle cx="60" cy="60" r="52" stroke="var(--accent)" stroke-opacity=".15"></circle>
+                <circle class="p" cx="60" cy="60" r="52" stroke="var(--accent)" stroke-dasharray="272 327"></circle>
+                <circle cx="60" cy="60" r="38" stroke="var(--success)" stroke-opacity=".15"></circle>
+                <circle class="p" cx="60" cy="60" r="38" stroke="var(--success)" stroke-dasharray="159 239"></circle>
+                <circle cx="60" cy="60" r="24" stroke="var(--prep)" stroke-opacity=".15"></circle>
+                <circle class="p" cx="60" cy="60" r="24" stroke="var(--prep)" stroke-dasharray="88 151"></circle>
+              </g>
+            </svg>
+            <div>
+              <div class="name">Porto ve Madeira</div>
+              <div class="meta num">7–18 Ekim · 12 gün · Porto → Funchal · Emre ve Sabine</div>
+              <span class="countdown num">2 gün kaldı</span>
+            </div>
+          </div>
+          <div class="legend num">
+            <div><b><span class="dot" style="background:var(--accent)"></span>5/6</b><span>karar verildi</span></div>
+            <div><b><span class="dot" style="background:var(--success)"></span>4/6</b><span>rezerve</span></div>
+            <div><b><span class="dot" style="background:var(--prep)"></span>7/12</b><span>hazır</span></div>
+          </div>
+          <div class="highlights"><span>Livraria Lello</span><span>Gaia'da port tadımı</span><span>Pico do Arieiro gün doğumu</span></div>
+          <div class="strip num"><span>Karar ver 1</span><span>Rezerve et 2</span><span>Planla 1</span><span class="on">Hazırlık 3</span><span>⏳ İptal süresi 1</span></div>
+          <span class="ex">örnek veri</span>
+        </div>
+        <div class="why"><span class="tag">Taslak 1 · Gezi kapağı</span><h3>0.30 kapağına tek ekleme: hazır olma halkaları</h3>
+          <ul><li>Etsy dashboard'larındaki 10–15 kutunun işi tek soruya iniyor: hazır mıyız? Geri sayım, bütçe çubuğu ve sıradaki adım 0.30 kapağında zaten var. Eksik olan bu sorunun cevabı: karar, rezervasyon, hazırlık.</li>
+          <li>Halkalar 0.31 kartlarındaki durum çemberinin büyük hâli; aynı görsel dil.</li>
+          <li>"En çok heyecanlandığın şeyler" elle seçilmez; seçilen etkinliklerden en yüksek puanlı üçü.</li>
+          <li>Şerit zaten var; tek ekleme "Hazırlık" çipi. Çipe dokununca Hazırlık çekmecesi açılır.</li></ul></div>
+      </div>
+
+      <div class="screen">
+        <div class="mock sheet" aria-label="Hazırlık çekmecesi taslağı">
+          <div class="title"><b>Hazırlık</b><span class="muted small num">7/12 hazır</span></div>
+          <div class="grp-label">Bugün · 5 Ekim</div>
+          <div class="row"><span class="check"></span><div>Kartını yurt dışı kullanımına aç<div class="sub">Porto'da ilk ödeme 7 Ekim · otel girişte €310</div></div><span class="pill p-now">bugün</span></div>
+          <div class="row"><span class="check"></span><div>eSIM'i kur, açma<div class="sub">Airalo Europe 10 GB · aldın, kurulmadı</div></div><span class="pill p-now">bugün</span></div>
+          <div class="grp-label">Yarın · 6 Ekim</div>
+          <div class="row"><span class="check"></span><div>Online check-in açılıyor · 09:00<div class="sub">TP 1765 · İstanbul → Porto · 7 Ekim 09:00</div></div><span class="pill p-soon">yarın</span></div>
+          <div class="grp-label">Orada</div>
+          <div class="row"><span class="check"></span><div>Cantinho do Avillez · rezervasyon gerekiyor<div class="sub">9 Ekim akşamı için · sayfada yazıyor</div></div><span class="pill p-soon">3 gün</span></div>
+          <div class="grp-label">Belgeler</div>
+          <div class="row"><span class="check done"></span><div>Pasaport · Mart 2031'e kadar geçerli</div><span class="pill p-ok">tamam</span></div>
+          <div class="row"><span class="check q"></span><div>Schengen vizesi · bitiş tarihini ekle<div class="sub">Dönüş 18 Ekim; vizenin bunu kapsaması gerekir</div></div><span class="pill p-ai">sor</span></div>
+          <div class="fold"><span>Bavul · AI hazırladı · yağmur ihtimali, 2 yürüyüş günü</span><span style="display:flex;gap:8px;align-items:center" class="num">18/26 <span class="prog"><i style="width:69%"></i></span></span></div>
+          <div class="facts">
+            <div><span class="muted">Para</span><b class="num">Euro · 1 € ≈ 38,6 ₺</b></div>
+            <div><span class="muted">Priz</span><b>F tipi · adaptör gerekmez</b></div>
+            <div><span class="muted">Bahşiş</span><b>%5–10, zorunlu değil</b></div>
+            <div><span class="muted">Acil</span><b class="num">112</b></div>
+          </div>
+          <span class="ex">örnek veri</span>
+        </div>
+        <div class="why"><span class="tag">Taslak 2 · Hazırlık çekmecesi</span><h3>Checklist, bavul, belgeler ve "Bilmen gerekenler" tek çekmecede</h3>
+          <ul><li>Etsy'de 5 aşama sekmesi ("rezervasyonda", "1 hafta önce" ...) ve boş satırlar var. Burada maddeler gezi verisinden çıkar ve kendi günüyle sıralanır: uçuştan check-in, eSIM kaydından kurulum, restoran sayfasından rezervasyon.</li>
+          <li>Belgeler bizim kullanıcımız için kritik: Türk pasaportuyla Schengen vizesinin tarihi. Bilmediğimizi uydurmayız, "sor" der.</li>
+          <li>Bavul kapalı durur, ilerlemesi görünür. Açınca tek liste; iki durum: bavulda, alınacak.</li>
+          <li>Kur çevirici widget'ı yok; kur burada, fiyatların ₺ karşılığı kartların altında.</li></ul></div>
+      </div>
+
+      <div class="screen">
+        <div class="mock sheet" aria-label="Para çekmecesi taslağı">
+          <div class="title"><b>Para</b><span class="muted small">bütçe €2.400</span></div>
+          <div class="money-top">
+            <span class="big">€2.140 <span class="muted" style="font-size:16px;font-weight:500">tahmini toplam · €260 kalıyor</span></span>
+            <div class="stack" role="img" aria-label="Ödendi 1380, ödenecek 490, karar bekleyen 270, kalan 260"><i style="width:57.5%;background:var(--success)"></i><i style="width:20.4%;background:var(--warning)"></i><i style="width:11.3%;background:var(--line)"></i></div>
+            <div class="keys num"><span><span class="dot" style="background:var(--success)"></span>Ödendi €1.380</span><span><span class="dot" style="background:var(--warning)"></span>Ödenecek €490</span><span><span class="dot" style="background:var(--line)"></span>Karar bekleyen €270</span></div>
+          </div>
+          <div class="grp-label">Ödenecek</div>
+          <div class="row"><span class="check"></span><div>Jardim Stay · kalan tutar<div class="sub">Girişte, 7 Ekim · kartla</div></div><span class="amt num">€310</span></div>
+          <div class="row"><span class="check"></span><div>Porto şehir vergisi<div class="sub">Girişte · nakit · 4 gece × 2 kişi × €1,5</div></div><span class="amt num">€12</span></div>
+          <div class="row"><span class="check"></span><div>Araç kiralama · Funchal<div class="sub">Teslimde, 12 Ekim · depozito ayrıca bloke</div></div><span class="amt num">€168</span></div>
+          <p class="small muted">Yanına nakit: yaklaşık €60 (şehir vergileri ve küçük ödemeler)</p>
+          <div class="settle num"><span>Kişi başı <b>€1.070</b> · Sabine €640, sen €740 ödedin</span><span><b>Sabine sana €50 borçlu</b></span></div>
+          <span class="ex">örnek veri</span>
+        </div>
+        <div class="why"><span class="tag">Taslak 3 · Para çekmecesi</span><h3>"Daha ne ödeyeceğiz?" sorusuna tek cevap</h3>
+          <ul><li>Etsy bütçe sekmelerinde 4 grafik ve 30 satırlık işlem tablosu var. Burada üst satır tek rakam, altında tek yığın çubuk.</li>
+          <li>Asıl yenilik "Ödenecek": sayfadan okunan "konaklamada ödenir", "kalan tutar", "şehir vergisi nakit" bilgisi, tarihiyle. HeyMorning'deki "son ödeme günü" ve CreativeDreamers'taki "daha ödenecekler" kutusunun karşılığı.</li>
+          <li>Kişi başı ve hesap satırı yalnız paylaşılan gezide görünür. Bölüşme varsayılan eşittir; "akşam yemeğini ben ısmarladım" sohbetle istisna olur.</li>
+          <li>Gerçek harcama girişi (taksi, kahve) yolculukta telefonda yapılır; o yüzden Faz 3.</li></ul></div>
+      </div>
+
+      <div class="screen">
+        <div class="phones">
+          <div class="phone" aria-label="Gezi sayfası telefon taslağı, yolculuk günü">
+            <div class="notch"><i></i></div>
+            <div class="in">
+              <div class="cover"><div><b>Porto ve Madeira</b><span class="num">7–18 Ekim · Emre ve Sabine</span></div></div>
+              <div class="today">
+                <span class="k num">Bugün · 9 Ekim Per · 3. gün · Porto · 18°/12°</span>
+                <span class="s">Sıradaki · 10:30</span>
+                <span class="t">Livraria Lello</span>
+                <span class="s num">Bilet LL-48213 · Rua das Carmelitas 144 · 12 dk yürüme</span>
+                <div class="acts"><button class="btn primary" type="button">Yol tarifi</button><button class="btn" type="button">Bileti göster</button></div>
+              </div>
+              <div class="tl num">
+                <div class="it"><span class="h">13:00</span><div>Öğle · Mercado do Bolhão<div class="sub">rezervasyon yok · 600 m</div></div></div>
+                <div class="it"><span class="h">19:30</span><div>Cantinho do Avillez<div class="sub">2 kişi · rezervasyon CA-2291</div></div></div>
+                <div class="it"><span class="h">Gece</span><div>Jardim Stay<div class="sub">Rua do Almada 210 · 3. gece / 4</div></div></div>
+              </div>
+              <span class="foot">Trip Radar ile planlandı · salt okunur</span>
+            </div>
+          </div>
+          <div class="phone invite" aria-label="Gezi sayfası telefon taslağı, davet görünümü">
+            <div class="notch"><i></i></div>
+            <div class="in">
+              <div class="cover"><div><b>Porto ve Madeira</b><span class="num">7–18 Ekim · 12 gün</span></div></div>
+              <div class="who"><i>E</i><i>S</i><i>A</i></div>
+              <div class="kv num"><span>Kalış</span><span>2 yer · 11 gece</span><span>Ulaşım</span><span>3 uçuş · 1 araç</span><span>Kişi başı</span><span><b>~€1.070</b></span><span>Rezerve</span><span>€1.380</span></div>
+              <div class="tl num">
+                <div class="it"><span class="h">7–11</span><div>Porto<div class="sub">Jardim Stay · Livraria Lello, Gaia</div></div></div>
+                <div class="it"><span class="h">11–18</span><div>Funchal<div class="sub">Casa Ribeira · Pico do Arieiro</div></div></div>
+              </div>
+              <button class="btn primary" type="button">Programın tamamı</button>
+              <span class="foot">Bu sayfayı görmek için bir şey kurman gerekmez</span>
+            </div>
+          </div>
+        </div>
+        <div class="why"><span class="tag">Taslak 4 · Gezi sayfası</span><h3>Canva rehberinin otomatik hâli, yolculukta "Bugün" ekranı</h3>
+          <ul><li>Etsy'nin ikinci büyük kategorisinin (116 bin ve 102 bin satışlı mağazalar) karşılığı. Onlarda kullanıcı 30 sayfayı elle düzenliyor; bizde tek link.</li>
+          <li>Tarihe göre değişir: gezi öncesi özet ve program (davet görünümü), yolculukta Bugün ve Sıradaki, dönüşte gezi özeti.</li>
+          <li>Salt okunur ve kurulumsuz: Sabine eklenti ya da API anahtarı kurmadan açar. Bugünkü paylaşımın en büyük engelini kaldırır.</li>
+          <li>Sunucu hazır: PLAN.md'de "telefondan oy/link için küçük bir web sayfası, sunucu buna hazır" yazıyor. Yazdırınca A4 rehber olur.</li>
+          <li>Telefonda tek ana eylem var: Yol tarifi.</li></ul></div>
+      </div>
+
+      <div class="screen">
+        <div class="mock day" aria-label="Günlük akış gün kartı taslağı">
+          <div class="dh"><b>3. gün · 9 Ekim Per · Porto</b><span class="muted small num">18°/12° · yağmur yok</span></div>
+          <div class="slot"><span class="when">Sabah</span><div class="entry"><span>10:30 · Livraria Lello <span class="pill p-ok">✓ Bilet alındı</span></span><span class="sub num">Bilet LL-48213 · Rua das Carmelitas 144</span></div></div>
+          <div class="slot"><span class="when">Öğle</span><div class="entry"><span class="ghost">Boş · öneri: Mercado do Bolhão, 600 m, açık</span></div></div>
+          <div class="slot"><span class="when">Akşam</span><div><div class="entry"><span>19:30 · Cantinho do Avillez <span class="pill p-soon">Rezerve edilmedi</span></span><span class="sub">2 kişi · rezervasyon gerekiyor</span></div><div class="entry"><span>20:00 · Fado gösterisi</span><span class="warn">Akşam yemeğiyle çakışıyor · birini başka güne al</span></div></div></div>
+          <div class="tray"><span>Fikirler'de 3 yerin günü belli değil: Serralves, Ponte Luís I yürüyüşü, Foz</span><button class="btn primary" type="button">Günlere dağıt</button></div>
+          <span class="ex">örnek veri</span>
+        </div>
+        <div class="why"><span class="tag">Taslak 5 · Günlük akış</span><h3>Saat yoksa sabah/öğle/akşam; tarihsiz yerler için tek düğme</h3>
+          <ul><li>AbbyOrganizes'ın üç düzeninden en akıllısı alındı: saat bilinmiyorsa kaba dilim. Kullanıcıya daha az iş.</li>
+          <li>Gün başlığında hava; öğle boşluğu soluk bir öneriyle dolar (konuma ve açılış saatine göre), kabul etmek tek dokunuş.</li>
+          <li>Çakışma ve "rezervasyon gerekiyor" satırın altında yazar; ayrı uyarı ekranı yok.</li>
+          <li>"Günlere dağıt" Etsy'deki "programa ekle" alanlarının (tarih, saat, süre) yerini alır: 0.32'nin Fikirler sekmesinde toplanan yerleri AI günlere dağıtır, sen onaylarsın.</li></ul></div>
+      </div>
+
+    </div>
+  </section>
+
+  <section id="yol">
+    <span class="eyebrow">Sıra</span>
+    <h2>Yol haritası</h2>
+    <p>Önceki analizdeki Faz 1 (Hazırlık, Bilmen gerekenler, Ödeme durumu, Takvime aktar) bu araştırmayla değişti: en üste gezi sayfası çıktı, takvime aktarma ikinci faza indi. Puanlar 10 üzerinden önem, iş büyüklüğü S/M/L.</p>
+    <div class="phases">
+      <div class="phase"><div class="ph"><h3>Faz 0 · Kurulum sürtünmesi</h3><span class="chip c-sonra">özellik değil, ön koşul</span></div>
+        <div class="items num"><div class="item"><span>Etsy'de kurulum tek adım: "kopyala". Trip Radar'da geliştirici modu, klasör seçmek ve Gemini anahtarı. Gezi sayfası izleyiciler için bunu çözer; planlayan kişi için sorun sürer (Web Store + sunucu tarafı anahtar, PLAN.md v2).</span><span class="s">9/10</span><span class="e">L</span></div></div></div>
+      <div class="phase"><div class="ph"><h3>Faz 1 · Önce gösterilecek değer</h3><span class="muted small">2–3 sürüm</span></div>
+        <div class="items num">
+          <div class="item"><span><b>Gezi sayfası v1:</b> salt okunur link, telefon düzeni, Bugün / Sıradaki, rezervasyon no ve adres, yazdırılabilir</span><span class="s">9/10</span><span class="e">L</span></div>
+          <div class="item"><span><b>Hazırlık çekmecesi:</b> tarihli maddeler, belgeler (pasaport, vize), Bilmen gerekenler</span><span class="s">8/10</span><span class="e">M</span></div>
+          <div class="item"><span><b>Para çekmecesi:</b> ödendi / ödenecek (tarihli) / nakit, kişi başı</span><span class="s">7/10</span><span class="e">M</span></div>
+          <div class="item"><span><b>Kapak:</b> üç halka ve öne çıkan 3 an (geri sayım 0.30'da var)</span><span class="s">5/10</span><span class="e">S</span></div>
+        </div></div>
+      <div class="phase"><div class="ph"><h3>Faz 2 · Plan zekâsı</h3><span class="muted small">gerçek gezi verisiyle</span></div>
+        <div class="items num">
+          <div class="item"><span><b>Günlere dağıt</b> + sabah/öğle/akşam + etkinlik çakışması + kapalı gün</span><span class="s">7/10</span><span class="e">M</span></div>
+          <div class="item"><span><b>Takvime aktar</b> (.ics, adres ve rezervasyon no ile, iptal son günü hatırlatıcısı)</span><span class="s">6/10</span><span class="e">S</span></div>
+          <div class="item"><span><b>Bavul:</b> AI bir kez hazırlar, iki durum</span><span class="s">5/10</span><span class="e">S</span></div>
+          <div class="item"><span><b>Hava</b> gün başlığında</span><span class="s">5/10</span><span class="e">S</span></div>
+        </div></div>
+      <div class="phase"><div class="ph"><h3>Faz 3 · Yolculuk ve sonrası</h3><span class="muted small">gezi sayfası yazılabilir olunca</span></div>
+        <div class="items num">
+          <div class="item"><span><b>Harcama girişi ve hesap:</b> telefonda tek satır ya da fiş fotoğrafı, kim kime borçlu</span><span class="s">8/10</span><span class="e">L</span></div>
+          <div class="item"><span><b>Davet görünümü:</b> kimler geliyor, kişi başı tutar, kapora son günü</span><span class="s">6/10</span><span class="e">S</span></div>
+          <div class="item"><span><b>Dönüş sorusu:</b> "tekrar kalır mıydın?" → tercih profili</span><span class="s">5/10</span><span class="e">S</span></div>
+          <div class="item"><span><b>Hayal gezileri</b> ve <b>hazır taslak rota</b> (Gezgin Sırları içeriğinden)</span><span class="s">4/10</span><span class="e">M</span></div>
+        </div></div>
+    </div>
+  </section>
+
+  <section id="riskler">
+    <span class="eyebrow">Dürüst notlar</span>
+    <h2>Riskler ve sınırlar</h2>
+    <div class="pair">
+      <div class="box"><h3>Araştırmanın sınırları</h3><ul>
+        <li>Satış rakamları mağaza toplamı; bir ürünün kaç kez satıldığını Etsy göstermiyor. Euphoric Raw Designs gibi mağazalar seyahat dışı davetiyeler de satıyor.</li>
+        <li>Vitrinin ilk sayfası (53 ürün) tarandı, 16'sı derinlemesine incelendi. Etsy'nin sıralaması reklamlı ürünleri de öne alıyor.</li>
+        <li>Ürünlerin içini satın alıp açmadım; görseller ve açıklamalar satış materyali.</li>
+      </ul></div>
+      <div class="box"><h3>Ürün riskleri</h3><ul>
+        <li>Etsy alıcısı estetiğe para ödüyor. Gezi sayfası çirkin olursa Canva rehberinin yerini almaz; tasarımına özen gerekir.</li>
+        <li>0.31'in belge ekleri yalnız bu bilgisayarda duruyor. Gezi sayfasındaki "Bileti göster" için ekin sunucuya gitmesi gerekir; bu ayrı bir izin ve güvenlik kararı.</li>
+        <li>Gezi sayfası kişisel bilgi taşır (otel adresi, rezervasyon no). Link tahmin edilemez olmalı, kapatılabilmeli; rezervasyon no ve adres varsayılan gizli olmalı.</li>
+        <li>Hazırlık maddeleri yanlış olursa (yanlış vize bilgisi) güven kaybı büyük. Emin olunmayan her şey "sor" olarak çıkmalı.</li>
+        <li>Faz 0 çözülmeden 50 kişiye dağıtmak zor: anahtar alma adımında kayıp yüksek olur.</li>
+      </ul></div>
+    </div>
+  </section>
+</div>
+
+</body></html>

@@ -1,0 +1,586 @@
+{
+ "02d_tomorrowland_6nights": {
+  "route": {
+   "stops": [
+    {
+     "city": "Boom",
+     "nights": 6,
+     "code": "BE"
+    }
+   ],
+   "arrive": "Brüksel",
+   "leave": "Brüksel",
+   "confirmed": true,
+   "source": "event"
+  },
+  "ir": {
+   "stops": [
+    {
+     "city": "Boom",
+     "nights": 6,
+     "code": "BE"
+    }
+   ],
+   "arrive": "Brüksel",
+   "leave": "Brüksel",
+   "confirmed": true,
+   "source": "event"
+  },
+  "made": {
+   "where": "Boom (Belçika, BE)",
+   "intentEvent": "event:Tomorrowland@Boom",
+   "playbook": "festival",
+   "pbQuestions": [
+    "festival:stay",
+    "festival:ticket",
+    "festival:early"
+   ],
+   "tripIntent": {
+    "playbook": "festival",
+    "label": null,
+    "musts": []
+   },
+   "title": "Tomorrowland 2027",
+   "dates": {
+    "start": "2027-07-23",
+    "end": "2027-07-29"
+   },
+   "road": false,
+   "stayAs": {
+    "kind": "camp",
+    "city": "Boom"
+   },
+   "budget": null,
+   "travellers": {
+    "names": [],
+    "count": 2
+   },
+   "items": [
+    {
+     "name": "Çadır kampı · festival alanı",
+     "cat": "stay",
+     "kind": "stay",
+     "city": "Boom",
+     "d": "2027-07-23→2027-07-29",
+     "from": null,
+     "to": null,
+     "stayKind": "camp",
+     "noBooking": true,
+     "status": "chosen",
+     "adults": 2,
+     "note": "kendi çadırın"
+    },
+    {
+     "name": "Uçuş · İstanbul → Brüksel",
+     "cat": "flight",
+     "kind": "flight",
+     "city": "Brüksel",
+     "d": "2027-07-23",
+     "from": "İstanbul",
+     "to": "Brüksel",
+     "stayKind": null,
+     "noBooking": false,
+     "status": "chosen",
+     "adults": 2,
+     "note": null
+    },
+    {
+     "name": "Uçuş · Brüksel → İstanbul",
+     "cat": "flight",
+     "kind": "flight",
+     "city": "İstanbul",
+     "d": "2027-07-29",
+     "from": "Brüksel",
+     "to": "İstanbul",
+     "stayKind": null,
+     "noBooking": false,
+     "status": "chosen",
+     "adults": 2,
+     "note": null
+    },
+    {
+     "name": "Transfer · Brüksel → Boom",
+     "cat": "transport",
+     "kind": "transfer",
+     "city": "Boom",
+     "d": "2027-07-23",
+     "from": "Brüksel",
+     "to": "Boom",
+     "stayKind": null,
+     "noBooking": false,
+     "status": "chosen",
+     "adults": 2,
+     "note": null
+    },
+    {
+     "name": "Festival bileti",
+     "cat": "activity",
+     "kind": "activity",
+     "city": "Boom",
+     "d": "2027-07-23→2027-08-01",
+     "from": null,
+     "to": null,
+     "stayKind": null,
+     "noBooking": false,
+     "status": "chosen",
+     "adults": 2,
+     "note": "Resmî site: https://www.tomorrowland.com"
+    },
+    {
+     "name": "Çadır",
+     "cat": "other",
+     "kind": "prep",
+     "city": null,
+     "d": null,
+     "from": null,
+     "to": null,
+     "stayKind": null,
+     "noBooking": false,
+     "status": "chosen",
+     "adults": 2,
+     "note": null
+    },
+    {
+     "name": "Uyku tulumu",
+     "cat": "other",
+     "kind": "prep",
+     "city": null,
+     "d": null,
+     "from": null,
+     "to": null,
+     "stayKind": null,
+     "noBooking": false,
+     "status": "chosen",
+     "adults": 2,
+     "note": null
+    },
+    {
+     "name": "Kafa lambası",
+     "cat": "other",
+     "kind": "prep",
+     "city": null,
+     "d": null,
+     "from": null,
+     "to": null,
+     "stayKind": null,
+     "noBooking": false,
+     "status": "chosen",
+     "adults": 2,
+     "note": null
+    },
+    {
+     "name": "Nakit",
+     "cat": "other",
+     "kind": "prep",
+     "city": null,
+     "d": null,
+     "from": null,
+     "to": null,
+     "stayKind": null,
+     "noBooking": false,
+     "status": "chosen",
+     "adults": 2,
+     "note": null
+    },
+    {
+     "name": "Kulak tıkacı",
+     "cat": "other",
+     "kind": "prep",
+     "city": null,
+     "d": null,
+     "from": null,
+     "to": null,
+     "stayKind": null,
+     "noBooking": false,
+     "status": "chosen",
+     "adults": 2,
+     "note": null
+    }
+   ],
+   "countries": [
+    {
+     "code": "BE",
+     "visa": "Schengen vizesi",
+     "currency": "EUR"
+    }
+   ],
+   "live": {
+    "range": {
+     "start": "2027-07-23",
+     "end": "2027-07-29"
+    },
+    "nights": {
+     "total": 6,
+     "booked": 0,
+     "chosen": 6,
+     "open": 0
+    },
+    "stayBlocks": [
+     "chosen Boom 2027-07-23→2027-07-29 (6)"
+    ],
+    "looseStays": 0,
+    "legs": [
+     "arrival 2027-07-23 Boom→Boom [planned transfer]",
+     "departure 2027-07-29 Boom→Boom [empty]"
+    ],
+    "sections": [
+     {
+      "id": "flight",
+      "status": "2 aranıyor",
+      "entries": [
+       "İstanbul → Brüksel · Brüksel · 23 Tem · empty/search",
+       "Brüksel → İstanbul · Brüksel · 29 Tem · empty/search"
+      ],
+      "prep": 0,
+      "hidden": 0
+     },
+     {
+      "id": "stay",
+      "status": "✓ 1 alındı",
+      "entries": [
+       "Çadır kampı · festival alanı · Boom · 23–29 Temmuz · 6 gece · done/-"
+      ],
+      "prep": 0,
+      "hidden": 0
+     },
+     {
+      "id": "transport",
+      "status": "✓ 1 alındı",
+      "entries": [
+       "Havalimanı → Kamp · Boom · 23 Tem · done/-"
+      ],
+      "prep": 0,
+      "hidden": 0
+     },
+     {
+      "id": "activity",
+      "status": "1 bilet yok",
+      "entries": [
+       "Festival bileti · Boom · 23 Tem · book/planned"
+      ],
+      "prep": 0,
+      "hidden": 0
+     },
+     {
+      "id": "prep",
+      "status": "5 hazırlık",
+      "entries": [
+       "Çadır · Tüm gezi · unscheduled/-",
+       "Kafa lambası · Tüm gezi · unscheduled/-",
+       "Kulak tıkacı · Tüm gezi · unscheduled/-",
+       "Nakit · Tüm gezi · unscheduled/-",
+       "Uyku tulumu · Tüm gezi · unscheduled/-"
+      ],
+      "prep": 5,
+      "hidden": 0
+     }
+    ],
+    "rules": [
+     "other: Seyahat sağlık sigortası",
+     "other: eSIM (Belçika)"
+    ],
+    "shape": "Boom(6 gece,chosen) | hops: "
+   }
+  }
+ },
+ "02e_tomorrowland_6n_camp_early2": {
+  "where": "Boom (Belçika, BE)",
+  "intentEvent": "event:Tomorrowland@Boom",
+  "playbook": "festival",
+  "pbQuestions": [
+   "festival:stay",
+   "festival:ticket",
+   "festival:early"
+  ],
+  "tripIntent": {
+   "playbook": "festival",
+   "label": null,
+   "musts": []
+  },
+  "title": "Tomorrowland 2027",
+  "dates": {
+   "start": "2027-07-21",
+   "end": "2027-08-01"
+  },
+  "road": false,
+  "stayAs": {
+   "kind": "camp",
+   "city": "Boom"
+  },
+  "budget": null,
+  "travellers": {
+   "names": [],
+   "count": 2
+  },
+  "items": [
+   {
+    "name": "Konaklama · Brüksel",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Brüksel",
+    "d": "2027-07-21→2027-07-23",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 2,
+    "note": null
+   },
+   {
+    "name": "Çadır kampı · festival alanı",
+    "cat": "stay",
+    "kind": "stay",
+    "city": "Boom",
+    "d": "2027-07-23→2027-08-01",
+    "from": null,
+    "to": null,
+    "stayKind": "camp",
+    "noBooking": true,
+    "status": "chosen",
+    "adults": 2,
+    "note": "kendi çadırın"
+   },
+   {
+    "name": "Uçuş · İstanbul → Brüksel",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "Brüksel",
+    "d": "2027-07-21",
+    "from": "İstanbul",
+    "to": "Brüksel",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 2,
+    "note": null
+   },
+   {
+    "name": "Uçuş · Brüksel → İstanbul",
+    "cat": "flight",
+    "kind": "flight",
+    "city": "İstanbul",
+    "d": "2027-08-01",
+    "from": "Brüksel",
+    "to": "İstanbul",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 2,
+    "note": null
+   },
+   {
+    "name": "Transfer · Brüksel → Boom",
+    "cat": "transport",
+    "kind": "transfer",
+    "city": "Boom",
+    "d": "2027-07-23",
+    "from": "Brüksel",
+    "to": "Boom",
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 2,
+    "note": null
+   },
+   {
+    "name": "Festival bileti",
+    "cat": "activity",
+    "kind": "activity",
+    "city": "Boom",
+    "d": "2027-07-23→2027-08-01",
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 2,
+    "note": "Resmî site: https://www.tomorrowland.com"
+   },
+   {
+    "name": "Çadır",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 2,
+    "note": null
+   },
+   {
+    "name": "Uyku tulumu",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 2,
+    "note": null
+   },
+   {
+    "name": "Kafa lambası",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 2,
+    "note": null
+   },
+   {
+    "name": "Nakit",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 2,
+    "note": null
+   },
+   {
+    "name": "Kulak tıkacı",
+    "cat": "other",
+    "kind": "prep",
+    "city": null,
+    "d": null,
+    "from": null,
+    "to": null,
+    "stayKind": null,
+    "noBooking": false,
+    "status": "chosen",
+    "adults": 2,
+    "note": null
+   }
+  ],
+  "countries": [
+   {
+    "code": "BE",
+    "visa": "Schengen vizesi",
+    "currency": "EUR"
+   }
+  ],
+  "live": {
+   "range": {
+    "start": "2027-07-21",
+    "end": "2027-08-01"
+   },
+   "nights": {
+    "total": 11,
+    "booked": 0,
+    "chosen": 9,
+    "open": 2
+   },
+   "stayBlocks": [
+    "open Brüksel 2027-07-21→2027-07-23 (2)",
+    "chosen Boom 2027-07-23→2027-08-01 (9)"
+   ],
+   "looseStays": 0,
+   "legs": [
+    "arrival 2027-07-21 Brüksel→Brüksel [empty]",
+    "move 2027-07-23 Brüksel→Boom [empty]",
+    "departure 2027-08-01 Boom→Boom [empty]"
+   ],
+   "sections": [
+    {
+     "id": "flight",
+     "status": "2 aranıyor",
+     "entries": [
+      "İstanbul → Brüksel · Brüksel · 21 Tem · empty/search",
+      "Brüksel → İstanbul · Brüksel · 1 Ağu · empty/search"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "stay",
+     "status": "2 gece boş",
+     "entries": [
+      "Konaklama · Brüksel · Brüksel · 21–23 Temmuz · 2 gece · empty/search",
+      "Çadır kampı · festival alanı · Boom · 23 Temmuz – 1 Ağustos · 9 gece · done/-"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "transport",
+     "status": "1 planlanmadı · 1 rezerve edilmedi",
+     "entries": [
+      "Brüksel → Boom · Boom · 23 Tem · empty/search",
+      "Transfer · Brüksel → Boom · Boom · 23 Tem · book/planned · 1 seçenek"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "activity",
+     "status": "1 bilet yok",
+     "entries": [
+      "Festival bileti · Boom · 23 Tem · book/planned"
+     ],
+     "prep": 0,
+     "hidden": 0
+    },
+    {
+     "id": "prep",
+     "status": "5 hazırlık",
+     "entries": [
+      "Çadır · Tüm gezi · unscheduled/-",
+      "Kafa lambası · Tüm gezi · unscheduled/-",
+      "Kulak tıkacı · Tüm gezi · unscheduled/-",
+      "Nakit · Tüm gezi · unscheduled/-",
+      "Uyku tulumu · Tüm gezi · unscheduled/-"
+     ],
+     "prep": 5,
+     "hidden": 0
+    }
+   ],
+   "rules": [
+    "other: Seyahat sağlık sigortası",
+    "other: eSIM (Belçika)"
+   ],
+   "shape": "Brüksel(2 gece,open) — Boom(9 gece,chosen) | hops: train"
+  }
+ },
+ "22b_open_nights_merge": {
+  "blocks": [
+   "open Kyoto 2027-04-05→2027-04-16 (11)"
+  ],
+  "sections": [
+   {
+    "id": "flight",
+    "status": "2 uçuş eklenmedi",
+    "entries": [
+     "Gidiş uçuşu · 5 Nis · empty/search",
+     "Dönüş uçuşu · 16 Nis · empty/search"
+    ],
+    "prep": 0,
+    "hidden": 0
+   },
+   {
+    "id": "stay",
+    "status": "1 karar bekliyor",
+    "entries": [
+     "Kyoto konaklaması · Kyoto · 5–16 Nisan · 11 gece · decide/options"
+    ],
+    "prep": 0,
+    "hidden": 0
+   }
+  ]
+ }
+}

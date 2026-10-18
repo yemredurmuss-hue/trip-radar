@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paylaşım güvenliği v1</title>
+<style>
+  :root { --ink:#1c1a33; --muted:#6b6790; --gray:#6e6e73; --line:#ece9e4; --accent:#5b45e0; --lav:#ece8ff; --amber:#9a6400; --red:#c0392b;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter",system-ui,sans-serif; color:var(--ink); -webkit-font-smoothing:antialiased; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#f8f7f4; }
+  button { font-family:inherit; cursor:pointer; }
+  .wrap { max-width:1360px; margin:0 auto; padding:24px 16px 48px; display:grid; grid-template-columns:1fr 1fr; gap:28px 24px; align-items:start; }
+  @media (max-width: 980px) { .wrap { grid-template-columns:1fr; } }
+  .cap { grid-column:1/-1; margin:0 4px; font-size:15px; color:var(--gray); font-weight:600; }
+  .lbl { margin:0 4px 10px; font-size:14px; color:var(--gray); }
+  .lbl b { color:var(--ink); }
+  .card { background:#fff; border-radius:22px; box-shadow:0 1px 2px rgba(0,0,0,.04),0 6px 24px rgba(0,0,0,.05); }
+  .av { flex:none; width:32px; height:32px; border-radius:50%; display:grid; place-items:center; font-size:13px; font-weight:700; color:#fff; }
+  .av.s { background:#c06c84; } .av.e { background:#5b45e0; }
+  .btn { height:36px; padding:0 14px; border-radius:10px; border:1px solid #ddd8d0; background:#fff; font-size:14px; font-weight:500; color:var(--ink); }
+  .btn.dark { background:var(--ink); color:#fff; border:0; }
+  .btn.red { background:var(--red); color:#fff; border:0; }
+  .btn.sm { height:30px; padding:0 12px; font-size:13px; border-radius:999px; }
+
+  /* 1) karşı taraftan gelen değişiklik */
+  .notice { display:flex; align-items:center; gap:12px; padding:14px 16px; border-radius:16px; background:#fff8ec; border:1px solid #f3e2bf; }
+  .notice p { margin:0; flex:1; font-size:14px; line-height:1.45; }
+  .notice p small { display:block; color:var(--gray); font-size:13px; }
+  .notice s { color:var(--gray); }
+
+  /* 2) uyarı penceresi */
+  .dlg { padding:22px; max-width:520px; }
+  .dlg h3 { margin:0 0 8px; font-size:18px; }
+  .dlg p { margin:0 0 10px; font-size:14px; line-height:1.55; color:#3a3850; }
+  .dlg ul { margin:6px 0 14px; padding-left:18px; font-size:14px; line-height:1.6; color:#3a3850; }
+  .dlg .row { display:flex; justify-content:flex-end; gap:8px; margin-top:6px; }
+  .who { display:flex; align-items:center; gap:8px; margin:0 0 12px; font-size:13px; color:var(--muted); }
+
+  /* 3) değişiklik geçmişi */
+  .hist { padding:20px 22px 12px; }
+  .hist-h { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .hist-h b { font-size:18px; }
+  .seg { display:flex; gap:4px; padding:4px; border-radius:12px; background:#f3f1ed; }
+  .seg button { height:32px; padding:0 12px; border:0; border-radius:9px; background:transparent; font-size:13px; color:var(--gray); }
+  .seg button.on { background:#fff; color:var(--ink); font-weight:600; box-shadow:0 1px 3px rgba(0,0,0,.08); }
+  .day { margin:14px 0 4px; font-size:12px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+  .ev { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid #f3f1ed; }
+  .ev:last-child { border-bottom:0; }
+  .ev .t { flex:1; min-width:0; font-size:14px; line-height:1.4; }
+  .ev .t small { display:block; color:var(--gray); font-size:12.5px; }
+  .ev .t s { color:var(--gray); }
+  .ev.undone .t { color:var(--gray); }
+  .tag { font-size:12px; color:var(--gray); padding:3px 8px; border-radius:999px; background:#f3f1ed; white-space:nowrap; }
+  .foot { margin:10px 0 4px; font-size:12.5px; color:var(--gray); }
+
+  .note { grid-column:1/-1; margin:0 4px; font-size:13px; color:var(--gray); line-height:1.65; }
+  .note b { color:var(--ink); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2 class="cap">Paylaşım güvenliği v1 · paylaştığın kişi yanlış bir şey yaparsa</h2>
+
+  <div>
+    <p class="lbl"><b>1 · Karşı taraf değiştirince</b> · panonun üstünde, kapatana kadar durur</p>
+    <div class="notice">
+      <span class="av s">S</span>
+      <p><b>Sabine tarihleri değiştirdi:</b> <s>7–18 Ekim</s> → 8–18 Ekim<small>21:40 · senin panona da geldi</small></p>
+      <button class="btn sm dark">Geri al</button>
+      <button class="btn sm">Tamam</button>
+    </div>
+    <div class="notice" style="margin-top:10px">
+      <span class="av s">S</span>
+      <p><b>Sabine bütçeyi değiştirdi:</b> <s>₺100.000</s> → ₺80.000<small>21:38</small></p>
+      <button class="btn sm dark">Geri al</button>
+      <button class="btn sm">Tamam</button>
+    </div>
+  </div>
+
+  <div>
+    <p class="lbl"><b>2 · Sen silerken</b> · paylaşılan gezide, silmeden önce</p>
+    <div class="card dlg">
+      <div class="who"><span class="av e">E</span><span class="av s" style="margin-left:-14px;border:2px solid #fff">S</span> Sabine ile paylaşılıyor</div>
+      <h3>"Porto ve Madeira Gezisi" silinsin mi?</h3>
+      <p>Yalnız senin bilgisayarından silinir. Sabine'nin kopyası ve ortak kayıtlar sunucuda kalır.</p>
+      <ul>
+        <li>30 gün <b>Çöp kutusu</b>'nda durur, tek tıkla geri gelir.</li>
+        <li>Paylaşım senin tarafında durur; istersen kodla yeniden katılırsın.</li>
+      </ul>
+      <div class="row"><button class="btn">Vazgeç</button><button class="btn red">Sil</button></div>
+    </div>
+  </div>
+
+  <div style="grid-column:1/-1">
+    <p class="lbl"><b>3 · Değişiklik geçmişi</b> · ••• menüsünde "Geçmiş ve çöp kutusu"; her satırdan geri alınır</p>
+    <div class="card hist">
+      <div class="hist-h">
+        <b>Geçmiş</b>
+        <div class="seg"><button class="on">Hepsi</button><button>Sabine</button><button>Ben</button><button>Çöp kutusu · 3</button></div>
+      </div>
+      <div class="day">Bugün</div>
+      <div class="ev"><span class="av s">S</span><div class="t"><b>Tarihler:</b> <s>7–18 Ekim</s> → 8–18 Ekim<small>Sabine · 21:40 · ortak ayar</small></div><button class="btn sm dark">Geri al</button></div>
+      <div class="ev"><span class="av s">S</span><div class="t"><b>Bütçe:</b> <s>₺100.000</s> → ₺80.000<small>Sabine · 21:38 · ortak ayar</small></div><button class="btn sm dark">Geri al</button></div>
+      <div class="ev"><span class="av e">E</span><div class="t"><b>Silindi:</b> Renault Campervan "Bawhee"<small>Ben · sohbetten · 20:12 · Gizlenenler'de</small></div><button class="btn sm">Geri getir</button></div>
+      <div class="ev"><span class="av e">E</span><div class="t"><b>Gizlendi:</b> Gaula → Madeira şehir değişimi<small>Ben · sohbetten · 20:10</small></div><button class="btn sm">Geri getir</button></div>
+      <div class="ev undone"><span class="av s">S</span><div class="t"><b>Öncelik:</b> Fiyat çok önemli → önemli<small>Sabine · 19:02 · geri alındı (Ben, 19:05)</small></div><span class="tag">geri alındı</span></div>
+      <div class="day">Dün</div>
+      <div class="ev"><span class="av s">S</span><div class="t"><b>Eklendi:</b> Livraria Lello (Instagram)<small>Sabine · 18:20 · paylaşılan kayıt</small></div><button class="btn sm">Panoda göster</button></div>
+      <div class="ev"><span class="av e">E</span><div class="t"><b>Kalıcı silindi:</b> Casa do Rio<small>Ben · × ile · Çöp kutusu'nda 29 gün daha</small></div><button class="btn sm">Geri getir</button></div>
+      <p class="foot">Ortak ayarların her eski hâli sunucuda saklanır, iki taraf da geri alabilir. Silinen kayıtlar ve belgeleri 30 gün Çöp kutusu'nda durur.</p>
+    </div>
+  </div>
+
+  <p class="note">
+    <b>Bugün ne paylaşılıyor:</b> gezinin adı, tarihleri, bütçesi, öncelikleri, istenen olanaklar ve şartlar (son değiştiren kazanır), kaydedilen sayfalar (yalnız eklenir, hiç silinmez) ve oylar. Sabine'nin silmesi ya da gizlemesi senin panona <b>gelmez</b>; senin kayıtların onun elinden silinemez. Asıl risk: ortak ayarları (tarih, bütçe, öncelik) yanlışlıkla değiştirmesi; şu an bu sessizce senin panona yazılıyor.<br>
+    <b>Çözüm:</b> (1) karşıdan gelen her ortak ayar değişikliği panonda bildirim olur, tek tıkla geri alınır; (2) ortak ayarların her eski hâli sunucuda geçmişe yazılır (kim, ne zaman, neyi), iki taraf da oradan geri alır; (3) her silme 30 gün Çöp kutusu'na gider (kayıt + belgeleri); paylaşılan gezide gezinin kendisini silerken uyarı çıkar; (4) paylaşım ileride kayıtları da eşitlerse aynı geçmiş onları da kapsar.
+  </p>
+</div>
+</body>
+</html>

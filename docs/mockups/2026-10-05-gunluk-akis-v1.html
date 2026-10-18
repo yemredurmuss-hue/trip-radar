@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trip Radar · Günlük akış v1</title>
+<style>
+  /*
+    Kurallar
+    - Gün kartı kapalıyken HEP AYNI BOY (geniş 248 px, dar 380 px). İçerik az da olsa çok da olsa kart değişmez.
+    - Kapalı kartta en fazla 4 satır: rezervasyonlu şeyler saat sırasıyla, fikirler tek satırda toplanır.
+      5. satır gerekirse 3 satır + "+ 21:00 Fado gecesi ve 2 fikir" satırı.
+    - Check-in / check-out gibi bilgi satırları kapalı kartta yok, açınca var.
+    - Kısa günün boş kalan yeri: günün türünün noktalı silueti (sağ altta, soluk) + "+ Bu güne ekle".
+    - Peş peşe boş günler tek kart ("5–6. gün · 2 boş gün"), içinde o şehrin Fikirler'i.
+    - Durum: çember (✓ alındı · amber halka seçildi · kesikli planlanmadı) + yalnız eksik olanın yanında kısa yazı.
+      Alınmış olan susar; konuşan yalnız iş bekleyen.
+    - Üç kat, en fazla iki dokunuş: gün kartı → gün açılır (tam liste) → satır açılır (plan kartının ayrıntısı).
+      Kapalı kartta bir satıra dokunmak ikisini birden yapar.
+    - Aynı anda tek gün, gün içinde tek satır açık. Esc bir kat kapatır.
+  */
+  :root {
+    --ink: #1d1d1f; --gray: #6e6e73; --line: #e8e8ed; --bg: #faf8f4;
+    --sand: #fbf6ea; --sand-line: #efe2c3; --green: #eef8f1; --green-line: #cfe8d7;
+    --amber: #8a5a00; --amber-ring: #e0a43a; --ok: #1f8f4e; --link: #1556d6;
+    --flight: #6a4fe0; --taxi: #d29a00; --bike: #5d8a1c; --boat: #0e8fb0; --act: #a8336f; --food: #c0562b; --idea: #8b8680;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", system-ui, sans-serif;
+    color: var(--ink); -webkit-font-smoothing: antialiased;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); }
+  button { font-family: inherit; cursor: pointer; color: inherit; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 32px 16px 80px; }
+
+  .head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+  .head h1 { margin: 0; font-size: 30px; letter-spacing: -.02em; }
+  .head .sum { font-size: 15px; color: var(--gray); }
+  .head .sum b { color: var(--amber); font-weight: 600; }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; color: var(--gray); margin: 0 0 20px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+  /* ---------- gün kartı ---------- */
+  .day { position: relative; display: grid; grid-template-columns: 38% 1fr; height: 248px; margin-bottom: 16px;
+         background: #fff; border-radius: 22px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 0 0 1px rgba(0,0,0,.05);
+         cursor: pointer; transition: box-shadow .15s; }
+  .day:hover { box-shadow: 0 4px 16px rgba(0,0,0,.07), 0 0 0 1px rgba(0,0,0,.07); }
+  .day.open { height: auto; min-height: 248px; cursor: default; box-shadow: 0 6px 24px rgba(0,0,0,.08), 0 0 0 1px rgba(0,0,0,.08); }
+
+  .ph { position: relative; overflow: hidden; background: linear-gradient(135deg, #9cc3d5, #e9d7b4); }
+  .ph img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .ph .no { position: absolute; top: 14px; left: 14px; padding: 6px 12px; border-radius: 999px; background: rgba(255,255,255,.92);
+            font-size: 15px; font-weight: 700; backdrop-filter: blur(6px); }
+  .ph .date { position: absolute; left: 14px; bottom: 14px; padding: 4px 10px; border-radius: 999px; background: rgba(0,0,0,.45);
+              color: #fff; font-size: 13px; font-weight: 500; backdrop-filter: blur(6px); }
+  .ph .today { background: var(--link); }
+
+  .bd { position: relative; padding: 18px 20px 16px 22px; min-width: 0; display: flex; flex-direction: column; }
+  .bd > * { position: relative; z-index: 1; }
+  .ttl { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .ttl h2 { margin: 0; font-size: 22px; line-height: 1.2; letter-spacing: -.015em; flex: 1; min-width: 0; }
+  .route { font-size: 13px; color: var(--gray); font-weight: 500; }
+  .left { flex: none; padding: 2px 8px; border-radius: 8px; background: #fdf0d5; color: var(--amber); font-size: 13px; font-weight: 600; }
+  .chev { flex: none; width: 28px; height: 28px; border: 0; border-radius: 8px; background: transparent; color: var(--gray); display: grid; place-items: center; transition: transform .2s; }
+  .day.open .chev { transform: rotate(180deg); }
+  .chev:hover { background: var(--line); color: var(--ink); }
+
+  /* satırlar */
+  .rows { list-style: none; margin: 0; padding: 0; position: relative; }
+  .rows::before { content: ""; position: absolute; left: 64px; top: 14px; bottom: 14px; border-left: 1.5px dotted #cfcac2; }
+  .r { position: relative; display: grid; grid-template-columns: 52px 24px 34px 1fr auto; align-items: center; gap: 0 10px; min-height: 40px; }
+  .r .t { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+  .r .t.est { color: var(--gray); font-weight: 500; }
+  .st { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: #fff; justify-self: center; }
+  .st.yes { background: var(--ok); color: #fff; }
+  .st.half { border: 2px solid var(--amber-ring); }
+  .st.no { border: 2px dashed #cdb07a; }
+  .st.dot::after { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #c8c3bb; }
+  .ic { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; color: var(--c); background: color-mix(in srgb, var(--c) 13%, #fff); }
+  .r .nm { font-size: 15px; min-width: 0; overflow-wrap: anywhere; }
+  .r .nm small { display: block; font-size: 13px; color: var(--gray); margin-top: 1px; }
+  .r .nm .ideas { color: var(--gray); }
+  .r .nm .ideas b { color: var(--ink); font-weight: 600; }
+  .r .need { font-size: 13px; color: var(--amber); font-weight: 500; white-space: nowrap; }
+  .r .need.no { color: var(--gray); }
+  .r.more .nm { color: var(--link); font-size: 14px; }
+  .r.info { min-height: 30px; }
+  .r.info .nm { font-size: 14px; color: var(--gray); }
+  .r.info .nm b { color: var(--ink); font-weight: 600; margin-right: 6px; }
+
+  /* boş yer: siluet + ekle */
+  .sil { position: absolute; right: 8px; bottom: 6px; width: 54%; height: 70%; color: #b9c9cf; opacity: .55; pointer-events: none; z-index: 0; }
+  .addday { margin-top: auto; align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px;
+            border: 1.5px dashed #d5cfc5; border-radius: 10px; background: rgba(255,255,255,.7); color: var(--gray); font-size: 14px; }
+  .addday:hover { border-color: var(--ink); color: var(--ink); }
+
+  /* boş günler kartı */
+  .free p { margin: 0 0 10px; font-size: 15px; color: var(--gray); }
+  .sugs { display: flex; flex-direction: column; gap: 6px; }
+  .sug { display: flex; align-items: center; gap: 10px; font-size: 15px; }
+  .sug .ic { width: 28px; height: 28px; border-radius: 8px; }
+  .sug button { margin-left: auto; border: 0; background: none; color: var(--link); font-size: 14px; padding: 4px 6px; border-radius: 6px; }
+  .sug button:hover { background: #eef4ff; }
+
+  /* ---------- açık gün ---------- */
+  .day.open .r { cursor: pointer; border-radius: 12px; }
+  .day.open .r:not(.info):hover { background: #f6f4f0; }
+  .day.open .r.sel { background: transparent; }
+  .day:not(.open) .r:not(.more):hover .nm { text-decoration: underline; text-decoration-color: #c8c3bb; text-underline-offset: 3px; }
+  .dayfoot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 14px; color: var(--gray); }
+  .dayfoot .addday { margin: 0 0 0 auto; }
+
+  /* ---------- satır ayrıntısı: plan kartının ayrıntısı ---------- */
+  .det { margin: 4px 0 10px 86px; border-radius: 18px; padding: 16px; background: var(--sand); border: 1px solid var(--sand-line); cursor: default; animation: in .18s ease-out; }
+  .det.ok { background: var(--green); border-color: var(--green-line); }
+  @keyframes in { from { opacity: 0; transform: translateY(-4px); } }
+  .det .top { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--gray); }
+  .det .top .kind { font-weight: 600; color: var(--c); display: inline-flex; align-items: center; gap: 6px; }
+  .det .main { display: grid; grid-template-columns: 120px 1fr; gap: 14px; margin: 12px 0; align-items: center; }
+  .det .main.noimg { grid-template-columns: 1fr; }
+  .det .vis { width: 120px; height: 88px; border-radius: 12px; overflow: hidden; background: color-mix(in srgb, var(--c) 10%, #fff); display: grid; place-items: center; color: var(--c); }
+  .det .vis img { width: 100%; height: 100%; object-fit: cover; }
+  .det h3 { margin: 0; font-size: 20px; letter-spacing: -.01em; }
+  .det .main p { margin: 4px 0 0; font-size: 15px; color: #3a3a3c; }
+  .facts { background: #fff; border-radius: 14px; padding: 4px 14px; margin: 0 0 12px; }
+  .facts div { display: grid; grid-template-columns: 130px 1fr; gap: 12px; padding: 9px 0; font-size: 14px; border-bottom: 1px solid var(--line); }
+  .facts div:last-child { border-bottom: 0; }
+  .facts dt { color: var(--gray); margin: 0; } .facts dd { margin: 0; }
+  .strip { display: flex; align-items: center; gap: 12px; }
+  .strip .stx { font-size: 14px; font-weight: 500; color: var(--amber); }
+  .det.ok .strip .stx { color: var(--ok); }
+  .strip .price { margin-left: auto; font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .btn { height: 36px; padding: 0 16px; border-radius: 999px; border: 0; background: var(--ink); color: #fff; font-size: 14px; font-weight: 600; }
+  .btn.sec { background: #fff; color: var(--ink); box-shadow: 0 0 0 1px rgba(0,0,0,.12); }
+  .toplan { display: inline-block; margin-top: 10px; font-size: 14px; color: var(--link); text-decoration: none; }
+
+  .notes { margin-top: 36px; padding: 20px; border-radius: 18px; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.05); font-size: 14px; line-height: 1.55; color: #3a3a3c; }
+  .notes h4 { margin: 0 0 8px; font-size: 15px; color: var(--ink); }
+  .notes ol { margin: 0; padding-left: 20px; }
+
+  /* ---------- dar ---------- */
+  @media (max-width: 620px) {
+    .day { grid-template-columns: 1fr; grid-template-rows: 132px 1fr; height: 380px; }
+    .day.open { min-height: 380px; }
+    .bd { padding: 14px 14px 14px 12px; }
+    .rows::before { left: 54px; }
+    .r { grid-template-columns: 44px 22px 30px 1fr; }
+    .r .need { grid-column: 4; justify-self: start; margin-top: -4px; padding-bottom: 4px; }
+    .ic { width: 30px; height: 30px; }
+    .det { margin-left: 0; }
+    .det .main { grid-template-columns: 1fr; }
+    .det .vis { width: 100%; height: 120px; }
+    .facts div { grid-template-columns: 1fr; gap: 2px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <h1>Günlük akış</h1>
+    <span class="sum">7 gün · <b id="leftsum"></b></span>
+  </div>
+  <div class="legend">
+    <span><i class="st yes" style="width:16px;height:16px">✓</i> alındı</span>
+    <span><i class="st half" style="width:16px;height:16px"></i> seçildi, rezerve edilmedi</span>
+    <span><i class="st no" style="width:16px;height:16px"></i> planlanmadı</span>
+    <span><i class="st dot" style="width:16px;height:16px"></i> fikir (rezervasyon gerekmez)</span>
+  </div>
+  <div id="days"></div>
+
+  <div class="notes">
+    <h4>Bu taslakta denenecekler</h4>
+    <ol>
+      <li>Kartlara dokun: <b>2. gün</b>'de 16:00 bisiklet turuna doğrudan dokunursan gün açılır ve tur ayrıntısı da açılır.</li>
+      <li>3. gün tek bir şey içeriyor, kart yine aynı boyda. Boş kalan yeri siluet ve "+ Bu güne ekle" dolduruyor.</li>
+      <li>5. ve 6. gün boş olduğu için tek kartta birleşti. İçinde Madeira için kaydettiğin Fikirler var.</li>
+      <li>Esc ya da başlıktaki ⌃ bir kat kapatır.</li>
+    </ol>
+  </div>
+</div>
+
+<script>
+const PX = (id) => `https://images.pexels.com/photos/${id}/pexels-photo-${id}.jpeg?auto=compress&cs=tinysrgb&w=900`;
+const IMG = { porto: PX(24879031), madeira: PX(9499007), douro: PX(13540077), whale: PX(17980729) };
+
+const ICONS = {
+  flight: '<path d="M10.5 13.5 3 11l1.2-1.2 8.3 1L16.8 6.5a1.6 1.6 0 0 1 2.3 2.3l-4.3 4.3 1 8.3L14.6 22.6l-2.5-7.5-3.4 3.4.3 2.6-1.2 1.2-1.4-3.6-3.6-1.4 1.2-1.2 2.6.3z"/>',
+  taxi: '<path d="M5 17h14M6.5 17v2M17.5 17v2M4 13l2-5h12l2 5v4H4z"/><circle cx="8" cy="14.5" r="1"/><circle cx="16" cy="14.5" r="1"/>',
+  bike: '<circle cx="6" cy="16" r="3.5"/><circle cx="18" cy="16" r="3.5"/><path d="M6 16l4-7h5l3 7M10 9l3 7M9 6h3"/>',
+  boat: '<path d="M3 17l2 3h14l2-3zM6 17V11h12v6M9 11V7h6v4M12 7V4"/>',
+  act: '<path d="M4 8a2 2 0 0 0 0 4v4h16v-4a2 2 0 0 1 0-4V4H4zM14 4v12" stroke-dasharray="2 2"/>',
+  food: '<path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M16 21V3c-2 1-3 4-3 8h3"/>',
+  idea: '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9V16h7v-2.1A6 6 0 0 0 12 3z"/>',
+  bed: '<path d="M3 18V7M3 14h18v4M21 14v-2a3 3 0 0 0-3-3h-7v5"/><circle cx="7" cy="11" r="1.6"/>',
+  walk: '<circle cx="13" cy="4.5" r="1.6"/><path d="M10 21l2-6 3 3v3M9 11l3-3 3 3 2 1M12 8l-1 7"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  chev: '<path d="M6 9l6 6 6-6"/>',
+};
+const svg = (k, s = 18, sw = 1.8) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${ICONS[k]}</svg>`;
+const KIND = {
+  flight: ["Uçuş", "--flight"], taxi: ["Taksi · transfer", "--taxi"], bike: ["Bisiklet turu", "--bike"], boat: ["Tekne turu", "--boat"],
+  act: ["Etkinlik", "--act"], food: ["Restoran", "--food"], idea: ["Fikir", "--idea"], walk: ["Fikir", "--idea"],
+};
+
+// Noktalı siluetler (DESIGN.md: plan kartlarındaki türün noktalı silueti), kısa günün boş yerine soluk.
+const SIL = {
+  bike: '<g stroke-dasharray="0.1 6" stroke-width="3.2"><circle cx="70" cy="110" r="38"/><circle cx="210" cy="110" r="38"/><path d="M70 110l45-75h60l35 75M115 35l40 75M100 18h35"/></g>',
+  plane: '<g stroke-dasharray="0.1 6" stroke-width="3.2"><path d="M20 120c60-10 120-40 230-90M120 70l-40-50h-20l25 60M150 58l10 80h20l5-95"/></g>',
+  museum: '<g stroke-dasharray="0.1 6" stroke-width="3.2"><path d="M30 140h220M45 125h190M140 20l110 45H30zM60 65v60M100 65v60M140 65v60M180 65v60M220 65v60"/></g>',
+  hills: '<g stroke-dasharray="0.1 6" stroke-width="3.2"><path d="M10 140l60-70 40 40 50-80 60 70 50-30M20 140h250"/></g>',
+};
+
+const DAYS = [
+  { id: "d1", no: "1. gün", date: "8 Eki Çar", title: "Porto'ya varış", route: "İstanbul → Porto", img: IMG.porto, sil: "plane", rows: [
+    { id: "a", t: "07:15", k: "flight", st: "yes", title: "Uçuş IST → OPO", sub: "Pegasus PC1201 · 07:15 → 10:20", status: "Bilet alındı", price: "€142",
+      facts: [["Kalkış", "İstanbul Sabiha Gökçen · 07:15"], ["Varış", "Porto OPO · 10:20 (yerel)"], ["Bagaj", "15 kg + kabin"], ["Belge", "pnr-pegasus.pdf"]] },
+    { id: "b", t: "10:50", est: true, k: "taxi", st: "no", title: "Havalimanı → Otel", sub: "Porto havalimanı → Jardim Stay · ~25 dk", status: "Planlanmadı", price: "~€28",
+      facts: [["Seçenekler", "Metro E hattı · €2,60 · 40 dk\nTaksi · ~€28 · 25 dk\nÖzel transfer · €35 · 25 dk"], ["İniş", "10:20, bagajla ~10:50 çıkış"]], action: "Nasıl gideceğini seç" },
+    { id: "c", t: "14:00", est: true, k: "info", title: "Check-in", sub: "Jardim Stay" },
+    { id: "d", t: "20:00", k: "food", st: "half", title: "Cantinho do Avillez", sub: "Akşam yemeği · 2 kişi", status: "Seçildi · rezerve edilmedi", price: "~€70",
+      facts: [["Adres", "R. Mouzinho da Silveira 166"], ["Puan", "4,6 · 3.200 yorum"], ["Not", "Cuma akşamı genelde dolu, 2-3 gün önce ayırt"]], action: "Rezerve et ↗" },
+  ]},
+  { id: "d2", no: "2. gün", date: "9 Eki Cum", title: "Douro ve bisiklet", route: "Porto", img: IMG.douro, sil: "bike", rows: [
+    { id: "a", t: "09:30", k: "idea", title: "Majestic Café'de kahvaltı" },
+    { id: "b", t: "11:00", k: "act", st: "yes", title: "Livraria Lello", sub: "Giriş bileti · 2 kişi", status: "Bilet alındı", price: "€20",
+      facts: [["Saat", "11:00 giriş dilimi, 30 dk önce sıraya gir"], ["Belge", "lello-bilet.pdf"]] },
+    { id: "c", t: "14:00", k: "boat", st: "half", title: "Douro altı köprü tekne turu", sub: "Ribeira iskelesi · 50 dk", status: "Seçildi · bilet alınmadı · ⏳ 4 gün", price: "€25", img: IMG.douro,
+      facts: [["Buluşma", "Cais da Ribeira iskelesi"], ["Süre", "50 dk"], ["İptal", "24 saat öncesine kadar ücretsiz"]], action: "Rezerve et ↗" },
+    { id: "d", t: "16:00", k: "bike", st: "yes", title: "Porto şehir bisiklet turu", sub: "Ribeira → Foz · 3 sa", status: "Bilet alındı", price: "€35", img: IMG.porto,
+      facts: [["Buluşma", "Praça da Ribeira, Biketour standı · 15:45"], ["Süre", "3 saat · 14 km · düz rota, sahil boyu"], ["Dahil", "Bisiklet, kask, su"], ["Rehber", "İngilizce"], ["İptal", "9 Eki 16:00'ya kadar ücretsiz"], ["Belge", "bisiklet-turu.pdf"], ["Not", "Rahat ayakkabı, rüzgârlık"]] },
+    { id: "e", t: "19:30", est: true, k: "idea", title: "Manteigaria'da pastel de nata" },
+    { id: "f", t: "21:00", k: "act", st: "half", title: "Fado gecesi", sub: "Casa da Mariquinhas", status: "Seçildi · rezerve edilmedi", price: "€30",
+      facts: [["Süre", "~2 saat, akşam yemeği dahil değil"], ["Not", "Hafta sonu kontenjan az"]], action: "Rezerve et ↗" },
+  ]},
+  { id: "d3", no: "3. gün", date: "10 Eki Cmt", title: "Serralves'te yavaş gün", route: "Porto", img: IMG.porto, sil: "museum", rows: [
+    { id: "a", t: "10:30", k: "act", st: "yes", title: "Serralves Müzesi ve parkı", sub: "Müze + park bileti", status: "Bilet alındı", price: "€24",
+      facts: [["Açık", "10:00–19:00"], ["Ulaşım", "Otelden 201 otobüsü · 25 dk"], ["Belge", "serralves.pdf"]] },
+  ]},
+  { id: "d4", no: "4. gün", date: "11 Eki Paz", title: "Madeira'ya geçiş", route: "Porto → Madeira", img: IMG.madeira, sil: "plane", rows: [
+    { id: "a", t: "08:30", k: "info", title: "Check-out", sub: "Jardim Stay" },
+    { id: "b", t: "09:00", est: true, k: "taxi", st: "no", title: "Otel → Havalimanı", sub: "Jardim Stay → OPO · ~25 dk", status: "Planlanmadı", price: "~€28",
+      facts: [["En geç çıkış", "09:05 (uçuş 11:05, 2 sa önce havalimanı)"]], action: "Nasıl gideceğini seç" },
+    { id: "c", t: "11:05", k: "flight", st: "yes", title: "Uçuş OPO → FNC", sub: "TAP TP1715 · 11:05 → 12:50", status: "Bilet alındı", price: "€96",
+      facts: [["Bagaj", "Kabin 8 kg"], ["Belge", "tap-eticket.pdf"]] },
+    { id: "d", t: "13:20", est: true, k: "taxi", st: "half", title: "Havalimanı → Otel", sub: "Aerobus · Funchal merkez", status: "Seçildi · bilet alınmadı", price: "€5",
+      facts: [["Sefer", "Her 30 dk, 45 dk sürer"], ["Bilet", "Şoförden ya da çevrimiçi"]], action: "Bileti al ↗" },
+    { id: "e", t: "15:00", k: "info", title: "Check-in", sub: "Quinta das Vistas" },
+  ]},
+  { id: "d56", free: true, no: "5–6. gün", date: "12–13 Eki", title: "2 boş gün", route: "Madeira", img: IMG.madeira, sil: "hills",
+    sugs: [["walk", "Levada do Caldeirão Verde yürüyüşü"], ["food", "Mercado dos Lavradores"], ["idea", "Pico do Arieiro'da gün doğumu"]] },
+  { id: "d7", no: "7. gün", date: "14 Eki Çar", title: "Balinalar ve dönüş", route: "Madeira → İstanbul", img: IMG.whale, sil: "plane", rows: [
+    { id: "z", t: "09:00", k: "boat", st: "yes", title: "Balina ve yunus turu", sub: "Funchal marinası · 3 sa", status: "Bilet alındı", price: "€55", img: IMG.whale,
+      facts: [["Buluşma", "Funchal marinası · 08:45"], ["Not", "Görülmezse bir sonraki tur ücretsiz"], ["Belge", "balina.pdf"]] },
+    { id: "a", t: "11:00", k: "info", title: "Check-out", sub: "Quinta das Vistas" },
+    { id: "b", t: "16:40", k: "taxi", st: "no", title: "Otel → Havalimanı", sub: "Funchal → FNC · ~30 dk", status: "Planlanmadı", price: "~€30",
+      facts: [["En geç çıkış", "16:40"]], action: "Nasıl gideceğini seç" },
+    { id: "c", t: "18:40", k: "flight", st: "yes", title: "Uçuş FNC → IST", sub: "TAP · aktarmalı · 8 sa 10 dk", status: "Bilet alındı", price: "€210",
+      facts: [["Aktarma", "Lizbon · 1 sa 35 dk"], ["Belge", "tap-donus.pdf"]] },
+  ]},
+];
+
+let openDay = null, openRow = null;
+const isTodo = (r) => r.st === "half" || r.st === "no";
+const todoCount = (d) => (d.rows || []).filter(isTodo).length;
+
+function ring(r) {
+  if (r.k === "info") return `<span></span>`;
+  if (!r.st) return `<i class="st dot"></i>`;
+  return `<i class="st ${r.st}">${r.st === "yes" ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>' : ""}</i>`;
+}
+const icon = (k) => `<span class="ic" style="--c:var(${KIND[k][1]})">${svg(k)}</span>`;
+const time = (r) => `<span class="t${r.est ? " est" : ""}">${r.est ? "~" : ""}${r.t}</span>`;
+const needText = (r) => r.st === "no" ? `<span class="need no">planlanmadı</span>` : r.st === "half" ? `<span class="need">rezerve edilmedi</span>` : "";
+
+// Kapalı kart: rezervasyonlular saat sırasıyla, fikirler tek satır, bilgi satırı yok, en fazla 4 satır.
+function foldedRows(d) {
+  const things = d.rows.filter((r) => r.k !== "info" && r.st);
+  const ideas = d.rows.filter((r) => !r.st && r.k !== "info");
+  const lines = things.map((r) => ({ type: "row", r }));
+  if (ideas.length) lines.push({ type: "ideas", ideas });
+  if (lines.length <= 4) return lines;
+  const shown = lines.slice(0, 3);
+  const rest = things.slice(3);
+  const bits = [];
+  if (rest.length) bits.push(rest.length === 1 ? `${rest[0].t} ${rest[0].title}` : `${rest.length} şey daha`);
+  if (ideas.length) bits.push(`${ideas.length} fikir`);
+  shown.push({ type: "more", text: "+ " + bits.join(" ve ") });
+  return shown;
+}
+
+function rowHTML(d, r, open) {
+  if (r.k === "info")
+    return `<li class="r info">${time(r)}${ring(r)}<span></span><span class="nm"><b>${r.title}</b>${r.sub}</span></li>`;
+  const sel = open && openRow === r.id;
+  const sub = open && r.sub ? `<small>${r.sub}</small>` : "";
+  const tail = open && r.price ? `<span class="need ${r.st === "yes" ? "" : r.st}" style="${r.st === "yes" ? "color:var(--gray)" : ""}">${r.st === "yes" ? r.price : r.st === "no" ? "planlanmadı" : "rezerve edilmedi"}</span>` : needText(r);
+  return `<li class="r${sel ? " sel" : ""}" data-day="${d.id}" data-row="${r.id}">${time(r)}${ring(r)}${icon(r.k)}<span class="nm">${r.title}${sub}</span>${r.st ? tail : ""}</li>${sel && r.st ? detailHTML(r) : ""}`;
+}
+
+function detailHTML(r) {
+  const [kname, cvar] = KIND[r.k];
+  const ok = r.st === "yes";
+  const facts = (r.facts || []).map(([k, v]) => `<div><dt>${k}</dt><dd>${v.replace(/\n/g, "<br>")}</dd></div>`).join("");
+  return `<li class="det${ok ? " ok" : ""}" style="--c:var(${cvar})">
+    <div class="top">${ring(r)}<span class="kind">${svg(r.k, 15)} ${kname}</span><span>· ${r.t}</span></div>
+    <div class="main${r.img ? "" : " noimg"}">
+      ${r.img ? `<div class="vis"><img src="${r.img}" alt="" onerror="this.remove()"></div>` : ""}
+      <div><h3>${r.title}</h3>${r.sub ? `<p>${r.sub}</p>` : ""}</div>
+    </div>
+    ${facts ? `<dl class="facts">${facts}</dl>` : ""}
+    <div class="strip"><span class="stx">${r.status}</span><span class="price">${r.price || ""}</span>
+      ${ok ? `<button class="btn sec">Belgeyi aç</button>` : `<button class="btn">${r.action || "Rezerve et ↗"}</button>`}</div>
+    <a class="toplan" href="#" onclick="return false">Plan'daki kartına git →</a>
+  </li>`;
+}
+
+function dayHTML(d) {
+  const open = openDay === d.id;
+  const left = d.free ? 0 : todoCount(d);
+  const head = `<div class="ttl"><h2>${d.title}</h2>${left ? `<span class="left">${left} iş</span>` : ""}<button class="chev" data-close="${d.id}" aria-label="${open ? "Kapat" : "Aç"}">${svg("chev", 18, 2)}</button></div>`;
+  let body;
+  if (d.free) {
+    body = `<p>Henüz plan yok. Madeira için kaydettiğin fikirler:</p><div class="sugs">${d.sugs.map(([k, t]) => `<div class="sug">${icon(k)}<span>${t}</span><button>Güne ekle</button></div>`).join("")}</div>`;
+  } else if (open) {
+    body = `<ul class="rows">${d.rows.map((r) => rowHTML(d, r, true)).join("")}</ul>
+      <div class="dayfoot"><span>${d.rows.filter((r) => r.st).length} plan · ${left ? `${left} iş bekliyor` : "hepsi hazır"}</span>
+      <button class="addday">${svg("plus", 15, 2)} Bu güne ekle</button></div>`;
+  } else {
+    const lines = foldedRows(d);
+    body = `<ul class="rows">${lines.map((l) =>
+      l.type === "row" ? rowHTML(d, l.r, false)
+      : l.type === "ideas" ? `<li class="r" data-day="${d.id}" data-row="${l.ideas[0].id}"><span class="t">${l.ideas.length > 1 ? "" : l.ideas[0].t}</span>${ring({})}${icon("idea")}<span class="nm"><span class="ideas"><b>Fikirler</b> · ${l.ideas.map((i) => i.title).join(", ")}</span></span></li>`
+      : `<li class="r more"><span></span><span></span><span></span><span class="nm">${l.text}</span></li>`).join("")}</ul>
+      ${lines.length < 3 ? `<button class="addday">${svg("plus", 15, 2)} Bu güne ekle</button>` : ""}`;
+  }
+  const sil = !open && (d.free || foldedRows(d).length < 3) ? `<svg class="sil" viewBox="0 0 280 150" fill="none" stroke="currentColor" stroke-linecap="round">${SIL[d.sil]}</svg>` : "";
+  return `<article class="day${open ? " open" : ""}" data-day="${d.id}" ${open ? "" : 'tabindex="0" role="button"'} aria-expanded="${open}">
+    <div class="ph"><img src="${d.img}" alt="" onerror="this.remove()"><span class="no">${d.no}</span><span class="date">${d.date} · ${d.route}</span></div>
+    <div class="bd">${sil}${head}${body}</div></article>`;
+}
+
+function render() {
+  document.getElementById("days").innerHTML = DAYS.map(dayHTML).join("");
+  const n = DAYS.reduce((s, d) => s + (d.rows ? todoCount(d) : 0), 0);
+  document.getElementById("leftsum").textContent = `${n} iş bekliyor`;
+}
+
+document.addEventListener("click", (e) => {
+  const close = e.target.closest("[data-close]");
+  if (close) { e.stopPropagation(); const id = close.dataset.close; openDay = openDay === id ? null : id; openRow = null; return render(); }
+  if (e.target.closest(".det, .addday, .sug button")) return;
+  const row = e.target.closest(".r[data-row]");
+  const day = e.target.closest(".day");
+  if (!day) return;
+  const id = day.dataset.day;
+  if (openDay !== id) {                       // kapalı gün: aç; bir satıra dokunduysan o satırı da aç
+    openDay = id;
+    openRow = row ? row.dataset.row : null;
+    render();
+    document.querySelector(`.day[data-day="${id}"]`).scrollIntoView({ behavior: "smooth", block: "nearest" });
+    return;
+  }
+  if (row) { openRow = openRow === row.dataset.row ? null : row.dataset.row; render(); }
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") { if (openRow) openRow = null; else openDay = null; render(); }
+  if ((e.key === "Enter" || e.key === " ") && e.target.matches(".day[role=button]")) { e.preventDefault(); e.target.click(); }
+});
+render();
+</script>
+</body>
+</html>

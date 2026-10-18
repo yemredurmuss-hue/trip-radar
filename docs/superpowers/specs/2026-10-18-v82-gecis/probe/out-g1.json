@@ -1,0 +1,273 @@
+{
+ "kinds": [
+  "festival",
+  "ski",
+  "honeymoon",
+  "wellness",
+  "classic",
+  "custom"
+ ],
+ "sectionOrder": [
+  "flight",
+  "stay",
+  "transport",
+  "activity",
+  "todo",
+  "other",
+  "prep",
+  "inspo"
+ ],
+ "templates": [
+  "flight:flight:move:trip",
+  "train:train:move:trip",
+  "bus:bus:move:trip",
+  "minibus:minibus:move:trip",
+  "ferry:ferry:move:trip",
+  "taxi:taxi:move:trip",
+  "car:car_rental:move:rental",
+  "moto:moto_rental:move:rental",
+  "rv:rv_rental:move:rental",
+  "bike:bike_rental:move:rental",
+  "hotel:stay:stay:stay",
+  "home:stay:stay:stay",
+  "activity:activity:other:named",
+  "todo:todo:other:named",
+  "food:food:other:named",
+  "esim:esim:other:named",
+  "insurance:insurance:other:named",
+  "note:note:other:named"
+ ],
+ "byPhrase": [
+  "Kızıldeniz'de liveaboard dalış → classic",
+  "dalış turu Kaş → classic",
+  "Tomorrowland'e gidiyoruz → festival (tablo: tomorrowland)",
+  "Ozora festivali → festival (tablo: ozora)",
+  "Glastonbury → festival (tablo: glastonbury)",
+  "festival → festival",
+  "Sziget → festival (tablo: sziget)",
+  "Bali'de yoga retreat → wellness",
+  "wellness inzivası → wellness",
+  "spa hafta sonu → wellness",
+  "detoks kampı → wellness",
+  "meditasyon → wellness",
+  "Bansko'da kayak → ski",
+  "Uludağ → ski",
+  "snowboard Niseko → ski",
+  "sea kayaking → classic",
+  "kayak yapmak → ski",
+  "Maldivler balayı → honeymoon",
+  "honeymoon → honeymoon",
+  "Akdeniz kruvaziyeri → classic",
+  "MSC cruise → classic",
+  "Frankfurt iş seyahati → classic",
+  "konferans Berlin → classic",
+  "fuar Hannover → classic",
+  "Kenya safari → classic",
+  "Tanzanya kamp → classic",
+  "Interrail Avrupa → classic",
+  "İtalya yol gezisi → classic",
+  "karavan turu Norveç → classic",
+  "düğün için Bodrum → classic",
+  "maraton Berlin → classic",
+  "Formula 1 Monako → classic (tablo: f1-monaco)",
+  "Oktoberfest → classic (tablo: oktoberfest)",
+  "Hac → classic (tablo: hajj)",
+  "Umre → classic",
+  "hafta sonu Bursa → classic",
+  "günübirlik Şile → classic",
+  "aile tatili Antalya → classic",
+  "bekarlığa veda Prag → classic",
+  "trekking Nepal → classic",
+  "Kilimanjaro tırmanışı → classic",
+  "yemek turu Napoli → classic",
+  "konser Londra → classic",
+  "Coachella → festival (tablo: coachella)",
+  "Burning Man → festival (tablo: burningman)",
+  "bisiklet turu Hollanda → classic",
+  "golf tatili Belek → classic",
+  "sörf kampı Portekiz → classic"
+ ],
+ "skeletons": {
+  "festival": {
+   "cards": [
+    "transfer#transfer: (adsız) @Boom 2027-07-20",
+    "activity#ticket: Festival bileti @Boom 2027-07-20→2027-07-25"
+   ],
+   "blocked": {
+    "sections": [
+     "activity"
+    ],
+    "words": "/(^| )(tur|turu|turlari|tour|tours|cruise|tekne|boat|excursion|sightseeing|muze\\w*|museum\\w*|gunubirlik|day trip)( |$)/",
+    "few": []
+   },
+   "prep": [
+    "Çadır",
+    "Uyku tulumu",
+    "Kafa lambası",
+    "Nakit",
+    "Kulak tıkacı"
+   ],
+   "tip": "Çoğu kişi 1–2 gün erken gidip iyi kamp yeri kapıyor.",
+   "questions": [
+    "Çadır kampı mı, karavan mı, otel mi?",
+    "Biletini aldın mı?",
+    "Festivalden kaç gün önce gitmek istersin?"
+   ]
+  },
+  "ski": {
+   "cards": [
+    "transfer#transfer: (adsız) @Boom 2027-07-20",
+    "activity#pass: Kayak pası @Boom 2027-07-20→2027-07-25",
+    "activity#rental: Ekipman kiralama @Boom 2027-07-20→2027-07-25",
+    "activity#school: Kayak okulu @Boom 2027-07-20→2027-07-25"
+   ],
+   "blocked": {
+    "sections": [],
+    "words": null,
+    "few": []
+   },
+   "prep": [
+    "Eldiven",
+    "Kayak gözlüğü",
+    "Termal içlik",
+    "Kask",
+    "Güneş kremi"
+   ],
+   "tip": "Kayak pasını ve ekipmanı önceden çevrim içi ayırırsan sabah kuyruğuna girmezsin.",
+   "questions": [
+    "Kayak seviyen ne: yeni mi başlıyorsun, orta mı, ileri mi?",
+    "Aklında hangi kayak merkezi var?",
+    "Ekipmanın var mı, yoksa kiralayacak mısın?"
+   ]
+  },
+  "honeymoon": {
+   "cards": [
+    "transfer#transfer: (adsız) @Boom 2027-07-20",
+    "activity: Çift spası @Boom ",
+    "activity: Özel akşam yemeği @Boom "
+   ],
+   "blocked": {
+    "sections": [],
+    "words": null,
+    "few": []
+   },
+   "prep": [
+    "Evlilik belgesinin kopyası",
+    "Resif dostu güneş kremi",
+    "Şnorkel maskesi",
+    "Akşam yemeği için şık kıyafet"
+   ],
+   "tip": "Rezervasyonda balayı olduğunu söyle; çoğu resort küçük bir sürpriz hazırlıyor.",
+   "questions": [
+    "Aşağı yukarı bütçeniz ne kadar?",
+    "Tek resort mu, iki farklı resort mu?"
+   ]
+  },
+  "wellness": {
+   "cards": [
+    "activity#programme: Wellness programı @Boom 2027-07-20→2027-07-25",
+    "transfer#transfer: (adsız) @Boom 2027-07-20"
+   ],
+   "blocked": {
+    "sections": [],
+    "words": "/(^| )(tur|turu|tour|tours|excursion|gunubirlik|day trip|party|parti\\w*|nightlife|gece hayati)( |$)/",
+    "few": [
+     "activity"
+    ]
+   },
+   "prep": [
+    "Rahat kıyafet",
+    "Yoga matı",
+    "Matara",
+    "Kitap ya da defter"
+   ],
+   "tip": "Program başlamadan bir gün önce varırsan ilk güne dinlenmiş başlarsın.",
+   "questions": [
+    "Programa kaydını yaptın mı?"
+   ]
+  },
+  "classic": {
+   "cards": [],
+   "blocked": {
+    "sections": [],
+    "words": null,
+    "few": []
+   },
+   "prep": [],
+   "tip": "",
+   "questions": []
+  }
+ },
+ "customCruise": {
+  "label": "Akdeniz kruvaziyeri",
+  "base": "classic",
+  "focus": "around",
+  "stayType": "boat",
+  "stayPort": "Barselona",
+  "cards": [
+   {
+    "ref": "port",
+    "kind": "transfer",
+    "title": "Limana transfer",
+    "place": "Barselona",
+    "anchor": "arrive"
+   },
+   {
+    "ref": "exc",
+    "kind": "activity",
+    "title": "Kıyı turları",
+    "place": null,
+    "anchor": "stay"
+   }
+  ],
+  "questions": [],
+  "blocked": {
+   "sections": [],
+   "words": []
+  },
+  "prep": [],
+  "tip": "",
+  "tone": "",
+  "avoid": "",
+  "musts": []
+ },
+ "customLongPort": null,
+ "customNoLabel": null,
+ "fallbackUnknownKind": "classic",
+ "fallbackNull": "classic",
+ "sectionByKind": [
+  "flight → flight",
+  "stay → stay",
+  "train → transport",
+  "bus → transport",
+  "ferry → transport",
+  "transfer → transport",
+  "car_rental → transport",
+  "rv_rental → transport",
+  "activity → todo",
+  "todo → todo",
+  "food → food",
+  "esim → other",
+  "insurance → other",
+  "prep → other",
+  "note → todo",
+  "other → todo"
+ ],
+ "sectionByTitle": [
+  "activity \"Festival bileti\" → activity",
+  "activity \"Kayak pası\" → todo",
+  "activity \"Ekipman kiralama\" → todo",
+  "activity \"Dalış paketi\" → todo",
+  "activity \"Kabin + yemek + dalış paketi\" → todo",
+  "activity \"Vize başvurusu yap\" → other",
+  "activity \"Yoga dersi\" → todo",
+  "todo \"Toplantı · Messe\" → todo",
+  "other \"Fatura\" → todo",
+  "activity \"Skipass\" → todo",
+  "activity \"Safari turu\" → activity"
+ ],
+ "blockedFestival": [
+  "Festival shuttle"
+ ],
+ "blockedWordsWellness": "En fazla bir aktivite öner; tur, parti ya da yoğun gezi önerme."
+}

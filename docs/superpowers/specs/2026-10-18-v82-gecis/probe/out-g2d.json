@@ -1,0 +1,64 @@
+{
+ "whereAfterText": {
+  "place": "Avrupa",
+  "country": null,
+  "code": null
+ },
+ "title": "Avrupa Gezisi",
+ "facts": {
+  "origin": "İstanbul",
+  "adults": null,
+  "country": "GB",
+  "visa": {
+   "kind": "visa",
+   "label": "Birleşik Krallık vizesi",
+   "link": "https://www.konsolosluk.gov.tr/Visa"
+  },
+  "local": {
+   "currency": "GBP",
+   "rateText": "£1 = ₺47,06",
+   "hours": -2,
+   "info": {
+    "currency": "GBP",
+    "language": {
+     "tr": "İngilizce",
+     "en": "English"
+    },
+    "timeZone": "Europe/London",
+    "plugs": [
+     "G"
+    ]
+   }
+  }
+ },
+ "itemCountries": [
+  "Konaklama · Londra:GB",
+  "Konaklama · Paris:FR",
+  "Konaklama · Amsterdam:NL",
+  "Konaklama · Berlin:DE",
+  "Konaklama · Prag:CZ",
+  "Konaklama · Budapeşte:HU",
+  "Uçuş · İstanbul → Londra:null",
+  "Uçuş · Budapeşte → İstanbul:null"
+ ],
+ "photoKeysInterrail": [
+  "Avrupa",
+  "Londra",
+  "Paris",
+  "Amsterdam",
+  "moment:food",
+  "moment:nature"
+ ],
+ "budgetNone": null,
+ "chipsNoBudget": [
+  "Kültür"
+ ],
+ "cityKeys": [
+  "Llanfairpwllgwyngyllgogerychwyrndrobwllllantysiliogogogoch → llanfairpwllgwyngyllgogerychwyrndrobwllllantysiliogogogoch",
+  "Playa del Carmen → playa del carmen",
+  "Playa Del Carmen → playa del carmen",
+  "İstanbul → istanbul",
+  "Istanbul → istanbul"
+ ],
+ "sameIst": true
+}

@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fikir havuzu v1</title>
+<style>
+  /*
+    Yapılacak şeyler + Restoranlar: havuz tek bakışta.
+    1) Üstte durum sekmeleri (filtre): Hepsi · Havuzda · Günü var · Kaçtı · Yapıldı (sayılarıyla). "Kaçtı" yalnız gezi sırasında.
+    2) Altında tür çipleri (yalnız olan türler): Manzara, Kültür, Doğa, Pazar & alışveriş… / Kahvaltı, Öğle, Akşam, Tatlı, Bar.
+    3) Satır: tür ikonu · ad (tıklayınca gerçek harita linki) · gri alt satır (tür · semt · kaynak) · gün hapı / + Gün · tek harita düğmesi · ✓.
+  */
+  :root { --ink:#1d1d1f; --gray:#6e6e73; --soft:#8e8e93; --line:#ece9e4; --accent:#5b45e0; --amber:#9a6400;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter",system-ui,sans-serif; color:var(--ink); -webkit-font-smoothing:antialiased; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#f8f7f4; }
+  button { font-family:inherit; cursor:pointer; }
+  .wrap { max-width:1360px; margin:0 auto; padding:24px 16px 48px; display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+  @media (max-width: 980px) { .wrap { grid-template-columns:1fr; } }
+  h2.cap { grid-column:1/-1; margin:4px 4px 0; font-size:15px; color:var(--gray); font-weight:600; }
+  .col > .when { margin:0 4px 10px; font-size:14px; color:var(--gray); }
+  .col > .when b { color:var(--ink); }
+  .sheet { background:#fff; border-radius:22px; box-shadow:0 1px 2px rgba(0,0,0,.04),0 6px 24px rgba(0,0,0,.04); overflow:hidden; }
+  .sec + .sec { border-top:1px solid var(--line); }
+  .head { display:flex; align-items:center; gap:12px; padding:18px 22px 10px; }
+  .head .ic { color:var(--c); width:24px; height:24px; display:grid; place-items:center; }
+  .head b { font-size:18px; }
+  .head .add { margin-left:auto; height:32px; padding:0 14px; border-radius:999px; border:1px solid #ddd8d0; background:#fff; font-size:14px; font-weight:500; }
+  .body { padding:0 22px 18px; }
+
+  /* 1) durum sekmeleri */
+  .tabs { display:flex; gap:4px; padding:4px; border-radius:14px; background:#f3f1ed; margin:4px 0 10px; }
+  .tabs button { flex:1; height:38px; border:0; border-radius:10px; background:transparent; font-size:14px; color:var(--gray); display:flex; align-items:center; justify-content:center; gap:6px; white-space:nowrap; }
+  .tabs button b { font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; }
+  .tabs button.on { background:#fff; color:var(--ink); font-weight:600; box-shadow:0 1px 3px rgba(0,0,0,.08); }
+  .tabs button.warn b { color:var(--amber); }
+  .tabs button .dot { width:7px; height:7px; border-radius:50%; background:#f0a53a; }
+
+  /* 2) tür çipleri */
+  .kinds { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 6px; }
+  .kinds button { height:30px; padding:0 11px; border-radius:999px; border:1px solid #e6e2db; background:#fff; font-size:13px; color:var(--gray); display:inline-flex; align-items:center; gap:6px; }
+  .kinds button.on { border-color:var(--ink); color:var(--ink); font-weight:600; }
+  .kinds button i { font-style:normal; }
+  .kinds button small { color:var(--soft); font-size:12px; }
+
+  /* gruplar */
+  .grp { margin-top:12px; }
+  .grp-h { display:flex; align-items:baseline; gap:8px; padding:6px 0; border-bottom:1px solid var(--line); font-size:14px; font-weight:600; }
+  .grp-h span { color:var(--soft); font-weight:400; font-size:13px; }
+  .grp-h.today { color:var(--accent); }
+  .grp-h.missed { color:var(--amber); }
+
+  /* 3) satır */
+  .row { display:flex; align-items:center; gap:12px; min-height:58px; padding:8px 0; border-bottom:1px solid #f3f1ed; }
+  .row:last-child { border-bottom:0; }
+  .tile { flex:none; width:36px; height:36px; border-radius:10px; display:grid; place-items:center; font-size:18px; background:var(--tb); }
+  .main { flex:1; min-width:0; }
+  .main a.t { display:inline-flex; align-items:center; gap:5px; max-width:100%; font-size:15px; font-weight:600; color:var(--ink); text-decoration:none; }
+  .main a.t span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .main a.t::after { content:"↗"; font-size:12px; color:var(--soft); opacity:0; transition:opacity .15s; }
+  .row:hover .main a.t::after { opacity:1; }
+  .main a.t:hover span { text-decoration:underline; text-underline-offset:3px; }
+  .sub { margin-top:2px; font-size:13px; color:var(--gray); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sub .star { color:var(--ink); }
+  .sub a { color:var(--gray); text-decoration:none; border-bottom:1px dotted #c7c7cc; }
+  .sub.missed { color:var(--amber); }
+  .day { flex:none; height:30px; padding:0 12px; border-radius:999px; font-size:13px; font-weight:600; display:inline-flex; align-items:center; white-space:nowrap; }
+  .day.set { background:var(--ink); color:#fff; border:0; }
+  .day.free { background:#fff; color:var(--ink); border:1px solid #ddd8d0; font-weight:500; }
+  .day.now { background:var(--accent); color:#fff; border:0; }
+  .map { flex:none; height:30px; padding:0 10px; border-radius:999px; border:1px solid #ddd8d0; background:#fff; font-size:13px; color:var(--ink); display:inline-flex; align-items:center; gap:5px; text-decoration:none; }
+  .map svg { width:14px; height:14px; color:#1a73e8; }
+  .chk { flex:none; width:30px; height:30px; border-radius:50%; border:1.5px solid #c7c7cc; background:#fff; display:grid; place-items:center; font-size:14px; color:transparent; }
+  .row.done .chk { background:#1f8f4e; border-color:#1f8f4e; color:#fff; }
+  .row.done .main a.t span { color:var(--soft); text-decoration:line-through; }
+  .note { grid-column:1/-1; margin:6px 4px 0; font-size:13px; color:var(--gray); line-height:1.6; }
+  .note b { color:var(--ink); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><defs>
+  <symbol id="pin" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></symbol>
+  <symbol id="compass" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z" stroke-linejoin="round"/></g></symbol>
+  <symbol id="fork" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M6 3v7a2 2 0 0 0 2 2v9M10 3v7a2 2 0 0 1-2 2M8 3v5M17 21V3c-2 1-3 4-3 7s1 3 3 3"/></g></symbol>
+</defs></svg>
+<div class="wrap" id="app"></div>
+<script>
+  const MAP = '<svg><use href="#pin"/></svg>';
+  const row = (r) => `
+    <div class="row${r.done ? " done" : ""}">
+      <span class="tile" style="--tb:${r.bg}">${r.e}</span>
+      <div class="main">
+        <a class="t" href="#" title="Google Haritalar'da aç"><span>${r.t}</span></a>
+        <div class="sub${r.missed ? " missed" : ""}">${r.s}</div>
+      </div>
+      ${r.done ? "" : r.missed ? `<button class="day now">Bugüne al</button>` : r.day ? `<span class="day ${r.dayCls || "set"}">${r.day}</span>` : `<button class="day free">+ Gün</button>`}
+      <a class="map" href="#" title="Google Haritalar'da aç">${MAP}Harita</a>
+      <span class="chk">✓</span>
+    </div>`;
+  const tabs = (list, on) => `<div class="tabs">${list.map(([l, n, cls]) => `<button class="${l === on ? "on " : ""}${cls || ""}">${cls === "warn" ? '<i class="dot"></i>' : ""}${l} <b>${n}</b></button>`).join("")}</div>`;
+  const kinds = (list) => `<div class="kinds">${list.map(([e, l, n, on]) => `<button class="${on ? "on" : ""}"><i>${e}</i>${l}${n ? ` <small>${n}</small>` : ""}</button>`).join("")}</div>`;
+  const grp = (h, rows, cls) => `<div class="grp"><div class="grp-h ${cls || ""}">${h}</div>${rows.map(row).join("")}</div>`;
+
+  // Tür renkleri (zemin) ve emojiler: yalnız tanıtım için; uygulamada IdeaIcons'taki çizgi ikonlar.
+  const K = {
+    view: ["🌅", "#fff4dc"], culture: ["🏛", "#efe9fb"], nature: ["🥾", "#e6f3e8"], market: ["🛍", "#fdeaf1"], walk: ["🚶", "#e8f1fb"], fun: ["🎶", "#f3e6fb"],
+    bfast: ["☕", "#f8ece2"], lunch: ["🥗", "#eaf5e6"], dinner: ["🍽", "#fdece6"], sweet: ["🧁", "#fdeaf3"], bar: ["🍷", "#f3e6ee"],
+  };
+  const R = (k, t, s, day, extra = {}) => ({ e: K[k][0], bg: K[k][1], t, s, day, ...extra });
+
+  const before = `
+    <section class="sec" style="--c:#5d8a1c">
+      <div class="head"><span class="ic"><svg width="22" height="22"><use href="#compass"/></svg></span><b>Yapılacak şeyler</b><button class="add">+ Ekle</button></div>
+      <div class="body">
+        ${tabs([["Hepsi", 9], ["Havuzda", 6], ["Günü var", 3], ["Yapıldı", 0]], "Hepsi")}
+        ${kinds([["", "Hepsi", "", true], ["🌅", "Manzara", 2], ["🏛", "Kültür", 2], ["🥾", "Doğa", 2], ["🛍", "Pazar & alışveriş", 2], ["🚶", "Gezinti", 1]])}
+        ${grp('Porto <span>5</span>', [
+          R("market", "Bolhão pazarı", "Pazar & alışveriş · Baixa", "10 Eki"),
+          R("view", "Dom Luís köprüsünden gün batımı", "Manzara · Ribeira", ""),
+          R("nature", "Jardins do Palácio de Cristal", "Doğa · Massarelos · <a href='#'>Maps'ten</a>", ""),
+          R("culture", "Livraria Lello", "Kültür · Baixa · <a href='#'>Instagram</a>", "9 Eki"),
+          R("market", "Porto şarabı al", "Pazar & alışveriş · Vila Nova de Gaia", ""),
+        ])}
+        ${grp('Madeira <span>4</span>', [
+          R("nature", "Levada do Caldeirão Verde", "Doğa · Santana · <a href='#'>Maps'ten</a>", "15 Eki"),
+          R("view", "Pico do Arieiro'da gün doğumu", "Manzara · <a href='#'>YouTube</a>", ""),
+          R("walk", "Funchal eski şehir", "Gezinti · Zona Velha", ""),
+          R("culture", "Madeira Story Centre", "Kültür · Funchal", ""),
+        ])}
+      </div>
+    </section>
+    <section class="sec" style="--c:#b4532a">
+      <div class="head"><span class="ic"><svg width="22" height="22"><use href="#fork"/></svg></span><b>Restoranlar</b><button class="add">+ Ekle</button></div>
+      <div class="body">
+        ${tabs([["Hepsi", 4], ["Havuzda", 3], ["Günü var", 1], ["Yapıldı", 0]], "Hepsi")}
+        ${kinds([["", "Hepsi", "", true], ["☕", "Kahvaltı & kahve", 1], ["🍽", "Akşam", 2], ["🧁", "Tatlı", 1]])}
+        ${grp('Porto <span>3</span>', [
+          R("bfast", "Majestic Café", "Kahvaltı & kahve · <span class='star'>★ 4,4</span> (12 B) · Bolhão", "9 Eki öğle"),
+          R("dinner", "Taberna dos Mercadores", "Akşam · <span class='star'>★ 4,7</span> · Ribeira · <a href='#'>Maps'ten</a>", ""),
+          R("sweet", "Manteigaria · pastel de nata", "Tatlı · <span class='star'>★ 4,8</span> · Baixa", ""),
+        ])}
+        ${grp('Madeira <span>1</span>', [
+          R("dinner", "Armazém do Sal", "Akşam · <span class='star'>★ 4,6</span> · Funchal", ""),
+        ])}
+      </div>
+    </section>`;
+
+  const during = `
+    <section class="sec" style="--c:#5d8a1c">
+      <div class="head"><span class="ic"><svg width="22" height="22"><use href="#compass"/></svg></span><b>Yapılacak şeyler</b><button class="add">+ Ekle</button></div>
+      <div class="body">
+        ${tabs([["Hepsi", 9], ["Havuzda", 4], ["Günü var", 2], ["Kaçtı", 1, "warn"], ["Yapıldı", 2]], "Hepsi")}
+        ${kinds([["", "Hepsi", "", true], ["🌅", "Manzara", 2], ["🏛", "Kültür", 2], ["🥾", "Doğa", 2], ["🛍", "Pazar & alışveriş", 2], ["🚶", "Gezinti", 1]])}
+        ${grp('Bugün · 10 Eki <span>Porto</span>', [
+          R("market", "Bolhão pazarı", "Pazar & alışveriş · Baixa", "Bugün", { dayCls: "now" }),
+        ], "today")}
+        ${grp('Kaçtı <span>güne konmuştu, yapılmadı</span>', [
+          R("culture", "Livraria Lello", "9 Eki'ye konmuştu · havuza döndü", "", { missed: true }),
+        ], "missed")}
+        ${grp('Porto · havuz <span>3</span>', [
+          R("view", "Dom Luís köprüsünden gün batımı", "Manzara · Ribeira", ""),
+          R("nature", "Jardins do Palácio de Cristal", "Doğa · Massarelos · <a href='#'>Maps'ten</a>", ""),
+          R("market", "Porto şarabı al", "Pazar & alışveriş · Vila Nova de Gaia", ""),
+        ])}
+        ${grp('Madeira <span>2 · 1 tanesi günde</span>', [
+          R("nature", "Levada do Caldeirão Verde", "Doğa · Santana · <a href='#'>Maps'ten</a>", "15 Eki"),
+          R("view", "Pico do Arieiro'da gün doğumu", "Manzara · <a href='#'>YouTube</a>", ""),
+        ])}
+        ${grp('Yapıldı <span>2</span>', [
+          R("walk", "Ribeira yürüyüşü", "Gezinti · 8 Eki yapıldı", "", { done: true }),
+          R("view", "Serra do Pilar seyir terası", "Manzara · 9 Eki yapıldı", "", { done: true }),
+        ])}
+      </div>
+    </section>`;
+
+  document.getElementById("app").innerHTML = `
+    <h2 class="cap">Fikir havuzu v1 · Yapılacak şeyler ve Restoranlar</h2>
+    <div class="col"><p class="when"><b>Gezi öncesi</b> · şehir şehir havuz, günü olanlar hapıyla</p><div class="sheet">${before}</div></div>
+    <div class="col"><p class="when"><b>Gezi sırasında (10 Eki)</b> · Bugün en üstte, kaçanlar ayrı, yapılanlar en altta</p><div class="sheet">${during}</div></div>
+    <p class="note">
+      <b>1. Durum sekmeleri</b> havuzu süzer: Havuzda (günü yok) · Günü var · Kaçtı (günü geçti, yapılmadı; yalnız gezi sırasında, amber nokta) · Yapıldı. Sayılar hep görünür, tek bakışta "ne kaldı" belli.<br>
+      <b>2. Tür çipleri</b> yalnız listede olan türleri gösterir. Yapılacaklar: Manzara, Kültür, Doğa, Pazar &amp; alışveriş, Gezinti, Eğlence. Restoranlar: Kahvaltı &amp; kahve, Öğle, Akşam, Tatlı, Bar &amp; şarap. Tür kayıttan otomatik çıkar, satırdan değiştirilebilir.<br>
+      <b>3. Tek harita linki:</b> adın kendisi ve "Harita" düğmesi aynı yere gider: Maps'ten kaydedildiyse o gerçek Maps linki, değilse yerin Haritalar araması. Kaynak sayfa (Instagram, YouTube, blog) alt satırda küçük ve sessiz; iki konum, iki link yok.
+    </p>`;
+</script>
+</body>
+</html>

@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trip Radar · Hero taslağı v8</title>
+<style>
+  /*
+    Solda tek yatay fotoğraf + hikâye, sağda künye sütunu (hero ile aynı boy).
+    Yazı: 40 başlık · 17 metin/değer · 15 küçük satır · 13 etiket. Renk: fotoğraf + kategori renkleri (ikon kareleri ve bütçe halkası, aynı renkler).
+  */
+  :root {
+    --ink: #1d1d1f; --gray: #6e6e73; --line: #e8e8ed; --soft: #f5f5f7;
+    --flight: #6a4fe0; --stay: #23998b; --car: #c58a2e; --act: #a8336f;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", system-ui, sans-serif;
+    color: var(--ink); -webkit-font-smoothing: antialiased;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #fff; }
+  button { font-family: inherit; cursor: pointer; }
+  .panel { max-width: 940px; margin: 0 auto; padding: 24px 16px 48px; }
+
+  .layout { display: grid; grid-template-columns: 1fr 300px; gap: 24px; align-items: stretch; }
+
+  /* fotoğraf */
+  .photo { position: relative; height: 300px; border-radius: 22px; overflow: hidden; background: #ececf0; }
+  .photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .5s; }
+  .photo img.on { opacity: 1; }
+  .cities { position: absolute; top: 16px; left: 16px; display: flex; gap: 4px; padding: 4px; border-radius: 999px;
+    background: rgba(255,255,255,.75); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+  .cities button { border: 0; background: transparent; padding: 6px 13px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--gray); }
+  .cities button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+  .more { position: absolute; right: 16px; top: 16px; width: 36px; height: 36px; border-radius: 10px; border: 0; color: var(--ink);
+    background: rgba(255,255,255,.9); display: grid; place-items: center; }
+  .tab { position: relative; margin: -26px 0 0 24px; display: inline-flex; align-items: center; gap: 8px; padding: 12px 18px;
+    background: #fff; border-radius: 14px; box-shadow: 0 6px 20px rgba(0,0,0,.08); font-size: 15px; }
+  .tab b { font-weight: 600; } .tab .sep { color: #c7c7cc; } .tab svg { color: var(--gray); }
+
+  /* hikâye */
+  .story { margin-top: 22px; }
+  h1 { margin: 0; font-size: 40px; line-height: 1.1; font-weight: 700; letter-spacing: -.025em; }
+  .lead { margin: 12px 0 0; font-size: 17px; line-height: 1.55; color: #3a3a3c; max-width: 540px; }
+
+  /* onaylananlar: tek sade satır */
+  .done { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 20px; }
+  .done span { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; color: var(--gray); font-variant-numeric: tabular-nums; }
+  .done b { color: var(--ink); font-weight: 600; }
+  .ic { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; }
+  .ic.flight { background: #ece8ff; color: var(--flight); } .ic.stay { background: #dcf3ef; color: var(--stay); }
+  .ic.car { background: #f7ecd9; color: #a87418; } .ic.act { background: #f7e2ec; color: var(--act); }
+
+  /* seni böyle anladım */
+  .intent { position: relative; margin-top: 18px; border-top: 1px solid var(--line); }
+  .intent-toggle { display: flex; align-items: center; gap: 10px; width: 100%; padding: 14px 0 0; border: 0; background: none; text-align: left; font-size: 15px; color: var(--ink); }
+  .intent-toggle .spark { color: var(--flight); }
+  .intent-toggle .meta { color: var(--gray); }
+  .intent-toggle .chev { margin-left: auto; color: #aeaeb2; transition: transform .2s; }
+  .intent.open .chev { transform: rotate(180deg); }
+  .intent-body { display: none; position: absolute; z-index: 5; left: 0; right: 0; top: calc(100% + 10px); padding: 16px 18px; border-radius: 16px; background: #fff;
+    box-shadow: 0 12px 40px rgba(0,0,0,.14), 0 0 0 1px rgba(0,0,0,.04); font-size: 15px; line-height: 1.5; }
+  .intent.open .intent-body { display: block; }
+  .intent-body ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .intent-body li { display: flex; justify-content: space-between; gap: 12px; }
+  .intent-body li small { font-size: 13px; color: var(--gray); white-space: nowrap; }
+  .ask { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .ask p { margin: 0 0 8px; }
+  .ask button { height: 32px; padding: 0 14px; border-radius: 999px; font-size: 14px; border: 1px solid #d2d2d7; background: #fff; color: var(--ink); margin-right: 6px; }
+  .ask button.yes { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .edit { margin-top: 10px; font-size: 13px; color: var(--gray); }
+  .edit a { color: var(--ink); font-weight: 600; text-decoration: none; }
+
+  /* künye sütunu */
+  .side { background: var(--soft); border-radius: 22px; padding: 8px 20px 20px; display: flex; flex-direction: column; }
+  .rows { flex: 1; display: flex; flex-direction: column; justify-content: space-evenly; margin-bottom: 12px; }
+  .row { display: grid; grid-template-columns: 30px 1fr; gap: 14px; align-items: center; padding: 13px 0; border-bottom: 1px solid var(--line); }
+  .row:last-child { border-bottom: 0; }
+  .row > svg { color: var(--ink); justify-self: center; }
+  .row small { display: block; font-size: 13px; color: var(--gray); }
+  .row strong { display: block; font-size: 17px; font-weight: 500; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .row strong .of { color: var(--gray); font-weight: 400; }
+  .row a { color: inherit; text-decoration: none; }
+  .split { display: flex; flex-wrap: wrap; gap: 2px 8px; margin-top: 5px; font-size: 12px; color: var(--gray); font-variant-numeric: tabular-nums; }
+  .split i { display: inline-block; width: 7px; height: 7px; border-radius: 2px; margin-right: 4px; vertical-align: 1px; }
+  .mini { width: 30px; height: 30px; }
+
+  .next { display: block; width: 100%; padding: 12px 16px; border: 0; border-radius: 14px; background: var(--ink); color: #fff; text-align: left; }
+  .next small { display: block; font-size: 13px; color: rgba(255,255,255,.65); }
+  .next span { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 16px; font-weight: 600; margin-top: 1px; }
+
+  /* v7: mevcut özelliklerin yerleri */
+  .busy { position: absolute; right: 60px; top: 16px; height: 36px; display: inline-flex; align-items: center; gap: 8px; padding: 0 12px; border-radius: 10px;
+    background: rgba(255,255,255,.9); font-size: 13px; font-weight: 500; }
+  .busy i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #d2d2d7; border-top-color: var(--ink); animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .tab a { color: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+  .tab a:hover { text-decoration: underline; }
+  .menu { display: none; position: absolute; right: 16px; top: 58px; z-index: 6; min-width: 230px; padding: 6px; border-radius: 14px; background: #fff;
+    box-shadow: 0 12px 40px rgba(0,0,0,.16), 0 0 0 1px rgba(0,0,0,.04); }
+  .menu.open { display: block; }
+  .menu button { display: block; width: 100%; padding: 10px 12px; border: 0; background: none; border-radius: 9px; text-align: left; font-size: 15px; color: var(--ink); }
+  .menu button:hover { background: var(--soft); }
+  .menu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 6px; }
+  .menu .danger { color: #c62828; }
+  .sub { display: block; font-size: 13px; color: var(--gray); margin-top: 2px; }
+  .row.click { cursor: pointer; border-radius: 12px; }
+  .row .chev-r { color: #c7c7cc; }
+  .pop { display: none; position: absolute; z-index: 6; right: 0; width: 300px; padding: 16px 18px; border-radius: 16px; background: #fff; font-size: 15px;
+    box-shadow: 0 12px 40px rgba(0,0,0,.16), 0 0 0 1px rgba(0,0,0,.04); }
+  .pop.open { display: block; }
+  .pop h4 { margin: 0 0 8px; font-size: 13px; font-weight: 500; color: var(--gray); }
+  .pop .line { display: flex; justify-content: space-between; padding: 5px 0; font-variant-numeric: tabular-nums; }
+  .pop .line i { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 8px; }
+  .pop .sep { border-top: 1px solid var(--line); margin: 10px 0; }
+  .pop .left { color: var(--gray); font-size: 13px; margin-top: 8px; }
+  .todo { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 10px; font-size: 13px; color: var(--gray); }
+  .todo a { color: var(--gray); text-decoration: none; } .todo a b { color: var(--ink); font-weight: 600; }
+  .todo a:hover { color: var(--ink); }
+  .tag { display: inline-block; font-size: 12px; color: var(--gray); background: var(--soft); border-radius: 6px; padding: 1px 7px; margin-right: 6px; vertical-align: 1px; }
+  .intent-body li { align-items: baseline; }
+  .intent-body li .x { border: 0; background: none; color: #aeaeb2; font-size: 17px; line-height: 1; padding: 0 2px; }
+  .intent-body li .x:hover { color: #c62828; }
+  .intent-toggle .q { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--flight); margin-left: 2px; vertical-align: 2px; }
+
+  /* v8: onaylananlar = tek parça özet kutusu; bütçe = ince çok renkli çubuk */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 22px; background: var(--soft); border-radius: 18px; }
+  .stats > div { display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: center; padding: 14px 16px; }
+  .stats > div + div { border-left: 1px solid var(--line); }
+  .stats svg { grid-row: span 2; }
+  .stats b { font-size: 22px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .stats span { font-size: 13px; color: var(--gray); }
+  .meter { display: flex; gap: 2px; height: 6px; margin-top: 9px; border-radius: 999px; overflow: hidden; background: #e3e3e8; }
+  .meter i { display: block; height: 100%; }
+
+  @media (max-width: 760px) {
+    .stats { grid-template-columns: 1fr 1fr; }
+    .intent-toggle .meta { display: none; }
+    .busy span { display: none; } .busy { padding: 0 11px; }
+    .stats > div:nth-child(3) { border-left: 0; }
+    .stats > div:nth-child(n+3) { border-top: 1px solid var(--line); }
+    .layout { grid-template-columns: 1fr; }
+    .photo { height: 200px; }
+    .tab { margin-left: 12px; font-size: 14px; }
+    h1 { font-size: 32px; }
+    .rows { justify-content: flex-start; }
+    .intent-body { position: static; margin-top: 12px; box-shadow: none; background: var(--soft); }
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="i-plane" viewBox="0 0 24 24"><path fill="currentColor" d="M21 15.5v-1.8l-7.5-4.6V4a1.5 1.5 0 0 0-3 0v5.1L3 13.7v1.8l7.5-2.3V18l-2 1.5V21l3.5-1 3.5 1v-1.5l-2-1.5v-4.8z"/></symbol>
+    <symbol id="i-bed" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6.5A2.5 2.5 0 0 1 5.5 9h13a2.5 2.5 0 0 1 2.5 2.5V18M3 15h18M3 18v2M21 18v2"/><path d="M5 9V6.5A1.5 1.5 0 0 1 6.5 5h11A1.5 1.5 0 0 1 19 6.5V9"/></g></symbol>
+    <symbol id="i-car" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v-3.5l2-5A2 2 0 0 1 7.9 6h8.2a2 2 0 0 1 1.9 1.5l2 5V16"/><rect x="3" y="12.5" width="18" height="5" rx="1.5"/><path d="M5 17.5V19M19 17.5V19"/></g></symbol>
+    <symbol id="i-ticket" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round"><path d="M3 9.5v-2a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v2a2.5 2.5 0 0 0 0 5v2a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-2a2.5 2.5 0 0 0 0-5z"/><path d="M14.5 7.5v2M14.5 11.5v1M14.5 14.5v2"/></g></symbol>
+    <symbol id="o-pin" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 21.5s-7-6-7-11.5a7 7 0 0 1 14 0c0 5.5-7 11.5-7 11.5z"/><circle cx="12" cy="10" r="2.6"/></g></symbol>
+    <symbol id="o-cal" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3" y="4.5" width="18" height="16.5" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></g></symbol>
+    <symbol id="o-users" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="9" cy="8" r="3.4"/><path d="M2.8 20c.6-3.6 3-5.6 6.2-5.6s5.6 2 6.2 5.6"/><circle cx="17" cy="9" r="2.7"/><path d="M16.6 14.6c2.5.2 4.2 1.9 4.7 5"/></g></symbol>
+    <symbol id="o-passport" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="4.5" y="2.5" width="15" height="19" rx="2.5"/><circle cx="12" cy="10.5" r="3.4"/><path d="M8.5 17.5h7"/></g></symbol>
+    <symbol id="o-globe" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></g></symbol>
+    <symbol id="o-wallet" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M4 7.5h15a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h11.5"/><path d="M16.5 12.5H21v4h-4.5a2 2 0 0 1 0-4z"/></g></symbol>
+    <symbol id="o-clock" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></g></symbol>
+    <symbol id="o-spark" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2.5c.5 4.6 2.9 7 7.5 7.5-4.6.5-7 2.9-7.5 7.5-.5-4.6-2.9-7-7.5-7.5 4.6-.5 7-2.9 7.5-7.5zM19 15c.25 2 1.1 2.75 3 3-1.9.25-2.75 1-3 3-.25-2-1.1-2.75-3-3 1.9-.25 2.75-1 3-3z"/></symbol>
+    <symbol id="i-chev-d" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-dots" viewBox="0 0 24 24"><g fill="currentColor"><circle cx="5.5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="18.5" cy="12" r="1.8"/></g></symbol>
+  </defs>
+</svg>
+
+<div class="panel">
+  <div class="layout">
+    <div style="position:relative">
+      <div class="menu" id="menu">
+        <button>Link ya da ekran görüntüsü ekle</button>
+        <button>Bu geziyi paylaş</button>
+        <button>Rotayı haritada gör</button>
+        <hr>
+        <button>Bu gezide yeni sohbet başlat</button>
+        <button>Ayarlar</button>
+        <hr>
+        <button class="danger">Bu geziyi sil</button>
+      </div>
+      <div class="photo">
+        <img class="on" src="https://images.pexels.com/photos/24879031/pexels-photo-24879031.jpeg?auto=compress&cs=tinysrgb&h=650&w=940" alt="Porto" title="Foto: Rafael Rodrigues · Pexels">
+        <img src="https://images.pexels.com/photos/9499007/pexels-photo-9499007.jpeg?auto=compress&cs=tinysrgb&h=650&w=940" alt="Madeira" title="Foto: Kateryna Shliakhta · Pexels">
+        <div class="cities"><button class="on">Porto</button><button>Madeira</button></div>
+        <span class="busy" title="2 kayıt işleniyor"><i></i><span>2 kayıt işleniyor</span></span>
+        <button class="more" aria-label="Gezi menüsü"><svg width="20" height="20"><use href="#i-dots"/></svg></button>
+      </div>
+      <div class="tab"><svg width="18" height="18"><use href="#o-clock"/></svg><b>3 gün kaldı</b><span class="sep">·</span><a href="#" title="Rotayı Google Haritalar'da gör">Porto → Madeira ↗</a></div>
+
+      <div class="story">
+        <h1>Porto &amp; Madeira</h1>
+        <p class="lead">On iki gün: önce şarap mahzenli dar sokaklar, sonra Atlantik'e bakan yeşil uçurumlar. Uçuşlar hazır, Madeira'da bir konaklama kararın bekliyor.</p>
+
+        <div class="stats" aria-label="Onaylananlar">
+          <div title="Alınan uçuş"><svg style="color:var(--flight)" width="20" height="20"><use href="#i-plane"/></svg><b>4</b><span>uçuş</span></div>
+          <div title="Seçilen ya da rezerve konaklama"><svg style="color:var(--stay)" width="20" height="20"><use href="#i-bed"/></svg><b>2</b><span>konaklama</span></div>
+          <div title="Kiralanan araç"><svg style="color:var(--car)" width="20" height="20"><use href="#i-car"/></svg><b>1</b><span>araç</span></div>
+          <div title="Plana alınan etkinlik"><svg style="color:var(--act)" width="20" height="20"><use href="#i-ticket"/></svg><b>4</b><span>etkinlik</span></div>
+        </div>
+
+        <div class="intent" id="intent">
+          <button class="intent-toggle" aria-expanded="false">
+            <svg class="spark" width="18" height="18"><use href="#o-spark"/></svg>
+            Seni böyle anladım <span class="meta">· sessizlik, merkez, bütçe · 1 soru</span><span class="q"></span>
+            <svg class="chev" width="18" height="18"><use href="#i-chev-d"/></svg>
+          </button>
+          <div class="intent-body">
+            <ul>
+              <li><span><span class="tag">Tüm gezi</span>Sessiz bir yer istiyoruz <small>· not, sessizlik önemli sayılıyor</small></span><button class="x" title="Kaldır / yok say">×</button></li>
+              <li><span><span class="tag">Konaklama</span>Konum: çok önemli <small>· söylediğin</small></span><button class="x" title="Kaldır / yok say">×</button></li>
+              <li><span><span class="tag">Konaklama</span>Şart: mutfak <small>· uymayan önerilmez</small></span><button class="x" title="Kaldır / yok say">×</button></li>
+              <li><span><span class="tag">Jardim Stay</span>"Merdiven dik" sorun değil <small>· söylediğin</small></span><button class="x" title="Kaldır / yok say">×</button></li>
+            </ul>
+            <div class="ask">
+              <p>İptal esnekliği senin için daha mı önemli? <span style="color:var(--gray)">Kaydettiğin 5 konaklamadan 4'ü ücretsiz iptalli.</span></p>
+              <button class="yes">Evet</button><button>Hayır</button>
+            </div>
+            <div class="edit">Yanlış olanı × ile kaldır; yenisini sohbette söylemen yeter.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="side">
+      <div class="rows">
+        <div class="row"><svg width="24" height="24"><use href="#o-cal"/></svg><div><small>Tarihler</small><strong>7–18 Ekim 2026 <span class="of">· 12 gün</span></strong><span class="sub" style="display:none">~tahmini · kayıtlardan</span></div></div>
+        <div class="row"><svg width="24" height="24"><use href="#o-pin"/></svg><div><small>Kalkış</small><strong>İstanbul</strong></div></div>
+        <div class="row"><svg width="24" height="24"><use href="#o-users"/></svg><div><small>Yolcu</small><strong>2 yetişkin</strong><span class="sub" title="Kayıtlar, oylar ve gezi ayarları dakikada bir eşitlenir">Sabine ile paylaşılıyor · 2 dk önce</span></div></div>
+        <div class="row"><svg width="24" height="24"><use href="#o-passport"/></svg><div><small>Vize · TR pasaportu</small><strong><a href="#" title="konsolosluk.gov.tr · kontrol: Ekim 2026">Schengen vizesi ↗</a></strong></div></div>
+        <div class="row"><svg width="24" height="24"><use href="#o-globe"/></svg><div><small>Yerel</small><strong title="Portekizce · F tipi priz, adaptör gerekmez">€1 = ₺38,20 <span class="of">· −2 saat</span></strong></div></div>
+        <div class="row click" id="budgetRow" style="position:relative" title="Ayrıntı için tıkla">
+          <svg width="24" height="24"><use href="#o-wallet"/></svg>
+          <div><small>Bütçe</small><strong>₺79.470 <span class="of">/ ₺100.000</span></strong>
+            <div class="meter" aria-label="Kategoriye göre harcama">
+              <i style="width:28.4%;background:var(--flight)" title="Uçuş ₺28.400"></i><i style="width:33.1%;background:var(--stay)" title="Konaklama ₺33.100"></i><i style="width:11.8%;background:var(--car)" title="Araç ₺11.770"></i><i style="width:6.2%;background:var(--act)" title="Etkinlik ₺6.200"></i>
+            </div>
+          </div>
+          <div class="pop" id="budgetPop" style="top:calc(100% + 6px)">
+            <div class="line"><span><i style="background:var(--flight)"></i>Uçuş</span><b>₺28.400</b></div>
+            <div class="line"><span><i style="background:var(--stay)"></i>Konaklama</span><b>₺33.100</b></div>
+            <div class="line"><span><i style="background:var(--car)"></i>Araç</span><b>₺11.770</b></div>
+            <div class="line"><span><i style="background:var(--act)"></i>Etkinlik</span><b>₺6.200</b></div>
+            <div class="sep"></div>
+            <div class="line"><span>Kalan</span><b>₺20.530</b></div>
+            <div class="left">Madeira konaklaması seçilince yaklaşık ₺9.800 daha eklenir.</div>
+          </div>
+        </div>
+      </div>
+      <button class="next"><small>Sıradaki adım</small><span>Madeira konaklamasını seç <svg width="18" height="18"><use href="#i-arrow"/></svg></span></button>
+      <div class="todo"><a href="#">Karar ver <b>3</b></a><a href="#">Rezerve et <b>1</b></a><a href="#">Planla <b>4</b></a><a href="#" title="Ücretsiz iptal süresi yaklaşan 2 rezervasyon">⏳ <b>2</b></a></div>
+    </aside>
+  </div>
+</div>
+
+<script>
+  // Fotoğraf: şehir seçici + 6 sn'de bir kendiliğinden geçiş.
+  const imgs = [...document.querySelectorAll(".photo img")], btns = [...document.querySelectorAll(".cities button")];
+  let i = 0, timer;
+  const show = (n) => { i = n; imgs.forEach((im, k) => im.classList.toggle("on", k === n)); btns.forEach((b, k) => b.classList.toggle("on", k === n)); };
+  const loop = () => { clearInterval(timer); timer = setInterval(() => show((i + 1) % imgs.length), 6000); };
+  btns.forEach((b, k) => b.onclick = () => { show(k); loop(); });
+  loop();
+
+  // Seni böyle anladım: tıklayınca açılır.
+  const intent = document.getElementById("intent"), tog = intent.querySelector(".intent-toggle");
+  tog.onclick = () => { const o = intent.classList.toggle("open"); tog.setAttribute("aria-expanded", o); };
+  if (location.hash === "#acik") intent.classList.add("open");
+  const menu = document.getElementById("menu");
+  document.querySelector(".more").onclick = (e) => { e.stopPropagation(); menu.classList.toggle("open"); };
+  const pop = document.getElementById("budgetPop");
+  document.getElementById("budgetRow").onclick = (e) => { e.stopPropagation(); pop.classList.toggle("open"); };
+  document.addEventListener("click", () => { menu.classList.remove("open"); pop.classList.remove("open"); });
+  if (location.hash === "#menu") menu.classList.add("open");
+  if (location.hash === "#butce") pop.classList.add("open");
+
+</script>
+</body>
+</html>

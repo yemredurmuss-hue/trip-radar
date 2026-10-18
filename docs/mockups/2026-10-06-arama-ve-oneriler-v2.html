@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arama ve öneriler v2</title>
+<style>
+  :root { --ink:#1c1a33; --muted:#6b6790; --gray:#6e6e73; --soft:#8e8e93; --line:#ece9e4; --accent:#5b45e0; --lav:#f6f3ff; --lavb:#e7e0ff;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter",system-ui,sans-serif; color:var(--ink); -webkit-font-smoothing:antialiased; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#f8f7f4; }
+  a, button { font-family:inherit; }
+  .wrap { max-width:1360px; margin:0 auto; padding:24px 16px 48px; display:grid; grid-template-columns:1fr 1fr; gap:20px 24px; align-items:start; }
+  @media (max-width:980px){ .wrap{ grid-template-columns:1fr; } }
+  .cap { grid-column:1/-1; margin:0 4px; font-size:15px; color:var(--gray); font-weight:600; }
+  .lbl { margin:0 4px 8px; font-size:14px; color:var(--gray); }
+  .lbl b { color:var(--ink); }
+  .sec { background:#fff; border-radius:22px; box-shadow:0 1px 2px rgba(0,0,0,.04),0 6px 24px rgba(0,0,0,.04); padding:14px 18px 16px; }
+  .sec + .sec { margin-top:12px; }
+  .sh { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .sh b { font-size:16px; }
+  .sh .n { margin-left:auto; font-size:13px; color:var(--soft); }
+  .ico { width:22px; height:22px; display:grid; place-items:center; color:var(--c); }
+  .ico svg { width:20px; height:20px; }
+
+  /* STANDART boş kart: sade, kesikli, tek satır + küçük logolu arama */
+  .slot { border:1.5px dashed #e0dbd2; border-radius:14px; padding:10px 12px; display:flex; align-items:center; gap:12px; }
+  .slot + .slot { margin-top:6px; }
+  .slot .ring { flex:none; width:18px; height:18px; border-radius:50%; border:1.5px dashed #c9c3b8; }
+  .slot .t { flex:1; min-width:0; font-size:14.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .slot .t span { font-weight:400; color:var(--gray); }
+  .find { flex:none; display:flex; gap:4px; }
+  .find a { display:inline-flex; align-items:center; gap:6px; height:28px; padding:0 9px 0 6px; border-radius:999px; border:1px solid #ece8e1; background:#fff; color:#4a4760; font-size:12.5px; text-decoration:none; white-space:nowrap; }
+  .find a:hover { border-color:#cfc9be; color:var(--ink); }
+  .find img { width:16px; height:16px; border-radius:4px; }
+  .find .lg { width:16px; height:16px; border-radius:4px; display:grid; place-items:center; font-size:9px; font-weight:800; color:#fff; }
+  .find.small a span { display:none; }
+  .find.small a { padding:0 6px; }
+
+  /* senin seçeneklerin (karar verilmiş tasarım; burada sadeleştirilmiş temsili) */
+  .opt { display:grid; grid-template-columns:76px 1fr auto; gap:12px; align-items:center; padding:9px; border:1px solid var(--line); border-radius:16px; background:#fff; }
+  .opt + .opt { margin-top:6px; }
+  .ph { width:76px; height:58px; border-radius:12px; background-size:cover; background-position:center; }
+  .opt .t { font-size:15px; font-weight:600; }
+  .opt .s { font-size:12.5px; color:var(--gray); margin-top:2px; }
+  .opt .src { display:inline-flex; align-items:center; gap:5px; font-size:12px; color:var(--gray); margin-top:3px; }
+  .opt .src img { width:13px; height:13px; border-radius:3px; }
+  .price { font-size:16px; font-weight:700; text-align:right; }
+  .price small { display:block; font-size:11.5px; font-weight:400; color:var(--gray); }
+  .sel { height:30px; padding:0 13px; border:0; border-radius:999px; background:#1768ff; color:#fff; font-size:12.5px; font-weight:600; margin-top:4px; }
+  .more { margin-top:8px; display:flex; align-items:center; gap:8px; font-size:12px; color:var(--soft); }
+
+  /* AI önerileri: aynı kart, mor dokunuş (yalnız bağlantı varken) */
+  .ai-h { margin:12px 2px 6px; display:flex; align-items:baseline; gap:8px; font-size:12px; font-weight:700; letter-spacing:.04em; color:var(--accent); text-transform:uppercase; }
+  .ai-h small { font-size:12px; font-weight:400; letter-spacing:0; text-transform:none; color:var(--muted); }
+  .opt.ai { background:var(--lav); border-color:var(--lavb); }
+  .opt.ai .t::after { content:"Öneri"; margin-left:7px; padding:1px 7px; border-radius:999px; background:#fff; border:1px solid var(--lavb); color:var(--accent); font-size:10.5px; font-weight:700; vertical-align:2px; }
+  .opt.ai .why { font-size:12px; color:var(--accent); margin-top:3px; }
+  .add { height:30px; padding:0 11px; border-radius:999px; border:1px solid var(--accent); background:#fff; color:var(--accent); font-size:12.5px; font-weight:600; white-space:nowrap; margin-top:4px; }
+  .x { border:0; background:none; color:var(--soft); font-size:15px; padding:0 0 0 6px; }
+  .fine { margin:6px 4px 0; font-size:11px; color:var(--soft); }
+
+  .note { grid-column:1/-1; margin:6px 4px 0; font-size:13px; color:var(--gray); line-height:1.7; }
+  .note b { color:var(--ink); }
+  .note table { border-collapse:collapse; margin-top:6px; font-size:12.5px; }
+  .note td, .note th { padding:4px 12px 4px 0; text-align:left; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><defs>
+  <symbol id="plane" viewBox="0 0 24 24"><path fill="currentColor" d="M21 15.5v-1.8l-7.5-4.6V4a1.5 1.5 0 0 0-3 0v5.1L3 13.7v1.8l7.5-2.3V18l-2 1.5V21l3.5-1 3.5 1v-1.5l-2-1.5v-4.8z"/></symbol>
+  <symbol id="bed" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6.5A2.5 2.5 0 0 1 5.5 9h13a2.5 2.5 0 0 1 2.5 2.5V18M3 15h18M3 18v2M21 18v2"/><path d="M5 9V6.5A1.5 1.5 0 0 1 6.5 5h11A1.5 1.5 0 0 1 19 6.5V9"/></g></symbol>
+  <symbol id="ticket" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M3 9.5v-2a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v2a2.5 2.5 0 0 0 0 5v2a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-2a2.5 2.5 0 0 0 0-5z"/></g></symbol>
+  <symbol id="sim" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M7 3h7l4 4v14H7z"/><rect x="9.5" y="11" width="6" height="6" rx="1"/></g></symbol>
+</defs></svg>
+<div class="wrap" id="app"></div>
+<script>
+  // Marka logoları: sitenin kendi favicon'u (ürünle aynı yol); yüklenmezse renkli harf.
+  const B = {
+    gf: ["Google Flights", "https://www.google.com/favicon.ico", "#4285f4", "G"],
+    sky: ["Skyscanner", "https://www.skyscanner.net/favicon.ico", "#0770e3", "S"],
+    kayak: ["Kayak", "https://www.kayak.com/favicon.ico", "#ff690f", "K"],
+    bk: ["Booking", "https://www.booking.com/favicon.ico", "#003580", "B"],
+    ab: ["Airbnb", "https://www.airbnb.com/favicon.ico", "#ff5a5f", "A"],
+    gyg: ["GetYourGuide", "https://www.getyourguide.com/favicon.ico", "#ff5533", "G"],
+    via: ["Viator", "https://www.viator.com/favicon.ico", "#186b6d", "V"],
+    klook: ["Klook", "https://www.klook.com/favicon.ico", "#ff5722", "K"],
+    airalo: ["Airalo", "https://www.airalo.com/favicon.ico", "#1c1c1e", "A"],
+    holafly: ["Holafly", "https://esim.holafly.com/favicon.ico", "#e8344e", "H"],
+  };
+  const logo = (k) => `<img src="${B[k][1]}" alt="" onerror="this.outerHTML='<span class=lg style=background:${B[k][2]}>${B[k][3]}</span>'">`;
+  const find = (keys, small) => `<span class="find${small ? " small" : ""}">${keys.map((k) => `<a href="#" title="${B[k][0]}'da ara">${logo(k)}<span>${B[k][0]}</span></a>`).join("")}</span>`;
+  const slot = (t, d, keys) => `<div class="slot"><span class="ring"></span><span class="t">${t} <span>${d}</span></span>${find(keys)}</div>`;
+  const head = (c, ic, name, n) => `<div class="sh"><span class="ico" style="--c:${c}"><svg><use href="#${ic}"/></svg></span><b>${name}</b><span class="n">${n}</span></div>`;
+  const opt = (img, t, s, src, price, per, ai, why) => `
+    <div class="opt${ai ? " ai" : ""}"><span class="ph" style="background-image:url(${img})"></span>
+      <div><div class="t">${t}</div><div class="s">${s}</div>${ai ? `<div class="why">${why}</div>` : `<div class="src">${logo(src)}${B[src][0]}</div>`}</div>
+      <div class="price">${price}<small>${per}</small>${ai ? `<div style="display:flex;align-items:center"><button class="add">Seçeneklere ekle</button><button class="x" title="Bunun gibileri gösterme">×</button></div>` : `<button class="sel">Seç</button>`}</div>
+    </div>`;
+  const P = (id) => `https://images.pexels.com/photos/${id}?auto=compress&w=240`;
+
+  document.getElementById("app").innerHTML = `
+    <h2 class="cap">Arama ve öneriler v2 · tek standart: uçuş · konaklama · etkinlik · eSIM</h2>
+
+    <div>
+      <p class="lbl"><b>1 · Boşken (bugün)</b> · bugünkü "Planlanmadı" kartının sade hâli: tek satır + küçük logolu arama</p>
+      <div class="sec">${head("#6a4fe0","plane","Uçuş","0/2")}
+        ${slot("İstanbul → Amsterdam","· 10 Ara · 2 kişi",["gf","sky","kayak"])}
+        ${slot("Amsterdam → İstanbul","· 17 Ara · 2 kişi",["gf","sky","kayak"])}
+      </div>
+      <div class="sec">${head("#23998b","bed","Konaklama","0/1")}
+        ${slot("Bangkok","· 1–4 Ara · 3 gece · 2 kişi",["bk","ab"])}
+      </div>
+      <div class="sec">${head("#a8336f","ticket","Etkinlikler","0")}
+        ${slot("Bangkok'ta tur ve bilet","· 1–4 Ara",["gyg","via","klook"])}
+      </div>
+      <div class="sec">${head("#3b6fd1","sim","Diğer (Sigorta, eSIM)","0/1")}
+        ${slot("eSIM · Tayland","· 1 Ara – 3 Oca",["airalo","holafly"])}
+      </div>
+    </div>
+
+    <div>
+      <p class="lbl"><b>2 · Seçeneklerin var</b> · kartlar onaylı tasarımında; arama altta sessiz satır (AI bağlantısı yokken bu kadar)</p>
+      <div class="sec">${head("#23998b","bed","Konaklama · Bangkok","0/1")}
+        ${opt(P("271624/pexels-photo-271624.jpeg"),"Silom Garden Suites","8,9 · BTS'ye 4 dk · 3 gece","bk","€258","3 gece · €86/gece")}
+        ${opt(P("164595/pexels-photo-164595.jpeg"),"Ari Loft","4,8 · sessiz sokak · 3 gece","ab","€216","3 gece · €72/gece")}
+        <div class="more">Daha fazla bak ${find(["bk","ab"], true)}</div>
+      </div>
+
+      <p class="lbl" style="margin-top:18px"><b>3 · AI bağlantısı kurulunca</b> · aynı kart, aynı bilgiler (fiyat, puan, gece); mor zemin + "Öneri" + neden satırı</p>
+      <div class="sec">${head("#23998b","bed","Konaklama · Bangkok","0/1")}
+        ${opt(P("271624/pexels-photo-271624.jpeg"),"Silom Garden Suites","8,9 · BTS'ye 4 dk · 3 gece","bk","€258","3 gece · €86/gece")}
+        ${opt(P("164595/pexels-photo-164595.jpeg"),"Ari Loft","4,8 · sessiz sokak · 3 gece","ab","€216","3 gece · €72/gece")}
+        <div class="ai-h">✨ Senin için bulduklarım <small>· seçtiklerine göre: BTS'ye yakın, sessiz, €70–90/gece</small></div>
+        ${opt(P("261102/pexels-photo-261102.jpeg"),"Silom Serene","8,7 · Sala Daeng BTS 3 dk · 3 gece","bk","€243","3 gece · €81/gece",true,"Silom Garden'a benziyor, €15 daha ucuz")}
+        ${opt(P("1457842/pexels-photo-1457842.jpeg"),"Ari Hideaway","4,9 · Ari BTS 5 dk · 3 gece","ab","€207","3 gece · €69/gece",true,"Ari Loft'u seçtin; aynı semt")}
+        <p class="fine">Fiyat ve puan &lt;kaynak&gt;'tan · 2 sa önce · sen ekledikçe öneriler değişir</p>
+      </div>
+
+      <div class="sec">${head("#6a4fe0","plane","Uçuş","0/2")}
+        ${slot("İstanbul → Amsterdam","· 10 Ara · 2 kişi",["gf","sky","kayak"])}
+        <div class="ai-h">✨ Senin için bulduklarım <small>· direkt, sabah</small></div>
+        ${opt(P("46148/aircraft-jet-landing-cloud-46148.jpeg"),"THY · TK1951 · direkt","IST 07:40 → AMS 10:25 · 3 sa 45 dk","gf","€312","2 kişi",true,"Sabah varış, ilk günü kazandırır")}
+      </div>
+    </div>
+
+    <p class="note">
+      <b>Standart (her bölüm aynı):</b> boşken tek sade kesikli satır, solda boş çember, "ne · tarih · kişi", sağda küçük logolu arama (markanın kendi simgesi; yüklenmezse renkli harf). Seçenek varken kartlar onaylı tasarımında; arama altta tek sessiz satır ("Daha fazla bak" + yalnız logolar). AI bağlantısı yoksa öneri alanı hiç çizilmez.
+      AI önerileri seçeneklerle <b>aynı kart</b> ve aynı bilgiler (fotoğraf, ad, puan, fiyat, gece), yalnız mor zemin, "Öneri" etiketi ve mor neden satırı; fiil "Seçeneklere ekle", × "bunun gibileri gösterme"; en fazla 3; rezerve olunca kapanır; fiyat yalnız gerçek kaynaktan.
+      <table><tr><th>Bölüm</th><th>Arama markaları</th></tr>
+      <tr><td>Uçuş</td><td>Google Flights · Skyscanner · Kayak</td></tr>
+      <tr><td>Konaklama</td><td>Booking · Airbnb</td></tr>
+      <tr><td>Etkinlikler</td><td>GetYourGuide · Viator · Klook</td></tr>
+      <tr><td>eSIM</td><td>Airalo · Holafly</td></tr>
+      <tr><td>Ulaşım (tren, otobüs, araç)</td><td>Omio · Rentalcars (ayrı bölümde aynı kalıp)</td></tr></table>
+    </p>
+  `;
+</script>
+</body>
+</html>

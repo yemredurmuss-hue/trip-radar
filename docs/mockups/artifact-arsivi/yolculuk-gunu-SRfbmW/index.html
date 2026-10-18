@@ -1,0 +1,473 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Yolculuk günü</title>
+<style>
+/* Layout: one narrow column, read on a phone. Each option shows the same slice of the board (end of Porto, the travel day, start of Madeira) in the app's own look. */
+:root {
+  --bg: #f5f2ed;
+  --panel: #faf9f6;
+  --block: #efebe4;
+  --surface: #ffffff;
+  --text: #1d1b1f;
+  --ink: #2b2230;
+  --on-ink: #ffffff;
+  --muted: #6b665f;
+  --line: #e4ddd2;
+  --rail: #dcd7cf;
+  --dash: #a39d95;
+  --green: #1f8f4e;
+  --on-green: #ffffff;
+  --green-soft: #e1f3e8;
+  --green-text: #16623a;
+  --amber: #f0a53a;
+  --amber-soft: #fff1d9;
+  --amber-text: #8a5300;
+  --open-soft: #f1efeb;
+  --open-text: #5f5a54;
+  --red: #b3261e;
+  --red-mark: #d9534f;
+  --accent: #1768ff;
+  --accent-soft: #edf3ff;
+  --accent-line: #cddcff;
+  --travel-soft: #efe7fb;
+  --travel-text: #5b3b9b;
+  --shadow: rgba(40, 30, 20, .07);
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", system-ui, sans-serif;
+  --pad: 12px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141316; --panel: #1b1a1d; --block: #252329; --surface: #2f2d33; --text: #ece8ef; --ink: #f4f0f7; --on-ink: #1d1b1f;
+    --muted: #aaa39b; --line: #3a373e; --rail: #4a4650; --dash: #8a837b; --green: #34b36a; --on-green: #0f2418;
+    --green-soft: #173a27; --green-text: #8fe0b0; --amber: #f0a53a; --amber-soft: #3b2c12; --amber-text: #f5c77e;
+    --open-soft: #2a282d; --open-text: #c4bdb4; --red: #f08a82; --red-mark: #e5625c; --accent: #6d9bff; --accent-soft: #1d2a45;
+    --accent-line: #34508a; --travel-soft: #2f2742; --travel-text: #cdb9f5; --shadow: rgba(0, 0, 0, .35);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141316; --panel: #1b1a1d; --block: #252329; --surface: #2f2d33; --text: #ece8ef; --ink: #f4f0f7; --on-ink: #1d1b1f;
+  --muted: #aaa39b; --line: #3a373e; --rail: #4a4650; --dash: #8a837b; --green: #34b36a; --on-green: #0f2418;
+  --green-soft: #173a27; --green-text: #8fe0b0; --amber: #f0a53a; --amber-soft: #3b2c12; --amber-text: #f5c77e;
+  --open-soft: #2a282d; --open-text: #c4bdb4; --red: #f08a82; --red-mark: #e5625c; --accent: #6d9bff; --accent-soft: #1d2a45;
+  --accent-line: #34508a; --travel-soft: #2f2742; --travel-text: #cdb9f5; --shadow: rgba(0, 0, 0, .35);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 var(--font); }
+.page { max-width: 720px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 64px; display: flex; flex-direction: column; gap: 38px; }
+h1, h2, h3, h4 { margin: 0; color: var(--ink); text-wrap: balance; }
+p { margin: 0; }
+button { font: inherit; cursor: pointer; }
+button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+.num, .time, .stime { font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+svg.ic { width: 16px; height: 16px; flex: none; display: block; }
+
+/* intro */
+.intro { display: flex; flex-direction: column; gap: 10px; }
+.intro h1 { font-size: 32px; letter-spacing: -.02em; }
+.intro p { color: var(--muted); max-width: 60ch; }
+.index { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 0; padding: 0; list-style: none; }
+.index a { display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px 5px 5px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); color: var(--ink); text-decoration: none; font-size: 14px; }
+.index a:hover { border-color: var(--ink); }
+.badge { flex: none; display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--ink); color: var(--on-ink); font-size: 13px; font-weight: 700; }
+.reco-tag { font-size: 12px; font-weight: 700; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 1px 8px; }
+
+/* option sections */
+.sec { display: flex; flex-direction: column; gap: 14px; scroll-margin-top: 16px; }
+.sec-head { display: flex; align-items: flex-start; gap: 12px; }
+.sec-head > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.sec-head h2 { font-size: 20px; letter-spacing: -.01em; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.sec-head p { color: var(--muted); font-size: 14.5px; }
+.pc { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; font-size: 13.5px; line-height: 1.35; }
+.pc span { display: flex; gap: 7px; align-items: flex-start; }
+.pc i { flex: none; display: grid; place-items: center; width: 16px; height: 16px; margin-top: 1px; border-radius: 50%; color: #fff; font-style: normal; font-size: 12px; font-weight: 700; line-height: 1; }
+.pc .plus i { background: var(--green); color: var(--on-green); }
+.pc .minus i { background: var(--red-mark); }
+.note { font-size: 13px; color: var(--muted); }
+
+/* the board slice */
+.board { position: relative; display: flex; flex-direction: column; gap: 18px; padding: var(--pad); border-radius: 26px; background: var(--panel); border: 1px solid var(--line); }
+.board::before { content: ""; position: absolute; left: calc(var(--pad) * 2 + 17px); top: 44px; bottom: 44px; width: 2px; background: var(--rail); }
+.city { position: relative; display: flex; flex-direction: column; gap: 10px; padding: var(--pad); border-radius: 28px; background: var(--block); }
+.city-head { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; }
+.city-head b { font-size: 20px; letter-spacing: -.01em; color: var(--ink); }
+.city-head .muted { font-size: 14px; }
+.city-no { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--surface); border: 1.5px solid var(--rail); color: var(--ink); font-size: 14px; font-weight: 700; }
+
+/* a day card (small) */
+.day { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 20px; background: var(--surface); box-shadow: 0 1px 2px var(--shadow), 0 4px 14px var(--shadow); min-width: 0; }
+.day-head { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; }
+.day-title { font-size: 15px; font-weight: 400; color: var(--text); }
+.day-title b { color: var(--ink); font-weight: 700; }
+.route { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; font-size: 13.5px; color: var(--muted); }
+.chip-travel { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border-radius: 999px; background: var(--travel-soft); color: var(--travel-text); font-size: 12px; font-weight: 700; white-space: nowrap; }
+
+/* status chips: the app's words and marks */
+.st { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 3px; border-radius: 999px; font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+.st i { flex: none; display: grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; font-style: normal; font-size: 10px; font-weight: 800; line-height: 1; }
+.st.booked { background: var(--green-soft); color: var(--green-text); }
+.st.booked i { background: var(--green); color: var(--on-green); }
+.st.planned { background: var(--amber-soft); color: var(--amber-text); }
+.st.planned i { background: var(--amber); }
+.st.open { background: var(--open-soft); color: var(--open-text); }
+.st.open i { border: 1.5px dashed var(--dash); }
+.lnk { background: none; border: 0; padding: 0; color: var(--accent); font-size: 13.5px; font-weight: 600; }
+.lnk.quiet { color: var(--muted); font-weight: 500; }
+.lnk.quiet:hover { text-decoration: underline; }
+
+/* short rows: time, what, status */
+.rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.rows li { display: grid; grid-template-columns: 58px minmax(0, 1fr); gap: 8px; padding: 7px 0; font-size: 14px; line-height: 1.35; }
+.rows li + li { border-top: 1px solid var(--line); }
+.rows .time { font-weight: 600; color: var(--ink); }
+.rows .r-body { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 10px; min-width: 0; }
+.rows .r-body > span:first-child { min-width: 0; display: flex; flex-direction: column; }
+.rows small { font-size: 12.5px; color: var(--muted); }
+.est { color: var(--muted); }
+
+/* option 1: the travel day on the rail */
+.pass { position: relative; display: flex; flex-direction: column; gap: 12px; padding: 12px 14px 4px var(--pad); border-radius: 22px; background: var(--surface); box-shadow: 0 1px 2px var(--shadow), 0 6px 20px var(--shadow); }
+.pass-head { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 10px; align-items: center; }
+.pass-mark { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--travel-soft); color: var(--travel-text); }
+.pass-mark svg { width: 18px; height: 18px; }
+.pass-head h3 { font-size: 17px; font-weight: 400; color: var(--text); }
+.pass-head h3 b { color: var(--ink); font-weight: 700; }
+.itin { list-style: none; margin: 0; padding: 0; }
+.step { position: relative; display: grid; grid-template-columns: 58px 32px minmax(0, 1fr); column-gap: 8px; padding-bottom: 14px; }
+.step:not(:last-child)::before { content: ""; position: absolute; left: calc(58px + 8px + 15px); top: 32px; bottom: 2px; width: 2px; background: var(--rail); }
+.step .time { display: flex; flex-direction: column; font-weight: 600; font-size: 14.5px; line-height: 30px; color: var(--ink); white-space: nowrap; }
+.step .time.est { color: var(--muted); }
+.step .time small { font-size: 11px; font-weight: 500; line-height: 1.25; color: var(--muted); white-space: normal; }
+.node { position: relative; z-index: 1; justify-self: center; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; }
+.node svg { width: 15px; height: 15px; }
+.step.booked .node { background: var(--green); color: var(--on-green); }
+.step.planned .node { background: var(--surface); color: var(--amber-text); border: 2px solid var(--amber); }
+.step.open .node { background: var(--surface); color: var(--open-text); border: 2px dashed var(--dash); }
+.step.key .node { width: 32px; height: 32px; }
+.step.key .node svg { width: 17px; height: 17px; }
+.what { display: flex; flex-direction: column; gap: 2px; padding-top: 5px; min-width: 0; }
+.w-title { font-size: 14.5px; font-weight: 600; color: var(--ink); line-height: 1.35; }
+.w-title span { font-weight: 400; color: var(--muted); }
+.w-sub { font-size: 13px; color: var(--muted); }
+.w-state { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-top: 4px; }
+.step.key .what { padding: 7px 10px 9px; margin-top: -2px; border-radius: 14px; background: var(--travel-soft); }
+.step.key .w-title { font-size: 15.5px; }
+.step.key .w-sub { color: var(--text); }
+.flight-time { font-size: 14px; font-weight: 600; color: var(--ink); }
+.flight-time span { font-weight: 400; color: var(--muted); white-space: nowrap; }
+.acts { display: inline-flex; align-items: center; gap: 14px; }
+
+/* option 2: the journey strip */
+.strip { list-style: none; margin: 2px 0 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.strip li { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; min-width: 0; }
+.strip li::before, .strip li::after { content: ""; position: absolute; top: 15px; width: calc(50% - 18px); height: 2px; background: var(--rail); }
+.strip li::before { left: 0; }
+.strip li::after { right: 0; }
+.strip li:first-child::before, .strip li:last-child::after { display: none; }
+.snode { display: grid; place-items: center; width: 32px; height: 32px; margin-bottom: 3px; border-radius: 50%; }
+.snode svg { width: 15px; height: 15px; }
+.strip .booked .snode { background: var(--green); color: var(--on-green); }
+.strip .planned .snode { background: var(--surface); color: var(--amber-text); border: 2px solid var(--amber); }
+.strip .open .snode { background: var(--surface); color: var(--open-text); border: 2px dashed var(--dash); }
+.stime { font-size: 12.5px; font-weight: 700; color: var(--ink); white-space: nowrap; }
+.stime.est { color: var(--muted); font-weight: 600; }
+.sname { font-size: 11.5px; color: var(--muted); }
+.strip-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 13px; }
+.tally { display: flex; flex-wrap: wrap; gap: 2px 10px; color: var(--muted); }
+.tally b { font-weight: 700; }
+.tally .g { color: var(--green-text); }
+.tally .a { color: var(--amber-text); }
+
+/* option 3: one line */
+.sum { display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 0; border: 0; background: none; color: var(--text); text-align: left; font-size: 14px; line-height: 1.4; }
+.sum .pass-mark { width: 28px; height: 28px; }
+.sum .pass-mark svg { width: 14px; height: 14px; }
+.sum-text { flex: 1; min-width: 0; padding-top: 4px; }
+.sum-text b { color: var(--ink); }
+.chev { flex: none; padding-top: 4px; color: var(--accent); font-size: 13.5px; font-weight: 600; }
+.pbar { display: block; height: 4px; border-radius: 2px; background: var(--open-soft); overflow: hidden; }
+.pbar span { display: block; height: 100%; width: 40%; background: var(--green); border-radius: 2px; }
+
+/* common + recommendation */
+.frame { display: flex; flex-direction: column; gap: 12px; padding: 18px; border-radius: 22px; background: var(--surface); border: 1px solid var(--line); }
+.frame h2 { font-size: 18px; }
+.common { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; font-size: 14.5px; }
+.common li { display: grid; grid-template-columns: 8px minmax(0, 1fr); gap: 10px; }
+.common li::before { content: ""; width: 6px; height: 6px; margin-top: 8px; border-radius: 50%; background: var(--muted); }
+.today { display: inline-block; padding: 1px 9px; border-radius: 999px; background: var(--ink); color: var(--on-ink); font-size: 12px; font-weight: 700; vertical-align: 1px; }
+.q { color: var(--ink); font-weight: 600; white-space: nowrap; }
+.reco { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border-radius: 16px; background: var(--surface); border: 1.5px solid var(--accent-line); }
+.reco-mark { flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 13px; font-weight: 800; }
+.reco p { font-size: 15px; }
+.reco b { color: var(--ink); }
+
+@media (max-width: 380px) {
+  :root { --pad: 10px; }
+  .rows li, .rows .time { font-size: 13.5px; }
+  .step .time { font-size: 14px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+html { scroll-behavior: smooth; }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-plane" viewBox="0 0 24 24"><path fill="currentColor" d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></symbol>
+  <symbol id="i-car" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5v-4l1.9-4.6A1.6 1.6 0 0 1 7.9 7h8.2a1.6 1.6 0 0 1 1.5.9l1.9 4.6v4z"/><path d="M4.5 12.5h15M6.5 16.5v2M17.5 16.5v2M10 7V5h4v2"/></g><circle cx="8" cy="14.5" r="1.1" fill="currentColor"/><circle cx="16" cy="14.5" r="1.1" fill="currentColor"/></symbol>
+  <symbol id="i-out" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4H6.5A1.5 1.5 0 0 0 5 5.5v13A1.5 1.5 0 0 0 6.5 20H13"/><path d="M10 12h10M16.5 8.5 20 12l-3.5 3.5"/></g></symbol>
+  <symbol id="i-bed" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" d="M3 18v-6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v6M3 18h18M3 18v2m18-2v2M6 9V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v3"/></symbol>
+</svg>
+
+<main class="page">
+  <header class="intro">
+    <h1>Yolculuk günü</h1>
+    <p>Şehir değiştirdiğin gün şimdi ayrı bir satırda duruyor; günün içinde olmalı. Üç seçenekten birini seç, numarasını yazman yeter.</p>
+    <ul class="index">
+      <li><a href="#s1"><span class="badge">1</span>Geçiş kartı <span class="reco-tag">önerilen</span></a></li>
+      <li><a href="#s2"><span class="badge">2</span>Yolculuk şeridi</a></li>
+      <li><a href="#s3"><span class="badge">3</span>Tek satır, açılır</a></li>
+    </ul>
+  </header>
+
+  <!-- 1: the travel day sits on the rail, between the two cities -->
+  <section class="sec" id="s1">
+    <div class="sec-head">
+      <span class="badge">1</span>
+      <div>
+        <h2>Geçiş kartı <span class="reco-tag">önerilen</span></h2>
+        <p>Yolculuk günü iki şehrin arasında, çizginin üstünde kendi kartında durur. İçinde günün adımları saat sırasıyla.</p>
+        <div class="pc">
+          <span class="plus"><i>+</i>Gün tek bakışta okunur; eksik adım hemen görünür.</span>
+          <span class="minus"><i>−</i>Kart diğer günlerden uzun.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="board">
+      <section class="city" aria-label="Porto">
+        <header class="city-head"><span class="city-no">1</span><b>Porto</b><span class="muted num">7–10 Eki · 3 gece</span></header>
+        <article class="day">
+          <div class="day-head"><h4 class="day-title"><b>3. gün</b> · Cuma 9 Eki</h4></div>
+          <ul class="rows">
+            <li><span class="time">16:00</span><div class="r-body"><span>Douro tekne turu</span><span class="st booked"><i>✓</i>Bilet alındı</span></div></li>
+          </ul>
+        </article>
+      </section>
+
+      <article class="pass" aria-label="4. gün, yolculuk günü">
+        <header class="pass-head">
+          <span class="pass-mark"><svg class="ic" aria-hidden="true"><use href="#i-plane"/></svg></span>
+          <div>
+            <h3><b>4. gün</b> · Cumartesi 10 Eki</h3>
+            <p class="route">Porto → Madeira <span class="chip-travel">Yolculuk günü</span></p>
+          </div>
+        </header>
+        <ol class="itin">
+          <li class="step booked">
+            <span class="time">11:00</span>
+            <span class="node"><svg aria-hidden="true"><use href="#i-out"/></svg></span>
+            <div class="what">
+              <p class="w-title">Check-out <span>Jardim Stay, Porto</span></p>
+              <p class="w-state"><span class="st booked"><i>✓</i>Rezerve</span></p>
+            </div>
+          </li>
+          <li class="step open">
+            <span class="time est">~13:00<small>uçuştan 2 sa önce</small></span>
+            <span class="node"><svg aria-hidden="true"><use href="#i-car"/></svg></span>
+            <div class="what">
+              <p class="w-title">Taksi → Porto Havalimanı</p>
+              <p class="w-state"><span class="st open"><i></i>Planlanmadı</span><span class="acts"><button type="button" class="lnk">Planla</button><button type="button" class="lnk quiet">Gerek yok</button></span></p>
+            </div>
+          </li>
+          <li class="step planned key">
+            <span class="time">15:00</span>
+            <span class="node"><svg aria-hidden="true"><use href="#i-plane"/></svg></span>
+            <div class="what">
+              <p class="w-title">Uçuş Porto → Madeira</p>
+              <p class="w-sub">TP1693</p>
+              <p class="flight-time num">15:00 → 16:55 <span>· 1 sa 55 dk</span></p>
+              <p class="w-state"><span class="st planned"><i></i>Bilet alınmadı</span></p>
+            </div>
+          </li>
+          <li class="step open">
+            <span class="time est">~17:15<small>inişten 20 dk sonra</small></span>
+            <span class="node"><svg aria-hidden="true"><use href="#i-car"/></svg></span>
+            <div class="what">
+              <p class="w-title">Taksi → Quinta Vista</p>
+              <p class="w-state"><span class="st open"><i></i>Planlanmadı</span><span class="acts"><button type="button" class="lnk">Planla</button><button type="button" class="lnk quiet">Gerek yok</button></span></p>
+            </div>
+          </li>
+          <li class="step booked">
+            <span class="time">18:00</span>
+            <span class="node"><svg aria-hidden="true"><use href="#i-bed"/></svg></span>
+            <div class="what">
+              <p class="w-title">Check-in <span>Quinta Vista, Madeira</span></p>
+              <p class="w-state"><span class="st booked"><i>✓</i>Rezerve</span></p>
+            </div>
+          </li>
+        </ol>
+      </article>
+
+      <section class="city" aria-label="Madeira">
+        <header class="city-head"><span class="city-no">2</span><b>Madeira</b><span class="muted num">10–14 Eki · 4 gece</span></header>
+        <article class="day">
+          <div class="day-head"><h4 class="day-title"><b>5. gün</b> · Pazar 11 Eki</h4></div>
+          <ul class="rows">
+            <li><span class="time">09:30</span><div class="r-body"><span>Levada yürüyüşü</span><span class="st planned"><i></i>Planlanıyor</span></div></li>
+          </ul>
+        </article>
+      </section>
+    </div>
+    <p class="note">Aradaki ayrı “Şehir değişimi” satırı kalkar; uçuş seçimi bu kartın uçuş adımına taşınır.</p>
+  </section>
+
+  <!-- 2: the day card stays in Madeira, with a journey strip on top -->
+  <section class="sec" id="s2">
+    <div class="sec-head">
+      <span class="badge">2</span>
+      <div>
+        <h2>Yolculuk şeridi</h2>
+        <p>Kart Madeira bloğunda kalır. Üstünde yolculuk kısa bir şerit olarak görünür; adımlar dokununca açılır.</p>
+        <div class="pc">
+          <span class="plus"><i>+</i>Kısa; yolculuk bir bakışta çizgi olarak görünür.</span>
+          <span class="minus"><i>−</i>Hangi adımın ne olduğu için dokunmak gerekir.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="board">
+      <section class="city" aria-label="Porto">
+        <header class="city-head"><span class="city-no">1</span><b>Porto</b><span class="muted num">7–10 Eki · 3 gece</span></header>
+        <article class="day">
+          <div class="day-head"><h4 class="day-title"><b>3. gün</b> · Cuma 9 Eki</h4></div>
+          <ul class="rows">
+            <li><span class="time">16:00</span><div class="r-body"><span>Douro tekne turu</span><span class="st booked"><i>✓</i>Bilet alındı</span></div></li>
+          </ul>
+        </article>
+      </section>
+
+      <section class="city" aria-label="Madeira">
+        <header class="city-head"><span class="city-no">2</span><b>Madeira</b><span class="muted num">10–14 Eki · 4 gece</span></header>
+        <article class="day">
+          <div class="day-head"><h4 class="day-title"><b>4. gün</b> · Cumartesi 10 Eki</h4></div>
+          <p class="route">Porto → Madeira <span class="chip-travel">Yolculuk günü</span></p>
+          <ol class="strip">
+            <li class="booked"><span class="snode"><svg aria-hidden="true"><use href="#i-out"/></svg></span><span class="stime">11:00</span><span class="sname">Otel</span><span class="sr">check-out, rezerve</span></li>
+            <li class="open"><span class="snode"><svg aria-hidden="true"><use href="#i-car"/></svg></span><span class="stime est">~13:00</span><span class="sname">Taksi</span><span class="sr">tahmini saat, planlanmadı</span></li>
+            <li class="planned"><span class="snode"><svg aria-hidden="true"><use href="#i-plane"/></svg></span><span class="stime">15:00</span><span class="sname">Uçuş</span><span class="sr">bilet alınmadı</span></li>
+            <li class="open"><span class="snode"><svg aria-hidden="true"><use href="#i-car"/></svg></span><span class="stime est">~17:15</span><span class="sname">Taksi</span><span class="sr">tahmini saat, planlanmadı</span></li>
+            <li class="booked"><span class="snode"><svg aria-hidden="true"><use href="#i-bed"/></svg></span><span class="stime">18:00</span><span class="sname">Otel</span><span class="sr">check-in, rezerve</span></li>
+          </ol>
+          <div class="strip-foot">
+            <span class="tally"><b class="g">2 hazır</b><b class="a">1 bilet alınmadı</b><span>2 planlanmadı</span></span>
+            <button type="button" class="lnk" data-toggle="rows-2" aria-controls="rows-2" aria-expanded="false">Adımlar ▾</button>
+          </div>
+          <ul class="rows" id="rows-2" hidden>
+            <li><span class="time">11:00</span><div class="r-body"><span>Check-out · Jardim Stay</span><span class="st booked"><i>✓</i>Rezerve</span></div></li>
+            <li><span class="time est">~13:00</span><div class="r-body"><span>Taksi → Porto Havalimanı<small>uçuştan 2 sa önce</small></span><span class="st open"><i></i>Planlanmadı</span></div></li>
+            <li><span class="time">15:00</span><div class="r-body"><span>Uçuş Porto → Madeira · TP1693<small class="num">15:00 → 16:55 · 1 sa 55 dk</small></span><span class="st planned"><i></i>Bilet alınmadı</span></div></li>
+            <li><span class="time est">~17:15</span><div class="r-body"><span>Taksi → Quinta Vista<small>inişten 20 dk sonra</small></span><span class="st open"><i></i>Planlanmadı</span></div></li>
+            <li><span class="time">18:00</span><div class="r-body"><span>Check-in · Quinta Vista</span><span class="st booked"><i>✓</i>Rezerve</span></div></li>
+          </ul>
+        </article>
+        <article class="day">
+          <div class="day-head"><h4 class="day-title"><b>5. gün</b> · Pazar 11 Eki</h4></div>
+          <ul class="rows">
+            <li><span class="time">09:30</span><div class="r-body"><span>Levada yürüyüşü</span><span class="st planned"><i></i>Planlanıyor</span></div></li>
+          </ul>
+        </article>
+      </section>
+    </div>
+    <p class="note">Dene: “Adımlar ▾”e dokun.</p>
+  </section>
+
+  <!-- 3: one summary line, opens on tap -->
+  <section class="sec" id="s3">
+    <div class="sec-head">
+      <span class="badge">3</span>
+      <div>
+        <h2>Tek satır, açılır</h2>
+        <p>Kart Madeira bloğunda tek bir özet satırı ve ince bir çubuk gösterir; adımlar dokununca açılır.</p>
+        <div class="pc">
+          <span class="plus"><i>+</i>En sakin görünüm; pano kısa kalır.</span>
+          <span class="minus"><i>−</i>“Bilet alınmadı” gibi eksikler açmadan görünmez.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="board">
+      <section class="city" aria-label="Porto">
+        <header class="city-head"><span class="city-no">1</span><b>Porto</b><span class="muted num">7–10 Eki · 3 gece</span></header>
+        <article class="day">
+          <div class="day-head"><h4 class="day-title"><b>3. gün</b> · Cuma 9 Eki</h4></div>
+          <ul class="rows">
+            <li><span class="time">16:00</span><div class="r-body"><span>Douro tekne turu</span><span class="st booked"><i>✓</i>Bilet alındı</span></div></li>
+          </ul>
+        </article>
+      </section>
+
+      <section class="city" aria-label="Madeira">
+        <header class="city-head"><span class="city-no">2</span><b>Madeira</b><span class="muted num">10–14 Eki · 4 gece</span></header>
+        <article class="day">
+          <div class="day-head"><h4 class="day-title"><b>4. gün</b> · Cumartesi 10 Eki</h4></div>
+          <button type="button" class="sum" data-toggle="rows-3" aria-controls="rows-3" aria-expanded="false">
+            <span class="pass-mark"><svg class="ic" aria-hidden="true"><use href="#i-plane"/></svg></span>
+            <span class="sum-text"><b>Porto → Madeira</b> <span class="num">15:00</span> · 5 adım · 2'si hazır</span>
+            <span class="chev" aria-hidden="true">▾</span>
+          </button>
+          <span class="pbar" role="img" aria-label="5 adımın 2'si hazır"><span></span></span>
+          <ul class="rows" id="rows-3" hidden>
+            <li><span class="time">11:00</span><div class="r-body"><span>Check-out · Jardim Stay</span><span class="st booked"><i>✓</i>Rezerve</span></div></li>
+            <li><span class="time est">~13:00</span><div class="r-body"><span>Taksi → Porto Havalimanı<small>uçuştan 2 sa önce</small></span><span class="st open"><i></i>Planlanmadı</span></div></li>
+            <li><span class="time">15:00</span><div class="r-body"><span>Uçuş Porto → Madeira · TP1693<small class="num">15:00 → 16:55 · 1 sa 55 dk</small></span><span class="st planned"><i></i>Bilet alınmadı</span></div></li>
+            <li><span class="time est">~17:15</span><div class="r-body"><span>Taksi → Quinta Vista<small>inişten 20 dk sonra</small></span><span class="st open"><i></i>Planlanmadı</span></div></li>
+            <li><span class="time">18:00</span><div class="r-body"><span>Check-in · Quinta Vista</span><span class="st booked"><i>✓</i>Rezerve</span></div></li>
+          </ul>
+        </article>
+        <article class="day">
+          <div class="day-head"><h4 class="day-title"><b>5. gün</b> · Pazar 11 Eki</h4></div>
+          <ul class="rows">
+            <li><span class="time">09:30</span><div class="r-body"><span>Levada yürüyüşü</span><span class="st planned"><i></i>Planlanıyor</span></div></li>
+          </ul>
+        </article>
+      </section>
+    </div>
+    <p class="note">Dene: özet satırına dokun.</p>
+  </section>
+
+  <!-- shared by every option -->
+  <section class="frame" aria-labelledby="common-h">
+    <h2 id="common-h">Her seçenekte ortak</h2>
+    <ul class="common">
+      <li><span>Her gün kartında gün numarası, gün adı ve tarih yazar: <span class="q">4. gün · Cumartesi 10 Eki</span>.</span></li>
+      <li><span>Seyahat başlayınca bugünün kartında <span class="today">Bugün</span> işareti olur; üstteki özet <span class="q">Seyahat başladı · 4. gün</span> der.</span></li>
+      <li><span>1. gün ve son gün de böyle: İstanbul → Kopenhag → Porto aktarması ve check-in; son gün check-out, taksi ve dönüş uçuşu.</span></li>
+      <li><span>Saati bilinmeyen adımda “saat yok” yazar. Tahmin edilen saat “~13:00” gibi işaretli durur, nedeni yanında yazar.</span></li>
+    </ul>
+  </section>
+
+  <div class="reco">
+    <span class="reco-mark" aria-hidden="true">✓</span>
+    <p><b>Önerim: 1.</b> Yolculuk günü iki şehrin arasında kendi yerinde durur ve günün bütün adımları, durumlarıyla birlikte, saat sırasıyla tek kartta okunur.</p>
+  </div>
+</main>
+
+<script>
+(() => {
+  document.querySelectorAll("[data-toggle]").forEach((btn) => {
+    const target = document.getElementById(btn.dataset.toggle);
+    if (!target) return;
+    btn.addEventListener("click", () => {
+      const open = target.hidden;
+      target.hidden = !open;
+      btn.setAttribute("aria-expanded", String(open));
+      if (btn.classList.contains("lnk")) btn.textContent = open ? "Adımlar ▴" : "Adımlar ▾";
+      const chev = btn.querySelector(".chev");
+      if (chev) chev.textContent = open ? "▴" : "▾";
+    });
+  });
+})();
+</script>
+
+</body></html>

@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gün akışı satır standardı v1</title>
+<style>
+  :root { --ink:#1c1a33; --muted:#6b6790; --gray:#6e6e73; --soft:#8e8e93; --line:#ece9e4;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter",system-ui,sans-serif; color:var(--ink); -webkit-font-smoothing:antialiased; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#f8f7f4; }
+  .wrap { max-width:1180px; margin:0 auto; padding:24px 16px 48px; }
+  .cap { margin:0 4px 6px; font-size:15px; color:var(--gray); font-weight:600; }
+  .lbl { margin:22px 4px 10px; font-size:14px; color:var(--gray); }
+  .lbl b { color:var(--ink); }
+  .day { display:grid; grid-template-columns:300px 1fr; background:#fffdf9; border-radius:24px; overflow:hidden; box-shadow:0 1px 2px rgba(0,0,0,.04),0 8px 28px rgba(0,0,0,.05); }
+  .day + .day { margin-top:16px; }
+  .ph { position:relative; min-height:250px; background-size:cover; background-position:center; }
+  .ph .pill { position:absolute; top:16px; left:16px; padding:6px 14px; border-radius:999px; background:rgba(255,255,255,.92); font-size:16px; font-weight:700; }
+  .body { padding:22px 26px 20px; }
+  .ttl { display:flex; align-items:baseline; gap:10px; }
+  .ttl b { font-size:26px; letter-spacing:-.01em; }
+  .ttl span { font-size:18px; color:var(--soft); }
+  .sub { margin:4px 0 14px; font-size:15px; color:var(--gray); }
+  /* satırlar: saat · ikon · ne oluyor (tek hiyerarşi) · gri ayrıntı. Nokta ve çizgi yok. */
+  .rows { display:grid; gap:2px; }
+  .row { display:grid; grid-template-columns:62px 40px 1fr; align-items:center; column-gap:14px; min-height:52px; }
+  .tm { font-size:17px; font-weight:600; text-align:right; font-variant-numeric:tabular-nums; }
+  .tm.about { color:var(--gray); font-weight:500; }
+  .tm.none { color:#c7c7cc; }
+  .ic { position:relative; width:40px; height:40px; border-radius:12px; display:grid; place-items:center; font-size:19px; background:var(--tb); }
+  .ic .ok { position:absolute; right:-4px; bottom:-4px; width:16px; height:16px; border-radius:50%; background:#1f8f4e; color:#fff; font-size:10px; display:grid; place-items:center; border:2px solid #fffdf9; }
+  .tx { min-width:0; }
+  .tx b { display:block; font-size:17px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tx small { display:block; margin-top:1px; font-size:13.5px; color:var(--gray); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .row.quiet .tx b { font-weight:500; color:var(--gray); font-size:15px; }
+  .row.quiet .ic { background:transparent; color:var(--soft); }
+  .sep { margin:10px 0 2px 76px; font-size:12.5px; color:var(--soft); font-weight:600; letter-spacing:.02em; }
+  .add { margin:8px 0 0 76px; height:34px; padding:0 14px; border:1.5px dashed #d8d3ea; border-radius:12px; background:transparent; font:inherit; font-size:14px; color:var(--muted); }
+  /* önce */
+  .old { opacity:.95; }
+  .old .row { grid-template-columns:62px 18px 40px 1fr; }
+  .old .dot { width:7px; height:7px; border-radius:50%; background:#b8b5c8; justify-self:center; }
+  .x { color:#c0392b; font-weight:700; }
+  .rules { margin:20px 4px 0; font-size:14px; line-height:1.7; color:#3a3850; }
+  .rules table { border-collapse:collapse; width:100%; margin-top:8px; font-size:13.5px; }
+  .rules td, .rules th { text-align:left; padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  .rules th { color:var(--gray); font-weight:600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2 class="cap">Gün akışı · satır standardı v1</h2>
+
+  <p class="lbl"><b>Bugün</b> (senin ekran görüntün): kod, kısaltma, nokta + çizgi, sigorta satırı</p>
+  <div class="day old">
+    <div class="ph" style="background-image:url('https://images.pexels.com/photos/2549573/pexels-photo-2549573.jpeg?auto=compress&w=600')"><span class="pill">1. gün</span></div>
+    <div class="body">
+      <div class="ttl"><b>Porto 1. Gün</b><span>Varış</span></div>
+      <div class="sub">7 Ekim Çar · İstanbul → Porto</div>
+      <div class="rows">
+        <div class="row"><span class="tm">09:40</span><span class="dot"></span><span class="ic" style="--tb:#ece8ff">✈️<i class="ok">✓</i></span><span class="tx"><b>Uçuş SAW → CPH <span class="x">←</span></b></span></div>
+        <div class="row"><span class="tm">16:30</span><span class="dot"></span><span class="ic" style="--tb:#ece8ff">✈️<i class="ok">✓</i></span><span class="tx"><b>Uçuş Kopenhag → OPO</b></span></div>
+        <div class="row"><span class="tm about">~23:15</span><span class="dot"></span><span class="ic" style="--tb:#e3f3ef">🛏</span><span class="tx"><b>Check-in · <span style="font-weight:400;color:#6e6e73">Bonfim Konaklaması – Yeni Tasarlanmış …</span></b></span></div>
+      </div>
+      <p class="sep">Gezi için · sigorta, internet <span class="x">← akışta yeri yok</span></p>
+      <div class="rows"><div class="row"><span class="tm none">–</span><span></span><span class="ic" style="--tb:#e3f3ef">🛡<i class="ok">✓</i></span><span class="tx"><b>Travel Health Insurance</b></span></div></div>
+    </div>
+  </div>
+
+  <p class="lbl"><b>Önerilen</b>: her satır "o saatte ne oluyor" cümlesi; şehir adları, kendi adlar; sigorta/eSIM yok; nokta yok</p>
+  <div class="day">
+    <div class="ph" style="background-image:url('https://images.pexels.com/photos/2549573/pexels-photo-2549573.jpeg?auto=compress&w=600')"><span class="pill">1. gün</span></div>
+    <div class="body">
+      <div class="ttl"><b>Porto 1. Gün</b><span>Varış</span></div>
+      <div class="sub">7 Ekim Çar · İstanbul → Porto</div>
+      <div class="rows">
+        <div class="row"><span class="tm">09:40</span><span class="ic" style="--tb:#ece8ff">✈️<i class="ok">✓</i></span><span class="tx"><b>İstanbul → Kopenhag uçuşu</b><small>Sabiha Gökçen → Kastrup · varış 12:35</small></span></div>
+        <div class="row quiet"><span class="tm about">12:35</span><span class="ic">⏱</span><span class="tx"><b>Kopenhag'da aktarma · 3 sa 55 dk</b></span></div>
+        <div class="row"><span class="tm">16:30</span><span class="ic" style="--tb:#ece8ff">✈️<i class="ok">✓</i></span><span class="tx"><b>Kopenhag → Porto uçuşu</b><small>Kastrup → Francisco Sá Carneiro · varış 19:10</small></span></div>
+        <div class="row"><span class="tm about">~19:40</span><span class="ic" style="--tb:#fff3dc">🚕</span><span class="tx"><b>Havalimanından konaklamaya</b><small>Taksi ya da metro · ~25 dk · planlanmadı</small></span></div>
+        <div class="row"><span class="tm about">~20:15</span><span class="ic" style="--tb:#e3f3ef">🛏<i class="ok">✓</i></span><span class="tx"><b>Bonfim Konaklaması'na giriş</b><small>Check-in 15:00'ten itibaren · 4 gece</small></span></div>
+      </div>
+      <button class="add">+ Bu güne ekle</button>
+    </div>
+  </div>
+
+  <div class="day">
+    <div class="ph" style="background-image:url('https://images.pexels.com/photos/1534560/pexels-photo-1534560.jpeg?auto=compress&w=600')"><span class="pill">2. gün</span></div>
+    <div class="body">
+      <div class="ttl"><b>Porto 2. Gün</b><span>Şehirde</span></div>
+      <div class="sub">8 Ekim Per · Porto</div>
+      <div class="rows">
+        <div class="row"><span class="tm">10:00</span><span class="ic" style="--tb:#fbe6ef">🎟<i class="ok">✓</i></span><span class="tx"><b>Graham's şarap mahzeni turu</b><small>Vila Nova de Gaia · 1 sa 30 dk · 2 kişi</small></span></div>
+        <div class="row"><span class="tm">13:00</span><span class="ic" style="--tb:#fdece6">🍽</span><span class="tx"><b>Öğle yemeği · Majestic Café</b><small>Bolhão · ★ 4,4</small></span></div>
+        <div class="row"><span class="tm">16:00</span><span class="ic" style="--tb:#fbe6ef">🎟</span><span class="tx"><b>Douro nehri tekne turu</b><small>Ribeira iskelesi · 50 dk · bilet alınmadı</small></span></div>
+        <div class="row"><span class="tm about">~19:00</span><span class="ic" style="--tb:#fff4dc">🌅</span><span class="tx"><b>Dom Luís köprüsünden gün batımı</b><small>Ribeira · fikir</small></span></div>
+      </div>
+      <p class="sep">Saati yok · bu gün yapılabilir</p>
+      <div class="rows">
+        <div class="row"><span class="tm none">·</span><span class="ic" style="--tb:#fdeaf1">🛍</span><span class="tx"><b>Porto şarabı al</b><small>Vila Nova de Gaia</small></span></div>
+      </div>
+      <button class="add">+ Bu güne ekle</button>
+    </div>
+  </div>
+
+  <div class="rules">
+    <b>Standart:</b> her satır = <b>saat · tür ikonu · "ne oluyor" (tek cümle, hep aynı boy) · altında gri ayrıntı</b>. Kod, kısaltma, pazarlama eki yok; şehir ve yer adı Türkçe yazılır.
+    <table>
+      <tr><th>Tür</th><th>Satır</th><th>Gri ayrıntı</th></tr>
+      <tr><td>Uçuş</td><td>İstanbul → Kopenhag uçuşu</td><td>havalimanları (ad) · varış saati · uçuş no varsa</td></tr>
+      <tr><td>Aktarma</td><td>Kopenhag'da aktarma · 3 sa 55 dk (soluk satır)</td><td>—</td></tr>
+      <tr><td>Tren / otobüs / vapur</td><td>Porto → Lizbon treni</td><td>istasyonlar · süre · bilet durumu</td></tr>
+      <tr><td>Transfer / taksi</td><td>Havalimanından konaklamaya · Konaklamadan havalimanına</td><td>yol (taksi, metro) · süre · planlandı mı</td></tr>
+      <tr><td>Araç kiralama</td><td>Aracı teslim al · Aracı teslim et</td><td>firma · yer</td></tr>
+      <tr><td>Konaklama</td><td>Bonfim Konaklaması'na giriş · Bonfim'den çıkış</td><td>giriş/çıkış saati kuralı · kaç gece</td></tr>
+      <tr><td>Etkinlik / tur</td><td>kendi adı: "Graham's şarap mahzeni turu"</td><td>yer · süre · kişi · bilet durumu</td></tr>
+      <tr><td>Restoran</td><td>Öğle yemeği · Majestic Café (öğün + ad)</td><td>semt · puan</td></tr>
+      <tr><td>Fikir / yapılacak</td><td>kendi adı</td><td>semt · "fikir"</td></tr>
+      <tr><td>Sigorta, eSIM, vize</td><td colspan="2"><b>Gün akışında yok.</b> Yerleri Plan → Diğer (Sigorta, eSIM).</td></tr>
+    </table>
+    <p style="margin-top:12px">Adlar sadeleşir: "Bonfim Konaklaması – Yeni Tasarlanmış Daire, Metroya Yakın" → "Bonfim Konaklaması" (– | · , sonrası atılır; kart adı değişmez). Tahmini saat "~" ile, soluk. Nokta ve dikey çizgi kalkar; sürükleme tutamacı yalnız üstüne gelince görünür.</p>
+  </div>
+</div>
+</body>
+</html>

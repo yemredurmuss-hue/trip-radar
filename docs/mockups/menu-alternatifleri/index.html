@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Menü Alternatifleri</title>
+<style>
+:root { --bg: #eeecf5; --app: #fff; --soft: #f7f5f1; --ink: #1c1a33; --muted: #6b6790; --line: #e7e4dd; --dash: #b9b5cf;
+  --accent: #5b45e0; --accent-ink: #4a35cc; --lav: #ece8ff; --book: #1f7a4a; --book-bg: #e3f3e8; --plan: #8fd3a6; --plan-bg: #f1faf3;
+  --c-fly: #6d4ce0; --c-stay: #2a8a72; --c-move: #c27a1b; --c-exp: #d14a7a; --sh: 0 1px 2px rgba(40,28,90,.06), 0 12px 28px -18px rgba(40,28,90,.34); }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif; }
+.page { max-width: 1240px; margin: 0 auto; padding: 28px 16px 60px; }
+h1 { font-size: 26px; margin: 0 0 6px; letter-spacing: -0.02em; }
+.lead { color: var(--muted); margin: 0 0 22px; max-width: 760px; }
+.alt { margin: 0 0 34px; }
+.alt-h { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; margin: 0 0 10px; }
+.alt-h h2 { font-size: 19px; margin: 0; }
+.tag { font-size: 12px; font-weight: 700; padding: 2px 9px; border-radius: 999px; background: var(--lav); color: var(--accent-ink); }
+.tag.rec { background: var(--book); color: #fff; }
+.score { font-size: 13px; color: var(--muted); }
+.win { background: var(--app); border-radius: 18px; box-shadow: var(--sh); overflow: hidden; border: 1px solid var(--line); }
+.pc { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 22px; margin-top: 12px; font-size: 14px; }
+.pc ul { margin: 0; padding-left: 18px; } .pc li { margin: 2px 0; }
+.pc .p b { color: var(--book); } .pc .m b { color: #b42318; }
+@media (max-width: 760px) { .pc { grid-template-columns: 1fr; } }
+/* ortak parçalar */
+.tb { display: flex; gap: 14px; align-items: center; padding: 12px 18px; border-bottom: 1px solid var(--line); }
+.logo { display: inline-flex; gap: 8px; align-items: center; font-weight: 750; }
+.logo i { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--accent); display: inline-block; }
+.trip { display: inline-flex; gap: 6px; align-items: center; padding: 5px 10px; border-radius: 10px; font-size: 14px; }
+.trip:hover { background: var(--soft); }
+.sp { flex: 1; }
+.avs { display: inline-flex; } .av { width: 28px; height: 28px; border-radius: 50%; display: inline-grid; place-items: center; color: #fff; font-size: 12px; font-weight: 700; border: 2px solid #fff; margin-left: -6px; }
+.av.e { background: #5b45e0; } .av.s { background: #1f7a6a; }
+.dots { width: 32px; height: 32px; border-radius: 10px; border: 1px solid var(--line); display: inline-grid; place-items: center; color: var(--muted); font-weight: 800; letter-spacing: 1px; }
+.seg { display: inline-flex; padding: 3px; border-radius: 12px; background: var(--soft); border: 1px solid var(--line); }
+.seg b { padding: 6px 16px; border-radius: 9px; font-size: 14px; font-weight: 600; color: var(--muted); display: inline-flex; gap: 6px; align-items: center; }
+.seg b.on { background: var(--app); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.seg b small { font-size: 11.5px; padding: 0 6px; border-radius: 999px; background: var(--lav); color: var(--accent-ink); }
+.views { display: inline-flex; gap: 4px; font-size: 13px; }
+.views span { padding: 4px 10px; border-radius: 999px; color: var(--muted); } .views span.on { background: var(--lav); color: var(--accent-ink); font-weight: 650; }
+.body { display: grid; min-height: 330px; }
+.chat { background: #faf9fd; border-right: 1px solid var(--line); padding: 14px; display: grid; gap: 8px; align-content: start; font-size: 13px; }
+.bub { background: var(--app); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; color: var(--muted); }
+.bub.me { background: var(--lav); border-color: transparent; color: var(--ink); }
+.main { padding: 16px 18px; display: grid; gap: 12px; align-content: start; min-width: 0; }
+.blk { border-radius: 14px; background: var(--soft); border: 1px dashed var(--dash); color: var(--muted); font-size: 13px; display: grid; place-items: center; }
+.cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.card { height: 74px; border-radius: 12px; border: 1.5px dashed var(--plan); background: var(--plan-bg); }
+.card.r { border: 1.5px solid var(--book); background: var(--book-bg); }
+.card.b { border-color: var(--dash); background: var(--app); }
+.sech { display: flex; gap: 8px; align-items: center; font-weight: 700; font-size: 14px; }
+.sech i { width: 22px; height: 22px; border-radius: 7px; background: var(--lav); display: inline-block; }
+/* yeni yapışkan özet */
+.stick { display: flex; gap: 14px; align-items: center; padding: 10px 14px; margin: 12px 18px; border-radius: 16px; background: rgba(255,255,255,.92); box-shadow: 0 10px 30px -14px rgba(40,28,90,.35); border: 1px solid var(--line); }
+.thumb { width: 42px; height: 42px; border-radius: 12px; background: linear-gradient(160deg, #f4a7bf, #7d8fb3 60%, #8fae7c); flex: none; }
+.st-n b { display: block; font-size: 15px; letter-spacing: -0.01em; } .st-n small { color: var(--muted); font-size: 12.5px; }
+.ring { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; flex: none; background: conic-gradient(var(--book) 0 29%, var(--plan) 29% 64%, #e9e6f2 64%); }
+.ring span { width: 32px; height: 32px; border-radius: 50%; background: #fff; display: grid; place-items: center; font-size: 11px; font-weight: 800; }
+.st-k { font-size: 12.5px; color: var(--muted); line-height: 1.3; } .st-k b { color: var(--ink); font-size: 14px; display: block; }
+.next { display: inline-flex; gap: 8px; align-items: center; padding: 8px 14px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13.5px; font-weight: 650; white-space: nowrap; }
+.next small { opacity: .7; font-weight: 500; }
+.vsep { width: 1px; height: 30px; background: var(--line); }
+.old { display: flex; gap: 14px; align-items: center; padding: 8px 14px; margin: 0 18px 4px; border-radius: 10px; background: #fff; border: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+.old b { color: var(--ink); } .old .bar { width: 120px; height: 6px; border-radius: 9px; background: linear-gradient(90deg, var(--book) 0 30%, var(--plan) 30% 60%, #e9e6f2 60%); }
+.lbl { font-size: 11.5px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 14px 18px 6px; }
+/* sol menü */
+.rail { background: #faf9fd; border-right: 1px solid var(--line); padding: 14px 10px; display: grid; gap: 4px; align-content: start; font-size: 14px; }
+.rail span { display: flex; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 10px; color: var(--muted); font-weight: 600; }
+.rail span i { width: 18px; height: 18px; border-radius: 6px; background: #e3e0ef; display: inline-block; }
+.rail span.on { background: var(--lav); color: var(--accent-ink); } .rail span.on i { background: var(--accent); }
+.rail hr { border: 0; border-top: 1px solid var(--line); margin: 8px 4px; width: 100%; }
+.rail small { margin-left: auto; font-size: 12px; color: var(--muted); font-weight: 500; }
+/* yan yana */
+.drawer { border-left: 1px solid var(--line); background: #fbfaff; padding: 14px 14px 72px; display: grid; gap: 10px; align-content: start; }
+.drawer h3 { margin: 0; font-size: 14px; display: flex; gap: 8px; align-items: center; } .drawer h3 small { color: var(--muted); font-weight: 500; }
+.dc { height: 62px; border-radius: 12px; background: var(--app); border: 1px solid var(--line); display: flex; gap: 10px; align-items: center; padding: 8px; font-size: 13px; }
+.dc i { width: 54px; height: 44px; border-radius: 9px; background: #e6e2f3; flex: none; } .dc b { display: block; } .dc small { color: var(--muted); }
+.fab { position: absolute; right: 18px; bottom: 16px; width: 46px; height: 46px; border-radius: 50%; background: var(--accent); box-shadow: 0 8px 20px -8px rgba(28,26,51,.35); }
+.rel { position: relative; }
+.note { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
+</style>
+</head>
+<body>
+<main class="page">
+  <h1>Menü ve yapışkan özet · üç alternatif</h1>
+  <p class="lead">Bugün üstte dört sekme var: Plan · Gün gün · Pano · Belgeler. Kaydırınca beliren özet şeridi ise yazı yığını. Aşağıda menü için üç yol ve yeni özet şeridi var. Hepsi aynı geziyi gösteriyor; içerik bloklar hâlinde, yalnız iskelet.</p>
+
+  <section class="alt">
+    <div class="alt-h"><h2>Yapışkan özet · eski ve yeni</h2><span class="tag rec">Her alternatifte bu</span></div>
+    <div class="win">
+      <div class="lbl">Bugün</div>
+      <div class="old"><b>Japonya 2027</b><span>1–16 Nis</span><span class="bar"></span><span>5 rezerve · 6 seçildi</span><b>~€7.357</b><span>/ €9.000</span><span class="sp"></span><span>Planı tamamla →</span></div>
+      <div class="lbl">Yeni</div>
+      <div class="stick"><span class="thumb"></span><span class="st-n"><b>Japonya 2027</b><small>1–16 Nis · 175 gün kaldı</small></span><span class="vsep"></span>
+        <span class="ring"><span>11/17</span></span><span class="st-k"><b>11 hazır</b>6 karar bekliyor</span><span class="vsep"></span>
+        <span class="st-k"><b>~€7.357</b>€9.000 bütçeye sığar</span><span class="sp"></span><span class="next">Sıradaki: Osaka oteli <small>→</small></span></div>
+      <p class="note" style="margin:0 18px 16px">Dört parça, her biri tek bakışta: <b>neredeyim</b> (kapak ve tarih) · <b>ne kadar hazır</b> (halka) · <b>para</b> · <b>şimdi ne yapayım</b> (tek düğme, doğrudan o karta götürür). Yüzdeler ve "seçildi / rezerve" ayrımı halkanın renginde; yazıyla tekrar edilmez.</p>
+    </div>
+  </section>
+
+  <section class="alt">
+    <div class="alt-h"><h2>A · İki sekme: Plan · Pano</h2><span class="tag rec">Önerim</span><span class="score">8/10</span></div>
+    <div class="win">
+      <div class="tb"><span class="logo"><i></i>Trip Radar</span><span class="trip">Japonya 2027 ▾</span><span class="sp"></span><span class="seg"><b class="on">Plan</b><b>Pano <small>64</small></b></span><span class="sp"></span><span class="dots" title="Belgeler · Paylaş · Geçmiş">•••</span><span class="avs"><span class="av e">E</span><span class="av s">S</span></span></div>
+      <div class="body" style="grid-template-columns: 260px minmax(0, 1fr)">
+        <div class="chat"><b>Seyahat asistanı</b><div class="bub me">Kyoto'ya şunlara bakıyoruz…</div><div class="bub">Kyoto'daki iki link kutusuna bağlandı.</div></div>
+        <div class="main"><div class="blk" style="height:90px">Hero</div>
+          <div style="display:flex;gap:10px;align-items:center"><b>Plan</b><span class="views"><span class="on">Kategoriye göre</span><span>Yolculuk sırasıyla</span><span>Gün gün</span></span></div>
+          <div class="sech"><i></i>Konaklama</div><div class="cards"><div class="card r"></div><div class="card"></div></div></div>
+      </div>
+    </div>
+    <div class="pc"><div class="p"><b>Artı</b><ul><li>Kullanıcı yalnız iki yeri öğrenir: planım ve kayıtlarım.</li><li>"Gün gün" ayrı bir sayfa değil, planın üçüncü görünümü; "Yolculuk sırasıyla"nın hemen yanında, doğal yeri orası.</li><li>Belgeler zaten kartlarda ve "Belgeler ve internet" bölümünde; hepsinin listesi ••• menüsünde. Ayrı sekme gereksiz.</li><li>Kaydırınca üst çubuk özet şeridine dönüşür; Plan · Pano geçişi şeritte kalır, hep elinin altında.</li></ul></div>
+      <div class="m"><b>Eksi</b><ul><li>Belgelerini sık açan biri için bir tık uzak (••• → Belgeler).</li><li>Canlıdaki dört sekmelik düzene alışmış kullanıcıya küçük bir değişiklik.</li></ul></div></div>
+  </section>
+
+  <section class="alt">
+    <div class="alt-h"><h2>B · Solda menü</h2><span class="tag">6/10</span></div>
+    <div class="win">
+      <div class="tb"><span class="logo"><i></i>Trip Radar</span><span class="trip">Japonya 2027 ▾</span><span class="sp"></span><span class="avs"><span class="av e">E</span><span class="av s">S</span></span></div>
+      <div class="body" style="grid-template-columns: 190px minmax(0, 1fr) 250px">
+        <div class="rail"><span class="on"><i></i>Plan</span><span><i></i>Gün gün</span><span><i></i>Pano<small>64</small></span><span><i></i>Belgeler<small>5</small></span><hr><span><i></i>Seyahatlerim</span></div>
+        <div class="main"><div class="blk" style="height:90px">Hero</div><div class="sech"><i></i>Konaklama</div><div class="cards"><div class="card r"></div><div class="card b"></div></div></div>
+        <div class="chat" style="border-right:0;border-left:1px solid var(--line)"><b>Seyahat asistanı</b><div class="bub">Kyoto'daki iki link kutusuna bağlandı.</div></div>
+      </div>
+    </div>
+    <div class="pc"><div class="p"><b>Artı</b><ul><li>Uygulama gibi tanıdık (Notion, Linear).</li><li>Yeni sayfa eklemek kolay (Bütçe, Fotoğraflar…).</li></ul></div>
+      <div class="m"><b>Eksi</b><ul><li>Sohbet sağa kayar, ekran üç sütun olur; plan daralır, kartlar sıkışır.</li><li>Dört sayfa hâlâ dört sayfa; sorunu çözmez, yerini değiştirir.</li><li>Eklenti panelinde (dar) zaten sığmaz; iki ayrı menü düzeni gerekir.</li></ul></div></div>
+  </section>
+
+  <section class="alt">
+    <div class="alt-h"><h2>C · Plan ve Pano yan yana</h2><span class="tag">7/10</span></div>
+    <div class="win rel">
+      <div class="tb"><span class="logo"><i></i>Trip Radar</span><span class="trip">Japonya 2027 ▾</span><span class="sp"></span><span class="seg"><b class="on">Plan</b><b>Pano <small>64</small></b></span><span class="sp"></span><span class="dots">•••</span><span class="avs"><span class="av e">E</span><span class="av s">S</span></span></div>
+      <div class="body" style="grid-template-columns: minmax(0, 1fr) 330px">
+        <div class="main"><div class="blk" style="height:90px">Hero</div><div class="sech"><i></i>Konaklama</div><div class="cards"><div class="card r"></div><div class="card" style="box-shadow:0 0 0 3px var(--accent)"></div></div></div>
+        <div class="drawer"><h3>Pano · Kyoto oteli <small>4 kayıt</small></h3><div class="dc"><i></i><span><b>Gion Machiya Evi</b><small>€1.050 · Sabine</small></span></div><div class="dc"><i></i><span><b>Kyoto Shijo Hotel</b><small>€900 · Önerimiz</small></span></div><div class="dc"><i></i><span><b>Higashiyama Inn</b><small>Fiyat linkte · Emre</small></span></div><span class="note">Karta basınca Pano sağda o ihtiyaca süzülmüş açılır; kartı sola, plana sürükle.</span></div>
+      </div>
+      <span class="fab" title="Seyahat asistanı"></span>
+    </div>
+    <div class="pc"><div class="p"><b>Artı</b><ul><li>Karar anı tek ekranda: plan solda, seçenekler sağda, sürükle bırak.</li><li>Pano'ya "gitmek" diye bir şey kalmaz; hep yanında.</li></ul></div>
+      <div class="m"><b>Eksi</b><ul><li>Sohbete yer kalmaz; köşede baloncuğa iner. Sohbet ürünün kalbi, saklamak riskli.</li><li>Kart çevirme (v19–v27'de beğendiğin) ile aynı işi yapar; ikisi birden fazla.</li><li>Dar ekranda yan yana olmaz.</li></ul></div></div>
+  </section>
+
+  <p class="lead"><b>Önerim:</b> A + yeni özet şeridi. C'nin iyi fikrini de A'ya alalım: kartın arkasındaki "Pano'da aç" sayfayı değiştirmesin; Pano sağdan, o ihtiyaca süzülmüş bir çekmece olarak açılsın. Çekmece kapanınca plana geri dönülür, akış kopmaz.</p>
+</main>
+</body>
+</html>

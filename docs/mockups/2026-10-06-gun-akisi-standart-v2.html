@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gün akışı satır standardı v2</title>
+<style>
+  :root { --ink:#1c1a33; --muted:#6b6790; --gray:#6e6e73; --soft:#8e8e93; --line:#ece9e4;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter",system-ui,sans-serif; color:var(--ink); -webkit-font-smoothing:antialiased; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#f8f7f4; }
+  .wrap { max-width:1180px; margin:0 auto; padding:24px 16px 48px; }
+  .cap { margin:0 4px 6px; font-size:15px; color:var(--gray); font-weight:600; }
+  .lbl { margin:22px 4px 10px; font-size:14px; color:var(--gray); }
+  .lbl b { color:var(--ink); }
+  .day { display:grid; grid-template-columns:300px 1fr; background:#fffdf9; border-radius:24px; overflow:hidden; box-shadow:0 1px 2px rgba(0,0,0,.04),0 8px 28px rgba(0,0,0,.05); }
+  .day + .day { margin-top:16px; }
+  .ph { position:relative; min-height:250px; background-size:cover; background-position:center; }
+  .ph .pill { position:absolute; top:16px; left:16px; padding:6px 14px; border-radius:999px; background:rgba(255,255,255,.92); font-size:16px; font-weight:700; }
+  .body { padding:22px 26px 20px; }
+  .ttl { display:flex; align-items:baseline; gap:10px; }
+  .ttl b { font-size:26px; letter-spacing:-.01em; }
+  .ttl span { font-size:18px; color:var(--soft); }
+  .sub { margin:4px 0 14px; font-size:15px; color:var(--gray); }
+  /* satırlar: saat · ikon · ne oluyor (tek hiyerarşi) · gri ayrıntı. Nokta ve çizgi yok. */
+  .rows { display:grid; gap:2px; }
+  .row { display:grid; grid-template-columns:62px 40px 1fr; align-items:center; column-gap:14px; min-height:52px; }
+  .tm { font-size:17px; font-weight:600; text-align:right; font-variant-numeric:tabular-nums; }
+  .tm.about { color:var(--gray); font-weight:500; }
+  .tm.none { color:#c7c7cc; }
+  .ic { position:relative; width:40px; height:40px; border-radius:12px; display:grid; place-items:center; font-size:19px; background:var(--tb); }
+  .ic .ok { position:absolute; right:-4px; bottom:-4px; width:16px; height:16px; border-radius:50%; background:#1f8f4e; color:#fff; font-size:10px; display:grid; place-items:center; border:2px solid #fffdf9; }
+  .tx { min-width:0; }
+  .tx b { display:block; font-size:17px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tx small { display:block; margin-top:1px; font-size:13.5px; color:var(--gray); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .row.quiet .tx b { font-weight:500; color:var(--gray); font-size:15px; }
+  .row.quiet .ic { background:transparent; color:var(--soft); }
+  .sep { margin:10px 0 2px 76px; font-size:12.5px; color:var(--soft); font-weight:600; letter-spacing:.02em; }
+  .add { margin:8px 0 0 76px; height:34px; padding:0 14px; border:1.5px dashed #d8d3ea; border-radius:12px; background:transparent; font:inherit; font-size:14px; color:var(--muted); }
+  /* önce */
+  .old { opacity:.95; }
+  .old .row { grid-template-columns:62px 18px 40px 1fr; }
+  .old .dot { width:7px; height:7px; border-radius:50%; background:#b8b5c8; justify-self:center; }
+  .x { color:#c0392b; font-weight:700; }
+  .rules { margin:20px 4px 0; font-size:14px; line-height:1.7; color:#3a3850; }
+  .rules table { border-collapse:collapse; width:100%; margin-top:8px; font-size:13.5px; }
+  .rules td, .rules th { text-align:left; padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  .rules th { color:var(--gray); font-weight:600; }
+
+  .tx b .k { font-weight:700; }
+  .tx b .v { font-weight:500; color:#3a3850; }
+  .tx b .dot2 { color:#c7c4d6; margin:0 6px; font-weight:400; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2 class="cap">Gün akışı · satır standardı v2 · önce "ne", sonra "hangisi"</h2>
+
+  <p class="lbl"><b>Kural</b>: başlık = <b>NE</b> (sabit sözlükten, kalın) · <b>HANGİSİ</b> (yalnız özgül bilgi). İlk kelimeye bakınca ne olduğu belli.</p><div class="day"><div class="ph" style="background-image:url(https://images.pexels.com/photos/2549573/pexels-photo-2549573.jpeg?auto=compress&w=600)"><span class="pill">1. gün</span></div><div class="body"><div class="ttl"><b>Porto 1. Gün</b><span>Varış</span></div><div class="sub">7 Ekim Çar · İstanbul → Porto</div><div class="rows"><div class="row"><span class="tm">09:40</span><span class="ic" style="--tb:#ece8ff">✈️<i class=ok>✓</i></span><span class="tx"><b><span class="k">Uçuş</span><span class="dot2">·</span><span class="v">İstanbul → Kopenhag</span></b><small>Sabiha Gökçen → Kastrup · varış 12:35 · TK1783</small></span></div><div class="row quiet"><span class="tm about">12:35</span><span class="ic" style="--tb:transparent">⏱</span><span class="tx"><b><span class="k">Aktarma</span><span class="dot2">·</span><span class="v">Kopenhag · 3 sa 55 dk</span></b></span></div><div class="row"><span class="tm">16:30</span><span class="ic" style="--tb:#ece8ff">✈️<i class=ok>✓</i></span><span class="tx"><b><span class="k">Uçuş</span><span class="dot2">·</span><span class="v">Kopenhag → Porto</span></b><small>Kastrup → Francisco Sá Carneiro · varış 19:10</small></span></div><div class="row"><span class="tm about">~19:40</span><span class="ic" style="--tb:#fff3dc">🚕</span><span class="tx"><b><span class="k">Havalimanı transferi</span><span class="dot2">·</span><span class="v">Taksi</span></b><small>Havalimanı → Bonfim Konaklaması · ~25 dk · planlanmadı</small></span></div><div class="row"><span class="tm about">~20:15</span><span class="ic" style="--tb:#e3f3ef">🛏<i class=ok>✓</i></span><span class="tx"><b><span class="k">Check-in</span><span class="dot2">·</span><span class="v">Bonfim Konaklaması</span></b><small>15:00’ten itibaren · 4 gece</small></span></div></div><button class="add">+ Bu güne ekle</button></div></div><div style="height:16px"></div><div class="day"><div class="ph" style="background-image:url(https://images.pexels.com/photos/1534560/pexels-photo-1534560.jpeg?auto=compress&w=600)"><span class="pill">2. gün</span></div><div class="body"><div class="ttl"><b>Porto 2. Gün</b><span>Şehirde</span></div><div class="sub">8 Ekim Per · Porto</div><div class="rows"><div class="row"><span class="tm">10:00</span><span class="ic" style="--tb:#fbe6ef">🎟<i class=ok>✓</i></span><span class="tx"><b><span class="k">Tur</span><span class="dot2">·</span><span class="v">Graham’s şarap mahzeni</span></b><small>Vila Nova de Gaia · 1 sa 30 dk · 2 kişi</small></span></div><div class="row"><span class="tm">13:00</span><span class="ic" style="--tb:#fdece6">🍽</span><span class="tx"><b><span class="k">Öğle yemeği</span><span class="dot2">·</span><span class="v">Majestic Café</span></b><small>Bolhão · ★ 4,4</small></span></div><div class="row"><span class="tm">16:00</span><span class="ic" style="--tb:#e3f0fb">⛴</span><span class="tx"><b><span class="k">Tekne turu</span><span class="dot2">·</span><span class="v">Douro nehri</span></b><small>Ribeira iskelesi · 50 dk · bilet alınmadı</small></span></div><div class="row"><span class="tm about">~19:00</span><span class="ic" style="--tb:#fff4dc">🌅</span><span class="tx"><b><span class="k">Manzara</span><span class="dot2">·</span><span class="v">Dom Luís köprüsünde gün batımı</span></b><small>Ribeira · fikir</small></span></div></div><p class="sep">Saati yok · bu gün yapılabilir</p><div class="rows"><div class="row"><span class="tm none">·</span><span class="ic" style="--tb:#fdeaf1">🛍</span><span class="tx"><b><span class="k">Alışveriş</span><span class="dot2">·</span><span class="v">Porto şarabı</span></b><small>Vila Nova de Gaia</small></span></div></div><button class="add">+ Bu güne ekle</button></div></div><div style="height:16px"></div><div class="day"><div class="ph" style="background-image:url(https://images.pexels.com/photos/2878019/pexels-photo-2878019.jpeg?auto=compress&w=600)"><span class="pill">5. gün</span></div><div class="body"><div class="ttl"><b>Madeira 1. Gün</b><span>Yolculuk</span></div><div class="sub">11 Ekim Paz · Porto → Madeira</div><div class="rows"><div class="row"><span class="tm">11:00</span><span class="ic" style="--tb:#e3f3ef">🛏<i class=ok>✓</i></span><span class="tx"><b><span class="k">Check-out</span><span class="dot2">·</span><span class="v">Bonfim Konaklaması</span></b><small>11:00’e kadar</small></span></div><div class="row"><span class="tm">11:30</span><span class="ic" style="--tb:#fff3dc">🚕</span><span class="tx"><b><span class="k">Havalimanı transferi</span><span class="dot2">·</span><span class="v">Taksi</span></b><small>Bonfim Konaklaması → havalimanı · ~25 dk</small></span></div><div class="row"><span class="tm">14:00</span><span class="ic" style="--tb:#ece8ff">✈️<i class=ok>✓</i></span><span class="tx"><b><span class="k">Uçuş</span><span class="dot2">·</span><span class="v">Porto → Madeira</span></b><small>Francisco Sá Carneiro → Funchal · varış 15:45 · TP1691</small></span></div><div class="row"><span class="tm">16:30</span><span class="ic" style="--tb:#eef0f4">🚙</span><span class="tx"><b><span class="k">Araç teslim alma</span><span class="dot2">·</span><span class="v">Sixt</span></b><small>Funchal havalimanı · 5 gün</small></span></div><div class="row"><span class="tm about">~17:30</span><span class="ic" style="--tb:#e3f3ef">🛏</span><span class="tx"><b><span class="k">Check-in</span><span class="dot2">·</span><span class="v">Casa Verde</span></b><small>Funchal · 3 gece</small></span></div></div><button class="add">+ Bu güne ekle</button></div></div><div class="rules"><b>Sözlük (NE · sabit, hep aynı kelime):</b>
+<table>
+<tr><th>NE</th><th>HANGİSİ</th><th>Gri satır</th></tr>
+<tr><td><b>Uçuş</b></td><td>İstanbul → Kopenhag (şehir adları, kod yok)</td><td>havalimanı adları · varış · uçuş no</td></tr>
+<tr><td><b>Aktarma</b></td><td>Kopenhag · 3 sa 55 dk</td><td>—</td></tr>
+<tr><td><b>Havalimanı transferi</b> / <b>Transfer</b></td><td>yol: Taksi · Metro · Otobüs · Özel transfer</td><td>nereden → nereye · süre · planlandı mı</td></tr>
+<tr><td><b>Tren</b> · <b>Otobüs</b> · <b>Vapur</b></td><td>Porto → Lizbon</td><td>istasyonlar · süre · bilet</td></tr>
+<tr><td><b>Check-in</b> · <b>Check-out</b></td><td>konaklamanın sade adı</td><td>saat kuralı · kaç gece</td></tr>
+<tr><td><b>Araç teslim alma</b> · <b>Araç iadesi</b></td><td>firma (Sixt, Indie Campers)</td><td>yer · kaç gün</td></tr>
+<tr><td><b>Tur</b> · <b>Tekne turu</b> · <b>Müze</b> · <b>Gösteri</b> · <b>Etkinlik</b></td><td>deneyimin kendi adı; tür kelimesi tekrarlanmaz ("Douro nehri", "Douro nehri tekne turu" değil)</td><td>yer · süre · kişi · bilet</td></tr>
+<tr><td><b>Kahvaltı</b> · <b>Öğle yemeği</b> · <b>Akşam yemeği</b> · <b>Kahve</b></td><td>mekânın adı</td><td>semt · puan</td></tr>
+<tr><td><b>Manzara</b> · <b>Gezinti</b> · <b>Doğa</b> · <b>Alışveriş</b> · <b>Kültür</b></td><td>fikrin adı (fikir havuzundaki türle aynı)</td><td>semt · "fikir"</td></tr>
+<tr><td>Sigorta · eSIM · vize</td><td colspan="2"><b>Gün akışında yok</b> (Plan → Diğer)</td></tr>
+</table>
+<p style="margin-top:12px"><b>Nasıl:</b> NE etiketini kod belirler, yapay zekâ değil; hep aynı kelime (kaydın türünden: uçuş, transfer, konaklama girişi/çıkışı, araç; tur/müze/gösteri ayrımı etkinliğin türünden; öğün saatten). HANGİSİ: havalimanı kodu şehir adına çevrilir (SAW → İstanbul, CPH → Kopenhag), mekân adı sadeleşir ("– Yeni Tasarlanmış…" atılır), tür kelimesi tekrarlanmaz. Türü bilinmeyen "Etkinlik" olur.</p></div>
+</div></body></html>

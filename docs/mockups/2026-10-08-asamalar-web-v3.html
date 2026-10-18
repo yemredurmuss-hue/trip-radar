@@ -1,0 +1,914 @@
+<title>Bali Planı Aşamaları</title>
+<style>
+/* Layout: üstte senaryo seçici; altında eklentinin web panosu. Solda yan panel (Asistan | Pano), sağda hero v9 + gezinin şekli + kategori bölümleri. Niyet kartı bir kutucuk: öneri ya da Pano'dan sürüklenen kayıt içine yerleşir. Pano sekmesi Emre'nin onaylı pano görselini izler. */
+:root {
+  --bg: #eeecf5; --app: #ffffff; --soft: #f7f5f1; --tile: #fbfaf7;
+  --ink: #1c1a33; --muted: #6b6790; --line: #e7e4dd; --line2: #efece7; --dash: #b9b5cf;
+  --accent: #5b45e0; --accent-ink: #4a35cc; --lav: #ece8ff; --on-accent: #ffffff;
+  --mint: #eaf7f2; --mintbar: #2cc79a; --planbar: #f0a53a;
+  --plan-bg: #fbf6ea; --plan-line: #e9d29a; --plan-ink: #8a5a00; --plan-dot: #e09422;
+  --book-bg: #eef8f1; --book-line: #b9e0c7; --book-ink: #1b7f45;
+  --c-fly: #6a4fe0; --c-stay: #23998b; --c-move: #c58a2e; --c-exp: #e0571f; --c-food: #c42a5a; --c-insp: #5b45e0; --c-ins: #0f8a6a;
+  --b-booking: #003b95; --b-airbnb: #c8174f; --b-google: #1765cc; --b-sky: #0062e3; --b-kayak: #c74300; --b-viator: #186b6d; --b-airalo: #b82a30; --b-trip: #00744e; --b-maps: #1e8e3e; --b-yt: #c00000; --b-qatar: #5c0632; --b-klook: #a83a00; --b-web: #475467; --b-tk: #c8102e;
+  --on-brand: #ffffff;
+  --av-e: #5b45e0; --av-s: #23998b;
+  --glow: rgba(91, 69, 224, .4);
+  --shadow: 0 1px 2px rgba(28, 26, 51, .05), 0 16px 40px -22px rgba(28, 26, 51, .28);
+  --shadow-sm: 0 1px 2px rgba(28, 26, 51, .06), 0 6px 18px -10px rgba(28, 26, 51, .25);
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", system-ui, sans-serif;
+  --display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0d0c14; --app: #17161f; --soft: #201e2c; --tile: #efede8;
+  --ink: #eeecfb; --muted: #aaa6c9; --line: #2f2d40; --line2: #292737; --dash: #4d4a66;
+  --accent: #9a8bff; --accent-ink: #b5aaff; --lav: #2a2550; --on-accent: #16132e;
+  --mint: #142d27; --mintbar: #2cc79a; --planbar: #f0a53a;
+  --plan-bg: #2a2416; --plan-line: #5c4a1f; --plan-ink: #f0bf63; --plan-dot: #f0a53a;
+  --book-bg: #142a1e; --book-line: #26583a; --book-ink: #5fd393;
+  --c-fly: #9d8bff; --c-stay: #3fc4b4; --c-move: #e2ab52; --c-exp: #f08a5a; --c-food: #ec6a92; --c-insp: #9a8bff; --c-ins: #3fc79f;
+  --av-e: #9a8bff; --av-s: #3fc4b4;
+  --glow: rgba(154, 139, 255, .5);
+  --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 18px 44px -22px rgba(0, 0, 0, .8);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 20px -10px rgba(0, 0, 0, .7);
+  color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --bg: #0d0c14; --app: #17161f; --soft: #201e2c; --tile: #efede8;
+  --ink: #eeecfb; --muted: #aaa6c9; --line: #2f2d40; --line2: #292737; --dash: #4d4a66;
+  --accent: #9a8bff; --accent-ink: #b5aaff; --lav: #2a2550; --on-accent: #16132e;
+  --mint: #142d27; --mintbar: #2cc79a; --planbar: #f0a53a;
+  --plan-bg: #2a2416; --plan-line: #5c4a1f; --plan-ink: #f0bf63; --plan-dot: #f0a53a;
+  --book-bg: #142a1e; --book-line: #26583a; --book-ink: #5fd393;
+  --c-fly: #9d8bff; --c-stay: #3fc4b4; --c-move: #e2ab52; --c-exp: #f08a5a; --c-food: #ec6a92; --c-insp: #9a8bff; --c-ins: #3fc79f;
+  --av-e: #9a8bff; --av-s: #3fc4b4;
+  --glow: rgba(154, 139, 255, .5);
+  --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 18px 44px -22px rgba(0, 0, 0, .8);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 20px -10px rgba(0, 0, 0, .7);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+::selection { background: var(--lav); color: var(--ink); }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 0; }
+a { color: var(--accent-ink); text-underline-offset: 3px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.num { font-variant-numeric: tabular-nums; }
+.page { padding-block: 20px 48px; padding-inline: clamp(16px, 2.4vw, 32px); display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); max-width: 1560px; margin: 0 auto; }
+.page > * { min-width: 0; }
+
+/* Senaryo seçici */
+.switch { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 30; display: grid; gap: 8px; padding: 10px 12px; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); border-radius: 16px; }
+.switch-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.switch h1 { margin: 0 8px 0 4px; font-family: var(--display); font-size: 17px; letter-spacing: -0.01em; }
+.tabs-sc { display: flex; gap: 4px; flex-wrap: wrap; background: var(--app); padding: 4px; border-radius: 12px; box-shadow: var(--shadow); }
+.tabs-sc button { padding: 6px 12px; border-radius: 9px; font-size: 13.5px; color: var(--muted); display: inline-flex; gap: 6px; align-items: center; }
+.tabs-sc button b { font-weight: 700; color: var(--accent-ink); }
+.tabs-sc button[aria-selected="true"] { background: var(--ink); color: var(--app); }
+.tabs-sc button[aria-selected="true"] b { color: var(--app); }
+.tabs-sc .sep { width: 1px; background: var(--line); margin: 4px 2px; }
+.motion { margin-left: auto; font-size: 13px; color: var(--muted); display: inline-flex; gap: 6px; align-items: center; padding: 6px 10px; border-radius: 9px; }
+.motion:hover { background: var(--app); }
+.sc-desc { margin: 0 4px; font-size: 14px; color: var(--muted); }
+.sc-desc b { color: var(--ink); font-weight: 600; }
+
+/* Kabuk */
+.shell { background: var(--app); border-radius: 22px; box-shadow: var(--shadow); overflow: hidden; }
+.topbar { display: flex; align-items: center; gap: 14px; padding: 12px 20px; border-bottom: 1px solid var(--line2); flex-wrap: wrap; }
+.logo { display: inline-flex; align-items: center; gap: 8px; font-weight: 750; font-size: 17px; }
+.logo svg { width: 22px; height: 22px; }
+.tripsel { color: var(--ink); font-size: 14px; display: inline-flex; gap: 4px; align-items: center; padding-left: 14px; border-left: 1px solid var(--line); }
+.topnav { display: flex; gap: 24px; margin: 0 auto; font-size: 14.5px; color: var(--ink); }
+.topnav button { padding: 4px 0; display: inline-flex; gap: 6px; align-items: center; color: var(--muted); }
+.topnav button.on { color: var(--accent-ink); font-weight: 650; box-shadow: inset 0 -2px 0 var(--accent); }
+.badge { font-size: 11.5px; font-weight: 700; background: var(--lav); color: var(--accent-ink); border-radius: 999px; padding: 0 7px; }
+.people-s { display: inline-flex; }
+.cols { display: grid; grid-template-columns: 340px minmax(0, 1fr); }
+@media (max-width: 1100px) { .cols { grid-template-columns: minmax(0, 1fr); } .side { border-right: 0; border-bottom: 1px solid var(--line2); } }
+
+/* Yüzler */
+.av { width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 10.5px; font-weight: 800; color: var(--on-accent); flex: none; border: 2px solid var(--app); }
+.av.e { background: var(--av-e); } .av.s { background: var(--av-s); }
+.av.ai { background: var(--lav); color: var(--accent-ink); }
+.av.ai svg { width: 11px; height: 11px; stroke-width: 2.2; }
+.av.lg { width: 30px; height: 30px; font-size: 13px; }
+.avs { display: inline-flex; }
+.avs .av + .av { margin-left: -6px; }
+
+/* Yan panel: Asistan | Pano */
+.side { border-right: 1px solid var(--line2); display: flex; flex-direction: column; min-width: 0; }
+.side-tabs { display: flex; gap: 4px; padding: 12px 14px 0; }
+.side-tabs button { flex: 1; padding: 8px 10px; border-radius: 10px 10px 0 0; font-size: 14px; font-weight: 600; color: var(--muted); display: inline-flex; gap: 6px; align-items: center; justify-content: center; border-bottom: 2px solid transparent; }
+.side-tabs button.on { color: var(--ink); border-bottom-color: var(--accent); }
+.side-tabs svg { width: 16px; height: 16px; }
+.side-body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 12px; flex: 1; }
+.msgs { display: grid; gap: 10px; align-content: start; flex: 1; }
+.msg { padding: 10px 12px; border-radius: 14px; font-size: 14px; min-width: 0; }
+.msg.me { background: var(--lav); border-top-left-radius: 5px; }
+.msg.ai { background: var(--soft); border-top-left-radius: 5px; }
+.msg b { font-weight: 650; }
+.who-l { font-size: 12px; color: var(--muted); margin-bottom: 3px; display: flex; gap: 6px; align-items: center; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chip { font-size: 13px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--accent); color: var(--accent-ink); background: var(--app); }
+.links { display: grid; gap: 4px; margin-top: 8px; }
+.links .lk { display: flex; gap: 7px; align-items: center; font-size: 12.5px; background: var(--app); border-radius: 8px; padding: 4px 7px; min-width: 0; }
+.links .lk span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+.links .head { font-size: 12px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+.input { display: flex; gap: 8px; align-items: center; border: 1px solid var(--line); border-radius: 14px; padding: 8px 8px 8px 12px; color: var(--muted); font-size: 14px; }
+.input .send { margin-left: auto; width: 32px; height: 32px; border-radius: 10px; background: var(--lav); color: var(--accent-ink); display: grid; place-items: center; }
+
+/* Yan paneldeki Pano: sürüklenebilir kayıtlar */
+.pp-head { font-size: 13px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+.pp-head svg { width: 15px; height: 15px; color: var(--accent); }
+.pp-group { display: grid; gap: 6px; }
+.pp-group h6 { margin: 6px 0 0; font-size: 12.5px; font-weight: 650; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+.pp-group h6 svg { width: 14px; height: 14px; }
+.pi { display: grid; grid-template-columns: 14px 44px minmax(0, 1fr) auto; gap: 1px 9px; align-items: center; padding: 6px 8px 6px 4px; border-radius: 12px; background: var(--app); border: 1px solid var(--line); cursor: grab; transition: transform .2s cubic-bezier(.16, 1, .3, 1), box-shadow .2s, opacity .3s; }
+.pi:hover { box-shadow: var(--shadow-sm); transform: translateY(-1px); }
+.pi:active { cursor: grabbing; }
+.pi.dragging { opacity: .4; }
+.pi .grip { grid-row: span 2; color: var(--dash); width: 14px; height: 14px; }
+.pi .th { width: 44px; height: 44px; border-radius: 9px; grid-row: span 2; position: relative; background-size: cover; }
+.pi .th .av { position: absolute; left: -5px; bottom: -5px; }
+.pi .t { font-size: 13.5px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pi .m { font-size: 12px; color: var(--muted); display: flex; gap: 5px; align-items: center; min-width: 0; }
+.pi .m span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pi .go { grid-row: span 2; grid-column: 4; width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; color: var(--accent-ink); background: var(--lav); }
+.pi .go svg { width: 15px; height: 15px; }
+.pi.inplan { cursor: default; background: var(--plan-bg); border-color: var(--plan-line); }
+.pi.inplan .go { background: transparent; color: var(--plan-ink); }
+.pi.inplan .grip { visibility: hidden; }
+.pi.stray { border-style: dashed; }
+
+/* Hero v9, aynen */
+.main { padding: 20px 24px 28px; display: grid; gap: 18px; min-width: 0; }
+.hero { display: grid; grid-template-columns: minmax(0, 62fr) minmax(0, 34fr); gap: 4%; }
+@media (max-width: 760px) { .hero { grid-template-columns: minmax(0, 1fr); gap: 16px; } }
+.story { display: grid; gap: 12px; align-content: start; min-width: 0; }
+.photo { position: relative; border-radius: 20px; overflow: hidden; aspect-ratio: 1.92 / 1; max-width: 100%; }
+.photo svg { display: block; width: 100%; height: 100%; }
+.citysel { position: absolute; top: 12px; left: 12px; display: flex; padding: 4px; background: rgba(255,255,255,.9); border-radius: 999px; font-size: 14px; color: #6b6790; }
+.citysel span { padding: 4px 12px; border-radius: 999px; }
+.citysel span.on { background: #fff; color: #1c1a33; font-weight: 700; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.pills { position: absolute; top: 12px; right: 12px; }
+.pills span { background: #ece8ff; color: #4a35cc; font-size: 13px; padding: 5px 11px; border-radius: 999px; }
+.story h3 { margin: 4px 0 0; font-family: var(--display); font-size: clamp(28px, 3vw, 40px); line-height: 1.05; letter-spacing: -0.025em; }
+.dline { display: flex; gap: 8px; align-items: center; font-size: 16px; }
+.tone { margin: 0; color: var(--muted); font-size: 16px; text-wrap: pretty; }
+.cells { display: flex; flex-wrap: wrap; }
+.cell { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px 6px 0; margin-right: 16px; border-right: 1px solid var(--line); font-size: 16px; white-space: nowrap; }
+.cell:last-child { border-right: 0; }
+.cell svg { width: 20px; height: 20px; }
+.prog { background: var(--mint); border-radius: 16px; padding: 14px 16px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 18px; align-items: center; }
+.prog b { font-size: 16px; }
+.prog .legend { font-size: 13px; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+.seg { display: flex; height: 8px; border-radius: 99px; overflow: hidden; background: color-mix(in srgb, var(--mintbar) 16%, transparent); }
+.seg i { display: block; height: 100%; transition: width .7s cubic-bezier(.16, 1, .3, 1); }
+.prog .cta { grid-row: 1 / span 3; grid-column: 2; background: var(--ink); color: var(--app); border-radius: 12px; padding: 10px 16px; font-weight: 600; font-size: 14.5px; white-space: nowrap; }
+@media (max-width: 560px) { .prog { grid-template-columns: minmax(0, 1fr); } .prog .cta { grid-row: auto; grid-column: auto; justify-self: start; } }
+.card { background: var(--soft); border-radius: 20px; padding: 18px; display: grid; gap: 14px; align-content: start; min-width: 0; }
+.card .blk + .blk { border-top: 1px solid var(--line); padding-top: 14px; }
+.people { display: flex; gap: 12px; align-items: center; }
+.bigav { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; color: var(--on-accent); border: 2px solid var(--soft); }
+.bigav + .bigav { margin-left: -12px; }
+.people small { display: block; color: var(--muted); font-size: 13.5px; }
+.styles { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.style { font-size: 13.5px; padding: 5px 12px; border-radius: 999px; display: inline-flex; gap: 6px; align-items: center; }
+.style svg { width: 15px; height: 15px; }
+.kv { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; font-size: 14.5px; }
+.kv .h { font-weight: 700; font-size: 17px; }
+.kv .m { color: var(--muted); }
+.kv .r { text-align: right; }
+.country { display: flex; gap: 8px; align-items: center; font-size: 14.5px; }
+.flag { width: 24px; height: 16px; border-radius: 3px; background: linear-gradient(#d7262e 50%, #fff 50%); box-shadow: inset 0 0 0 1px rgba(0,0,0,.1); }
+.wx { display: flex; gap: 16px; font-size: 14px; margin-top: 8px; flex-wrap: wrap; }
+.wx span { display: inline-flex; gap: 6px; align-items: center; }
+.wx svg { width: 16px; height: 16px; color: var(--c-move); }
+.facts { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 12.5px; color: var(--muted); }
+.ptabs { display: flex; justify-content: center; gap: 28px; font-size: 15px; color: var(--muted); }
+.ptabs span.on { color: var(--ink); font-weight: 650; box-shadow: inset 0 -3px 0 var(--accent); padding-bottom: 8px; }
+
+/* Gezinin şekli */
+.shape { display: flex; align-items: flex-start; overflow-x: auto; padding: 4px 2px 6px; gap: 0; }
+.stop { display: grid; justify-items: center; gap: 3px; min-width: 96px; text-align: center; }
+.node { width: 52px; height: 52px; border-radius: 50%; background: var(--tile); display: grid; place-items: center; position: relative; border: 2px dashed var(--dash); }
+.node img { width: 40px; height: 32px; object-fit: contain; }
+.node .ph { width: 48px; height: 48px; border-radius: 50%; }
+.stop.n-plan .node { border: 2px solid var(--plan-dot); }
+.stop.n-rez .node { border: 2px solid var(--book-ink); }
+.node .mark { position: absolute; right: -4px; bottom: -2px; }
+.stop b { font-size: 13.5px; }
+.stop small { font-size: 12px; color: var(--muted); }
+.stop .ev { font-size: 11.5px; color: var(--c-food); background: color-mix(in srgb, var(--c-food) 10%, transparent); border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
+.hop { flex: 1; min-width: 34px; display: grid; justify-items: center; padding-top: 18px; color: var(--muted); font-size: 11.5px; gap: 2px; }
+.hop::before { content: ""; width: 100%; border-top: 2px dotted var(--dash); }
+.hop svg { width: 14px; height: 14px; margin-top: -10px; background: var(--app); padding: 0 2px; box-sizing: content-box; }
+.island { display: grid; gap: 4px; padding: 8px 10px 6px; border-radius: 18px; background: color-mix(in srgb, var(--c-stay) 7%, transparent); flex: 3; min-width: 330px; }
+.island-h { font-size: 12.5px; font-weight: 700; color: color-mix(in srgb, var(--c-stay) 70%, var(--ink)); display: flex; gap: 6px; align-items: center; justify-content: center; }
+.island-row { display: flex; align-items: flex-start; }
+.island .hop svg { background: color-mix(in srgb, var(--c-stay) 7%, var(--app)); }
+
+/* Plan başlığı */
+.planbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.planbar strong { font-size: 20px; font-family: var(--display); letter-spacing: -0.01em; }
+.sortsw { display: inline-flex; background: var(--soft); border-radius: 10px; padding: 3px; font-size: 13px; }
+.sortsw span { padding: 4px 10px; border-radius: 8px; color: var(--muted); }
+.sortsw span.on { background: var(--app); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.key { margin-left: auto; display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); }
+.key span { display: inline-flex; gap: 6px; align-items: center; }
+.sw { width: 26px; height: 16px; border-radius: 5px; display: inline-block; }
+.sw.bos { background: var(--app); border: 1.5px dashed var(--dash); }
+.sw.oneri { background: var(--app); border: 1.5px dashed var(--accent); }
+.sw.plan { background: var(--plan-bg); border: 1px solid var(--plan-line); }
+.sw.rez { background: var(--book-bg); border: 1px solid var(--book-line); }
+
+/* Durum çemberi */
+.sd { width: 18px; height: 18px; border-radius: 50%; display: inline-grid; place-items: center; flex: none; }
+.sd.bos, .sd.oneri { border: 1.5px dashed var(--dash); background: var(--app); }
+.sd.oneri { border-color: var(--accent); }
+.sd.plan { border: 2px solid var(--plan-dot); background: var(--app); }
+.sd.rez { background: var(--book-ink); color: var(--app); }
+.sd.rez svg { width: 11px; height: 11px; stroke-width: 3; }
+
+/* Bölümler */
+.plan { border: 1px solid var(--line2); border-radius: 22px; overflow: hidden; }
+.sec { padding: 18px 20px 20px; display: grid; gap: 14px; transition: background .25s; }
+.sec + .sec { border-top: 1px solid var(--line2); }
+.sec-h { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.sec-h h4 { margin: 0; font-size: 17px; font-weight: 650; }
+.sec-h .sp { flex: 1; }
+.sec-h .sum { font-size: 13px; color: var(--muted); }
+.mini { width: 96px; height: 6px; border-radius: 99px; background: var(--line2); display: flex; overflow: hidden; }
+.mini i { display: block; height: 100%; transition: width .7s cubic-bezier(.16, 1, .3, 1); }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 430px), 1fr)); gap: 14px; }
+.grid3 { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+
+/* Kutucuk (niyet kartı) ve malzemeleri */
+.slot { position: relative; border-radius: 18px; padding: 14px; display: grid; gap: 10px; align-content: start; min-width: 0; transition: background .45s, border-color .45s, box-shadow .3s, transform .3s; }
+.m-bos, .m-oneri { background: var(--app); border: 1.5px dashed var(--dash); }
+.m-plan { background: var(--plan-bg); border: 1px solid var(--plan-line); box-shadow: 0 1px 0 var(--plan-line), var(--shadow-sm); }
+.m-rez { background: var(--book-bg); border: 1px solid var(--book-line); }
+.top { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); min-width: 0; flex-wrap: wrap; }
+.top .ty { display: inline-flex; gap: 5px; align-items: center; font-weight: 650; color: var(--ink); }
+.top .ty svg { width: 15px; height: 15px; }
+.top .sp { flex: 1; }
+.top .lab { font-size: 12.5px; font-weight: 650; white-space: nowrap; }
+.m-plan .top .lab { color: var(--plan-ink); }
+.m-rez .top .lab { color: var(--book-ink); }
+.can-drop { outline: 2px dashed var(--accent); outline-offset: 3px; }
+.can-drop.over { background: var(--lav); transform: scale(1.01); }
+.drophint { display: none; font-size: 13px; font-weight: 650; color: var(--accent-ink); align-items: center; gap: 6px; justify-content: center; padding: 8px; border-radius: 10px; background: var(--lav); }
+.can-drop .drophint { display: flex; }
+
+/* Boş niyetin içi */
+.body { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 12px; align-items: center; }
+.art { width: 92px; height: 72px; border-radius: 12px; background: var(--tile); object-fit: contain; padding: 4px; }
+.slot h5 { margin: 0; font-size: 22px; font-weight: 750; letter-spacing: -0.02em; line-height: 1.1; }
+.nights { display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); margin-top: 3px; flex-wrap: wrap; }
+.moons { display: inline-flex; gap: 3px; }
+.moons i { width: 8px; height: 8px; border-radius: 50%; background: var(--c-stay); opacity: .35; }
+.m-plan .moons i { background: var(--plan-dot); opacity: 1; }
+.m-rez .moons i { background: var(--book-ink); opacity: 1; }
+.area { margin: 4px 0 0; font-size: 13px; display: flex; gap: 5px; align-items: flex-start; }
+.area svg { width: 14px; height: 14px; margin-top: 2px; color: var(--c-stay); }
+.area span { color: var(--muted); }
+.why { margin: 0; font-size: 13.5px; color: var(--accent-ink); display: flex; gap: 6px; align-items: flex-start; }
+.why svg { width: 14px; height: 14px; margin-top: 2px; }
+.wants { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.wants li { font-size: 12.5px; padding: 3px 9px; border-radius: 999px; background: var(--soft); display: inline-flex; gap: 5px; align-items: center; }
+.wants li svg { width: 13px; height: 13px; }
+.wants .y { color: var(--book-ink); }
+.self { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding-top: 10px; border-top: 1px solid color-mix(in srgb, var(--dash) 45%, transparent); font-size: 13px; }
+.self .k { font-weight: 650; margin-right: 2px; }
+.blink { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px 4px 4px; border-radius: 9px; color: var(--ink); text-decoration: none; background: var(--app); border: 1px solid var(--line); font-size: 13px; transition: border-color .2s, transform .2s; }
+.blink:hover { border-color: var(--accent); transform: translateY(-1px); }
+.blink svg { width: 12px; height: 12px; color: var(--muted); }
+.pcount { margin-left: auto; font-size: 13px; color: var(--accent-ink); display: inline-flex; gap: 5px; align-items: center; }
+.pcount svg { width: 14px; height: 14px; }
+.bm { width: 18px; height: 18px; border-radius: 5px; color: var(--on-brand); font-size: 10px; font-weight: 800; display: inline-grid; place-items: center; flex: none; }
+
+/* Kutucuğa önerilen tek kart */
+.prop { position: relative; display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 2px 12px; align-items: center; padding: 10px; border-radius: 14px; background: var(--app); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); box-shadow: var(--shadow-sm); animation: settle .6s cubic-bezier(.16, 1, .3, 1); }
+@keyframes settle { from { transform: translateY(8px) rotate(-1deg); opacity: 0; } to { transform: none; opacity: 1; } }
+.prop .ph { width: 64px; height: 64px; border-radius: 11px; grid-row: span 3; position: relative; }
+.prop .ph .av { position: absolute; left: -6px; top: -6px; }
+.prop .pn { font-size: 15px; font-weight: 700; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.prop .pn small { font-size: 11.5px; font-weight: 650; color: var(--accent-ink); }
+.prop .ps { font-size: 12.5px; color: var(--muted); display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
+.prop .pa { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.btn { border-radius: 999px; padding: 6px 14px; font-size: 13.5px; font-weight: 600; display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; text-decoration: none; }
+.btn svg { width: 14px; height: 14px; }
+.btn.dark { background: var(--ink); color: var(--app); }
+.btn.ghost { border: 1px solid var(--line); background: var(--app); color: var(--ink); }
+.btn.sm { padding: 4px 11px; font-size: 13px; }
+.xbtn { width: 28px; height: 28px; border-radius: 50%; display: inline-grid; place-items: center; color: var(--muted); background: var(--app); border: 1px solid var(--line); }
+.xbtn:hover { color: #c62828; }
+.xbtn svg { width: 13px; height: 13px; }
+
+/* Karar verilmiş: oturaklı */
+.decided { display: grid; grid-template-columns: 116px minmax(0, 1fr); gap: 12px; align-items: start; }
+.decided .ph { width: 116px; height: 96px; border-radius: 14px; animation: grow .6s cubic-bezier(.16, 1, .3, 1); }
+@keyframes grow { from { transform: scale(.7); filter: blur(4px); } to { transform: none; filter: none; } }
+.decided .city { font-size: 13px; color: var(--muted); }
+.decided .hn { font-size: 21px; font-weight: 750; letter-spacing: -0.02em; line-height: 1.15; }
+.facts2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; margin: 0; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--app) 72%, transparent); }
+.facts2 div { display: grid; gap: 1px; min-width: 0; }
+.facts2 dt { font-size: 11.5px; color: var(--muted); }
+.facts2 dd { margin: 0; font-size: 14px; font-weight: 650; }
+.facts2 dd small { font-weight: 400; color: var(--muted); font-size: 12px; }
+.acts { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.back { font-size: 13px; color: var(--muted); display: inline-flex; gap: 4px; align-items: center; margin-left: auto; }
+.back:hover { color: var(--accent-ink); }
+.back svg { width: 14px; height: 14px; }
+.doc { justify-self: start; font-size: 12.5px; display: inline-flex; gap: 5px; align-items: center; padding: 3px 9px; border-radius: 999px; background: var(--app); border: 1px solid var(--book-line); color: var(--book-ink); }
+.doc svg { width: 13px; height: 13px; }
+.stamp { position: absolute; right: 14px; top: 12px; width: 58px; height: 58px; border-radius: 50%; border: 2px solid var(--book-ink); color: var(--book-ink); display: grid; place-items: center; transform: rotate(-12deg); opacity: .5; pointer-events: none; }
+.stamp svg { width: 18px; height: 18px; stroke-width: 2.4; }
+.m-rez .top { padding-right: 64px; }
+.m-rez .top .lab { display: none; }
+
+/* Biniş kartı */
+.tkw { container-type: inline-size; min-width: 0; }
+.tk { padding: 0; grid-template-columns: minmax(0, 1fr) 210px; gap: 0; display: grid; }
+.tk-main { padding: 14px 16px; display: grid; gap: 8px; min-width: 0; }
+.route { display: grid; grid-template-columns: auto minmax(60px, 1fr) auto; align-items: center; gap: 8px; }
+.route .c b { display: block; font-size: 22px; font-weight: 750; letter-spacing: -0.02em; line-height: 1.1; }
+.route .c small { font-size: 12.5px; color: var(--muted); }
+.route .c .tm { font-size: 15px; font-weight: 700; color: var(--ink); }
+.route .c.r { text-align: right; }
+.route .sil { width: 100%; height: 50px; color: var(--c-fly); }
+.m-bos .route .sil, .m-oneri .route .sil { opacity: .5; }
+.tk-sub { font-size: 13px; text-align: center; color: var(--muted); margin-top: -6px; }
+.tk-stub { position: relative; border-left: 1.5px dashed var(--dash); padding: 14px 16px; display: grid; gap: 8px; align-content: space-between; min-width: 0; }
+.tk-stub::before, .tk-stub::after { content: ""; position: absolute; left: -10px; width: 18px; height: 18px; border-radius: 50%; background: var(--app); }
+.tk-stub::before { top: -10px; } .tk-stub::after { bottom: -10px; }
+.stub-k { font-size: 12px; color: var(--muted); }
+.stub-v { font-size: 14px; font-weight: 650; }
+.price { font-size: 19px; font-weight: 750; }
+.price small { font-size: 12px; font-weight: 400; color: var(--muted); }
+.tk .prop { grid-template-columns: 40px minmax(0, 1fr); }
+.tk .prop .ph { width: 40px; height: 40px; display: grid; place-items: center; background: var(--soft); }
+@container (max-width: 560px) { .tk { grid-template-columns: minmax(0, 1fr); } .tk-stub { border-left: 0; border-top: 1.5px dashed var(--dash); } .tk-stub::before, .tk-stub::after { display: none; } }
+
+/* Ulaşım satırı */
+.trows { display: grid; gap: 10px; }
+.trow { display: grid; grid-template-columns: 74px minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 10px 12px; }
+.tsil { width: 70px; height: 30px; color: var(--c-move); }
+.m-bos .tsil, .m-oneri .tsil { opacity: .5; }
+.trow b { font-size: 15px; }
+.trow .ts { font-size: 13px; color: var(--muted); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.trow .tr { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.trow .prop { grid-column: 1 / -1; grid-template-columns: auto minmax(0, 1fr) auto; padding: 8px 10px; }
+.trow .prop .ph { width: auto; height: auto; grid-row: auto; background: none; }
+.ask { grid-column: 1 / -1; font-size: 13px; color: var(--accent-ink); display: flex; gap: 6px; align-items: center; }
+.ask svg { width: 14px; height: 14px; }
+
+/* Deneyimler: planda olanlar satır, fikirler kare */
+.planned { display: grid; gap: 8px; }
+.prow { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 1px 12px; align-items: center; padding: 8px 10px 8px 8px; border-radius: 14px; animation: settle .5s cubic-bezier(.16, 1, .3, 1); }
+.prow img, .prow .ph { width: 48px; height: 48px; border-radius: 10px; background: var(--tile); object-fit: contain; padding: 2px; grid-row: span 2; }
+.prow .t { font-size: 14.5px; font-weight: 650; }
+.prow .m { font-size: 12.5px; color: var(--muted); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.prow .m { grid-column: 2; }
+.prow .r { grid-row: 1 / span 2; grid-column: 3; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.ideas-h { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--muted); flex-wrap: wrap; }
+.ideas-h b { color: var(--ink); }
+.ideas-h .sp { flex: 1; }
+.ideas-h button { color: var(--accent-ink); display: inline-flex; gap: 5px; align-items: center; font-size: 13px; }
+.ideas-h svg { width: 14px; height: 14px; }
+.shelf { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr)); gap: 10px; }
+.tile { position: relative; display: grid; gap: 4px; padding: 8px; border-radius: 14px; align-content: start; background: var(--app); border: 1px solid var(--line); transition: transform .25s cubic-bezier(.16, 1, .3, 1), box-shadow .25s, opacity .25s; animation: settle .5s cubic-bezier(.16, 1, .3, 1); }
+.tile:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+.tile .pic { height: 80px; border-radius: 10px; background: var(--tile); display: grid; place-items: center; overflow: hidden; }
+.tile .pic img { height: 72px; object-fit: contain; }
+.tile .t { font-size: 13.5px; font-weight: 650; line-height: 1.3; }
+.tile .m { font-size: 12px; color: var(--muted); display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
+.tile .who { position: absolute; top: 12px; left: 12px; }
+.tile .x { position: absolute; top: 12px; right: 12px; width: 26px; height: 26px; border-radius: 50%; background: var(--app); color: var(--muted); display: grid; place-items: center; opacity: 0; transition: opacity .18s; box-shadow: var(--shadow-sm); }
+.tile .x svg { width: 12px; height: 12px; }
+.tile:hover .x, .tile:focus-within .x { opacity: 1; }
+@media (hover: none) { .tile .x { opacity: 1; } }
+.tile .add { justify-self: start; margin-top: 2px; }
+
+/* Pano sayfası (Emre'nin onaylı görselini izler) */
+.pano { padding: 22px 26px 28px; display: grid; gap: 16px; }
+.pano-h { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.pano-h h3 { margin: 0; font-family: var(--display); font-size: 36px; letter-spacing: -0.025em; }
+.pano-h .cnt { color: var(--muted); font-size: 16px; }
+.pano-h .sp { flex: 1; }
+.search { display: inline-flex; gap: 8px; align-items: center; border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; color: var(--muted); font-size: 14px; min-width: 220px; }
+.search svg { width: 16px; height: 16px; }
+.pbtn { display: inline-flex; gap: 8px; align-items: center; border: 1px solid var(--line); border-radius: 12px; padding: 8px 14px; font-size: 14px; }
+.pbtn.primary { background: var(--lav); border-color: color-mix(in srgb, var(--accent) 40%, transparent); color: var(--accent-ink); font-weight: 600; }
+.pbtn svg { width: 16px; height: 16px; }
+.cats { display: flex; gap: 6px 22px; border-bottom: 1px solid var(--line2); flex-wrap: wrap; }
+.cats button { display: inline-flex; gap: 8px; align-items: center; padding: 8px 2px 10px; font-size: 14.5px; color: var(--ink); }
+.cats button span { color: var(--muted); }
+.cats button.on { color: var(--accent-ink); box-shadow: inset 0 -2px 0 var(--accent); }
+.cats svg { width: 20px; height: 20px; }
+.pfilter { display: flex; justify-content: space-between; font-size: 14px; gap: 10px; flex-wrap: wrap; }
+.pfilter span { display: inline-flex; gap: 6px; align-items: center; }
+.pfilter svg { width: 15px; height: 15px; }
+.pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: 16px; }
+.pc { background: var(--app); border-radius: 16px; overflow: hidden; border: 1px solid var(--line); box-shadow: var(--shadow-sm); display: grid; grid-template-rows: auto 1fr auto; transition: transform .25s cubic-bezier(.16, 1, .3, 1), box-shadow .25s; }
+.pc:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+.pc.ai { border-style: dashed; border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+.pc .img { height: 150px; position: relative; display: grid; place-items: center; overflow: hidden; }
+.pc .img img { height: 120px; object-fit: contain; }
+.pc .heart, .pc .more { position: absolute; top: 10px; width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,.95); display: grid; place-items: center; color: #1c1a33; }
+.pc .heart { left: 10px; } .pc .more { right: 10px; }
+.pc .heart svg, .pc .more svg { width: 17px; height: 17px; }
+.pc .heart.on svg { fill: #e11d5b; stroke: #e11d5b; }
+.pc .by { position: absolute; left: 10px; bottom: 10px; display: inline-flex; gap: 5px; align-items: center; font-size: 12px; font-weight: 650; color: #1c1a33; background: rgba(255,255,255,.95); border-radius: 999px; padding: 2px 9px 2px 2px; }
+.pc .by .av { border-color: #fff; }
+.pc .bd { padding: 12px 14px 8px; display: grid; gap: 4px; align-content: start; }
+.pc .row1 { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+.pc .row1 span { display: inline-flex; gap: 6px; align-items: center; }
+.pc .row1 svg { width: 16px; height: 16px; }
+.pc .src { color: var(--muted); }
+.pc h5 { margin: 2px 0 0; font-size: 18px; font-weight: 750; letter-spacing: -0.01em; line-height: 1.2; }
+.pc .meta { font-size: 13px; color: var(--muted); }
+.pc .row3 { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+.pc .pr { font-size: 18px; font-weight: 750; }
+.pc .pr small { font-size: 13px; font-weight: 400; color: var(--accent-ink); }
+.addp { display: inline-flex; gap: 6px; align-items: center; border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); color: var(--accent-ink); border-radius: 10px; padding: 6px 12px; font-size: 14px; font-weight: 600; transition: background .2s; }
+.addp:hover { background: var(--lav); }
+.addp svg { width: 15px; height: 15px; }
+.addp.on { background: var(--lav); border-color: transparent; }
+.pc .ft { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px 12px; border-top: 1px solid var(--line2); font-size: 13px; color: var(--muted); }
+.pc .ft span { display: inline-flex; gap: 6px; align-items: center; }
+.pc .ft svg { width: 16px; height: 16px; }
+.pc .note { font-size: 12px; color: var(--plan-ink); font-weight: 600; }
+
+/* Bildirim */
+.toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%) translateY(20px); background: var(--ink); color: var(--app); padding: 10px 16px; border-radius: 14px; font-size: 14px; display: flex; gap: 12px; align-items: center; opacity: 0; pointer-events: none; transition: opacity .25s, transform .35s cubic-bezier(.16, 1, .3, 1); z-index: 50; max-width: calc(100vw - 32px); }
+.toast.on { opacity: 1; transform: translateX(-50%); pointer-events: auto; }
+.toast button { color: var(--lav); font-weight: 650; }
+
+/* Parlama */
+.fresh { animation: glow 2.2s cubic-bezier(.16, 1, .3, 1) 2; }
+@keyframes glow { 0% { box-shadow: 0 0 0 0 var(--glow); } 35% { box-shadow: 0 0 0 6px var(--glow); } 100% { box-shadow: 0 0 0 14px transparent; } }
+
+/* Aşamalar */
+.ladder { display: grid; gap: 22px; padding: 22px 24px 28px; }
+.ladder h3 { margin: 0; font-family: var(--display); font-size: 22px; letter-spacing: -0.015em; }
+.ladder > p { margin: -12px 0 0; color: var(--muted); max-width: 82ch; }
+.lrow { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 14px 30px; }
+.lcol { display: grid; gap: 10px; align-content: start; position: relative; min-width: 0; }
+.lcol + .lcol::before { content: ""; position: absolute; left: -22px; top: 100px; width: 12px; height: 12px; border-top: 2px solid var(--dash); border-right: 2px solid var(--dash); transform: rotate(45deg); }
+@media (max-width: 600px) { .lcol + .lcol::before { display: none; } }
+.lcap { font-size: 14px; font-weight: 700; display: flex; gap: 8px; align-items: center; }
+.info { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: 12.5px; color: var(--muted); }
+.info li { display: flex; gap: 6px; }
+.info li::before { content: "·"; color: var(--accent); font-weight: 800; }
+.trig { font-size: 12.5px; color: var(--accent-ink); display: inline-flex; gap: 5px; align-items: center; }
+.trig svg { width: 13px; height: 13px; }
+
+.foot { font-size: 12.5px; color: var(--muted); text-align: center; }
+.still *, .still *::before, .still *::after { animation: none !important; transition: none !important; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs><pattern id="ht" width="4" height="4" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.05" fill="currentColor"/></pattern></defs>
+  <symbol id="i-plane" viewBox="0 0 24 24"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></symbol>
+  <symbol id="i-bed" viewBox="0 0 24 24"><path d="M2 20v-8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8M4 10V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4M12 4v6M2 17h20"/></symbol>
+  <symbol id="i-car" viewBox="0 0 24 24"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2M9 17h6"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></symbol>
+  <symbol id="i-ticket" viewBox="0 0 24 24"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2zM13 5v2M13 17v2M13 11v2"/></symbol>
+  <symbol id="i-food" viewBox="0 0 24 24"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2M7 2v20M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/></symbol>
+  <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5M9 18h6M10 22h4"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.7 9a1 1 0 0 1-.6 0C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.2-2.7a1.2 1.2 0 0 1 1.6 0C14.5 3.8 17 5 19 5a1 1 0 0 1 1 1z"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9zM19 3v4M21 5h-4"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-ext" viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-into" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M3 7v6h6M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+  <symbol id="i-heart" viewBox="0 0 24 24"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7z"/></symbol>
+  <symbol id="i-gem" viewBox="0 0 24 24"><path d="M6 3h12l4 6-10 12L2 9zM2 9h20M12 21 8 9l4-6 4 6z"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></symbol>
+  <symbol id="i-nav" viewBox="0 0 24 24"><path d="m3 11 19-9-9 19-2-8z"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></symbol>
+  <symbol id="i-clip" viewBox="0 0 24 24"><path d="m21 12-8.5 8.5a6 6 0 0 1-8.5-8.5l8.5-8.5a4 4 0 0 1 5.7 5.7l-8.5 8.5a2 2 0 0 1-2.8-2.8L15 7"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></symbol>
+  <symbol id="i-msg" viewBox="0 0 24 24"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"/></symbol>
+  <symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16.2 7.8-2.1 6.3-6.3 2.1 2.1-6.3z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4v16l13-8z"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6"/></symbol>
+  <symbol id="i-board" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="18" rx="2"/><rect x="14" y="3" width="7" height="11" rx="2"/></symbol>
+  <symbol id="i-pool" viewBox="0 0 24 24"><path d="M2 18c2 0 2-1.5 4-1.5S8 18 10 18s2-1.5 4-1.5 2 1.5 4 1.5 2-1.5 4-1.5M8 15V5a2 2 0 0 1 4 0M16 15V5a2 2 0 0 0-4 0M8 9h8"/></symbol>
+  <symbol id="i-tree" viewBox="0 0 24 24"><path d="M12 22v-6M8 16h8l-4-7-4 7zM9 11h6l-3-6-3 6z"/></symbol>
+  <symbol id="i-cup" viewBox="0 0 24 24"><path d="M17 8h1a4 4 0 0 1 0 8h-1M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4zM6 2v3M10 2v3M14 2v3"/></symbol>
+  <symbol id="i-wave" viewBox="0 0 24 24"><path d="M2 12c2 0 2-2 4-2s2 2 4 2 2-2 4-2 2 2 4 2 2-2 4-2M2 18c2 0 2-2 4-2s2 2 4 2 2-2 4-2 2 2 4 2 2-2 4-2"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></symbol>
+  <symbol id="i-up-t" viewBox="0 0 24 24"><path d="M7 10v12M15 5.9 14 10h5.8a2 2 0 0 1 1.9 2.6l-2.3 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.8a2 2 0 0 0 1.8-1.1L12 2a3.1 3.1 0 0 1 3 3.9z"/></symbol>
+  <symbol id="i-down-t" viewBox="0 0 24 24"><path d="M17 14V2M9 18.1 10 14H4.2a2 2 0 0 1-1.9-2.6l2.3-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.8a2 2 0 0 0-1.8 1.1L12 22a3.1 3.1 0 0 1-3-3.9z"/></symbol>
+  <symbol id="i-grip" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.3"/><circle cx="15" cy="6" r="1.3"/><circle cx="9" cy="12" r="1.3"/><circle cx="15" cy="12" r="1.3"/><circle cx="9" cy="18" r="1.3"/><circle cx="15" cy="18" r="1.3"/></symbol>
+  <symbol id="sil-plane" viewBox="80 4 260 104"><g stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" fill="url(#ht)"><path d="M200 34 232 34 214 10 204 10z"/><path d="M104 56C104 48 116 44 132 44H284C304 44 322 50 330 58 322 66 304 72 284 72H132C116 72 104 66 104 56z"/><path d="M112 48 96 16H112L142 44z"/><path d="M108 56 84 50 94 66z"/><path d="M186 62H238L200 104H182z"/></g><g fill="#fff" fill-opacity=".85" stroke="currentColor" stroke-width="1.2"><rect x="150" y="52" width="8" height="7" rx="3"/><rect x="166" y="52" width="8" height="7" rx="3"/><rect x="182" y="52" width="8" height="7" rx="3"/><rect x="246" y="52" width="8" height="7" rx="3"/><rect x="262" y="52" width="8" height="7" rx="3"/><rect x="282" y="52" width="8" height="7" rx="3"/></g></symbol>
+  <symbol id="sil-car" viewBox="70 30 270 90"><path d="M90 100V80Q90 72 100 70L134 64 156 44Q160 40 168 40H252Q260 40 264 46L280 64 306 68Q320 70 320 84V100z" fill="url(#ht)" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><g fill="#fff" fill-opacity=".85" stroke="currentColor" stroke-width="1.6"><rect x="166" y="48" width="38" height="18" rx="3"/><rect x="212" y="48" width="38" height="18" rx="3"/><circle cx="136" cy="102" r="15"/><circle cx="278" cy="102" r="15"/></g></symbol>
+</svg>
+
+<main class="page">
+  <nav class="switch" aria-label="Senaryolar">
+    <div class="switch-row">
+      <h1>Bali Planı Aşamaları</h1>
+      <div class="tabs-sc" role="tablist" id="tabs"></div>
+      <button class="motion" id="motion" aria-pressed="false"><svg class="i"><use href="#i-pause"/></svg><span>Hareketi duraklat</span></button>
+    </div>
+    <p class="sc-desc" id="desc"></p>
+  </nav>
+  <div id="view"></div>
+  <p class="foot">Tasarım örneği · otel adları, fiyatlar, uçuş saatleri ve hava temsilîdir. Hero bugünkü v9 düzeni; Pano Emre'nin onaylı pano görselini izler.</p>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const I = (id, cls = "i") => `<svg class="${cls}"><use href="#i-${id}"/></svg>`;
+const SIL = (id, cls) => `<svg class="${cls}" aria-hidden="true"><use href="#sil-${id}"/></svg>`;
+const BR = { booking: ["B.", "Booking"], airbnb: ["A", "Airbnb"], google: ["G", "Google Flights"], sky: ["S", "Skyscanner"], kayak: ["K", "Kayak"], viator: ["V", "Viator"],
+  airalo: ["A", "Airalo"], trip: ["T", "Tripadvisor"], maps: ["M", "Google Maps"], yt: ["▶", "YouTube"], qatar: ["Q", "Qatar Airways"], klook: ["K", "Klook"], web: ["W", "Web'den"], tk: ["T", "Turkish Airlines"] };
+const bm = k => `<span class="bm" style="background:var(--b-${k})">${BR[k][0]}</span>`;
+const blink = (k, extra = "") => `<a class="blink" href="#" onclick="return false">${bm(k)}${BR[k][1]}${extra}${I("ext")}</a>`;
+const eur = n => "€" + n.toLocaleString("tr-TR");
+const AV = { E: `<span class="av e" title="Emre ekledi">E</span>`, S: `<span class="av s" title="Sabine ekledi">S</span>`, AI: `<span class="av ai" title="AI önerisi">${I("spark")}</span>` };
+const NAME = { E: "Emre", S: "Sabine", AI: "AI" };
+const sd = m => `<span class="sd ${m}">${m === "rez" ? I("check") : ""}</span>`;
+const LAB = { bos: "Arıyoruz", oneri: "Öneri var", plan: "Seçildi", rez: "Rezerve" };
+
+/* Veri (temsilî) */
+const H = {
+  sawah: { name: "Villa Sawah", site: "booking", rate: "9,4", n: 240, g: "linear-gradient(135deg,#7fae5f,#2f6b4f)", mk: ["✓ Özel havuz", "✓ Orman", "✓ Kahvaltı"], cancel: "16 Şubat'a kadar", addr: "Jl. Raya Penestanan", pay: "Otelde ödenecek" },
+  kayu: { name: "Kayu Retreat", site: "airbnb", rate: "4,9", n: 195, g: "linear-gradient(135deg,#d7b48a,#8a5a3c)", mk: ["Havuz ortak", "✓ Orman", "? Kahvaltı"], cancel: "Yok", addr: "Jl. Bisma" },
+  sungai: { name: "Sungai Retreat", site: "booking", rate: "9,0", n: 205, g: "linear-gradient(135deg,#a8d0c4,#2e6e62)", mk: ["✓ Özel havuz", "✓ Nehir", "✓ Kahvaltı"], cancel: "20 Şubat'a kadar" },
+  alas: { name: "Alas Suites", site: "trip", rate: "4,8", n: 275, g: "linear-gradient(135deg,#9fc7d8,#3f6f8a)", mk: ["✓ Özel havuz", "? Orman", "✓ Kahvaltı"], cancel: "1 Mart'a kadar" },
+  lis: { name: "Lis Beach House", site: "airbnb", rate: "4,8", n: 180, g: "linear-gradient(135deg,#f1d3a8,#c2774a)", mk: ["✓ Sahile 4 dk", "✓ Mutfak", "✓ Havuz"], cancel: "Yok", addr: "Jl. Petitenget 12", pay: "Ödendi" },
+  laut: { name: "Laut Villas", site: "booking", rate: "9,2", n: 210, g: "linear-gradient(135deg,#bcd6ef,#3d6f9e)", mk: ["✓ Sahile 6 dk", "✓ Spa", "✓ Rooftop"], cancel: "25 Şubat'a kadar" },
+  petit: { name: "Petitenget Suites", site: "booking", rate: "9,1", n: 165, g: "linear-gradient(135deg,#e8c9c0,#a35d58)", mk: ["✓ Sahile 3 dk", "✓ Spa", "? Rooftop"], cancel: "28 Şubat'a kadar" },
+  tebing: { name: "Tebing Cliff Villas", site: "trip", rate: "4,9", n: 310, g: "linear-gradient(135deg,#8fc3e0,#235f86)", mk: ["✓ Okyanus", "✓ Infinity havuz", "✓ Yetişkinlere özel"], cancel: "5 Mart'a kadar" },
+  batu: { name: "Batu Bolong Lofts", site: "booking", rate: "8,9", n: 150, g: "linear-gradient(135deg,#f5c9a0,#b0603a)", mk: [] }
+};
+const F = {
+  qr: { air: "qatar", code: "QR 240", t: ["01:55", "22:05"], tb: ["00:40", "13:10"], d: "15 sa 10 dk · Doha aktarmalı", n: 1840, bag: "2 × 30 kg dahil", ref: "Değişiklik ücretli" },
+  tk: { air: "tk", code: "TK 66", t: ["02:10", "21:40"], tb: ["23:35", "11:50"], d: "14 sa 30 dk · Singapur aktarmalı", n: 2120, bag: "2 × 23 kg dahil", ref: "İade yok" }
+};
+const STAYS = [
+  { k: "ubud", city: "Ubud", n: 5, d: "12–17 Mart", ci: "12 Mart 14:00", co: "17 Mart 11:00", img: "ev-daire", area: ["Penestanan", "pirinç tarlaları, merkeze 10 dk"], why: "Sevgilinle, sakin ve lüks dediğin için", w: [["pool", "Özel havuz"], ["tree", "Orman manzarası"], ["cup", "Kahvaltı"]] },
+  { k: "sem", city: "Seminyak", n: 4, d: "17–21 Mart", ci: "17 Mart 15:00", co: "21 Mart 11:00", img: "otel", area: ["Petitenget", "sahile yürüme, akşam yemekleri"], why: "Gün batımı ve akşam yemekleri için", w: [["wave", "Sahile yürüme"], ["heart", "Spa"], ["sun", "Rooftop"]] },
+  { k: "ulu", city: "Uluwatu", n: 5, d: "21–26 Mart", ci: "21 Mart 14:00", co: "26 Mart 12:00", img: "otel", area: ["Bingin", "uçurum, okyanus manzarası"], why: "Gezinin finali; romantik dediğin için", w: [["wave", "Okyanus manzarası"], ["pool", "Infinity havuz"], ["moon", "Yetişkinlere özel"]] }
+];
+const MOVES = [["Havalimanı", "Ubud", "Özel transfer düşünüyoruz · ~1,5 sa", "12 Mart"], ["Ubud", "Seminyak", "Özel şoför · ~1 sa", "17 Mart"], ["Seminyak", "Uluwatu", "Özel şoför · ~50 dk", "21 Mart"]];
+const IDEAS = {
+  teras: { cat: "exp", city: "Ubud", img: "yapilacak", t: "Tegallalang terasları, gün doğumu", src: "viator", p: "€38 · kişi", ticket: true },
+  kecak: { cat: "exp", city: "Uluwatu", img: "etkinlik-tur", t: "Gün batımında Kecak dansı", src: "viator", p: "€30 · kişi", ticket: true },
+  gamelan: { cat: "exp", city: "Ubud", img: "etkinlik-tur", t: "Legong gösterisi · 14 Mart", src: "viator", p: "€12 · kişi", ticket: true },
+  batur: { cat: "exp", city: "Ubud", img: "yapilacak", t: "Batur'da gün doğumu tırmanışı", src: "viator", p: "€45 · kişi", ticket: true },
+  spa: { cat: "exp", city: "Ubud", img: "etkinlik-tur", t: "Çiftlere Bali masajı", idea: true },
+  campuhan: { cat: "exp", city: "Ubud", img: "yapilacak", t: "Campuhan sırtında yürüyüş", src: "trip", p: "ücretsiz" },
+  jimbaran: { cat: "food", city: "Uluwatu", img: "restoran", t: "Jimbaran'da kumda akşam yemeği", idea: true },
+  sawahk: { cat: "food", city: "Ubud", img: "restoran", t: "Sawah Kitchen", src: "maps", p: "4,7" }
+};
+/* Pano kayıtları: kim ekledi, oylar, yorumlar */
+const PANO = [
+  { id: "sawah", cat: "stay", city: "Ubud", who: "E", up: ["E", "S"], down: 0, com: 3, fav: true },
+  { id: "kayu", cat: "stay", city: "Ubud", who: "E", up: ["E"], down: 1, com: 1 },
+  { id: "sungai", cat: "stay", city: "Ubud", who: "S", up: ["S"], down: 0, com: 2 },
+  { id: "lis", cat: "stay", city: "Seminyak", who: "E", up: ["E", "S"], down: 0, com: 2, fav: true },
+  { id: "laut", cat: "stay", city: "Seminyak", who: "S", up: [], down: 0, com: 0 },
+  { id: "batu", cat: "stay", city: "Canggu", who: "E", up: [], down: 0, com: 0, stray: "Rotada Canggu yok" },
+  { id: "tk", cat: "flight", who: "E", up: ["E"], down: 0, com: 1 },
+  { id: "qr", cat: "flight", who: "AI", up: [], down: 0, com: 0 },
+  { id: "klook", cat: "move", who: "AI", up: [], down: 0, com: 0 },
+  { id: "batur", cat: "exp", who: "E", up: ["E", "S"], down: 0, com: 2 },
+  { id: "kecak", cat: "exp", who: "AI", up: ["S"], down: 0, com: 0 },
+  { id: "sawahk", cat: "food", who: "E", up: [], down: 1, com: 1 },
+  { id: "yt", cat: "insp", who: "E", up: ["E", "S"], down: 0, com: 2, fav: true },
+  { id: "blog", cat: "insp", who: "S", up: [], down: 0, com: 0 }
+];
+const CAT = { stay: ["bed", "Konaklama", "var(--c-stay)"], flight: ["plane", "Uçuşlar", "var(--c-fly)"], move: ["car", "Ulaşım", "var(--c-move)"], exp: ["ticket", "Deneyimler", "var(--c-exp)"], food: ["food", "Yeme içme", "var(--c-food)"], insp: ["bulb", "İlham", "var(--c-insp)"] };
+const CAT1 = { stay: "Konaklama", flight: "Uçuş", move: "Ulaşım", exp: "Deneyim", food: "Yeme içme", insp: "İlham" };
+
+function pmeta(p) {
+  if (p.cat === "stay") { const h = H[p.id]; return { title: `${h.name} · ${p.city}`, src: h.site, meta: p.stray ? `${p.stray} · 12–16 Mart` : `${STAYS.find(s => s.city === p.city).d} · gecelik ${eur(h.n)}`, price: h.n * (STAYS.find(s => s.city === p.city)?.n || 4), unit: "toplam", g: h.g }; }
+  if (p.cat === "flight") { const f = F[p.id]; return { title: "İstanbul → Bali", src: f.air, meta: `11 Mart · ${f.t[0]}–${f.t[1]} · ${f.d.split(" · ")[1]}`, price: f.n, unit: "2 kişi", flight: true }; }
+  if (p.cat === "move") return { title: "Havalimanı → Ubud", src: "klook", meta: "Özel transfer · 12 Mart", price: 38, unit: "araç", img: "taksi-transfer" };
+  if (p.cat === "insp") return p.id === "yt" ? { title: "Bali'de 14 gün: Ubud'dan Uluwatu'ya", src: "yt", meta: "Video · Bali", play: true, g: "linear-gradient(135deg,#2f6b4f,#9bc46a)" } : { title: "Uluwatu'nun saklı plajları", src: "web", meta: "Rehber · Uluwatu", g: "linear-gradient(135deg,#8fc3e0,#f1d3a8)" };
+  const x = IDEAS[p.id]; return { title: x.t, src: x.src || "web", meta: `${x.city}${x.p ? ` · ${x.p}` : ""}`, img: x.img };
+}
+
+/* Senaryolar: her biri kutucukların başlangıç durumu */
+const base = () => ({ dated: true, budget: true, side: "chat", chat: [], pano: [],
+  slots: { "flight:out": { m: "bos" }, "flight:back": { m: "bos" }, "stay:ubud": { m: "bos" }, "stay:sem": { m: "bos" }, "stay:ulu": { m: "bos" }, "move:0": { m: "bos" }, "move:1": { m: "bos" }, "move:2": { m: "bos" }, ins: { m: "bos" } },
+  planned: [], shelf: ["teras", "kecak", "spa", "campuhan", "jimbaran"], removed: [] });
+const SC = {
+  A: { tab: "Yalnız prompt", desc: "<b>Tek cümle.</b> Her ihtiyaç boş bir kutucuk: AI'nın anladığı semt, şartlar ve neden yazıyor, çizimle duruyor. Henüz öneri yok; “Kendin ara” önde.",
+    make() { const s = base(); s.dated = false; s.budget = false; s.chat = [["E", "Bali'de 3 hafta sevgilimle 15 gün lüks tatil"], ["AI", "Sakin ve lüks bir Bali kurdum: <b>Ubud → Seminyak → Uluwatu</b>, 5 · 4 · 5 gece. Önce şunu netleştirelim: <b>15 gün mü, 3 hafta mı?</b>", ["15 gün", "3 hafta"]], ["E", "15 gün"], ["AI", "Kabaca ne zaman? Bir ay söylemen yeter; uçuşu ve otelleri ona göre tarihlerim.", ["Şubat", "Mart", "Nisan", "Bilmiyoruz"]]]; return s; } },
+  B: { tab: "Sohbetle şekillendi", desc: "<b>Tarih ve bütçe konuşuldu.</b> AI her kutucuğa <b>tek</b> öneri koydu: kartın içinde, kutuyu doldurmaya hazır. “Yerleştir” kutuyu doldurur, × öneriyi atar. Transferi sohbet soruyor.",
+    make() { const s = base(); Object.assign(s.slots, { "flight:out": { m: "oneri", ref: "qr" }, "stay:ubud": { m: "oneri", ref: "alas" }, "stay:sem": { m: "oneri", ref: "petit" }, "stay:ulu": { m: "oneri", ref: "tebing" }, "move:0": { m: "oneri", ref: "klook", ask: true } });
+      s.shelf = ["gamelan", "teras", "kecak", "spa", "jimbaran"];
+      s.chat = [["E", "15 gün, 12 Mart'ta çıkalım. Kişi başı 3.000 € civarı."], ["AI", "Hepsini <b>12–27 Mart</b>'a yerleştirdim ve her kutuya bir öneri koydum. Beğenmezsen kendin bak; eklentiyle kaydettiğin her şey Pano'ya düşer."], ["AI", "Havalimanından sizi villa mı alacak, yoksa özel transfer mi ayarlayalım?", ["Villa alsın", "Transfer ayarla", "Taksiyle gideriz"]]]; return s; } },
+  C: { tab: "Linklerle başlama", desc: "<b>Eklentide biriken linklerle başladı.</b> Linkler kutulara dökülmedi; hepsi Pano'da. Kutucuk yalnız “Pano'da 3 Ubud kaydın var” diyor. Yan paneldeki Pano'dan sürükleyip bırakabilirsin.",
+    make() { const s = base(); s.side = "pano"; s.pano = PANO.map(p => p.id); s.shelf = ["teras", "kecak", "spa"];
+      s.chat = [["E", "Kaydettiklerimden bir Bali gezisi kur", null, ["booking.com/hotel/id/villa-sawah", "airbnb.com/rooms/kayu-retreat", "airbnb.com/rooms/lis-beach-house", "viator.com/…/batur-sunrise", "youtube.com/watch?v=bali14", "booking.com/hotel/id/batu-bolong-lofts"]],
+        ["AI", "Tarihleri otel linklerinden okudum: <b>12–26 Mart</b>. Hepsi Pano'da. Canggu'daki otel rotada yok, Pano'da bekliyor. Ubud için Villa Sawah üç şartını da tutuyor; kutuya koyayım mı?", ["Koy", "Pano'dan kendim seçerim"]]]; return s; } },
+  D: { tab: "Panodan yerleştir", live: true, desc: "<b>Dene:</b> soldaki Pano'dan bir oteli sürükle, uyan kutu yanar; bırakınca kutu dolar ve “Seçildi” olur. Ok düğmesi aynısını tek tıkla yapar. Kutudaki ↩ onu Pano'ya geri gönderir.",
+    make() { const s = base(); s.side = "pano"; s.pano = PANO.map(p => p.id); s.shelf = ["teras", "kecak", "spa", "jimbaran"];
+      s.chat = [["AI", "Pano'daki kayıtları kutulara sürükleyebilirsin. Bir otel seçince diğerleri Pano'da kalır, karar verene kadar."]]; return s; } },
+  E: { tab: "Karar verildi", desc: "<b>Seçilen kart oturdu, bilgi değişti.</b> Seçildi (amber): karar için gereken bilgi, yani toplam fiyat, iptal ve şartlar. Rezerve (yeşil): yolda gereken bilgi, yani giriş saati, adres, PNR ve koltuk.",
+    make() { const s = base(); s.pano = PANO.map(p => p.id); Object.assign(s.slots, { "flight:out": { m: "rez", ref: "qr" }, "flight:back": { m: "rez", ref: "qr" }, "stay:ubud": { m: "plan", ref: "sawah" }, "stay:sem": { m: "rez", ref: "lis" }, "stay:ulu": { m: "oneri", ref: "tebing" }, "move:0": { m: "plan", ref: "klook" } });
+      s.planned = [["kecak", "rez"], ["batur", "plan"], ["jimbaran", "plan"]]; s.shelf = ["gamelan", "spa", "campuhan"];
+      s.chat = [["E", "Seminyak'taki evi tuttuk, uçuşları da aldık. Ubud'da Villa Sawah olsun."], ["AI", "Uçuşlar ve Seminyak <b>rezerve</b>. Villa Sawah <b>seçildi</b>; ücretsiz iptal 16 Şubat'a kadar. Rezerve edince onay mailini bırak, kartı kapatayım."]]; return s; } }
+};
+let ST = {}; const LIVE = SC.D.make(); /* Pano sekmesi ile D aynı durumu paylaşır */
+
+/* Yardımcılar */
+const stayOf = city => STAYS.find(s => s.city === city);
+const inPlan = (s, id) => Object.values(s.slots).some(x => (x.m === "plan" || x.m === "rez") && x.ref === id) || s.planned.some(([k]) => k === id);
+const needs = s => Object.values(s.slots).map(x => x.m);
+const tally = arr => ({ rez: arr.filter(m => m === "rez").length, plan: arr.filter(m => m === "plan").length, rest: arr.filter(m => m !== "rez" && m !== "plan").length, n: arr.length });
+const scene = `<svg viewBox="0 0 480 250" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+  <defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffcf9e"/><stop offset=".55" stop-color="#f7a98c"/><stop offset="1" stop-color="#e98f8a"/></linearGradient></defs>
+  <rect width="480" height="250" fill="url(#sky)"/><circle cx="340" cy="92" r="30" fill="#fff1d6" opacity=".9"/>
+  <path d="M120 150 L232 52 Q240 46 248 52 L372 150 Z" fill="#8f6f8c" opacity=".75"/>
+  <path d="M0 150 Q120 128 240 146 T480 138 V250 H0Z" fill="#6f9b6a"/><path d="M0 172 Q140 150 260 168 T480 160 V250 H0Z" fill="#5c8a57"/>
+  <path d="M0 196 Q120 176 250 192 T480 186 V250 H0Z" fill="#7fae5f"/><path d="M0 222 Q150 202 270 218 T480 212 V250 H0Z" fill="#9bc46a"/>
+  <path d="M0 176 Q140 156 260 172 T480 165" stroke="#d9ecb0" stroke-width="1.4" fill="none" opacity=".7"/><path d="M0 200 Q120 180 250 196 T480 190" stroke="#e3f1bd" stroke-width="1.4" fill="none" opacity=".7"/>
+  <path d="M60 250 Q64 196 70 160" stroke="#3f5a35" stroke-width="4" fill="none"/>
+  <path d="M70 160 q-26 -4 -40 10 M70 160 q-14 -18 -36 -16 M70 160 q8 -22 30 -22 M70 160 q24 -6 38 8 M70 160 q2 -24 -6 -34" stroke="#3f5a35" stroke-width="5" fill="none" stroke-linecap="round"/></svg>`;
+
+function hero(s) {
+  const t = tally(needs(s)), nExp = s.planned.length + s.shelf.length;
+  return `<section class="hero"><div class="story">
+      <div class="photo">${scene}<div class="citysel"><span class="on">Ubud</span><span>Seminyak</span><span>Uluwatu</span></div>${s.dated ? `<div class="pills"><span>155 gün kaldı</span></div>` : ""}</div>
+      <h3>Bali Gezisi</h3><div class="dline num">${I("cal")}<span>${s.dated ? "12–27 Mart · 15 gün" : "15 gün"}</span></div>
+      <p class="tone">Ubud'un ormanından Uluwatu'nun uçurumlarına, ikinize sakin ve lüks bir Bali.</p>
+      <div class="cells"><span class="cell" style="color:var(--c-fly)">${I("plane")}<span style="color:var(--ink)">2 uçuş</span></span><span class="cell" style="color:var(--c-stay)">${I("bed")}<span style="color:var(--ink)">3 konaklama</span></span><span class="cell" style="color:var(--c-move)">${I("car")}<span style="color:var(--ink)">3 ulaşım</span></span><span class="cell" style="color:var(--c-exp)">${I("ticket")}<span style="color:var(--ink)">${nExp} deneyim</span></span></div>
+      <div class="prog"><b>Bali planın şekilleniyor</b>
+        <div class="seg"><i style="width:${t.rez / t.n * 100}%;background:var(--book-ink)"></i><i style="width:${t.plan / t.n * 100}%;background:var(--planbar)"></i></div>
+        <div class="legend num"><span><i class="dot" style="background:var(--book-ink)"></i>${t.rez} rezerve</span><span><i class="dot" style="background:var(--planbar)"></i>${t.plan} seçildi</span><span><i class="dot" style="background:var(--line)"></i>${t.rest} aranıyor</span></div>
+        <button class="cta">Planı tamamla →</button></div></div>
+    <aside class="card">
+      <div class="blk"><div class="people"><span style="display:flex"><span class="bigav" style="background:var(--av-e)">E</span><span class="bigav" style="background:var(--av-s)">S</span></span><div>Emre & Sabine<small>2 kişi</small></div></div>
+        <div class="styles"><span class="style" style="background:var(--lav);color:var(--accent-ink)">${I("gem")}Lüks</span><span class="style" style="background:color-mix(in srgb, var(--c-food) 10%, transparent);color:var(--c-food)">${I("heart")}Romantik</span></div></div>
+      <div class="blk kv num"><span class="h">Bütçe</span><span class="h r">${s.budget ? "€6.000" : "Yüksek"}</span>${s.budget ? `<span class="m"><i class="dot" style="background:var(--book-ink)"></i>Rezerve</span><span class="r">${t.rez ? "€4.560" : "€0"}</span><span class="m"><i class="dot" style="background:var(--planbar)"></i>Seçilen</span><span class="r">${t.plan ? "€1.276" : "€0"}</span>` : `<span class="m" style="grid-column:1/-1">Kişi başı tutar sohbette netleşir</span>`}</div>
+      <div class="blk kv"><span class="h" style="grid-column:1/-1">Tercihler</span><span class="m">Özel havuz</span><span class="r">Çok önemli</span><span class="m">Sakinlik</span><span class="r">Önemli</span><a href="#" onclick="return false" style="grid-column:1/-1;font-size:14px">+4 tercih ›</a></div>
+      <div class="blk"><div class="country"><span class="flag"></span>Endonezya</div><div class="wx num"><span>Ubud ${I("sun")} 29°</span><span>Uluwatu ${I("sun")} 31°</span></div></div>
+      <div class="blk facts"><span>Rupiah</span><span>C/F priz</span><span>+5 saat</span><span>Endonezce</span></div></aside></section>
+  <div class="ptabs"><span class="on">Plan</span><span>Gün gün</span><span>Belgeler</span></div>`;
+}
+
+function shape(s) {
+  const m = k => s.slots[k].m, cls = x => x === "plan" ? "n-plan" : x === "rez" ? "n-rez" : "";
+  const stop = st => { const sl = s.slots["stay:" + st.k], ch = (sl.m === "plan" || sl.m === "rez") && H[sl.ref];
+    return `<div class="stop ${cls(sl.m)}"><span class="node">${ch ? `<span class="ph" style="background:${ch.g}"></span>` : `<img src="illus/${st.img}.png" alt="">`}<span class="mark">${sd(sl.m === "oneri" ? "bos" : sl.m)}</span></span><b>${st.city}</b><small class="num">${st.n} gece</small>
+      ${st.k === "ubud" && s.dated ? `<span class="ev">Legong · 14 Mart</span>` : st.k === "ulu" ? `<span class="ev">Kecak · gün batımı</span>` : ""}</div>`; };
+  const hop = (icon, txt) => `<div class="hop">${I(icon)}<span>${txt}</span></div>`;
+  const fl = (k, txt) => `<div class="stop ${cls(m(k))}"><span class="node"><img src="illus/ucus.png" alt=""><span class="mark">${sd(m(k) === "oneri" ? "bos" : m(k))}</span></span><b>İstanbul</b><small>${txt}</small></div>`;
+  return `<div class="shape" aria-label="Gezinin şekli">${fl("flight:out", s.dated ? "11 Mart gece" : "çıkış")}${hop("plane", "~16 sa")}
+    <div class="island"><div class="island-h">${I("pin")}Bali · 14 gece</div><div class="island-row">${stop(STAYS[0])}${hop("car", "1 sa")}${stop(STAYS[1])}${hop("car", "50 dk")}${stop(STAYS[2])}</div></div>
+    ${hop("plane", "~17 sa")}${fl("flight:back", s.dated ? "27 Mart" : "dönüş")}</div>`;
+}
+
+function secHead(icon, color, name, ms) {
+  const t = tally(ms);
+  return `<header class="sec-h"><span style="color:${color}">${I(icon)}</span><h4>${name}</h4><span class="sp"></span><span class="sum num">${[t.rez && `${t.rez} rezerve`, t.plan && `${t.plan} seçildi`, t.rest && `${t.rest} aranıyor`].filter(Boolean).join(" · ")}</span>
+    <span class="mini"><i style="width:${t.rez / t.n * 100}%;background:var(--book-ink)"></i><i style="width:${t.plan / t.n * 100}%;background:var(--planbar)"></i></span></header>`;
+}
+const propBtns = key => `<span class="pa"><button class="btn dark sm" data-accept="${key}">${I("into")}Yerleştir</button><button class="xbtn" data-reject="${key}" aria-label="Öneriyi at">${I("x")}</button></span>`;
+const panoLine = (s, filter, label) => { const n = s.pano.filter(id => { const p = PANO.find(x => x.id === id); return p && filter(p) && !inPlan(s, id); }).length;
+  return n ? `<button class="pcount" data-side="pano">${I("board")}Pano'da ${n} ${label}</button>` : ""; };
+
+/* Konaklama kutucuğu */
+function staySlot(s, st) {
+  const key = "stay:" + st.k, sl = s.slots[key], m = sl.m, h = sl.ref && H[sl.ref];
+  const top = `<div class="top">${sd(m)}<span class="ty"><span style="color:var(--c-stay);display:inline-flex">${I("bed")}</span>Konaklama</span>${s.dated ? `<span class="num">· ${st.d}</span>` : ""}<span class="sp"></span><span class="lab">${m === "oneri" ? "" : LAB[m]}</span></div>`;
+  if (m === "bos" || m === "oneri") return `<article class="slot m-${m}" data-slot="${key}" data-cat="stay" data-city="${st.city}">${top}
+    <div class="body"><img class="art" src="illus/${st.img}.png" alt=""><div><h5>${st.city}</h5><div class="nights num"><span class="moons">${"<i></i>".repeat(st.n)}</span>${st.n} gece · 2 kişi</div><p class="area">${I("pin")}${st.area[0]} <span>· ${st.area[1]}</span></p></div></div>
+    <ul class="wants">${st.w.map(([ic, t]) => `<li>${I(ic)}${t}</li>`).join("")}</ul><p class="why">${I("spark")}${st.why}</p>
+    ${m === "oneri" ? `<div class="prop"><span class="ph" style="background:${h.g}">${AV.AI}</span><span class="pn">${h.name}</span><span class="ps num">${bm(h.site)}${h.rate} · ${eur(h.n)} / gece · ${h.mk.filter(x => x.startsWith("✓")).length}/3 şart</span>${propBtns(key)}</div>` : ""}
+    <div class="drophint">${I("into")}Buraya bırak: ${st.city}'da ${st.n} gece</div>
+    <div class="self"><span class="k">Kendin ara</span>${blink("booking", s.dated ? ` · ${st.d}` : "")}${blink("airbnb")}${panoLine(s, p => p.cat === "stay" && p.city === st.city, `${st.city} kaydı`)}</div></article>`;
+  const decide = m === "plan"
+    ? `<dl class="facts2 num"><div><dt>Toplam</dt><dd>${eur(h.n * st.n)} <small>${st.n} gece</small></dd></div><div><dt>Ücretsiz iptal</dt><dd>${h.cancel}</dd></div><div><dt>Puan</dt><dd>${BR[h.site][1]} ${h.rate}</dd></div><div><dt>Şartların</dt><dd>${h.mk.filter(x => x.startsWith("✓")).length} / 3 tutuyor</dd></div></dl>
+      <div class="acts"><a class="btn dark" href="#" onclick="return false">${bm(h.site)}${BR[h.site][1]}'da rezerve et ↗</a><button class="btn ghost">Rezerve ettim</button><button class="back" data-return="${key}">${I("undo")}Pano'ya geri</button></div>`
+    : `<dl class="facts2 num"><div><dt>Giriş</dt><dd>${st.ci}</dd></div><div><dt>Çıkış</dt><dd>${st.co}</dd></div><div><dt>Adres</dt><dd>${h.addr || "—"}</dd></div><div><dt>Ödeme</dt><dd>${h.pay || "Ödendi"}</dd></div></dl>
+      <div class="acts"><span class="doc">${I("file")}onay-${st.k}.pdf</span><a class="blink" href="#" onclick="return false">${I("nav")}Yol tarifi</a><span class="back" style="cursor:default">Onay no. 4821-77</span></div>`;
+  return `<article class="slot m-${m}" data-slot="${key}" data-cat="stay" data-city="${st.city}">${top}
+    <div class="decided"><span class="ph" style="background:${h.g}"></span><div><div class="city">${st.city} · ${st.n} gece</div><div class="hn">${h.name}</div><div class="nights"><span class="moons">${"<i></i>".repeat(st.n)}</span>${bm(h.site)}${BR[h.site][1]} ${h.rate}</div></div></div>
+    ${decide}<div class="drophint">${I("into")}Bununla değiştir</div>${m === "rez" ? `<span class="stamp">${I("check")}</span>` : ""}</article>`;
+}
+
+/* Uçuş: biniş kartı */
+function ticket(s, leg) {
+  const key = "flight:" + leg, sl = s.slots[key], m = sl.m, out = leg === "out", f = sl.ref && F[sl.ref];
+  const from = out ? ["İstanbul", "IST"] : ["Bali", "DPS · Denpasar"], to = out ? ["Bali", "DPS · Denpasar"] : ["İstanbul", "IST"];
+  const day = s.dated ? (out ? "11 Mart gece" : "27 Mart") : (out ? "gidiş" : "dönüş");
+  const tm = f && (out ? f.t : f.tb);
+  const decided = m === "plan" || m === "rez";
+  let stub = `<div><div class="stub-k">Aradığımız</div><div class="stub-v">En çok 1 aktarma</div><div class="stub-k">Business'a da bak · 2 kişi</div></div>${panoLine(s, p => p.cat === "flight", "uçuş kaydı")}`;
+  if (m === "plan") stub = `<div><div class="stub-k">${BR[f.air][1]} · ${f.code}</div><div class="price num">${eur(f.n)}<small> · 2 kişi</small></div><div class="stub-k">${f.bag} · ${f.ref}</div></div><div class="acts"><a class="btn dark sm" href="#" onclick="return false">Bileti al ↗</a><button class="back" data-return="${key}">${I("undo")}</button></div>`;
+  if (m === "rez") stub = `<div><div class="stub-k">${BR[f.air][1]} · ${f.code}</div><div class="stub-v num">PNR 7KQ2LM</div><div class="stub-k">Koltuk 23A · 23B</div><div class="stub-k">Check-in ${out ? "10 Mart" : "26 Mart"}'ta açılır</div></div><span class="doc">${I("file")}e-bilet.pdf</span>`;
+  return `<div class="tkw"><article class="slot tk m-${m}" data-slot="${key}" data-cat="flight">
+    <div class="tk-main"><div class="top">${sd(m)}<span class="ty"><span style="color:var(--c-fly);display:inline-flex">${I("plane")}</span>Uçuş</span><span>· ${out ? "Gidiş" : "Dönüş"} · ${day}</span><span class="sp"></span><span class="lab">${m === "oneri" ? "" : LAB[m]}</span></div>
+      <div class="route"><div class="c"><b>${from[0]}</b>${decided ? `<span class="tm num">${tm[0]}</span> ` : ""}<small>${from[1]}</small></div>${SIL("plane", "sil")}<div class="c r"><b>${to[0]}</b>${decided ? `<span class="tm num">${tm[1]}</span> ` : ""}<small>${to[1]}</small></div></div>
+      <div class="tk-sub">${decided ? f.d : "~16 sa · tek aktarma"}</div>
+      ${m === "oneri" ? `<div class="prop"><span class="ph">${bm(f.air)}</span><span class="pn num">${BR[f.air][1]} · ${f.t[0]} → ${f.t[1]} ${AV.AI}</span><span class="ps num">${f.d} · <b style="color:var(--ink)">${eur(f.n)}</b> 2 kişi</span>${propBtns(key)}</div>` : ""}
+      <div class="drophint">${I("into")}Buraya bırak: ${out ? "gidiş" : "dönüş"} uçuşu</div>
+      ${decided ? "" : `<div class="self"><span class="k">Kendin ara</span>${blink("google")}${blink("sky")}${blink("kayak")}</div>`}</div>
+    <div class="tk-stub">${stub}</div></article></div>`;
+}
+
+/* Ulaşım */
+function moves(s) {
+  return `<section class="sec" data-sec="move">${secHead("car", "var(--c-move)", "Ulaşım", MOVES.map((_, i) => s.slots["move:" + i].m))}
+    <div class="trows">${MOVES.map(([a, b, sub, d], i) => { const key = "move:" + i, sl = s.slots[key], m = sl.m;
+      return `<article class="slot trow m-${m}" data-slot="${key}" data-cat="move">${SIL("car", "tsil")}
+        <div><b>${a} → ${b}</b><div class="ts num">${m === "plan" ? `${bm("klook")}Klook · özel transfer · €38 · ${d} 22:30 karşılama` : `${sub}${s.dated ? ` · ${d}` : ""}`}</div></div>
+        <span class="tr">${sd(m)}${m === "plan" ? `<a class="btn dark sm" href="#" onclick="return false">Rezerve et ↗</a><button class="back" data-return="${key}">${I("undo")}</button>` : blink("klook")}</span>
+        ${m === "oneri" ? `<div class="prop"><span class="ph">${AV.AI}</span><span class="pn">${bm("klook")}Klook özel transfer · €38</span>${propBtns(key)}</div>` : ""}
+        ${sl.ask ? `<div class="ask">${I("msg")}Sohbette soruldu: villa mı alacak, transfer mi?</div>` : ""}
+        <div class="drophint" style="grid-column:1/-1">${I("into")}Buraya bırak</div></article>`; }).join("")}</div></section>`;
+}
+
+/* Deneyimler ve yemek */
+function ideas(s) {
+  const tile = k => { const x = IDEAS[k]; const who = PANO.find(p => p.id === k)?.who || "AI";
+    return `<div class="tile" data-idea="${k}"><span class="pic"><img src="illus/${x.img}.png" alt=""></span><span class="who">${AV[who]}</span>
+      <button class="x" data-drop-idea="${k}" aria-label="${x.t} fikrini at">${I("x")}</button>
+      <span class="t">${x.t}</span><span class="m num">${I("pin")}${x.city} · ${x.idea ? "AI fikri" : `${bm(x.src)}${x.p}`}</span>
+      <button class="btn ghost sm add" data-add-idea="${k}">${I("plus")}Plana ekle</button></div>`; };
+  const prow = ([k, m]) => { const x = IDEAS[k];
+    const r = m === "rez" ? `<span class="doc">${I("check")}Bilet alındı · 25 Mart 17:30</span>` : x.ticket ? `<a class="btn dark sm" href="#" onclick="return false">Bilet al ↗</a><button class="back" data-unplan="${k}">${I("undo")}</button>` : `<span style="font-size:12.5px;color:var(--plan-ink);font-weight:600">25 Mart akşamı</span><button class="back" data-unplan="${k}">${I("undo")}</button>`;
+    return `<div class="prow slot m-${m}" style="padding:8px 10px 8px 8px"><img src="illus/${x.img}.png" alt=""><span class="t">${x.t}</span><span class="m num">${sd(m)}${x.city}${x.src ? ` · ${bm(x.src)}${x.p}` : " · AI fikri"}</span><span class="r">${r}</span></div>`; };
+  return `<section class="sec" data-sec="exp" data-slot="ideas" data-cat="exp">
+    <header class="sec-h"><span style="color:var(--c-exp)">${I("ticket")}</span><h4>Deneyimler ve yemek</h4><span class="sp"></span><span class="sum num">${s.planned.length ? `${s.planned.length} planda · ` : ""}${s.shelf.length} fikir</span></header>
+    ${s.planned.length ? `<div class="planned">${s.planned.map(prow).join("")}</div>` : ""}
+    <div class="ideas-h"><b>Fikirler</b><span>· × ile at, “Plana ekle” ile al</span><span class="sp"></span>${blink("viator")}${blink("trip")}<button>${I("spark")}Yeni fikir iste</button></div>
+    <div class="shelf">${s.shelf.map(tile).join("")}</div>
+    <div class="drophint">${I("into")}Buraya bırak: plana eklenir</div></section>`;
+}
+
+function other(s) {
+  return `<section class="sec">${secHead("shield", "var(--c-ins)", "Sigorta ve internet", [s.slots.ins.m])}
+    <div class="grid2"><article class="slot trow m-bos">${I("shield")}<div><b>Seyahat sağlık sigortası</b><div class="ts num">Endonezya · 2 kişi${s.dated ? " · 12–27 Mart" : ""} · dalış ve scooter kapsamı</div></div><span class="tr">${sd("bos")}<a class="blink" href="#" onclick="return false">Karşılaştır${I("ext")}</a></span></article>
+      <article class="slot trow m-${s === ST.E ? "rez" : "bos"}"><img src="illus/esim.png" alt="" style="width:40px;height:40px;object-fit:contain"><div><b>Endonezya eSIM · 10 GB</b><div class="ts num">${AV.AI}${bm("airalo")}Airalo · 15 gün · €17</div></div><span class="tr">${s === ST.E ? `<span class="doc">${I("check")}Alındı</span>` : `<button class="btn ghost sm">${I("plus")}Plana ekle</button>`}</span></article></div></section>`;
+}
+
+function planView(s) {
+  return `${hero(s)}
+  <div class="planbar"><strong>Plan</strong><span class="sortsw"><span class="on">Kategoriye göre</span><span>Yolculuk sırasıyla</span></span>
+    <span class="key"><span><i class="sw bos"></i>Arıyoruz</span><span><i class="sw oneri"></i>İçinde öneri</span><span><i class="sw plan"></i>Seçildi</span><span><i class="sw rez"></i>Rezerve</span></span></div>
+  ${shape(s)}
+  <div class="plan">
+    <section class="sec">${secHead("plane", "var(--c-fly)", "Uçuş", [s.slots["flight:out"].m, s.slots["flight:back"].m])}<div class="grid2">${ticket(s, "out")}${ticket(s, "back")}</div></section>
+    <section class="sec">${secHead("bed", "var(--c-stay)", "Konaklama", STAYS.map(st => s.slots["stay:" + st.k].m))}<div class="grid3">${STAYS.map(st => staySlot(s, st)).join("")}</div></section>
+    ${moves(s)}${ideas(s)}${other(s)}</div>`;
+}
+
+/* Yan panel */
+function chatHtml(s) {
+  return `<div class="msgs">${s.chat.map(([who, txt, chips, links]) => `<div class="msg ${who === "E" ? "me" : "ai"}"><span class="who-l">${who === "E" ? `${AV.E}Emre` : `${AV.AI}Asistan`}</span>${txt}
+      ${links ? `<div class="links"><span class="head">${I("clip")}${links.length} link · eklentiden</span>${links.map(l => `<span class="lk">${I("link")}<span>${l}</span></span>`).join("")}</div>` : ""}
+      ${chips ? `<div class="chips">${chips.map(c => `<span class="chip">${c}</span>`).join("")}</div>` : ""}</div>`).join("")}</div>
+    <div class="input">${I("clip")}<span>Birlikte değerlendirelim…</span><span class="send">${I("up")}</span></div>`;
+}
+function panoPanel(s) {
+  const items = s.pano.map(id => PANO.find(p => p.id === id));
+  if (!items.length) return `<p class="pp-head">${I("board")}Pano boş. Eklentiyle kaydettiğin her link buraya düşer.</p>`;
+  const groups = ["stay", "flight", "move", "exp", "food", "insp"].map(c => [c, items.filter(p => p.cat === c)]).filter(([, l]) => l.length);
+  return `<p class="pp-head">${I("into")}Kutuya sürükle ya da oka bas. Seçtiklerin amber olur.</p>${groups.map(([c, list]) => `<div class="pp-group"><h6><span style="color:${CAT[c][2]}">${I(CAT[c][0])}</span>${CAT[c][1]}</h6>${list.map(p => panoItem(s, p)).join("")}</div>`).join("")}`;
+}
+function panoItem(s, p) {
+  const mm = pmeta(p), on = inPlan(s, p.id), drag = !on && p.cat !== "insp" && !p.stray;
+  const th = mm.g ? `background:${mm.g}` : `background:var(--tile) url(illus/${mm.img || (p.cat === "flight" ? "ucus" : "yapilacak")}.png) center/80% no-repeat`;
+  return `<div class="pi${on ? " inplan" : ""}${p.stray ? " stray" : ""}" ${drag ? `draggable="true"` : ""} data-pid="${p.id}">
+    ${I("grip", "i grip")}<span class="th" style="${th}">${AV[p.who]}</span><span class="t">${mm.title.split(" · ")[0]}</span>
+    <span class="m num">${bm(mm.src)}<span>${on ? "Planda" : p.stray || (mm.price ? `${eur(mm.price)} ${mm.unit}` : mm.meta)}</span></span>
+    ${on ? `<span class="go">${I("check")}</span>` : drag ? `<button class="go" data-place="${p.id}" aria-label="Plana yerleştir">${I("into")}</button>` : `<span class="go" style="background:none;color:var(--muted)">${I("ext")}</span>`}</div>`;
+}
+function side(s) {
+  return `<aside class="side"><div class="side-tabs"><button class="${s.side === "chat" ? "on" : ""}" data-side="chat">${I("spark")}Asistan</button><button class="${s.side === "pano" ? "on" : ""}" data-side="pano">${I("board")}Pano <span class="badge">${s.pano.length}</span></button></div>
+    <div class="side-body">${s.side === "chat" ? chatHtml(s) : panoPanel(s)}</div></aside>`;
+}
+function topbar(active, s) {
+  return `<div class="topbar"><span class="logo" style="color:var(--accent)">${I("compass")}<span style="color:var(--ink)">Trip Radar</span></span><span class="tripsel">Bali Gezisi ${I("chev")}</span>
+    <span class="topnav"><button class="${active === "plan" ? "on" : ""}" data-go="plan">Plan</button><button>Gün gün</button><button class="${active === "pano" ? "on" : ""}" data-go="pano">Pano${s.pano.length ? ` <span class="badge">${s.pano.length}</span>` : ""}</button></span>
+    <span class="avs"><span class="av e lg">E</span><span class="av s lg">S</span></span></div>`;
+}
+
+/* Pano sayfası */
+function panoPage(s) {
+  const items = s.pano.map(id => PANO.find(p => p.id === id));
+  const count = c => items.filter(p => p.cat === c).length;
+  const card = p => { const mm = pmeta(p), on = inPlan(s, p.id);
+    const img = mm.flight ? `<span class="img" style="background:var(--lav)"><svg viewBox="0 0 300 150" style="width:100%;height:100%" aria-hidden="true"><path d="M60 110 Q150 20 240 70" fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="5 6"/><circle cx="60" cy="110" r="4" fill="var(--accent)"/><text x="30" y="135" font-size="14" font-weight="700" fill="var(--ink)">İstanbul</text><text x="215" y="100" font-size="14" font-weight="700" fill="var(--ink)">Bali</text></svg><svg class="i" style="position:absolute;left:calc(80% - 20px);top:34%;width:30px;height:30px;color:var(--accent);transform:rotate(30deg)"><use href="#i-plane"/></svg>`
+      : mm.g ? `<span class="img" style="background:${mm.g}">${mm.play ? `<svg class="i" style="width:44px;height:44px;fill:#fff;stroke:none"><use href="#i-play"/></svg>` : ""}` : `<span class="img" style="background:var(--tile)"><img src="illus/${mm.img}.png" alt="">`;
+    const act = p.cat === "insp" ? `<button class="addp">${I("plus")}Fikirlere ekle</button>` : p.stray ? `<span class="note">${p.stray}</span>` : on ? `<button class="addp on" data-unplace="${p.id}">${I("check")}Planda</button>` : `<button class="addp" data-place="${p.id}">${I("plus")}Plana ekle</button>`;
+    return `<article class="pc${p.who === "AI" ? " ai" : ""}">${img}<button class="heart${p.fav ? " on" : ""}" aria-label="Favori">${I("heart")}</button><button class="more" aria-label="Diğer">${I("dots")}</button><span class="by">${AV[p.who]}${p.who === "AI" ? "AI önerisi" : NAME[p.who]}</span></span>
+      <div class="bd"><div class="row1"><span style="color:${CAT[p.cat][2]}">${I(CAT[p.cat][0])}<span style="color:var(--ink)">${CAT1[p.cat]}</span></span><span class="src">${bm(mm.src)}${BR[mm.src][1]}</span></div>
+        <h5>${mm.title}</h5><div class="meta num">${mm.meta}</div>
+        <div class="row3">${mm.price ? `<span class="pr num">${eur(mm.price)} <small>${mm.unit}</small></span>` : "<span></span>"}${act}</div></div>
+      <div class="ft num"><span>${I("up-t")}${p.up.length}<span class="avs">${p.up.map(w => AV[w]).join("")}</span></span><span>${I("down-t")}${p.down}</span><span>${I("msg")}${p.com}</span></div></article>`; };
+  return `<div class="shell">${topbar("pano", s)}<div class="pano">
+    <div class="pano-h"><h3>Pano</h3><span class="cnt num">${items.length} kayıt</span><span class="sp"></span><span class="search">${I("search")}Kayıtlarda ara</span><span class="pbtn">${I("heart")}Favoriler ${items.filter(p => p.fav).length}</span><span class="pbtn primary">${I("plus")}Link ekle</span></div>
+    <div class="cats"><button class="on">${I("grid")}Tümü <span>${items.length}</span></button>${Object.keys(CAT).map(c => `<button><span style="color:${CAT[c][2]}">${I(CAT[c][0])}</span>${CAT[c][1]} <span>${count(c)}</span></button>`).join("")}</div>
+    <div class="pfilter"><span>Tüm kayıtlar ${I("chev")}</span><span>Son eklenen ${I("chev")}</span></div>
+    <div class="pgrid">${items.map(card).join("")}</div></div></div>`;
+}
+
+function app(s) { return `<div class="shell">${topbar("plan", s)}<div class="cols">${side(s)}<div class="main">${planView(s)}</div></div></div>`; }
+
+/* Aşamalar */
+function ladder() {
+  const mk = m => { const s = base(); s.slots["stay:ubud"] = m === "bos" ? { m } : { m, ref: m === "oneri" ? "alas" : "sawah" }; s.slots["flight:out"] = m === "bos" ? { m } : { m, ref: "qr" }; return s; };
+  const COLS = [["bos", "Arıyoruz", ["AI'nın anladığı: semt, şartlar, neden", "Kendin ara düğmeleri önde", "Çizim, kesikli çerçeve"], "AI bir öneri koyar ya da Pano'dan sürüklersin"],
+    ["oneri", "İçinde öneri", ["Tek öneri, kutunun içinde", "Karar bilgisi: fiyat, puan, kaç şart tutuyor", "Yerleştir ya da ×"], "Yerleştir"],
+    ["plan", "Seçildi", ["Çizim gerçek fotoğrafa döner, amber", "Karar bilgisi: toplam, ücretsiz iptal, şartlar", "Rezerve et ↗ · Pano'ya geri"], "Sitede rezerve et, “Rezerve ettim”"],
+    ["rez", "Rezerve", ["Yeşil, mühürlü", "Yol bilgisi: giriş-çıkış saati, adres, onay", "Uçuşta PNR, koltuk, check-in günü"], ""]];
+  return `<div class="shell"><div class="ladder">
+    <h3>Konaklama: kutucuk dolarken</h3><p>Niyet kartı bir kutucuk. Öneri ya da Pano'dan gelen kayıt içine yerleşir; kutu dolunca kart oturur ve gösterdiği bilgi değişir: önce karar vermek için, rezerveden sonra yolda lazım olan.</p>
+    <div class="lrow">${COLS.map(([m, h, info, trig]) => `<div class="lcol"><span class="lcap">${sd(m)}${h}</span>${staySlot(mk(m), STAYS[0])}<ul class="info">${info.map(x => `<li>${x}</li>`).join("")}</ul>${trig ? `<span class="trig">${I("right")}${trig}</span>` : ""}</div>`).join("")}</div>
+    <h3>Uçuş: aynı dil biniş kartında</h3>
+    <div class="lrow" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr))">${COLS.map(([m, h]) => `<div class="lcol"><span class="lcap">${sd(m)}${h}</span>${ticket(mk(m), "out")}</div>`).join("")}</div>
+  </div></div>`;
+}
+
+/* Yönetim */
+const ORDER = ["A", "B", "C", "D", "E", "P", "L"];
+const DESC = { P: "<b>Pano</b> (onaylı görsel). Kaydettiğin ve AI'nın önerdiği her şey burada; kim ekledi, kim beğendi görünür. “Plana ekle” kaydı doğru kutuya yerleştirir; D sekmesindeki Plan'la aynı durumu paylaşır.",
+  L: "<b>Aşamalar.</b> Kutucuğun dört hâli: aşama çerçeve, görsel ve renkle okunur; her aşama o an gereken bilgiyi gösterir." };
+let cur = "A", still = false;
+function stateFor(k) { if (k === "D" || k === "P") return LIVE; if (!ST[k]) ST[k] = SC[k].make(); return ST[k]; }
+function tabs() { document.getElementById("tabs").innerHTML = ORDER.map(k => (k === "P" ? `<span class="sep"></span>` : "") + `<button role="tab" aria-selected="${k === cur}" data-k="${k}">${k === "P" ? `${I("board")}Pano` : k === "L" ? "Aşamalar" : `<b>${k}</b>${SC[k].tab}`}</button>`).join(""); }
+function show(k, keep) {
+  if (!keep) { cur = k; tabs(); }
+  document.getElementById("desc").innerHTML = DESC[k] || SC[k].desc;
+  const s = k === "L" ? null : stateFor(k), y = scrollY;
+  document.getElementById("view").innerHTML = k === "L" ? ladder() : k === "P" ? panoPage(s) : app(s);
+  if (keep) scrollTo(0, y);
+  try { localStorage.setItem("tr-sc3", k); } catch (e) {}
+}
+const rerender = () => show(cur, true);
+let toastT; function toast(msg, undo) { const t = document.getElementById("toast"); t.innerHTML = `<span>${msg}</span>${undo ? `<button id="tundo">Geri al</button>` : ""}`; t.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("on"), 3600); if (undo) document.getElementById("tundo").onclick = () => { undo(); t.classList.remove("on"); }; }
+function flash(sel) { requestAnimationFrame(() => { const el = document.querySelector(sel); if (el && !still) { el.classList.add("fresh"); el.scrollIntoView({ block: "nearest", behavior: "smooth" }); } }); }
+
+/* Yerleştirme: Pano kaydını doğru kutuya koy */
+function targetFor(s, p) {
+  if (p.cat === "stay") { const st = stayOf(p.city); return st ? "stay:" + st.k : null; }
+  if (p.cat === "flight") return ["flight:out", "flight:back"].find(k => !["plan", "rez"].includes(s.slots[k].m)) || "flight:out";
+  if (p.cat === "move") return "move:0";
+  if (p.cat === "exp" || p.cat === "food") return "ideas";
+  return null;
+}
+function place(s, pid, slotKey) {
+  const p = PANO.find(x => x.id === pid); slotKey = slotKey || targetFor(s, p);
+  if (!slotKey) { toast(p.stray ? `${p.stray}; sohbette rotaya eklemeyi sor.` : "Bu kayıt bir kutuya gitmiyor; fikirlerde duruyor."); return; }
+  if (slotKey === "ideas") { if (!s.planned.some(([k]) => k === pid)) s.planned.push([pid, "plan"]); s.shelf = s.shelf.filter(k => k !== pid); rerender(); flash(`[data-slot="ideas"] .prow:last-child`); toast(`${IDEAS[pid].t} plana eklendi.`); return; }
+  const prev = { ...s.slots[slotKey] };
+  s.slots[slotKey] = { m: "plan", ref: pid }; rerender(); flash(`[data-slot="${slotKey}"]`);
+  const label = p.cat === "stay" ? `${stayOf(p.city).city}'da ${stayOf(p.city).n} gece` : p.cat === "flight" ? (slotKey.endsWith("out") ? "gidiş uçuşu" : "dönüş uçuşu") : "havalimanı transferi";
+  toast(`${pmeta(p).title.split(" · ")[0]} → ${label} kutusuna yerleşti.`, () => { s.slots[slotKey] = prev; rerender(); });
+}
+
+/* Olaylar */
+document.getElementById("tabs").addEventListener("click", e => { const b = e.target.closest("button"); if (b) show(b.dataset.k); });
+document.getElementById("motion").addEventListener("click", e => { still = !still; document.body.classList.toggle("still", still); const b = e.currentTarget; b.setAttribute("aria-pressed", String(still)); b.innerHTML = still ? `${I("play")}<span>Hareketi oynat</span>` : `${I("pause")}<span>Hareketi duraklat</span>`; });
+document.addEventListener("click", e => {
+  if (!document.getElementById("view").contains(e.target)) return;
+  const s = stateFor(cur), q = sel => e.target.closest(sel);
+  let b;
+  if ((b = q("[data-side]"))) { s.side = b.dataset.side; rerender(); return; }
+  if ((b = q("[data-go]"))) { if (s === LIVE) show(b.dataset.go === "pano" ? "P" : "D"); else if (b.dataset.go === "pano") { cur = "P"; tabs(); show("P"); } return; }
+  if ((b = q("[data-place]"))) { place(s, b.dataset.place); return; }
+  if ((b = q("[data-unplace]"))) { const id = b.dataset.unplace; Object.entries(s.slots).forEach(([k, v]) => { if (v.ref === id && v.m === "plan") s.slots[k] = { m: "bos" }; }); s.planned = s.planned.filter(([k]) => k !== id); rerender(); toast("Plan'dan çıktı, Pano'da duruyor."); return; }
+  if ((b = q("[data-accept]"))) { const k = b.dataset.accept; s.slots[k] = { m: "plan", ref: s.slots[k].ref }; rerender(); flash(`[data-slot="${k}"]`); toast("Öneri kutuya yerleşti."); return; }
+  if ((b = q("[data-reject]"))) { const k = b.dataset.reject, prev = { ...s.slots[k] }; s.slots[k] = { m: "bos" }; rerender(); toast("Öneri atıldı. Sohbette “başka öner” diyebilirsin.", () => { s.slots[k] = prev; rerender(); }); return; }
+  if ((b = q("[data-return]"))) { const k = b.dataset.return, prev = { ...s.slots[k] }; s.slots[k] = { m: "bos" }; rerender(); toast("Pano'ya geri döndü.", () => { s.slots[k] = prev; rerender(); }); return; }
+  if ((b = q("[data-drop-idea]"))) { const k = b.dataset.dropIdea; s.shelf = s.shelf.filter(x => x !== k); rerender(); toast(`${IDEAS[k].t} atıldı.`, () => { s.shelf.push(k); rerender(); }); return; }
+  if ((b = q("[data-add-idea]"))) { const k = b.dataset.addIdea; s.planned.push([k, "plan"]); s.shelf = s.shelf.filter(x => x !== k); rerender(); flash(`[data-slot="ideas"] .prow:last-child`); toast(`${IDEAS[k].t} plana eklendi.`); return; }
+  if ((b = q("[data-unplan]"))) { const k = b.dataset.unplan; s.planned = s.planned.filter(([x]) => x !== k); s.shelf.unshift(k); rerender(); toast("Fikirlere geri döndü."); return; }
+});
+
+/* Sürükle bırak */
+let dragId = null;
+const fits = (slot, p) => { const cat = slot.dataset.cat; if (cat === "exp") return p.cat === "exp" || p.cat === "food"; if (cat !== p.cat) return false; if (cat === "stay") return slot.dataset.city === p.city; return true; };
+document.addEventListener("dragstart", e => { const it = e.target.closest?.(".pi[draggable]"); if (!it) return; dragId = it.dataset.pid; it.classList.add("dragging"); e.dataTransfer.effectAllowed = "move"; try { e.dataTransfer.setData("text/plain", dragId); } catch (x) {}
+  const p = PANO.find(x => x.id === dragId); document.querySelectorAll("[data-slot]").forEach(sl => { if (fits(sl, p) && !sl.classList.contains("m-rez")) sl.classList.add("can-drop"); }); });
+document.addEventListener("dragend", () => { dragId = null; document.querySelectorAll(".can-drop,.over,.dragging").forEach(el => el.classList.remove("can-drop", "over", "dragging")); });
+document.addEventListener("dragover", e => { const sl = e.target.closest?.(".can-drop"); if (!sl) return; e.preventDefault(); e.dataTransfer.dropEffect = "move"; document.querySelectorAll(".over").forEach(x => x !== sl && x.classList.remove("over")); sl.classList.add("over"); });
+document.addEventListener("dragleave", e => { const sl = e.target.closest?.(".can-drop"); if (sl && !sl.contains(e.relatedTarget)) sl.classList.remove("over"); });
+document.addEventListener("drop", e => { const sl = e.target.closest?.(".can-drop"); if (!sl || !dragId) return; e.preventDefault(); const id = dragId; dragId = null; place(stateFor(cur), id, sl.dataset.slot); });
+
+let start = "A"; try { const s = localStorage.getItem("tr-sc3"); if (ORDER.includes(s)) start = s; } catch (e) {}
+cur = start; tabs(); show(start);
+</script>

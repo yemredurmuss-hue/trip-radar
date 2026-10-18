@@ -1,0 +1,501 @@
+<title>Trip Radar Plan v72</title>
+<style>
+/* Düzen: dar uygulama sütunu (~880px). Her ihtiyaç tek bir kompakt satır-kart: solda niyet, ortada seçili, sağda eylem; altta açılır seçenekler. */
+:root{
+  --bg:#f6f5f2; --surface:#ffffff; --sunk:#f3f2f7; --ink:#1c1a33; --muted:#686483; --line:#e6e3ee; --line2:#efedf3;
+  --accent:#5b45e0; --accent-ink:#4a36c9; --accent-soft:#eeebff;
+  --ok:#1f7a45; --ok-bg:#e3f3e9; --ok-line:#9fd2b2; --chosen-bg:#f3faf6; --chosen-line:#b7dfc6;
+  --warn:#9a5b00; --warn-bg:#fff2dc; --bad:#b3261e; --bad-bg:#fde8e6;
+  --c-fly:#6a4fe0; --c-stay:#14907f; --c-move:#b5761c; --c-exp:#c0256b; --c-todo:#5f7d1c; --c-doc:#2f6fd0;
+  --b-booking:#003b95; --b-airbnb:#d6325f; --b-sky:#0770e3; --b-gf:#1a73e8; --b-viator:#0b7a6f; --b-klook:#ff5b00; --b-airalo:#1b1b1b; --b-maps:#34a853;
+  --shadow:0 1px 2px rgba(28,26,51,.05),0 10px 28px -18px rgba(28,26,51,.35);
+  --r:16px; --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#121119; --surface:#1b1a25; --sunk:#232131; --ink:#eeecfb; --muted:#a9a5c6; --line:#302e42; --line2:#2a2839;
+  --accent:#9a8bff; --accent-ink:#b5aaff; --accent-soft:#2a2550;
+  --ok:#74e0a4; --ok-bg:#173a27; --ok-line:#2e7a50; --chosen-bg:#152219; --chosen-line:#2f5c40;
+  --warn:#ffc874; --warn-bg:#3a2a10; --bad:#ff8a80; --bad-bg:#3d1b18;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 12px 30px -18px rgba(0,0,0,.9); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121119; --surface:#1b1a25; --sunk:#232131; --ink:#eeecfb; --muted:#a9a5c6; --line:#302e42; --line2:#2a2839;
+  --accent:#9a8bff; --accent-ink:#b5aaff; --accent-soft:#2a2550;
+  --ok:#74e0a4; --ok-bg:#173a27; --ok-line:#2e7a50; --chosen-bg:#152219; --chosen-line:#2f5c40;
+  --warn:#ffc874; --warn-bg:#3a2a10; --bad:#ff8a80; --bad-bg:#3d1b18;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 12px 30px -18px rgba(0,0,0,.9); color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 var(--font)}
+.page{max-width:920px;margin:0 auto;padding-block:28px 80px;padding-inline:16px;display:grid;gap:28px}
+h1,h2,h3{margin:0;text-wrap:balance}
+button{font:inherit;cursor:pointer}
+a{color:var(--accent)}
+:focus-visible{outline:3px solid color-mix(in srgb,var(--accent) 45%,transparent);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+
+/* --- analiz --- */
+.intro h1{font-size:28px;letter-spacing:-.02em}
+.intro p{margin:6px 0 0;color:var(--muted);max-width:68ch}
+.fix{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.fix div{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:grid;gap:4px}
+.fix b{font-size:14px}.fix s{color:var(--muted);text-decoration-color:var(--bad);font-size:13px}.fix span{font-size:13.5px}
+@media(max-width:640px){.fix{grid-template-columns:1fr}}
+
+/* --- üst özet --- */
+.top{background:var(--surface);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);padding:16px 18px;display:grid;gap:12px}
+.top-r{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.top h2{font-size:20px;letter-spacing:-.01em}
+.top .sub{color:var(--muted);font-size:13.5px}
+.views{margin-left:auto;display:inline-flex;background:var(--sunk);border-radius:12px;padding:3px}
+.views button{border:0;background:none;color:var(--muted);font-size:13.5px;font-weight:600;padding:6px 12px;border-radius:9px}
+.views button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.prog{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.bar{flex:1 1 260px;height:8px;border-radius:99px;background:var(--line2);display:flex;overflow:hidden}
+.bar i{display:block;height:100%}.bar .b1{background:var(--ok)}.bar .b2{background:color-mix(in srgb,var(--ok) 45%,transparent)}
+.prog small{color:var(--muted);font-size:13px}
+.next{display:inline-flex;align-items:center;gap:8px;border:0;border-radius:99px;background:var(--accent);color:#fff;font-weight:650;font-size:14px;padding:9px 16px}
+[data-theme="dark"] .next{color:#16132e}
+
+/* --- bölüm --- */
+.sec{display:grid;gap:10px}
+.sec-h{display:flex;align-items:center;gap:10px;padding:0 4px}
+.sec-ic{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;color:var(--k);background:color-mix(in srgb,var(--k) 14%,transparent)}
+.sec-h h3{font-size:17px}
+.sec-h .cnt{color:var(--muted);font-size:13px}
+.sec-h .bud{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+.sec-h .bud b{color:var(--ink);font-size:14px}
+.mini{width:72px;height:5px;border-radius:99px;background:var(--line2);overflow:hidden;display:flex}.mini i{height:100%;background:var(--ok)}
+.add{justify-self:start;border:0;background:none;color:var(--muted);font-size:13.5px;padding:4px 6px}
+
+/* --- ihtiyaç kartı: niyet | seçili | eylem --- */
+.need{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
+.need.chosen{border-color:var(--chosen-line)}
+.need.booked{border-color:var(--ok-line)}
+.row{display:grid;grid-template-columns:196px minmax(0,1fr) auto;align-items:stretch;min-height:96px}
+.int{position:relative;padding:12px 14px 12px 16px;display:grid;align-content:center;gap:3px;background:color-mix(in srgb,var(--k) 7%,var(--surface));border-right:1px solid var(--line2)}
+.int::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--k)}
+.int .kind{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:650;color:var(--k)}
+.int b{font-size:17px;line-height:1.2;letter-spacing:-.01em;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.int small{font-size:12.5px;color:var(--muted)}
+.int .est{font-size:12.5px;color:var(--ink)}
+.sel{padding:12px 16px;display:grid;align-content:center;gap:4px;min-width:0}
+.sel .src{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);flex-wrap:wrap}
+.brand{display:inline-flex;align-items:center;height:19px;padding:0 7px;border-radius:5px;color:#fff;background:var(--bc);font-size:11.5px;font-weight:700}
+.score{display:inline-flex;align-items:center;height:19px;padding:0 6px;border-radius:5px;background:var(--b-booking);color:#fff;font-size:11.5px;font-weight:700}
+.sel h4{margin:0;font-size:17px;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sel .facts{font-size:13px;color:var(--muted);display:flex;flex-wrap:wrap;gap:2px 10px}
+.ok{color:var(--ok);font-weight:600}.no{color:var(--bad);font-weight:600}
+.flt{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center}
+.flt .t{font-size:19px;font-weight:700;letter-spacing:-.01em}.flt .t small{font-size:12px;font-weight:600;color:var(--muted);vertical-align:super}
+.flt .c{font-size:12px;color:var(--muted)}
+.line{position:relative;height:18px;display:grid;place-items:center}
+.line::before{content:"";position:absolute;left:0;right:0;top:50%;border-top:1.5px dashed color-mix(in srgb,var(--k) 55%,var(--line))}
+.line span{position:relative;background:var(--surface);padding:0 6px;font-size:11.5px;color:var(--muted);white-space:nowrap}
+.need.chosen .line span{background:var(--surface)}
+.thumb{width:72px;height:56px;border-radius:10px;object-fit:cover;background:var(--sunk)}
+.stay-sel{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center}
+.act{padding:12px 16px;display:grid;align-content:center;justify-items:end;gap:8px;min-width:170px;border-left:1px solid var(--line2)}
+.price{text-align:right;line-height:1.15}
+.price b{font-size:22px;letter-spacing:-.02em}.price small{font-size:12.5px;color:var(--muted)}
+.price .sub{display:block;font-size:12px;color:var(--muted)}
+.btns{display:flex;gap:6px;align-items:center}
+.cta{border:0;border-radius:99px;background:var(--accent);color:#fff;font-weight:650;font-size:13.5px;padding:8px 14px;white-space:nowrap}
+[data-theme="dark"] .cta,:root:not([data-theme="light"]) .cta{color:#fff}
+.ghost{border:1.5px solid var(--accent);background:var(--surface);color:var(--accent);border-radius:99px;font-weight:650;font-size:13px;padding:6px 12px;white-space:nowrap}
+.linkish{border:0;background:none;color:var(--accent);font-size:13px;font-weight:600;text-decoration:underline;text-underline-offset:3px;padding:0}
+.stamp{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:700;border-radius:99px;padding:3px 10px}
+.stamp.bk{background:var(--ok-bg);color:var(--ok)}
+.stamp.ch{background:var(--chosen-bg);color:var(--ok);border:1px solid var(--chosen-line)}
+.stamp.ai{background:var(--accent-soft);color:var(--accent)}
+.stamp.ar{background:var(--sunk);color:var(--muted)}
+.more{position:absolute;right:8px;top:6px;border:0;background:none;color:var(--muted);width:30px;height:30px;border-radius:8px}
+.more:hover{background:var(--sunk)}
+.act{position:relative;padding-top:30px}
+.who{width:20px;height:20px;border-radius:50%;display:inline-grid;place-items:center;font-size:10.5px;font-weight:800;color:#fff;background:var(--c-stay)}
+
+/* açılır seçenekler */
+.opts>summary{list-style:none;display:flex;align-items:center;gap:8px;padding:9px 16px;border-top:1px solid var(--line2);cursor:pointer;font-size:13.5px;font-weight:600;color:var(--ink);background:color-mix(in srgb,var(--sunk) 60%,var(--surface))}
+.opts>summary::-webkit-details-marker{display:none}
+.opts>summary .chev{margin-left:auto;transition:transform .2s;color:var(--muted)}
+.opts[open]>summary .chev{transform:rotate(180deg)}
+.opts>summary small{color:var(--muted);font-weight:500}
+.opts-b{padding:12px 16px 16px;display:grid;gap:10px;border-top:1px solid var(--line2)}
+@media (prefers-reduced-motion:no-preference){.opts[open] .opts-b{animation:drop .22s ease-out}}
+@keyframes drop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.opts-f{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:13px;color:var(--muted)}
+
+/* uçuş seçenekleri: Skyscanner gibi satırlar */
+.fopt{display:grid;grid-template-columns:34px minmax(0,1.2fr) minmax(0,1fr) auto;gap:14px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.fopt.best{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+.al{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;color:#fff;font-size:12px;font-weight:800;background:var(--alc)}
+.fo-times{display:grid;grid-template-columns:auto minmax(40px,1fr) auto;gap:8px;align-items:center}
+.fo-times b{font-size:16px}.fo-times small{display:block;font-size:11.5px;color:var(--muted);font-weight:500}
+.fo-mid{font-size:12px;color:var(--muted);text-align:center;border-top:1.5px solid var(--line);padding-top:3px}
+.fo-meta{font-size:12.5px;color:var(--muted)}
+.fo-meta .tag{display:inline-block;margin-right:6px;font-size:11.5px;font-weight:700;color:var(--accent);background:var(--accent-soft);border-radius:99px;padding:1px 8px}
+.fo-p{display:flex;align-items:center;gap:10px}
+.fo-p b{font-size:18px;letter-spacing:-.01em}.fo-p small{display:block;font-size:11.5px;color:var(--muted);font-weight:500;text-align:right}
+
+/* otel seçenekleri: fotoğraf önde */
+.hgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.hopt{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface);display:grid;grid-template-rows:auto 1fr}
+.hopt .ph{position:relative;aspect-ratio:4/3;background:var(--sunk)}
+.hopt .ph img{width:100%;height:100%;object-fit:cover;display:block}
+.hopt .ph .brand{position:absolute;left:8px;top:8px}
+.hopt .ph .pc{position:absolute;right:8px;bottom:8px;background:rgba(17,16,28,.72);color:#fff;font-size:11px;border-radius:99px;padding:2px 8px}
+.hopt .ph .fit{position:absolute;right:8px;top:8px;background:var(--surface);color:var(--accent);font-size:11.5px;font-weight:700;border-radius:99px;padding:2px 8px}
+.hopt .hb{padding:10px 12px 12px;display:grid;gap:4px}
+.hopt h5{margin:0;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hopt .r{font-size:12.5px;color:var(--muted);display:flex;gap:6px;align-items:center}
+.hopt .hf{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:4px}
+.hopt .hf b{font-size:17px}.hopt .hf small{font-size:12px;color:var(--muted)}
+.hopt .cw{font-size:12px}
+
+/* boş ihtiyaç */
+.empty .sel{gap:10px}
+.empty h4{white-space:normal}
+.go-row{display:flex;flex-wrap:wrap;gap:8px}
+.go{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 14px 0 5px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-weight:650;font-size:13.5px;text-decoration:none}
+.go .l{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:11.5px;font-weight:800;background:var(--bc)}
+.go.ai{background:var(--accent);border-color:var(--accent);color:#fff;padding:0 16px}
+.paste{font-size:12.5px;color:var(--muted)}
+
+/* etkinlik / yapılacak: şehir başına */
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding:12px 16px}
+.tile{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface);display:grid}
+.tile .ph{aspect-ratio:16/10;background:var(--sunk);position:relative}
+.tile .ph img{width:100%;height:100%;object-fit:cover;display:block}
+.tile .ph .on{position:absolute;right:6px;top:6px;width:24px;height:24px;border-radius:50%;background:var(--ok);color:#fff;display:grid;place-items:center;font-size:13px}
+.tile .tb{padding:8px 10px;display:grid;gap:2px}
+.tile b{font-size:13.5px;line-height:1.25;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.tile small{font-size:12px;color:var(--muted)}
+.tile .tf{display:flex;justify-content:space-between;align-items:center;margin-top:4px;font-size:13px}
+.ev .row{grid-template-columns:196px minmax(0,1fr)}
+
+.note{font-size:13px;color:var(--muted);background:var(--surface);border:1px dashed var(--line);border-radius:14px;padding:12px 14px}
+.note b{color:var(--ink)}
+
+/* telefon */
+@media(max-width:720px){
+  .row,.ev .row{grid-template-columns:minmax(0,1fr)}
+  .int{border-right:0;border-bottom:1px solid var(--line2);grid-template-columns:auto 1fr;column-gap:10px;align-items:center}
+  .int .kind{grid-column:1/-1}
+  .act{border-left:0;border-top:1px solid var(--line2);justify-items:stretch;grid-template-columns:auto 1fr;align-items:center;padding-top:12px}
+  .act .price{text-align:left}.act .btns{justify-content:flex-end}
+  .more{top:4px}
+  .hgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .fopt{grid-template-columns:34px minmax(0,1fr) auto}
+  .fo-meta{grid-column:2/-1;grid-row:2}
+  .views{margin-left:0}
+}
+</style>
+
+<div class="page">
+
+<section class="intro">
+  <h1>Plan, toparlanmış hâli</h1>
+  <p>v71'in bütün özellikleri duruyor, ekranda daha az şey var. Her ihtiyaç tek bir kart: solda ne aradığımız, ortada seçilen, sağda tek eylem. Diğer seçenekler kartın altında, istersen açılıyor. Örnek gezi: Japonya, 1–16 Nisan, 2 kişi (çizim verisi).</p>
+</section>
+
+<section class="fix" aria-label="Neyi neden değiştirdik">
+  <div><b>Üst özet</b><s>Planlananların %67'si rezerve · 7 ihtiyaç karar bekliyor · 1 rezerve edilecek</s><span>Tek çubuk ve tek cümle: "16 ihtiyaçtan 9'u hazır". Bir de "Sıradaki" düğmesi.</span></div>
+  <div><b>Plan çubuğu</b><s>Kategoriye göre · Yolculuk sırasıyla · Gün gün · + Ekle · Arıyoruz · Seçildi · Rezerve</s><span>Yalnız görünüm seçici kaldı. Renk göstergesi gereksiz, her kart durumunu yazıyla söylüyor. "Ekle" bölüm sonunda.</span></div>
+  <div><b>İhtiyaç kartı</b><s>Ayrı niyet kartı + ayrı canlı kart + ayrı panel</s><span>Üçü tek kartta, tek satırda. Niyet solda dar, seçili ortada, eylem sağda.</span></div>
+  <div><b>Seçenekler</b><s>Değiştir n · kart çevirme · Diğer oteller paneli</s><span>Tek giriş: kartın altındaki "n seçenek daha". Uçuş Skyscanner gibi satır, otel fotoğrafla.</span></div>
+  <div><b>Boş ihtiyaç</b><s>~€120–300 / gece · Resmî site · uzun açıklama</s><span>Tahmin niyete taşındı. Sağda yalnız arama: Booking.com, Airbnb ve "AI önersin".</span></div>
+  <div><b>Kart içi ikonlar</b><s>ⓘ · klips · × · avatar · ••• hepsi görünür</s><span>Hepsi ••• menüsünde (Belge ekle, İptal ettim, Kimin için, Kaldır). Avatar yalnız başkası eklediyse.</span></div>
+</section>
+
+<section class="top" aria-label="Gezi özeti">
+  <div class="top-r">
+    <div><h2>Plan</h2><div class="sub">Japonya · 1–16 Nis · 2 kişi</div></div>
+    <div class="views" role="group" aria-label="Görünüm">
+      <button aria-pressed="true">Kategoriye göre</button><button aria-pressed="false">Yolculuk sırasıyla</button><button aria-pressed="false">Gün gün</button>
+    </div>
+  </div>
+  <div class="prog">
+    <div class="bar" role="img" aria-label="16 ihtiyaçtan 5'i rezerve, 4'ü seçildi"><i class="b1" style="width:31%"></i><i class="b2" style="width:25%"></i></div>
+    <small class="num">16 ihtiyaçtan 9'u hazır: 5 rezerve, 4 seçildi</small>
+    <button class="next" type="button">Sıradaki: Tokyo uçuşu</button>
+  </div>
+</section>
+
+<!-- UÇUŞ -->
+<section class="sec" style="--k:var(--c-fly)" aria-labelledby="h-fly">
+  <div class="sec-h">
+    <span class="sec-ic" aria-hidden="true">{{IC_PLANE}}</span><h3 id="h-fly">Uçuş</h3><span class="cnt">4</span>
+    <span class="bud"><span class="mini"><i style="width:50%"></i></span><b class="num">€1.580</b> / €3.500</span>
+  </div>
+
+  <article class="need" aria-label="Uçuş İstanbul Tokyo">
+    <div class="row">
+      <div class="int"><span class="kind">{{IC_PLANE_S}} Uçuş · gidiş</span><b>İstanbul → Tokyo</b><small class="num">1 Nis · 2 kişi</small><span class="est">aktarma az · orta bütçe</span></div>
+      <div class="sel">
+        <div class="src"><span class="stamp ai">✦ Önerimiz</span><span>Turkish Airlines · TK 52</span></div>
+        <div class="flt"><div><div class="t num">09:40</div><div class="c">IST</div></div><div class="line"><span>13 sa · direkt</span></div><div style="text-align:right"><div class="t num">07:15<small>+1</small></div><div class="c">HND</div></div></div>
+      </div>
+      <div class="act"><button class="more" aria-label="Diğer işlemler">•••</button>
+        <div class="price"><b class="num">€905</b> <small>kişi başı</small><span class="sub num">2 kişi · €1.810</span></div>
+        <div class="btns"><button class="linkish" type="button">Rezerve et ↗</button><button class="cta" type="button">Bunu seç</button></div>
+      </div>
+    </div>
+    <details class="opts" open>
+      <summary>3 seçenek daha <small>· en ucuzu €820</small><span class="chev" aria-hidden="true">⌄</span></summary>
+      <div class="opts-b">
+        <div class="fopt"><span class="al" style="--alc:#8a1538">QR</span>
+          <div class="fo-times"><div><b class="num">09:40</b><small>IST</small></div><div class="fo-mid num">15 sa<br>1 aktarma</div><div><b class="num">07:15<sup>+1</sup></b><small>HND</small></div></div>
+          <div class="fo-meta"><span class="tag">En ucuz</span>Qatar · Doha'da 2 sa</div>
+          <div class="fo-p"><div><b class="num">€820</b><small>kişi başı</small></div><button class="ghost" type="button">Seç</button></div></div>
+        <div class="fopt"><span class="al" style="--alc:#c8102e">TK</span>
+          <div class="fo-times"><div><b class="num">13:05</b><small>IST</small></div><div class="fo-mid num">12 sa 50 dk<br>direkt</div><div><b class="num">10:55<sup>+1</sup></b><small>NRT</small></div></div>
+          <div class="fo-meta"><span class="tag">En kısa</span>Turkish · Narita</div>
+          <div class="fo-p"><div><b class="num">€930</b><small>kişi başı</small></div><button class="ghost" type="button">Seç</button></div></div>
+        <div class="fopt"><span class="al" style="--alc:#00205b">JL</span>
+          <div class="fo-times"><div><b class="num">22:30</b><small>IST</small></div><div class="fo-mid num">16 sa<br>1 aktarma</div><div><b class="num">21:30<sup>+1</sup></b><small>HND</small></div></div>
+          <div class="fo-meta">Japan Airlines · Helsinki'de 3 sa</div>
+          <div class="fo-p"><div><b class="num">€870</b><small>kişi başı</small></div><button class="ghost" type="button">Seç</button></div></div>
+        <div class="opts-f"><button class="ghost" type="button">✦ Daha fazla bul</button><span>Kendin ara:</span><a href="#">Skyscanner ↗</a><a href="#">Google Uçuşlar ↗</a></div>
+      </div>
+    </details>
+  </article>
+
+  <article class="need booked" aria-label="Uçuş Osaka İstanbul">
+    <div class="row">
+      <div class="int"><span class="kind">{{IC_PLANE_S}} Uçuş · dönüş</span><b>Osaka → İstanbul</b><small class="num">16 Nis · 2 kişi</small></div>
+      <div class="sel">
+        <div class="src"><span class="stamp bk">✓ Bilet alındı</span><span>Turkish Airlines · TK 49</span></div>
+        <div class="flt"><div><div class="t num">11:00</div><div class="c">KIX</div></div><div class="line"><span>15 sa · direkt</span></div><div style="text-align:right"><div class="t num">17:40</div><div class="c">IST</div></div></div>
+      </div>
+      <div class="act"><button class="more" aria-label="Diğer işlemler">•••</button>
+        <div class="price"><b class="num">€790</b> <small>kişi başı</small><span class="sub num">2 kişi · €1.580</span></div>
+        <div class="btns"><button class="ghost" type="button">Ayrıntı</button></div>
+      </div>
+    </div>
+  </article>
+
+  <article class="need empty" aria-label="Uçuş Tokyo Osaka">
+    <div class="row">
+      <div class="int"><span class="kind">{{IC_PLANE_S}} Uçuş · iç hat</span><b>Tokyo → Osaka</b><small class="num">12 Nis · 2 kişi</small><span class="est num">~€60–110 kişi başı</span></div>
+      <div class="sel">
+        <h4>Henüz seçilmedi</h4>
+        <div class="go-row">
+          <a class="go" href="#" style="--bc:var(--b-sky)"><span class="l">S</span>Skyscanner'da ara</a>
+          <a class="go" href="#" style="--bc:var(--b-gf)"><span class="l">G</span>Google Uçuşlar</a>
+          <button class="go ai" type="button">✦ AI bulsun</button>
+        </div>
+        <span class="paste">Bulduğun bir uçuşun linkini sohbete bırakırsan buraya yerleşir.</span>
+      </div>
+      <div class="act"><button class="more" aria-label="Diğer işlemler">•••</button><button class="linkish" type="button">Gerek yok</button></div>
+    </div>
+  </article>
+  <button class="add" type="button">+ Uçuş ekle</button>
+</section>
+
+<!-- KONAKLAMA -->
+<section class="sec" style="--k:var(--c-stay)" aria-labelledby="h-stay">
+  <div class="sec-h">
+    <span class="sec-ic" aria-hidden="true">{{IC_BED}}</span><h3 id="h-stay">Konaklama</h3><span class="cnt">4</span>
+    <span class="bud"><span class="mini"><i style="width:40%"></i></span><b class="num">€1.540</b> / €3.600</span>
+  </div>
+
+  <article class="need chosen" aria-label="Konaklama Tokyo">
+    <div class="row">
+      <div class="int"><span class="kind">{{IC_BED_S}} Konaklama</span><b>Tokyo</b><small class="num">3 gece · 2–5 Nis · 2 kişi</small><span class="est">sakin · merkeze yakın</span></div>
+      <div class="sel">
+        <div class="stay-sel"><img class="thumb" src="{{IMG_OTEL}}" alt="">
+          <div style="min-width:0;display:grid;gap:3px">
+            <div class="src"><span class="stamp ch">Seçildi</span><span class="brand" style="--bc:var(--b-booking)">Booking.com</span><span class="score">9,0</span></div>
+            <h4>Hyatt Centric Ginza</h4>
+            <div class="facts"><span>Ginza</span><span class="ok">Ücretsiz iptal · 30 Mar'a kadar</span></div>
+          </div></div>
+      </div>
+      <div class="act"><button class="more" aria-label="Diğer işlemler">•••</button>
+        <div class="price"><b class="num">€213</b> <small>/ gece</small><span class="sub num">3 gece · €640</span></div>
+        <div class="btns"><button class="ghost" type="button">Aldım</button><button class="cta" type="button">Rezerve et ↗</button></div>
+      </div>
+    </div>
+    <details class="opts" open>
+      <summary>2 seçenek daha <small>· Pano'dan ve AI'dan</small><span class="chev" aria-hidden="true">⌄</span></summary>
+      <div class="opts-b">
+        <div class="hgrid">
+          <div class="hopt"><div class="ph"><img src="{{IMG_OTEL}}" alt=""><span class="brand" style="--bc:var(--b-booking)">Booking.com</span><span class="fit">En uygun</span><span class="pc">1/14 fotoğraf</span></div>
+            <div class="hb"><h5>Shinjuku Granbell</h5><div class="r"><span class="score">9,0</span>Shinjuku · istasyona 3 dk</div><span class="cw ok">Ücretsiz iptal · 1 Nis'e kadar</span>
+              <div class="hf"><div><b class="num">€140</b> <small>/ gece</small></div><button class="ghost" type="button">Seç</button></div></div></div>
+          <div class="hopt"><div class="ph"><img src="{{IMG_EV}}" alt=""><span class="brand" style="--bc:var(--b-airbnb)">Airbnb</span><span class="pc">1/22 fotoğraf</span></div>
+            <div class="hb"><h5>Asakusa'da ahşap ev</h5><div class="r">★ 4,9 · Asakusa · tüm ev</div><span class="cw no">İade yok</span>
+              <div class="hf"><div><b class="num">€120</b> <small>/ gece</small></div><button class="ghost" type="button">Seç</button></div></div></div>
+          <div class="hopt"><div class="ph"><img src="{{IMG_OTEL}}" alt=""><span class="brand" style="--bc:var(--b-booking)">Booking.com</span><span class="pc">1/9 fotoğraf</span></div>
+            <div class="hb"><h5>Mitsui Garden Ginza Premier</h5><div class="r"><span class="score">8,8</span>Ginza · metroya 2 dk</div><span class="cw ok">Ücretsiz iptal · 28 Mar'a kadar</span>
+              <div class="hf"><div><b class="num">€185</b> <small>/ gece</small></div><button class="ghost" type="button">Seç</button></div></div></div>
+        </div>
+        <div class="opts-f"><button class="ghost" type="button">✦ Daha fazla bul</button><span>Kendin ara:</span><a href="#">Booking.com ↗</a><a href="#">Airbnb ↗</a></div>
+      </div>
+    </details>
+  </article>
+
+  <article class="need empty" aria-label="Konaklama Kyoto">
+    <div class="row">
+      <div class="int"><span class="kind">{{IC_BED_S}} Konaklama</span><b>Kyoto</b><small class="num">4 gece · 5–9 Nis · 2 kişi</small><span class="est num">~€120–300 / gece</span></div>
+      <div class="sel">
+        <h4>Kyoto için 4 gece yer bul</h4>
+        <div class="go-row">
+          <a class="go" href="#" style="--bc:var(--b-booking)"><span class="l">B</span>Booking.com'da ara</a>
+          <a class="go" href="#" style="--bc:var(--b-airbnb)"><span class="l">A</span>Airbnb'de ara</a>
+          <button class="go ai" type="button">✦ AI önersin</button>
+        </div>
+        <span class="paste">Beğendiğin bir yerin linkini sohbete bırakırsan buraya yerleşir.</span>
+      </div>
+      <div class="act"><button class="more" aria-label="Diğer işlemler">•••</button><button class="linkish" type="button">Bu geceler için yer gerekmiyor</button></div>
+    </div>
+    <details class="opts">
+      <summary>Pano'da 2 kayıt var <small>· Gion Machiya, Hotel Kanra</small><span class="chev" aria-hidden="true">⌄</span></summary>
+      <div class="opts-b"><div class="hgrid">
+        <div class="hopt"><div class="ph"><img src="{{IMG_EV}}" alt=""><span class="brand" style="--bc:var(--b-airbnb)">Airbnb</span></div><div class="hb"><h5>Gion Machiya</h5><div class="r">★ 4,8 · Gion</div><div class="hf"><div><b class="num">€140</b> <small>/ gece</small></div><button class="ghost" type="button">Seç</button></div></div></div>
+        <div class="hopt"><div class="ph"><img src="{{IMG_OTEL}}" alt=""><span class="brand" style="--bc:var(--b-booking)">Booking.com</span></div><div class="hb"><h5>Hotel Kanra Kyoto</h5><div class="r"><span class="score">9,2</span>Shimogyo</div><div class="hf"><div><b class="num">€230</b> <small>/ gece</small></div><button class="ghost" type="button">Seç</button></div></div></div>
+      </div></div>
+    </details>
+  </article>
+
+  <article class="need booked" aria-label="Konaklama Hakone">
+    <div class="row">
+      <div class="int"><span class="kind">{{IC_BED_S}} Konaklama</span><b>Hakone</b><small class="num">3 gece · 9–12 Nis · 2 kişi</small></div>
+      <div class="sel">
+        <div class="stay-sel"><img class="thumb" src="{{IMG_OTEL}}" alt="">
+          <div style="min-width:0;display:grid;gap:3px">
+            <div class="src"><span class="stamp bk">✓ Rezerve</span><span class="brand" style="--bc:var(--b-booking)">Booking.com</span><span class="score">9,5</span><span class="who" title="Sabine ekledi">S</span></div>
+            <h4>Gora Kadan</h4>
+            <div class="facts"><span>Gora · onsen</span><span>Giriş 15:00</span></div>
+          </div></div>
+      </div>
+      <div class="act"><button class="more" aria-label="Diğer işlemler">•••</button>
+        <div class="price"><b class="num">€300</b> <small>/ gece</small><span class="sub num">3 gece · €900</span></div>
+        <div class="btns"><button class="ghost" type="button">Ayrıntı</button></div>
+      </div>
+    </div>
+  </article>
+
+  <article class="need" aria-label="Konaklama Osaka">
+    <div class="row">
+      <div class="int"><span class="kind">{{IC_BED_S}} Konaklama</span><b>Osaka</b><small class="num">4 gece · 12–16 Nis · 2 kişi</small></div>
+      <div class="sel">
+        <div class="stay-sel"><img class="thumb" src="{{IMG_EV}}" alt="">
+          <div style="min-width:0;display:grid;gap:3px">
+            <div class="src"><span class="stamp ar">Ayarlandı</span></div>
+            <h4>Arkadaşın evi</h4>
+            <div class="facts"><span>Sen hallettin · rezervasyon gerekmez</span></div>
+          </div></div>
+      </div>
+      <div class="act"><button class="more" aria-label="Diğer işlemler">•••</button><button class="linkish" type="button">Fiyat ekle</button></div>
+    </div>
+  </article>
+  <button class="add" type="button">+ Konaklama ekle</button>
+</section>
+
+<!-- ULAŞIM -->
+<section class="sec" style="--k:var(--c-move)" aria-labelledby="h-move">
+  <div class="sec-h">
+    <span class="sec-ic" aria-hidden="true">{{IC_TRAIN}}</span><h3 id="h-move">Ulaşım</h3><span class="cnt">2</span>
+    <span class="bud"><span class="mini"><i style="width:50%"></i></span><b class="num">€240</b> / €300</span>
+  </div>
+  <article class="need chosen" aria-label="Ulaşım Kyoto Hakone">
+    <div class="row">
+      <div class="int"><span class="kind">{{IC_TRAIN_S}} Şehir değişimi</span><b>Kyoto → Hakone</b><small class="num">9 Nis · 2 kişi</small><span class="est">rahat · bagajlı</span></div>
+      <div class="sel">
+        <div class="src"><span class="stamp ch">Seçildi</span><span class="brand" style="--bc:#2a7a46">JR</span><span>Shinkansen + Romancecar</span></div>
+        <div class="flt"><div><div class="t num">08:30</div><div class="c">Kyoto</div></div><div class="line"><span>1 aktarma · 3 sa 45 dk</span></div><div style="text-align:right"><div class="t num">12:15</div><div class="c">Hakone-Yumoto</div></div></div>
+      </div>
+      <div class="act"><button class="more" aria-label="Diğer işlemler">•••</button>
+        <div class="price"><b class="num">€60</b> <small>kişi başı</small><span class="sub num">2 kişi · €120</span></div>
+        <div class="btns"><button class="ghost" type="button">Aldım</button><button class="cta" type="button">Bilet al ↗</button></div>
+      </div>
+    </div>
+    <details class="opts">
+      <summary>2 yol daha <small>· otobüs €35, araç €60/gün</small><span class="chev" aria-hidden="true">⌄</span></summary>
+      <div class="opts-b">
+        <div class="fopt"><span class="al" style="--alc:var(--c-stay)">🚌</span><div class="fo-times"><div><b class="num">07:10</b><small>Kyoto</small></div><div class="fo-mid">6 sa<br>direkt</div><div><b class="num">13:10</b><small>Hakone</small></div></div><div class="fo-meta"><span class="tag">En ucuz</span>Otobüs · Willer</div><div class="fo-p"><div><b class="num">€35</b><small>kişi başı</small></div><button class="ghost" type="button">Seç</button></div></div>
+        <div class="fopt"><span class="al" style="--alc:var(--c-exp)">🚗</span><div class="fo-times"><div><b class="num">serbest</b><small>Kyoto</small></div><div class="fo-mid">5 sa<br>yol</div><div><b class="num">&nbsp;</b><small>Hakone</small></div></div><div class="fo-meta">Araç kiralama · DiscoverCars</div><div class="fo-p"><div><b class="num">€60</b><small>gün</small></div><button class="ghost" type="button">Seç</button></div></div>
+      </div>
+    </details>
+  </article>
+  <article class="need booked" aria-label="Transfer Haneda otel">
+    <div class="row">
+      <div class="int"><span class="kind">{{IC_TRAIN_S}} Transfer</span><b>Haneda → otel</b><small class="num">2 Nis · 07:45 iniş sonrası</small></div>
+      <div class="sel"><div class="src"><span class="stamp bk">✓ Bilet alındı</span><span>Keikyu treni</span></div><h4>Haneda → Shinagawa → Ginza</h4><div class="facts"><span>~40 dk</span><span>Kart: Suica</span></div></div>
+      <div class="act"><button class="more" aria-label="Diğer işlemler">•••</button><div class="price"><b class="num">€8</b> <small>kişi başı</small></div></div>
+    </div>
+  </article>
+  <button class="add" type="button">+ Ulaşım ekle</button>
+</section>
+
+<!-- ETKİNLİK -->
+<section class="sec" style="--k:var(--c-exp)" aria-labelledby="h-exp">
+  <div class="sec-h">
+    <span class="sec-ic" aria-hidden="true">{{IC_TICKET}}</span><h3 id="h-exp">Etkinlik ve turlar</h3><span class="cnt">3 planda</span>
+    <span class="bud"><b class="num">€180</b> / €400</span>
+  </div>
+  <article class="need ev" aria-label="Etkinlik Tokyo">
+    <div class="row">
+      <div class="int"><span class="kind">{{IC_TICKET_S}} Etkinlik</span><b>Tokyo</b><small class="num">2–5 Nis · 3 gün</small><span class="est">kültür · akşam</span></div>
+      <div class="tiles">
+        <div class="tile"><div class="ph"><img src="{{IMG_ACT}}" alt=""><span class="on" aria-label="Planda">✓</span></div><div class="tb"><b>teamLab Planets</b><small>3 Nis · 19:00 · Klook</small><div class="tf"><b class="num">€56</b><span class="stamp ch">Seçildi</span></div></div></div>
+        <div class="tile"><div class="ph"><img src="{{IMG_ACT}}" alt=""><span class="on" aria-label="Planda">✓</span></div><div class="tb"><b>Shibuya Sky gün batımı</b><small>4 Nis · Klook</small><div class="tf"><b class="num">€40</b><span class="stamp bk">✓ Bilet alındı</span></div></div></div>
+      </div>
+    </div>
+    <details class="opts">
+      <summary>Viator'dan 6 öneri <small>· Tokyo, akşam ve kültür</small><span class="chev" aria-hidden="true">⌄</span></summary>
+      <div class="opts-b"><div class="hgrid">
+        <div class="hopt"><div class="ph"><img src="{{IMG_ACT}}" alt=""><span class="brand" style="--bc:var(--b-viator)">Viator</span><span class="fit">Önerimiz</span></div><div class="hb"><h5>Asakusa gece yemek turu</h5><div class="r">★ 4,9 · 3 sa</div><div class="hf"><div><b class="num">€85</b> <small>kişi</small></div><button class="ghost" type="button">+ Plana ekle</button></div></div></div>
+        <div class="hopt"><div class="ph"><img src="{{IMG_ACT}}" alt=""><span class="brand" style="--bc:var(--b-viator)">Viator</span></div><div class="hb"><h5>Sumo antrenmanı izleme</h5><div class="r">★ 4,7 · sabah</div><div class="hf"><div><b class="num">€70</b> <small>kişi</small></div><button class="ghost" type="button">+ Plana ekle</button></div></div></div>
+        <div class="hopt"><div class="ph"><img src="{{IMG_ACT}}" alt=""><span class="brand" style="--bc:var(--b-klook)">Klook</span></div><div class="hb"><h5>Kimono ile Asakusa yürüyüşü</h5><div class="r">★ 4,8 · 2 sa</div><div class="hf"><div><b class="num">€45</b> <small>kişi</small></div><button class="ghost" type="button">+ Plana ekle</button></div></div></div>
+      </div></div>
+    </details>
+  </article>
+  <button class="add" type="button">+ Etkinlik ekle</button>
+</section>
+
+<!-- YAPILACAKLAR -->
+<section class="sec" style="--k:var(--c-todo)" aria-labelledby="h-todo">
+  <div class="sec-h"><span class="sec-ic" aria-hidden="true">{{IC_MAP}}</span><h3 id="h-todo">Yapılacaklar ve restoranlar</h3><span class="cnt">2 planda</span></div>
+  <article class="need ev" aria-label="Yapılacaklar Kyoto">
+    <div class="row">
+      <div class="int"><span class="kind">{{IC_MAP_S}} Yapılacak</span><b>Kyoto</b><small class="num">5–9 Nis · 4 gün</small><span class="est">yürüyüş · yerel yemek</span></div>
+      <div class="tiles">
+        <div class="tile"><div class="ph"><img src="{{IMG_TODO}}" alt=""><span class="on" aria-label="Planda">✓</span></div><div class="tb"><b>Fushimi Inari, sabah 7'de</b><small>Gezilecek · Haritalar</small></div></div>
+        <div class="tile"><div class="ph"><img src="{{IMG_FOOD}}" alt=""><span class="on" aria-label="Planda">✓</span></div><div class="tb"><b>Nishiki pazarı</b><small>Restoran · Haritalar</small></div></div>
+      </div>
+    </div>
+    <details class="opts">
+      <summary>3 öneri <small>· Haritalar'dan, fotoğraflı</small><span class="chev" aria-hidden="true">⌄</span></summary>
+      <div class="opts-b"><div class="tiles" style="padding:0">
+        <div class="tile"><div class="ph"><img src="{{IMG_TODO}}" alt=""></div><div class="tb"><b>Arashiyama bambu ormanı</b><small>Gezilecek</small><div class="tf"><span></span><button class="ghost" type="button">+ Plana ekle</button></div></div></div>
+        <div class="tile"><div class="ph"><img src="{{IMG_FOOD}}" alt=""></div><div class="tb"><b>Pontocho'da Kiyamachi Yoshikawa Tempura</b><small>Restoran</small><div class="tf"><span></span><button class="ghost" type="button">+ Plana ekle</button></div></div></div>
+      </div></div>
+    </details>
+  </article>
+  <button class="add" type="button">+ Yer ekle</button>
+</section>
+
+<!-- BELGELER -->
+<section class="sec" style="--k:var(--c-doc)" aria-labelledby="h-doc">
+  <div class="sec-h"><span class="sec-ic" aria-hidden="true">{{IC_DOC}}</span><h3 id="h-doc">Belgeler ve internet</h3><span class="cnt">2</span></div>
+  <article class="need booked" aria-label="Vize">
+    <div class="row">
+      <div class="int"><span class="kind">{{IC_DOC_S}} Vize</span><b>Japonya</b><small>Türk pasaportu</small></div>
+      <div class="sel"><div class="src"><span class="stamp bk">✓ Gerekmiyor</span></div><h4>90 güne kadar vizesiz</h4><div class="facts"><a href="#">Resmî kaynak ↗</a></div></div>
+      <div class="act"><button class="more" aria-label="Diğer işlemler">•••</button></div>
+    </div>
+  </article>
+  <article class="need chosen" aria-label="eSIM">
+    <div class="row">
+      <div class="int"><span class="kind">{{IC_DOC_S}} İnternet</span><b>Japonya eSIM</b><small class="num">16 gün · 2 telefon</small></div>
+      <div class="sel"><div class="src"><span class="stamp ch">Seçildi</span><span class="brand" style="--bc:var(--b-airalo)">Airalo</span></div><h4>Moshi Moshi · 10 GB</h4><div class="facts"><span>30 gün geçerli</span></div></div>
+      <div class="act"><button class="more" aria-label="Diğer işlemler">•••</button><div class="price"><b class="num">$32</b> <small>2 telefon</small></div><div class="btns"><button class="ghost" type="button">Aldım</button><button class="cta" type="button">Satın al ↗</button></div></div>
+    </div>
+    <details class="opts"><summary>2 paket daha <small>· 5 GB $11, 20 GB $29</small><span class="chev" aria-hidden="true">⌄</span></summary><div class="opts-b"><div class="opts-f">Paketler Airalo'dan, gezi günlerine göre süzülür.</div></div></details>
+  </article>
+  <button class="add" type="button">+ Belge ekle</button>
+</section>
+
+<section class="note">
+  <b>Kaybolmayanlar:</b> bölüm başlığında bütçe ve ilerleme, ••• menüsünde Belge ekle, İptal ettim, Kimin için, Kaldır; kartta yerinde düzenleme (şehir, tarih, ad, fiyat), boşluk tespiti ve "+ Buraya ekle", uçuş günü şeridi (kapı, rötar, PNR yalnız uçuş günü), kart çevirme yerine "n seçenek daha", Yolculuk sırasıyla ve Gün gün görünümleri, Pano. Fiyatlar, fotoğraf sayıları ve öneriler çizim verisidir.
+</section>
+</div>

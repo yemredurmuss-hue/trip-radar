@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sohbetle gezi başlat v1</title>
+<style>
+  :root { --ink:#1c1a33; --muted:#6b6790; --gray:#6e6e73; --soft:#8e8e93; --line:#ece9e4; --accent:#5b45e0; --lav:#ece8ff; --lav2:#f4f1ff;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter",system-ui,sans-serif; color:var(--ink); -webkit-font-smoothing:antialiased; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#efedf3; }
+  .wrap { max-width:1400px; margin:0 auto; padding:24px 16px 48px; display:grid; gap:26px; }
+  .cap { margin:0 4px; font-size:15px; color:var(--gray); font-weight:600; }
+  .step { margin:0 4px 8px; font-size:14px; color:var(--gray); }
+  .step b { color:var(--ink); }
+  .screen { background:#f8f7f4; border-radius:20px; overflow:hidden; box-shadow:0 1px 2px rgba(0,0,0,.05),0 10px 30px rgba(0,0,0,.06); min-height:520px; }
+  button { font-family:inherit; cursor:pointer; }
+
+  /* 1) Seyahatlerim */
+  .home { padding:46px 60px; }
+  .home h1 { margin:0 0 6px; font-size:40px; letter-spacing:-.02em; }
+  .home .hi { margin:0 0 22px; font-size:17px; color:var(--muted); }
+  .ask { position:relative; background:#fff; border-radius:22px; box-shadow:0 1px 2px rgba(0,0,0,.04),0 8px 26px rgba(91,69,224,.08); padding:20px 22px 64px; border:1px solid #ebe7f7; }
+  .ask .ph { font-size:18px; color:#9a96b4; }
+  .ask .go { position:absolute; right:14px; bottom:12px; height:44px; padding:0 20px; border:0; border-radius:14px; background:var(--accent); color:#fff; font-size:16px; font-weight:600; }
+  .ask .clip { position:absolute; left:18px; bottom:16px; color:#9a96b4; font-size:18px; }
+  .ask .hint { position:absolute; left:48px; bottom:20px; font-size:13px; color:var(--soft); }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin:14px 0 0; }
+  .chip { height:38px; padding:0 16px; border-radius:999px; border:1px solid #e4e0f2; background:#fff; font-size:15px; font-weight:500; color:var(--ink); }
+  .chip.on { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .trips { display:grid; grid-template-columns:repeat(3, 1fr); gap:16px; margin-top:30px; }
+  .tc { background:#fff; border-radius:18px; overflow:hidden; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+  .tc i { display:block; height:96px; background-size:cover; background-position:center; }
+  .tc div { padding:12px 14px; font-size:13px; color:var(--gray); }
+  .tc b { display:block; font-size:16px; color:var(--ink); margin-bottom:2px; }
+
+  /* 2) soru-cevap */
+  .duo { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.1fr); min-height:560px; }
+  .chat { background:#fff; padding:22px 24px 18px; display:flex; flex-direction:column; gap:12px; border-right:1px solid #eeebf5; }
+  .me { align-self:flex-end; max-width:78%; padding:10px 14px; border-radius:16px 16px 4px 16px; background:#ece8ff; font-size:15px; }
+  .ai { max-width:92%; font-size:15px; line-height:1.55; }
+  .ai small { display:block; color:var(--gray); font-size:13px; }
+  .qr { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .qr button { height:34px; padding:0 13px; border-radius:999px; border:1px solid #ddd8ef; background:#fff; font-size:14px; color:var(--ink); }
+  .qr button.pri { border-color:var(--accent); color:var(--accent); font-weight:600; }
+  .inp { margin-top:auto; height:52px; border-radius:16px; border:1px solid #e6e2f0; display:flex; align-items:center; padding:0 16px; color:#a6a2bc; font-size:15px; }
+  .side { background:linear-gradient(160deg,#e9e3ff 0%,#dcd3ff 100%); padding:34px 40px; display:flex; flex-direction:column; justify-content:center; }
+  .ring { width:64px; height:64px; border-radius:50%; background:conic-gradient(var(--accent) 0 72%, rgba(255,255,255,.7) 72% 100%); display:grid; place-items:center; flex:none; }
+  .ring span { width:52px; height:52px; border-radius:50%; background:#efeaff; display:grid; place-items:center; font-weight:700; font-size:15px; color:var(--accent); }
+  .shape { display:flex; gap:16px; align-items:center; margin-bottom:22px; }
+  .shape small { display:block; font-size:12px; letter-spacing:.06em; color:var(--muted); font-weight:700; }
+  .shape b { display:block; font-size:24px; }
+  .shape em { font-style:normal; color:var(--muted); font-size:14px; }
+  .ck { display:grid; gap:4px; }
+  .ck div { display:grid; grid-template-columns:30px 1fr; gap:12px; padding:9px 0; }
+  .ck .tick { width:26px; height:26px; border-radius:50%; background:var(--ink); color:#fff; display:grid; place-items:center; font-size:13px; }
+  .ck .tick.no { background:transparent; border:2px dashed #b9b0e6; }
+  .ck small { display:block; font-size:12px; letter-spacing:.06em; color:var(--muted); font-weight:700; }
+  .ck span { font-size:17px; font-weight:600; }
+  .ck .no + p span { color:var(--muted); font-weight:400; }
+  .ck p { margin:0; }
+  .gen { margin-top:22px; background:#fff; border-radius:18px; padding:14px; }
+  .gen button { width:100%; height:52px; border:0; border-radius:14px; background:var(--ink); color:#fff; font-size:17px; font-weight:600; }
+  .gen p { margin:8px 4px 0; font-size:13px; color:var(--gray); text-align:center; }
+
+  /* 3) oluşturuluyor */
+  .making { background:linear-gradient(160deg,#e9e3ff 0%,#d5caff 100%); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px; }
+  .making h2 { margin:0 0 26px; font-size:30px; font-weight:600; }
+  .cards { display:flex; gap:0; margin-bottom:30px; }
+  .cards i { width:150px; height:180px; border-radius:22px; background-size:cover; background-position:center; box-shadow:0 10px 30px rgba(60,40,140,.25); border:6px solid #fff; }
+  .cards i:nth-child(1) { transform:rotate(-7deg) translateY(10px); }
+  .cards i:nth-child(2) { transform:rotate(-2deg); margin-left:-18px; z-index:1; }
+  .cards i:nth-child(3) { transform:rotate(3deg); margin-left:-18px; }
+  .cards i:nth-child(4) { transform:rotate(8deg) translateY(12px); margin-left:-18px; }
+  .stp { display:grid; gap:10px; font-size:17px; }
+  .stp div { display:flex; gap:12px; align-items:center; }
+  .stp .d { color:#1f8f4e; font-weight:700; width:20px; }
+  .stp .w { width:18px; height:18px; border-radius:50%; border:2.5px solid #b9b0e6; border-top-color:var(--accent); }
+  .stp .n { width:18px; height:18px; border-radius:50%; border:2px solid #cfc8ef; }
+  .stp .dim { color:var(--muted); }
+  .pct { margin-top:20px; font-size:14px; color:var(--muted); }
+
+  /* 4) sonuç */
+  .res { padding:26px 34px; }
+  .res .top { display:flex; align-items:center; gap:14px; padding:14px 16px; border-radius:16px; background:#fff; border:1px solid #ebe7f7; margin-bottom:18px; }
+  .res .top b { font-size:16px; }
+  .res .top span { color:var(--gray); font-size:14px; }
+  .res .top .btn { margin-left:auto; height:40px; padding:0 16px; border-radius:12px; border:0; background:var(--ink); color:#fff; font-size:15px; font-weight:600; }
+  .plan { background:#fff; border-radius:20px; padding:6px 20px; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+  .sec { display:grid; grid-template-columns:28px 1fr auto; gap:12px; align-items:center; padding:13px 0; border-bottom:1px solid #f1eee9; }
+  .sec:last-child { border-bottom:0; }
+  .sec b { font-size:16px; }
+  .sec small { display:block; color:var(--gray); font-size:13.5px; font-weight:400; margin-top:2px; }
+  .sec .st { font-size:13px; color:#9a6400; }
+  .sec .sg { font-size:13px; color:var(--accent); }
+  .note { margin:2px 4px 0; font-size:13px; color:var(--gray); line-height:1.65; }
+  .note b { color:var(--ink); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2 class="cap">Sohbetle gezi başlat v1 · Layla tarzı, bizim panoya</h2>
+
+  <div>
+    <p class="step"><b>1 · Seyahatlerim</b> · tek kutu: link yapıştırırsan eskisi gibi okunur, yazarsan sohbetle gezi başlar</p>
+    <div class="screen home">
+      <h1>Seyahatlerim</h1>
+      <p class="hi">Merhaba Emre, sıradaki gezi nereye?</p>
+      <div class="ask">
+        <span class="ph">Bali'ye 3 hafta, Sabine'yle… ya da bir link yapıştır</span>
+        <span class="clip">📎</span><span class="hint">link, ekran görüntüsü ya da PDF de olur</span>
+        <button class="go">Planlamaya başla ↗</button>
+      </div>
+      <div class="chips"><button class="chip">✨ Yeni gezi planla</button><button class="chip">🧭 Bana ilham ver</button><button class="chip">🚐 Yol gezisi</button><button class="chip">⏱ Son dakika kaçamağı</button><button class="chip">🔗 Paylaşılan geziye katıl</button></div>
+      <div class="trips">
+        <div class="tc"><i style="background-image:url(https://images.pexels.com/photos/2549573/pexels-photo-2549573.jpeg?auto=compress&w=500)"></i><div><b>Porto ve Madeira Gezisi</b>7–21 Ekim · 19/32 karar</div></div>
+        <div class="tc"><i style="background-image:url(https://images.pexels.com/photos/2166559/pexels-photo-2166559.jpeg?auto=compress&w=500)"></i><div><b>Bali Gezisi</b>10 Ara – 10 Oca · 9 karar</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <p class="step"><b>2 · Soru-cevap</b> · solda sohbet, her soruda basmalı cevaplar; sağda "gezin şekilleniyor" listesi dolar</p>
+    <div class="screen duo">
+      <div class="chat">
+        <div class="me">Bali'ye gezi planla</div>
+        <div class="ai">Harika, Bali! Nereden yola çıkıyorsun?<div class="qr"><button class="pri">İstanbul</button><button>Ankara</button><button>İzmir</button><button>Başka şehir…</button></div></div>
+        <div class="me">İstanbul</div>
+        <div class="ai">Kimle gidiyorsun?<div class="qr"><button>Yalnız</button><button class="pri">Partnerimle</button><button>Arkadaşlarla</button><button>Ailemle</button></div></div>
+        <div class="me">Partnerimle · Sabine</div>
+        <div class="ai">Ne zaman, kaç gün?<small>Bali'de Aralık yağışlı; uzun kalış için Ubud + sahil ikilisi iyi gider.</small><div class="qr"><button>1 hafta</button><button>10 gün</button><button>2 hafta</button><button class="pri">1 ay ve üstü</button><button>📅 Tarih seç</button></div></div>
+        <div class="me">10 Aralık – 10 Ocak</div>
+        <div class="ai">Bu gezide en çok ne istiyorsun? (birden çok seçebilirsin)<div class="qr"><button>🌿 Doğa</button><button>🏄 Deniz</button><button>🧘 Dingin</button><button>🍜 Gastronomi</button><button>💻 Uzaktan çalışma</button><button>✨ Lüks</button></div></div>
+        <div class="inp">Ya da kendin yaz…</div>
+      </div>
+      <div class="side">
+        <div class="shape"><div class="ring"><span>4/5</span></div><div><small>GEZİ LİSTESİ</small><b>Gezin şekilleniyor</b><em>5 bilgiden 4'ü tamam</em></div></div>
+        <div class="ck">
+          <div><span class="tick">✓</span><p><small>NEREYE</small><span>Bali · Endonezya</span></p></div>
+          <div><span class="tick">✓</span><p><small>NEREDEN</small><span>İstanbul</span></p></div>
+          <div><span class="tick">✓</span><p><small>KİMLE</small><span>Emre & Sabine · 2 kişi</span></p></div>
+          <div><span class="tick">✓</span><p><small>NE ZAMAN</small><span>10 Ara – 10 Oca · 31 gün</span></p></div>
+          <div><span class="tick no"></span><p><small>NE İSTİYORSUN</small><span>Sence ne yapsın bu gezi?</span></p></div>
+        </div>
+        <div class="gen"><button>✨ Gezimi oluştur</button><p>Şimdi oluşturur, eksikleri sonra sorar; ya da konuşmaya devam et, liste dolunca kendisi başlar.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <p class="step"><b>3 · Oluşturuluyor</b> · gerçek adımlar sırayla işaretlenir (uydurma ilerleme yok)</p>
+    <div class="screen making">
+      <h2>Bali Gezisi planlanıyor</h2>
+      <div class="cards">
+        <i style="background-image:url(https://images.pexels.com/photos/2166559/pexels-photo-2166559.jpeg?auto=compress&w=400)"></i>
+        <i style="background-image:url(https://images.pexels.com/photos/2474690/pexels-photo-2474690.jpeg?auto=compress&w=400)"></i>
+        <i style="background-image:url(https://images.pexels.com/photos/1802255/pexels-photo-1802255.jpeg?auto=compress&w=400)"></i>
+        <i style="background-image:url(https://images.pexels.com/photos/2587004/pexels-photo-2587004.jpeg?auto=compress&w=400)"></i>
+      </div>
+      <div class="stp">
+        <div><span class="d">✓</span>Rota çizildi: Ubud 12 gece → Canggu 10 gece → Uluwatu 9 gece</div>
+        <div><span class="d">✓</span>Uçuşlar için yer açıldı: İstanbul ⇄ Denpasar</div>
+        <div><span class="w"></span>Geceler konaklamalara bölünüyor…</div>
+        <div class="dim"><span class="n"></span>Ulaşım önerileri: aylık motor kiralama</div>
+        <div class="dim"><span class="n"></span>Sana göre fikirler: doğa, deniz, dingin</div>
+      </div>
+      <p class="pct">Birkaç saniye · %48</p>
+    </div>
+  </div>
+
+  <div>
+    <p class="step"><b>4 · Şablon hazır</b> · pano açılır; üstte "sıradaki adım" yönlendirir, öneriler kendi bölümlerinde</p>
+    <div class="screen res">
+      <div class="top"><span style="font-size:22px">🧭</span><div><b>Bali Gezisi hazır: 31 gün, 3 durak.</b><br><span>Önce uçuşu bul, sonra Ubud konaklamasını seçelim. Her adımda yanındayım.</span></div><button class="btn">İstanbul → Denpasar uçuşu ara ↗</button></div>
+      <div class="plan">
+        <div class="sec"><span>✈️</span><div><b>Uçuş</b><small>İstanbul → Denpasar · 10 Ara · Denpasar → İstanbul · 10 Oca</small></div><span class="st">2 uçuş eklenmedi</span></div>
+        <div class="sec"><span>🛏</span><div><b>Konaklama</b><small>Ubud 10–22 Ara · Canggu 22 Ara – 1 Oca · Uluwatu 1–10 Oca</small></div><span class="st">31 gece boş</span></div>
+        <div class="sec"><span>🛵</span><div><b>Ulaşım</b><small>✨ Öneri: aylık motor kiralama · 31 gün kalıyorsun, günlükten ~%60 ucuz · <u>Plana ekle</u> · <u>Gerek yok</u></small></div><span class="sg">1 öneri</span></div>
+        <div class="sec"><span>🧭</span><div><b>Yapılacak şeyler</b><small>✨ 8 fikir: Tegallalang pirinç terasları, Campuhan sırtı yürüyüşü, Tirta Empul…</small></div><span class="sg">8 fikir</span></div>
+        <div class="sec"><span>🛡</span><div><b>Diğer (Sigorta, eSIM)</b><small>✨ Öneri: seyahat sağlık sigortası, eSIM (Endonezya)</small></div><span class="sg">2 öneri</span></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="note">
+    <b>Akış:</b> Seyahatlerim'deki tek kutu: link/dosya gelirse eskisi gibi okunur; yazı gelirse "gezi başlatma" sohbeti açılır. Asistan 5 bilgiyi sırayla sorar (nereye, nereden, kimle, ne zaman/kaç gün, ne istiyor); her soruda basmalı cevaplar, kendin yazmak da serbest; tek mesajda hepsini yazarsan ("Sabine'yle 10 Aralık'tan 1 ay Bali") hepsini birden doldurur. Sağdaki liste dolar; "Gezimi oluştur" her an basılabilir (nereye + ne zaman yeterli).<br>
+    <b>Oluşturma:</b> rota (şehirler ve gece bölüşü), uçuş yerleri, konaklama geceleri, kişi sayısı, tarz ve bütçe yazılır; ulaşım, sigorta/eSIM ve fikirler <b>öneri</b> olarak gelir (plana sen eklersin). Adımlar gerçek işi gösterir. Sonra pano açılır ve üstteki "sıradaki adım" şeridi seni yönlendirir.
+  </p>
+</div>
+</body>
+</html>
