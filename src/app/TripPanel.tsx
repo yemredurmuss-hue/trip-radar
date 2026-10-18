@@ -64,12 +64,12 @@ import { usePanoDot } from "./usePanoDot";
 import { claimOpening, playOpening } from "./opening";
 import { heroNumbers, openNeedsText, plannedBookedText } from "../lib/lifecycle";
 import { panoEntries } from "../lib/pano";
+import type { PanoAt, PanoView } from "../lib/panoBoard";
 import { countdown, countdownText } from "../lib/countdown";
 import { kindLabel, LegRow } from "./LegRow";
 import { HistoryDialog } from "./HistoryDialog";
 import { ChangeNotices } from "./ShareSafety";
 import type { HiddenInput } from "../lib/history";
-import { DocsTab } from "./docs/DocsTab";
 import { BoardMap } from "./map/BoardMap";
 import { CategoryPlan } from "./plan/CategoryPlan";
 import { SECTION_META, useSectionOpen } from "./plan/sectionMeta";
@@ -79,7 +79,7 @@ import { useSuggestions } from "./useSuggestions";
 import { DAY_MODES } from "../lib/dayView";
 import { setDayMode, useDayMode } from "./days/dayMode";
 import { TimelineView, type CardFor, type RenderGroup, type SettledFor, type TimelineMode } from "./Timeline";
-import { Pano } from "./board/Pano";
+import { PanoDialog } from "./board/v82/PanoDialog";
 import { NeedGroup } from "./cards/NeedCard";
 import { draftOf } from "../lib/draft";
 import { journeyOf } from "../lib/tripShape";
@@ -119,18 +119,30 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const today = decisions?.ctx.today ?? new Date().toISOString().slice(0, 10);
   const dayMode = useDayMode();
   const [view, setView] = useState<TimelineMode | "story" | "docs" | "map" | "board">("plan");
-  // The Pano opened from a plan card ("Pano'da gör"): that need's group, framed, with "← Plan'a dön".
+  // v82 (aşama 6): the Pano is a window over the plan, not a view. Where it is open: a top entry ("docs": Belgeler, C5), a
+  // category, an intent (its key, or a record's group from an old card's "Pano'da aç"); null while it is shut.
+  const [pano, setPano] = useState<PanoAt | null>(null);
+  /** Opens the Pano window, at a place or on one of its side menu's top entries (the hero's gezi menüsü: `openPano("docs")`). */
+  const openPano = useCallback((at: PanoAt | PanoView = {}) => setPano(typeof at === "string" ? { view: at } : { ...at }), []);
+  // The group a legacy "board" view was asked for with (the sticky bar's Plan | Pano switch sets it, then the view).
   const [panoFocus, setPanoFocus] = useState<string | null>(null);
+  // Belgeler and the Pano were views until v82: whatever still asks for one (the sticky bar, the ••• menu) opens the window instead.
+  useLayoutEffect(() => {
+    if (view !== "board" && view !== "docs") return;
+    openPano(view === "docs" ? { view: "docs" } : { need: panoFocus ?? undefined });
+    setPanoFocus(null);
+    setView("plan");
+  }, [view, panoFocus, openPano]);
   // "Son ziyaretten beri": what the other traveller did since the Pano was last open (a dot on its tab), on a shared trip.
-  const panoNews = usePanoDot(trip.id, items, view === "board");
+  const panoNews = usePanoDot(trip.id, items, pano != null);
   // "Sihirli açılış": the first time this trip's Plan is ever open in this browser (once per trip), what is in view comes in in reading order and the
   // counters count up; below the fold as it is scrolled into view (opening.ts). Never on a tab switch or a re-render; a touch or key ends it at once.
-  // The Pano's strips have the same small opening, once per trip of their own (their cards come in one by one).
+  // (v82: the Pano is a window that grows in by itself, E8; the v11 Pano's own opening of its strips is no longer played.)
   const openingTried = useRef(new Set<string>());
   useLayoutEffect(() => {
-    if ((view !== "plan" && view !== "board") || openingTried.current.has(view)) return;
+    if (view !== "plan" || openingTried.current.has(view)) return;
     openingTried.current.add(view);
-    if (!claimOpening(view === "plan" ? trip.id : `${trip.id}:pano`)) return;
+    if (!claimOpening(trip.id)) return;
     const run = playOpening();
     return () => run?.finish();
   }, [view, trip.id]);
@@ -305,10 +317,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     setFocus,
     onOpenItem,
     onCompare,
-    onPano: (group) => {
-      setPanoFocus(group);
-      setView("board");
-    },
+    onPano: (group) => openPano({ need: group }),
     ask: onAsk,
     weather: (city) => {
       const place = city ? places.find((p) => sameCity(p.city, city)) : null;
@@ -518,7 +527,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   // The plan as a PDF (PrintPlan.tsx): drawn while the print window is open.
   const [printing, setPrinting] = useState(false);
   // The trip's ••• menu (App.tsx): "Belgeler" opens the documents, "Planı PDF olarak indir" the PDF.
-  useEffect(() => onPanel((c) => (c === "docs" ? setView("docs") : setPrinting(true))), []);
+  useEffect(() => onPanel((c) => (c === "docs" ? openPano("docs") : setPrinting(true))), [openPano]);
   const heroRef = useRef<HTMLElement>(null);
   // Another trip's to-do list isn't the one that was open.
   useEffect(() => {
@@ -721,27 +730,22 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   return (
     <CardEnvContext.Provider value={env}>
       <SilhouetteDefs />
-      {/* v30: two tabs atop the board, Plan · Pano. "Gün gün" is the Plan's third way to read (PlanOrder); "Belgeler" is in the ••• menu
-          and shows here only while it's open. */}
+      {/* v30: two tabs atop the board, Plan · Pano. "Gün gün" is the Plan's third way to read (PlanOrder). v82: the Pano tab opens the
+          Pano window over the plan (and reads as chosen while it is open); Belgeler is in that window's side menu (C5). */}
       {timeline.entries.length > 0 && (
         <div className="view-tabs" role="tablist" aria-label={L("Görünüm", "View")}>
-          <button role="tab" aria-selected={view !== "board" && view !== "docs"} className={view !== "board" && view !== "docs" ? "on" : ""} onClick={() => setView("plan")}>
+          <button role="tab" aria-selected={!pano} className={!pano ? "on" : ""} onClick={() => (setPano(null), setView("plan"))}>
             {L("Plan", "Plan")}
           </button>
           <TipOn tip={panoNews.length ? <PanoNewsTip news={panoNews} /> : null} below>
             {(bind) => (
-              <button {...bind} role="tab" aria-selected={view === "board"} className={view === "board" ? "on" : ""} onClick={() => (setPanoFocus(null), setView("board"))}>
+              <button {...bind} role="tab" aria-selected={!!pano} aria-haspopup="dialog" aria-expanded={!!pano} className={pano ? "on" : ""} onClick={() => openPano()}>
                 {L("Pano", "Board")}
                 {panoTotal > 0 && <span className="tab-n" aria-hidden>{panoTotal}</span>}
                 {panoNews.length > 0 && <i className="tab-dot" aria-hidden />}
               </button>
             )}
           </TipOn>
-          {view === "docs" && (
-            <button role="tab" aria-selected className="on" onClick={() => setView("docs")}>
-              {L("Belgeler", "Documents")}
-            </button>
-          )}
         </div>
       )}
       {/* (hareket dili, m-isik) a thin light along the top while captures are read or prices looked up */}
@@ -891,27 +895,27 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           </button>
         </div>
       )}
-      {view === "board" ? (
-        <Pano
-          tripId={trip.id}
+      {/* v82: the Pano window over the plan (board/v82/PanoDialog): what it shows is the Plan's own intents and records. */}
+      {pano && (
+        <PanoDialog
+          at={pano}
+          trip={trip}
+          plan={plan}
+          sections={sections}
           items={items}
+          today={today}
           decisions={decisions}
-          focus={panoFocus}
-          onShow={(id) => {
-            setPanoFocus(null);
-            setView("plan");
-            setTimeout(() => reveal({ item: id }), 60);
-          }}
-          onBack={() => {
-            const group = panoFocus;
-            setPanoFocus(null);
-            setView("plan");
-            const back = group ? (items.find((i) => groupKeyOf(i) === group && (i.status === "chosen" || i.status === "booked")) ?? items.find((i) => groupKeyOf(i) === group)) : null;
-            if (back) setTimeout(() => reveal({ item: back.id }), 60);
-          }}
-          onCompare={onCompare}
+          docsFor={docsFor}
+          people={who.count || null}
+          inherited={inherited}
+          onClose={() => setPano(null)}
+          onReveal={(id) => reveal({ item: id })}
+          onAsk={onAsk}
+          onRemove={env.remove}
+          offer={offer}
         />
-      ) : view === "story" ? (
+      )}
+      {view === "story" ? (
         <EmptyEnvContext.Provider value={emptyEnv}>
           {plan.notices.map((x) => (
             <div key={x.text} className="notice">
@@ -922,8 +926,6 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
         </EmptyEnvContext.Provider>
       ) : view === "map" ? (
         <BoardMap trip={trip} plan={plan} legs={legs} />
-      ) : view === "docs" ? (
-        <DocsTab tripId={trip.id} items={items} onGo={(id) => reveal({ item: id })} offer={offer} />
       ) : view === "days" && timeline.entries.length > 0 ? (
         <>
         {plan.notices.map((x) => (

@@ -1,3 +1,5 @@
+// v82 (aşama 6): no longer drawn. The Pano is the window of board/v82/PanoDialog; this v11 page is kept as it was because its
+// search, state filter and sort (C32 "Pano ekleri") are out of this version's interface only (v82 geçişi spec §1.1), to come back.
 // The Pano (v11, docs/mockups/2026-10-08-japonya-web-v11.html, spec 2026-10-08-plan-pano-v11-design.md phase 5):
 // every link the trip gathered, as big photo cards to choose from and put on the plan. Tabs by what it is (Tümü,
 // a section of the Plan, Beğenilenler); Hepsi · Karar bekleyen · Planda; Sırala. A card: its photo (or its kind's

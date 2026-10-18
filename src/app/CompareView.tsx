@@ -52,6 +52,12 @@ interface Props {
 const MAX_COLUMNS = 5;
 
 /**
+ * C11 (karar yardımı) is out of this version's interface (v82 geçişi spec §1.1): "Sırayla karar ver" is not offered, its code
+ * (board/StepDecide) stays to come back later.
+ */
+const STEP_DECIDE = false;
+
+/**
  * Side-by-side comparison of one need: the numbers, the weights the user controls, and why. Two views of it
  * (0.37): Kartlar, the options as a board of photo cards (stays with something to compare start there), and
  * Tablo, the criteria side by side; cards ticked on the board open the table with just those.
@@ -150,7 +156,7 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, steps,
               {L("Hepsini göster", "Show all")}
             </button>
           )}
-          {canStep && (
+          {STEP_DECIDE && canStep && (
             <button type="button" className="cmp-step" onClick={() => setStepping(true)}>
               {L("Sırayla karar ver", "Decide one by one")}
             </button>
