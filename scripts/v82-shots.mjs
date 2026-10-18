@@ -48,7 +48,8 @@ for (const width of [1440, 860, 390]) {
   for (let i = 0; i < n; i++) {
     const sec = secs.nth(i);
     const head = sec.locator(".q-row1, .cat-title").first();
-    if (!(await sec.evaluate((el) => el.classList.contains("open") || !el.classList.contains("closed")))) await head.click().catch(() => undefined);
+    // A v82 category (q-sec) is open with "open"; an old one (cat-sec) is open unless "closed".
+    if (!(await sec.evaluate((el) => (el.classList.contains("q-sec") ? el.classList.contains("open") : !el.classList.contains("closed"))))) await head.click().catch(() => undefined);
     await app.waitForTimeout(450);
     const sid = (await sec.getAttribute("data-section")) ?? (await sec.getAttribute("id")) ?? String(i);
     await sec.screenshot({ path: `${out}/${width}-sec-${i}-${sid}.png` }).catch(() => undefined);

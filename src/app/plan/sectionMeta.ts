@@ -1,8 +1,9 @@
 // The sections' look and what "+ Ekle" adds in each (spec 0.34 §Bölüm kabuğu): colour, icon, name, and
 // the template tiles of that kind. One tile adds at once (instant add, 0.33); more open the sheet with only those.
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { CardKind } from "../../lib/cardKinds";
-import type { CatSection, OpenState, SectionId } from "../../lib/categories";
+import { SECTION_ORDER, type CatSection, type OpenState, type SectionId } from "../../lib/categories";
+import { openOne, withOpen } from "../../lib/planOpen";
 import { L } from "../../lib/i18n";
 import type { TemplateId } from "../../lib/templates";
 
@@ -57,44 +58,24 @@ function write(tripId: string, state: OpenState) {
   }
 }
 
-const PROVISIONAL = Symbol("provisional");
 /**
- * A section drawn only for its suggestions (Öneriler): closed unless the traveller opened it, and its first look
- * isn't kept while it has no card of its own.
+ * Which category is open on this trip (plan v82 B8: one at a time, the last one opened remembered on this computer, all
+ * closed when nothing is): opening one closes the others (lib/planOpen.withOpen).
  */
-export const provisionalSection = (section: CatSection): CatSection => ({ ...section, open: false, [PROVISIONAL]: true }) as CatSection;
-
-/**
- * Which sections are open on this trip: the traveller's own choice, remembered on this computer; else the
- * first look — open while something's left, closed once all is done — taken once per visit, so a section
- * doesn't fold away under the hand that just booked its last ticket.
- */
-export function useSectionOpen(tripId: string): [(section: CatSection) => boolean, (id: SectionId, open: boolean) => void] {
+export function useSectionOpen(tripId: string): [(section: Pick<CatSection, "id">) => boolean, (id: SectionId, open: boolean) => void] {
   const [state, setState] = useState<{ tripId: string; open: OpenState }>(() => ({ tripId, open: read(tripId) }));
-  const firstLook = useRef<{ tripId: string; open: Map<SectionId, boolean> }>({ tripId, open: new Map() });
   useEffect(() => {
     if (state.tripId !== tripId) setState({ tripId, open: read(tripId) });
   }, [tripId, state.tripId]);
   const set = useCallback(
     (id: SectionId, open: boolean) =>
       setState((prev) => {
-        const next = { ...(prev.tripId === tripId ? prev.open : read(tripId)), [id]: open };
+        const next = withOpen(prev.tripId === tripId ? prev.open : read(tripId), id, open, SECTION_ORDER);
         write(tripId, next);
         return { tripId, open: next };
       }),
     [tripId],
   );
-  const chosen = state.tripId === tripId ? state.open : read(tripId);
-  if (firstLook.current.tripId !== tripId) firstLook.current = { tripId, open: new Map() };
-  const looks = firstLook.current.open;
-  const isOpen = (section: CatSection): boolean => {
-    const own = chosen[section.id];
-    if (own != null) return own;
-    // Drawn with no card of its own yet (only suggestions): closed, and no first look kept, so the first real card
-    // gives the section its normal first look.
-    if (PROVISIONAL in section) return section.open;
-    if (!looks.has(section.id)) looks.set(section.id, section.open);
-    return looks.get(section.id)!;
-  };
-  return [isOpen, set];
+  const one = openOne(state.tripId === tripId ? state.open : read(tripId), SECTION_ORDER);
+  return [(section) => section.id === one, set];
 }

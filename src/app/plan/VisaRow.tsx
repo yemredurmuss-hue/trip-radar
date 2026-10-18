@@ -1,6 +1,6 @@
-// Belgeler ve internet's first line (v11, docs/mockups/2026-10-08-japonya-web-v11.html): the visa, said where the
-// papers are. No visa needed is green and up front ("✓ Vize gerekmiyor · Türk pasaportuyla 90 güne kadar"); one
-// needed is amber with its official source and a tick for "got it" (green once ticked); none at home.
+// Belgeler ve internet's first line (v11, docs/mockups/2026-10-08-japonya-web-v11.html; plan v83 C25): the visa, said where
+// the papers are, on the category's rail. No visa needed is green ("✓ Vize gerekmiyor · Türk pasaportuyla 90 güne kadar");
+// one needed is amber with its official source and "✓ Vize alındı" like a plan's "Aldım" (green once ticked); none at home.
 import { L } from "../../lib/i18n";
 import type { Visa } from "../../lib/visa";
 import { IdeaGlyph } from "../ideas/IdeaIcons";
@@ -9,21 +9,19 @@ export function VisaRow({ visa, done, onDone }: { visa: Visa | null; done: boole
   if (!visa || visa.kind === "none") return null;
   const free = visa.kind === "free";
   const ok = free || done;
-  // v11 as drawn: one full-width line, the word in its colour and the rest plain; a visa to get says where to apply
-  // and has its "✓ Vize alındı" like a plan's "Aldım".
   return (
-    <p className={`visa-row${ok ? " ok" : ""}`} data-visa={visa.kind}>
-      <span className="visa-ic" aria-hidden>{ok ? <IdeaGlyph name="check" size={14} /> : "!"}</span>
+    <p className={`z-visa${ok ? " ok" : " need"}`} data-visa={visa.kind}>
+      {ok ? <IdeaGlyph name="check" size={14} /> : <i className="z-vx" aria-hidden>!</i>}
       <b>{free ? L("Vize gerekmiyor", "No visa needed") : visa.kind === "visa" ? (done ? L("Vize alındı", "Visa got") : L("Vize gerekiyor", "A visa is needed")) : L("Vize", "Visa")}</b>
-      <span>{free && visa.days ? L(`· Türk pasaportuyla ${visa.days} güne kadar`, `· up to ${visa.days} days on a Turkish passport`) : `· ${visa.label}`}</span>
-      <i className="visa-sp" />
+      <span>{free && visa.days ? L(`Türk pasaportuyla ${visa.days} güne kadar`, `up to ${visa.days} days on a Turkish passport`) : visa.label}</span>
+      <i className="q-sp" />
       {!free && (
-        <a href={visa.link} target="_blank" rel="noreferrer">
+        <a className="q-alk" href={visa.link} target="_blank" rel="noreferrer">
           {L("Resmî kaynak ↗", "Official source ↗")}
         </a>
       )}
       {visa.kind === "visa" && (
-        <button type="button" className={`visa-tick${done ? " on" : ""}`} role="checkbox" aria-checked={done}
+        <button type="button" className={`q-got${done ? " on" : ""}`} role="checkbox" aria-checked={done}
           aria-label={done ? L("Vize alındı: geri al", "Visa got: undo") : L("Vize alındı olarak işaretle", "Mark the visa as got")}
           onClick={() => onDone(!done)}>
           {done ? L("Geri al", "Undo") : <>✓ {L("Vize alındı", "Got it")}</>}
