@@ -34,7 +34,19 @@ Kod silinmez, arayüze bağlanmaz; sonraki sürümde geri bağlanabilir. Değiş
 - A7, A8 ("mobil sonra"): 860 px altı düzen v83'te çizilir ve bu sürümde yapılır; 390 px ve dar ekranda eşit kutu boyu sonraki iş.
 
 ### 1.3 B9: hazırlık sayısı (Emre onayladı)
-Ana sayı "Omurganın %X'i planda": planda = alındı + ayarlandı + seçildi + (çoklu niyette en az bir kalemi planda olan) / bütün ihtiyaçlar (gerek yok hariç; Önerimiz onaylanana kadar planda sayılmaz). Altında "%Y'si alındı" (alındı + ayarlandı). Çubukta iki ton: koyu yeşil alındı, açık yeşil planda. Hero, yapışkan şerit ve PDF aynı iki sayıyı kullanır. Örnek gezi: 15 ihtiyaçtan 8'i planda (%53), 4'ü alındı (%27).
+Ana sayı "Omurganın %X'i planda": planda = alındı + ayarlandı + seçildi + (çoklu niyette en az bir kalemi planda olan) / bütün ihtiyaçlar (gerek yok hariç; Önerimiz onaylanana kadar planda sayılmaz). Altında "%Y'si alındı" (alındı + ayarlandı). Çubukta iki ton: koyu yeşil alındı, açık yeşil planda. Hero, yapışkan şerit ve PDF aynı iki sayıyı kullanır. Örnek gezi (v83 prototipi): 18 ihtiyaçtan 11'i planda (%61), 6'sı alındı (%33); Ozora: 9 ihtiyaçtan 4'ü planda (%44), 2'si alındı (%22). Dahil kutusu kapsayan niyetin durumunu izler: kapsayan alındıysa alındı, seçildiyse planda; kapsayan karar bekliyorsa ne planda ne karar sayılır (ayrı bir karar değildir). Aşama 0 kodunda Dahil şimdilik planda sayılıyor, alındı sayılmıyor; aşama 3b'de bu kurala çekilir.
+
+### 1.4 Tür iskeleti sistemi (D1–D4, D6, D7, D10, D11; Emre: "Ozora dışında da diğer türler için sistem hazır olmalı")
+Prototip: `docs/mockups/plan-v83-turler/turler.html` (11 tür), çalışan örnekler `index.html` (klasik, Japonya) ve `ozora.html` (festival).
+- **Tek şema, iki kaynak.** Yerleşik türler (festival, kayak, balayı, wellness, klasik; yeni: kruvaziyer ve yol gezisi, D11) ve AI'ın gezi için yazdığı tür (bugünkü `CustomPlaybook`) aynı şemayı kullanır. Plan sayfası türün adını bilmez, şemayı okur.
+- **TripType:** `key, label` · `detect` (tetikleyici; yoksa AI kalıbı; o da yoksa klasik) · `spine: SpinePart[]` · `closes: {section, reason}[]` · `blocks` · `prep` (en çok 8) · `questions` (en çok 3) · `hero` (kapak biçimi, çipler).
+- **SpinePart** (bir parça bir niyet kutusu açar): `section` (uçuş, konaklama, ulaşım, etkinlik, yapılacak, belge) · `word` (kutu adı: Kamp, Tekne, Kabin, Skipass) · `frame` (konaklama kartı, bilet, kart sırası) · `per` (gece aralığı, bacak, şehir, liman, gün, gezi) · `pick` (tek, çoklu) · `start` (Aranıyor ya da Önerimiz; asla Alındı ya da Ayarlandı, D3) · `covers` (paket ya da pass: kapsadığı parçalar "Dahil · … ile", D2, D10) · `when` (bir sorunun cevabına bağlıysa; ör. "kendi ekipmanım" → Ekipman kapanır).
+- **Canlı koda karşılığı (şema değişikliği yok).** `CustomCard {ref, kind, title, place, anchor}` isteğe bağlı `section`, `frame`, `word`, `pick`, `covers`, `by` alanlarıyla genişler; `stayType` (hotel, boat, camp, vehicle) Konaklama kutusunun adını ve çerçevesini verir; `blocked` ve `focus: only` → `blocks` ve `closes`. Bunlar gezi kaydının içindeki nesneye eklenen alanlar; IndexedDB'de yeni depo ya da indeks yok, DB_VERSION=5 kalır. Backend değişmez; AI isteminin şema kısmı güncellenir, gelen kalıp parça parça doğrulanır (bugünkü `validModelPlaybook` gibi), geçersiz parça düşer.
+- **Kategori atamasını tür verir.** Bugün "Kayak pası", "Dalış paketi", "Wellness programı" kaydın sözcüklerine göre Yapılacaklar'a düşüyor ve "yapıldı" sayılıyor (D raporu §2.4). Yeni yapıda türün açtığı kayıt kendi parçasının bölümüne ve çerçevesine gider.
+- **Festival kampı hatası.** `noBooking` kamp "alındı" sayılıyor; safari kampına da uygulanıyor. Yeni yapıda kamp "Dahil" (kapsayan bilet varsa) ya da "Aranıyor" (işletilen kamp, rezervasyon ister) olur.
+- **Kaç kutu:** konaklama gece aralığına göre (D6); uçuş bacak başına, aktarmalı tek niyet iki koçan (D7); etkinlik ve yapılacak şehir başına, kruvaziyerde liman başına.
+- **Kapanma:** biçim kategoriyi "Gerek yok" ve nedeniyle kapatır (günübirlikte konaklama, D4); içinde niyet olmayan kategori hiç çizilmez (C19).
+- **Testler (D raporu senaryoları):** her yerleşik tür için iskelet → niyet listesi (bölüm, ad, çerçeve, başlangıç durumu); Dahil sayımı; `when` cevapları (seviye, ekipman); AI kalıbında geçersiz parça (kabin kartı, deniz adı şehir) düşer, gezi açılır; tanınmayan tür klasik olur; günübirlikte konaklama kapanır; aktarmalı uçuş tek niyet. Aşama 3b'nin parçası.
 
 ## 2. Bilgi haritası (F1)
 Her bilgi tek katmanda: K0 kapalı kategori satırı · K1 niyet kutusu · K2 Ayrıntı (kartın üstünde) · K3 Pano. Tablo: bilgi · kısa hali (K1) · tam hali (K2/K3) · veri kaynağı (C raporu §1) · duruma göre (karar / önerimiz / seçildi / alındı / ayarlandı / aranıyor / gerek yok) · zamana göre (F2).
@@ -53,7 +65,7 @@ Her bilgi tek katmanda: K0 kapalı kategori satırı · K1 niyet kutusu · K2 Ay
 | 1 | Hero | mozaik, şerit, çipler, pencereler, küçült, mini şerit, gezi menüsü | M |
 | 2 | Plan başlığı ve kategori satırları | Plan başlığı, görünüm seçici, kapalı satır (78 px), akordiyon, durum çizgisi | S–M |
 | 3a | Konaklama, eSIM, sigorta | sabit çerçeve, bütün durumlar, Değiştir yerinde, Ayrıntı katmanı, ⋯ menü | L |
-| 3b | Uçuş, tren, transfer ve diğer türler | bilet çerçevesi, aktarmalı uçuş, uçuş günü, kiralama/kamp | L |
+| 3b | Uçuş, tren, transfer ve diğer türler | bilet çerçevesi, aktarmalı uçuş, uçuş günü, kiralama/kamp/pass, tür iskeleti (§1.4) ve Dahil | L |
 | 4 | Etkinlik ve yapılacaklar | iki sabit sıra, boş yuvalar, +n Pano'da, Plana koy | M |
 | 5 | Yolculuk sırasıyla | bölümler, adımlar, tek eylem, gezi sırasında "Bugün" şeridi ve bugünden açılış (D8, v83) | M |
 | 6 | Pano | pencere, kenar menü, karşılaştırma sütunları, İlham, Belgeler girişi | L |
@@ -71,6 +83,7 @@ Kabaca 15–22 iş günü (test hariç). Yayın: tek sürüm (G2 a), aşamalar i
 - Ekran görüntüsü karşılaştırması: prototip (v82/v83) ↔ yeni yapı, 1440 / 1280 / 860 / 390 px, iki dil.
 - Sabit boy denetimi: her niyet ailesi her durumda aynı yükseklik (prototipteki ölçüm betiği gibi).
 - Azaltılmış hareket ve "Hareketi duraklat" (E17).
+- Tür iskeleti senaryoları (§1.4): 11 tür, AI kalıbı doğrulama, Dahil sayımı.
 
 ## 7. Canlı hatalar paketi (A5)
 D raporu §4: H1–H18. Yeni tasarıma değenler (A5 a): H1, H2, H4, H5, H6, H7, H8, H9, H10, H12, H13, H15 ilgili aşamaya bağlanır; gerisi ayrı iş listesine.
