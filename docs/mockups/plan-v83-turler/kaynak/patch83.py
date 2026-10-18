@@ -127,5 +127,14 @@ function all(){$$('.q-sec')""")
 R("  var ow=$('.q-opts',it),pw=$('.q-planw',it)","  var ow=$('.q-opts',it);if(ow&&R.classList.contains('durum')){var cap=Math.max(1,lim-$$('.z-new,.z-bad',ow).length);lim=avail.length>cap?Math.max(1,cap-1):cap;}\n  var pw=$('.q-planw',it)")
 
 R("(k==='stay'?'Rezerve edildi':'Bilet alındı')","(k==='stay'?'Rezerve edildi':k==='esim'?'Satın alındı':'Bilet alındı')")
+# 11) Hazırlık: sıradaki günlü madde, bavul (Etsy T3, T6)
+R("' hazır · yağmurluk, Japan Rail Pass, yen</small>","' hazır'+prepNext()+'</small>")
+R("function prepCount(){","function prepNext(){var n=$$('#cat-prep .q-pr1[data-day]').filter(function(x){return !x.classList.contains('done');})[0];return n?' · sıradaki '+n.dataset.day+': '+$('.q-pt1 b',n).textContent:'';}\nfunction bvCount(){var b=$('.q-bv');if(!b)return;var l=$$('.q-bv1',b),d=l.filter(function(x){return x.classList.contains('done');}).length,y=l.filter(function(x){return x.classList.contains('buy')&&!x.classList.contains('done');}).length;$('.q-bvn',b).textContent=d+'/'+l.length+' hazır'+(y?' · '+y+' alınacak':'');}\nfunction prepCount(){")
+R("""  if(el.classList.contains('z-mb')){togglePop(el,el.nextElementSibling);return;}""","""  if(el.classList.contains('q-bvck')){var bl=el.closest('.q-bv1');bl.classList.toggle('done');el.setAttribute('aria-checked',String(bl.classList.contains('done')));bvCount();return;}
+  if(el.classList.contains('q-bvx')){var bx=el.closest('.q-bv1');var g=bx.closest('.q-bvg');bx.remove();if(g&&!$('.q-bv1',g))g.remove();bvCount();toast('Kaldırıldı · bir dahaki gezide önermem');return;}
+  if(el.classList.contains('q-bva')){var qq=el.closest('.q-bvq');qq.classList.add('done');var ans=document.createElement('b');ans.textContent=el.textContent;$$('.q-bva',qq).forEach(function(x){x.remove();});qq.appendChild(ans);toast('Listeyi buna göre güncelledim (prototip)');return;}
+  if(el.classList.contains('q-bvadd')){toast('Her gezide götürdüğün bir şeyi ekle; sonraki gezilerde de gelir (prototip)');return;}
+  if(el.classList.contains('z-mb')){togglePop(el,el.nextElementSibling);return;}""")
+
 open('mk83.js','w').write(s)
 print('ok',len(s))

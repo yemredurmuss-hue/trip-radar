@@ -94,6 +94,7 @@ def hero(cfg):
         bg = cfg['budget']
         bud_pop = ('<div class="x-pop x-bud-pop" hidden role="dialog" aria-label="Bütçe"><b class="x-pt">Bütçe · %s</b>' % E(bg['total'])
                    + ''.join('<div class="x-bl %s"><span><i></i>%s</span><b>%s</b></div>' % (c, a, b) for c, a, b in bg['lines'])
+                   + (('<div class="x-bl pp"><span>Kişi başı</span><b>%s</b></div>' % E(bg['pp'])) if bg.get('pp') else '')
                    + '<div class="x-sep"></div>' + ''.join('<div class="x-bl"><span>%s</span><b>%s</b></div>' % (a, b) for a, b in bg['cats'])
                    + '<p class="x-pn">%s</p></div>' % E(bg['note']))
         segs.append('<div class="x-seg x-s3 f-full"><span class="x-ico">%s</span><button type="button" class="x-sv x-budb" aria-expanded="false"><b>%s</b><small>/ %s bütçe</small></button>%s</div>'

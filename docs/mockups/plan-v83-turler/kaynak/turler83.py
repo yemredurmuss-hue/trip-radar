@@ -128,8 +128,47 @@ TYPES = [
          hero='Mozaik: plandaki yerlerin fotoğrafları.'),
 ]
 
+SIGNALS = [
+    ('Nerede uyunur', 'otel ya da ev · tekne · kamp · gemi kabini · araç · yok', 'Konaklama kutusunun adı ve çerçevesi (Tekne, Kamp, Kabin). "Yok" ise Konaklama "Gerek yok · aynı gün dönüş".'),
+    ('Paket', 'bir alım başka kutuları kapsar', 'Kapsanan kutular "Dahil · … ile" gelir, karar istemez: retreat → konaklama ve transfer, tekne → konaklama ve dalış, festival bileti → kamp.'),
+    ('Pass ya da kiralık araç', 'aradaki yolculukları kapsar', 'JR, Hakone, Interrail, kiralık araç: aradaki bacaklar "Dahil" (D10).'),
+    ('Hareketli üs', 'gemi, araç, tren pass ile durak durak', 'Gece ile durak ayrılır; Yolculuk sırasıyla durak bölümleri, etkinlik durak başına.'),
+    ('Yakın havalimanı', 'hedefte havalimanı yok', 'Uçuş en yakın havalimanına, Ulaşım\'a oradan transfer. Kısa bilgi satırı nedenini söyler.'),
+    ('Günlük hak', 'skipass, park bileti, festival günleri', 'Konaklama günleri boyunca tek seçim, fiyat kişi × gün.'),
+    ('Odak', 'tek deneyim', 'Festival, dalış, retreat: diğer etkinlik önerileri kapanır; kategorinin başında kısa bilgi.'),
+    ('Ekipman', 'kiralanır ya da kendin getirirsin', 'Kayak, dalış, bisiklet, kamp: "kendi ekipmanım" cevabı kutuyu kapatır, Bavul\'a madde ekler.'),
+    ('Belge ve sağlık', 'vize, aşı, sertifika, ehliyet, kayıt', 'Belgeler\'de kutu, Hazırlık\'ta günlü madde (T3).'),
+    ('Kimler', 'yalnız, çift, aile, ekip', 'Oda sayısı, kişi başı satırı (T5), öneri tonu.'),
+    ('Zaman', 'günübirlik, tarihsiz, gece uçuşu', 'Tek gün; "~" tarih ve Yolculuk sırasıyla kapalı (D15); "uçakta" satırı (D14).'),
+]
+SIG = {'festival': ['uyunur: kamp', 'paket: bilet kampı kapsar', 'odak', 'yakın havalimanı'], 'dive': ['uyunur: tekne', 'paket: konaklama, transfer, dalış', 'odak', 'ekipman', 'belge: sertifika'],
+       'ski': ['günlük hak: skipass', 'ekipman', 'yakın havalimanı'], 'wellness': ['paket: program konaklama ve transferi kapsar', 'odak'], 'cruise': ['uyunur: gemi kabini', 'hareketli üs', 'paket: limanlar arası'],
+       'road': ['hareketli üs', 'kiralık araç kapsar', 'belge: ehliyet'], 'day': ['uyunur: yok', 'zaman: tek gün'], 'biz': ['kimler: yalnız', 'zaman: kısa'], 'safari': ['uyunur: kamp ya da lodge', 'paket: game drive', 'belge ve sağlık'],
+       'honeymoon': ['kimler: çift', 'paket: transfer'], 'classic': ['pass kapsar (Hakone)', 'çok şehir']}
+INFO = {'festival': {'stay': 'Festival gezisi: festival günlerinde konaklama bilete dahil kamp olarak kuruldu, otel aranmaz.', 'activity': 'Odak festival: başka tur ve etkinlik önerilmez.'},
+        'dive': {'stay': 'Dalış teknesi: konaklama, yemek ve dalışlar tekne paketinde; otel aranmaz.'},
+        'ski': {'activity': 'Kayak: skipass konaklama günleri boyunca; ekipman ve okul cevabına göre açılır.'},
+        'wellness': {'stay': 'Retreat: program konaklamayı ve transferi kapsıyorsa onlar "Dahil" olur.'},
+        'cruise': {'transport': 'Kruvaziyer: limanlar arası yolculuk kabine dahil; yalnız limana transfer karar ister.'},
+        'road': {'transport': 'Yol gezisi: kiralık araç şehirler arası yolculukları kapsar.'},
+        'day': {'stay': 'Günübirlik: aynı gün dönüş, konaklama kapandı.'},
+        'safari': {'stay': 'Safari: işletilen kamp rezervasyon ister; kendiliğinden alındı sayılmaz.'},
+        'honeymoon': {'transport': 'Resort transferi çoğu zaman pakette; onay sayfası söylerse "Dahil" olur.'}}
+NAMELESS = [
+    dict(name='Kapadokya: balon ve mağara otel', sig=['uyunur: otel', 'paket: balon turu otel transferini kapsar', 'zaman: şafak'], spine={
+        'stay': [I('Konaklama', 'Göreme · 2 gece · mağara otel', 'stay', 'sug', 'otel')],
+        'activity': [I('Balon', 'Balon turu · 05:00', 'stay', 'sug', 'etkinlik-tur', per='tek seçim'), I('Transfer', 'Otel → kalkış alanı', 'ticket', 'inc', 'minibus', 'balon turuyla')]}),
+    dict(name='Berlin maratonu', sig=['odak: yarış', 'belge: kayıt ve numara alma', 'kimler: yalnız'], spine={
+        'stay': [I('Konaklama', 'Start alanına yakın · 3 gece', 'stay', 'sug', 'otel')],
+        'activity': [I('Yarış', 'Maraton kaydı', 'cards', 'srch', 'etkinlik-tur')],
+        'todo': [I('Numara', 'Göğüs numarası alma · fuar', 'cards', 'sug', 'not')]}),
+    dict(name='Interrail · 3 hafta', sig=['hareketli üs', 'pass kapsar', 'çok ülke'], spine={
+        'transport': [I('Pass', 'Interrail · 15 gün', 'ticket', 'sug', 'tren'), I('Tren', 'Viyana → Prag', 'ticket', 'inc', 'tren', 'pass ile'), I('Tren', 'Prag → Berlin', 'ticket', 'inc', 'tren', 'pass ile')],
+        'stay': [I('Konaklama', 'Şehir başına gece aralığı', 'stay', 'sug', 'ev-daire', per='gece aralığı')]}),
+]
+
 RULES = [
-    ('İskelet söyler', 'Türe özel kutunun kategorisi, çerçevesi ve adı tür iskeletinde yazılı. Kaydın sözcüklerine göre tahmin edilmez (D1).'),
+    ('Biçim söyler', 'Kutunun kategorisi, çerçevesi ve adı sinyallerden gelir; kaydın sözcüklerine göre tahmin edilmez (D1).'),
     ('Paket tek niyettir', 'Tekne, retreat, kabin, festival kampı tek ana niyet. Kapsadığı kategorilerde kutu "Dahil" satırıyla gelir, karar istemez (D2).'),
     ('Pass ve kiralık araç kapsar', 'Aradaki yolculuklar "Dahil · … ile" olarak kurulur (D10).'),
     ('Başlangıç durumu', 'Türün ya da AI\'ın açtığı kutu "Aranıyor" ya da "Önerimiz" başlar. Asla kendiliğinden "Alındı" ya da "Ayarlandı" olmaz (D3).'),
@@ -139,7 +178,7 @@ RULES = [
 ]
 
 SCHEMA = [
-    ('TripType', [('key, label', 'tür adı: festival, dalış teknesi, kruvaziyer…'), ('detect', 'tetikleyici sözcükler; yoksa AI kalıbı, o da yoksa klasik'), ('spine', 'sıralı omurga parçaları (aşağıda)'),
+    ('TripShape', [('signals', 'yukarıdaki 11 sinyal; AI her gezi için doldurur, kod doğrular'), ('preset', 'tanıdık türse hazır karışım (festival, kayak…); yalnız varsayılan verir, sinyal ezer'), ('spine', 'sinyallerden kurulan omurga parçaları (aşağıda)'), ('info', 'ilgili kategorinin başındaki kısa bilgi; yalnız biçim bir şeyi değiştirdiyse'),
                   ('closes', 'kapanan kategori ve nedeni'), ('blocks', 'engellenen öneriler'), ('prep', 'en çok 8 hazırlık maddesi'), ('ask', 'en çok 3 soru; cevap kutuyu açar ya da kapatır'), ('hero', 'kapak biçimi ve çipler')]),
     ('SpinePart', [('cat', 'uçuş, konaklama, ulaşım, etkinlik, yapılacak, belge'), ('word', 'kutu adı: Kamp, Tekne, Skipass, Kabin'), ('frame', 'konaklama kartı · bilet · kart sırası'),
                    ('per', 'gece aralığı · bacak · şehir · liman · gün · gezi'), ('pick', 'tek seçim ya da çoklu'), ('start', 'Aranıyor ya da Önerimiz'), ('covers', 'paket ya da pass: kapsadığı kutular "Dahil"'), ('when', 'bir sorunun cevabına bağlıysa')]),
@@ -159,8 +198,10 @@ def card(t):
     closed = dict(t['closes'])
     for k, nm, c in CAT:
         items = t['spine'].get(k, [])
+        inf = INFO.get(t.get('key'), {}).get(k)
+        infh = ('<p class="t-inf"><i>i</i>%s</p>' % E(inf)) if inf else ''
         if items:
-            rows += '<div class="t-row" style="--c:%s"><span class="t-cat"><i></i>%s</span><div class="t-is">%s</div></div>' % (c, E(nm), ''.join(tile(i) for i in items))
+            rows += '<div class="t-row" style="--c:%s"><span class="t-cat"><i></i>%s</span><div class="t-isw">%s<div class="t-is">%s</div></div></div>' % (c, E(nm), infh, ''.join(tile(i) for i in items))
         if k in closed and not items:
             rows += '<div class="t-row off" style="--c:%s"><span class="t-cat"><i></i>%s</span><div class="t-off">Gerek yok · %s</div></div>' % (c, E(nm), E(closed[k]))
         elif k in closed:
@@ -173,8 +214,15 @@ def card(t):
     foot += '<div class="t-fl"><b>Üst özet</b><span class="t-tx">%s</span></div>' % E(t['hero'])
     link = ('<a class="t-go" href="%s">Prototipte aç ›</a>' % t['link']) if t.get('link') else ''
     main = ('<span class="t-main">Ana niyet: <b>%s</b></span>' % E(t['main'])) if t['main'] else ''
-    return ('<article class="t-card" id="t-%s"><header class="t-h"><div><h2>%s</h2><small>%s</small></div>%s</header><p class="t-trig"><b>Tanınır</b> %s</p>%s'
-            '<div class="t-rows">%s</div><div class="t-foot">%s</div></article>') % (t['key'], E(t['name']), E(t['ex']), link, E(t['trig']), main, rows, foot)
+    sig = '<p class="t-sig">%s</p>' % ''.join('<i>%s</i>' % E(x) for x in SIG.get(t['key'], []))
+    return ('<article class="t-card" id="t-%s"><header class="t-h"><div><h2>%s</h2><small>%s</small></div>%s</header>%s<p class="t-trig"><b>Tanınır</b> %s</p>%s'
+            '<div class="t-rows">%s</div><div class="t-foot">%s</div></article>') % (t['key'], E(t['name']), E(t['ex']), link, sig, E(t['trig']), main, rows, foot)
+
+
+def mini(n):
+    rows = ''.join('<div class="t-row" style="--c:%s"><span class="t-cat"><i></i>%s</span><div class="t-is">%s</div></div>' % (c, E(nm), ''.join(tile(i) for i in n['spine'][k])) for k, nm, c in CAT if k in n['spine'])
+    return '<article class="t-card nm"><header class="t-h"><div><h2>%s</h2><small>adı tanınmadı · sinyallerden kuruldu</small></div></header><p class="t-sig">%s</p><div class="t-rows">%s</div></article>' % (
+        E(n['name']), ''.join('<i>%s</i>' % E(x) for x in n['sig']), rows)
 
 
 CSS = '''
@@ -219,6 +267,12 @@ h1{font-size:34px;line-height:1.1;margin:6px 0 8px;letter-spacing:-.015em}
 .t-fl{display:grid;grid-template-columns:150px minmax(0,1fr);gap:12px;align-items:baseline}.t-fl b{font-size:12.5px;color:var(--mut)}
 .t-fl span{display:flex;gap:6px;flex-wrap:wrap}.t-fl i{font-style:normal;font-size:12.5px;background:#f6f5f2;border-radius:8px;padding:3px 8px}.t-fl i.q{background:#fff8eb;color:#7a4b00}
 .t-tx{font-size:13px;color:var(--ink)}
+.sh{font-size:22px;margin:30px 0 10px}.lead.sm{font-size:14px;margin-bottom:12px}
+.sgs{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:10px;margin:0 0 22px}
+.sg{background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px 14px;display:grid;gap:3px}.sg b{font-size:14.5px}.sg small{font-size:12.5px;color:var(--acc);font-weight:700}.sg span{font-size:13px;color:var(--mut)}
+.t-sig{display:flex;gap:6px;flex-wrap:wrap;margin:0}.t-sig i{font-style:normal;font-size:12px;font-weight:700;color:#4a36c9;background:var(--acc-s);border-radius:99px;padding:3px 10px}
+.t-isw{display:grid;gap:8px;min-width:0}.t-inf{display:flex;gap:8px;align-items:flex-start;margin:0;padding:8px 12px;border-radius:12px;background:#f6f4fd;color:#3d3566;font-size:13px}.t-inf i{flex:none;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;background:#e4dcff;color:#4a36c9;font:italic 700 11px/1 Georgia,serif;margin-top:1px}
+.t-card.nm{border-style:dashed;border-color:#cfc9e3}
 .unk{background:#fff;border:1.5px dashed #cfc9e3;border-radius:22px;padding:18px 20px;margin-top:16px}.unk h2{margin:0 0 6px;font-size:19px}.unk ol{margin:6px 0 0 18px;padding:0;display:grid;gap:4px;font-size:14px}
 .map{margin-top:16px;background:#fff;border:1px solid var(--line);border-radius:22px;padding:18px 20px}.map h2{margin:0 0 8px;font-size:19px}
 .map table{width:100%;border-collapse:collapse;font-size:13.5px}.map th,.map td{text-align:left;padding:8px 10px;border-top:1px solid var(--line);vertical-align:top}.map th{font-size:12px;color:var(--mut);border-top:0}
@@ -232,26 +286,33 @@ h1{font-size:34px;line-height:1.1;margin:6px 0 8px;letter-spacing:-.015em}
 def page():
     rules = ''.join('<div class="rule"><b>%s</b><span>%s</span></div>' % (E(a), E(b)) for a, b in RULES)
     schema = ''.join('<div class="sc"><h3>%s</h3><dl>%s</dl>%s</div>' % (n, ''.join('<dt>%s</dt><dd>%s</dd>' % (E(a), E(b)) for a, b in f),
-                                                                          '<p>Yerleşik türler ve AI\'ın kurduğu türler aynı şemayı kullanır. AI kalıbı parça parça doğrulanır; geçersiz parça düşer, gezi bozulmaz.</p>' if n == 'TripType' else '<p>Bir parça bir niyet kutusu açar. Kutunun boyu, çerçeve ailesi ve durumları v82 standardındaki gibidir.</p>') for n, f in SCHEMA)
+                                                                          '<p>Tür adı yalnız bir kısayol. Plan sayfası sinyalleri okur; tanınmayan gezi de aynı yoldan kurulur. AI\'ın yazdığı sinyaller parça parça doğrulanır; geçersiz parça düşer, gezi bozulmaz.</p>' if n == 'TripShape' else '<p>Bir parça bir niyet kutusu açar. Kutunun boyu, çerçeve ailesi ve durumları v82 standardındaki gibidir.</p>') for n, f in SCHEMA)
     legend = ''.join('<span class="t-st %s">%s</span>' % (k, v) for k, v in ST.items() if k != 'off')
     nav = ''.join('<a href="#t-%s">%s</a>' % (t['key'], E(t['name'])) for t in TYPES)
+    sigs = ''.join('<div class="sg"><b>%s</b><small>%s</small><span>%s</span></div>' % (E(a), E(b), E(c)) for a, b, c in SIGNALS)
+    noname = ''.join(mini(n) for n in NAMELESS)
     cards = ''.join(card(t) for t in TYPES)
-    unk = ('<section class="unk"><h2>Tanınmayan tür gelince</h2><ol>'
-           '<li>AI o gezi için aynı şemayla bir tür yazar (ör. "Hac", "Maraton", "Interrail"). Kart türü, kategori ve çerçeve listeden seçilir; liste dışı parça düşer.</li>'
-           '<li>AI kalıp vermezse tür klasiktir: uçuş ve konaklama açılır, gerisi linklerle ve sohbetle gelir.</li>'
+    unk = ('<section class="unk"><h2>Sinyal eksik ya da yanlış gelince</h2><ol>'
+           '<li>AI gezinin sinyallerini doldurur (ör. Hac, Maraton, Interrail). Kart türü, kategori ve çerçeve listeden seçilir; liste dışı parça düşer.</li>'
+           '<li>AI yoksa ya da sinyal gelmezse yalnız kesin olanlar kurulur: uçuş, gece aralığına göre konaklama, belgeler. Gerisi linklerle ve sohbetle gelir.</li>'
            '<li>Yer okunamazsa (deniz ya da bölge adı) gezi yine açılır; rota "Önerimiz" olarak kurulur, şehir sorulur (D5).</li>'
            '<li>Türün açtığı her kutu yine aynı 288 px kutu, aynı durumlar: Aranıyor, Önerimiz, Seçildi, Alındı, Ayarlandı, Dahil, Gerek yok.</li></ol></section>')
     mp = ('<section class="map"><h2>Canlı koda karşılığı</h2><table><tr><th>Şemadaki alan</th><th>Bugün canlıda</th><th>Ne eklenir</th></tr>'
-          '<tr><td>TripType</td><td><code>PLAYBOOKS</code> (festival, ski, honeymoon, wellness, classic) ve <code>CustomPlaybook</code></td><td>Kruvaziyer ve yol gezisi yerleşik olur (D11). Dalış, safari, iş, günübirlik ilk sürümde AI kalıbı olarak aynı şemayla.</td></tr>'
+          '<tr><td>TripShape</td><td><code>PLAYBOOKS</code> (festival, ski, honeymoon, wellness, classic) ve AI\'ın yazdığı <code>CustomPlaybook</code></td><td>İkisi aynı sinyal kümesini doldurur; yerleşik türler hazır karışım olur (kruvaziyer ve yol gezisi eklenir, D11). Adı tanınmayan gezi AI\'ın sinyalleriyle kurulur.</td></tr>'
           '<tr><td>SpinePart.cat, frame, word</td><td><code>CustomCard {ref, kind, title, place, anchor}</code>; kategori kaydın sözcüklerinden tahmin ediliyor</td><td><code>CustomCard</code>\'a isteğe bağlı <code>section</code>, <code>frame</code>, <code>word</code>, <code>pick</code>. Kayıt nesnesine alan eklemek DB_VERSION değiştirmez.</td></tr>'
           '<tr><td>SpinePart.covers</td><td>Yok; festival kampı <code>noBooking</code> ile "alındı" sayılıyor (hata)</td><td>İsteğe bağlı <code>covers: ref[]</code> ve <code>by</code>. Kapsanan kutu "Dahil" olur, alındı sayılmaz.</td></tr>'
-          '<tr><td>stayType</td><td>hotel, boat, camp, vehicle ve <code>stayPort</code></td><td>Konaklama kutusunun adı ve çerçevesi buradan (Tekne, Kamp, Kabin).</td></tr>'
+          '<tr><td>Nerede uyunur</td><td><code>stayType</code> (hotel, boat, camp, vehicle) ve <code>stayPort</code></td><td>Kabin ve "yok" (günübirlik) eklenir. Konaklama kutusunun adı ve çerçevesi buradan.</td></tr>'
+          '<tr><td>Yakın havalimanı, hareketli üs, günlük hak</td><td>festival gateway kuralı; diğerleri yok</td><td>İsteğe bağlı alanlar: <code>gateway</code>, <code>movingBase</code>, <code>perDay</code>. Kayıt nesnesine eklenir, DB_VERSION değişmez.</td></tr>'
+          '<tr><td>info</td><td>yok</td><td>Kategori başına kısa metin; yalnız biçim bir şeyi değiştirdiyse (kamp, Dahil, kapanan öneri, yakın havalimanı).</td></tr>'
           '<tr><td>closes, blocks</td><td><code>blocked</code>, <code>focus: only</code></td><td>Kategori kapatma "Gerek yok" ve nedeni.</td></tr>'
           '<tr><td>ask, prep</td><td><code>questions</code> (en çok 3), <code>prep</code> (en çok 8)</td><td>Değişmez. Cevap, <code>when</code> ile bağlı kutuyu açar ya da kapatır.</td></tr></table></section>')
     return ('<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Gezi Türleri</title><style>%s</style></head><body><div class="w">'
             '<nav class="top"><a href="./">Japonya</a><a href="ozora.html">Ozora</a><a class="on" href="turler.html">Türler</a></nav>'
-            '<h1>Gezi türleri ve omurga</h1><p class="lead">Her gezi türü aynı şemayla yazılır. Şema hangi kategorinin açılacağını, her kutunun adını, çerçevesini, kaç tane açılacağını, hangi durumda başlayacağını ve bir paketin neleri "Dahil" ettiğini söyler. Plan sayfası bu şemayı okuyup aynı niyet kutularını kurar. Ozora ve Japonya prototipte çalışıyor; diğerleri aşağıda omurga olarak.</p>'
-            '<div class="rules">%s</div><div class="schema">%s</div><div class="legend">Kutu durumu: %s</div><nav class="nav" aria-label="Türler">%s</nav><div class="grid">%s</div>%s%s</div></body></html>') % (CSS, rules, schema, legend, nav, cards, unk, mp)
+            '<h1>Gezi biçimi ve omurga</h1><p class="lead">Sistem gezinin adına değil biçimine bakar: nerede uyunur, bir alım neyi kapsar, durak durak mı gidilir, gidilen yere uçak iner mi, odak tek deneyim mi. Omurga bu sinyallerden kurulur; adı ne olursa olsun yeni bir gezi aynı yoldan şekillenir. Tanıdık türler (festival, dalış, balayı…) yalnız hazır bir karışım; onlarda ilgili kategorinin başında kısa bir bilgi satırı çıkar. Ozora ve Japonya prototipte çalışıyor.</p>'
+            '<h2 class="sh">Sinyaller</h2><div class="sgs">%s</div>'
+            '<div class="rules">%s</div><div class="schema">%s</div>'
+            '<h2 class="sh">Adı tanınmayan geziler</h2><p class="lead sm">Hiçbir hazır karışıma uymayan geziler de aynı sinyallerle kurulur.</p><div class="grid">%s</div>'
+            '<h2 class="sh">Hazır karışımlar</h2><div class="legend">Kutu durumu: %s</div><nav class="nav" aria-label="Türler">%s</nav><div class="grid">%s</div>%s%s</div></body></html>') % (CSS, sigs, rules, schema, noname, legend, nav, cards, unk, mp)
 
 
 os.makedirs(OUT + '/illus', exist_ok=True)

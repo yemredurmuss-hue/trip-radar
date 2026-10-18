@@ -319,6 +319,9 @@ def section(cat):
         visa = ('<p class="q-visa z-visa need">%s<b>%s</b><span>%s</span><span class="q-sp"></span><a class="q-alk" href="#" onclick="return false">Resmî kaynak ↗</a><button type="button" class="q-got">✓ Vize alındı</button></p>' % (ic('x', 14, 3) if False else '<i class="z-vx">!</i>', E(v['t']), E(v['s'])))
     else:
         visa = '<p class="q-visa z-visa">%s<b>Vize gerekmiyor</b><span>Türk pasaportuyla 90 güne kadar</span></p>' % ic('check', 14, 3) if v else ''
+    inf = globals().get('CATINFO', {}).get(cat['key'])
+    if inf:
+        visa = ('<p class="q-tinfo" data-sig="%s"><i>i</i><span>%s</span></p>' % (inf[0], E(inf[1]))) + visa
     bud = ('<span class="q-bud"><b class="q-spent"></b><small>%s ayrıldı</small></span>' % cat['allot']) if cat['allot'] else '<span class="q-bud"><b class="q-spent"></b><small>&nbsp;</small></span>'
     return ('<section class="q-sec" id="cat-%s" style="--c:%s"><button type="button" class="q-row1" aria-expanded="false">'
             '<span class="q-ic" aria-hidden="true">%s</span><span class="q-tt"><b>%s</b><small class="q-kw">%s<span class="q-ideas"></span></small></span><span class="q-ths"></span><span class="q-prog"><span class="q-bar"><i class="bk"></i><i class="ch"></i></span><small class="q-pl1"></small></span>%s<span class="q-chev" aria-hidden="true">%s</span></button>'

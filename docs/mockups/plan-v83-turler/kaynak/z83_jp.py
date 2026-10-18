@@ -147,3 +147,30 @@ _BK = {'int-f1': dict(mode='booked', sel='f1a'), 'int-s1': dict(mode='booked', s
        'int-r3': dict(mode='booked', sel='r3a'), 'int-e1': dict(picked=['e1a', 'e1b'], booked=['e1a', 'e1b']), 'int-e2': dict(picked=['e2a'], booked=['e2a']), 'int-d1': dict(mode='booked', sel='d1a')}
 SCNSET = {'today': dict(chap=_ki, ints=_BK), 'flight': dict(chap=len(TRIP) - 1, ints=_BK)}
 ARRIVE = True
+# Hazırlık (Etsy T3, T4 b, T6 a, T8 b): günler gezi verisinden çıkar; kalan ödeme sohbetten
+PREP83 = dict(
+    items=[
+        dict(t='Visit Japan Web\'e kaydol', w='Havalimanında girişte QR kod isteniyor', day='1 Nis\'e kadar', k='2027-03-31', done=True, shop='site'),
+        dict(t='Yen bozdur', w='Küçük yerler çoğu zaman nakit istiyor · 1 € ≈ 162 ¥', day='1 Nis\'ten önce', k='2027-03-31b'),
+        dict(t='Japan Rail Pass al', w='Planda 3 tren var; 7 günlük pass bunlardan ucuz olabilir', day='5 Nis\'e kadar', k='2027-04-05', src='ilk tren 5 Nis', shop='site'),
+        dict(t='Gora Kadan: kalan €300\'ü girişte öde', w='Rezervasyonda €900 ödendi', day='9 Nis', k='2027-04-09', src='sohbetten'),
+        dict(t='Online check-in · TK49', w='Osaka → İstanbul · kalkıştan 24 saat önce açılır', day='15 Nis 11:00', k='2027-04-15', src='uçuş kartından'),
+        dict(t='Biletleri telefona indir', w='Uçuş ve tren biletleri çevrimdışı açılsın', day='', k=None, done=True),
+    ],
+    bavul=dict(sub='Emre için · Nisan havası, 16 gün ve plandaki yerlere göre', ask=[('Bagaj', 'Valiz · 23 kg (TK49\'da 1 bagaj dahil)', []), ('16 günde çamaşır yıkayacak mısın?', '', ['Evet', 'Hayır'])],
+               groups=[('Hava · 6–19°, Kyoto\'da 7–8 Nis yağmur', [('Yağmurluk', 'Kyoto için', 'buy', 'amazon'), ('İnce mont', 'akşamları 6°', 'ok', ''), ('Kat kat giyim', '', 'ok', '')]),
+                       ('Plandaki yerler', [('Rahat yürüyüş ayakkabısı', 'Tokyo ve Kyoto\'da çok yürüyüş', 'ok', ''), ('Çıkarması kolay ayakkabı, temiz çorap', 'tapınak ve ryokanda ayakkabı çıkarılır', '', ''), ('Mayo yerine yukata', 'Gora Kadan onseninde verilir', 'ok', '')]),
+                       ('Elektronik', [('Priz dönüştürücü (A tipi)', 'Japonya A ve B tipi', 'buy', 'trendyol'), ('Powerbank', '', 'ok', ''), ('Şarj kabloları', '', '', '')]),
+                       ('Belgeler ve para', [('Pasaport', 'Belgeler\'de kayıtlı', 'ok', ''), ('Kredi kartı ve biraz nakit', '', '', '')])],
+               mine=['Kulaklık', 'Uyku maskesi', 'Kişisel ilaçlar']),
+    bilmen=dict(sub='Japonya · gezi boyunca işine yarayacaklar', rows=[
+        ('alert', 'Acil', '110 polis · 119 ambulans ve itfaiye'),
+        ('cash', 'Nakit', 'Küçük yerlerde kart geçmeyebilir; 7-Eleven ATM\'leri yabancı kart alır'),
+        ('hand', 'Bahşiş', 'Verilmez; bırakırsan geri getirebilirler'),
+        ('shoe', 'Ayakkabı', 'Tapınak, ryokan ve bazı restoranlarda girişte çıkarılır'),
+        ('train', 'Trende', 'Telefonla konuşulmaz; sıraya girilir'),
+        ('flag', 'Türkiye Büyükelçiliği', 'Tokyo · <a class="q-alk" href="#" onclick="return false">Haritada aç ↗</a>')]),
+)
+CATINFO = {'transport': ('pass', "Hakone Free Pass alındığı için Hakone içindeki vapur, teleferik ve otobüs ayrı karar istemez; \"Dahil\" olarak geldi.")}
+
+HERO['budget']['pp'] = '~€3.450 · 2 kişi'

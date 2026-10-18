@@ -74,12 +74,14 @@ function renderCat(sec){
   var id=$('.q-ideas',sec);if(id)id.textContent=ideas?(' · '+ideas+' fikir'):'';
   var sp=$('.q-spent',sec);if(sp){var al=(sp.nextElementSibling&&sp.nextElementSibling.textContent.trim())||'';sp.textContent=sum?'€'+sum.toLocaleString('tr-TR'):(al?'€0':'');}
 }
+function prepNext(){var n=$$('#cat-prep .q-pr1[data-day]').filter(function(x){return !x.classList.contains('done');})[0];return n?' · sıradaki '+n.dataset.day+': '+$('.q-pt1 b',n).textContent:'';}
+function bvCount(){var b=$('.q-bv');if(!b)return;var l=$$('.q-bv1',b),d=l.filter(function(x){return x.classList.contains('done');}).length,y=l.filter(function(x){return x.classList.contains('buy')&&!x.classList.contains('done');}).length;$('.q-bvn',b).textContent=d+'/'+l.length+' hazır'+(y?' · '+y+' alınacak':'');}
 function prepCount(){var sec=$('#cat-prep');if(!sec)return;var r=$$('.q-pr1',sec),d=r.filter(function(x){return x.classList.contains('done');}).length;var t=d+'/'+r.length+' hazır';$('.q-pcount',sec).textContent=t;$('.q-pc2',sec).textContent=t;$('.q-bar .bk',sec).style.width=(d/r.length*100)+'%';}
 function goInt(it,sec0){if(sec0&&!it){var b0=$$('.q-seg [data-view="cat"]')[0];if(!R.classList.contains('vcat'))b0.click();if(!sec0.classList.contains('open'))$('.q-row1',sec0).click();return;}if(!it)return;var hd=it.closest('.q-hid');if(hd)hd.open=true;var b=$$('.q-seg [data-view="cat"]')[0];if(!R.classList.contains('vcat'))b.click();var sec=it.closest('.q-sec');if(!sec.classList.contains('open'))$('.q-row1',sec).click();setTimeout(function(){it.scrollIntoView({block:'center',behavior:RM?'auto':'smooth'});flash(it);},80);}
 var KI={fly:'plane',rail:'arr',pass:'tk',stay:'bed',esim:'wifi',ev:'tk',todo:'pin',ride:'car'};
 function stepHtml(st){
   var t=st.dataset.t;
-  if(t==='prep'){var r=$$('#cat-prep .q-pr1'),d=r.filter(function(x){return x.classList.contains('done');}).length;return '<div class="q-scard"><div class="q-sm"><b>Hazırlık</b><small>'+d+'/'+r.length+' hazır · yağmurluk, Japan Rail Pass, yen</small></div><span class="q-sp"></span><button type="button" class="q-prep-go q-go2">Listeyi aç ›</button></div>';}
+  if(t==='prep'){var r=$$('#cat-prep .q-pr1'),d=r.filter(function(x){return x.classList.contains('done');}).length;return '<div class="q-scard"><div class="q-sm"><b>Hazırlık</b><small>'+d+'/'+r.length+' hazır'+prepNext()+'</small></div><span class="q-sp"></span><button type="button" class="q-prep-go q-go2">Listeyi aç ›</button></div>';}
   var it=document.getElementById(st.dataset.int);if(!it)return '';
   var s=S(it),os=opts(it),k=it.dataset.kind,nm=$('.q-nm',it).textContent,plate=($('.z-kind',it)||{}).textContent||it.closest('.q-sec').querySelector('.q-tt b').textContent;
   var o,chip,main,actn='';
@@ -255,6 +257,10 @@ document.addEventListener('click',function(e){
   if(el.closest('.z-visa')&&el.classList.contains('q-got')){var vz=el.closest('.z-visa');vz.classList.add('done');vz.classList.remove('need');vz.innerHTML=CK+'<b>Vize alındı</b><span>Belgeyi Pano &gt; Belgeler\'e ekleyebilirsin</span>';nextUp();return;}
   if(el.classList.contains('z-retry')){toast('Yeniden deneniyor (prototip)');return;}
   if(el.classList.contains('z-rmv2')){var bd=el.closest('.z-bad');if(bd)bd.remove();return;}
+  if(el.classList.contains('q-bvck')){var bl=el.closest('.q-bv1');bl.classList.toggle('done');el.setAttribute('aria-checked',String(bl.classList.contains('done')));bvCount();return;}
+  if(el.classList.contains('q-bvx')){var bx=el.closest('.q-bv1');var g=bx.closest('.q-bvg');bx.remove();if(g&&!$('.q-bv1',g))g.remove();bvCount();toast('Kaldırıldı · bir dahaki gezide önermem');return;}
+  if(el.classList.contains('q-bva')){var qq=el.closest('.q-bvq');qq.classList.add('done');var ans=document.createElement('b');ans.textContent=el.textContent;$$('.q-bva',qq).forEach(function(x){x.remove();});qq.appendChild(ans);toast('Listeyi buna göre güncelledim (prototip)');return;}
+  if(el.classList.contains('q-bvadd')){toast('Her gezide götürdüğün bir şeyi ekle; sonraki gezilerde de gelir (prototip)');return;}
   if(el.classList.contains('z-mb')){togglePop(el,el.nextElementSibling);return;}
   if(el.classList.contains('z-mi')&&el.dataset.m==='det'){var iq=el.closest('.q-int');closePops();var vf=$$('.q-form',iq).filter(function(f){return !f.hidden;})[0];var dd=vf&&$('.q-det',vf);if(dd){dd.hidden=false;}else toast('Bu ihtiyacın ayrıntısı seçim yapılınca gelir');return;}
   if(el.classList.contains('z-mi'))closePops();

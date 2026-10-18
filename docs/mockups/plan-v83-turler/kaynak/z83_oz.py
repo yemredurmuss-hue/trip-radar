@@ -125,3 +125,25 @@ CHAT = [
 ]
 QUICK = ['Hazır çadır kiralasak?', 'Araçla gitmek daha mı iyi?', 'Vize için ne lazım?']
 SCN = [('init', 'Festival omurgası')]
+PREP83 = dict(
+    items=[
+        dict(t='Vize randevusu al', w='VFS İstanbul · başvuru gezi tarihinden en az 15 gün önce', day='11 Tem\'e kadar', k='2027-07-11', src='vize kuralından', shop='site', soon=True),
+        dict(t='Schengen sağlık sigortası', w='Vize başvurusunda isteniyor', day='11 Tem\'e kadar', k='2027-07-11b', src='Belgeler\'den'),
+        dict(t='Forint bozdur', w='Festivalde kart geçer, yolda ve Budapeşte\'de nakit lazım', day='26 Tem\'den önce', k='2027-07-25'),
+        dict(t='Festival biletini telefona indir', w='Girişte QR okutuluyor', day='', k=None, done=True),
+    ],
+    bavul=dict(sub='Emre için · festival kampı, 8 gün, gündüz 29° gece 15°', ask=[('Konaklama', 'Kendi çadırımız', []), ('Kamp ocağı götürecek misin?', '', ['Evet', 'Hayır'])],
+               groups=[('Kamp', [('Çadır (2 kişilik)', 'kendi çadırın', 'ok', ''), ('Uyku tulumu', 'gece 15°\'ye düşebiliyor', 'buy', 'hepsiburada'), ('Kamp matı', '', '', ''), ('Kafa lambası', 'kamp alanı gece karanlık', 'buy', 'amazon')]),
+                       ('Festival', [('Kulak tıkacı', 'sahneler gece gündüz açık', 'buy', 'trendyol'), ('Su matarası', 'su noktalarında doldurulur', 'ok', ''), ('Güneş kremi, şapka', 'gündüz 29°', '', '')]),
+                       ('Hava', [('Yağmurluk', 'Temmuzda yağışlı gün 6/31', '', '')]),
+                       ('Belgeler ve para', [('Pasaport ve vize', 'vize bekleniyor', '', ''), ('Kart ve biraz Forint', '', '', '')])],
+               mine=['Kulaklık', 'Kişisel ilaçlar']),
+    bilmen=dict(sub='Macaristan ve festival', rows=[
+        ('alert', 'Acil', '112 (AB ortak numara)'),
+        ('train', 'Toplu taşıma', 'Budapeşte\'de bilet binince onaylanır, onaysız bilete ceza kesilir'),
+        ('card', 'Ödeme', 'Festivalde kart geçer'),
+        ('flag', 'Türkiye Büyükelçiliği', 'Budapeşte · <a class="q-alk" href="#" onclick="return false">Haritada aç ↗</a>')]),
+)
+CATINFO = {'stay': ('festival', 'Festival gezisi: festival günlerinde konaklama bilete dahil kamp olarak kuruldu, otel aranmaz. Öncesi ve sonrası için şehir konaklaması ayrı.'),
+           'activity': ('festival', 'Festival gezisi: odak festival, başka tur ve etkinlik önermem. İstersen sohbette söyle.'),
+           'transport': ('gateway', 'Ozora\'nın havalimanı yok; uçuş Budapeşte\'ye, oradan festival otobüsü.')}
