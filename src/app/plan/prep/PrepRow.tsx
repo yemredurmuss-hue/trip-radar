@@ -2,7 +2,7 @@
 // ("uçuş kartından"), its day on the right (orange when near), a shop or the official page, "Hazır" once done ("Yapıldı ·
 // 12 Eki" on hover), and for a stored chore the row's ⋯ (C29: rename, move to Yapılacak şeyler); × takes it off with "Geri al".
 import { L } from "../../../lib/i18n";
-import { doneText, setDone, setPrep, shortDay } from "../../../lib/ideas";
+import { setDone, setPrep, shortDay } from "../../../lib/ideas";
 import { isSoon, prepDayText, prepFromText, prepHiddenKey, type PrepTask } from "../../../lib/prepDays";
 import { shopLabel, shopLinks, type Provider } from "../../../lib/providers";
 import type { Trip } from "../../../lib/types";
@@ -59,7 +59,9 @@ function PrepRowFace({ task, trip, today, shopHome, domId }: { task: PrepTask; t
   const edit = useInlineEdit();
   const { done, item } = task;
   const shop = !done && item ? (shopLinks(item.name, shopHome)[0] ?? null) : null;
-  const doneTip = item ? doneText(item) : task.doneAt ? L(`Yapıldı · ${shortDay(new Date(task.doneAt).toISOString().slice(0, 10))}`, `Done · ${shortDay(new Date(task.doneAt).toISOString().slice(0, 10))}`) : null;
+  // "Yapıldı · 12 Eki" on "Hazır" (the chore's own tick, a worked-out one's mark).
+  const doneOn = task.doneAt != null ? shortDay(new Date(task.doneAt).toISOString().slice(0, 10)) : null;
+  const doneTip = doneOn ? L(`Yapıldı · ${doneOn}`, `Done · ${doneOn}`) : null;
   const menu: MenuEntry[] = item
     ? [
         { label: L("Adını değiştir", "Rename"), run: () => edit?.go("name") },
