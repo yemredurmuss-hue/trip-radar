@@ -297,8 +297,42 @@ export interface Suggestion {
 /**
  * The kinds of trip with a playbook of their own (playbooks/); "classic" is every other trip, as before; "custom" is
  * the playbook the start chat's model made for this trip (a liveaboard, a camper van tour, a family celebration).
+ * A cruise and a road trip are built in too (D11).
  */
-export type PlaybookKind = "festival" | "ski" | "honeymoon" | "wellness" | "classic" | "custom";
+export type PlaybookKind = "festival" | "ski" | "honeymoon" | "wellness" | "cruise" | "road" | "classic" | "custom";
+
+/**
+ * Gezi biçimi (v82 geçişi spec §1.4): the ready mixes of the trip's shape (playbooks/shape.ts). The built-in kinds, and
+ * four the model can name as the nearest for a trip of its own (a liveaboard, a day out, a business trip, a safari). A
+ * mix only gives the defaults; what the model writes for the trip wins.
+ */
+export type ShapePreset = Exclude<PlaybookKind, "custom"> | "dive" | "day" | "business" | "safari";
+
+/** The categories a part of the trip's spine opens its box in (the v82 Plan's six; Hazırlık is a list). */
+export type PartSection = "flight" | "stay" | "transport" | "activity" | "todo" | "other";
+/** A box's frame family (intents.ts FrameFamily): a stay card, a ticket, a row of cards. */
+export type PartFrame = "stay" | "ticket" | "collection";
+
+/**
+ * Gezi biçimi: what a record made from a part of the trip's spine is (a ski pass, a festival camp, a pass, a rental car).
+ * It goes in the part's category and frame whatever its words say (D1, H1), its box says the part's word, and what
+ * covers it (a package, a pass, a car: D2, D10) or what it covers is said here. Only the start writes it; every other
+ * record goes by its kind.
+ */
+export interface ItemPart {
+  /** The part's name in its shape ("ticket", "pass", "camp"): what another part's `by` and `covers` say. */
+  ref: string;
+  section?: PartSection;
+  frame?: PartFrame;
+  /** The box's word: "Skipass", "Kamp", "Kabin", "Pass". */
+  word?: string;
+  /** One choice, or many picks (a row of cards). */
+  pick?: "single" | "multi";
+  /** Covered by another part (its ref), or by the nights it sits in ("stay": the boat, the resort). */
+  by?: string;
+  /** What it covers: other parts (their refs), "stay" (the nights at its place), "legs" (the ways between the stays over its days). */
+  covers?: string[];
+}
 
 /**
  * What the traveller said must hold, as the code applies it (playbooks/model.ts): step_free (no stairs: lifts, ground
@@ -312,7 +346,11 @@ export interface Must {
   text: string;
 }
 
-/** A card of a model-made playbook: where it sits is said by its anchor (the day they arrive, the stay, the day they leave). */
+/**
+ * A card of a model-made playbook: where it sits is said by its anchor (the day they arrive, the stay, the day they leave);
+ * gezi biçimi (spec §1.4): the category and frame its box goes in, its word, one choice or many, what covers it or what it
+ * covers (ItemPart). Each of those is checked on its own; one that doesn't hold is dropped and the card goes by its kind.
+ */
 export interface CustomCard {
   ref: string;
   kind: PlannedKind;
@@ -320,23 +358,40 @@ export interface CustomCard {
   /** A real place (the destination, the port, the airport city); null: the destination. */
   place: string | null;
   anchor: "arrive" | "stay" | "leave";
+  section?: PartSection;
+  frame?: PartFrame;
+  word?: string;
+  pick?: "single" | "multi";
+  covers?: string[];
+  by?: string;
 }
 
 /** A playbook the model made for this trip, checked (playbooks/model.ts validModelPlaybook): plain data, stored on the trip. */
 export interface CustomPlaybook {
   /** The kind in words ("Kızıldeniz liveaboard dalış gezisi"). */
   label: string;
-  /** The nearest kind with a playbook of its own (its tone when none is given). */
-  base: Exclude<PlaybookKind, "custom">;
+  /** The nearest ready mix (its defaults, its tone when none is given). */
+  base: ShapePreset;
   /**
    * What the trip is around: "only" the experience (go, do it, come back: no tours, no other stops, only what the
    * experience needs), or a holiday "around" it.
    */
   focus: "only" | "around";
-  /** How the nights at the destination are spent: a hotel (as every trip), on a boat, in a camp, in a camper van. */
-  stayType: "hotel" | "boat" | "camp" | "vehicle";
+  /**
+   * How the nights at the destination are spent: a hotel (as every trip), on a boat, in a camp, in a ship's cabin, in a
+   * camper van, or none at all (a day out: back the same day).
+   */
+  stayType: "hotel" | "boat" | "camp" | "cabin" | "vehicle" | "none";
   /** Where a boat leaves from or a camp is based (a real place: "Hurgada"), when it isn't the destination. */
   stayPort: string | null;
+  /** Yakın havalimanı: the town the flights land in when the place has none of its own ("Sofya" for Bansko). */
+  gateway?: string | null;
+  /** Hareketli üs: the nights move with the trip, stop by stop (a ship, a car, a rail pass). */
+  movingBase?: boolean;
+  /** Günlük hak: the card that is a right for each day of the stay (a ski pass, a park ticket), by its ref. */
+  perDay?: string | null;
+  /** The short line at a category's head, in the chat's language: only where the shape changed something there. */
+  info?: Partial<Record<PartSection, string>>;
   cards: CustomCard[];
   /** At most three (playbooks/questions.ts PbQuestion, checked). */
   questions: import("./playbooks/questions").PbQuestion[];
@@ -371,11 +426,18 @@ export interface TripIntent {
   musts?: Must[];
 }
 
+/** How a trip is reached when it isn't by plane (said in the start chat: "otobüsle", "trenle", "arabayla"). */
+export type GroundWay = "bus" | "train" | "ferry" | "car";
+
 /** The new trip's start card: closed with ×, the suggestions looked at, a road trip (a car instead of flights). */
 export interface StartGuide {
   createdAt: number;
   closed?: boolean;
   looked?: boolean;
+  /** Gezi biçimi: the way there isn't a flight ("otobüsle"): Uçuş is closed with why (D4). */
+  way?: GroundWay;
+  /** Gezi biçimi: a day out, back the same day ("günübirlik"): no night, Konaklama is closed with why (D4). */
+  dayTrip?: boolean;
   road?: boolean;
   /**
    * The flights, stays and car the start made, by item id with what they said then (startTrip.ts placeholderPrint): places to fill,
@@ -587,6 +649,8 @@ export interface Item {
   host?: { name?: string; url?: string };
   /** v30: a stay's door or key-box code as the booking says it (Airbnb sends it a day before check-in: until then there is none). */
   doorCode?: { text: string; when?: string };
+  /** Gezi biçimi: the part of the trip's spine the start made it for (a ski pass, a festival camp, a pass). Absent: by its kind. */
+  part?: ItemPart;
   /** A to-do or an idea ticked off ("Yapıldı · 12 Eki"). */
   doneAt?: number;
   /** Moved by the traveller between Hazırlık (true) and Yapılacak şeyler (false); wins over its words. */

@@ -9,8 +9,10 @@ import type { PlannedInput } from "../planned";
 import type { StartState } from "../startTrip";
 import type { CustomPlaybook, PlaybookKind, Suggestion, SuggestionSection, Trip, TripIntent } from "../types";
 import { classic } from "./classic";
+import { cruise } from "./cruise";
 import { festival } from "./festival";
 import { honeymoon } from "./honeymoon";
+import { road } from "./road";
 import { ski } from "./ski";
 import { wellness } from "./wellness";
 import { customPlaybook, mustsOnTrip, SHARED_RIDE } from "./model";
@@ -19,6 +21,7 @@ import { say, validQuestions, type Card, type PbQuestion } from "./questions";
 export type { PlaybookKind };
 export * from "./questions";
 export * from "./model";
+export * from "./shape";
 
 /** What a skeleton is made from: the trip as the start would make it. */
 export interface PlaybookCtx {
@@ -58,11 +61,14 @@ export interface Playbook {
   avoid?: () => string;
 }
 
-export const PLAYBOOKS: Readonly<Record<Exclude<PlaybookKind, "custom">, Playbook>> = { festival, ski, honeymoon, wellness, classic };
+export const PLAYBOOKS: Readonly<Record<Exclude<PlaybookKind, "custom">, Playbook>> = { festival, ski, honeymoon, wellness, cruise, road, classic };
 
-/** A kind's playbook; "custom" runs the model's own (classic when it isn't there). */
+/** The built-in playbook a ready mix is (a liveaboard's or a safari's mix has none: null). */
+const builtIn = (base: string): Playbook | null => (Object.hasOwn(PLAYBOOKS, base) ? PLAYBOOKS[base as Exclude<PlaybookKind, "custom">] : null);
+
+/** A kind's playbook; "custom" runs the model's own over its nearest built-in kind (classic when it isn't there). */
 export const playbookOf = (kind: PlaybookKind | null | undefined, custom?: CustomPlaybook | null): Playbook =>
-  kind === "custom" ? (custom ? customPlaybook(custom, PLAYBOOKS[custom.base]?.tone) : classic) : (PLAYBOOKS[kind ?? "classic"] ?? classic);
+  kind === "custom" ? (custom ? customPlaybook(custom, builtIn(custom.base)) : classic) : (PLAYBOOKS[kind ?? "classic"] ?? classic);
 
 /** The table's events that are a festival (music, a burn): the rest (a Grand Prix, Hajj, Oktoberfest) stay classic. */
 const FESTIVAL_IDS = new Set(["afrikaburn", "burningman", "tomorrowland", "glastonbury", "coachella", "sziget", "ozora", "primavera", "roskilde", "ultra", "edc", "lollapalooza"]);
@@ -73,6 +79,9 @@ const HONEYMOON = /^(balayi\w*|honeymoon\w*)$/;
 /** "kayak" is skiing in Turkish (kayağa, kayakta) and never "kayaking"; the resorts said alone count too. */
 const SKI = /^(kayak(?!ing)\w*|kayag\w*|ski|skiing|skii\w*|snowboard\w*|bansko\w*|borovets\w*|pamporovo\w*|uludag\w*|palandoken\w*|kartalkaya\w*|sarikamis\w*|chamonix\w*|zermatt\w*|courchevel\w*|verbier\w*|niseko\w*|whistler\w*|kitzbuhel\w*|cortina\w*)$/;
 const FESTIVAL = /^(festival\w*|fest|rave\w*)$/;
+/** A cruise (kruvaziyer, a ship's tour) and a road trip, in the plain words as one line ("yol gezisi", "road trip"). */
+const CRUISE = /(^| )(kruvaziyer\w*|kruvazier\w*|cruise\w*|gemi (turu|turuna|turunda|gezisi\w*))( |$)/;
+const ROAD = /(^| )(yol gezi\w*|road ?trip\w*)( |$)/;
 /** An event the model named that is not a festival: a race, a match, a pilgrimage, a fair or a concert. */
 const NOT_FESTIVAL = /^(grand|prix|formula|f1|gp|mac\w*|match|final\w*|cup|kupa\w*|marathon|maraton\w*|hac|hacc|umre|hajj|umrah|pilgrimage|fuar\w*|expo|fair|konferans\w*|conference|summit|konser\w*|concert\w*)$/;
 
@@ -95,6 +104,10 @@ export function playbookFor(intent: Pick<Intent, "kind" | "name"> & { id?: strin
   if (!known && has(words, WELLNESS)) return "wellness";
   if (has(known ? said : words, HONEYMOON)) return "honeymoon";
   if (has(known ? said : words, SKI)) return "ski";
+  // Said in two words at most ("Akdeniz kruvaziyeri", "İtalya'da yol gezisi"), on the same words as the others.
+  const line = (known ? said : words).join(" ");
+  if (CRUISE.test(line)) return "cruise";
+  if (ROAD.test(line)) return "road";
   if (intent?.kind === "event" && !known && !has(name, NOT_FESTIVAL)) return "festival";
   if (!intent && has(said, FESTIVAL)) return "festival";
   return "classic";
@@ -162,7 +175,8 @@ export const startPlaybook = (s: Pick<StartState, "intent" | "messages"> & { pla
  * A model-made playbook with something of its own to run (a card, a question, a list, a stay of its kind, a blocked
  * suggestion). One with only a label and musts leaves the trip classic: the musts still go on it.
  */
-const hasShape = (c: CustomPlaybook) => Boolean(c.focus === "only" || c.cards.length || c.questions.length || c.prep.length || c.stayType !== "hotel" || c.blocked.sections.length || c.blocked.words.length || c.avoid);
+const hasShape = (c: CustomPlaybook) =>
+  Boolean(c.focus === "only" || c.cards.length || c.questions.length || c.prep.length || c.stayType !== "hotel" || c.blocked.sections.length || c.blocked.words.length || c.avoid || c.gateway || c.movingBase);
 
 /** The start chat's Playbook object (the model's own for "custom"). */
 export const startPlaybookObj = (s: Pick<StartState, "intent" | "messages"> & { playbook?: CustomPlaybook | null }): Playbook => playbookOf(startPlaybook(s), s.playbook);
@@ -208,7 +222,10 @@ export function playbookPromptLine(s: Pick<StartState, "intent" | "messages"> & 
   const p = playbookOf(kind, m);
   const tip = p.tip();
   const said = !tip || s.messages.some((x) => x.role === "assistant" && x.text.includes(tip));
-  const word = kind === "custom" ? (m?.label ?? "") : { festival: L("festival", "festival"), ski: L("kayak", "ski trip"), honeymoon: L("balayı", "honeymoon"), wellness: L("wellness", "wellness") }[kind];
+  const word =
+    kind === "custom"
+      ? (m?.label ?? "")
+      : { festival: L("festival", "festival"), ski: L("kayak", "ski trip"), honeymoon: L("balayı", "honeymoon"), wellness: L("wellness", "wellness"), cruise: L("kruvaziyer", "cruise"), road: L("yol gezisi", "road trip") }[kind];
   return [
     ...made,
     `${L("Gezi türü", "Kind of trip")}: ${word}`,

@@ -112,6 +112,12 @@ export function bookingOf(item: Item): Booking {
   if (setAside(item)) return "none";
   if (restaurant(item)) return item.status === "booked" ? "needed" : "none";
   if (isPaperwork(item)) return "needed";
+  // A part of the trip's shape (a ski pass, gear to rent, a programme) is a booking, never an idea ticked off by its day
+  // (gezi biçimi, H1); only a row of things to do in Yapılacaklar stays ideas.
+  if (item.part) {
+    const section = item.part.section ?? (item.plannedKind === "todo" || item.plannedKind === "note" ? "todo" : null);
+    return section === "todo" && item.part.frame !== "stay" && item.part.pick !== "single" ? "none" : "needed";
+  }
   if (neverBooked(item)) return "none";
   if (thingToDo(item)) return toDoBooking(item);
   if (item.status === "booked") return "needed";

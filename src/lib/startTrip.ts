@@ -26,7 +26,7 @@ import {
 import { CIRCUITS, englishName, fitCircuit } from "./startCircuits";
 import { daysBetween, eventDays, findEvent, intentAt, intentOf, intentTitle, plusDays, type Intent } from "./startEvents";
 import { STYLES, type BudgetLevel, type StyleId } from "./tripStyle";
-import type { ChatMessage, CustomPlaybook, Item, StayKind, Trip } from "./types";
+import type { ChatMessage, CustomPlaybook, GroundWay, Item, StayKind, Trip } from "./types";
 
 // --- the state -----------------------------------------------------------------------------------------
 
@@ -136,6 +136,10 @@ export interface StartState {
    * for a kind with no playbook of its own, its cards, questions and list. The latest one made wins.
    */
   playbook?: CustomPlaybook | null;
+  /** Gezi biçimi: how the trip is reached when it isn't by plane ("otobüsle", "trenle", "arabayla"). */
+  way?: GroundWay | null;
+  /** Gezi biçimi: a day out, back the same day ("günübirlik"). */
+  dayTrip?: boolean;
   messages: StartMsg[];
   /** The trip record once made: a retry after a failed step continues it, never makes a second trip. */
   tripId: string | null;
@@ -409,6 +413,32 @@ const plain = (s: string) =>
 /** A name compared without case, accents, spaces or dashes ("Ko Pha-ngan" and "Kohphangan" alike). */
 const squash = (s: string) => plain(s).replace(/[^\p{L}\p{N}]/gu, "");
 const PLACE_INDEX = new Map<string, KnownPlace>();
+
+/**
+ * Places with no airport of their own (H12, gezi biçimi "yakın havalimanı"): the town the flight lands in, in both
+ * languages. Only for where the flights go: these names are read as places the way any other is (the model's reading).
+ */
+const NEAREST_AIRPORT: Record<string, [string, string]> = {
+  ubud: ["Denpasar", "Denpasar"],
+  canggu: ["Denpasar", "Denpasar"],
+  bansko: ["Sofya", "Sofia"],
+  borovets: ["Sofya", "Sofia"],
+  pamporovo: ["Plovdiv", "Plovdiv"],
+  goreme: ["Kayseri", "Kayseri"],
+  masaimara: ["Nairobi", "Nairobi"],
+  maasaimara: ["Nairobi", "Nairobi"],
+  chamonix: ["Cenevre", "Geneva"],
+  zermatt: ["Zürih", "Zurich"],
+  verbier: ["Cenevre", "Geneva"],
+  courchevel: ["Cenevre", "Geneva"],
+  niseko: ["Sapporo", "Sapporo"],
+  sile: ["İstanbul", "Istanbul"],
+  ozora: ["Budapeşte", "Budapest"],
+};
+const nearestAirport = (city: string): string | undefined => {
+  const hit = NEAREST_AIRPORT[squash(city)];
+  return hit ? L(hit[0], hit[1]) : undefined;
+};
 for (const p of KNOWN_PLACES) for (const n of [p.tr, p.en, ...(p.also ?? [])]) PLACE_INDEX.set(squash(n), p);
 /** A name compared with its words kept apart ("sri lanka", "ko pha ngan"): several words typed match only this (rev 3). */
 const spaced = (s: string) => plain(s).replace(/[^\p{L}\p{N}]+/gu, " ").trim();
@@ -678,11 +708,16 @@ const knownCode = (p: KnownPlace): string | null => countryCodeOfName(p.countryE
 
 const capitalizeWords = (s: string) => s.replace(/(^|[\s-])(\p{L})/gu, (_m, a: string, b: string) => a + b.toLocaleUpperCase("tr"));
 
-/** A short typed answer that can be a place's name: letters, at most four words, no digits. */
-export function looksLikePlace(text: string): boolean {
+/**
+ * A typed answer that can be a place's name: letters, no digits, at most 80 of them (H10: a long Welsh village is a
+ * place too) and at most `words` words (four for a typed answer; the model's reading of a name may have more).
+ */
+export function looksLikePlace(text: string, words = 4): boolean {
   const t = text.trim().replace(/[.!?]+$/, "");
-  return /^[\p{L}][\p{L} .'’-]{0,40}$/u.test(t) && t.split(/\s+/).length <= 4;
+  return /^[\p{L}][\p{L} .'’-]{0,79}$/u.test(t) && t.split(/\s+/).length <= words;
 }
+/** The words a place's name may have when the model read it ("Santa Maria da Feira e Arredores"). */
+const PLACE_WORDS = 6;
 
 /** The place's name without the Turkish ending ("Bali'ye" → "Bali", "İzmir'den" → "İzmir"). */
 export const bareName = (text: string) => text.trim().replace(/[.!?]+$/, "").split(/['’]/)[0].trim();
@@ -711,6 +746,10 @@ export interface Extracted {
   intent?: Intent | null;
   /** The model's pick among a trip kind's question's options (its value, or "skip"); checked against them before use. */
   choice?: string | null;
+  /** How the trip is reached when it isn't by plane ("otobüsle"): no flight is made for it. */
+  way?: GroundWay | null;
+  /** A day out ("günübirlik"): one day, no night. */
+  dayTrip?: boolean;
   /** The playbook the model made for this trip (checked); only the model makes one. */
   playbook?: CustomPlaybook | null;
 }
@@ -723,6 +762,16 @@ export interface PlaceGuess {
 }
 
 export const EMPTY_EXTRACTED: Extracted = { where: null, from: null, who: null, start: null, duration: null, styles: [], budget: null };
+
+/** A day out, said in a word ("günübirlik", "day trip"). */
+const DAY_TRIP = /günübirlik|gunubirlik|\bday ?trip\b/u;
+/** The way there in the words that say it is the way ("otobüsle", "by bus"), never a ticket named in passing. */
+const GROUND_WAYS: [RegExp, GroundWay][] = [
+  [/otob[üu]sle|otob[üu]s ile|\bby (bus|coach)\b/u, "bus"],
+  [/trenle|tren ile|\bby (train|rail)\b/u, "train"],
+  [/feribotla|vapurla|feribot ile|vapur ile|\bby (ferry|boat)\b/u, "ferry"],
+  [/arabayla|arabamızla|arabamla|kendi arabamız|kendi aracımız|\bby car\b|\bwe(?:'ll| will)? drive\b/u, "car"],
+];
 
 const NUMBER_WORDS: Record<string, number> = {
   bir: 1, iki: 2, üç: 3, uc: 3, dört: 4, dort: 4, beş: 5, bes: 5, altı: 6, alti: 6, yedi: 7, sekiz: 8, dokuz: 9, on: 10,
@@ -763,7 +812,9 @@ export function companyCount(text: string, kind: Companions | null): number | nu
   const n = (w: string) => (/^\d+$/.test(w) ? Number(w) : (COUNT_WORDS[w] ?? null));
   const people =
     low.match(/(?<![\p{L}\d])(\d{1,2}|iki|üç|dört|beş|altı|two|three|four|five|six)\s*(kişiyiz|kişi olarak|kişi gidiyoruz|kişi gideceğiz|people|persons|of us)(?![\p{L}])/u) ??
-    low.match(/(?<![\p{L}])we(?:'re| are)\s+(\d{1,2}|two|three|four|five|six)(?![\p{L}])/u);
+    low.match(/(?<![\p{L}])we(?:'re| are)\s+(\d{1,2}|two|three|four|five|six)(?![\p{L}])/u) ??
+    // H13: said last, alone ("Bursa'ya otobüsle, 2 kişi"): never "2 kişilik oda".
+    low.match(/(?<![\p{L}\d])(\d{1,2}|iki|üç|dört|beş|altı)\s+kişi(?=\s*[.!?]*\s*$)/u);
   if (people) {
     const v = n(people[1]);
     if (v && v >= 1 && v <= 30) return v;
@@ -868,6 +919,14 @@ export function parseStartText(text: string, today: string, pending: QuestionId 
   }
   // "hafta sonu", "this weekend", "next weekend".
   const lowText = text.toLocaleLowerCase("tr");
+  // Gezi biçimi (H13): a day out, back the same day ("günübirlik", "day trip"): one day, no night.
+  if (DAY_TRIP.test(lowText)) {
+    out.dayTrip = true;
+    out.duration ??= { unit: "day", n: 1 };
+  }
+  // The way there when it isn't a flight ("otobüsle", "trenle", "arabayla", "by bus"): no flight is made.
+  const way = GROUND_WAYS.find(([re]) => re.test(lowText))?.[1];
+  if (way) out.way = way;
   if (/hafta ?sonu|weekend/.test(lowText)) {
     out.duration ??= { unit: "weekend", n: 1 };
     if (!out.start && /(bu|this) (hafta ?sonu|weekend)/.test(lowText)) out.start = { date: weekendStart(today), approx: false };
@@ -1162,11 +1221,15 @@ reply.question: one short, natural question for "Next question" only, ending wit
 // What a made playbook looks like (spec 2026-10-07-akilli-planlayici §A): two short examples, a kind with a playbook
 // of its own (the festival's, as the code has it) and one without (a liveaboard), so the model sees the shape filled.
 const NO_EFFECT = { card: "", to: "", n: 0, amount: 0, currency: "", items: [] as string[] };
+/** A card's gezi biçimi fields left to its kind. */
+const NO_PART = { section: "", frame: "", word: "", pick: "", covers: [] as string[], by: "" };
 const planExamples = () =>
   JSON.stringify([
     {
-      label: L("Ozora Festivali", "Ozora Festival"), base: "festival", focus: "only", stay_type: "hotel", stay_port: "",
-      cards: [{ ref: "ticket", kind: "activity", title: L("Festival bileti", "Festival ticket"), place: "Ozora", anchor: "stay" }],
+      label: L("Ozora Festivali", "Ozora Festival"), base: "festival", focus: "only", stay_type: "camp", stay_port: "Ozora",
+      gateway: L("Budapeşte", "Budapest"), moving_base: false, per_day: "",
+      info: [{ section: "stay", text: L("Festival günlerinde konaklama bilete dahil kamp; otel aranmaz.", "On the festival days the camp comes with the ticket; no hotel to look for.") }],
+      cards: [{ ref: "ticket", kind: "activity", title: L("Festival bileti", "Festival ticket"), place: "Ozora", anchor: "stay", section: "activity", frame: "collection", word: "Festival", pick: "multi", covers: ["stay"], by: "" }],
       questions: [{ id: "ticket", text: L("Biletini aldın mı?", "Have you got your ticket yet?"), chips: [
         { value: "have", label: L("Aldım", "Got it"), aliases: ["aldım", "bought"], effects: [{ ...NO_EFFECT, op: "markHandled", card: "ticket" }] },
         { value: "not_yet", label: L("Henüz değil", "Not yet"), aliases: [], effects: [] },
@@ -1176,11 +1239,13 @@ const planExamples = () =>
       tone: L("Enerjik, festivali bilen bir arkadaş gibi.", "Energetic, like a friend who knows festivals."), avoid: L("Tur ya da müze önerme; amaç festival.", "No tours or museums; the festival is the point."), musts: [],
     },
     {
-      label: L("Kızıldeniz liveaboard dalış gezisi", "Red Sea liveaboard diving trip"), base: "classic", focus: "only", stay_type: "boat", stay_port: L("Hurgada", "Hurghada"),
+      label: L("Kızıldeniz liveaboard dalış gezisi", "Red Sea liveaboard diving trip"), base: "dive", focus: "only", stay_type: "boat", stay_port: L("Hurgada", "Hurghada"),
+      gateway: "", moving_base: false, per_day: "",
+      info: [{ section: "stay", text: L("Konaklama, yemek ve dalışlar tekne paketinde; otel aranmaz.", "The nights, meals and dives are in the boat's package; no hotel to look for.") }],
       cards: [
-        { ref: "transfer", kind: "transfer", title: L("Limana transfer", "Transfer to the marina"), place: L("Hurgada", "Hurghada"), anchor: "arrive" },
-        { ref: "gear", kind: "activity", title: L("Dalış ekipmanı kiralama", "Dive gear rental"), place: L("Hurgada", "Hurghada"), anchor: "stay" },
-        { ref: "insurance", kind: "insurance", title: L("Dalış sigortası (DAN)", "Dive insurance (DAN)"), place: "", anchor: "arrive" },
+        { ref: "transfer", kind: "transfer", title: L("Limana transfer", "Transfer to the marina"), place: L("Hurgada", "Hurghada"), anchor: "arrive", ...NO_PART, section: "transport", frame: "ticket", by: "stay" },
+        { ref: "gear", kind: "activity", title: L("Dalış ekipmanı kiralama", "Dive gear rental"), place: L("Hurgada", "Hurghada"), anchor: "stay", ...NO_PART, section: "todo", frame: "stay", word: L("Ekipman", "Gear"), pick: "single" },
+        { ref: "insurance", kind: "insurance", title: L("Dalış sigortası (DAN)", "Dive insurance (DAN)"), place: "", anchor: "arrive", ...NO_PART, section: "other", frame: "stay" },
       ],
       questions: [{ id: "gear", text: L("Kendi ekipmanın var mı?", "Do you have your own gear?"), chips: [
         { value: "own", label: L("Var", "Yes"), aliases: ["var", "kendi"], effects: [{ ...NO_EFFECT, op: "dropCard", card: "gear" }] },
@@ -1197,10 +1262,14 @@ const planRules = () =>
   L(
     `plan: bu geziye özel kalıp. YALNIZ gezinin ne tür bir gezi olduğu bu mesajda ilk kez anlaşılıyorsa ya da kullanıcı türü değiştiriyorsa doldur. Bilinenlerde "Kalıp hazır" varsa ve tür değişmediyse plan.label "" kalır (yeni bir şart söylendiyse kalıbı yeniden ver, şartlarla).
 - label: türün kısa adı ("Kızıldeniz liveaboard dalış gezisi", "Babanın 70. yaşı, aile kutlaması", "Toskana karavan turu"). Sıradan bir şehir gezisinde label yaz, base classic, kart ve soru verme.
-- base: festival | ski | honeymoon | wellness | classic, en yakını.
+- base: en yakın hazır karışım: festival | ski | honeymoon | wellness | cruise (kruvaziyer) | road (yol gezisi) | dive (dalış teknesi) | day (günübirlik) | business (iş, fuar) | safari | classic. Yalnız varsayılanları verir; aşağıda yazdığın her alan onu ezer.
 - focus: gezinin amacını anla. Kullanıcı yalnız bu deneyim için gidip geliyorsa ("sadece festivale", "yalnız dalış için", "maça gidip döneceğim") "only": plan yalnız deneyimin gerektirdiği şeyler (oraya ulaşım, bilet, ekipman, izin, transfer, gerektiği kadar gece); araya tur, şehir gezisi ya da başka durak konmaz. Deneyimin etrafında bir tatil istiyorsa ya da belli değilse "around".
-- stay_type: hotel | boat (liveaboard, gulet, mavi yolculuk) | camp (çadır, kamp alanı) | vehicle (karavanda/araçta uyunur). stay_port: boat ya da camp için kalkış limanı ya da üs olan GERÇEK şehir ("Hurgada", "Fethiye"). Deniz, okyanus, körfez ya da bölge adı ("Kızıldeniz", "Red Sea") asla şehir değildir; ne stay_port ne place olur.
-- cards: rota, konaklama ve uçuşlar dışında açılacak yer tutucular, en fazla 6: ref (küçük harf, kısa), kind (transfer, taxi, car_rental, rv_rental, train, bus, ferry, activity, todo, esim, insurance, other), title, place (gerçek yer ya da ""), anchor (arrive: varış günü, stay: kalış boyunca, leave: dönüş günü).
+- stay_type: hotel | boat (liveaboard, gulet, mavi yolculuk) | camp (çadır, kamp alanı, lodge) | cabin (gemi kabini, kruvaziyer) | vehicle (karavanda/araçta uyunur) | none (günübirlik: aynı gün dönüş, gece yok). stay_port: boat, camp ya da cabin için kalkış limanı ya da üs olan GERÇEK şehir ("Hurgada", "Fethiye"). Deniz, okyanus, körfez ya da bölge adı ("Kızıldeniz", "Red Sea") asla şehir değildir; ne stay_port ne place ne gateway olur.
+- gateway: gidilen yerde havalimanı yoksa uçuşun indiği en yakın GERÇEK şehir ("Bansko" için "Sofya", "Ozora" için "Budapeşte"); varsa "".
+- moving_base: geceler durak durak değişiyorsa (gemi, kiralık araç, tren pası) true, yoksa false.
+- per_day: konaklama günleri boyunca her gün için alınan hakkın kartı (skipass, park bileti, festival günleri): o kartın ref'i; yoksa "".
+- info: yalnız biçimin bir kategoride bir şeyi değiştirdiği yerde, o kategori için tek kısa cümle: section (stay, transport, activity, todo, other, flight) ve text ("Konaklama tekne paketinde; otel aranmaz."). Değişiklik yoksa [].
+- cards: rota, konaklama ve uçuşlar dışında açılacak yer tutucular, en fazla 6: ref (küçük harf, kısa), kind (transfer, taxi, car_rental, rv_rental, train, bus, ferry, activity, todo, esim, insurance, other), title, place (gerçek yer ya da ""), anchor (arrive: varış günü, stay: kalış boyunca, leave: dönüş günü). Her kartın kutusu: section (stay, transport, activity, todo, other; yolculuk kartları yalnız transport, eSIM ve sigorta other), frame (stay: bir yerde bir süre, tek seçim; ticket: A'dan B'ye; collection: çoklu kart sırası, yalnız activity ve todo), word (kutunun tek kelimelik adı: "Skipass", "Balon", "Pass"), pick (single ya da multi), covers (bir paket ya da pass ise kapsadıkları: başka kartların ref'i, "stay" o yerdeki geceler, "legs" günleri içindeki şehirler arası yolculuklar), by (bu kartı kapsayan kartın ref'i; tekne ya da resort paketiyse "stay"). Kartın türü yetiyorsa bu alanlar "" ya da [].
 - questions: planı gerçekten değiştiren en fazla 3 soru (gerekmiyorsa []); her çipin value, label, aliases ve effects'i var. effects.op: dropCard (card = bir kartın ref'i ya da "stay:first"), markHandled (card = ref), moveCards (to = yer ya da "$value"), setStartOffsetDays (n), splitStay (n), setBudget (amount, currency), addPrep (items). Kullanmadığın alanlar "", 0 ya da [].
 - blocked_sections (stay, transport, activity, todo, food, other) ve blocked_words: bu gezide önerilmeyecekler; avoid: bunu tek cümleyle.
 - prep: türe özel hazırlık (en fazla 8). tip: tek kısa, doğru tavsiye. tone: sohbetin tonu, tek satır.
@@ -1208,10 +1277,14 @@ const planRules = () =>
 Örnekler: ${planExamples()}`,
     `plan: this trip's own playbook. Fill it ONLY when this message first makes clear what kind of trip it is, or the user changes the kind. When "Playbook made" is in the known facts and the kind hasn't changed, plan.label stays "" (if a new must is said, give the playbook again with it).
 - label: the kind in a few words ("Red Sea liveaboard diving trip", "Dad's 70th, a family celebration", "Tuscany camper van tour"). For a plain city trip give a label, base classic, no cards or questions.
-- base: festival | ski | honeymoon | wellness | classic, the nearest.
+- base: the nearest ready mix: festival | ski | honeymoon | wellness | cruise | road (road trip) | dive (liveaboard) | day (day trip) | business (work, a trade fair) | safari | classic. It only gives the defaults; every field you write below wins over it.
 - focus: understand what the trip is for. When the user goes only for this experience and back ("just for the festival", "only to dive", "fly in for the match"), "only": the plan holds only what the experience needs (getting there, tickets, gear, permits, transfers, the nights it takes); no tours, sightseeing or other stops in between. A holiday around it, or unclear: "around".
-- stay_type: hotel | boat (liveaboard, gulet) | camp (tent, campsite) | vehicle (sleeping in a camper van). stay_port: for boat or camp, the REAL town the boat leaves from or the camp is based at ("Hurghada"). A sea, ocean, gulf or region ("Red Sea") is never a town: never stay_port or place.
-- cards: placeholders to open besides the route, the stays and the flights, at most 6: ref (short, lower case), kind (transfer, taxi, car_rental, rv_rental, train, bus, ferry, activity, todo, esim, insurance, other), title, place (a real place or ""), anchor (arrive: the day they arrive, stay: over the stay, leave: the day they leave).
+- stay_type: hotel | boat (liveaboard, gulet) | camp (tent, campsite, lodge) | cabin (a ship's cabin, a cruise) | vehicle (sleeping in a camper van) | none (a day trip: back the same day, no night). stay_port: for boat, camp or cabin, the REAL town the boat leaves from or the camp is based at ("Hurghada"). A sea, ocean, gulf or region ("Red Sea") is never a town: never stay_port, place or gateway.
+- gateway: when the place has no airport, the REAL town the flight lands in ("Sofia" for Bansko, "Budapest" for Ozora); else "".
+- moving_base: true when the nights move stop by stop (a ship, a rental car, a rail pass), else false.
+- per_day: the card of a right taken for each day of the stay (a ski pass, a park ticket, festival days): that card's ref; else "".
+- info: only where the trip's shape changes something in a category, one short sentence for it: section (stay, transport, activity, todo, other, flight) and text ("The nights are in the boat's package; no hotel to look for."). [] when nothing changes.
+- cards: placeholders to open besides the route, the stays and the flights, at most 6: ref (short, lower case), kind (transfer, taxi, car_rental, rv_rental, train, bus, ferry, activity, todo, esim, insurance, other), title, place (a real place or ""), anchor (arrive: the day they arrive, stay: over the stay, leave: the day they leave). Each card's box: section (stay, transport, activity, todo, other; a way of travel only transport, an eSIM or a policy other), frame (stay: somewhere for a while, one choice; ticket: from A to B; collection: a row of many cards, only activity and todo), word (the box's one-word name: "Ski pass", "Balloon", "Pass"), pick (single or multi), covers (a package or a pass: what it covers, other cards' refs, "stay" the nights there, "legs" the ways between the cities over its days), by (the ref of the card that covers this one; "stay" when the boat or the resort's package does). "" or [] when the kind says enough.
 - questions: at most 3 that really change the plan ([] if none); each chip has value, label, aliases and effects. effects.op: dropCard (card = a card's ref or "stay:first"), markHandled (card = ref), moveCards (to = a place or "$value"), setStartOffsetDays (n), splitStay (n), setBudget (amount, currency), addPrep (items). Fields not used are "", 0 or [].
 - blocked_sections (stay, transport, activity, todo, food, other) and blocked_words: what not to suggest on this trip; avoid: that in one sentence.
 - prep: the kind's own preparation (at most 8). tip: one short, true tip. tone: the chat's tone, one line.
@@ -1292,9 +1365,9 @@ export function acceptExtraction(raw: RawExtraction & { plan?: RawPlan | null },
   const playbook = validModelPlaybook(raw.plan);
   if (playbook) out.playbook = playbook;
   const dest = bareName(raw.destination ?? "");
-  if (dest && looksLikePlace(dest)) out.where = placeOf(dest, raw.destination_country || null, raw.destination_country_code || null);
+  if (dest && looksLikePlace(dest, PLACE_WORDS)) out.where = placeOf(dest, raw.destination_country || null, raw.destination_country_code || null);
   const origin = bareName(raw.origin ?? "");
-  if (origin && looksLikePlace(origin)) out.from = placeOf(origin).place;
+  if (origin && looksLikePlace(origin, PLACE_WORDS)) out.from = placeOf(origin).place;
   const kind = (COMPANIONS as readonly string[]).includes(raw.companions) ? (raw.companions as Companions) : null;
   const names = (raw.names ?? []).map((n) => n.trim()).filter((n) => /^[\p{L}][\p{L} .'-]{0,30}$/u.test(n)).slice(0, 8);
   if (kind || names.length) out.who = { kind, names: [...new Set(names)] };
@@ -1330,7 +1403,7 @@ function acceptIntent(raw: RawExtraction, today: string, where: Place | null): I
   const known = findEvent(name);
   if (known) return intentOf(known.entry, today);
   const at = bareName(raw.event_place ?? "") || where?.place || "";
-  if (!at || !looksLikePlace(at)) return null;
+  if (!at || !looksLikePlace(at, PLACE_WORDS)) return null;
   const place = placeOf(at, raw.destination_country || where?.country || null, raw.event_country_code || raw.destination_country_code || where?.code || null);
   const start = isoDate(raw.event_start ?? "");
   const end = isoDate(raw.event_end ?? "");
@@ -1384,6 +1457,8 @@ export function mergeExtracted(code: Extracted, model: Extracted | null): Extrac
     budget: code.budget ?? model.budget,
     ...(model.choice || code.choice ? { choice: model.choice || code.choice } : {}),
     ...(model.playbook ? { playbook: model.playbook } : {}),
+    ...(code.way ? { way: code.way } : {}),
+    ...(code.dayTrip ? { dayTrip: true } : {}),
   };
 }
 
@@ -1813,6 +1888,8 @@ export function applyExtracted(s: StartState, e: Extracted, now: number): StartS
   }
   if (e.start) next.start = e.start;
   if (e.duration) next.duration = e.duration;
+  if (e.way) next.way = e.way;
+  if (e.dayTrip) next.dayTrip = true;
   // Another kind of trip said: its playbook replaces the one before, and the old kind's answers go with it.
   if (e.playbook) {
     if (s.playbook && s.playbook.label !== e.playbook.label) next.pbAnswers = Object.fromEntries(Object.entries(s.pbAnswers ?? {}).filter(([k]) => !k.startsWith("custom:")));
@@ -3142,21 +3219,34 @@ export interface Creation {
   approxStart: string | null;
   /** The budget a trip kind's answer set (a honeymoon's "6.000 €"); null when none did. */
   budget: { amount: number; currency: string } | null;
+  /** Gezi biçimi: the way there when it isn't a flight (no flight made: its ways by land, Uçuş closed), and a day out (no night). */
+  way?: GroundWay | null;
+  dayTrip?: boolean;
   /**
-   * The nights a model-made playbook spends on a boat, in a camp or a camper van: the stays in `city` (all of them when
-   * null) are that kind of stay (Item.metrics.stayKind), never a hotel to find. Null: hotels, as every trip.
+   * The nights a model-made playbook spends on a boat, in a camp, in a ship's cabin or a camper van (a cruise's cabin, a
+   * festival's camp too): the stays in `city` (all of them when null) are that kind of stay (Item.metrics.stayKind), never
+   * a hotel to find. `word`: the box's word when it isn't the kind's own (gezi biçimi: a ship's "Kabin"). Null: hotels, as every trip.
    */
-  stayAs?: { kind: StayKind; city: string | null } | null;
+  stayAs?: { kind: StayKind; city: string | null; word?: string } | null;
 }
 
 /** A model-made playbook this start runs (its kind has no playbook of its own), else null. */
 export const customOf = (s: StartState): CustomPlaybook | null => (s.playbook && startPlaybook(s) === "custom" ? s.playbook : null);
 
-/** A stay of a kind's own in a word and its place ("Liveaboard · Hurgada", "Kamp · Ozora", "Karavan · Floransa"). */
+/** A stay of a kind's own in a word ("Tekne", "Kamp", "Kabin", "Karavan"): its box's word (gezi biçimi). */
+export function ownStayWord(stayType: CustomPlaybook["stayType"]): string {
+  return stayType === "boat" ? L("Tekne", "Boat") : stayType === "camp" ? L("Kamp", "Camp") : stayType === "cabin" ? L("Kabin", "Cabin") : L("Karavan", "Camper van");
+}
+
+/** A stay of a kind's own in a word and its place ("Liveaboard · Hurgada", "Kamp · Ozora", "Kabin · Barselona", "Karavan · Floransa"). */
 export function ownStayTitle(c: Pick<CustomPlaybook, "stayType" | "label">, city: string | null): string {
-  const word = c.stayType === "boat" ? (/liveaboard/i.test(c.label) ? "Liveaboard" : L("Tekne", "Boat")) : c.stayType === "camp" ? L("Kamp", "Camp") : L("Karavan", "Camper van");
+  const word = c.stayType === "boat" && /liveaboard/i.test(c.label) ? "Liveaboard" : ownStayWord(c.stayType);
   return city ? `${word} · ${city}` : word;
 }
+
+/** The kind of stay a playbook's nights are (a ship's cabin is a night aboard); null for a hotel, or no night at all. */
+const stayKindOf = (stayType: CustomPlaybook["stayType"]): StayKind | null =>
+  stayType === "boat" || stayType === "cabin" ? "boat" : stayType === "camp" ? "camp" : stayType === "vehicle" ? "vehicle" : null;
 
 const said0 = (p: Partial<PlannedInput> & Pick<PlannedInput, "kind">): PlannedInput => ({
   date: null, end_date: null, time: null, from: null, to: null, city: null, title: null, booked: false, note: null, ...p,
@@ -3176,7 +3266,11 @@ export function airportsOf(s: StartState, stops: RouteStop[] = stopsOf(s)): { ar
   const first = stops[0]?.city ?? where.place;
   const last = stops.at(-1)?.city ?? where.place;
   const airportName = (p: KnownPlace | null) => (p?.airport ? L(p.airport, p.airportEn ?? p.airport) : undefined);
-  const airportOf = (city: string) => airportName(knownPlaceOf(city)) ?? (city === first || city === last ? airportName(knownPlaceOf(where.place)) : undefined) ?? city;
+  // Yakın havalimanı (gezi biçimi): the town the playbook names for the trip's ends wins (a place with no airport of its own).
+  const gateway = customOf(s)?.gateway ?? undefined;
+  const isEnd = (city: string) => city === first || city === last;
+  const airportOf = (city: string) =>
+    (isEnd(city) ? gateway : undefined) ?? airportName(knownPlaceOf(city)) ?? nearestAirport(city) ?? (isEnd(city) ? airportName(knownPlaceOf(where.place)) : undefined) ?? city;
   return { arrive: (s.route?.confirmed && s.route.arrive) || airportOf(first), leave: (s.route?.confirmed && s.route.leave) || airportOf(last) };
 }
 
@@ -3186,12 +3280,15 @@ export function airportsOf(s: StartState, stops: RouteStop[] = stopsOf(s)): { ar
  */
 export function creationOf(s: StartState): Creation | null {
   if (!s.where) return null;
-  const dates = tripDates(s);
-  const where = s.where;
   const custom = customOf(s);
-  // A boat or a camp leaves from a real town ("Hurgada"): the nights said for the sea or the region ("Kızıldeniz")
+  const said = tripDates(s);
+  // A day out (gezi biçimi): back the same day, no night.
+  const dayTrip = Boolean(s.dayTrip) || custom?.stayType === "none";
+  const dates = said && dayTrip ? { start: said.start, end: said.start } : said;
+  const where = s.where;
+  // A boat, a camp or a ship leaves from a real town ("Hurgada"): the nights said for the sea or the region ("Kızıldeniz")
   // are spent from there, and the flight goes there. Never a sea made into a city.
-  const port = custom && custom.stayType !== "hotel" ? (realPlace(custom.stayPort) ?? null) : null;
+  const port = custom && (custom.stayType === "boat" || custom.stayType === "camp" || custom.stayType === "cabin") ? (realPlace(custom.stayPort) ?? null) : null;
   const atPort = (list: RouteStop[]) => (port ? list.map((x) => (samePlace(x.city, where.place) || list.length === 1 ? { ...x, city: port } : x)) : list);
   const stops = atPort(dates ? stopsOf(s) : s.route?.confirmed ? s.route.stops : [{ city: where.place, nights: 0, code: where.code ?? null }]);
   // The stops' nights follow the dates (a route made for a rough length is fitted: the last stop takes the rest).
@@ -3209,12 +3306,21 @@ export function creationOf(s: StartState): Creation | null {
       day = end;
     }
   } else for (const stop of fitted) stays.push(said0({ kind: "stay", city: stop.city }));
+  // Günübirlik: no stay made.
+  if (dayTrip) stays.length = 0;
   const road = s.mode === "road";
   const first = fitted[0]?.city ?? where.place;
   const { arrive, leave } = airportsOf(s, fitted)!;
+  // The way there by land (gezi biçimi: "otobüsle"): its ways there and back to find, never a flight; one's own car: none.
+  const way = road ? null : (s.way ?? null);
+  const last = fitted.at(-1)?.city ?? first;
   const travel: PlannedInput[] = road
     ? [said0({ kind: "car_rental", date: dates?.start ?? null, end_date: dates?.end ?? null, city: first })]
-    : [
+    : way
+      ? way === "car"
+        ? []
+        : [said0({ kind: way, date: dates?.start ?? null, from: s.from, to: first }), ...(dates || s.from ? [said0({ kind: way, date: dates?.end ?? null, from: last, to: s.from })] : [])]
+      : [
         // None from a place to itself (leaving from Cape Town for AfrikaBurn: no flight to Cape Town).
         ...(s.from && samePlace(s.from, arrive) ? [] : [said0({ kind: "flight", date: dates?.start ?? null, from: s.from, to: arrive })]),
         // The flight home needs its day or where home is (an undated one to nowhere is no plan).
@@ -3240,7 +3346,10 @@ export function creationOf(s: StartState): Creation | null {
   // v30: a festival's nights at its own place are a camp (a tent; a caravan when that was the answer), never a hotel.
   const festivalKind = stayKindSet(effects) ?? "camp";
   const festivalStay = !custom && festivalKind !== "hotel" && startPlaybook(s) === "festival" && s.intent?.kind === "event" && s.intent.place ? { kind: festivalKind as StayKind, city: s.intent.place } : null;
-  const stayAs = custom && custom.stayType !== "hotel" ? { kind: custom.stayType as StayKind, city: custom.stayType === "vehicle" ? null : (port ?? where.place) } : festivalStay;
+  // A cruise (D11): the nights at the port are the ship's cabin.
+  const cruiseStay = !custom && startPlaybook(s) === "cruise" ? { kind: "boat" as StayKind, city: where.place, word: ownStayWord("cabin") } : null;
+  const ownKind = custom ? stayKindOf(custom.stayType) : null;
+  const stayAs = custom && ownKind ? { kind: ownKind, city: custom.stayType === "vehicle" ? null : (port ?? where.place), ...(custom.stayType === "cabin" ? { word: ownStayWord("cabin") } : {}) } : (festivalStay ?? cruiseStay);
   const shaped = stayAs
     ? shaped0.map((x) => {
         if (!(stayAs.city == null || samePlace(x.city, stayAs.city))) return x;
@@ -3248,7 +3357,8 @@ export function creationOf(s: StartState): Creation | null {
           const w = campWords(festivalStay.kind as "camp" | "vehicle");
           return { ...x, title: w.title, note: w.note };
         }
-        return { ...x, title: ownStayTitle(custom!, x.city) };
+        if (!custom) return { ...x, title: ownStayTitle({ stayType: "cabin", label: "" }, x.city) };
+        return { ...x, title: ownStayTitle(custom, x.city) };
       })
     : shaped0;
   for (const e of effects) {
@@ -3269,6 +3379,8 @@ export function creationOf(s: StartState): Creation | null {
     approxStart: s.start?.approx && dates ? dates.start : null,
     budget: budgetSet(effects),
     ...(stayAs ? { stayAs } : {}),
+    ...(way ? { way } : {}),
+    ...(dayTrip ? { dayTrip } : {}),
   };
 }
 

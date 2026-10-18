@@ -17,7 +17,7 @@ import { suggestionsReview } from "./startHooks";
 import { creationOf, dative, historyRows, isPlaceholder, missingInfo, namesToAsk, pbEffects, placeholderPrint, readyText, wantText, whoText, type Creation, type StartCtx, type StartState } from "./startTrip";
 import { withTravellers } from "./tripSettings";
 import { uniqueTitle } from "./trips";
-import type { Item, Trip } from "./types";
+import type { Item, ItemPart, Trip } from "./types";
 
 export type StepId = "trip" | "route" | "travel" | "people" | "suggestions";
 
@@ -141,7 +141,7 @@ export async function runStep(id: StepId, s: StartState, env: StepEnv = {}): Pro
         // A budget a trip kind's answer set, when the trip has none yet (never over one said on the board).
         ...(c.budget && !existing.budget ? { budget: c.budget } : {}),
         confirmedDates: c.dates,
-        startGuide: { ...(existing.startGuide ?? { createdAt: now() }), road: c.road || undefined, approxStart: c.approxStart },
+        startGuide: { ...(existing.startGuide ?? { createdAt: now() }), road: c.road || undefined, approxStart: c.approxStart, way: c.way ?? undefined, dayTrip: c.dayTrip || undefined },
         lang: s.lang,
         ...(c.parents && !existing.placeParents ? { placeParents: c.parents } : {}),
         updatedAt: now(),
@@ -157,7 +157,7 @@ export async function runStep(id: StepId, s: StartState, env: StepEnv = {}): Pro
       confirmedDates: c.dates,
       budget: c.budget,
       heroImage: null,
-      startGuide: { createdAt: now(), ...(c.road ? { road: true } : {}), ...(c.approxStart ? { approxStart: c.approxStart } : {}) },
+      startGuide: { createdAt: now(), ...(c.road ? { road: true } : {}), ...(c.approxStart ? { approxStart: c.approxStart } : {}), ...(c.way ? { way: c.way } : {}), ...(c.dayTrip ? { dayTrip: true } : {}) },
       // The conversation's language: the trip's chat and its suggestions go on in it.
       lang: s.lang,
       // Ubud, Canggu and Uluwatu are Bali's: the hero says Bali without asking the model.
@@ -179,15 +179,16 @@ export async function runStep(id: StepId, s: StartState, env: StepEnv = {}): Pro
     // Made again (another route after "Sohbete dön"): the stays made before and never touched go first (and the
     // playbook's cards for them: a festival ticket, a ski pass on the days before).
     await dropPlaceholders(tripId, (i) => i.category === "stay" || i.category === "activity");
-    await sayAll(tripId, c.stays, c, now, T);
     const pb = T(() => playbookCards(s, c));
+    await sayAll(tripId, T(() => shapedBase(s, c, [...pb.travel, ...pb.plan])).stays, c, now, T);
     await sayAll(tripId, pb.plan, c, now, T);
     // The preparation list's lines are the traveller's to tick, never places to fill (said again, each is the same one).
     await sayAll(tripId, pb.prep, c, now, T, false);
   } else if (id === "travel") {
     await dropPlaceholders(tripId, (i) => i.category === "flight" || i.category === "transport");
     // The flights (or the car), then the playbook's transfer from where they land (to the festival site, the resort).
-    await sayAll(tripId, [...c.travel, ...T(() => playbookCards(s, c)).travel], c, now, T);
+    const pb = T(() => playbookCards(s, c));
+    await sayAll(tripId, [...T(() => shapedBase(s, c, [...pb.travel, ...pb.plan])).travel, ...pb.travel], c, now, T);
   } else if (id === "people") {
     const items = await listItems(tripId);
     const prefs = await listPreferences(tripId);
@@ -247,7 +248,7 @@ async function dropPlaceholders(tripId: string, kind: (i: Item) => boolean): Pro
  * Plans said for the trip, each the way the chat's plan_item saves it (checked first; a wrong one stops the step),
  * with the stop's country and how many go; each kept as a place to fill (not a choice) on the trip.
  */
-async function sayAll(tripId: string, said: Creation["stays"], c: Creation, now: () => number, T: <R>(fn: () => R) => R = (fn) => fn(), placeholder = true): Promise<Item[]> {
+async function sayAll(tripId: string, said: ShapedInput[], c: Creation, now: () => number, T: <R>(fn: () => R) => R = (fn) => fn(), placeholder = true): Promise<Item[]> {
   const d = await db();
   const saved: Item[] = [];
   for (const raw of said) {
@@ -258,7 +259,7 @@ async function sayAll(tripId: string, said: Creation["stays"], c: Creation, now:
     const items = await listItems(tripId);
     // Made one after another (the flight there before the flight home: dating them later reads this order).
     const { item } = T(() => planToSave(input, items, tripId, newId(), now() + saved.length));
-    const placed = placedFor(item, c);
+    const placed = placedFor(item, c, raw.part);
     await d.put("items", placed);
     saved.push(placed);
     if (!placeholder) continue;
@@ -276,7 +277,7 @@ async function sayAll(tripId: string, said: Creation["stays"], c: Creation, now:
  * lands (with the flights), the cards for the stay (a festival ticket, a ski pass) and the preparation list's lines.
  * Nothing for a classic trip: it is made exactly as before.
  */
-export function playbookCards(s: StartState, c: Creation): { travel: PlannedInput[]; plan: PlannedInput[]; prep: PlannedInput[] } {
+export function playbookCards(s: StartState, c: Creation): { travel: ShapedInput[]; plan: ShapedInput[]; prep: PlannedInput[] } {
   const kind = startPlaybook(s);
   const flight = c.travel.find((x) => x.kind === "flight");
   const intent = tripIntentOf(s);
@@ -304,15 +305,52 @@ export function playbookCards(s: StartState, c: Creation): { travel: PlannedInpu
   });
   // (Its name for the operations never goes into the plan.)
   const cards = cardsAfter(skeleton, effects, { dest: s.where?.place ?? "" })
-    .map(({ ref: _ref, ...x }): PlannedInput => x)
+    .map(({ ref: _ref, ...x }): ShapedInput => x)
     .map((x) => (privateRide && x.kind === "transfer" ? { ...x, title: x.title && !/özel|private/i.test(x.title) ? `${ride} · ${x.title}` : ride } : x));
   const moving = (x: PlannedInput) => x.kind === "transfer" || x.kind === "taxi" || x.kind.endsWith("_rental") || x.kind === "ferry";
   const prep = [...p.prep(), ...prepAdded(effects)].map((title): PlannedInput => ({ kind: "prep", date: null, end_date: null, time: null, from: null, to: null, city: null, title, booked: false, note: null }));
   return { travel: cards.filter(moving), plan: cards.filter((x) => !moving(x)), prep };
 }
 
-/** A record as the start places it: with the stop's country (flights leave home, so they keep none) and how many go. */
-function placedFor(item: Item, c: Creation): Item {
+/** A plan to say with the part of the trip's spine it stands for (gezi biçimi), kept on the record it makes (Item.part). */
+export type ShapedInput = PlannedInput & { part?: ItemPart };
+
+/** The word of a stay of the trip's own kind ("Tekne", "Kamp", "Karavan"). */
+const stayWord = (kind: string): string => (kind === "boat" ? L("Tekne", "Boat") : kind === "camp" ? L("Kamp", "Camp") : kind === "vehicle" ? L("Karavan", "Camper van") : L("Konaklama", "Stay"));
+
+/** Whether a stay is at a place (no place: all of them). */
+const atPlace = (x: PlannedInput, place: string | null | undefined) => !place || cityKeyOf(x.city) === cityKeyOf(place);
+
+/**
+ * The stays and the way there as the trip's shape makes them (gezi biçimi, spec §1.4), each with its part: the nights a
+ * package covers (a festival's camp by its ticket, a retreat's by its programme: "Dahil"), the nights of the trip's own
+ * kind (a boat, a camp, a cabin) holding what their package covers (the transfer, the dives), a road trip's car covering
+ * the drives between the cities (D10). A hotel and a flight stay as they are.
+ */
+export function shapedBase(s: StartState, c: Creation, cards: ShapedInput[]): { stays: ShapedInput[]; travel: ShapedInput[] } {
+  const ownKind = (x: PlannedInput) => Boolean(c.stayAs && (c.stayAs.city == null || cityKeyOf(x.city) === cityKeyOf(c.stayAs.city)));
+  // What the nights hold: the cards covered by "stay" (a boat's transfer and dives, a resort's seaplane).
+  const held = cards.filter((x) => x.part?.by === "stay");
+  const firstHeld = c.stays.findIndex((x) => atPlace(x, held[0]?.city ?? held[0]?.to));
+  const stays = c.stays.map((x, i): ShapedInput => {
+    const own = ownKind(x);
+    // The event's own nights are the ticket's only as its camp (a hotel by the site, answered so, is a stay to find).
+    const cover = cards.find((k) => k.part?.covers?.some((v) => (v === "stay:event" ? own && s.intent?.kind === "event" && atPlace(x, s.intent.place) : v === "stay" && atPlace(x, k.city))));
+    const holds = held.length && (own || i === Math.max(firstHeld, 0)) ? held.map((k) => k.part!.ref) : [];
+    if (!cover && !own && !holds.length) return x;
+    const part: ItemPart = { ref: "stay", section: "stay", frame: "stay" };
+    if (own && c.stayAs) part.word = c.stayAs.word ?? stayWord(c.stayAs.kind);
+    if (cover?.part) part.by = cover.part.ref;
+    if (holds.length) part.covers = holds;
+    return { ...x, part };
+  });
+  // A road trip's car (the start's road mode): it covers the drives between the cities over its days.
+  const travel = c.travel.map((x): ShapedInput => (c.road && x.kind === "car_rental" ? { ...x, part: { ref: "car", section: "transport", frame: "ticket", word: L("Araç", "Car"), covers: ["legs"] } } : x));
+  return { stays, travel };
+}
+
+/** A record as the start places it: with the stop's country (flights leave home, so they keep none), how many go, its part. */
+function placedFor(item: Item, c: Creation, part?: ItemPart): Item {
   const people = c.travellers?.count ?? null;
   const country = item.category !== "flight" ? c.countries[cityKeyOf(item.city) ?? ""] : undefined;
   // A night on the boat, in the camp, in the van (a model-made playbook's own stay): that kind, never a hotel to find.
@@ -320,8 +358,10 @@ function placedFor(item: Item, c: Creation): Item {
   return {
     ...item,
     ...(own ? { metrics: { ...(item.metrics ?? EMPTY_METRICS), stayKind: own } } : {}),
-    // A camp or a caravan (a festival's own nights, covered by its ticket) has nothing to book: set aside like an idea (booking.setAside).
-    ...((own === "camp" || own === "vehicle") && item.noBooking == null ? { noBooking: item.updatedAt } : {}),
+    // A camp or a caravan a ticket covers (a festival's own nights) has nothing to book: set aside like an idea
+    // (booking.setAside). Any other camp is a place to book (D3: never "alındı" by itself; H4).
+    ...((own === "camp" || own === "vehicle") && part?.by && item.noBooking == null ? { noBooking: item.updatedAt } : {}),
+    ...(part ? { part } : {}),
     // The flag, the weather, the visa, the minis.
     ...(country && !item.countryCode ? { countryCode: country.code, country: item.country ?? country.name } : {}),
     // How many travel, on the plans themselves (the search links read it from there).
@@ -346,7 +386,7 @@ export function wouldMake(s: StartState, now = Date.now()): { trip: Trip; items:
       confirmedDates: c.dates,
       budget: c.budget,
       heroImage: null,
-      startGuide: { createdAt: now,...(c.road ? { road: true } : {}) },
+      startGuide: { createdAt: now, ...(c.road ? { road: true } : {}), ...(c.way ? { way: c.way } : {}), ...(c.dayTrip ? { dayTrip: true } : {}) },
       ...(c.parents ? { placeParents: c.parents } : {}),
       ...(people && typeof people !== "string" ? { travellers: people.travellers } : {}),
       ...(intent ? { intent } : {}),
@@ -355,12 +395,13 @@ export function wouldMake(s: StartState, now = Date.now()): { trip: Trip; items:
     };
     Object.assign(trip, withMusts(trip, intent));
     const items: Item[] = [];
+    const base = shapedBase(s, c, [...pb.travel, ...pb.plan]);
     // The playbook's cards after what every trip has (none for a classic trip).
-    for (const raw of [...c.stays, ...c.travel, ...pb.travel, ...pb.plan, ...pb.prep]) {
+    for (const raw of [...base.stays, ...base.travel, ...pb.travel, ...pb.plan, ...pb.prep] as ShapedInput[]) {
       const input = guardKind(raw);
       if (checkPlanned(input, ALL_PLANNED_KINDS)) continue;
       const { item } = planToSave(input, items, trip.id, `start-preview-${items.length}`, now);
-      items.push(placedFor(item, c));
+      items.push(placedFor(item, c, raw.part));
     }
     return { trip, items };
   });
