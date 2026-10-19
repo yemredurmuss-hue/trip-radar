@@ -50,6 +50,16 @@ const NAMES: Record<string, [tr: string, en: string]> = {
   SIN: ["Changi", "Changi"], EWR: ["Newark", "Newark"],
 };
 
+/**
+ * An airport named above by its island or region ("Bali"), the town it is in: what the road from it starts at ("Denpasar
+ * (DPS) → Canggu", 0.38.6), while the region still matches a stay said as "Bali".
+ */
+const TOWNS: Record<string, [tr: string, en: string]> = { DPS: ["Denpasar", "Denpasar"] };
+export function airportTown(text: string | null | undefined): string | null {
+  const names = text && isCode(text) ? TOWNS[text] : undefined;
+  return names ? L(names[0], names[1]) : null;
+}
+
 /** The country of the airports above (ISO code), for how early to be there (inside Schengen or not). */
 const COUNTRY: Record<string, string> = {
   IST: "TR", SAW: "TR", ESB: "TR", ADB: "TR", AYT: "TR", DLM: "TR", BJV: "TR", TZX: "TR",

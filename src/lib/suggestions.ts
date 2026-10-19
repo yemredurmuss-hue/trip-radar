@@ -343,12 +343,32 @@ export function coveringItems(s: Suggestion, items: readonly Item[]): Item[] {
   return [];
 }
 
+/** A transfer to or from the airport or the station: the taxi template, or the words of one ("Havalimanı transferi"). */
+const TRANSFER_WORDS = /transfer|shuttle|servis|taksi|taxi/i;
+const isTransferSuggestion = (s: Suggestion): boolean => s.section === "transport" && (s.template === "taxi" || (!s.template && TRANSFER_WORDS.test(s.title)));
+
+/**
+ * The way in or out on a transfer suggestion's day that is already sorted (0.38.6, Emre: a taxi picked for the road from
+ * Denpasar to Canggu, and "Havalimanı transferi ayarlayın" still asked for it): a way said on it, or something saved for
+ * it. Null when that day's way is still open, or the suggestion says no day.
+ */
+export function arrangedTransfer(s: Suggestion, legs: readonly Pick<Leg, "kind" | "date" | "status" | "choice">[]): Pick<Leg, "kind" | "date"> | null {
+  const day = isoDate(s.payload?.start ?? null);
+  if (!day || !isTransferSuggestion(s)) return null;
+  return legs.find((l) => (l.kind === "arrival" || l.kind === "departure") && l.date === day && (l.status !== "empty" || Boolean(l.choice?.mode) || Boolean(l.choice?.booked))) ?? null;
+}
+
 /**
  * The open suggestions on the board: the rules' (unless the traveller already added or dismissed that key, or
  * dismissed its topic) and the stored ones from the AI and the chat (unless a rule covers the same topic, that topic
- * was dismissed, or the plan already has it: a vehicle for those days, a policy, an eSIM).
+ * was dismissed, or the plan already has it: a vehicle for those days, a policy, an eSIM, that day's transfer sorted).
  */
-export function shownSuggestions(stored: readonly Suggestion[] | undefined, rules: readonly Suggestion[], items: readonly Item[] = []): Suggestion[] {
+export function shownSuggestions(
+  stored: readonly Suggestion[] | undefined,
+  rules: readonly Suggestion[],
+  items: readonly Item[] = [],
+  legs: readonly Pick<Leg, "kind" | "date" | "status" | "choice">[] = [],
+): Suggestion[] {
   const list = stored ?? [];
   const acted = new Map(list.map((s) => [s.key, s]));
   const dismissedTopics = new Set(list.filter((s) => s.state === "dismissed").map(topicOf).filter(Boolean));
@@ -360,6 +380,7 @@ export function shownSuggestions(stored: readonly Suggestion[] | undefined, rule
     if (s.source === "rule" || s.state !== "open" || seen.has(s.key) || sourcedOnly(s)) return false;
     seen.add(s.key);
     const topic = topicOf(s);
+    if (arrangedTransfer(s, legs)) return false;
     return !(topic && (ruleTopics.has(topic) || dismissedTopics.has(topic) || coveringItems(s, items).length));
   });
   return sortSuggestions([...fromRules, ...others]);

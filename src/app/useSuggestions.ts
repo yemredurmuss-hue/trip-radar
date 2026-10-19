@@ -53,7 +53,7 @@ export function useSuggestions(args: {
     () => ruleSuggestions({ trip, plan, items, timeline, legs, mains, home, today }),
     [trip, plan, items, timeline, legs, mains, home, today],
   );
-  const shown = useMemo(() => shownSuggestions(trip.suggestions, rules, items), [trip.suggestions, rules, items]);
+  const shown = useMemo(() => shownSuggestions(trip.suggestions, rules, items, legs), [trip.suggestions, rules, items, legs]);
   const sections = useMemo(() => bySection(shown), [shown]);
   const dismissed = useMemo<HiddenInput[]>(
     () => (trip.suggestions ?? []).filter((s) => s.state === "dismissed").map((s) => ({ kind: "suggestion", key: s.key, label: s.title, at: s.stateAt ?? null })),
