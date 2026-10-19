@@ -240,9 +240,9 @@ try {
   assert.equal(await hero.locator(".x-mos > .x-tmenu .x-tmb").count(), 1);
   // The backbone's two shares: the sample's 9 needs, 3 on the plan (2 booked and the boat tour), 6 to decide. F7 (S2): the
   // flight and the Porto stay stand as "Önerimiz" and are among the 6: our pick isn't on the plan until it's taken (B9).
-  // v82: the flight's still the old ticket (3b), the stay an intent box standing as "Önerimiz" (data-st="ai").
+  // v82: the flight a ticket box (3b), the stay an intent box, each standing as "Önerimiz" (data-st="ai").
   await openSec("flight");
-  assert.equal(await sec("flight").locator(".pk-card.tk-draft").count(), 1, "the flight's draft on the sample's Plan");
+  assert.equal(await sec("flight").locator('.q-ints > .q-int[data-st="ai"] .z-tk').count(), 1, "the flight's draft on the sample's Plan");
   await openSec("stay");
   assert.equal(await sec("stay").locator('.q-int[data-st="ai"]').count(), 1, "the Porto stay's draft on the sample's Plan");
   // The ideas (Yapılacak şeyler, Restoranlar, İlham) have no "3/4" and are never needs (0.35.3); a category's closed row
@@ -513,14 +513,13 @@ try {
   assert.match(await sec("stay").locator(".q-hid .cat-hidden-row.closed").innerText(), /Alfama Suites[\s\S]*Lisboa Loft rezervasyonu bu geceleri kapsıyor/);
   await sec("stay").locator(".q-hid > summary").click();
   assert.equal(await sec("stay").locator(".q-ints > .q-int", { hasText: "Alfama Suites" }).count(), 0, "a booking closes its alternatives");
-  // A box (or, in a category not drawn the new way yet, a block) for each thing: the flights in and home, the stays, the train,
-  // the eSIM, the policy still to find (C16).
+  // A box for each thing: the flights in and home, the stays, the train, the eSIM, the policy still to find (C16).
   const kinds = [];
   for (const id of ["flight", "stay", "transport", "other"]) {
     await openSec(id);
     kinds.push(...(await sec(id).evaluate((el) => [...el.querySelectorAll(".cat-card, .q-ints > .q-int")].map((e) => `${el.dataset.section}:${e.classList.contains("q-int") ? e.dataset.kind : ([...e.classList].find((c) => c.startsWith("tl-")) ?? "item")}`))));
   }
-  assert.deepEqual(kinds, ["flight:tl-travel", "flight:tl-travel", "stay:stay", "stay:stay", "transport:tl-travel", "other:esim", "other:insurance"]);
+  assert.deepEqual(kinds, ["flight:flight", "flight:flight", "stay:stay", "stay:stay", "transport:train", "other:esim", "other:insurance"]);
   await openSec("activity");
   // v46 Etkinlik ve turlar: a row of cards for each city; what's on the plan is a green-lined card (the boat tour), the ideas carry "+ Plana koy".
   assert.deepEqual(await sec("activity").locator(".ev-card:is(.chosen, .booked)").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))), ["Douro tekne turu"]);
@@ -801,31 +800,43 @@ try {
   await portoDraft.getByRole("button", { name: "Vazgeç" }).click();
   await portoDraft.locator(".z-bt .q-take").waitFor();
   await openSec("flight");
-  // Flights (v11 phase 2b, F7): the need with two real priced options is the draft ticket "Önerimiz" (the Pegasus, the engine's pick):
-  // "Önerimiz" on its stub with what one pays, "✓ Bunu seç" under it, "Değiştir 1"; "Değiştir 1" turns it to the options, with "Seç" on each (v30).
-  const pk = (name) => app.locator(`.pk-card[aria-label="${name}"]`);
-  const outDraft = app.locator('.pk-card.tk-draft[aria-label="Pegasus · direkt"]');
-  await outDraft.waitFor();
-  assert.match(await outDraft.locator(".tk-lab").innerText(), /Önerimiz$/);
-  assert.match(await outDraft.locator(".tk-price b").innerText(), /^€\d+$/);
-  assert.equal(await outDraft.locator(".tk-pick").innerText(), "✓ Bunu seç");
-  assert.match(await outDraft.locator(".pk-mid").innerText(), /İstanbul[\s\S]*Porto/);
-  assert.equal(await outDraft.evaluate((el) => getComputedStyle(el).borderTopStyle), "solid", "no dashed frame on a ticket");
-  assert.equal(await outDraft.locator(".tk-warn").count(), 1, "the real warning stays on a pick: no ticket yet, 3 days to the flight");
-  assert.equal(await outDraft.locator(".tk-stub .pk-aldim").count(), 0, "no ✓ Aldım on a pick");
+  // Flights (v82 bilet ailesi, F7): the need with two real priced options is our pick, the Pegasus (the engine's), drawn as the
+  // ticket: the airline's mark, its name and number with the day small, İstanbul and Porto big with the airport code and the
+  // hour under them, the length and "direkt" around the plane, the bag under it; "Önerimiz · onayla" on its chip, what one pays
+  // and how many go, "Bunu seç", Değiştir under it, no "Aldım". Değiştir turns it to its options in place, one row each
+  // (Skyscanner's: the airline, the hours over the codes, the length and stops, our pick and En hızlı / En ucuz ribboned,
+  // the price and the bag, "Seç"), the box 288 px all along; Vazgeç turns it back.
+  const outDraftKey = await sec("flight").locator('.q-ints > .q-int[data-st="ai"]', { has: app.locator(".z-car", { hasText: "Pegasus" }) }).getAttribute("data-intent");
+  // (by its key: its options' rows draw no carrier line)
+  const outDraft = sec("flight").locator(`.q-ints > .q-int[data-intent="${outDraftKey}"]`);
+  assert.equal(flat([await outDraft.locator(".q-st").innerText()])[0], "✨ Önerimiz · onayla");
+  assert.equal(flat([await outDraft.locator(".z-car").innerText()])[0], "PC Pegasus PC 1201 · 8 Ekim");
+  assert.match(flat([await outDraft.locator(".z-route").innerText()])[0], /^İstanbul IST · 07:10 4 sa 55 dk direkt Porto OPO · 10:05$/);
+  assert.equal(await outDraft.locator(".z-tm .z-l3 .z-chip").innerText(), "1 bagaj dahil");
+  assert.match(flat([await outDraft.locator(".z-top .q-pr").innerText()])[0], /^€\d+ kişi başı · 2 kişi €\d+$/, "what one pays, how many go and the whole sum");
+  assert.equal(await outDraft.locator(".z-bt .q-take").innerText(), "Bunu seç");
+  assert.equal(await outDraft.locator(".q-got").count(), 0, "no ✓ Aldım on our pick");
+  assert.equal(await outDraft.locator(".z-tk").evaluate((el) => getComputedStyle(el).borderTopStyle), "solid", "no dashed frame on a ticket");
+  // (C16: the ticket carries no warning line; "Uçuşa 3 gün · bilet alınmadı" is Hazırlık's day now, as every rule's note.)
+  assert.equal(await outDraft.locator(".tk-warn, .z-warn").count(), 0, "no warning line on the ticket");
+  assert.equal(Math.round((await outDraft.boundingBox()).height), 288, "the ticket box is 288 px (head 76, body 196)");
   await outDraft.scrollIntoViewIfNeeded();
   await outDraft.screenshot({ path: `${out}/32b-draft-ticket.png` });
-  await outDraft.locator(".pk-alt").click();
-  const chooser = app.locator(".ch-back");
-  await chooser.waitFor();
-  assert.deepEqual((await chooser.locator(".ch-name").allInnerTexts()).sort(), ["Pegasus · direkt", "TAP · Lizbon aktarmalı"]);
-  assert.equal(await chooser.locator(".ch-row", { hasText: "TAP · Lizbon aktarmalı" }).locator(".ch-badge").innerText(), "En ekonomik");
-  assert.match(await chooser.locator(".ch-for").innerText(), /Pegasus/);
-  assert.equal(await chooser.getByRole("button", { name: /^Seç · / }).count(), 2);
-  assert.equal(await chooser.locator(".ch-row", { hasText: "Pegasus · direkt" }).locator(".fo-tag.draft").innerText(), "Kartta");
+  await outDraft.getByRole("button", { name: "Değiştir" }).click();
+  const flightRows = outDraft.locator(".q-opts .z-r");
+  await flightRows.first().waitFor();
+  assert.deepEqual(await outDraft.locator(".q-opts .z-r .q-an b").allInnerTexts(), ["Pegasus", "TAP"], "the options best first");
+  assert.deepEqual(await flightRows.nth(0).locator(".q-rb1").allInnerTexts(), ["✨ Önerimiz", "En hızlı"]);
+  assert.deepEqual(await flightRows.nth(1).locator(".q-rb1").allInnerTexts(), ["En ucuz"]);
+  assert.equal(flat([await flightRows.nth(1).locator(".q-leg").innerText()])[0], "05:40 IST 8 sa 10 dk 1 aktarma 12:50 OPO");
+  assert.equal(await flightRows.nth(1).locator(".q-bg").innerText(), "Yalnız el bagajı");
+  assert.equal(await outDraft.locator(".q-opts .z-r .q-pick").count(), 2);
+  const rowHeights = await flightRows.evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
+  assert.equal(new Set(rowHeights).size, 1, `the rows as tall as one another (${rowHeights})`);
+  assert.equal(Math.round((await outDraft.boundingBox()).height), 288, "Değiştir turns the ticket into its rows in place: the box doesn't grow");
   await app.screenshot({ path: `${out}/32a-choice-window.png` });
-  await app.keyboard.press("Escape");
-  await chooser.waitFor({ state: "detached" });
+  await outDraft.getByRole("button", { name: "Vazgeç" }).click();
+  await outDraft.locator(".z-bt .q-take").waitFor();
   // "Sıradaki" goes to the next step (F4): here the visa to get, its row in Belgeler ve internet, with a flash. (The to-do
   // list under the hero, its groups and "⏳ N", left the interface in this version: spec §1.1, C8; not checked here.)
   await app.locator(".x-hero .x-next").click();
@@ -844,179 +855,66 @@ try {
   const douro = sec("activity").locator(".ev-card", { hasText: "Douro tekne turu" });
   await douro.getByRole("button", { name: "Douro tekne turu: aldım" }).waitFor();
   await openSec("flight");
-  const home = app.locator(".tl-travel.role-departure .pk-card");
-  await home.locator(".okt", { hasText: "Bilet alındı" }).waitFor();
-  // A misclick on "Bileti aldım" can be taken back (in the details), and redone.
-  // v11 phase 3: a booking opens its own window; "Rezervasyonu geri al" is there.
-  await home.locator(".pk-body").click();
-  await app.getByRole("dialog").getByRole("button", { name: "Rezervasyonu geri al" }).click();
-  await home.locator(".pk-aldim").waitFor(); // v11: chosen, not bought: "✓ Aldım" on its top line, its ground cream
-  await home.getByRole("button", { name: "Bileti aldım" }).click();
-  await home.locator(".okt", { hasText: "Bilet alındı" }).waitFor();
-  await app.locator(".bk-sheet").waitFor({ state: "detached" }); // the undone booking's window has finished leaving
-  // Its window: the booking's rows (the flight, from and to with their hours), its files or "Belge eksik · ekle",
-  // Değiştir · İptal ettim · Rezervasyonu geri al · Tüm detaylar · Kapat; Esc closes it.
-  await home.locator(".pk-body").click();
-  const bk = app.locator(".bk-sheet");
-  await bk.waitFor();
-  assert.match(await bk.locator(".bk-rows").innerText(), /Kalkış[\s\S]*Lizbon LIS[\s\S]*19:40[\s\S]*Varış[\s\S]*İstanbul IST/);
-  // Round 2: the airport code in the window copies on a click (the clipboard may be refused here: then it is selected).
-  // (the button is empty and zero wide, its pill is drawn beside it: a click goes to the pill)
-  const copyClick = async (cpy) => {
-    await cpy.evaluate((el) => el.scrollIntoView({ block: "center" }));
-    await cpy.hover();
-    const btn = cpy.locator(".cpy-b");
-    await app.waitForFunction((el) => getComputedStyle(el, "::before").opacity === "1", await btn.elementHandle(), { timeout: 3000 });
-    const below = await cpy.evaluate((el) => el.classList.contains("below"));
-    const at = below ? await cpy.boundingBox() : await btn.boundingBox();
-    await app.mouse.click(below ? at.x + 24 : at.x + 28, below ? at.y + at.height + 15 : at.y + at.height / 2);
-  };
-  {
-    const code = bk.locator(".bk-rows .cpy", { hasText: "LIS" });
-    await copyClick(code);
-    // (the pill's words are the button's data-label, drawn by CSS)
-    assert.match(await code.locator(".cpy-b").evaluate((el) => getComputedStyle(el, "::before").content), /^"(Kopyala|Kopyalandı ✓|Seçildi, ⌘C)"$/);
-    await app.waitForFunction(() => /^(Kopyalandı ✓|Seçildi, ⌘C)$/.test(document.querySelector(".bk-rows .cpy-b")?.getAttribute("data-label") ?? ""), null, { timeout: 3000 });
-    await app.waitForTimeout(350);
-    await app.screenshot({ path: `${out}/37c-copy-code.png` });
-    await app.waitForFunction(() => document.querySelector(".bk-rows .cpy-b")?.getAttribute("data-label") === "Kopyala", null, { timeout: 4000 });
-    assert.ok(await bk.isVisible(), "a click on the copy button does not close the window");
-    assert.equal((await bk.locator(".bk-rows").innerText()).includes("Kopyala"), false, "the button's words are not part of the text");
-  }
+  // Alındı (v81, v82 bilet): the flight home bought is its ticket, "✓ Bilet alındı" on the side column with what was paid (B10),
+  // "Bileti ekle" dashed while it has no file; the cities big with the airport codes and hours small, the landing day only
+  // because it's the next day; the frame solid and green. A misclick on "Aldım" is taken back from its ⋯ ("Rezervasyonu geri
+  // al") and redone.
+  const home = sec("flight").locator(".q-ints > .q-int", { has: app.locator(".q-nm", { hasText: "Lizbon" }) });
+  await home.locator(".z-top .z-ok", { hasText: "Bilet alındı" }).waitFor();
+  assert.equal(await home.getAttribute("data-st"), "ok");
+  assert.match(flat([await home.locator(".z-top .z-paid").innerText()])[0], /^€\d+ ödendi$/, "B10: what was paid");
+  assert.match(flat([await home.locator(".z-route").innerText()])[0], /^Lizbon LIS · 19:40 .*İstanbul IST · 01:35\+1$/);
+  assert.equal(await home.locator(".z-bt .q-doc.add").innerText(), "Bileti ekle");
+  assert.equal(await home.locator(".z-tk.bk").evaluate((el) => getComputedStyle(el).borderTopStyle), "solid");
+  await home.locator(".z-h .z-mb").click();
+  await home.getByRole("menuitem", { name: "Rezervasyonu geri al" }).click();
+  await sec("flight").locator('.q-ints > .q-int[data-st="sel"]', { has: app.locator(".q-nm", { hasText: "Lizbon" }) }).waitFor();
+  // Chosen, not bought (no page to buy it on): "✓ Aldım" is its main button.
+  await home.locator(".z-bt").getByRole("button", { name: "✓ Aldım" }).click();
+  await home.locator(".z-top .z-ok", { hasText: "Bilet alındı" }).waitFor();
+  // B1: a booking's code is there long before the flight's day (nine days off here), with its copy button; the box keeps its size.
+  await app.evaluate(async () => {
+    const request = indexedDB.open("trip-radar");
+    const database = await new Promise((resolve, reject) => ((request.onsuccess = () => resolve(request.result)), (request.onerror = () => reject(request.error))));
+    const tx = database.transaction(["items"], "readwrite");
+    const all = await new Promise((resolve) => (tx.objectStore("items").getAll().onsuccess = (e) => resolve(e.target.result)));
+    const tp = all.find((i) => i.category === "flight" && i.status === "booked" && /TAP/.test(i.name));
+    tx.objectStore("items").put({ ...tp, bookingRef: "ABC123" });
+    await new Promise((resolve) => (tx.oncomplete = resolve));
+    new BroadcastChannel("trip-radar").postMessage("changed");
+  });
+  const pnr = home.locator(".z-top .q-code", { hasText: "ABC123" });
+  await pnr.waitFor();
+  assert.equal(flat([await pnr.innerText()])[0], "PNR ABC123");
+  await pnr.locator(".q-cp").click();
+  await app.waitForFunction(() => /^(Kopyalandı|Seçildi, ⌘C ile kopyala)$/.test(document.querySelector('.q-sec[data-section="flight"] .z-top .q-code .q-cp')?.getAttribute("aria-label") ?? ""), null, { timeout: 3000 });
+  assert.equal(Math.round((await home.boundingBox()).height), 288, "a booked ticket is 288 px");
+  await home.screenshot({ path: `${out}/37f-copy-card.png` });
+  // Ayrıntı (ⓘ) opens over the ticket, never making it taller: the booking's code, its day and hour, where it leaves from, what
+  // was paid, its files; "İptal ettim, değiştir" (a booking has no Değiştir of its own). Escape closes it, the focus back on ⓘ.
+  await home.locator(".z-tk > .z-ib").click();
+  const homeDetail = home.locator(".z-det");
+  await homeDetail.waitFor();
+  assert.match(flat([await homeDetail.innerText()])[0], /PNR ABC123[\s\S]*Ne zaman 14 Eki 19:40[\s\S]*Lizbon LIS[\s\S]*Ödenen €\d+ ödendi[\s\S]*Belge ekle/);
+  await homeDetail.getByRole("button", { name: "İptal ettim, değiştir" }).waitFor();
+  assert.equal(await home.locator(".z-bt .q-chg, .z-row .q-chg").count(), 0, "a booking's frame has no Değiştir");
+  assert.equal(Math.round((await home.boundingBox()).height), 288, "the details open over the ticket");
+  await app.screenshot({ path: `${out}/37g-peek-flight.png` });
   await app.keyboard.press("Escape");
-  await bk.waitFor({ state: "detached" });
-
-  // F2: a booked flight is a ticket: the one badge and a big green tick on its stub (no empty circle), what one pays and how many go, the frame solid.
-  assert.equal(await home.locator(".tk-stub .tk-chk").count(), 1, "a big tick once it is bought");
-  assert.equal(await home.locator(".tk-stub .okt").innerText(), "Bilet alındı");
-  assert.match(await home.locator(".tk-stub .tk-price").innerText(), /€\d[\s\S]*kişi başı[\s\S]*\d kişi · €\d/, "per person large, how many go and the whole sum small");
-  assert.equal(await home.evaluate((el) => getComputedStyle(el).borderTopStyle), "solid");
-  assert.equal(await home.locator(".pk-ring, .pk-stub").count(), 0, "no ring, no old stub");
-  // The cities big, the airport codes and hours small; the landing day only because it's the next day.
-  assert.match(await home.locator(".pk-mid").innerText(), /Lizbon\s*LIS · 19:40[\s\S]*İstanbul\s*IST · 01:35\+1/);
-  // Round 2: the card's airport codes have the copy button too; it takes no room and a click on it doesn't open the card.
-  {
-    const stop = home.locator(".pk-mid .pk-stop .cpy").first();
-    const box = await home.boundingBox();
-    await copyClick(stop);
-    assert.equal(await home.locator(".pk-body").getAttribute("aria-expanded"), "false", "copying doesn't open the card");
-    assert.equal(await app.locator(".bk-sheet").count(), 0, "copying doesn't open the booking window");
-    const now = await home.boundingBox();
-    assert.deepEqual([now.width, now.height].map((v) => Math.round(v * 10) / 10), [box.width, box.height].map((v) => Math.round(v * 10) / 10), "the card is the size it was");
-    // The right-hand end: its pill is under the code (the card's edge is on its right).
-    await copyClick(home.locator(".pk-mid .pk-stop.r .cpy"));
-    assert.equal(await app.locator(".bk-sheet").count(), 0, "copying at the right end doesn't open the booking window either");
-    await home.screenshot({ path: `${out}/37f-copy-card.png` });
-    await app.mouse.move(2, 2);
-  }
-  // Round 2, batch B: pointing at the flight card shows the icon strip on its edge (the same actions as the menu; the
-  // ••• and × stay); its ⓘ opens a balloon with the facts the record holds (by hover, key focus or a tap). The card's face doesn't change.
-  {
-    const faceBefore = await home.locator(".pk-foot, .pk-mid").evaluateAll((els) => els.map((e) => e.innerText));
-    const sizeBefore = await home.boundingBox();
-    await home.evaluate((el) => el.scrollIntoView({ block: "center" }));
-    await home.hover({ position: { x: 60, y: 90 } });
-    const strip = home.locator(".pk-strip");
-    await app.waitForFunction((el) => getComputedStyle(el).opacity === "1", await strip.elementHandle(), { timeout: 3000 });
-    assert.ok((await strip.locator("button").count()) >= 2, "the strip has the card's main actions");
-    assert.equal(await strip.getAttribute("aria-hidden"), "true", "the strip is a duplicate of the menu: not read twice");
-    assert.equal(await home.getByRole("button", { name: "Kart menüsü" }).count(), 1, "the ••• menu is where it was");
-    assert.equal(await home.locator(".pk-x").count(), 1, "and so is the ×");
-    const peek = app.locator(".inf-pop");
-    const info = home.locator(".inf");
-    assert.equal(await info.count(), 1, "the flight card has its ⓘ");
-    assert.equal(await info.getAttribute("aria-label"), "Ayrıntı");
-    await info.hover();
-    await peek.waitFor({ state: "visible", timeout: 4000 });
-    assert.match(await peek.innerText(), /Sefer[\s\S]*Kalkış[\s\S]*Varış[\s\S]*Bagaj[\s\S]*Bavul dahil[\s\S]*Kimden/, "the balloon names the flight, its ends, the bag the record says, and whose it is");
-    assert.equal(await peek.getByText("Rezervasyon kodu").count(), 0, "no booking code before the flight's day");
-    await app.waitForTimeout(350);
-    await app.screenshot({ path: `${out}/37g-peek-flight.png` });
-    await app.mouse.move(2, 2);
-    await peek.waitFor({ state: "detached" });
-    // By the keyboard too: focus opens it, Escape closes it. (The panel scrolls smoothly: the ⓘ is put in view for good first, so the focus has no scrolling of its own to close the balloon.)
-    await info.evaluate((el) => el.scrollIntoView({ block: "center", behavior: "instant" }));
-    await app.waitForTimeout(500);
-    await info.focus();
-    await peek.waitFor({ state: "visible" });
-    await app.keyboard.press("Escape");
-    await peek.waitFor({ state: "detached" });
-    await info.hover();
-    await peek.waitFor({ state: "visible" });
-    assert.deepEqual(await home.locator(".pk-foot, .pk-mid").evaluateAll((els) => els.map((e) => e.innerText)), faceBefore, "the card's face reads the same");
-    const sizeNow = await home.boundingBox();
-    assert.deepEqual([sizeNow.width, sizeNow.height].map((v) => Math.round(v * 10) / 10), [sizeBefore.width, sizeBefore.height].map((v) => Math.round(v * 10) / 10), "the card is the size it was");
-    // The strip's Değiştir does what the menu's does: a booking asks first.
-    await strip.locator('button[title="Değiştir"]').click();
-    const askDlg = app.getByRole("alertdialog");
-    await askDlg.waitFor();
-    assert.match(await askDlg.innerText(), /Değiştirmeden önce/);
-    await askDlg.getByRole("button", { name: "Vazgeç" }).click();
-    await askDlg.waitFor({ state: "detached" });
-    await app.mouse.move(2, 2);
-    await peek.waitFor({ state: "detached" });
-    // A booking code on the record: the peek carries it with the copy button (pointable).
-    await app.evaluate(async () => {
-      const request = indexedDB.open("trip-radar");
-      const database = await new Promise((resolve, reject) => ((request.onsuccess = () => resolve(request.result)), (request.onerror = () => reject(request.error))));
-      const tx = database.transaction(["items"], "readwrite");
-      const all = await new Promise((resolve) => (tx.objectStore("items").getAll().onsuccess = (e) => resolve(e.target.result)));
-      const tp = all.find((i) => i.category === "flight" && i.status === "booked" && /TAP/.test(i.name));
-      tx.objectStore("items").put({ ...tp, bookingRef: "ABC123" });
-      await new Promise((resolve) => (tx.oncomplete = resolve));
-      new BroadcastChannel("trip-radar").postMessage("changed");
-    });
-    // v30: the code waits for the flight's day (it's nine days off here): the stub says what the flight cost, and the ⓘ balloon waits too.
-    await app.waitForTimeout(800);
-    assert.equal(await home.locator(".tk-stub", { hasText: "ABC123" }).count(), 0, "the booking code waits for the flight's day");
-    assert.ok((await home.locator(".tk-stub .tk-price b").first().innerText()).includes("€"), "until then the stub shows the price");
-    await home.locator(".inf").hover();
-    await peek.waitFor({ state: "visible", timeout: 4000 });
-    assert.equal(await peek.getByText("Rezervasyon kodu").count(), 0, "the balloon holds the code back until the day");
-    await app.mouse.move(2, 2);
-    await peek.waitFor({ state: "detached" });
-    // On the flight's day the balloon carries it with the copy button (pointable). (Its card moves to another day group: found by its id.)
-    const tpCard = app.locator(`.pk-card[data-item-id="${await home.getAttribute("data-item-id")}"]`);
-    await app.evaluate(async () => {
-      const request = indexedDB.open("trip-radar");
-      const database = await new Promise((resolve, reject) => ((request.onsuccess = () => resolve(request.result)), (request.onerror = () => reject(request.error))));
-      const tx = database.transaction(["items"], "readwrite");
-      const all = await new Promise((resolve) => (tx.objectStore("items").getAll().onsuccess = (e) => resolve(e.target.result)));
-      const tp = all.find((i) => i.category === "flight" && i.status === "booked" && /TAP/.test(i.name));
-      window.__tpDeparture = tp.flight.departure;
-      tx.objectStore("items").put({ ...tp, flight: { ...tp.flight, departure: `2026-10-05T${tp.flight.departure.slice(11)}` } });
-      await new Promise((resolve) => (tx.oncomplete = resolve));
-      new BroadcastChannel("trip-radar").postMessage("changed");
-    });
-    await app.waitForTimeout(800);
-    await tpCard.evaluate((el) => el.scrollIntoView({ block: "center" }));
-    assert.match(await tpCard.locator(".tk-stub .tk-code").innerText(), /ABC123/, "F2: on the flight's day the stub carries the booking code");
-    await tpCard.locator(".inf").hover();
-    await peek.waitFor({ state: "visible", timeout: 4000 });
-    assert.match(await peek.innerText(), /Rezervasyon kodu[\s\S]*ABC123/);
-    const codeBox = peek.locator(".cpy");
-    await codeBox.hover();
-    const pill = await codeBox.locator(".cpy-b").boundingBox();
-    await app.waitForFunction((el) => getComputedStyle(el, "::before").opacity === "1", await codeBox.locator(".cpy-b").elementHandle(), { timeout: 3000 });
-    await app.mouse.click(pill.x + 28, pill.y + pill.height / 2);
-    await app.waitForFunction(() => /^(Kopyalandı ✓|Seçildi, ⌘C)$/.test(document.querySelector(".inf-pop .cpy-b")?.getAttribute("data-label") ?? ""), null, { timeout: 3000 });
-    await app.screenshot({ path: `${out}/37h-peek-code.png` });
-    await app.mouse.move(2, 2);
-    await peek.waitFor({ state: "detached" });
-    // (put the record back as it was: later checks read it)
-    await app.evaluate(async () => {
-      const request = indexedDB.open("trip-radar");
-      const database = await new Promise((resolve, reject) => ((request.onsuccess = () => resolve(request.result)), (request.onerror = () => reject(request.error))));
-      const tx = database.transaction(["items"], "readwrite");
-      const all = await new Promise((resolve) => (tx.objectStore("items").getAll().onsuccess = (e) => resolve(e.target.result)));
-      const tp = all.find((i) => i.category === "flight" && i.status === "booked" && /TAP/.test(i.name));
-      const { bookingRef, ...rest } = tp;
-      tx.objectStore("items").put({ ...rest, flight: { ...rest.flight, departure: window.__tpDeparture } });
-      await new Promise((resolve) => (tx.oncomplete = resolve));
-      new BroadcastChannel("trip-radar").postMessage("changed");
-    });
-    await home.locator(".tk-code", { hasText: "ABC123" }).waitFor({ state: "detached" });
-  }
+  await homeDetail.waitFor({ state: "detached" });
+  // (put the record back as it was: later checks read it)
+  await app.evaluate(async () => {
+    const request = indexedDB.open("trip-radar");
+    const database = await new Promise((resolve, reject) => ((request.onsuccess = () => resolve(request.result)), (request.onerror = () => reject(request.error))));
+    const tx = database.transaction(["items"], "readwrite");
+    const all = await new Promise((resolve) => (tx.objectStore("items").getAll().onsuccess = (e) => resolve(e.target.result)));
+    const tp = all.find((i) => i.category === "flight" && i.status === "booked" && /TAP/.test(i.name));
+    const { bookingRef, ...rest } = tp;
+    tx.objectStore("items").put(rest);
+    await new Promise((resolve) => (tx.oncomplete = resolve));
+    new BroadcastChannel("trip-radar").postMessage("changed");
+  });
+  await pnr.waitFor({ state: "detached" });
   // v11: a row on the plan opens its record (a tap anywhere but its controls; its title is edited where it stands).
   await openSec("activity");
   await douro.locator(".ev-s").click();
@@ -1214,32 +1112,28 @@ try {
   // F7 (S1, S2): "✓ Bunu seç" on the flight's draft makes it Seçildi: the flight turns into the chosen ticket, and its landing time reaches the
   // transfer to the hotel. The hero's shares moved only now (the draft was a decision waiting: 6 of them at the start), by one.
   const beforePick = await heroNumbersOnPage();
-  const draftOut = app.locator('.tl-travel.role-arrival .pk-card.tk-draft[aria-label="Pegasus · direkt"]');
-  await draftOut.locator(".tk-pick").click();
-  await app.locator(".tl-travel.role-arrival .pk-card", { hasText: "IST" }).locator(".pk-aldim").waitFor();
-  assert.equal(await app.locator(".pk-card.tk-draft").count(), 0, "chosen: no draft left on the flight");
+  const pegBox = sec("flight").locator(".q-ints > .q-int", { has: app.locator(".z-car", { hasText: "Pegasus" }) });
+  await pegBox.locator(".z-bt .q-take", { hasText: "Bunu seç" }).click();
+  await sec("flight").locator('.q-ints > .q-int[data-st="sel"]', { has: app.locator(".z-car", { hasText: "Pegasus" }) }).waitFor();
+  assert.equal(await sec("flight").locator('.q-ints > .q-int[data-st="ai"]').count(), 0, "chosen: no draft left on the flight");
   const afterPick = await heroAgrees("after a pick");
   assert.deepEqual([afterPick.total, afterPick.booked, afterPick.planned, afterPick.open], [beforePick.total, beforePick.booked, beforePick.planned + 1, beforePick.open - 1], `${JSON.stringify(beforePick)} → ${JSON.stringify(afterPick)}`);
   assert.ok(afterPick.planPct > beforePick.planPct && afterPick.bookedPct === beforePick.bookedPct, "the planned share rises with what is chosen, the booked one waits (a draft left both alone)");
-  // F2: a chosen flight is a ticket: "Seçildi" on its stub with what one pays, and under the route the warning, amber within 14 days (3 here).
-  const pegCard = app.locator(".tl-travel.role-arrival .pk-card", { hasText: "IST" });
-  assert.equal(await pegCard.locator(".tk-lab").innerText(), "Seçildi");
-  assert.match(await pegCard.locator(".tk-price b").innerText(), /^€\d+$/);
-  assert.equal((await pegCard.locator(".tk-warn").innerText()).replace(/\s+/g, " ").trim(), "⏳ Uçuşa 3 gün · bilet alınmadı");
-  assert.equal(await pegCard.locator(".tk-warn").evaluate((el) => getComputedStyle(el).color), "rgb(161, 92, 0)", "within 14 days the warning is amber");
-  assert.equal(await pegCard.locator(".tk-stub .pk-aldim").count(), 1, "✓ Aldım stays, by the stub");
-  assert.equal(await pegCard.evaluate((el) => getComputedStyle(el).borderTopStyle), "solid", "Seçildi: a solid frame, no dashes");
-  // Ayarlandı: the × asks why, "Ben hallettim" makes the ticket grey, nothing left to do (no ✓ Aldım, no warning); its menu takes that back.
-  await pegCard.hover();
-  await pegCard.locator(".pk-x").click({ force: true });
-  await app.locator(".pk-fold").getByRole("button", { name: "Ben hallettim", exact: true }).click();
-  const pegSet = app.locator(".tl-travel.role-arrival .pk-card.tk-arranged");
-  await pegSet.locator(".tk-stub .okt.set", { hasText: "Ayarlandı" }).waitFor();
-  assert.equal(await pegSet.locator(".pk-aldim, .tk-warn, .tk-buy").count(), 0, "Ayarlandı: nothing left to do");
-  assert.equal(await pegSet.locator(".tk-chk").evaluate((el) => getComputedStyle(el).backgroundColor), "rgb(107, 102, 95)", "Ayarlandı is grey");
-  await pegSet.getByRole("button", { name: "Kart menüsü" }).click();
-  await pegSet.getByRole("menuitem", { name: "Ayarlandı: geri al" }).click();
-  await pegCard.locator(".pk-aldim").waitFor();
+  // F2, v82: a chosen flight is its ticket: "Seçildi" on its chip, what one pays and how many go, "✓ Aldım" its main button (no page
+  // to buy it on), the frame solid. (C16: no warning line under the route; the days left are Hazırlık's.)
+  assert.equal(flat([await pegBox.locator(".q-st").innerText()])[0], "Seçildi");
+  assert.match(flat([await pegBox.locator(".z-top .q-pr").innerText()])[0], /^€\d+ kişi başı · 2 kişi €\d+$/);
+  assert.equal(await pegBox.locator(".z-bt").getByRole("button", { name: "✓ Aldım" }).count(), 1, "✓ Aldım is its main button");
+  assert.equal(await pegBox.locator(".z-tk").evaluate((el) => getComputedStyle(el).borderTopStyle), "solid", "Seçildi: a solid frame, no dashes");
+  // Ayarlandı: ⋯ "Ben hallettim" makes the ticket grey, nothing left to do (no ✓ Aldım); "Ayarlandı: geri al" takes that back.
+  await pegBox.locator(".z-h .z-mb").click();
+  await pegBox.getByRole("menuitem", { name: "Ben hallettim" }).click();
+  await pegBox.locator(".z-top .z-gr", { hasText: "Ayarlandı" }).waitFor();
+  assert.equal(await pegBox.getAttribute("data-st"), "arr", "Ayarlandı is grey");
+  assert.equal(await pegBox.locator(".z-bt").getByRole("button", { name: "✓ Aldım" }).count(), 0, "Ayarlandı: nothing left to do");
+  await pegBox.locator(".z-h .z-mb").click();
+  await pegBox.getByRole("menuitem", { name: "Ayarlandı: geri al" }).click();
+  await pegBox.locator(".z-bt").getByRole("button", { name: "✓ Aldım" }).waitFor();
   // Porto chosen, Lisbon booked: in the itinerary the transfers lay themselves out (the saved train is
   // the move, with a station transfer on each side), and the way home says what's easy to miss.
   await tab("Gün gün").click();
@@ -1267,49 +1161,48 @@ try {
   await app.setViewportSize(wide);
   // Back on the plan, without the train Porto → Lizbon is a move to plan: by plane it reads as a flight, with its status on it.
   await tab("Plan").click();
-  // "Çıkar" in the card's menu: it leaves the options and waits at the end of its section, under "Gizlenenler".
-  // v11: one option still undecided is the need's card ("1 seçenek ›"); its ••• is that option's.
+  // "Çıkar" in the ⋯: it leaves the options and waits at the end of its category, under "Gizlenenler · 1" (F3).
+  // v82 (B2): the one train saved is our pick on its ticket; its ⋯ is that option's.
   await openSec("transport");
-  const train = sec("transport").locator(".nd-card", { hasText: "Porto" }).first();
-  assert.match(await train.locator(".nd-opts").innerText(), /1 seçenek/);
-  await train.getByRole("button", { name: "Kart menüsü" }).click();
+  const train = sec("transport").locator(".q-ints > .q-int", { has: app.locator(".z-car", { hasText: "Alfa Pendular" }) });
+  assert.equal(flat([await train.locator(".q-st").innerText()])[0], "✨ Önerimiz · onayla");
+  // Tren adlandırma (v81): the operator's mark, the service bold, the operator small; the plan's cities big, the stations under them.
+  assert.equal(flat([await train.locator(".z-car").innerText()])[0], "CP Alfa Pendular CP · 11 Ekim");
+  assert.match(flat([await train.locator(".z-route").innerText()])[0], /^Porto Porto Campanhã · 13:09 .*aktarmasız Lizbon Lisboa Santa Apolónia · 16:04$/);
+  assert.equal(Math.round((await train.boundingBox()).height), 288);
+  await train.locator(".z-h .z-mb").click();
   await train.getByRole("menuitem", { name: "Çıkar" }).click();
-  await sec("transport").locator(".cat-hidden-link", { hasText: "Gizlenenler · 1 göster" }).waitFor();
-  await sec("transport").locator(".cat-hidden-link button").click();
-  const ruledOut = sec("transport").locator(".cat-hidden-row.dismissed", { hasText: "CP Alfa Pendular" });
-  assert.match(await ruledOut.innerText(), /Elendi/);
-  await ruledOut.getByRole("button", { name: "Geri al", exact: true }).waitFor();
+  await sec("transport").locator(".q-hid > summary", { hasText: "Gizlenenler · 1" }).click();
+  // v82 (F3): its only option ruled out, its need folds down there as its head ("Gerek yok dedin · Geri al").
+  const ruledOut = sec("transport").locator('.q-hid .q-int.skip[data-hidden^="need:"]');
+  assert.match(flat([await ruledOut.locator(".q-nm").innerText()])[0], /^Tren/);
+  assert.match(await ruledOut.locator(".q-skipl").innerText(), /Gerek yok dedin/);
+  await ruledOut.locator(".q-undo").waitFor();
   assert.equal(await app.locator(".row-name", { hasText: /Elenenler/ }).count(), 0);
-  const move = app.locator('.pk-leg[aria-label="Porto → Lizbon"]');
-  await sec("transport").locator('.pk-leg[aria-label="Porto → Lizbon"]').waitFor();
-  await move.locator(".pk-ring.open").waitFor();
-  // Nothing said for it: its empty card (boş kartlar), "Nasıl gideceğin belli değil", the directions to search; tapped, how to go.
-  // plan v30: a change of city says it on top ("Porto → Lizbon", "Nasıl gideceğin belli değil"), the foot says what to do.
-  await move.locator(".ek-undec", { hasText: "Nasıl gideceğin belli değil" }).waitFor();
-  assert.match(await move.locator(".ek-undec").innerText(), /Porto[\s\S]*Lizbon/);
-  assert.equal(new URL(await move.getByRole("link", { name: "Yol tarifi" }).getAttribute("href")).searchParams.get("destination"), "Lizbon");
-  // plan v30: the ways are drawn choices right on the empty card (Tren · Otobüs · Araba · Uçak · Ben hallettim); one tap says it.
-  assert.deepEqual(await move.locator(".pk-way").allInnerTexts(), ["Tren", "Otobüs", "Araba", "Uçak", "Ben hallettim"]);
-  await move.locator(".pk-way", { hasText: "Uçak" }).click();
-  // By plane it's a flight: it leaves Ulaşım for Uçuş, and the page follows it there with a flash.
-  await sec("flight").locator(".cat-card.flash", { has: app.locator('.pk-leg[aria-label="Porto → Lizbon"]') }).waitFor();
-  assert.equal(await sec("transport").locator('.pk-leg[aria-label="Porto → Lizbon"]').count(), 0, "a flight never sits in Ulaşım");
-  assert.equal(await move.locator(".pk-kind").innerText(), "Uçuş");
-  await move.locator(".pk-ring.half").waitFor();
-  // Its details open again in its new place.
-  // plan v30: the way was picked on the drawn choices without opening the card; opened now, it shows the full card the way made it.
-  if ((await move.locator(".pk-body").getAttribute("aria-expanded")) !== "true") await move.locator(".pk-body").click();
-  await move.getByRole("link", { name: "Uçuş ara ↗" }).waitFor();
-  assert.equal(await move.locator(".pk-body").getAttribute("aria-expanded"), "true");
-  await move.locator(".pk-foot").getByText("bilet alınmadı").waitFor();
-  assert.equal(
-    decodeURIComponent(await move.getByRole("link", { name: "Uçuş ara ↗" }).getAttribute("href")),
-    "https://www.google.com/travel/flights?q=Flights from Porto to Lizbon on 2026-10-11",
-  );
-  await move.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  // Nothing said for the change of city now (C15): Aranıyor, "Nasıl gideceğin belli değil", its ways drawn where the route
+  // would be (Tren · Otobüs · Araba · Uçak · Ben hallettim), the sites that compare every way under "Kendin ara".
+  const moveOf = (id) => sec(id).locator(".q-ints > .q-int", { has: app.locator(".q-nm", { hasText: "Porto → Lizbon" }) });
+  const move = moveOf("transport");
+  await move.locator(".z-ways").waitFor();
+  assert.equal(await move.getAttribute("data-st"), "todo");
+  assert.match(flat([await move.locator(".z-car").innerText()])[0], /^Nasıl gideceğin belli değil/);
+  assert.deepEqual(flat(await move.locator(".z-way").allInnerTexts()), ["Tren", "Otobüs", "Araba", "Uçak", "Ben hallettim"]);
+  assert.equal(await move.locator('.z-pi[aria-label="Rome2rio\'da ara"]').getAttribute("href"), "https://www.rome2rio.com/map/Porto/Lizbon");
+  assert.equal(Math.round((await move.boundingBox()).height), 288, "the ways in the frame: the box stays 288 px");
+  await move.locator(".z-way", { hasText: "Uçak" }).click();
+  // By plane it's a flight: it leaves Ulaşım for Uçuş, and the plan follows it there with a flash.
+  const flown = moveOf("flight");
+  await sec("flight").locator(".q-ints > .q-int.flash", { has: app.locator(".q-nm", { hasText: "Porto → Lizbon" }) }).waitFor();
+  assert.equal(await moveOf("transport").count(), 0, "a flight never sits in Ulaşım");
+  assert.equal(flat([await flown.locator(".q-st").innerText()])[0], "Seçildi");
+  assert.equal(await flown.getAttribute("data-kind"), "flight");
+  // Its way said, its ticket still to buy: the flight's sites under "Kendin ara", "✓ Aldım" and Değiştir (back to the ways).
+  assert.match(decodeURIComponent(await flown.locator('.z-pi[aria-label="Google Uçuşlar\'da ara"]').getAttribute("href")), /^https:\/\/www\.google\.com\/travel\/flights\?q=Flights from Porto to Lizbon on 2026-10-11/);
+  await flown.getByRole("button", { name: "Değiştir" }).waitFor();
+  await flown.evaluate((el) => el.scrollIntoView({ block: "center" }));
   await app.screenshot({ path: `${out}/5d-move.png` });
-  await move.getByRole("button", { name: "Bileti aldım" }).click();
-  await move.locator(".okt", { hasText: "Bilet alındı" }).waitFor();
+  await flown.getByRole("button", { name: "Aldım" }).click();
+  await flown.locator(".z-top", { hasText: "Bilet alındı" }).waitFor();
   // By plane there's an airport at each end: the itinerary's day 4 now has them, around the flight.
   await tab("Gün gün").click();
   await dayCard(4).locator('.dg-tl > li[data-title="Havalimanı transferi"]').nth(1).waitFor();
@@ -1370,12 +1263,15 @@ try {
   await box("Fiyat").fill("18");
   await box("Fiyat").press("Enter");
   await box("Fiyat").waitFor({ state: "detached" });
-  const bus = pk("Otobüs · Lizbon → Lagos");
-  await bus.locator(".pk-price", { hasText: "18" }).waitFor();
-  await bus.locator(".pk-kind", { hasText: "Otobüs" }).waitFor();
-  await bus.locator(".pk-aldim").waitFor();
-  assert.equal(await bus.locator(".pk-lab.chosen").innerText(), "Seçildi", "H1: a chosen ride says Seçildi in words");
-  assert.ok(await bus.evaluate((el) => el.classList.contains("pk-r-half")), "chosen: the white ground with the light-green line");
+  // v82: the bus is its ticket box in Ulaşım, its ends and hour edited where they stand (C2).
+  const bus = sec("transport").locator(".q-ints > .q-int", { has: app.locator(".q-nm", { hasText: "Lizbon → Lagos" }) });
+  await bus.locator(".z-top .q-pr", { hasText: "18" }).waitFor();
+  assert.equal(await bus.locator(".z-h .z-kind").innerText(), "Otobüs");
+  assert.match(flat([await bus.locator(".z-route").innerText()])[0], /^Lizbon 10:00 .*Lagos$/);
+  await bus.locator(".z-bt").getByRole("button", { name: "✓ Aldım" }).waitFor();
+  assert.equal(flat([await bus.locator(".q-st").innerText()])[0], "Seçildi", "H1: a chosen ride says Seçildi in words");
+  assert.equal(await bus.getAttribute("data-st"), "sel", "chosen: the sand ground");
+  assert.equal(Math.round((await bus.boundingBox()).height), 288);
   // The panel scrolls inside the page, so a tall window shows the whole plan in one picture.
   await app.setViewportSize({ width: 1440, height: 2600 });
   await app.locator(".cat-plan").evaluate((el) => el.scrollIntoView({ block: "start" }));
@@ -1397,37 +1293,33 @@ try {
 
   // 4e. 0.32: a flight stays a flight once its airport transfer is a taxi; × on hover (a card, a stay) with
   // "Geri al"; "+" in each section with its kind, city and day; Yapılacak şeyler and Restoranlar.
-  const arrivalLeg = app.locator('.pk-leg[aria-label="OPO havalimanı → Jardim Stay"]');
-  await arrivalLeg.locator(".pk-body").click();
-  await arrivalLeg.getByRole("button", { name: "🚕 Taksi" }).click();
-  await arrivalLeg.locator(".pk-kind", { hasText: "Taksi · transfer" }).waitFor();
-  // Round 2, batch B: a transfer's card: its ⓘ gives its weekday (and what is saved for it); the card is as it was.
-  {
-    const peek = app.locator(".inf-pop");
-    // (an open card shows its details instead: shut it for this, open it again after)
-    const transfer = arrivalLeg;
-    await transfer.locator(".pk-body").click();
-    await transfer.locator(".pk-detail").waitFor({ state: "detached" });
-    await app.mouse.move(2, 2);
-    const size = await transfer.boundingBox();
-    await transfer.evaluate((el) => el.scrollIntoView({ block: "center" }));
-    await transfer.locator(".inf").hover();
-    await peek.waitFor({ state: "visible", timeout: 4000 });
-    assert.match(await peek.innerText(), /(Pazartesi|Salı|Çarşamba|Perşembe|Cuma|Cumartesi|Pazar)/, "the transfer's peek names the weekday");
-    await app.waitForTimeout(350);
-    await app.screenshot({ path: `${out}/37i-peek-transfer.png` });
-    const now = await transfer.boundingBox();
-    assert.deepEqual([now.width, now.height].map((v) => Math.round(v * 10) / 10), [size.width, size.height].map((v) => Math.round(v * 10) / 10), "the card is the size it was");
-    await app.mouse.move(2, 2);
-    await peek.waitFor({ state: "detached" });
-    await transfer.locator(".pk-body").click();
-    await transfer.locator(".pk-detail").waitFor();
-  }
+  // v82: the airport transfer said by metro in the itinerary above is its ticket in Ulaşım: "Ayarlandı · rezervasyon gerekmez"
+  // (nothing to book), the airport its one word with its code and city under it, the way on its carrier line. Değiştir brings
+  // back its ways where the route would be (Metro · Otobüs · Tren · Taksi · Transfer · Ben hallettim, as its old card's
+  // chips); "Taksi" says it, its day stays on its head, the box its size.
+  await openSec("transport");
+  const arrivalLeg = sec("transport").locator(".q-ints > .q-int", { has: app.locator(".q-nm", { hasText: "Havalimanı →" }) }).first();
+  assert.equal(await arrivalLeg.getAttribute("data-st"), "arr", "a way said with nothing to book: Ayarlandı");
+  assert.equal(flat([await arrivalLeg.locator(".z-h .z-kind").innerText()])[0], "Metro");
+  assert.match(flat([await arrivalLeg.locator(".z-top").innerText()])[0], /Ayarlandı rezervasyon gerekmez/);
+  assert.match(flat([await arrivalLeg.locator(".z-route").innerText()])[0], /^Havalimanı OPO · Porto /);
+  const transferSize = await arrivalLeg.boundingBox();
+  await arrivalLeg.getByRole("button", { name: "Değiştir" }).click();
+  await arrivalLeg.locator(".z-ways").waitFor();
+  assert.deepEqual(flat(await arrivalLeg.locator(".z-way").allInnerTexts()), ["Metro", "Otobüs", "Tren", "Taksi", "Transfer", "Ben hallettim"]);
+  assert.equal(await arrivalLeg.locator('.z-way[aria-pressed="true"]').innerText(), "Metro", "the way said is marked");
+  assert.match(flat([await arrivalLeg.locator(".z-h .q-ln").innerText()])[0], /8 Eki/);
+  await arrivalLeg.locator(".z-way", { hasText: "Taksi" }).click();
+  await arrivalLeg.locator(".z-h .z-kind", { hasText: "Taksi · transfer" }).waitFor();
+  await arrivalLeg.locator(".z-ways").waitFor({ state: "detached" });
+  const transferNow = await arrivalLeg.boundingBox();
+  assert.equal(Math.round(transferNow.height), Math.round(transferSize.height), "the box is the size it was");
+  await app.screenshot({ path: `${out}/37i-peek-transfer.png` });
   await openSec("flight");
-  const inbound = app.locator(".tl-travel.role-arrival .pk-card").first();
-  assert.match(await inbound.locator(".tk-hn").innerText(), /Pegasus/, "F2: the ticket's head names the airline and the day");
-  assert.match(await inbound.locator(".pk-mid").innerText(), /İstanbul\s*IST · 07:10[\s\S]*Porto\s*OPO · 10:05/);
-  // The flight and, under the stay, the taxi transfer in one picture.
+  const inbound = sec("flight").locator(".q-ints > .q-int", { has: app.locator(".z-car", { hasText: "Pegasus" }) });
+  assert.equal(await inbound.getAttribute("data-kind"), "flight", "a flight stays a flight once its airport transfer is a taxi");
+  assert.match(flat([await inbound.locator(".z-car").innerText()])[0], /Pegasus PC 1201 · 8 Ekim/, "F2: the ticket's head names the airline and the day");
+  assert.match(flat([await inbound.locator(".z-route").innerText()])[0], /^İstanbul IST · 07:10 .*Porto OPO · 10:05$/);
   await app.setViewportSize({ width: 1440, height: 1400 });
   await inbound.evaluate((el) => el.scrollIntoView({ block: "start" }));
   await app.screenshot({ path: `${out}/4e-flight-after-taxi.png` });
@@ -1442,35 +1334,27 @@ try {
   await app.screenshot({ path: `${out}/4f-hover-x.png` });
   // v30: on a plan card the × folds it in place and asks why; "Gerek yok" is what hides it (Geri al on the fold keeps it).
   // An activity row keeps its × as it was.
-  const foldNo = () => app.locator(".pk-fold").getByRole("button", { name: "Gerek yok", exact: true }).click();
   await douroCard().getByRole("button", { name: "Douro tekne turu: gerek yok" }).click();
   await douroCard().waitFor({ state: "detached" });
   await app.locator(".pk-undo", { hasText: "Douro tekne turu: gerek yok, gizlendi" }).getByRole("button", { name: "Geri al" }).click();
   await douroCard().waitFor();
-  // A transport card has the same × and undo.
+  // A way of travel the same, from its ⋯ (v82, B13: the ×'s "Gerek yok" and "Ben hallettim" are the menu's): Gerek yok folds it
+  // under Gizlenenler, the toast's Geri al brings it back; "Ben hallettim" keeps it on the plan as Ayarlandı (grey, nothing left
+  // to do); "Ayarlandı: geri al" takes that back.
   await openSec("transport");
   await bus.evaluate((el) => el.scrollIntoView({ block: "center" }));
-  await bus.hover();
-  // The card may be drawn again just after its edits land ("güncellendi"): the pointer comes back once if so.
-  for (let i = 0; i < 3 && (await opacity(bus.locator(".pk-x"))) !== "1"; i++) {
-    await app.mouse.move(0, 0);
-    await bus.hover();
-  }
-  assert.equal(await opacity(bus.locator(".pk-x")), "1");
-  await bus.getByRole("button", { name: "Otobüs · Lizbon → Lagos: gerek yok" }).click();
+  await bus.locator(".z-h .z-mb").click();
+  await bus.getByRole("menuitem", { name: "Gerek yok" }).click();
   await bus.waitFor({ state: "detached" });
-  await foldNo();
   await app.locator(".pk-undo", { hasText: "Lagos" }).getByRole("button", { name: "Geri al" }).click();
   await bus.waitFor();
-  // v30 "Ben hallettim": the × then "Ben hallettim" keeps it on the plan as Ayarlandı (set aside, nothing left to do); its menu takes that back.
-  await bus.hover();
-  await bus.getByRole("button", { name: "Otobüs · Lizbon → Lagos: gerek yok" }).click();
-  await app.locator(".pk-fold").getByRole("button", { name: "Ben hallettim", exact: true }).click();
-  await bus.waitFor();
-  await bus.locator(".okt.set", { hasText: "Ayarlandı" }).waitFor();
-  await bus.getByRole("button", { name: "Kart menüsü" }).click();
+  await bus.locator(".z-h .z-mb").click();
+  await bus.getByRole("menuitem", { name: "Ben hallettim" }).click();
+  await bus.locator(".z-top .z-gr", { hasText: "Ayarlandı" }).waitFor();
+  assert.equal(await bus.getAttribute("data-st"), "arr");
+  await bus.locator(".z-h .z-mb").click();
   await bus.getByRole("menuitem", { name: "Ayarlandı: geri al" }).click();
-  await bus.locator(".okt.set").waitFor({ state: "detached" });
+  await bus.locator(".z-top .z-gr").waitFor({ state: "detached" });
   // v82: an intent's ⋯ has Ayrıntı, Ben hallettim and Gerek yok (B13), then what its card's ••• had (C21): Seçimi geri al, Değiştir's
   // way back to the options is in the frame. "Gerek yok" folds the body and the box goes under Gizlenenler (F3, E7); "Geri al" brings it back.
   await openSec("stay");
@@ -1535,19 +1419,21 @@ try {
   await only.getByRole("button", { name: "Otobüs", exact: true }).waitFor();
   await only.getByRole("button", { name: "Kapat" }).click();
   // One kind (Uçuş, Etkinlikler): added at once, there; "Geri al" takes it away.
-  const cardCount = () => app.locator(".cat-card").count();
+  // (a card, or a box in a category drawn the new way)
+  const cardCount = () => app.locator(".cat-card, .q-ints > .q-int").count();
   await openSec("flight");
   let before = await cardCount();
   await (await sectionAdd("flight")).click();
+  await app.waitForFunction((n) => document.querySelectorAll(".cat-card, .q-ints > .q-int").length === n + 1, before);
   await app.locator(".pk-undo", { hasText: "Uçuş eklendi" }).getByRole("button", { name: "Geri al" }).click();
-  await app.waitForFunction((n) => document.querySelectorAll(".cat-card").length === n, before);
+  await app.waitForFunction((n) => document.querySelectorAll(".cat-card, .q-ints > .q-int").length === n, before);
   await openSec("activity");
   before = await cardCount();
   await sec("activity").getByRole("button", { name: "Etkinlik ve turlar: ekle" }).click();
   await box("Ad").waitFor();
   await box("Ad").press("Escape");
   await app.locator(".pk-undo", { hasText: "Etkinlik · tur eklendi" }).getByRole("button", { name: "Geri al" }).click();
-  await app.waitForFunction((n) => document.querySelectorAll(".cat-card").length === n, before);
+  await app.waitForFunction((n) => document.querySelectorAll(".cat-card, .q-ints > .q-int").length === n, before);
   // On a day of the itinerary: that day and its city. A to-do added there is a thin line of the day.
   await tab("Gün gün").click();
   // Day 3 is empty ("boş gün"): its row has the "+".
@@ -1743,22 +1629,23 @@ try {
   // 4m. 0.33: a tile adds at once and the card opens for editing; Enter saves, Esc leaves it, Geri al takes it away;
   // a saved page's card corrected where it stands ("sayfadaki: … · geri al"); a transfer's ends short; × on night blocks.
   await tab("Plan").click();
-  // "+" after the flight in → Otobüs: "Porto → ?", where it goes ready; Esc leaves it as it is; "Geri al" takes it away.
-  await openSec("transport");
-  await plus(sec("transport").locator(".cat-card.tl-leg").first()).click();
+  // v82: a way of travel is added at its category's end ("+ Ulaşım ekle"; a ticket has no "+" by it) → Otobüs: its box opens with
+  // where it leaves from ready, Tab goes on to where it goes; Esc leaves a field as it was; "Geri al" takes it away.
+  await (await sectionAdd("transport")).click();
   await app.getByRole("dialog", { name: "Ne eklemek istersin?" }).getByRole("button", { name: "Otobüs", exact: true }).click();
-  await box("Nereye").waitFor();
-  const portoBus = pk("Otobüs · Porto → ?");
-  await portoBus.waitFor();
-  assert.ok(await box("Nereye").evaluate((el) => el === document.activeElement), "the first empty field has the cursor");
+  await box("Nereden").waitFor();
+  assert.ok(await box("Nereden").evaluate((el) => el === document.activeElement), "the first empty field has the cursor");
   await app.screenshot({ path: `${out}/4m0-instant-add.png` });
+  await box("Nereden").fill("Porto");
+  await box("Nereden").press("Tab");
   await box("Nereye").fill("Braga");
   await box("Nereye").press("Escape");
   await box("Nereye").waitFor({ state: "detached" });
-  // Left with nothing concrete on it (no hour, no price, no page): the bus's empty card (boş kartlar), where it goes still to say.
-  assert.match(await portoBus.locator(".ek-route").innerText(), /Porto[\s\S]*Nereye/);
-  assert.match(await portoBus.locator(".ek-state").innerText(), /^Bilet yok/);
-  assert.equal(await portoBus.locator(".pk-foot, .pk-price").count(), 0, "no price on an empty card");
+  // Left with nothing concrete on it (no hour, no price, no page): its Aranıyor ticket, from Porto, where it goes still to say.
+  const portoBus = sec("transport").locator('.q-ints > .q-int[data-kind="bus"][data-st="todo"]');
+  await portoBus.waitFor();
+  assert.match(flat([await portoBus.locator(".z-route").innerText()])[0], /^Porto .*Nereye$/);
+  assert.equal(await portoBus.locator(".z-top .q-pr").count(), 0, "no price on an empty ticket");
   await app.locator(".pk-undo", { hasText: "Otobüs eklendi" }).getByRole("button", { name: "Geri al" }).click();
   await portoBus.waitFor({ state: "detached" });
   // The trip's dates, moved by hand (as the trip's own form would): the nights after the last stay are empty nights.
@@ -1843,11 +1730,12 @@ try {
   }
   await hint.getByRole("button", { name: "geri al" }).click({ force: true });
   await douroPage.locator(".ev-n", { hasText: "Douro tekne turu" }).waitFor();
-  // A transfer's ends (F5a): "Porto Havalimanı → Booking.com" large, the airport code and the stay's name under the hours' row.
+  // A transfer's ends (F5a; v82 as the design's ticket): "Havalimanı" and "Booking.com" large, the airport's code and city
+  // and the stay's name under them.
   await openSec("transport");
-  assert.match(await arrivalLeg.locator(".pk-rd").innerText(), /Porto Havalimanı\s*→\s*Booking\.com[\s\S]*OPO[\s\S]*Jardim Stay/);
+  assert.match(flat([await arrivalLeg.locator(".z-route").innerText()])[0], /^Havalimanı OPO · Porto .*Booking\.com Jardim Stay$/);
   // One word isn't broken in the middle ("Booking.co / m"): the end stays on one line.
-  assert.ok(await arrivalLeg.locator(".pk-rd-ttl .pk-rd-end").last().evaluate((el) => el.getClientRects().length <= 1 && el.offsetHeight < 1.6 * parseFloat(getComputedStyle(el).fontSize)), "Booking.com on one line");
+  assert.ok(await arrivalLeg.locator(".z-route .q-city.r > b").evaluate((el) => el.getClientRects().length <= 1 && el.offsetHeight < 1.6 * parseFloat(getComputedStyle(el).fontSize)), "Booking.com on one line");
   // Empty nights (the trip two nights longer): ⋯ Gerek yok hides them, "Gizlenenler · n" brings them back (F3).
   await openSec("stay");
   const extra = nightsBox("2026-10-14");
@@ -2215,13 +2103,11 @@ try {
   await app.locator(".flash").first().waitFor({ timeout: 5000 });
   assert.equal(await panoTab.getAttribute("aria-selected"), "false", "shut: the Plan tab is chosen again");
   const shownName = "Douro tekne turu";
-  // From a chosen card's foot (v11, v30): "Değiştir N" turns the card to its options; "Pano'da aç" there opens the window on its intent.
-  // (v82: a flight's card until phase 3b; a stay's "Pano n" is its head's.)
+  // From an intent's head (v82; the old card's "Değiştir N" → "Pano'da aç"): "Pano n" opens the window on its intent.
   await openSec("flight");
-  const fromCard = app.locator(".pk-card").filter({ has: app.locator(".pk-alt") }).first();
-  assert.match(await fromCard.locator(".pk-alt").innerText(), /^Değiştir\s*\d+$/);
-  await fromCard.locator(".pk-alt").click();
-  await app.locator(".ch-back .ch-pano").click();
+  const fromBox = sec("flight").locator(".q-ints > .q-int", { has: app.locator(".z-car", { hasText: "Pegasus" }) });
+  assert.match(flat([await fromBox.locator(".z-h .q-pano").innerText()])[0], /^Pano \d+$/);
+  await fromBox.locator(".z-h .q-pano").click();
   await pano.waitFor();
   await pside.locator(".q-si[aria-current='true']").waitFor();
   assert.ok((await pano.locator(".q-cmp3 .q-col, .q-pg").count()) >= 1, "its options are there");
@@ -2326,9 +2212,9 @@ try {
   assert.equal(await app.locator(".q-sec.open").count(), 1);
   // The ruled-out train: "Geri al" at the end of Ulaşım puts it back among the options; nothing hidden is left there.
   await openSec("transport");
-  await sec("transport").locator(".cat-hidden-link button").click();
-  await sec("transport").locator(".cat-hidden-row.dismissed", { hasText: "CP Alfa Pendular" }).getByRole("button", { name: "Geri al", exact: true }).click();
-  await sec("transport").locator(".cat-hidden").waitFor({ state: "detached" });
+  if (!(await sec("transport").locator(".q-hid").evaluate((el) => el.open))) await sec("transport").locator(".q-hid > summary").click();
+  await sec("transport").locator('.q-hid .q-int.skip[data-hidden^="need:"] .q-undo').click();
+  await sec("transport").locator(".q-hid").waitFor({ state: "detached" });
   // F4: "Sıradaki" updates itself. The visa ticked as got, its chip turns green and the next need takes its place; a tap opens
   // that need's category (closed here: one is open at a time, Belgeler ve internet's) and brings it into view with a flash.
   await openSec("other");
@@ -2928,12 +2814,13 @@ try {
   await board.locator("#tl-stay-2026-10-09").waitFor({ state: "detached", timeout: 10000 });
   await board.locator("#tl-stay-2026-10-08").waitFor();
   await bopen("flight");
-  await board.locator('.pk-card[aria-label="Uçuş"]').waitFor();
+  // v82: the ticket said with nothing concrete is its flight box, still to find (its record held in it).
+  await bsec("flight").locator('.q-ints > .q-int[data-kind="flight"][data-item-id]').first().waitFor();
   // Nothing left to do in Ulaşım (the taxi is planned): its row all settled; v82: closed until opened (one at a time).
   const transportSec = bsec("transport");
   assert.match(await transportSec.locator(".q-count").textContent(), /^(\d+)\/\1$/);
   await bopen("transport");
-  await board.getByText("Taksi · Otel → Havalimanı").first().waitFor();
+  await bsec("transport").locator('.q-ints > .q-int[data-kind="taxi"]').first().waitFor();
   // The eSIM is Belgeler ve internet's box (v82): its ⋯ deletes it, the toast's "Geri al" brings it back.
   await bopen("other");
   const esim = bsec("other").locator('.q-ints > .q-int[data-kind="esim"][data-item-id]');
@@ -3402,23 +3289,26 @@ try {
     if (!(await sgSec(id).evaluate((el) => el.classList.contains("open")))) await sgSec(id).locator(".q-tt").click();
     await sgSec(id).locator(".q-fold.on").waitFor(); // (a page behind another has its timers held back: the fold is open, "settled" may come late)
   };
-  await sgSec("transport").locator(".q-sgn", { hasText: "1 öneri" }).waitFor({ timeout: 10000 });
   // Only suggested: nothing of its own settled to count (no "x/y"); v82 (C16): what's missing is an intent, one to decide.
+  await sgSec("transport").locator(".q-pl1", { hasText: "1 karar" }).waitFor({ timeout: 10000 });
   assert.equal(await sgSec("transport").locator(".q-count").count(), 0, "a suggestion is never counted as settled");
   assert.equal(flat([await sgSec("transport").locator(".q-pl1").innerText()])[0], "1 karar");
   assert.ok(!(await sgSec("transport").evaluate((el) => el.classList.contains("open"))), "a category with only suggestions stays closed");
   await openSec("transport");
-  const rentalCard = sgSec("transport").locator(".sg-card", { hasText: "Aylık motor ya da araç kiralama" });
+  const rentalCard = sgSec("transport").locator(".q-ints > .q-int", { has: board.locator(".q-nm", { hasText: "Aylık motor ya da araç kiralama" }) });
   await rentalCard.waitFor();
-  // Ubud is Bali's (the hero's main place, from the table of regions): the nights are counted for Bali.
-  assert.match(await rentalCard.innerText(), /25 gece Bali'de kalıyorsun/);
+  assert.equal(flat([await rentalCard.locator(".q-st").innerText()])[0], "Aranıyor");
+  // Ubud is Bali's (the hero's main place, from the table of regions): the nights are counted for Bali, said as why it's there.
+  assert.match(await rentalCard.locator(".q-est").getAttribute("title"), /25 gece Bali'de kalıyorsun/);
   assert.doesNotMatch(await rentalCard.innerText(), /%/, "no invented percentage");
+  assert.equal(await sgSec("transport").locator(".sg-card").count(), 0, "what's missing is never a suggestion card too");
   await sgSec("transport").scrollIntoViewIfNeeded();
   await board.screenshot({ path: `${out}/19-suggestions.png` });
-  // Plana ekle: the rental is a real card in Ulaşım now; the suggestion is done.
-  await rentalCard.getByRole("button", { name: "Plana koy" }).click();
+  // Plana koy (its ⋯): the rental is a real record in Ulaşım now; the suggestion is done.
+  await rentalCard.locator(".z-h .z-mb").click();
+  await rentalCard.getByRole("menuitem", { name: "Plana koy" }).click();
   await rentalCard.waitFor({ state: "detached" });
-  // The rental's card (kind "Motosiklet", the place's days), planned and not booked: a real "0/1" now.
+  // The rental's box (kind "Motosiklet", the place's days), planned and not booked: a real "0/1" now.
   await sgSec("transport").getByText("Motosiklet", { exact: true }).first().waitFor();
   assert.match(await sgSec("transport").locator(".q-count").textContent(), /^0\/1$/);
   assert.equal(await sgSec("transport").locator(".q-sgn").count(), 0);
@@ -3454,7 +3344,7 @@ try {
   assert.equal(await sgSec("other").locator('.sg-card:has-text("eSIM"), .q-ints > .q-int[data-intent="suggestion:rule:esim"]').count(), 0, "Gerek yok is for good");
   await sgSec("other").locator(".q-hid > summary", { hasText: "Gizlenenler · 1" }).waitFor();
   await openSec("transport");
-  assert.equal(await sgSec("transport").locator(".sg-card").count(), 0, "the added suggestion doesn't come back");
+  assert.equal(await sgSec("transport").locator('.sg-card, .q-ints > .q-int[data-intent^="suggestion:"]').count(), 0, "the added suggestion doesn't come back");
   await sgSec("transport").getByText("Motosiklet", { exact: true }).first().waitFor();
   assert.equal(reviewPrompts.filter((p) => p.includes("Ubud")).length, 1, "the AI review is asked once for the trip");
   await openSec("other");
@@ -3668,23 +3558,26 @@ try {
     assert.equal(await panel.locator(".cat-plan .pk-cta", { hasText: /Bileti aldım|Rezerve ettim/ }).count(), 0);
   }
   await ekOpen("flight");
-  // Uçuş: İstanbul → Denpasar and back, "Bilet yok · 2 kişi"; Google Flights by city, Skyscanner and Kayak by airport.
-  const [outFlight, backFlight] = [ekSec("flight").locator(".ek-card").nth(0), ekSec("flight").locator(".ek-card").nth(1)];
-  assert.equal(await ekSec("flight").locator(".ek-card").count(), 2, "both flights the start made are empty cards");
-  assert.equal(await ekSec("flight").locator(".pk-card:not(.ek-card)").count(), 0, "no full flight card yet");
-  assert.match(await outFlight.locator(".pk-mid").innerText(), /İstanbul[\s\S]*Denpasar/);
-  assert.equal(await outFlight.locator(".tk-lab").innerText(), "Arıyoruz", "the empty ticket says Arıyoruz on its stub");
-  assert.equal(await outFlight.locator(".ek-state").innerText(), "Bilet yok · 2 kişi");
-  assert.equal(await outFlight.locator(".ek-ara").innerText(), "Kendin ara");
-  assert.equal(await outFlight.locator(".pk-cta, .pk-price").count(), 0, "no price, no Bileti aldım");
-  const out1 = await hrefs(outFlight);
-  assert.deepEqual(out1.map(([b, , t, r]) => [b, t, r]), [["gflights", "_blank", "noopener noreferrer"], ["skyscanner", "_blank", "noopener noreferrer"], ["kayak", "_blank", "noopener noreferrer"]]);
-  assert.equal(new URL(out1[0][1]).searchParams.get("q"), "Flights from İstanbul to Denpasar on 2026-12-10 one way");
-  assert.equal(out1[1][1], "https://www.skyscanner.net/transport/flights/ist/dps/261210/?adultsv2=2&rtn=0");
-  assert.equal(out1[2][1], "https://www.kayak.com/flights/IST-DPS/2026-12-10/2adults");
-  const back1 = await hrefs(backFlight);
-  assert.equal(new URL(back1[0][1]).searchParams.get("q"), "Flights from Denpasar to İstanbul on 2027-01-10 one way");
-  assert.equal(back1[2][1], "https://www.kayak.com/flights/DPS-IST/2027-01-10/2adults");
+  // Uçuş (v82): İstanbul → Denpasar and back, each an Aranıyor ticket (the two cities, "Henüz seçenek yok"), no price, no
+  // "Aldım"; "Kendin ara" (providers.ts): Skyscanner by airport, Google Uçuşlar by city, for the two who go.
+  const flightBoxes = ekSec("flight").locator(".q-ints > .q-int");
+  assert.equal(await flightBoxes.count(), 2, "both flights the start made are boxes still to find");
+  const [outFlight, backFlight] = [flightBoxes.nth(0), flightBoxes.nth(1)];
+  assert.equal(await outFlight.getAttribute("data-st"), "todo");
+  assert.equal(flat([await outFlight.locator(".q-st").innerText()])[0], "Aranıyor");
+  assert.match(flat([await outFlight.locator(".z-route").innerText()])[0], /^İstanbul .*Denpasar$/);
+  assert.match(flat([await outFlight.locator(".z-car").innerText()])[0], /^Henüz seçenek yok/);
+  assert.equal(await outFlight.locator(".z-top .q-pr, .q-got, .q-cta").count(), 0, "no price, no Aldım");
+  // (a v82 box's "Kendin ara" marks: their words, where they go)
+  const pis = (scope) => scope.locator(".z-pi").evaluateAll((els) => els.map((a) => [a.getAttribute("aria-label"), a.getAttribute("href"), a.getAttribute("target"), a.getAttribute("rel")]));
+  const out1 = await pis(outFlight);
+  assert.deepEqual(out1.map(([n, , t, r]) => [n, t, r]), [["Skyscanner'da ara", "_blank", "noopener noreferrer"], ["Google Uçuşlar'da ara", "_blank", "noopener noreferrer"]]);
+  assert.equal(out1[0][1], "https://www.skyscanner.net/transport/flights/ist/dps/261210/?adultsv2=2&rtn=0");
+  assert.equal(new URL(out1[1][1]).searchParams.get("q"), "Flights from İstanbul to Denpasar on 2026-12-10 one way");
+  const back1 = await pis(backFlight);
+  assert.equal(new URL(back1[1][1]).searchParams.get("q"), "Flights from Denpasar to İstanbul on 2027-01-10 one way");
+  assert.equal(back1[0][1], "https://www.skyscanner.net/transport/flights/dps/ist/270110/?adultsv2=2&rtn=0");
+  for (const f of [outFlight, backFlight]) assert.equal(Math.round((await f.boundingBox()).height), 288);
   await ekSec("flight").screenshot({ path: `${out}/20f-empty-flight.png` });
   // Konaklama (v82): each stop's nights an Aranıyor box ("Ubud'da nerede kalınır"); "Kendin ara": Booking and Airbnb with
   // the nights and 2 adults.
@@ -3700,18 +3593,18 @@ try {
   }
   assert.equal(await ekSec("stay").locator(".q-ints > .q-int").count(), 3, "three stops, three empty stays");
   await ekSec("stay").screenshot({ path: `${out}/20f-empty-stay.png` });
-  // Ulaşım: the transfers and changes of city with no plan, "Nasıl gideceğin belli değil", Uber and the directions.
+  // Ulaşım (v82, C15): the changes of city with no plan, Aranıyor, "Nasıl gideceğin belli değil" and their ways drawn
+  // (Tren · Otobüs · Araba · Uçak · Ben hallettim), looked for on the sites that compare every way. (An airport transfer with
+  // no plan is a line of the itinerary, not a box of the plan, as it was.)
   await ekOpen("transport");
-  const transfers = ekSec("transport").locator(".ek-card.pk-leg");
-  assert.ok((await transfers.count()) >= 2, "the transfers with no plan are empty cards");
+  const transfers = ekSec("transport").locator('.q-ints > .q-int[data-st="todo"]', { has: board.locator(".z-ways") });
+  assert.ok((await transfers.count()) >= 2, "the changes of city with no plan are boxes still to find");
   const firstLeg = transfers.first();
-  // v30: a change of city says "Nasıl gideceğin belli değil" on top and offers the ways ("Seç, ben arayayım"); a plain transfer keeps the old line.
-  assert.match(await firstLeg.locator(".ek-state").innerText(), /^(Seç, ben arayayım|Nasıl gideceğin belli değil)$/);
-  if ((await firstLeg.locator(".ek-state").innerText()).startsWith("Seç")) assert.equal(await firstLeg.locator(".ek-undec-how").innerText(), "Nasıl gideceğin belli değil");
-  const legLinks = await hrefs(firstLeg);
-  assert.deepEqual(legLinks.map(([b]) => b), ["uber", "maps"]);
-  assert.match(decodeURIComponent(legLinks[0][1]), /^https:\/\/m\.uber\.com\/ul\/\?action=setPickup&.*dropoff\[formatted_address\]=/);
-  assert.equal(await firstLeg.getByRole("link", { name: "Yol tarifi" }).count(), 1);
+  assert.match(flat([await firstLeg.locator(".z-car").innerText()])[0], /^Nasıl gideceğin belli değil/);
+  assert.deepEqual(flat(await firstLeg.locator(".z-way").allInnerTexts()), ["Tren", "Otobüs", "Araba", "Uçak", "Ben hallettim"]);
+  const legLinks = await pis(firstLeg);
+  assert.ok(legLinks.length > 0 && legLinks.every(([n]) => /'da ara$/.test(n) && n !== "Uber'da ara"), `the sites that compare every way (${JSON.stringify(legLinks)})`);
+  assert.equal(Math.round((await firstLeg.boundingBox()).height), 288);
   // Diğer (v82): the eSIM for Indonesia an Aranıyor box, "Kendin ara": Airalo and Holafly.
   await ekOpen("other");
   const esimEmpty = ekSec("other").locator('.q-ints > .q-int[data-intent="suggestion:rule:esim"]');
@@ -3739,9 +3632,9 @@ try {
   // The source finds nothing (routed empty): no offers' row anywhere; the logos are drawn here (no request to a brand's site).
   assert.equal(await panel.locator(".ek-offers").count(), 0, "no offers' row when the source finds nothing");
   assert.equal(await panel.locator('.ek-card img:not([src^="illus/"])').count(), 0, "no brand image fetched (the drawings are the app's own files)");
-  // The look (F2): a white ground in a flat solid frame (no dashes on a ticket), the cities large.
+  // The look (F2): the ticket a white ground in a flat solid frame (no dashes on a ticket; the box around it says it's to find), the cities large.
   await ekOpen("flight");
-  assert.deepEqual(await outFlight.evaluate((el) => [getComputedStyle(el).backgroundColor, getComputedStyle(el).borderTopStyle, parseFloat(getComputedStyle(el.querySelector(".pk-stop b")).fontSize) >= 16]), ["rgb(255, 255, 255)", "solid", true]);
+  assert.deepEqual(await outFlight.locator(".z-tk").evaluate((el) => [getComputedStyle(el).backgroundColor, getComputedStyle(el).borderTopStyle, parseFloat(getComputedStyle(el.querySelector(".q-city b")).fontSize) >= 16]), ["rgb(255, 255, 255)", "solid", true]);
   await ekSec("flight").evaluate((el) => el.scrollIntoView({ block: "start" }));
   await board.screenshot({ path: `${out}/22a-empty-cards.png` });
   await board.setViewportSize({ width: 560, height: 1400 });
@@ -3758,16 +3651,16 @@ try {
   await board.getByRole("tab", { name: "Plan", exact: true }).click();
   await ekSec("flight").waitFor();
   await ekOpen("flight");
-  // A placeholder's day edited where it stands: still nothing concrete, so still the empty card (never the yellow one).
-  const backId = await ekSec("flight").locator(".ek-card").nth(1).getAttribute("data-item-id");
-  const back = panel.locator(`.ek-card[data-item-id="${backId}"]`);
+  // A placeholder's day edited where it stands (its head's day, C2): still nothing concrete, so still to find (never Seçildi).
+  const backId = await ekSec("flight").locator(".q-ints > .q-int").nth(1).getAttribute("data-item-id");
+  const back = ekSec("flight").locator(`.q-ints > .q-int[data-item-id="${backId}"]`);
   await back.getByRole("button", { name: "Tarih: düzenle" }).click();
   await board.locator('.pk-ed-input[aria-label="Tarih"]').fill("2027-01-09");
   await board.locator('.pk-ed-input[aria-label="Tarih"]').press("Enter");
   await board.locator('.pk-ed-input[aria-label="Tarih"]').waitFor({ state: "detached" });
-  await back.locator(".tk-when", { hasText: "9 Ocak" }).waitFor();
-  assert.equal(await panel.locator(`[data-item-id="${backId}"].pk-r-half, [data-item-id="${backId}"] .pk-r-half, .cat-plan .settled-card`).count(), 0, "an edited placeholder stays an empty card");
-  assert.equal(new URL((await hrefs(back))[0][1]).searchParams.get("q"), "Flights from Denpasar to İstanbul on 2027-01-09 one way");
+  await back.locator(".z-h .q-ln", { hasText: "9 Oca" }).waitFor();
+  assert.equal(await back.getAttribute("data-st"), "todo", "an edited placeholder is still to find");
+  assert.equal(new URL((await pis(back))[1][1]).searchParams.get("q"), "Flights from Denpasar to İstanbul on 2027-01-09 one way");
   console.log("✓ boş kartlar: a new trip's flights, stays, transfers, eSIM and activities are plain cards with Ara: and branded searches (cities, dates, 2 people), no AI row; none in Günlük akış; a placeholder's day edited stays empty");
 
 
@@ -3830,24 +3723,24 @@ try {
   assert.equal(await board.evaluate(async () => (await chrome.storage.local.get("shareName")).shareName), "Emre", "saved as the profile name");
   assert.equal(await asked.locator("strong, b", { hasText: "Sabine dönüşte de Alicante'ye mi?" }).count(), 1, "the way home asked in bold");
   assert.deepEqual(await board.locator(".choices button").allInnerTexts(), ["Evet, Alicante", "Hayır, İstanbul'a", "Henüz belli değil"]);
-  // Sabine's own flight there: an empty card with her badge, searched from Alicante for one.
-  const hers = ekSec("flight").locator('.ek-card[aria-label="Uçuş · Alicante → Denpasar"]');
+  // Sabine's own flight there: a ticket still to find with her badge on its carrier line, searched from Alicante for one.
+  const flightTo = (route) => ekSec("flight").locator(".q-ints > .q-int", { has: board.locator(".q-nm", { hasText: route }) });
+  const hers = flightTo("Alicante → Denpasar");
   await hers.waitFor({ timeout: 10000 });
-  const badge = hers.locator(".pk-top .wh-badge");
+  const badge = hers.locator(".z-car .wh-badge");
   assert.equal(await badge.locator(".wh-label").innerText(), "Sabine'in bileti");
   assert.equal(await badge.locator(".wh-av").innerText(), "S", "her initial: no photo given");
   assert.deepEqual(await badge.evaluate((el) => [getComputedStyle(el).backgroundColor, getComputedStyle(el).borderTopColor, getComputedStyle(el).color]), ["rgb(255, 255, 255)", "rgb(230, 225, 247)", "rgb(75, 63, 176)"]);
-  assert.equal(await hers.locator(".ek-state").innerText(), "Bilet yok · 1 kişi");
-  const herLinks = await hrefs(hers);
-  assert.equal(new URL(herLinks[0][1]).searchParams.get("q"), "Flights from Alicante to Denpasar on 2026-12-10 one way");
-  assert.equal(herLinks[1][1], "https://www.skyscanner.net/transport/flights/alc/dps/261210/?adultsv2=1&rtn=0");
-  assert.equal(herLinks[2][1], "https://www.kayak.com/flights/ALC-DPS/2026-12-10/1adults");
+  assert.match(flat([await hers.locator(".z-h .q-ln").innerText()])[0], /1 kişi/, "her ticket is for one (the trip's two aren't)");
+  const herLinks = await pis(hers);
+  assert.equal(new URL(herLinks[1][1]).searchParams.get("q"), "Flights from Alicante to Denpasar on 2026-12-10 one way");
+  assert.equal(herLinks[0][1], "https://www.skyscanner.net/transport/flights/alc/dps/261210/?adultsv2=1&rtn=0");
   // The trip's own flight there is the rest's now: "Emre'nin bileti", for one.
-  const mainOut = ekSec("flight").locator('.ek-card[aria-label="Uçuş · İstanbul → Denpasar"]');
-  assert.equal(await mainOut.locator(".ek-state").innerText(), "Bilet yok · 1 kişi");
+  const mainOut = flightTo("İstanbul → Denpasar");
+  assert.match(flat([await mainOut.locator(".z-h .q-ln").innerText()])[0], /1 kişi/);
   await mainOut.locator(".wh-badge .wh-label", { hasText: "Emre'nin bileti" }).waitFor({ timeout: 10000 });
   assert.equal(await mainOut.locator(".wh-av").innerText(), "E");
-  assert.match((await hrefs(mainOut))[1][1], /adultsv2=1&/);
+  assert.match((await pis(mainOut))[0][1], /adultsv2=1&/);
   // The section counts each ticket on its own (no route dedupe): three flights to book now.
   assert.match(await ekSec("flight").locator(".q-count").textContent(), /^0\/3$/);
   await ekSec("flight").evaluate((el) => el.scrollIntoView({ block: "start" }));
@@ -3864,25 +3757,25 @@ try {
   await board.locator(".choices").getByRole("button", { name: "Evet, Alicante" }).click();
   await board.locator(".msg-assistant", { hasText: "Sabine'in dönüşünü ekledim: Denpasar → Alicante" }).waitFor({ timeout: 10000 });
   assert.equal(chipCalls.length, 0, "a chip of the code's question costs no model call");
-  const herHome = ekSec("flight").locator('.ek-card[aria-label="Uçuş · Denpasar → Alicante"]');
+  const herHome = flightTo("Denpasar → Alicante");
   await herHome.waitFor({ timeout: 10000 });
   assert.equal(await herHome.locator(".wh-label").innerText(), "Sabine'in bileti");
-  const mainBack = ekSec("flight").locator(`.ek-card[data-item-id="${mainHome.id}"]`);
-  assert.equal(await mainBack.locator(".ek-state").innerText(), "Bilet yok · 1 kişi");
+  const mainBack = ekSec("flight").locator(`.q-ints > .q-int[data-item-id="${mainHome.id}"]`);
+  assert.match(flat([await mainBack.locator(".z-h .q-ln").innerText()])[0], /1 kişi/);
   await mainBack.locator(".wh-badge .wh-label", { hasText: "Emre'nin bileti" }).waitFor({ timeout: 10000 });
   // Its own "Geri al" (the board's toast): her flight home goes, the trip's own is everyone's again; then again.
   const backToast = board.locator(".pk-undo", { hasText: "Sabine'in dönüşü eklendi: Denpasar → Alicante" });
   await backToast.getByRole("button", { name: "Geri al" }).click();
   await herHome.waitFor({ state: "detached", timeout: 10000 });
   await mainBack.locator(".wh-badge").waitFor({ state: "detached" });
-  assert.equal(await mainBack.locator(".ek-state").innerText(), "Bilet yok · 2 kişi");
+  assert.doesNotMatch(flat([await mainBack.locator(".z-h .q-ln").innerText()])[0], /kişi/, "everyone's again: the trip's own two aren't said");
   // "bu bilet Sabine'in" on an existing flight: its badge appears.
   await chatBox.fill("bu bilet Sabine'in, İstanbul'a dönüş");
   await board.getByRole("button", { name: "Gönder" }).click();
   await board.locator(".msg-assistant", { hasText: "Tamam, dönüş bileti artık Sabine'in." }).waitFor({ timeout: 20000 });
   assert.ok(perPersonPrompts[1].includes(String.raw`\"from\":{\"Sabine\":\"Alicante\"}`), "the model sees who comes from where");
   assert.ok(perPersonPrompts[1].includes(String.raw`\"for_who\":[\"Sabine\"]`), "and whose each plan is");
-  const marked = ekSec("flight").locator(`.ek-card[data-item-id="${mainHome.id}"]`);
+  const marked = ekSec("flight").locator(`.q-ints > .q-int[data-item-id="${mainHome.id}"]`);
   await marked.locator(".wh-badge .wh-label", { hasText: "Sabine'in bileti" }).waitFor({ timeout: 10000 });
   // The stays are everyone's: no badge on any of them.
   assert.equal(await ekSec("stay").locator(".wh-badge").count(), 0, "the shared stays show nothing");
@@ -4623,10 +4516,25 @@ try {
   assert.equal(lkMade.dates.start.slice(5), "11-20");
   assert.deepEqual(lkMade.travellers, { names: ["Sabine"], count: 2 });
   await board.screenshot({ path: `${out}/23d-start-srilanka-board.png` });
+  // D5 (K12 a): Oluştur was pressed while the route was only proposed: the circuit's stays are Önerimiz with nothing chosen,
+  // still looked for as before ("Kendin ara"), "Rotayı onayla" their button; agreed once, they are the stays to find.
+  const lkStay = board.locator('.q-sec[data-section="stay"]');
+  if (!(await lkStay.evaluate((el) => el.classList.contains("open")))) await lkStay.locator(".q-tt").click();
+  await lkStay.locator(".q-fold.on").waitFor();
+  const lkFirst = lkStay.locator('.q-ints > .q-int[aria-label="Sigiriya"]');
+  assert.equal(await lkFirst.getAttribute("data-st"), "ai", "a proposed route's stay is our pick's colour");
+  assert.equal(flat([await lkFirst.locator(".q-st").innerText()])[0], "✨ Önerimiz · onayla");
+  assert.ok((await lkFirst.locator(".z-pi").count()) > 0, "still looked for: Kendin ara");
+  assert.equal(await lkFirst.locator(".z-bt .q-agree").innerText(), "Rotayı onayla");
+  assert.equal(Math.round((await lkFirst.boundingBox()).height), 288);
+  await lkFirst.locator(".z-bt .q-agree").click();
+  await lkStay.locator('.q-ints > .q-int[data-st="ai"]').first().waitFor({ state: "detached" });
+  assert.equal(flat([await lkFirst.locator(".q-st").innerText()])[0], "Aranıyor", "agreed: the stays to find");
+  assert.equal(await lkFirst.locator(".q-agree").count(), 0);
   assert.equal(lk.message, 1, "one reading call");
   assert.equal(lk.route, 1, "one route call");
   await flow.unroute("https://generativelanguage.googleapis.com/**", lkModel);
-  console.log("✓ start rev 3, Sri Lanka: the exact sentence read at once with a slow model (Sri Lanka, Sabine, 20 Kasım – 4 Aralık · 14 gece); chips go on while it reads; the classic circuit at once; Oluştur pressed while the ROTA row draws builds Sigiriya · Kandy · Ella · Mirissa with İstanbul ⇄ Kolombo; the map flies İstanbul → Sri Lanka with an arc and a plane, the stops dotted, then the photos");
+  console.log("✓ start rev 3, Sri Lanka: the exact sentence read at once with a slow model (Sri Lanka, Sabine, 20 Kasım – 4 Aralık · 14 gece); chips go on while it reads; the classic circuit at once; Oluştur pressed while the ROTA row draws builds Sigiriya · Kandy · Ella · Mirissa with İstanbul ⇄ Kolombo, Önerimiz until Rotayı onayla (D5); the map flies İstanbul → Sri Lanka with an arc and a plane, the stops dotted, then the photos");
 
   // 23. The owner's second report: "Lets go to Papua New Gune with my friend for 3 weeks on nov" on an English board
   // captured nothing. Now, without waiting for the model (it never answers here): Papua New Guinea asked back, a
@@ -5348,23 +5256,26 @@ try {
   // (v82, B8: closed at first look; the flights opened)
   const flights = app.locator('.q-sec[data-section="flight"]');
   if (!(await flights.evaluate((el) => el.classList.contains("open")))) await flights.locator(".q-tt").click();
-  const tpCard = app.locator('.pk-card[aria-label*="Lizbon → İstanbul"]').first();
-  await tpCard.locator(".pk-live").waitFor();
-  assert.ok(await tpCard.evaluate((el) => el.classList.contains("pk-alert")), "late: the card goes red");
-  assert.deepEqual(flat(await tpCard.locator(".pk-lv").allInnerTexts()), ["Yeni kalkış 20:05 +25 dk", "Kapı 14"]);
-  // H4: nothing in the delay boxes is cut ("Yeni kal…", "+25 dk"): every label and value fits its box.
-  assert.deepEqual(await tpCard.locator(".pk-lv small, .pk-lv b, .pk-lv b i").evaluateAll((els) => els.filter((e) => e.scrollWidth > e.clientWidth + 1).map((e) => e.textContent)), [], "H4: the delay boxes cut nothing");
-  assert.equal(await tpCard.locator(".pk-lv").first().evaluate((box) => { const r = box.getBoundingClientRect(); return [...box.querySelectorAll("small, b, i")].every((e) => e.getBoundingClientRect().right <= r.right + 1); }), true, "H4: the delay box holds its words");
-  assert.match(flat([await tpCard.locator(".pk-top").innerText()])[0], /TAP TP1760/);
-  assert.match(flat([await tpCard.locator(".pk-foot").innerText()])[0], /Planı yeni saate göre kaydırdım.*AeroDataBox/);
-  // v30: the old time struck through beside the new one, in a clear red frame.
-  assert.match(flat([await tpCard.locator(".pk-stop").first().innerText()])[0], /LIS T1 · 19:40 20:05/);
-  assert.equal(await tpCard.locator(".pk-stop .pk-was").first().innerText(), "19:40");
-  assert.equal(await tpCard.evaluate((el) => getComputedStyle(el).borderTopColor), "rgb(198, 40, 40)", "late: a clear red frame");
-  await tpCard.scrollIntoViewIfNeeded();
+  // v82 (C4, row 95): on its day the ticket's chip line is the live strip ("Canlı" late in amber, the gate, the delay, the
+  // terminal, the source named), the route at the new time, the side column's new times and "Planı yeni saate kaydırdım.";
+  // F2: hours before it leaves, the main button is the online check-in (the PNR above it). Late, the box is as tall as ever.
+  const tpBox = flights.locator(".q-ints > .q-int", { has: app.locator(".q-nm", { hasText: "Lizbon" }) });
+  const boxStrip = tpBox.locator(".z-live");
+  await boxStrip.waitFor();
+  assert.deepEqual(flat(await boxStrip.locator(":scope > span").allInnerTexts()), ["Canlı", "Kapı 14", "Rötar +25 dk", "LIS T1"]);
+  assert.ok(await boxStrip.locator(".z-ldot.late").count(), "late: the live dot is amber");
+  assert.match(await boxStrip.locator(".z-lsrc").innerText(), /AeroDataBox/);
+  // H4: nothing in the strip is cut ("Yeni kal…", "+25 dk"): every part holds its words.
+  assert.deepEqual(await boxStrip.locator(":scope > span").evaluateAll((els) => els.filter((e) => e.scrollWidth > e.clientWidth + 1).map((e) => e.textContent)), [], "H4: the live strip cuts nothing");
+  assert.match(flat([await tpBox.locator(".z-car").innerText()])[0], /TAP TP 1760/);
+  assert.match(flat([await tpBox.locator(".z-route").innerText()])[0], /^Lizbon LIS · 20:05 /, "the plan moved to the new time");
+  assert.equal(flat([await tpBox.locator(".z-shift").innerText()])[0], "Yeni kalkış 20:05. Planı yeni saate kaydırdım.");
+  assert.equal(new URL(await tpBox.locator(".z-bt .q-ckin").getAttribute("href")).searchParams.get("q"), "TAP online check-in", "F2: the check-in is the main button");
+  assert.equal(Math.round((await tpBox.boundingBox()).height), 288, "late: the box is 288 px");
+  await tpBox.scrollIntoViewIfNeeded();
   await app.screenshot({ path: `${out}/3e-flight-card-live.png` });
-  // The stage AeroDataBox names (0.36.17's "Biniş başladı"), only while the answer is fresh and only when the data says so: nothing above (status Delayed).
-  assert.equal(await tpCard.locator(".pk-lv", { hasText: "Durum" }).count(), 0, "no stage without the data");
+  // The stage AeroDataBox names ("Biniş başladı"), only while the answer is fresh and only when the data says so: nothing above (status Delayed).
+  assert.equal(await tpBox.locator(".z-lst").count(), 0, "no stage without the data");
   await app.evaluate(async () => {
     const stored = (await chrome.storage.local.get("flightLive")).flightLive;
     const e = stored["TP1760|2026-10-14"];
@@ -5372,11 +5283,11 @@ try {
     await chrome.storage.local.set({ flightLive: stored });
     new BroadcastChannel("trip-radar").postMessage("changed");
   });
-  const stage = tpCard.locator(".pk-lv", { hasText: "Durum" });
+  const stage = tpBox.locator(".z-car .z-lst");
   await stage.waitFor();
-  assert.deepEqual(flat(await stage.allInnerTexts()), ["Durum Biniş başladı"]);
-  assert.equal(await stage.evaluate((el) => getComputedStyle(el.querySelector("b")).color), "rgb(29, 116, 66)", "boarding: the existing green");
-  console.log("✓ flight on its day: the Bugün strip in the hero's place and the Plan in trip order from today (D8); late in red with its new time and gate, in the day's line, on the strip and as boxes on the Plan's card, the source named");
+  assert.equal(await stage.innerText(), "Biniş başladı");
+  assert.equal(Math.round((await tpBox.boundingBox()).height), 288, "boarding: the box is 288 px");
+  console.log("✓ flight on its day: the Bugün strip in the hero's place and the Plan in trip order from today (D8); late with its new time and gate, in the day's line, on the strip and on the Plan's ticket (the live strip, Biniş başladı, the check-in, 288 px), the source named");
 } finally {
   await flightDay.close();
 }
@@ -5580,7 +5491,7 @@ try {
     await sec.locator(".q-fold.settled").waitFor();
   };
   const stayDraft = app.locator('.q-sec[data-section="stay"] .q-ints > .q-int[data-st="ai"]', { has: app.locator(".z-t", { hasText: "Jardim Stay" }) });
-  const flightDraft = app.locator('.pk-card.tk-draft[aria-label="Pegasus · direkt"]');
+  const flightDraft = app.locator('.q-sec[data-section="flight"] .q-ints > .q-int[data-st="ai"]', { has: app.locator(".z-car", { hasText: "Pegasus" }) });
   await openCat("flight");
   await flightDraft.waitFor();
   await openCat("stay");
@@ -5626,13 +5537,12 @@ try {
   const chosen = await heroNow();
   assert.deepEqual([chosen.total, chosen.planned, chosen.booked, chosen.open], [9, 4, 2, 5], "the hero moved only with the choice");
   assert.ok(chosen.pct > before.pct);
-  // The flight's draft goes with its need: "Gerek yok" on it is the need's, and nothing is left on the card.
+  // The flight's draft goes with its need: "Gerek yok" in its ⋯ is the need's, and nothing is left of our pick.
   await openCat("flight");
-  await flightDraft.hover();
-  await flightDraft.getByRole("button", { name: /gerek yok/i }).first().click();
-  await app.locator(".pk-fold").getByRole("button", { name: "Gerek yok", exact: true }).click();
+  await flightDraft.locator(".z-h .z-mb").click();
+  await flightDraft.getByRole("menuitem", { name: "Gerek yok" }).click();
   await flightDraft.waitFor({ state: "detached" });
-  assert.equal(await app.locator(".pk-card.tk-draft").count(), 0, "a need set aside has no draft");
+  assert.equal(await app.locator('.q-sec[data-section="flight"] .q-ints > .q-int[data-st="ai"]').count(), 0, "a need set aside has no draft");
   console.log("✓ draft: the best real option is the card (\"Önerimiz\"), no choice (hero, Pano \"✨ Önerimiz\", Seç); \"✓ Bunu seç\" chooses, the site's link only opens it (B11); it goes with its need");
 } finally {
   await draftCtx.close();
@@ -5709,26 +5619,34 @@ try {
     await sec.locator(".q-fold.settled").waitFor();
   };
 
-  // yükselme: a plan card lifts 3 px while pointed at; the page's layout (the card's place in the flow) stays.
+  // rt-fly (D9): a flight's plane glided to its route when the ticket was first drawn (.9 s, from 18 px left); it is on the
+  // sample's flights (v82: read while the flights are open the first time; drawn again they don't fly again).
   await openCat("flight");
-  const flight = app.locator('.pk-card[aria-label*="TAP"]').first();
-  await flight.evaluate((el) => el.scrollIntoView({ block: "center" }));
-  await app.mouse.move(2, 2);
-  const at0 = await flight.evaluate((el) => getComputedStyle(el).transform);
-  await flight.hover({ position: { x: 60, y: 60 } });
-  // (the lift takes 180 ms; a busy machine may take longer to show it: wait for it)
-  await app.waitForFunction((el) => getComputedStyle(el).transform === "matrix(1, 0, 0, 1, 0, -3)", await flight.elementHandle(), { timeout: 4000 });
-  assert.equal(await flight.evaluate((el) => getComputedStyle(el).transform), "matrix(1, 0, 0, 1, 0, -3)", "yükselme: the card lifts 3 px on hover");
-  assert.equal(at0, "none");
-  await app.mouse.move(2, 2);
-
-  // rt-fly: a ticket's plane glided to its card when it was first drawn (.9 s, from 18 px left); it is on the sample's flights
-  // (v82: read while the flights are open the first time; drawn again they don't fly again).
-  const glide = await app.locator(".pk-card.tk .tk-plane.tk-fly").first().evaluate((el) => {
+  const glide = await app.locator('.q-sec[data-section="flight"] .z-tk .q-mid.big img.z-fly').first().evaluate((el) => {
     const cs = getComputedStyle(el);
     return [cs.animationName, cs.animationDuration, cs.animationTimingFunction, el.getAnimations()[0]?.effect.getKeyframes()[0].marginLeft];
   });
-  assert.deepEqual(glide, ["pk-fly", "0.9s", "cubic-bezier(0.16, 1, 0.3, 1)", "-18px"], "rt-fly: the plane glides to its card on the first draw");
+  assert.deepEqual(glide, ["pk-fly", "0.9s", "cubic-bezier(0.16, 1, 0.3, 1)", "-18px"], "rt-fly: the plane glides to its route on the first draw");
+
+  // yükselme (v82, E §425): an option lifts 3 px while pointed at (the flight Önerimiz's options, Değiştir); the intent box
+  // itself stays where it is, and the page's layout (the row's place in the flow) stays.
+  const porto = app.locator('.q-sec[data-section="flight"] .q-ints > .q-int', { has: app.locator(".q-nm", { hasText: "Porto" }) }).first();
+  await porto.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  await porto.locator(".z-bt .q-chg").click();
+  const flight = porto.locator(".q-row.z-r:not(.is-cur)").first();
+  await flight.waitFor();
+  await app.waitForTimeout(500); // (the rows set in, 60 ms apart)
+  await app.mouse.move(2, 2);
+  const at0 = await flight.evaluate((el) => getComputedStyle(el).transform);
+  await flight.hover({ position: { x: 60, y: 20 } });
+  // (the lift takes 180 ms; a busy machine may take longer to show it: wait for it)
+  await app.waitForFunction((el) => getComputedStyle(el).transform === "matrix(1, 0, 0, 1, 0, -3)", await flight.elementHandle(), { timeout: 4000 });
+  assert.equal(await flight.evaluate((el) => getComputedStyle(el).transform), "matrix(1, 0, 0, 1, 0, -3)", "yükselme: the option lifts 3 px on hover");
+  assert.equal(at0, "none");
+  assert.equal(await porto.evaluate((el) => getComputedStyle(el).transform), "none", "yükselme: the intent box doesn't");
+  await app.mouse.move(2, 2);
+  await porto.getByRole("button", { name: "Vazgeç" }).click();
+  await porto.locator(".z-tk").waitFor();
 
   // nabız: slowly, forever (box-shadow only: nothing moves). v82 (E §377): only while the AI really looks for an intent: the
   // policy still to find, "AI'dan öner" pressed, pulses while it looks; an intent merely still to find doesn't.
@@ -6160,59 +6078,60 @@ try {
   await app.getByText("Portekiz (örnek)").first().click();
   await app.locator(".cat-plan").waitFor();
 
-  // K29 aşama geçişi: the booked flight is taken back to Seçildi and booked again; each time its card glows 1.6 s (0 > 6 > 14 px), the plane
-  // takes off (1.1 s), the logo drops (.7 s) and, while it is only chosen, the stage's word pops (.5 s). The glow of a plain change gives way to it.
-  const TAP_OUT = "TAP · Lizbon → İstanbul";
-  await app.evaluate((name) => {
+  // K29 aşama geçişi (v82, E §2.3–2.5): the booked flight taken back to Seçildi is a step back, quiet (no takeoff, no spring);
+  // booked again, the ticket's plane takes off (1.1 s), the tick by Bilet alındı is stamped (420 ms) and the chip springs (.5 s).
+  // No glow: the ticket is in sight. (Recorded as it happens: a busy machine looks late.)
+  await openCat("flight");
+  await app.evaluate(() => {
+    window.__lisbon = () => [...document.querySelectorAll('.q-sec[data-section="flight"] .q-ints > .q-int')].find((b) => b.querySelector(".q-nm")?.textContent.includes("Lizbon"));
     window.__stage = {};
     new MutationObserver(() => {
-      const card = document.querySelector(`.pk-card[aria-label="${name}"]`);
-      if (!card?.classList.contains("pk-stage")) return;
+      const box = window.__lisbon();
+      if (!box) return;
       const anim = (sel) => {
-        const el = sel ? card.querySelector(sel) : card;
+        const el = box.querySelector(sel);
         const cs = el && getComputedStyle(el);
         return cs ? [cs.animationName, cs.animationDuration, cs.animationTimingFunction].join(" ") : null;
       };
-      window.__stage[card.classList.contains("tk-booked") ? "booked" : "chosen"] ||= {
-        card: anim(), plane: anim(".tk-plane"), logo: anim(".tk-logo, .tk-ph"), lab: anim(".tk-lab"), glow: card.classList.contains("pk-glow"),
-      };
-    }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ["class"], childList: true });
-  }, TAP_OUT);
-  const tapOut = app.locator(`.pk-card[aria-label="${TAP_OUT}"]`);
+      window.__stage.back ||= box.dataset.st !== "ok" && box.classList.contains("z-go");
+      // (the booked frame comes in 120 ms after the chosen one fades)
+      if (!box.classList.contains("z-go") || box.dataset.st !== "ok" || !box.querySelector(".z-tk.bk .z-ok svg")) return;
+      window.__stage.booked ||= { plane: anim(".z-tk .q-mid.big img"), tick: anim(".z-tk .z-ok svg"), glow: box.classList.contains("pk-glow") || box.classList.contains("pk-stage") };
+      window.__stage.pop ||= Boolean(box.querySelector(".q-st.pop"));
+    }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ["class", "data-st"], childList: true });
+  });
+  const TAP_OUT = "TAP · Lizbon → İstanbul";
+  const tapOut = app.locator('.q-sec[data-section="flight"] .q-ints > .q-int', { has: app.locator(".q-nm", { hasText: "Lizbon" }) }).first();
   await idb("status", [TAP_OUT, "chosen"]);
-  await app.waitForFunction(() => window.__stage.chosen, null, { timeout: 5000 });
-  await app.waitForFunction((name) => !document.querySelector(`.pk-card[aria-label="${name}"]`)?.classList.contains("pk-stage"), TAP_OUT, { timeout: 4000 }); // 1.6 s
+  await tapOut.locator(".z-tk:not(.bk)").waitFor({ timeout: 5000 });
+  await app.waitForTimeout(400);
   await idb("status", [TAP_OUT, "booked"]);
-  await app.waitForFunction(() => window.__stage.booked, null, { timeout: 5000 });
+  await app.waitForFunction(() => window.__stage.booked && window.__stage.pop, null, { timeout: 5000 });
   const stage = await app.evaluate(() => window.__stage);
   const E = "cubic-bezier(0.16, 1, 0.3, 1)";
-  for (const when of ["chosen", "booked"]) {
-    assert.equal(stage[when].card, `pk-stage-glow 1.6s ${E}`, `K29: the card glows 1.6 s (${when})`);
-    assert.equal(stage[when].plane, `pk-takeoff 1.1s ${E}`, `K29: the plane takes off (${when})`);
-    assert.equal(stage[when].logo, `pk-logo-drop 0.7s ${E}`, `K29: the logo drops (${when})`);
-    assert.equal(stage[when].glow, false, `K29: the plain glow gives way (${when})`);
-  }
-  assert.equal(stage.chosen.lab, "pk-lab-pop 0.5s cubic-bezier(0.2, 1.6, 0.4, 1)", "K29: the stage's word pops");
-  await app.waitForFunction((name) => !document.querySelector(`.pk-card[aria-label="${name}"]`)?.classList.contains("pk-stage"), TAP_OUT, { timeout: 4000 });
-  assert.ok(await tapOut.evaluate((el) => el.classList.contains("tk-booked")), "…and it stays booked once the moment is over");
-  // (the frame changes colour over .4 s, which stays when motion is off)
-  assert.match(await tapOut.evaluate((el) => getComputedStyle(el).transitionProperty), /border-color/, "the frame's colour is a transition");
+  assert.equal(stage.back, false, "K29: the step back is quiet");
+  assert.equal(stage.booked.plane, `pk-takeoff 1.1s ${E}`, "K29: the plane takes off");
+  assert.equal(stage.booked.tick, "mv-stamp 0.42s cubic-bezier(0.2, 0.9, 0.3, 1.3)", "K29: the tick is stamped");
+  assert.equal(stage.booked.glow, false, "K29: no glow, the ticket is in sight");
+  assert.ok(stage.pop, "K29: the chip springs");
+  await app.waitForFunction(() => !window.__lisbon()?.classList.contains("z-go"), null, { timeout: 4000 });
+  assert.equal(await tapOut.getAttribute("data-st"), "ok", "…and it stays booked once the moment is over");
 
-  // Canlı dot: a flight late on the data's word has the pulse on its first box (lvp 1.6 s, ring 4 > 7 px), red; it is only the dot that moves.
+  // Canlı dot (D10): a flight late on the data's word has the pulse on its live strip (1.6 s, ring 4 > 7 px), amber; it is only the dot that moves.
   await app.evaluate(async () => {
     const end = (iata, t) => ({ iata, airport: null, scheduled: t, revised: null, actual: null, terminal: null, gate: null });
     const flight = { number: "TP1760", airline: "TAP", status: "Delayed", departure: { ...end("LIS", "2026-10-14T19:40"), revised: "2026-10-14T20:25" }, arrival: { ...end("IST", "2026-10-15T01:35"), belt: null }, fetchedAt: "t" };
     await chrome.storage.local.set({ flightLive: { "TP1760|2026-10-14": { flight, at: Date.now() } } });
     new BroadcastChannel("trip-radar").postMessage("changed");
   });
-  const dot = tapOut.locator(".pk-live .lv-dot.late");
+  const dot = tapOut.locator(".z-live .z-ldot.late");
   await dot.waitFor({ timeout: 5000 });
   const pulse = await dot.evaluate((el) => {
-    const cs = getComputedStyle(el);
-    const keys = el.getAnimations()[0].effect.getKeyframes();
-    return [cs.animationName, cs.animationDuration, cs.animationIterationCount, cs.boxShadow.includes("4px"), keys.some((k) => String(k.boxShadow).includes("7px")), el.getAttribute("aria-label")];
+    const cs = getComputedStyle(el, "::before");
+    const keys = el.getAnimations({ subtree: true })[0].effect.getKeyframes();
+    return [cs.animationName, cs.animationDuration, cs.animationIterationCount, cs.boxShadow.includes("4px"), keys.some((k) => String(k.boxShadow).includes("7px")), el.textContent];
   });
-  assert.deepEqual(pulse, ["pk-live-pulse", "1.6s", "infinite", true, true, "Canlı"], "Canlı dot: lvp 1.6 s, ring 4 to 7 px");
+  assert.deepEqual(pulse, ["pk-live-pulse", "1.6s", "infinite", true, true, "Canlı"], "Canlı dot: 1.6 s, ring 4 to 7 px");
 
   // The window leaves with a still copy (exitMotion.ts): out of the flow, hidden from readers, without ids, gone within a moment.
   const settingsTab = await motion.newPage();
@@ -6232,12 +6151,17 @@ try {
   await settingsTab.getByLabel("Hareketi duraklat", { exact: false }).check();
   assert.equal(await settingsTab.evaluate(() => [document.body.classList.contains("still"), localStorage.getItem("trip-radar:still")]).then((v) => v.join()), "true,1", "duraklat: body.still and the saved choice");
   await app.reload();
-  await app.locator(".pk-card").first().waitFor();
-  const still = app.locator('.pk-card[aria-label*="TAP"]').first();
-  await still.evaluate((el) => el.scrollIntoView({ block: "center" }));
-  await still.hover({ position: { x: 60, y: 60 } });
+  await app.locator(".q-sec").first().waitFor();
+  await openCat("flight");
+  const portoStill = app.locator('.q-sec[data-section="flight"] .q-ints > .q-int', { has: app.locator(".q-nm", { hasText: "Porto" }) }).first();
+  await portoStill.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  await portoStill.locator(".z-bt .q-chg").click();
+  const still = portoStill.locator(".q-row.z-r:not(.is-cur)").first();
+  await still.waitFor();
+  await still.hover({ position: { x: 60, y: 20 } });
   await app.waitForTimeout(400);
-  assert.equal(await still.evaluate((el) => getComputedStyle(el).transform), "none", "duraklat: the card no longer lifts");
+  assert.equal(await still.evaluate((el) => getComputedStyle(el).transform), "none", "duraklat: the option no longer lifts");
+  await portoStill.getByRole("button", { name: "Vazgeç" }).click();
   await settingsTab.getByLabel("Hareketi duraklat", { exact: false }).uncheck();
   assert.equal(await settingsTab.evaluate(() => localStorage.getItem("trip-radar:still")), null);
   await settingsTab.close();
