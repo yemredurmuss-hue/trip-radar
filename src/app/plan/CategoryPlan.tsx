@@ -10,11 +10,12 @@ import { isIdeaSection, planSectionOfItem, sectionProgress, type CatEntry, type 
 import { activityGaps } from "../../lib/emptyCards";
 import { countryNames } from "../../lib/heroInfo";
 import { L } from "../../lib/i18n";
+import { doneCount } from "../../lib/collectionCards";
 import { countParts, decideCount, decisionNames, firstDecision, rowThumbs } from "../../lib/intentFrame";
 import { collectionsOf, type Collection, type IntentInput } from "../../lib/intents";
 import { formatPrice } from "../../lib/items";
 import { nightsSummary } from "../../lib/lifecycle";
-import type { Plan } from "../../lib/plan";
+import { sameCity, type Plan } from "../../lib/plan";
 import { eMove, scrollBy } from "../../lib/planOpen";
 import type { BudgetSlice } from "../../lib/progress";
 import { entryDomId } from "../../lib/progress";
@@ -38,6 +39,9 @@ import { SectionSuggestContext } from "./sectionSuggest";
 import { SectionTimeline, type SectionCards } from "./SectionTimeline";
 import { SuggestionCards } from "./SuggestionCards";
 import type { RowView } from "./v82/CategoryRow";
+import { CollectEnvContext } from "./v82/collectEnv";
+import { CollectionBox } from "./v82/CollectionBox";
+import { CityGaps } from "./v82/CollectionRow";
 import { artOf, IntentBox } from "./v82/IntentBox";
 import { PlanHeader } from "./v82/PlanHeader";
 import { TimelineRail } from "./v82/TimelineRail";
@@ -52,7 +56,7 @@ const TILED: SectionId[] = ["activity", "todo"];
  * A category joins once its boxes are built: 3a stay and other (the stay family's frame), 3b flight and transport (the
  * ticket), 4 activity and todo (the rows of cards).
  */
-export const V82_SECTIONS: ReadonlySet<SectionId> = new Set<SectionId>(["stay", "other"]);
+export const V82_SECTIONS: ReadonlySet<SectionId> = new Set<SectionId>(["stay", "other", "activity", "todo"]);
 
 const SLICE: Partial<Record<SectionId, BudgetSlice>> = { flight: "flight", stay: "stay", transport: "transport", activity: "activity", other: "other" };
 
@@ -211,6 +215,7 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
     goTo,
   };
   const first = firstDecision(collections);
+  const collectEnv = useMemo(() => ({ plan }), [plan]);
 
   const rowOf = (s: CatSection): RowView => {
     const meta = SECTION_META[s.id];
@@ -228,6 +233,8 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
     }
     const { thumbs, more } = rowThumbs(c.intents);
     const sum = c.summary;
+    // Yapılacaklar' things done are said apart ("1 yapıldı"); a ticket is never "done" (H1: a ski pass isn't here).
+    const done = s.id === "todo" ? doneCount(c.intents, v82Env.byId) : 0;
     return {
       id: s.id,
       name: sum.name,
@@ -235,7 +242,7 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
       thumbs,
       more,
       bar: c.intents.length ? sum.bar : null,
-      parts: c.intents.length ? countParts(sum.counts, c.intents.some((i) => i.frame === "collection")) : [],
+      parts: c.intents.length ? [...countParts(sum.counts, c.intents.some((i) => i.frame === "collection")), ...(done ? [{ text: L(`${done} yapıldı`, `${done} done`), decide: false }] : [])] : [],
       spent: sum.spent ? formatPrice(sum.spent.amount, sum.spent.currency) : null,
       allot: sum.allotted ? formatPrice(sum.allotted.amount, sum.allotted.currency) : null,
       settled,
@@ -244,6 +251,7 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
 
   return (
     <V82EnvContext.Provider value={v82Env}>
+      <CollectEnvContext.Provider value={collectEnv}>
       <div className="section trip-plan cat-plan q-plan" data-pit-children>
         <PlanHeader decide={decide ?? decideCount(collections)} onDecide={() => first && goTo(first.section, first.intent.key)} order={order} title={n.total > 0 ? nightsSummary(n) : undefined} />
         {plan.notices.map((x) => (
@@ -278,9 +286,15 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
                       }
                       hidden={<Hidden section={s} live={items.filter((i) => i.status !== "dismissed" && planSectionOfItem(i) === s.id)} suggestions={dismissed} art={(kind) => artOf(kind)} />}
                     >
-                      {(c?.intents ?? []).filter((i) => i.status !== "skipped").map((vm) => (
-                        <IntentBox key={vm.key} vm={vm} color={SECTION_META[s.id].color} onHere={s.id === "stay" ? (at) => onAdd(s.id, at) : null} />
-                      ))}
+                      {(c?.intents ?? []).filter((i) => i.status !== "skipped").map((vm) =>
+                        // Etkinlik and Yapılacaklar: a city's row of cards (aşama 4); a part of the trip's shape among them (a ski pass) is one choice.
+                        vm.frame === "collection" ? (
+                          <CollectionBox key={vm.key} vm={vm} color={SECTION_META[s.id].color} />
+                        ) : (
+                          <IntentBox key={vm.key} vm={vm} color={SECTION_META[s.id].color} onHere={s.id === "stay" ? (at) => onAdd(s.id, at) : null} />
+                        ),
+                      )}
+                      {s.id === "activity" && <CityGaps gaps={gaps.filter((g) => !(c?.intents ?? []).some((i) => i.frame === "collection" && i.head.city != null && sameCity(i.head.city, g.city)))} section="activity" />}
                     </TimelineRail>
                   ) : (
                     <SectionSuggestContext.Provider value={suggestions && TILED.includes(s.id) ? { list: suggested(s), add: suggestions.add, dismiss: suggestions.dismiss, notes: suggestions.notes } : null}>
@@ -308,6 +322,7 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
           + {L("Yeni ihtiyaç ekle", "Add a new need")}
         </button>
       </div>
+      </CollectEnvContext.Provider>
     </V82EnvContext.Provider>
   );
 }
