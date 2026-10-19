@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chipLabel, chipName, isPutButton } from "../src/app/putFly";
+import { arrivedKey, chipLabel, chipName, isPutButton, slotTransform } from "../src/app/putFly";
 
 describe("Plana koy: the flying chip", () => {
   it("knows the button by its words, in either language, with or without its +", () => {
@@ -17,5 +17,16 @@ describe("Plana koy: the flying chip", () => {
     expect(chipLabel(pano)).toBe("Livraria Lello");
     expect(chipLabel({ innerText: "Casa Azul\n€80" })).toBe("Casa Azul");
     expect(chipLabel(null)).toBe("+1");
+  });
+});
+
+describe("Plana koy in a row of cards (E6): the card flies to its slot in Planında", () => {
+  it("lays the card over its slot: its corner on the slot's, its size the slot's", () => {
+    expect(slotTransform({ left: 100, top: 500, width: 209, height: 224 }, { left: 540, top: 236, width: 209, height: 224 })).toBe("translate(440px, -264px) scale(1, 1)");
+    expect(slotTransform({ left: 0, top: 0, width: 200, height: 224 }, { left: 10, top: 20, width: 100, height: 112 })).toBe("translate(10px, 20px) scale(0.5, 0.5)");
+  });
+  it("finds the card that came into Planında", () => {
+    expect(arrivedKey(["i:a", "i:b"], ["i:a", "i:c", "i:b"])).toBe("i:c");
+    expect(arrivedKey(["i:a"], ["i:a"])).toBeNull();
   });
 });
