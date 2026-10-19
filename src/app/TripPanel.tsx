@@ -65,7 +65,7 @@ import type { HeroNext } from "./hero/HeroStrip";
 import { TodayStrip, todayRowEl, useMinuteClock } from "./hero/TodayStrip";
 import type { TripMenuActions } from "./hero/TripMenu";
 import { PrintPlan } from "./PrintPlan";
-import { PlanKey, PlanOrder } from "./plan/PlanOrder";
+import { PlanOrder } from "./plan/PlanOrder";
 import { PlanHeader } from "./plan/v82/PlanHeader";
 import { chapterDomId, JourneyView } from "./plan/journey/JourneyView";
 import type { PlanLink } from "./chat/planLink";
@@ -95,7 +95,6 @@ import { PanoDialog } from "./board/v82/PanoDialog";
 import { usePrepSummaryWith } from "./plan/prep/usePrep";
 import { NeedGroup } from "./cards/NeedCard";
 import { draftOf } from "../lib/draft";
-import { UndatedIdeas } from "./ideas/IdeaTiles";
 import { choiceOf, type Choice } from "../lib/choice";
 import { pivotalFindings } from "../lib/pivots";
 import type { ValueCard } from "../lib/value";
@@ -1020,7 +1019,6 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           <strong className="plan-h">{L("Plan", "Plan")}</strong>
           <PlanOrder view="days" onView={(v) => setView(v)} off={orderOff} />
           <AddButton onClick={() => addIn(null, null)} />
-          <PlanKey />
         </div>
       )}
       {(view === "days" || view === "map") && timeline.entries.length > 0 && (
@@ -1074,8 +1072,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
             ⚠ {x.text}
           </div>
         ))}
-        <UndatedIdeas items={items} plan={plan} />
-        <TimelineView onShow={showOnPlan} timeline={timeline} tripId={trip.id} onAdd={env.add} listings={listings} today={today} dayTimes={trip.dayTimes} dayOrder={trip.dayOrder} dayLoose={trip.dayLoose} mainPlaces={mains} cards={{ legCard, renderGroup, settled }} cityImage={cityImageOf} />
+        {/* What has no day of its own is under its stop's days ("Tarihsiz", days/DayCards UndatedList), not a strip above them. */}
+        <TimelineView undated={{ items, plan }} onShow={showOnPlan} timeline={timeline} tripId={trip.id} onAdd={env.add} listings={listings} today={today} dayTimes={trip.dayTimes} dayOrder={trip.dayOrder} dayLoose={trip.dayLoose} mainPlaces={mains} cards={{ legCard, renderGroup, settled }} cityImage={cityImageOf} />
         </>
       ) : (
         <EmptyEnvContext.Provider value={emptyEnv}>

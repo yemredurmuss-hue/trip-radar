@@ -4,7 +4,7 @@
 // "Günün akışı" (what happens when) and "Günün rezervasyonları" (the day's tickets, stays and tours as the Plan's own
 // cards; a day with everything booked closes to "✓ hazır"). The strip of days jumps to a day. A day that changes city
 // shows its way as one card (JourneyDay.tsx). The lines are Kompakt's own (DayLine): their times, stages, drag and warnings.
-import { useState, type ReactNode } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 import { dayCards, type DayCard } from "../../lib/dayCards";
 import { dayPhotoUrl, journeyDay, motifOf, reservationRows, reservationsReady, type Motif } from "../../lib/dayView";
 import { placeRoute } from "../../lib/dayRowTitle";
@@ -14,7 +14,7 @@ import type { DayRow } from "../../lib/journey";
 import type { StayEntry } from "../../lib/timeline";
 import { UiIcon } from "../cards/Silhouettes";
 import { PlanEntry } from "../plan/PlanEntry";
-import { AddDay, CompactDays, DayLine, DayProviders, Left, NightLine, dateText, dayLines, staysOf, useOwners, usePlace, useReorder, withAside, type DayCardsProps, type DayPlanCards } from "./DayCards";
+import { AddDay, CompactDays, DayLine, DayProviders, Left, NightLine, UndatedList, dateText, dayLines, staysOf, useOwners, usePlace, useReorder, undatedOf, withAside, type DayCardsProps, type DayPlanCards } from "./DayCards";
 import { useDayMode } from "./dayMode";
 import { JourneyDay } from "./JourneyDay";
 
@@ -28,12 +28,16 @@ export function DayCards(props: DayCardsProps) {
 function RichDays({ mode, ...props }: DayCardsProps & { mode: "list" | "cards" }) {
   const cards = dayCards(props.sections, { rentals: props.rentals, listings: props.listings, times: props.times, merge: false });
   const stays = staysOf(props.sections);
+  const undated = undatedOf(cards, props);
   return (
     <DayProviders mainPlaces={props.mainPlaces}>
       <div className={`dv dv-${mode}`} aria-label={L("Gün gün", "Day by day")}>
         <Strip cards={cards} mode={mode} today={props.today} />
         {cards.map((c) => (
-          <RichDay key={c.key} card={c} mode={mode} stays={stays} isToday={c.date === props.today} {...props} />
+          <Fragment key={c.key}>
+            <RichDay card={c} mode={mode} stays={stays} isToday={c.date === props.today} {...props} />
+            {undated.filter((u) => u.after === c.key).map((u) => <UndatedList key={u.key} stop={u} plan={props.undated!.plan} onShow={props.onShow} />)}
+          </Fragment>
         ))}
       </div>
     </DayProviders>

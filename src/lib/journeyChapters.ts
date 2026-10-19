@@ -1,7 +1,7 @@
 // "Yolculuk sırasıyla" as the v81–v83 drawing has it (plan-v81-yolculuk; v82 "şehir bölümleri hero'daki fotoğraflarla";
 // v83 "gezi sırasında"; C raporu §1.9): the trip in chapters in the order it is lived. "Yola çıkmadan" (Hazırlık, the eSIM,
 // insurance), the way in ("İstanbul → Tokyo"), each city (its photo, its days and nights, "2 hazır · 1 karar"), the way
-// home. Each step is one of the Plan's boxes, or one card of a city's row: its day ("esnek" in a city without one), the dot
+// home. Each step is one of the Plan's boxes, or one card of a city's row: its day ("tarihsiz" in a city without one), the dot
 // of its state, its kind and state, its name, one short line and the one thing to do with it now.
 //
 // Nothing is decided here. The chapters follow the timeline's front (timeline.ts board, the blocks journeyFlow lays out),
@@ -22,7 +22,7 @@ import { formatDateRange, isoDate } from "./items";
 import { clockOf } from "./legs";
 import { addDays, cityKeyOf, sameCity, type DateRange } from "./plan";
 import { lookWord } from "./stageWords";
-import type { Timeline } from "./timeline";
+import { ownDay, type Timeline } from "./timeline";
 import { isAboardNight, isMissed, nightsAboard, nightsOf } from "./tripPhase";
 import { wayName } from "./tripShape";
 import type { Item } from "./types";
@@ -57,7 +57,7 @@ export interface JourneyStep {
   key: string;
   kind: StepKind;
   date: string | null;
-  /** "2 Nis"; "esnek" for something in a city with no day yet; "" before the trip (Yola çıkmadan). */
+  /** "2 Nis"; "tarihsiz" for something in a city with no day of its own; "" before the trip (Yola çıkmadan). */
   dateLabel: string;
   time: string | null;
   /** The dot on the line: the box's state (a card: chosen or booked); null for Hazırlık, the ideas and the night on the plane. */
@@ -288,7 +288,8 @@ function itemStep(i: IntentVM, o: OptionVM, env: Env): JourneyStep {
   const booked = item.status === "booked";
   const activity = i.section === "activity";
   const kind = cardKind(item);
-  const date = isoDate(item.dates.start) ?? isoDate(item.flight?.departure?.slice(0, 10));
+  // Its own day only: the stop's days a tour was looked for in are none (timeline.ownDay).
+  const date = isoDate(item.dates.start) ? ownDay(item, env.input.plan) : isoDate(item.flight?.departure?.slice(0, 10));
   const time = clockOf(item.flight?.departure);
   const price = compactPrice(o);
   const when = date ? (time ? `${shortDay(date)} ${time}` : formatDateRange(date, null)) : null;
@@ -306,7 +307,7 @@ function itemStep(i: IntentVM, o: OptionVM, env: Env): JourneyStep {
     key: `step:${i.key}:${item.id}`,
     kind: "item",
     date,
-    dateLabel: date ? shortDay(date) : L("esnek", "flexible"),
+    dateLabel: date ? shortDay(date) : L("tarihsiz", "no date"),
     time,
     status: booked ? "booked" : "chosen",
     missed: false,
@@ -515,7 +516,7 @@ export function journeyChapters({ input, timeline, collections }: JourneyInput):
         for (const o of i.planned) {
           const item = o.item;
           const at = sectionOfKey.get(`event:${item.id}`);
-          const home = (at != null ? cities.get(at) : null) ?? cityFor(item.city ?? i.head.city, isoDate(item.dates.start)) ?? cityFor(i.head.city, i.head.date) ?? before;
+          const home = (at != null ? cities.get(at) : null) ?? cityFor(item.city ?? i.head.city, ownDay(item, plan)) ?? cityFor(i.head.city, i.head.date) ?? before;
           home.steps.push(itemStep(i, o, env));
         }
         // Only an activity's ideas get their line (v81: "Tokyo için 3 etkinlik önerisi"); a city behind stays quiet.
@@ -565,8 +566,9 @@ export function journeyChapters({ input, timeline, collections }: JourneyInput):
   if (outbound) Object.assign(outbound, travelHead(routeOut, dates.out ?? plan.range.end, cityList.at(-1)!.city, "out"));
 
   for (const c of drafts) {
-    // Before the trip nothing has a day of the trip ("Yola çıkmadan"); in a city, what has none yet is "esnek".
-    for (const s of c.steps) s.dateLabel = c.kind === "before" ? "" : s.dateLabel || (s.kind === "intent" || s.kind === "item" ? L("esnek", "flexible") : "");
+    // Before the trip nothing has a day of the trip ("Yola çıkmadan"); in a city, what has none yet is "tarihsiz", after the
+    // dated ones (0.38.7, Emre: "sadece tarihsiz olarak alt alta dizsin").
+    for (const s of c.steps) s.dateLabel = c.kind === "before" ? "" : s.dateLabel || (s.kind === "intent" || s.kind === "item" ? L("tarihsiz", "no date") : "");
     const order = new Map(c.steps.map((s, n) => [s.key, n]));
     if (c.kind !== "before") {
       c.steps.sort(

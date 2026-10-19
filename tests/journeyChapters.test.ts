@@ -46,14 +46,14 @@ describe("Japonya: seven chapters in the order the trip is lived", () => {
     ]);
   });
 
-  it("each city's steps by day: the way there, the bed, what's planned, 'esnek' without a day, the ideas last", () => {
+  it("each city's steps by day: the way there, the bed, what's planned, 'tarihsiz' without a day, the ideas last", () => {
     expect(line(chapter(v, "Tokyo"))).toEqual([
       ["2 Nis", "Transfer · Ayarlandı", "Havalimanı → Otel"],
       ["2 Nis", "Konaklama · Seçildi", "Hyatt Centric Ginza"],
       ["3 Nis", "Etkinlik · Planda", "teamLab Planets"],
       ["3 Nis", "Yer · Planda", "Ichiran Ramen"],
       ["4 Nis", "Etkinlik · Bilet alındı", "Shibuya Sky"],
-      ["esnek", "Yer · Planda", "Meiji Jingu"],
+      ["tarihsiz", "Yer · Planda", "Meiji Jingu"],
       ["", "Etkinlik · ", "Tokyo için 2 etkinlik önerisi"],
     ]);
     expect(line(chapter(v, "Hakone"))).toEqual([

@@ -4,15 +4,18 @@
 import { bookedAs, legCardView } from "./cardView";
 import { cityOfAirport } from "./airports";
 import { cardKind, legTransportMode, type CardKind } from "./cardKinds";
-import { sectionOfItem } from "./categories";
+import { isIdea } from "./booking";
+import { planSectionOfItem, sectionOfItem } from "./categories";
 import type { LegMode } from "./types";
 import { formatDateRange } from "./items";
 import { L } from "./i18n";
 import { lookWord } from "./stageWords";
 import { applyDayTimes, type DayTimeOverrides } from "./dayTimes";
 import { dayRows, type DayRow } from "./journey";
-import type { RentalEntry, TimelineSection } from "./timeline";
-import type { Listing } from "./types";
+import { sameCity, type Plan } from "./plan";
+import { ownDay, type RentalEntry, type TimelineSection } from "./timeline";
+import { isRental } from "./travelKinds";
+import type { Item, Listing } from "./types";
 
 export interface DayCard {
   key: string;
@@ -323,4 +326,42 @@ export function stageOf(r: DayRow): Stage | null {
       // Something planned that needs no booking (the metro, a walk): chosen.
       return r.kind === "leg" || r.kind === "travel" ? { tone: "plan", text: lookWord("chosen") } : null;
   }
+}
+
+/** A stop's "Tarihsiz": what is on its plan with no day of its own, under the stop's last day (`after`, a DayCard key). */
+export interface UndatedStop {
+  key: string;
+  city: string | null;
+  after: string;
+  items: Item[];
+}
+
+/**
+ * Gün gün's "Tarihsiz" under each stop (0.38.7, Emre: "tarihi olanlar yukarıdan dizilsin, o destinasyonun altında"; the
+ * rest "tarihsiz olarak alt alta"): a tour or a table chosen or booked, a thing to do or a meal put on the plan, with no day
+ * of its own (timeline.ownDay: never the stop's days it was looked for in). Each goes under the last day of its stop (the way
+ * home aside); one whose place is no stop of the trip under the last one. Ideas only saved stay in the Plan's rows.
+ */
+export function undatedStops(cards: readonly DayCard[], items: readonly Item[], plan: Pick<Plan, "range" | "stayBlocks" | "closed">): UndatedStop[] {
+  const closed = new Set(plan.closed.map((c) => c.item.id));
+  const waiting = items.filter(
+    (i) =>
+      (i.category === "activity" || i.category === "food") &&
+      !isRental(i) &&
+      !closed.has(i.id) &&
+      !i.doneAt &&
+      (i.status === "chosen" || i.status === "booked") &&
+      ownDay(i, plan) == null &&
+      (!isIdea(i) || i.category === "food" || planSectionOfItem(i) === "todo"),
+  );
+  const days = cards.filter((c) => c.role !== "departure");
+  if (!waiting.length || !days.length) return [];
+  const out: UndatedStop[] = [];
+  for (const item of waiting) {
+    const last = (item.city ? days.filter((c) => sameCity(c.city, item.city)).at(-1) : undefined) ?? days.at(-1)!;
+    const stop = out.find((s) => s.after === last.key);
+    if (stop) stop.items.push(item);
+    else out.push({ key: `undated:${last.key}`, city: last.city, after: last.key, items: [item] });
+  }
+  return out;
 }
