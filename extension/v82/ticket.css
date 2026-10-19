@@ -22,6 +22,14 @@
 .q-tm.q-city b { font-size: var(--q-fs-price); font-weight: 800; letter-spacing: -.015em; line-height: 1.15; color: var(--q-ink); }
 .q-tm.q-city small { font-size: var(--q-fs-info); color: var(--q-mut); font-weight: 600; }
 .q-tm.q-city small strong { color: var(--q-ink); font-weight: 800; font-size: var(--q-fs-button); }
+/* (wide: an end's station is cut before its hour, never the hour) */
+@media (min-width: 641px) {
+  .q-tm.q-city > small { display: flex; min-width: 0; }
+  .q-tm.q-city.r > small { justify-content: flex-end; }
+  .q-tm.q-city > small > * { flex: none; }
+  .q-tm.q-city > small > .q-tplace { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .q-tm.q-city > small > .q-tsep { white-space: pre; }
+}
 .q-tm small sup, .q-tm b sup { font-size: var(--q-fs-badge); color: var(--q-acc); margin-left: 1px; }
 .q-mid { display: grid; justify-items: center; gap: 3px; min-width: 0; }
 .q-mid small { font-size: var(--q-fs-badge); color: var(--q-mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
@@ -215,35 +223,3 @@ body.still .q-row.z-r:hover { transform: none; }
 .q-pick.z-wpt { min-height: 28px; padding: 0 12px; }
 .z-wpm:focus-visible, .z-wps:focus-visible, .q-pick.z-wpt:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 2px; }
 @media (max-width: 560px) { .z-wps > .z-wpn { display: none; } }
-
-/* A flight's fare judged (spec 2026-10-19 SerpApi, items 2 and 4): the pill under the price, the history under the card. */
-.z-pv { display: inline-flex; align-items: center; gap: 4px; align-self: flex-start; max-width: 100%; margin-top: 6px; padding: 3px 8px; letter-spacing: -.01em; border-radius: 99px; border: 1px solid var(--q-line); background: var(--q-soft); color: var(--q-mut); font: inherit; font-size: var(--q-fs-badge); font-weight: 700; line-height: 1.3; text-align: left; cursor: pointer; }
-.z-pv.low { background: var(--q-ok-s); border-color: var(--q-ok-l); color: var(--q-ok); }
-.z-pv.high { background: var(--q-sand); border-color: var(--q-sand-l); color: var(--q-sand-ink); }
-.z-pv:focus-visible { outline: 2px solid var(--q-acc); outline-offset: 2px; }
-.z-pvp { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px 28px; margin-top: 10px; padding: 14px 16px; border: 1px solid var(--q-line); border-radius: 14px; background: var(--q-soft); }
-.z-pvc { display: grid; gap: 6px; align-content: start; min-width: 0; }
-.z-pvp > .z-pvf { grid-column: 1 / -1; }
-/* The day either side (item 5): seven bars, the card's day in purple, the cheapest's price green. */
-.z-pvb { display: flex; align-items: flex-end; gap: 6px; height: 128px; }
-.z-pvbar { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 3px; height: 100%; }
-.z-pvbar > i { display: block; width: 100%; max-width: 34px; border-radius: 6px 6px 3px 3px; background: var(--q-acc-s); }
-.z-pvbar.on > i { background: var(--q-acc); }
-.z-pvbar > small { font-size: var(--q-fs-badge); color: var(--q-mut); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.z-pvbar.low > small { color: var(--q-ok); font-weight: 700; }
-.z-pvbar.on > small { color: var(--q-acc); font-weight: 700; }
-.z-pvbar > em { font-style: normal; font-size: var(--q-fs-badge); color: var(--q-mut); white-space: nowrap; }
-.z-pvh { font-size: var(--q-fs-info); color: var(--q-ink); }
-.z-pvg { width: 100%; height: auto; max-height: 150px; }
-.z-pvg .band { fill: var(--q-acc-s); }
-.z-pvg .line { fill: none; stroke: var(--q-acc); stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; }
-.z-pvg .dot { fill: var(--q-ok); }
-.z-pvg .mark { stroke: var(--q-ink); stroke-width: 1.5; stroke-dasharray: 6 5; opacity: .55; }
-.z-pvg .markt { fill: var(--q-ink); font-size: 24px; font-weight: 600; opacity: .75; }
-.z-pv[aria-expanded="true"] { box-shadow: inset 0 0 0 1px currentColor; }
-.z-pvs, .z-pvsrc { font-size: var(--q-fs-small); color: var(--q-mut); }
-.z-pvf { margin: 2px 0 0; font-size: var(--q-fs-info); font-weight: 600; color: var(--q-ink); }
-.z-pvf.low { color: var(--q-ok); }
-.z-pvf.high { color: var(--q-sand-ink); }
-/* A night change of plane (spec 2026-10-19 SerpApi, item 6): the warning's sand, as "Seçildi"'s, never red. */
-.z-tk .z-chip.night { background: var(--q-sand); border-color: var(--q-sand-l); color: var(--q-sand-ink); max-width: 100%; height: auto; min-height: 0; white-space: normal; line-height: 1.3; padding-top: 3px; padding-bottom: 3px; border-radius: 10px; }
