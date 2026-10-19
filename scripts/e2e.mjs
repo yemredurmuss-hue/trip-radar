@@ -4381,14 +4381,14 @@ try {
   const offersOnly = offersAsked.filter((u) => !/candidates=1/.test(u));
   assert.ok(offersAsked.length > offersOnly.length, "the stay's candidates asked first");
   assert.ok(offersOnly.length >= 1 && offersOnly.every((u) => /kind=stay/.test(u) && /city=Porto/.test(u) && /prefer=cheap/.test(u)), "the source asked for Porto's cheapest");
-  await chatCards.nth(0).getByRole("button", { name: "Pensão Favorita: seçeneklere ekle" }).click();
+  // 0.38.5: what the chat shows is saved as the need's options without a tap (Pano and the box show it), said "Eklendi ✓".
   await chatCards.nth(0).getByRole("button", { name: "Pensão Favorita eklendi" }).waitFor({ timeout: 5000 });
   await board.screenshot({ path: `${out}/27f-chat-offers.png` });
   const offerSaved = (await tripRecords("Portekiz")).items.filter((i) => i.name === "Pensão Favorita");
   assert.deepEqual(offerSaved.map((i) => [i.category, i.status, i.provider, i.url]), [["stay", "saved", "Tripadvisor", "https://www.tripadvisor.com/Hotel_Review-e2e-favorita"]]);
   await flow.unroute("https://generativelanguage.googleapis.com/**", offersModel);
   await flow.unroute("**/functions/v1/offers**", offersFn);
-  console.log("✓ find_offers: 'daha ucuz öneriler getir' shows 'Fiyatlara bakıyorum…', then 3 real offers as cards ('★ 4,7', '8,9', source, why, €90 / gece); Ekle saves Pensão Favorita as an option");
+  console.log("✓ find_offers: 'daha ucuz öneriler getir' shows 'Fiyatlara bakıyorum…', then 3 real offers as cards ('★ 4,7', '8,9', source, why, €90 / gece); shown is saved: Pensão Favorita is an option, 'Eklendi ✓'");
 
   // 20e. Words with a link on the home: the link is saved, the words go on ("Linki kaydettim; geri kalanını konuşalım").
   // A month only is never a day made up: the day is asked next; "Ortası" is said back and marked roughly.
