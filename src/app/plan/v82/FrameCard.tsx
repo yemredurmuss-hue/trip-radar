@@ -15,6 +15,7 @@ import { bookedWhen, bookedWord, bookWord, codeLabel, docWord, emptyLine, emptyT
 import type { IntentVM, OptionVM } from "../../../lib/intents";
 import type { RegionHint } from "../../../lib/regionHints";
 import { formatPrice } from "../../../lib/items";
+import { typicalNight } from "../../../lib/stayPicks";
 import { Editable, useInlineEdit } from "../../cards/InlineEdit";
 import { CopyCode } from "./DetailLayer";
 import { Ic, Mark } from "./icons";
@@ -106,12 +107,20 @@ function Card({ cls = "", info, media, photo, l1, title, l2, l3, top, primary, r
 
 function Price({ o }: { o: OptionVM }) {
   const p = sidePrice(o.price);
+  // 0.39.0: a hotel chosen with no price for its dates says its source's usual range ("tipik €21–64 / gece"), as its card did.
+  const usual = p ? null : typicalNight(o.item.typicalNight);
   return (
     <Editable field="price">
       {p && (
         <span className="q-pr big">
           <b>{p.big}</b>
           {p.small && <small>{p.small}</small>}
+        </span>
+      )}
+      {usual && (
+        <span className="q-pr big" title={usual.title}>
+          <b>{usual.amount}</b>
+          <small>{usual.unit}</small>
         </span>
       )}
     </Editable>

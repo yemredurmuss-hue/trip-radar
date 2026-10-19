@@ -7,7 +7,7 @@ import { useState } from "react";
 import { L } from "../lib/i18n";
 import { formatPrice } from "../lib/items";
 import { dealPrice, MAX_OFFERS, ratingText, type Need, type Offer } from "../lib/offerSource";
-import { pickLabel } from "../lib/stayPicks";
+import { pickLabel, pricePage } from "../lib/stayPicks";
 import type { ChatMessage } from "../lib/types";
 import { addChatOffer } from "./actions";
 
@@ -20,6 +20,7 @@ export function ChatOffersView({ offers, need, added, onAdd }: { offers: Offer[]
         const deal = dealPrice(o, need.adults ?? null);
         const total = o.price != null ? formatPrice(o.price, o.currency ?? null) : null;
         const done = added.includes(o.id);
+        const noPrice = o.kind === "stay" && o.price == null ? pricePage(o.url, o.source) : null;
         return (
           <div key={o.id} className={`chat-offer${o.pick ? ` pick-${o.pick}` : ""}`} data-offer={o.id} data-pick={o.pick ?? undefined}>
             <div className="co-main">
@@ -47,6 +48,12 @@ export function ChatOffersView({ offers, need, added, onAdd }: { offers: Offer[]
               )}
               {/* No price for these dates: only its usual range, said as such. */}
               {!(deal && total) && o.meta && <span className="co-per">{o.meta}</span>}
+              {/* Nor that (0.39.0): the site's page has it ("Fiyat Tripadvisor'da ↗"). */}
+              {!(deal && total) && !o.meta && noPrice && (
+                <a className="co-per co-ppg" href={noPrice.url} target="_blank" rel="noopener noreferrer">
+                  {noPrice.text} ↗
+                </a>
+              )}
               <button type="button" className={done ? "btn-link co-add" : "small-btn co-add"} disabled={done} onClick={() => onAdd(o)}
                 aria-label={done ? L(`${o.title} eklendi`, `${o.title} added`) : L(`${o.title}: seçeneklere ekle`, `${o.title}: add to options`)}>
                 {done ? L("Eklendi ✓", "Added ✓") : L("Ekle", "Add")}

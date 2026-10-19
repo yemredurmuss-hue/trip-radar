@@ -118,3 +118,7 @@
   .c-card, .c-q, .c-link { animation: none !important; }
 }
 body.still .c-card, body.still .c-q, body.still .c-link { animation: none !important; }
+
+/* 0.39.0: a stay with no price from the source: its page's link in the price's place. */
+.chat-offer .co-ppg { text-decoration: none; }
+.chat-offer .co-ppg:hover { text-decoration: underline; }

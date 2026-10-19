@@ -12,7 +12,7 @@ import { brandOf, type Brand } from "./brands";
 import { levelFor, levelSource, wantedAmenities } from "./decision";
 import { distanceKm } from "./geo";
 import { L } from "./i18n";
-import { nNights, nReviews, num } from "./i18nText";
+import { locative, nNights, nReviews, num } from "./i18nText";
 import { formatPrice, nightsBetween } from "./items";
 import { ratingText, type Need, type Offer } from "./offerSource";
 import type { StayCandidate } from "./offerSources";
@@ -382,6 +382,8 @@ export function candidateOffer(c: StayCandidate, kind: PickKind, why: string): O
     area: c.area,
     // Without a price for the dates, its usual range is said instead (never as if it were this stay's).
     meta: c.nightly == null && c.priceRange ? priceLine(c) : null,
+    // …and kept on the record it becomes (offerItem), so the plan's box still says it once the hotel is chosen.
+    typical: c.nightly == null ? c.priceRange : null,
     pick: kind,
   };
 }
@@ -400,6 +402,8 @@ export interface PickCard {
   rating: string | null;
   /** The big part and its unit ("€155", "/ gece"), the whole stay in the tooltip; a usual range only as "tipik". */
   price: { amount: string; unit: string; title: string | null } | null;
+  /** No price at all from the source (none for the dates, no usual range): a small link to the site's page instead. */
+  pricePage: PricePage | null;
   why: string;
 }
 
@@ -410,6 +414,20 @@ const hostOf = (url: string): string | null => {
     return null;
   }
 };
+
+/** "Fiyat Tripadvisor'da ↗": where the price is, when the source gave none (nothing is made up in its place). */
+export interface PricePage {
+  url: string;
+  text: string;
+}
+/** The page's link for a price the source didn't give: the site it opens (by its host, else the source); null without a page. */
+export function pricePage(url: string | null | undefined, site: string | null | undefined): PricePage | null {
+  if (!url || !/^https:\/\//.test(url)) return null;
+  const host = brandOf(null, hostOf(url));
+  // A partner's redirect host isn't a site to name: then the source's (Tripadvisor).
+  const name = (host?.color ? host.label : null) ?? brandOf(site)?.label ?? null;
+  return { url, text: name ? L(`Fiyat ${locative(name)}`, `Price on ${name}`) : L("Fiyat sayfasında", "Price on its page") };
+}
 
 export function pickCard(kind: PickKind, { cand: c, why }: StayPick): PickCard {
   const source = c.source ?? "Tripadvisor";
@@ -428,6 +446,7 @@ export function pickCard(kind: PickKind, { cand: c, why }: StayPick): PickCard {
     brand: brandOf(source, hostOf(c.url)),
     rating: c.rating == null ? null : [ratingText(c.rating), c.reviews ? nReviews(c.reviews) : null].filter(Boolean).join(" · "),
     price,
+    pricePage: price ? null : pricePage(c.url, source),
     why,
   };
 }

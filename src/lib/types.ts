@@ -703,6 +703,11 @@ export interface Item {
    * "AEP → USH" under the box "Buenos Aires → Ushuaia", not a third flight). Absent: grouped by its own ends.
    */
   forNeed?: string;
+  /**
+   * A stay saved or chosen from the hotel source's list with no price for its dates: the source's usual range by the night
+   * (Tripadvisor's, in euros), drawn as "tipik €21–64 / gece", never as this stay's price (0.39.0). Absent: none was read.
+   */
+  typicalNight?: { min: number; max: number };
   /** eSIM: when the traveller said it's installed ("Kurdum"). */
   installedAt?: number;
   /** "Burada kalsın": its place is far from the trip's, and that's fine; never asked about again (strays.ts). */

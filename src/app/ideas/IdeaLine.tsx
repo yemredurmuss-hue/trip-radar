@@ -20,6 +20,7 @@ import { setItemStatus } from "../actions";
 import { FallbackImg } from "../FallbackImg";
 import { DeleteX } from "../cards/CardShell";
 import { Editable, InlineEdit, useInlineEdit } from "../cards/InlineEdit";
+import { NAME_IN_PLACE } from "../../lib/inlineEdit";
 import { useCardEnv } from "../cards/PlanCard";
 import { DayButton } from "./DayPicker";
 import { IdeaGlyph } from "./IdeaIcons";
@@ -87,11 +88,14 @@ function IdeaLineFace({ item, plan, status, returned = null, today, during }: Id
             <a href={mapUrl} target="_blank" rel="noreferrer" title={L("Haritada aç", "Open on the map")}>
               {item.name}
             </a>
-            <button type="button" className="il-pen" aria-label={L("Ad: düzenle", "Name: edit")} title={L("Adı düzenle", "Rename")} onClick={() => edit?.go("name")}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4" />
-              </svg>
-            </button>
+            {/* 0.39.0: the pencil isn't drawn (NAME_IN_PLACE; Emre: the chat corrects it). */}
+            {NAME_IN_PLACE && (
+              <button type="button" className="il-pen" aria-label={L("Ad: düzenle", "Name: edit")} title={L("Adı düzenle", "Rename")} onClick={() => edit?.go("name")}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4" />
+                </svg>
+              </button>
+            )}
           </b>
         )}
         <span className={`il-sub${missed ? " missed" : ""}`}>

@@ -7,7 +7,7 @@
 // keeps its open field and is scrolled to.
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type FocusEvent, type KeyboardEvent, type ReactNode, type SyntheticEvent } from "react";
 import { L } from "../../lib/i18n";
-import { dropDraft, editableFields, fieldInput, fieldLabel, fieldPlaceholder, fieldValue, nextField, resumeDraft, saveCardField, type FieldKey } from "../../lib/inlineEdit";
+import { drawnFields, dropDraft, editableFields, fieldInput, fieldLabel, fieldPlaceholder, fieldValue, nextField, resumeDraft, saveCardField, type FieldKey } from "../../lib/inlineEdit";
 import type { Item } from "../../lib/types";
 import { clearUserEdit, correctionOf } from "../../lib/userEdits";
 import { reducedMotion } from "../motion";
@@ -28,8 +28,9 @@ export const useInlineEdit = () => useContext(EditContext);
 /** `only`: the fields this face shows (an idea's row: its title), so Tab never opens one that isn't drawn. */
 export function InlineEdit({ item, only, children }: { item: Item; only?: FieldKey[]; children: ReactNode }) {
   const env = useCardEnv();
-  const fields = editableFields(item).filter((k) => !only || only.includes(k));
   const mine = env.focus?.id === item.id ? env.focus : null;
+  // 0.39.0: the name isn't drawn for editing (inlineEdit.NAME_IN_PLACE), except a card just added that opens on it.
+  const fields = drawnFields(editableFields(item).filter((k) => !only || only.includes(k)), mine?.field ?? null);
   // Just added, or moved by a new day: bring it into view once it's drawn in its place.
   useEffect(() => {
     if (!mine?.scroll) return;

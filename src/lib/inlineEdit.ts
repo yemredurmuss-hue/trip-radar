@@ -56,6 +56,20 @@ export function editableFields(item: Item): FieldKey[] {
   }
 }
 
+/**
+ * 0.39.0: a name (a card's, a row's, a box's title) isn't drawn for editing where it stands: no pencil, no focusable
+ * name (Emre: the chat corrects whatever we want). The code stays; true draws it again.
+ */
+export const NAME_IN_PLACE = false;
+
+/**
+ * The fields a card draws for editing: without the name, unless the name's box is the one open (a card just added
+ * from the sheet opens on it, so a new one can still be named), so Tab never lands on a name that isn't drawn.
+ */
+export function drawnFields(fields: FieldKey[], open: FieldKey | null): FieldKey[] {
+  return NAME_IN_PLACE ? fields : fields.filter((k) => k !== "name" || open === "name");
+}
+
 /** Where a card just added opens: its first empty field (a bus from Porto: where it goes), else its first. */
 export function firstField(item: Item, currency = "EUR"): FieldKey | null {
   const fields = editableFields(item);

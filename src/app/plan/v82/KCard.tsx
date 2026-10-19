@@ -22,6 +22,7 @@ import { setItemStatus, setNotNeeded } from "../../actions";
 import type { MenuEntry } from "../../cards/CardShell";
 import { openDoc, useDocPick } from "../../cards/DocAccess";
 import { Editable, InlineEdit, useInlineEdit } from "../../cards/InlineEdit";
+import { NAME_IN_PLACE } from "../../../lib/inlineEdit";
 import { useCardEnv } from "../../cards/PlanCard";
 import { useStageMenu } from "../../cards/stageMenu";
 import { FallbackImg } from "../../FallbackImg";
@@ -183,9 +184,11 @@ function RecordFace({ card, vm, plan, search, onPut, onTakeOff }: RecordCardProp
   // A place on its day leaves its day too (as the live tile did): taken off the plan, it's an idea again.
   const takeOff = () => leave(() => (card.day && !event ? void setIdeaDay(item, null, null).then(() => onTakeOff(item)) : onTakeOff(item)));
   // C2: the name edits where it stands (a press on it, as the live card's did; a page's own value comes back from its hint);
-  // the record opens from ⋯ "Tüm detaylar".
+  // the record opens from ⋯ "Tüm detaylar". 0.39.0: not drawn (inlineEdit.NAME_IN_PLACE), except on a card just added.
   const name = <Editable field="name">{card.title}</Editable>;
-  const rename: MenuEntry = { label: L("Adını değiştir", "Rename"), run: () => edit?.go("name") };
+  // 0.39.0: "Adını değiştir" isn't drawn (NAME_IN_PLACE; Emre: the chat corrects it); the entry stays for when it is.
+  const renameEntry: MenuEntry = { label: L("Adını değiştir", "Rename"), run: () => edit?.go("name") };
+  const rename: MenuEntry[] = NAME_IN_PLACE ? [renameEntry] : [];
   const details: MenuEntry = { label: L("Tüm detaylar", "All details"), run: () => env.onOpenItem(item) };
   const onMap: MenuEntry[] = card.map ? [{ label: L("Haritada aç", "Open on the map"), run: () => openUrl(card.map!) }] : [];
   const notNeeded: MenuEntry = { label: L("Gerek yok", "Not needed"), run: () => leave(() => void setNotNeeded(item).then(env.offer)), danger: true, sep: true };
@@ -196,14 +199,14 @@ function RecordFace({ card, vm, plan, search, onPut, onTakeOff }: RecordCardProp
     menu = [
       // C26: another in this one's place (the chat looks), where the live card's ↻ was.
       ...(card.state === "planned" && env.ask ? [{ label: `↻ ${L("Yerine başkasını öner", "Suggest another in its place")}`, run: () => env.ask!(askOther(card.title)) }] : []),
-      rename,
+      ...rename,
       ...onMap,
       details,
       ...stageRest,
       ...(card.state === "booked" ? [] : [notNeeded]),
     ];
   } else if (card.family === "note") {
-    menu = [{ label: L("Düzenle", "Edit"), run: () => env.edit(item) }, rename, { label: L("Hazırlık'a taşı", "Move to Prep"), run: () => void setPrep(item, true) }, { label: L("Sil", "Delete"), run: () => env.remove(item), danger: true, sep: true }];
+    menu = [{ label: L("Düzenle", "Edit"), run: () => env.edit(item) }, ...rename, { label: L("Hazırlık'a taşı", "Move to Prep"), run: () => void setPrep(item, true) }, { label: L("Sil", "Delete"), run: () => env.remove(item), danger: true, sep: true }];
   } else {
     const done = card.state === "done";
     const booked = card.state === "booked";
@@ -211,7 +214,7 @@ function RecordFace({ card, vm, plan, search, onPut, onTakeOff }: RecordCardProp
       // C20: the live tile's ••• (Yaptım, Haritada aç, Adını değiştir, a table, Günden çıkar, taşı), and Daha fazla öner.
       { label: done ? (food ? L("Gidilmedi olarak geri al", "Mark as not been") : L("Yapılmadı olarak geri al", "Mark as not done")) : food ? L("Gittim", "Been there") : L("Yaptım", "Done it"), run: () => void setDone(item, !done) },
       ...onMap,
-      rename,
+      ...rename,
       ...(card.takesTable || booked ? [{ label: booked ? L("Rezervasyonu geri al", "Mark as not booked") : L("Rezervasyonu yaptım", "I booked it"), run: () => void setItemStatus(item, booked ? "chosen" : "booked") }] : []),
       ...(card.day ? [{ label: L("Günden çıkar", "Take off its day"), run: () => void setIdeaDay(item, null, null) }] : []),
       ...(!food ? [{ label: L("Etkinliklere taşı (bileti var)", "Move to activities (has a ticket)"), run: () => void moveToBookings(item) }] : []),

@@ -9,6 +9,7 @@ import type { Trip } from "../../../lib/types";
 import { setHidden, setInstalled, setVisaDone, updateTrip } from "../../actions";
 import { CardMenu, type MenuEntry } from "../../cards/CardShell";
 import { Editable, InlineEdit, useInlineEdit } from "../../cards/InlineEdit";
+import { NAME_IN_PLACE } from "../../../lib/inlineEdit";
 import { useCardEnv } from "../../cards/PlanCard";
 import { PrepIcon } from "./PrepIcons";
 
@@ -66,7 +67,8 @@ function PrepRowFace({ task, trip, today, shopHome, domId }: { task: PrepTask; t
   const tone = prepDayTone(task, today);
   const menu: MenuEntry[] = item
     ? [
-        { label: L("Adını değiştir", "Rename"), run: () => edit?.go("name") },
+        // 0.39.0: "Adını değiştir" isn't drawn (NAME_IN_PLACE; Emre: the chat corrects it).
+        ...(NAME_IN_PLACE ? [{ label: L("Adını değiştir", "Rename"), run: () => edit?.go("name") }] : []),
         // Not a chore after all ("şemsiye al" to buy there): Yapılacak şeyler (C29).
         { label: L("Yapılacak şeyler'e taşı", "Move to Things to do"), run: () => void setPrep(item, false) },
       ]

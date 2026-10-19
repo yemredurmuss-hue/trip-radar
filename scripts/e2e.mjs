@@ -1636,7 +1636,8 @@ try {
   assert.equal(mapOpened.length, 1);
   assert.match(mapOpened[0], /^https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=41\.1471%2C-8\.6066$/);
   await majestic.locator(".z-kmb").click();
-  assert.deepEqual(await app.locator(".z-kpop .z-mi").allInnerTexts(), ["Gittim", "Haritada aç", "Adını değiştir", "Daha fazla öner", "Sil"]);
+  // 0.39.0: no "Adını değiştir" (the chat corrects a name; Emre).
+  assert.deepEqual(await app.locator(".z-kpop .z-mi").allInnerTexts(), ["Gittim", "Haritada aç", "Daha fazla öner", "Sil"]);
   await app.keyboard.press("Escape");
   await app.locator(".z-kpop").waitFor({ state: "detached" });
   assert.equal(await majestic.locator(".z-kmb").evaluate((el) => el === document.activeElement), true, "Escape closes the menu and the focus goes back to ⋯");
@@ -1667,14 +1668,9 @@ try {
   await market0.locator(".q-day").click();
   await dayWin.getByRole("button", { name: /^10 Eki/ }).click();
   await market0.locator(".q-day", { hasText: "10 Eki" }).waitFor();
-  await tileMenu(majestic, "Adını değiştir");
-  await box("Ad").fill("Majestic Café Porto");
-  await box("Ad").press("Enter");
-  await tile("Majestic Café Porto").waitFor();
-  await tileMenu(tile("Majestic Café Porto"), "Adını değiştir");
-  await box("Ad").fill("Majestic Café");
-  await box("Ad").press("Enter");
-  await majestic.waitFor();
+  // 0.39.0: a name isn't edited where it stands (no pencil, no name to press or Tab to; the chat corrects it).
+  assert.equal(await majestic.locator(".z-t .pk-ed").count(), 0, "no pencil on the tile's name");
+  assert.equal(await majestic.getByRole("button", { name: "Ad: düzenle" }).count(), 0, "no name to edit on the tile");
   const market = tile("Bolhão pazarı");
   await tileMenu(market, "Yaptım");
   await market.locator(".z-okc", { hasText: "Yapıldı" }).waitFor();
@@ -1857,27 +1853,17 @@ try {
   await apart.waitFor({ state: "detached" });
   await nightsBox("2026-10-14").waitFor();
   assert.equal(await nightsBox("2026-10-14").getAttribute("data-st"), "todo", "deleted: the nights are to find again");
-  // A saved page corrected where it stands: the title, then the page's value back from the hint.
+  // A saved page's title isn't corrected where it stands any more (0.39.0, Emre: the chat corrects it): no pencil,
+  // no focusable name; the title is plain text.
   await openSec("activity");
   const douroId = await douroCard().getAttribute("data-item-id");
   const douroPage = app.locator(`.z-k[data-item-id="${douroId}"]`);
   await douroPage.evaluate((el) => el.scrollIntoView({ block: "center" }));
-  await douroPage.locator(".z-t").getByRole("button", { name: "Ad: düzenle" }).click();
-  await box("Ad").fill("Douro gün batımı turu");
-  await box("Ad").press("Enter");
-  await douroPage.locator(".z-t", { hasText: "Douro gün batımı turu" }).waitFor();
-  await douroPage.locator(".z-t .pk-ed").hover();
-  const hint = douroPage.locator(".pk-ed-hint");
-  assert.match(await hint.innerText(), /sayfadaki: Douro tekne turu · geri al/);
-  await app.screenshot({ path: `${out}/4n-page-correction.png` });
-  // The hint shows under the pointer: point at the title again if the card was drawn anew meanwhile, then take the
-  // page's value back (the title coming back proves the click).
-  for (let i = 0; i < 3 && !(await hint.getByRole("button", { name: "geri al" }).isVisible()); i++) {
-    await app.mouse.move(0, 0);
-    await douroPage.locator(".z-t .pk-ed").hover();
-  }
-  await hint.getByRole("button", { name: "geri al" }).click({ force: true });
   await douroPage.locator(".z-t", { hasText: "Douro tekne turu" }).waitFor();
+  assert.equal(await douroPage.locator(".z-t .pk-ed").count(), 0, "no pencil on the title");
+  assert.equal(await douroPage.locator(".z-t").getByRole("button", { name: "Ad: düzenle" }).count(), 0, "no name to edit");
+  assert.equal(await app.locator('.pk-ed[aria-label^="Ad:"]').count(), 0, "no name editable anywhere on the Plan");
+  await app.screenshot({ path: `${out}/4n-page-correction.png` });
   // A transfer's ends (F5a; v82 as the design's ticket): "Havalimanı" and "Booking.com" large, the airport's code and city
   // and the stay's name under them.
   await openSec("transport");

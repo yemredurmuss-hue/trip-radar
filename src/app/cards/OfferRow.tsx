@@ -256,6 +256,12 @@ export function StayPicksView({ picks, open, chosen, onToggle, onPick }: {
                         <small>{card.price.unit}</small>
                       </span>
                     )}
+                    {/* No price from the source at all: its page says it ("Fiyat Tripadvisor'da ↗"), nothing made up. */}
+                    {card.pricePage && (
+                      <a className="q-srcl z-ppg" href={card.pricePage.url} target="_blank" rel="noopener noreferrer">
+                        {card.pricePage.text} ↗
+                      </a>
+                    )}
                     <button type="button" className="q-pick" aria-pressed={done || undefined} disabled={done}
                       aria-label={done ? L(`${card.title}: seçili`, `${card.title}: chosen`) : L(`${card.title}: seç`, `${card.title}: choose`)}
                       onClick={() => onPick(kind, pick)}>

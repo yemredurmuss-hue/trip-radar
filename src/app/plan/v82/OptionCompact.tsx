@@ -10,6 +10,7 @@ import { locative } from "../../../lib/i18nText";
 import { badgeWord, optionPrice, optionsHead, ratingParts, SHOWN_OPTIONS, sourceBadge, type SelfSearch } from "../../../lib/intentFrame";
 import type { IntentVM, OptionVM } from "../../../lib/intents";
 import { pickAria, pickWord } from "../../../lib/replaceBooking";
+import { typicalNight } from "../../../lib/stayPicks";
 import { Editable, InlineEdit, useInlineEdit } from "../../cards/InlineEdit";
 import { Ic, Mark } from "./icons";
 
@@ -75,7 +76,8 @@ function OptionCard(props: CardProps) {
 
 function OptionFace({ o, art, current, replacing, typical, onPick, onOpen }: CardProps) {
   const price = optionPrice(o.price);
-  const usual = price ? null : (typical?.(o) ?? null);
+  // The source's usual range: asked again by its page, else the one kept on the record when it was saved (0.39.0).
+  const usual = price ? null : (typical?.(o) ?? typicalNight(o.item.typicalNight));
   const tag = o.badges[0];
   const edit = useInlineEdit();
   return (
