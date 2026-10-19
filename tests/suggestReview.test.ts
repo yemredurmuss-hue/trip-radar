@@ -1,7 +1,7 @@
 // The AI review for suggestions: when it's due, what it keeps, and that a missing key or an error never sticks.
 import { describe, expect, it, vi } from "vitest";
 import { MissingKeyError, type LlmProvider } from "../src/lib/llm";
-import { acceptReview, REVIEW_EVERY_MS, REVIEW_STALE_MS, reviewDue, reviewKey, reviewPrompt, runReview, type ReviewAnswer } from "../src/lib/suggestReview";
+import { acceptReview, REVIEW_EVERY_MS, REVIEW_STALE_MS, reviewDue, reviewKey, reviewPrompt, reviewSystem, runReview, tripTaste, type ReviewAnswer } from "../src/lib/suggestReview";
 import type { Suggestion, Trip } from "../src/lib/types";
 import { makeItem } from "./fixtures/makeItem";
 
@@ -66,6 +66,16 @@ describe("what the review keeps", () => {
     const p = reviewPrompt({ mains: ubud, nights: { ubud: 31 }, range, items: [stay], sectionOf: () => "stay", travellers: 2, suggestions: [{ ...one(), key: "k", kind: "add", section: "todo", source: "ai", createdAt: 1, state: "dismissed" } as Suggestion] });
     expect(p).toMatch(/^<suggest_review>/);
     expect(JSON.parse(p.split("\n")[1])).toMatchObject({ places: [{ name: "Ubud", nights: 31 }], dates: range, travellers: 2, not_needed: ["Tegallalang pirinç terasları"] });
+  });
+  it("says the trip's kind and style, and asks the activities to fit them (Emre's surf trip, 19 Ekim)", () => {
+    const surf = trip({ intent: { playbook: "custom", label: "Sörf tatili" }, style: { key: "k", ids: ["beach", "nature", "bogus"] } });
+    expect(tripTaste(surf)).toEqual({ kind: "Sörf tatili", style: ["Deniz", "Doğa"] });
+    const p = reviewPrompt({ mains: [{ name: "Ahangama", members: ["Ahangama"] }], nights: {}, range, items: [], sectionOf: () => "stay", suggestions: [], ...tripTaste(surf) });
+    expect(JSON.parse(p.split("\n")[1])).toMatchObject({ kind: "Sörf tatili", style: ["Deniz", "Doğa"] });
+    // Nothing said: none made up.
+    expect(tripTaste(trip())).toEqual({ kind: null, style: [] });
+    expect(JSON.parse(reviewPrompt({ mains: ubud, nights: {}, range, items: [], sectionOf: () => "stay", suggestions: [] }).split("\n")[1])).toMatchObject({ kind: null, style: [] });
+    expect(reviewSystem()).toContain("Etkinlikler gezinin türüne (\"kind\") ve tarzına (\"style\") uysun.");
   });
 });
 
