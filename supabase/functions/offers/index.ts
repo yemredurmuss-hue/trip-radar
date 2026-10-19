@@ -19,7 +19,9 @@
 // A route's fares by day (?kind=days&from=IST&to=OPO&day=2026-11-12): the shared flight search for the day ±3, each
 // day's cheapest for one person (`ucus` cap, kept 12 hours) → { days }.
 // A stay with `home=1` (a home wanted: a long stay, a big group, a flat already saved) also asks Airbnb (SerpApi,
-// `serp_airbnb` cap): its best liked listing takes the third place, its page Airbnb's own (no partner pays for it).
+// the hotels' `serp_otel` cap): its best liked listing takes the third place, its page Airbnb's own (no partner pays).
+// SerpApi's free 250 a month as daily caps: hotels 5, a fare judged 1, a city's sights 1, its events 1; a flight's
+// last resort none (the shared flight search covers it). An empty answer is never kept.
 // A city's events on the stay's days (?kind=events&city=Porto&start=…&end=…): Google Events, "Events in {city}"
 // (SerpApi, `serp_etkinlik` cap, kept a day), nights out left out, three at most → { offers } (activities, no price).
 // A city's sights (?kind=sights&city=Porto[&country=Portugal]&lang=tr): Google's Top Sights, name, rating, photo
@@ -53,7 +55,7 @@ const cors = {
 const reply = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 
 const HOURS = { flight: 12, stay: 24, activity: 1, esim: 24, transfer: 24 };
-const CAPS: Record<string, number> = { aviasales: 400, xotelo: 400, tripadvisor: 5, links: 300, serpapi: 1, serp_otel: 2, serp_fiyat: 2, serp_yer: 1, serp_airbnb: 1, serp_etkinlik: 1, viator: 300, airalo: 6, omio: 4, ucus: 450 };
+const CAPS: Record<string, number> = { aviasales: 400, xotelo: 400, tripadvisor: 5, links: 300, serpapi: 0, serp_otel: 5, serp_fiyat: 1, serp_yer: 1, serp_etkinlik: 1, viator: 300, airalo: 6, omio: 4, ucus: 450 };
 const cap = (source: string) => Number(Deno.env.get(`OFFERS_CAP_${source.toUpperCase()}`)) || CAPS[source];
 
 type Sb = ReturnType<typeof createClient>;
@@ -450,7 +452,7 @@ Deno.serve(async (req: Request) => {
       const key = `out|f|${from}|${to}|${day}|${ask.adults}|${ask.lang}|${how}`;
       const had = await cached<OfferOut[]>(sb, key, HOURS.flight);
       offers = had ?? (await partnerLinks(sb, token, await flights(sb, token, from, to, day, ask)));
-      if (!had) await store(sb, key, offers);
+      if (!had && offers.length) await store(sb, key, offers);
     } else if (p("kind") === "stay") {
       const city = placeOk(p("city")), country = placeOk(p("country")), start = askableDay(p("start"), now), end = askableDay(p("end"), now);
       if (!city || !start || !end || end <= start) return reply(400, { error: "ask" });
@@ -466,11 +468,13 @@ Deno.serve(async (req: Request) => {
         };
         // A home wanted (item 7): Airbnb's best liked listing takes the third place; its page stays Airbnb's own.
         if (home) {
-          const body = await serp(sb, { engine: "airbnb", q: country ? `${city}, ${country}` : city, check_in_date: start, check_out_date: end, adults: String(ask.adults), currency: "EUR" }, 24, "serp_airbnb");
+          const body = await serp(sb, { engine: "airbnb", q: country ? `${city}, ${country}` : city, check_in_date: start, check_out_date: end, adults: String(ask.adults), currency: "EUR" }, 24, "serp_otel");
           const ab = airbnbOffer(body, { lang: ask.lang, nights: nightsBetween(start, end), now: Date.now() });
           if (ab) found = { offers: [...found.offers.slice(0, 2), ab], candidates: [...found.candidates.slice(0, 5), airbnbCandidate(ab)] };
         }
-        await store(sb, key, found);
+        // An empty answer isn't kept: a source over its cap today may answer tomorrow, or in an hour (19 Oct 2026:
+        // Tromsø and Egypt said "none" for a day after the caps ran out).
+        if (found.offers.length || found.candidates.length) await store(sb, key, found);
       }
       if (p("candidates") === "1") return reply(200, { offers: found.offers, candidates: found.candidates });
       offers = found.offers;
@@ -483,7 +487,7 @@ Deno.serve(async (req: Request) => {
       const key = `out|a|${city.toLocaleLowerCase("en")}|${country ?? ""}|${start ?? ""}|${end ?? ""}|${q ?? ""}|${ask.adults}|${ask.lang}|${how}`;
       const had = await cached<OfferOut[]>(sb, key, HOURS.activity);
       offers = had ?? (await activities(sb, city, country, start, end, q, ask));
-      if (!had) await store(sb, key, offers);
+      if (!had && offers.length) await store(sb, key, offers);
     } else if (p("kind") === "esim") {
       const place = airaloPlace(p("country") ?? "");
       const start = askableDay(p("start"), now), end = askableDay(p("end"), now);
