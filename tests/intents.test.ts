@@ -124,8 +124,8 @@ describe("one choice: flights, stays, ways of travel, an eSIM", () => {
   const b = board(base, items);
 
   it("each need in its state and its frame", () => {
-    expect(b.of("İstanbul → HND")).toMatchObject({ section: "flight", frame: "ticket", status: "booked", word: "Alındı" });
-    expect(b.of("HND → İstanbul")).toMatchObject({ status: "suggested", word: "Önerimiz" });
+    expect(b.of("İstanbul → Tokyo")).toMatchObject({ section: "flight", frame: "ticket", status: "booked", word: "Alındı" });
+    expect(b.of("Tokyo → İstanbul")).toMatchObject({ status: "suggested", word: "Önerimiz" });
     expect(b.of("Tokyo")).toMatchObject({ section: "stay", frame: "stay", status: "chosen", word: "Seçildi" });
     // Two places with no price: nothing to stand as our pick, a decision to make.
     expect(b.of("Kyoto")).toMatchObject({ status: "deciding", word: "Karar bekliyor", estimate: null });
@@ -146,7 +146,7 @@ describe("one choice: flights, stays, ways of travel, an eSIM", () => {
   it("the head: the trip's own head count is never written; a different one is", () => {
     const parts = b.intents.flatMap((i) => i.head.parts);
     expect(parts.some((p) => /kişi/.test(p))).toBe(false);
-    expect(b.of("İstanbul → HND").head).toMatchObject({ route: { from: "İstanbul", to: "HND" }, parts: ["IST → HND", "1 Kas"] });
+    expect(b.of("İstanbul → Tokyo").head).toMatchObject({ route: { from: "İstanbul", to: "Tokyo" }, parts: ["IST → HND", "1 Kas"] });
     expect(b.of("Tokyo").head.parts).toEqual(["3 gece", "1–4 Kasım"]);
     // One person on a trip for two says so; told the hero's count is one, it doesn't.
     const solo = [stay("Hyatt", "Tokyo", "2026-11-01", "2026-11-04", "chosen", { guests: { adults: 1, children: null, rooms: 1 } })];
@@ -166,7 +166,7 @@ describe("one choice: flights, stays, ways of travel, an eSIM", () => {
   });
 
   it("the options: best fit first, the first three and how many, En ucuz and En hızlı", () => {
-    const home = b.of("HND → İstanbul");
+    const home = b.of("Tokyo → İstanbul");
     expect(home.optionCount).toBe(2);
     expect(home.options.map((o) => o.place)).toEqual([1, 2]);
     const cheap = home.options.find((o) => o.badges.includes("cheapest"))!;
@@ -177,7 +177,7 @@ describe("one choice: flights, stays, ways of travel, an eSIM", () => {
   });
 
   it("B1 and B10: a booking's code is there long before the flight, and what was paid", () => {
-    const booked = b.of("İstanbul → HND");
+    const booked = b.of("İstanbul → Tokyo");
     expect(showBookingRef(out, TODAY)).toBe(false);
     expect(booked.access?.code).toEqual({ label: "PNR", value: "K7T2QX" });
     expect(booked.paid).toBe("€1.580 ödendi");

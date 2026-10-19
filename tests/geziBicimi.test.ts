@@ -700,14 +700,14 @@ describe("D7: a connecting flight is one intent with two stubs", () => {
     const b = board(japan, items);
     const flights = b.all.find((c) => c.section.id === "flight")!;
     expect(flights.intents.map((i) => [i.head.name, i.status, i.itemIds.length])).toEqual([
-      ["İstanbul → HND", "booked", 2],
+      ["İstanbul → Tokyo", "booked", 2],
       ["Osaka → İstanbul", "searching", 0],
     ]);
     const out = flights.intents[0];
     // 4 sa 5 dk to Doha, 2 hours there, 9 sa 30 dk to Tokyo (each end's clock is its own: never one on the other).
     expect(out.ticket).toMatchObject({ mode: "flight", art: "ucus", stops: { text: "1 aktarma", direct: false }, duration: "15 sa 35 dk" });
     // Each stub: the airport's code small, its city big where the table knows it (Doha), else the code.
-    expect(out.ticket!.legs.map((l) => [l.from?.place ?? l.from?.city, l.to?.city])).toEqual([["IST", "Doha"], ["DOH", "HND"]]);
+    expect(out.ticket!.legs.map((l) => [l.from?.place ?? l.from?.city, l.to?.city])).toEqual([["IST", "Doha"], ["DOH", "Tokyo"]]);
     expect(flights.summary.countsText).toBe("1 alındı · 1 karar");
     expect(out.head.parts[0]).toBe("IST → HND");
   });

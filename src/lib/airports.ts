@@ -25,6 +25,14 @@ const AIRPORTS: Record<string, [tr: string, en: string]> = {
   KRK: ["Krakov", "Krakow"], SOF: ["Sofya", "Sofia"], OTP: ["Bükreş", "Bucharest"], BEG: ["Belgrad", "Belgrade"],
   LCA: ["Larnaka", "Larnaca"], ECN: ["Lefkoşa", "Nicosia"], TLV: ["Tel Aviv", "Tel Aviv"], CAI: ["Kahire", "Cairo"],
   RAK: ["Marakeş", "Marrakesh"], DPS: ["Bali", "Bali"], BKK: ["Bangkok", "Bangkok"], HKT: ["Phuket", "Phuket"],
+  HND: ["Tokyo", "Tokyo"], NRT: ["Tokyo", "Tokyo"], KIX: ["Osaka", "Osaka"], ITM: ["Osaka", "Osaka"], NGO: ["Nagoya", "Nagoya"],
+  FUK: ["Fukuoka", "Fukuoka"], CTS: ["Sapporo", "Sapporo"], ICN: ["Seul", "Seoul"], HKG: ["Hong Kong", "Hong Kong"],
+  SIN: ["Singapur", "Singapore"], KUL: ["Kuala Lumpur", "Kuala Lumpur"], CMB: ["Kolombo", "Colombo"], MLE: ["Male", "Malé"],
+  DEL: ["Delhi", "Delhi"], BOM: ["Mumbai", "Mumbai"], AUH: ["Abu Dabi", "Abu Dhabi"], HRG: ["Hurgada", "Hurghada"],
+  SSH: ["Şarm El-Şeyh", "Sharm El Sheikh"], NBO: ["Nairobi", "Nairobi"], JNB: ["Johannesburg", "Johannesburg"], CPT: ["Cape Town", "Cape Town"],
+  EWR: ["New York", "New York"], LAX: ["Los Angeles", "Los Angeles"], SFO: ["San Francisco", "San Francisco"], MIA: ["Miami", "Miami"],
+  ORD: ["Chicago", "Chicago"], YYZ: ["Toronto", "Toronto"], MEX: ["Meksiko", "Mexico City"], GRU: ["São Paulo", "São Paulo"],
+  EZE: ["Buenos Aires", "Buenos Aires"],
 };
 
 /** The airport's own name, where it isn't only its city's ("Sabiha Gökçen", "Kastrup"). */
@@ -38,6 +46,8 @@ const NAMES: Record<string, [tr: string, en: string]> = {
   CPH: ["Kastrup", "Kastrup"], BER: ["Brandenburg", "Brandenburg"], ARN: ["Arlanda", "Arlanda"], OSL: ["Gardermoen", "Gardermoen"],
   MXP: ["Malpensa", "Malpensa"], VCE: ["Marco Polo", "Marco Polo"], ATH: ["Venizelos", "Venizelos"], PRG: ["Václav Havel", "Václav Havel"],
   WAW: ["Chopin", "Chopin"], JFK: ["JFK", "JFK"], DOH: ["Hamad", "Hamad"],
+  HND: ["Haneda", "Haneda"], NRT: ["Narita", "Narita"], KIX: ["Kansai", "Kansai"], ITM: ["Itami", "Itami"], ICN: ["Incheon", "Incheon"],
+  SIN: ["Changi", "Changi"], EWR: ["Newark", "Newark"],
 };
 
 /** The country of the airports above (ISO code), for how early to be there (inside Schengen or not). */
@@ -51,6 +61,9 @@ const COUNTRY: Record<string, string> = {
   ALC: "ES", VLC: "ES", BIO: "ES", IBZ: "ES", TFS: "ES", LPA: "ES", GVA: "CH", LYS: "FR", MRS: "FR", MAN: "GB", EDI: "GB",
   BLQ: "IT", FLR: "IT", CTA: "IT", DBV: "HR", SPU: "HR", KRK: "PL", SOF: "BG", OTP: "RO", BEG: "RS", LCA: "CY", ECN: "CY",
   TLV: "IL", CAI: "EG", RAK: "MA", DPS: "ID", BKK: "TH", HKT: "TH",
+  HND: "JP", NRT: "JP", KIX: "JP", ITM: "JP", NGO: "JP", FUK: "JP", CTS: "JP", ICN: "KR", HKG: "HK", SIN: "SG", KUL: "MY",
+  CMB: "LK", MLE: "MV", DEL: "IN", BOM: "IN", AUH: "AE", HRG: "EG", SSH: "EG", NBO: "KE", JNB: "ZA", CPT: "ZA",
+  EWR: "US", LAX: "US", SFO: "US", MIA: "US", ORD: "US", YYZ: "CA", MEX: "MX", GRU: "BR", EZE: "AR",
 };
 export const countryOfAirport = (code: string | null | undefined): string | null => (code ? (COUNTRY[code.toUpperCase()] ?? null) : null);
 

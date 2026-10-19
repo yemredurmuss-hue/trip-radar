@@ -135,7 +135,7 @@ describe("a trip's two ends", () => {
     const f = (departure: string, arrival: string | null) => makeItem({ category: "flight", flight: { from: "IST", to: "HND", departure, arrival, carrier: null, flightNumber: null, stops: 0 } });
     expect(transportFace(f("2026-10-14T23:00", "2026-10-16T05:30"), "flight").to).toMatchObject({ time: "05:30", plus: { days: 2, date: "16 Ekim" } });
     expect(transportFace(f("2026-10-14T10:00", "2026-10-14T14:00"), "flight").to?.plus).toBeUndefined();
-    expect(transportFace(f("2026-10-14T23:00", "2026-10-15"), "flight").to).toMatchObject({ sub: "15 Ekim", time: null });
+    expect(transportFace(f("2026-10-14T23:00", "2026-10-15"), "flight").to).toMatchObject({ sub: "HND · 15 Ekim", time: null });
   });
   it("a train: the plan's cities big, the stations small", () => {
     const t = train({ flight: { from: "Porto Campanhã", to: "Lisboa Santa Apolónia", departure: "2026-10-11T09:30", arrival: "2026-10-11T12:20", carrier: null, flightNumber: null, stops: null } });

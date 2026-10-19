@@ -213,7 +213,7 @@ describe("row 127 / H8: on the trip, what's left behind is no decision; afterwar
 
   it("the open needs of days gone by: the flight out, the bed of its night, Kyoto's bed and the train there", () => {
     expect(missed.map((i) => [i.section, i.head.name])).toEqual([
-      ["flight", "İstanbul → HND"],
+      ["flight", "İstanbul → Tokyo"],
       ["stay", "Konaklama yok"],
       ["stay", "Kyoto"],
       ["transport", "Tokyo → Kyoto"],
