@@ -381,9 +381,17 @@ body.still .z-xf.back { animation: none !important; }
 @media (prefers-reduced-motion: reduce) { .z-xf.back { animation: none !important; } }
 /* 0.38.5: a chosen or booked box's other options under it (OptionCompact, OptionRow), out of the fixed frame, at their
    own height (the cards as above, 0.38.6). "Daha fazla seçenek" only where it asks for more (not under a booking). */
-.q-others > .q-opts { display: grid; gap: 8px; margin-top: 8px; min-width: 0; }
+.q-others > div > .q-opts { display: grid; gap: 8px; margin-top: 8px; min-width: 0; }
 .q-others .z-ocs { height: auto; }
 .q-others .z-rows { height: auto; grid-auto-rows: 64px; }
 .q-others .z-oc0:not(:has(button)), .q-others .z-r0:not(:has(button)) { display: none; }
+/* 0.38.9: folded to one line once something is chosen, "Diğer seçenekler (n) ▾"; a tap opens and closes it. */
+.q-ofold { display: flex; align-items: center; gap: 8px; width: 100%; margin-top: 8px; padding: 7px 12px; border: 1px solid var(--q-line); border-radius: 12px; background: transparent; font: inherit; font-size: var(--q-fs-small); font-weight: 700; color: var(--q-ink); cursor: pointer; text-align: left; }
+.q-ofold:hover { background: var(--q-soft); }
+.q-ofold:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 2px; }
+.q-ofold-chev { margin-left: auto; color: var(--q-mut); transition: transform var(--t-quick) var(--e-out); }
+.q-others.open .q-ofold-chev { transform: rotate(180deg); }
+body.still .q-ofold-chev { transition: none; }
+@media (prefers-reduced-motion: reduce) { .q-ofold-chev { transition: none; } }
 /* The source asked by itself and nothing came back: said plainly (OfferRow NoOffers). */
 .ek-none { margin: 8px 0 0; font-size: var(--q-fs-small); color: var(--q-mut); }

@@ -11,6 +11,7 @@ import { isCampStay } from "../../../lib/campStay";
 import { L } from "../../../lib/i18n";
 import { areaSearch, changeList, currentOption, frameForm, headName, offerNeed, otherOptions, placeholderOf, railState, SHOWN_OPTIONS, statusChip, unlessEmpty } from "../../../lib/intentFrame";
 import { offersLooking } from "../../../lib/looking";
+import { othersLabel, othersOpen, rememberOthers } from "../../../lib/othersFold";
 import { queryOf, type StayCandidate } from "../../../lib/offerSources";
 import { typicalNight } from "../../../lib/stayPicks";
 import type { IntentStatus, IntentVM, OptionVM } from "../../../lib/intents";
@@ -153,6 +154,25 @@ export function IntentBox({ vm: given, color, onHere = null }: {
   return <Box vm={vm} color={color} extra={[]} field={null} pickDoc={null} cancel={null} onHere={onHere} itemId={null} />;
 }
 
+/**
+ * A chosen or booked box's other options under it (0.38.5), folded to one line (0.38.9): "Diğer seçenekler (n) ▾",
+ * a real button that says whether it is open; its options drawn only while it is.
+ */
+export function OthersFold({ count, open, onToggle, children }: { count: number; open: boolean; onToggle: () => void; children: ReactNode }) {
+  const listId = useId();
+  return (
+    <div className={`q-offers q-others${open ? " open" : ""}`}>
+      <button type="button" className="q-ofold" aria-expanded={open} aria-controls={open ? listId : undefined} onClick={onToggle}>
+        <span>{othersLabel(count)}</span>
+        <span className="q-ofold-chev" aria-hidden>
+          ▾
+        </span>
+      </button>
+      {open && <div id={listId}>{children}</div>}
+    </div>
+  );
+}
+
 /** A stay's place for "+ Buraya ekle": its city and its last night (templates.insertAt); none without its days. */
 function hereOf(vm: IntentVM): InsertAt | null {
   if (vm.kind !== "stay" || !vm.head.date || vm.head.nights < 1) return null;
@@ -227,7 +247,20 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
   const hints = useRegionHints(vm, form === "searching");
   // Chosen or booked, it stands big; the need's other options wait under it (0.38.5), not while it turns back to them.
   const others = changing ? [] : otherOptions(vm);
-  const typical = useTypical(vm, (showOptions && !searchingNow) || others.length > 0);
+  // 0.38.9: folded to "Diğer seçenekler (n)" once something is chosen; a new pick (from here, the chat, the Pano) folds them.
+  const foldKey = `${env.tripId}:${vm.key}`;
+  const [othersShown, setOthersShown] = useState(() => othersOpen(foldKey, true));
+  const showOthers = (open: boolean) => {
+    rememberOthers(foldKey, open);
+    setOthersShown(open);
+  };
+  const pickedWas = useRef(chosenId);
+  useEffect(() => {
+    if (pickedWas.current === chosenId) return;
+    pickedWas.current = chosenId;
+    showOthers(false);
+  }, [chosenId]);
+  const typical = useTypical(vm, (showOptions && !searchingNow) || (others.length > 0 && othersShown));
   const record = vm.chosen?.item ?? null;
   const decision = record ? decisionOf(env.decisions?.byGroup, record) : undefined;
   const page = record ? (datedLink(record, decision).url ?? record.url) : null;
@@ -428,16 +461,21 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
       </section>
       {need && !camp && (
         <div className="q-offers">
-          <OfferRow key={need.key} need={need} onChoose={a.choose} placeholder={placeholder} />
+          <OfferRow key={need.key} need={need} onChoose={a.choose} placeholder={placeholder} chosen={vm.chosen != null} />
         </div>
       )}
       {others.length > 0 && (
-        <div className="q-offers q-others">
+        <OthersFold count={others.length} open={othersShown} onToggle={() => showOthers(!othersShown)}>
           {(() => {
-            const list = { vm: { ...vm, optionCount: others.length }, options: others, current: null, changing: false, art, links, typical, onPick: pick, onOpen: (o: OptionVM) => env.onOpenItem(o.item), onCancel: cancelChange, onAsk: vm.status === "booked" ? null : a.ask };
+            // "Seç" folds them at once, before the pick is saved.
+            const onPick = (o: OptionVM) => {
+              showOthers(false);
+              pick(o);
+            };
+            const list = { vm: { ...vm, optionCount: others.length }, options: others, current: null, changing: false, art, links, typical, onPick, onOpen: (o: OptionVM) => env.onOpenItem(o.item), onCancel: cancelChange, onAsk: vm.status === "booked" ? null : a.ask };
             return vm.frame === "ticket" ? <OptionRows {...list} /> : <OptionList {...list} />;
           })()}
-        </div>
+        </OthersFold>
       )}
     </>
   );

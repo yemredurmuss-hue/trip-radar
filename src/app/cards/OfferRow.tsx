@@ -13,6 +13,7 @@ import { durationText } from "../../lib/cardFacts";
 import { L } from "../../lib/i18n";
 import { nStops } from "../../lib/i18nText";
 import { offersLooking } from "../../lib/looking";
+import { othersOpen, rememberOthers } from "../../lib/othersFold";
 import type { StayCandidate } from "../../lib/offerSources";
 import { candidateOffer, fitsTrip, pickCard, pickList, pickOnPlan, picksContext, pickThree, savedAlready, type PickKind, type StayPick } from "../../lib/stayPicks";
 import type { Item } from "../../lib/types";
@@ -271,13 +272,32 @@ export function StayPicksView({ picks, open, chosen, onToggle, onPick }: {
   );
 }
 
+/**
+ * The row's open state: open unless the traveller closed it, remembered per section (the picks are the box's options,
+ * under it at once, 0.38.5); with something chosen in the box, folded unless opened on this page (0.38.9, othersFold).
+ */
+function useRowOpen(need: Need, chosen: boolean): [boolean, (open: boolean) => void] {
+  const { tripId } = useEmptyEnv();
+  const storeKey = offersOpenKey(tripId, need.section);
+  const foldKey = `offers:${tripId}:${need.key}`;
+  const [open, setOpen] = useState(() => (chosen ? othersOpen(foldKey, true) : readOffersOpen(storeKey, undefined, true)));
+  return [
+    open,
+    (next) => {
+      if (chosen) rememberOthers(foldKey, next);
+      else writeOffersOpen(storeKey, next);
+      setOpen(next);
+    },
+  ];
+}
+
 /** A stay's row: the source's candidates narrowed to three for this trip (its plans there, its priorities). */
-function StayPicksRow({ need, onChoose, placeholder }: { need: Need; onChoose: ((item: Item) => void) | null; placeholder: Item | null }) {
+function StayPicksRow({ need, onChoose, placeholder, chosen: hasChoice }: { need: Need; onChoose: ((item: Item) => void) | null; placeholder: Item | null; chosen: boolean }) {
   const { offers: source, tripId, trip, items } = useEmptyEnv();
   const available = source.available();
-  const storeKey = offersOpenKey(tripId, need.section);
-  // Open unless the traveller closed it: the picks are the box's options, under it at once (0.38.5).
-  const [open, setOpen] = useState(() => readOffersOpen(storeKey, undefined, true));
+  const [opened, setOpen] = useRowOpen(need, hasChoice);
+  const [folded, setFolded] = useState(false);
+  const open = opened && !folded;
   const [cands, setCands] = useState<StayCandidate[] | null>(null);
   const [tapped, setTapped] = useState<string[]>([]);
   useEffect(() => {
@@ -308,18 +328,19 @@ function StayPicksRow({ need, onChoose, placeholder }: { need: Need; onChoose: (
     if (!fresh.length && cands.length) return null;
     return fresh.some((c) => !fitsTrip(c, ctx.fit)) ? <NoFit /> : <NoOffers />;
   }
-  const toggle = () => {
-    writeOffersOpen(storeKey, !open);
-    setOpen(!open);
-  };
   return (
     <StayPicksView
       picks={picks}
       open={open}
       chosen={chosen}
-      onToggle={toggle}
+      onToggle={() => {
+        setFolded(false);
+        setOpen(!open);
+      }}
       onPick={(kind, { cand, why }) => {
         setTapped([cand.id]);
+        // "Seç" folds the row at once (0.38.9); not remembered, the next box's row still opens.
+        setFolded(true);
         const own = recordOf(cand);
         const offer = candidateOffer(cand, kind, why);
         // The start's place for these nights becomes the pick (no second card beside it).
@@ -331,15 +352,17 @@ function StayPicksRow({ need, onChoose, placeholder }: { need: Need; onChoose: (
 }
 
 /** The row for one need: a stay's three picks when the source has candidates, else its offers as they come. */
-export function OfferRow({ need, onChoose = null, placeholder = null }: {
+export function OfferRow({ need, onChoose = null, placeholder = null, chosen = false }: {
   need: Need;
   /** "Seç" on a stay's pick: the record it became (or was), chosen the way the box chooses (other picks set back). */
   onChoose?: ((item: Item) => void) | null;
   /** The start's place to fill in the box (intentFrame.placeholderOf): a pick takes its record in place. */
   placeholder?: Item | null;
+  /** The box has its pick (chosen or booked): the row starts folded (0.38.9). */
+  chosen?: boolean;
 }) {
   const { offers: source } = useEmptyEnv();
-  return need.kind === "stay" && source.candidates ? <StayPicksRow need={need} onChoose={onChoose} placeholder={placeholder} /> : <PlainOfferRow need={need} />;
+  return need.kind === "stay" && source.candidates ? <StayPicksRow need={need} onChoose={onChoose} placeholder={placeholder} chosen={chosen} /> : <PlainOfferRow need={need} chosen={chosen} />;
 }
 
 /** The source asked and nothing came back: said plainly, nothing made up (0.38.5). */
@@ -353,11 +376,11 @@ export function NoFit() {
 }
 
 /** The plain row: asks the source once per need, nothing at all while no source is connected. */
-function PlainOfferRow({ need }: { need: Need }) {
+function PlainOfferRow({ need, chosen }: { need: Need; chosen: boolean }) {
   const { offers: source, tripId } = useEmptyEnv();
   const available = source.available();
-  const storeKey = offersOpenKey(tripId, need.section);
-  const [state, setState] = useState<OfferRowState>(() => ({ open: readOffersOpen(storeKey, undefined, true), offers: [], gone: [] }));
+  const [open, setOpen] = useRowOpen(need, chosen);
+  const [state, setState] = useState<OfferRowState>(() => ({ open, offers: [], gone: [] }));
   const [done, setDone] = useState(false);
   useEffect(() => {
     if (!available) return;
@@ -375,17 +398,12 @@ function PlainOfferRow({ need }: { need: Need }) {
   if (!available) return null;
   // (an eSIM's source may be away: nothing said there, as before)
   if (done && !state.offers.length) return need.kind === "flight" ? <NoOffers /> : null;
-  const toggle = () => {
-    const open = !state.open;
-    writeOffersOpen(storeKey, open);
-    setState((s) => ({ ...s, open }));
-  };
   return (
     <OfferRowView
       offers={shownOffers(state)}
-      open={state.open}
+      open={open}
       adults={need.adults ?? null}
-      onToggle={toggle}
+      onToggle={() => setOpen(!open)}
       onAdd={(o) => {
         setState((s) => without(s, o.id));
         void addOffer(tripId, o, need);
