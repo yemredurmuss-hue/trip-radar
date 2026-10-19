@@ -2820,7 +2820,8 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
   const d = await db();
   const trip = await d.get("trips", tripId);
   if (!trip) throw new Error(L("Gezi bulunamadı.", "Trip not found."));
-  const provider = llm ?? (await getProvider());
+  // The traveller is waiting on this one: first in the model's line (llm/queue.ts).
+  const provider = llm ?? (await getProvider({ priority: "now" }));
   await keepWantsSaid(tripId, userText);
 
   let session = currentSession(await listMessages(tripId), provider.id);

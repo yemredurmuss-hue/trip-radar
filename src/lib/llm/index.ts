@@ -5,16 +5,23 @@ import { aiGate } from "../share/ai";
 import { L } from "../i18n";
 import { anthropicNeedsSettings, anthropicProvider, anthropicUnreached, describeAnthropicError } from "./anthropic";
 import { describeGeminiError, geminiNeedsSettings, geminiProvider } from "./gemini";
+import { queuedProvider, type AiCallOpts } from "./queue";
 import { MissingKeyError, type LlmProvider } from "./types";
 
 export { MissingKeyError } from "./types";
+export { promoteAi, type AiCallOpts, type AiPriority } from "./queue";
 export type { LlmProvider, ProviderId } from "./types";
 
 /**
  * Provider chosen in settings: your own key (kept in this browser, calls go direct); else, when you were
  * invited, the inviter's AI gate (0.36: Gemini through their server, the invite's ticket as the key).
  */
-export async function getProvider(): Promise<LlmProvider> {
+export async function getProvider(opts: AiCallOpts = {}): Promise<LlmProvider> {
+  return queuedProvider(await ownProvider(), opts);
+}
+
+/** The provider itself, its calls not in the line (getProvider puts them there: llm/queue.ts). */
+async function ownProvider(): Promise<LlmProvider> {
   const s = await getSettings();
   if (s.provider === "gemini") {
     if (s.geminiKey) return geminiProvider(new GoogleGenAI({ apiKey: s.geminiKey }), s.geminiModel);

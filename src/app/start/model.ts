@@ -81,7 +81,7 @@ export async function readAndReply(
 ): Promise<{ read: Extracted; reply: ModelReply | null } | null> {
   const started = Date.now();
   try {
-    const llm = await getProvider();
+    const llm = await getProvider({ priority: "now" }); // the start chat waits on it
     const plan = !planRefused;
     const [system, prompt] = withLang(a.lang, () => [turnSystem(plan), turnPrompt(a)]);
     // Worth its answer only now: no retry after a wait, aborted at the limit or when the screen is left.
@@ -111,7 +111,7 @@ export async function askNext(
   signal?: AbortSignal,
 ): Promise<string | null> {
   try {
-    const llm = await getProvider();
+    const llm = await getProvider({ priority: "now" }); // the start chat waits on it
     const [system, prompt] = withLang(a.lang, () => [nextSystem(), nextPrompt(a)]);
     const raw = await timed((sig) => llm.generateJson(system, prompt, replySchema, [], { signal: sig, maxRetries: 0 }), NEXT_MS, signal);
     const question = acceptQuestion(raw.question, a.lang);
@@ -148,7 +148,7 @@ export async function proposeRoute(s: StartState, useModel: boolean, signal?: Ab
   const total = totalNights(s);
   if (!useModel || !total || !wantsRouteAdvice(s)) return single;
   try {
-    const llm = await getProvider();
+    const llm = await getProvider({ priority: "now" }); // the start chat waits on it
     const [system, prompt] = withLang(s.lang, () => [routeSystem(), routePrompt(s)]);
     const raw = await timed((sig) => llm.generateJson(system, prompt, routeSchema, [], { signal: sig, maxRetries: 0 }), ROUTE_MS, signal);
     return acceptRoute(raw, total, s.from, s.where?.code ?? null) ?? single;

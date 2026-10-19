@@ -6,12 +6,11 @@
 import { useMemo, useState } from "react";
 import { catDomKey, recordOf, type CatEntry } from "../../lib/categories";
 import type { CityWeather } from "../../lib/climate";
-import { countryInfo } from "../../lib/countries";
 import { L } from "../../lib/i18n";
 import { packLooking } from "../../lib/looking";
 import { tripPlaybook } from "../../lib/playbooks";
 import { countryName, knowRows, knowSub } from "../../lib/prepKnow";
-import { bagFact, drivesOnTrip, kindWord, packSub, packView, planNames, rulesAsk, rulesPack, stayCities, stayLines, tripDays } from "../../lib/prepPack";
+import { bagFact, drivesOnTrip, kindWord, packSub, packView, rulesAsk, rulesPack, stayCities, tripDays } from "../../lib/prepPack";
 import { entryDomId } from "../../lib/progress";
 import { useEmptyEnv } from "../cards/emptyEnv";
 import { useCardEnv } from "../cards/PlanCard";
@@ -19,7 +18,7 @@ import { Bavul } from "./prep/Bavul";
 import { KnowCard } from "./prep/KnowCard";
 import { PrepIcon } from "./prep/PrepIcons";
 import { PrepRow } from "./prep/PrepRow";
-import { usePackAi } from "./prep/usePackAi";
+import { packInputOf, usePackAi } from "./prep/usePackAi";
 import { usePrep } from "./prep/usePrep";
 import { useLooking } from "./v82/Searching";
 
@@ -71,25 +70,9 @@ export function PrepList({ entries }: { entries: CatEntry[] }) {
     kind: kind?.toLocaleLowerCase(L("tr-TR", "en-GB")) ?? null,
     places: list != null,
   });
-  const plugs = countryInfo(main)?.plugs;
-  usePackAi(
-    trip,
-    {
-      countries,
-      cities: stayLines(items),
-      range,
-      people: travellers,
-      kind,
-      weather,
-      plan: planNames(items),
-      bag,
-      plug: plugs?.length && model.plug ? `${plugs.join("/")} (${model.plug === "fits" ? "the traveller's plugs fit" : "an adapter is needed"})` : null,
-      home: model.passport,
-      never: mine.never,
-      always: mine.always,
-    },
-    range != null && (cities.length > 0 || countries.length > 0),
-  );
+  const pack = packInputOf(model, weather, travellers);
+  usePackAi(trip, pack.input, pack.ready);
+
 
   const packing = useLooking(packLooking, trip.id) && list == null;
   const know = knowRows({ countries, passport: model.passport, money: model.money, plug: model.plug, tips: list?.tips ?? [] });
