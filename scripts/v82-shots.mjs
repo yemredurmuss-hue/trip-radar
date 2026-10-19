@@ -40,6 +40,8 @@ await app.waitForTimeout(1500);
 const heights = {};
 for (const width of [1440, 1280, 860, 390]) {
   await app.setViewportSize({ width, height: 1000 });
+  // (from the top: the widths before left the page where their last category opened)
+  await app.evaluate(() => { scrollTo(0, 0); document.querySelector(".panel")?.scrollTo(0, 0); });
   await app.waitForTimeout(500);
   await app.screenshot({ path: `${out}/${width}-top.png` });
   const hero = app.locator(".x-hero, .hx").first();
