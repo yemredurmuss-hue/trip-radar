@@ -32,6 +32,15 @@
 .chat-offer .co-meta, .chat-offer .co-why, .chat-offer .co-per { font-size: var(--q-fs-small); }
 .chat-offer .co-amt { font-size: var(--q-fs-card); }
 .chat-offer .co-pick { font-size: var(--q-fs-badge); }
+/* 0.39.1: the price side takes at most 40% and its words wrap there (a stay with no price for the dates says its usual
+   range, "typically €23–105 / night · no price for your dates"); the name, label and source keep the rest, the label and
+   the source on one line. Above 420 px only: app.css stacks the card under it. */
+@media (min-width: 421px) {
+  .chat-offer { grid-template-columns: minmax(0, 1fr) fit-content(40%); }
+}
+.chat-offer .co-deal { min-width: 0; }
+.chat-offer .co-per { overflow-wrap: break-word; }
+.chat-offer .co-pick, .chat-offer .co-src { white-space: nowrap; }
 @container chat (max-width: 360px) {
   .chat-offer { grid-template-columns: 1fr; }
   .chat-offer .co-deal { justify-items: start; text-align: left; }
