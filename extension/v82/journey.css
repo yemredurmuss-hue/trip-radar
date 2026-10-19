@@ -1,0 +1,190 @@
+/* v82 journey: docs/superpowers/specs/2026-10-18-v82-gecis/02-spec.md. Rules are ported from the approved prototype
+   (plan-v32-tasarim: docs/mockups/plan-v83-turler/kaynak/mk81.css, mk82.css, mk83.css) and keep its class names. */
+
+/* ===== Yolculuk sırasıyla (v81, v82, v83; src/app/plan/journey): chapters, a line of dots, one card a step =====
+   The buttons are scoped to .q-trip (the plan's boxes have their own in plan.css / intent.css). */
+.q-trip { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; margin-top: 6px; color: var(--q-ink); }
+.q-chap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; position: relative; scroll-margin-top: 76px; }
+.q-chap-h { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.q-chap-h b { display: block; font-size: var(--q-fs-intent); font-weight: 800; letter-spacing: -.01em; overflow-wrap: anywhere; }
+.q-chap-h small { font-size: var(--q-fs-info); color: var(--q-mut); }
+.q-chap-h.city { gap: 16px; margin-top: 6px; }
+.q-chap-h.city b { font-size: var(--q-fs-category); }
+.q-chap-img { flex: none; width: 168px; height: 104px; border-radius: 16px; overflow: hidden; background: var(--q-soft); box-shadow: 0 1px 0 var(--q-line), 0 6px 18px rgba(28, 26, 51, .08); }
+.q-chap-img img, .q-chap-photo { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* No photo known for the city (C19): a quiet tile, nothing invented. */
+.q-chap-ph { width: 100%; height: 100%; display: grid; place-items: center; color: #9a96b5; background: linear-gradient(135deg, var(--q-acc-s), var(--q-soft)); }
+.q-chap-t { display: grid; gap: 4px; min-width: 0; }
+.q-chap-sum { display: flex; gap: 6px; margin-top: 2px; }
+.q-chap-sum i { font-style: normal; font-size: var(--q-fs-small); font-weight: 750; padding: 3px 9px; border-radius: 999px; background: var(--q-acc-s); color: var(--q-acc); }
+.q-chap-sum i.ok { background: var(--q-ok-s); color: var(--q-ok); }
+.q-chap-ic { flex: none; width: 40px; height: 40px; border-radius: 12px; background: var(--q-soft); display: grid; place-items: center; color: var(--q-mut); }
+.q-chap-ic svg { width: 17px; height: 17px; }
+/* D8: the chapter today is in. */
+.q-chap-now { margin-left: auto; align-self: flex-start; flex: none; font-size: var(--q-fs-small); font-weight: 800; color: #fff; background: var(--q-acc); border-radius: 99px; padding: 4px 10px; }
+.q-chap-h.city .q-chap-now { margin-top: 6px; }
+
+/* The chapters behind, folded into one line while the trip is on (D8). */
+.q-past { border: 1px solid var(--q-line); border-radius: 16px; background: #fff; }
+.q-pastb { all: unset; box-sizing: border-box; cursor: pointer; width: 100%; display: flex; align-items: baseline; gap: 10px; padding: 12px 16px; min-width: 0; }
+.q-pastb b { flex: none; font-size: var(--q-fs-button); font-weight: 800; }
+.q-pastb small { flex: 1 1 auto; min-width: 0; font-size: var(--q-fs-info); color: var(--q-mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.q-pastc { flex: none; color: var(--q-mut); transition: transform 180ms var(--x-in, ease); }
+.q-past.open .q-pastc { transform: rotate(180deg); }
+.q-pastb:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 2px; border-radius: 16px; }
+.q-pastl { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; padding: 4px 16px 18px; }
+.q-pastl[hidden] { display: none; }
+
+/* The line and its dots: dashed to decide, purple our pick, sand chosen, green bought, teal covered, grey arranged. */
+.q-steps { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; position: relative; }
+.q-step { display: grid; grid-template-columns: 62px 18px minmax(0, 1fr); align-items: stretch; gap: 0 10px; position: relative; }
+.q-sdate { font-size: var(--q-fs-small); font-weight: 700; color: var(--q-mut); padding-top: 20px; text-align: right; font-variant-numeric: tabular-nums; }
+.q-sdot { position: relative; }
+.q-sdot::before { content: ""; position: absolute; left: 8px; top: 0; bottom: -8px; width: 2px; background: var(--q-rail); }
+.q-step:last-child .q-sdot::before { bottom: 0; }
+.q-sdot::after { content: ""; position: absolute; left: 3px; top: 22px; width: 12px; height: 12px; border-radius: 50%; background: #fff; border: 2px dashed var(--q-st-wait-dot); }
+.q-step[data-st="sel"] .q-sdot::after { border: 2px solid var(--q-sand-ink); background: var(--q-sand); }
+.q-step[data-st="ai"] .q-sdot::after { border: 2px solid var(--q-acc); background: var(--q-acc-s); }
+.q-step[data-st="ok"] .q-sdot::after { border: 0; background: var(--q-ok); box-shadow: 0 0 0 3px var(--q-ok-s); }
+.q-step[data-st="inc"] .q-sdot::after { border: 0; background: #0e7c66; box-shadow: 0 0 0 3px #d5efe7; }
+.q-step[data-st="arr"] .q-sdot::after { border: 0; background: var(--q-st-arranged-dot); }
+.q-step[data-st="night"] .q-sdot::after { border: 0; background: #c9c5da; width: 8px; height: 8px; left: 5px; top: 24px; }
+.q-step[data-st="idea"] .q-sdot::after { border-color: #cfcae0; }
+.q-step[data-st="missed"] .q-sdot::after { border: 2px solid #cfcae0; background: var(--q-soft); }
+
+/* The step's card: what it is and where it stands, its name, a line, its code; the one thing to do; "›". */
+.q-scard { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border: 1px solid var(--q-line); border-radius: 14px; background: #fff; min-width: 0; min-height: 66px; animation: q-step-in 260ms var(--x-in, cubic-bezier(.2, .8, .2, 1)) both; }
+.q-step[data-st="ok"] .q-scard { border-color: var(--q-ok-l); background: linear-gradient(90deg, var(--q-ok-s), #fff 60%); }
+.q-step[data-st="inc"] .q-scard { border-color: #cdeee2; background: linear-gradient(90deg, #f3fbf8, #fff 60%); }
+.q-step[data-st="sel"] .q-scard { border-color: var(--q-sand-l); }
+.q-step[data-st="ai"] .q-scard { border-color: color-mix(in srgb, var(--q-acc) 30%, var(--q-line)); }
+.q-scard.todo { border-style: dashed; border-color: var(--q-st-wait-line); }
+.q-scard.idea { background: var(--q-soft); border-style: dashed; }
+.q-scard.night { background: var(--q-soft); border-color: transparent; min-height: 56px; }
+.q-scard.missed { background: var(--q-soft); border-style: dashed; }
+.q-scard.missed .q-sm b { color: var(--q-mut); }
+.q-sth { flex: none; }
+.q-trip .q-th { width: 44px; height: 44px; border-radius: 10px; display: grid; place-items: center; overflow: hidden; background: #fff; color: var(--q-mut); box-shadow: inset 0 0 0 1px var(--q-line); }
+.q-trip .q-th.art { background: var(--q-soft); }
+.q-trip .q-th svg { width: 22px; height: 22px; }
+.q-trip .q-th .q-thimg { width: 100%; height: 100%; object-fit: cover; display: block; }
+.q-sm { display: grid; gap: 2px; min-width: 0; flex: 1 1 220px; }
+.q-sm > b { font-size: var(--q-fs-button); font-weight: 750; overflow-wrap: anywhere; }
+.q-sm > small { font-size: var(--q-fs-small); color: var(--q-mut); }
+.q-skind { font-size: var(--q-fs-small); color: var(--q-mut); font-weight: 650; }
+.q-skind em { font-style: normal; font-weight: 800; }
+.q-skind .ok { color: var(--q-ok); }
+.q-skind .sel { color: var(--q-sand-ink); }
+.q-skind .ai, .q-skind .todo { color: var(--q-acc); }
+.q-skind .gr { color: #6b6880; }
+.q-sacc { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 4px; }
+.q-trip .q-code { display: inline-flex; align-items: center; gap: 6px; font-size: var(--q-fs-small); color: var(--q-mut); }
+.q-trip .q-code b { color: var(--q-ink); font-size: var(--q-fs-button); font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: .04em; white-space: nowrap; }
+.q-trip .q-code { flex-wrap: wrap; row-gap: 2px; }
+/* F2, B15: booked, two weeks to go, no file. */
+.q-nodoc { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 99px; background: #fff8eb; color: #7a4b00; font-size: var(--q-fs-small); font-weight: 700; box-shadow: inset 0 0 0 1px #fedf89; }
+.q-trip .q-sp { flex: 1 1 0; }
+.q-spr { flex: none; font-size: var(--q-fs-card); font-weight: 800; font-variant-numeric: tabular-nums; }
+
+.q-trip .q-gob { flex: none; font: inherit; font-size: var(--q-fs-info); font-weight: 700; color: #fff; background: var(--q-acc); border: 0; border-radius: 10px; padding: 9px 14px; cursor: pointer; white-space: nowrap; }
+.q-trip .q-gob:hover { background: var(--q-acc-d); }
+.q-trip .q-go2 { flex: none; font: inherit; font-size: var(--q-fs-info); font-weight: 700; color: var(--q-acc); background: none; border: 0; cursor: pointer; padding: 6px 4px; white-space: nowrap; }
+.q-trip .q-go2:hover { text-decoration: underline; }
+.q-trip .q-pick { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 38px; padding: 0 18px; border: 0; border-radius: 10px; background: var(--q-acc); color: #fff; font: inherit; font-size: var(--q-fs-info); font-weight: 700; cursor: pointer; white-space: nowrap; box-shadow: 0 4px 12px rgba(91, 69, 224, .26); }
+.q-trip .q-pick:hover { background: var(--q-acc-d); }
+.q-trip .q-cta { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 38px; padding: 0 12px 0 8px; border: 0; border-radius: 12px; background: var(--q-acc); color: #fff; font: inherit; font-size: var(--q-fs-info); font-weight: 700; text-decoration: none; white-space: nowrap; cursor: pointer; box-shadow: 0 4px 12px rgba(91, 69, 224, .26); }
+.q-trip .q-cta:hover { background: var(--q-acc-d); }
+.q-trip button.q-cta { padding: 0 14px; }
+.q-trip .q-ext { opacity: .75; font-size: var(--q-fs-small); }
+.q-trip .q-logo { flex: none; width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; background: var(--bl, #6b6880); color: #fff; font-size: var(--q-fs-small); font-weight: 800; box-shadow: 0 0 0 2px rgba(255, 255, 255, .85); }
+.q-trip .q-open { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 0 14px; border: 0; border-radius: 11px; background: var(--q-ok); color: #fff; font: inherit; font-size: var(--q-fs-info); font-weight: 700; text-decoration: none; cursor: pointer; white-space: nowrap; }
+.q-trip .q-open:hover { background: #186437; }
+.q-trip .q-open svg { width: 15px; height: 15px; }
+.q-trip .q-doc.add { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border: 1.5px dashed var(--q-ok-l); border-radius: 10px; background: #fff; color: var(--q-ok); font: inherit; font-size: var(--q-fs-info); font-weight: 700; cursor: pointer; white-space: nowrap; }
+.q-trip .q-doc.add svg { width: 15px; height: 15px; }
+.q-trip .q-chv { flex: none; width: 28px; height: 32px; display: grid; place-items: center; border: 0; border-radius: 8px; background: none; color: var(--q-acc); font: inherit; font-size: var(--q-fs-card); font-weight: 700; cursor: pointer; }
+.q-trip .q-chv:hover { background: var(--q-acc-s); }
+.q-trip :is(.q-gob, .q-go2, .q-pick, .q-cta, .q-open, .q-doc, .q-chv):focus-visible { outline: 3px solid #cfc7ff; outline-offset: 2px; }
+
+@keyframes q-step-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* D15: a way to read the plan that's shut (no dates, no trip order): faded, its why on hover and for a screen reader. */
+.plan-order [role="tab"][aria-disabled="true"] { opacity: .45; cursor: not-allowed; }
+
+@media (max-width: 640px) {
+  .q-step { grid-template-columns: 44px 14px minmax(0, 1fr); gap: 0 6px; }
+  .q-sdate { font-size: var(--q-fs-badge); }
+  .q-scard { flex-wrap: wrap; position: relative; padding-right: 38px; gap: 10px 12px; }
+  .q-trip .q-scard > .q-chv { position: absolute; right: 6px; top: 8px; }
+  .q-scard .q-sm { flex: 1 1 140px; }
+  .q-trip .q-scard > .q-sp { flex-basis: 100%; height: 0; }
+  .q-chap-img { width: 120px; height: 80px; }
+  .q-chap-h.city b { font-size: var(--q-fs-intent); }
+  /* The code on a line of its own under its label: its "Kopyala" (always shown on a touch screen) stays inside the card. */
+  .q-trip .q-code { display: grid; justify-items: start; gap: 0; }
+}
+
+/* ===== "Bugün" (v83 "gezi sırasında", D8, F2; src/app/hero/TodayStrip.tsx): the day in the hero's place ===== */
+.x-today { display: grid; gap: 12px; padding: 16px 18px; background: #fff; border: 1px solid var(--q-line); border-radius: 20px; min-width: 0; color: var(--q-ink); }
+.xt-h { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.xt-d { display: grid; gap: 2px; min-width: 0; }
+.xt-d b { font-size: var(--q-fs-intent); font-weight: 800; }
+.xt-d small { font-size: var(--q-fs-info); color: var(--q-mut); }
+.xt-w { display: inline-flex; align-items: center; gap: 6px; font-size: var(--q-fs-info); font-weight: 700; background: #f3f1fa; border-radius: 99px; padding: 6px 12px; white-space: nowrap; }
+.xt-wl { font-weight: 600; color: var(--q-mut); }
+.xt-go { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: var(--q-fs-info); font-weight: 700; color: var(--q-acc); border-radius: 6px; }
+.xt-go:hover { text-decoration: underline; }
+.xt-go:focus-visible { outline: 2px solid var(--q-acc); outline-offset: 3px; }
+.xt-l { list-style: none; margin: 0; padding: 0; display: grid; }
+.xt-r { display: grid; grid-template-columns: 62px 104px minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 11px 4px; border-top: 1px solid var(--q-line); min-height: 52px; animation: q-step-in 260ms var(--x-in, cubic-bezier(.2, .8, .2, 1)) both; }
+.xt-r:first-child { border-top: 0; }
+.xt-r time { font-size: var(--q-fs-button); font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.xt-r time sup { font-size: var(--q-fs-badge); font-weight: 700; color: var(--q-mut); margin-left: 2px; }
+.xt-k { font-size: var(--q-fs-small); font-weight: 700; color: var(--q-mut); }
+.xt-m { display: grid; gap: 2px; min-width: 0; }
+.xt-m b { font-size: var(--q-fs-button); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.xt-m small { font-size: var(--q-fs-info); color: var(--q-mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.xt-r.done { opacity: .55; }
+.xt-r.done time { text-decoration: line-through; }
+.xt-r.now { background: linear-gradient(90deg, #f1edff, rgba(241, 237, 255, 0)); border-radius: 12px; border-top-color: transparent; }
+.xt-r.now time { color: var(--q-acc); }
+.xt-r.now + .xt-r { border-top-color: transparent; }
+.xt-r.alert .xt-m small { color: #b54708; font-weight: 600; }
+.x-today .q-open { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 0 14px; border: 0; border-radius: 11px; background: var(--q-ok); color: #fff; font: inherit; font-size: var(--q-fs-info); font-weight: 700; cursor: pointer; white-space: nowrap; }
+.x-today .q-open:hover { background: #186437; }
+.x-today .q-alk { font-size: var(--q-fs-info); font-weight: 700; color: var(--q-ink); text-decoration: none; white-space: nowrap; }
+.x-today .q-alk:hover { color: var(--q-acc); }
+.x-today :is(.q-open, .q-alk):focus-visible { outline: 3px solid #cfc7ff; outline-offset: 2px; border-radius: 8px; }
+.xt-next { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: var(--q-fs-info); color: var(--q-mut); padding: 10px 12px; border-radius: 12px; background: #f8f7f4; }
+.xt-next b { color: var(--q-ink); }
+.xt-next svg { color: var(--q-mut); flex: none; }
+/* C4 on the strip: the day's flight as its live data says it. */
+.xt-live { display: grid; gap: 8px; padding: 12px 14px; border-radius: 14px; background: var(--q-acc-s); }
+.xt-live.alert { background: #fff4ed; }
+.xt-lvt { display: inline-flex; align-items: center; gap: 6px; font-size: var(--q-fs-info); min-width: 0; }
+.xt-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--q-ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--q-ok) 25%, transparent); animation: xt-live 1.6s ease-in-out infinite; }
+.xt-tiles { display: flex; flex-wrap: wrap; gap: 8px; }
+.xt-tile { display: grid; gap: 1px; padding: 6px 10px; border-radius: 10px; background: #fff; min-width: 0; }
+.xt-tile small { font-size: var(--q-fs-badge); color: var(--q-mut); font-weight: 700; }
+.xt-tile b { font-size: var(--q-fs-button); font-weight: 800; font-variant-numeric: tabular-nums; }
+.xt-tile b i { font-style: normal; font-size: var(--q-fs-small); font-weight: 700; }
+.xt-tile.bad b { color: #b54708; }
+.xt-tile.ok b { color: var(--q-ok); }
+.xt-shift { margin: 0; font-size: var(--q-fs-info); font-weight: 600; color: #b54708; }
+.xt-src { font-size: var(--q-fs-small); color: var(--q-mut); }
+@keyframes xt-live { 50% { box-shadow: 0 0 0 6px transparent; } }
+
+@media (max-width: 520px) {
+  .xt-r { grid-template-columns: 48px minmax(0, 1fr); grid-template-areas: "t k" "t m" "t a"; row-gap: 2px; }
+  .xt-r time { grid-area: t; align-self: start; }
+  .xt-k { grid-area: k; }
+  .xt-m { grid-area: m; }
+  .xt-r > :last-child:not(.xt-m) { grid-area: a; justify-self: start; margin-top: 4px; }
+  .xt-m b, .xt-m small { white-space: normal; }
+}
+
+/* E: everything that moves here stops for reduced motion and "Hareketi duraklat". */
+@media (prefers-reduced-motion: reduce) {
+  .q-scard, .xt-r, .xt-dot, .q-pastc { animation: none !important; transition: none !important; }
+}
+body.still .q-scard, body.still .xt-r, body.still .xt-dot, body.still .q-pastc { animation: none !important; transition: none !important; }

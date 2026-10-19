@@ -1,0 +1,120 @@
+/* v82 chat: docs/superpowers/specs/2026-10-18-v82-gecis/02-spec.md. Rules are ported from the approved prototype
+   (plan-v32-tasarim: docs/mockups/plan-v83-turler/kaynak/mk81.css, mk82.css, mk83.css) and keep its class names. */
+
+/* ===== The board's chat column (v80: clamp(300px, 26%, 400px)); app.css's 34% gives way to it on a wide screen ===== */
+@media (min-width: 861px) {
+  .board { grid-template-columns: clamp(300px, 26%, 400px) 1fr; }
+  /* The toasts sit over the Plan column, never over the chat's box (app.css "fark-toast", the new width). */
+  .toast { --chat-w: clamp(300px, 26%, 400px); }
+  /* The column reads its own width: the offers' "title | price" stacks when it is narrow (A2: 300 px). Only here: a
+     container holds its fixed children, and under 860 px the drawer is fixed to the window. */
+  .chat { container: chat / inline-size; }
+}
+/* Wide: the drawer's wrapper is no box of its own, its parts are the column's (the messages take what's left). */
+.c-sheet { display: contents; }
+.c-handle { display: none; }
+
+/* ===== Sohbet uyumu (C34, row 140): the chat in the plan's nine sizes and its purple ===== */
+.chat-title { font-size: var(--q-fs-price); }
+.chat-sub { font-size: var(--q-fs-info); }
+.messages .msg-user, .messages .msg-assistant { font-size: var(--q-fs-button); }
+.messages .chat-ref { color: var(--q-acc-d); }
+.messages .c-empty { font-size: var(--q-fs-button); line-height: 1.6; }
+.messages .choices button, .messages .choices .btn-primary, .messages .choices .btn-link { font-size: var(--q-fs-info); }
+.chat .thinking { font-size: var(--q-fs-info); }
+.chat .chat-steps { font-size: var(--q-fs-info); }
+.chat .small-btn { font-size: var(--q-fs-info); }
+.chat .ev-fold-btn { font-size: var(--q-fs-small); }
+.chat .composer input[type="text"] { font-size: var(--q-fs-button); }
+.chat .composer input[type="text"]::placeholder { font-size: var(--q-fs-info); }
+.chat-offer { font-size: var(--q-fs-info); }
+.chat-offer .co-title { font-size: var(--q-fs-button); }
+.chat-offer .co-meta, .chat-offer .co-why, .chat-offer .co-per { font-size: var(--q-fs-small); }
+.chat-offer .co-amt { font-size: var(--q-fs-card); }
+.chat-offer .co-pick { font-size: var(--q-fs-badge); }
+@container chat (max-width: 360px) {
+  .chat-offer { grid-template-columns: 1fr; }
+  .chat-offer .co-deal { justify-items: start; text-align: left; }
+}
+
+/* ===== The record a reply put on the board, as the Plan's compact card (C34; mk83.css c-card) ===== */
+.msg-assistant .c-card, .c-ev .c-card { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; grid-template-areas: "img main pr" "acts acts acts"; gap: 8px 12px; align-items: center; margin-top: 10px; padding: 10px 12px; border: 1px solid #e4dcff; border-radius: 14px; background: #fff; white-space: normal; animation: c-in 260ms var(--x-in, cubic-bezier(.2, .8, .2, 1)) both; }
+.c-ev { align-self: stretch; display: grid; gap: 0; }
+.c-ev .c-card { margin-top: 6px; }
+.c-img { grid-area: img; width: 52px; height: 52px; border-radius: 10px; overflow: hidden; background: var(--q-soft); color: var(--q-mut); display: grid; place-items: center; }
+.c-img img, .c-photo { width: 100%; height: 100%; object-fit: cover; display: block; }
+.c-main { grid-area: main; display: grid; gap: 2px; min-width: 0; }
+.c-main > b { font-size: var(--q-fs-button); font-weight: 750; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.c-main > small { font-size: var(--q-fs-small); color: var(--q-mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.c-l1 { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.c-card .q-brand { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--q-fs-badge); font-weight: 800; color: #fff; background: var(--bl, #6b6880); border-radius: 5px; padding: 2px 7px; line-height: 1.3; }
+.c-card .q-brand.plain { background: var(--q-soft); color: var(--q-mut); }
+.c-card .q-rb { flex: none; background: #003b95; color: #fff; border-radius: 6px 6px 6px 0; padding: 1px 5px; font-size: var(--q-fs-badge); }
+.c-card .q-rb.star { background: #fff; color: var(--q-ink); box-shadow: inset 0 0 0 1px var(--q-line); border-radius: 6px; }
+.c-pr { grid-area: pr; display: grid; justify-items: end; gap: 1px; }
+.c-pr b { font-size: var(--q-fs-button); font-weight: 800; font-variant-numeric: tabular-nums; }
+.c-pr small { font-size: var(--q-fs-small); color: var(--q-mut); white-space: nowrap; }
+.c-acts { grid-area: acts; display: flex; align-items: center; gap: 10px; border-top: 1px solid #f0edf8; padding-top: 8px; }
+.c-go { all: unset; cursor: pointer; font-size: var(--q-fs-info); font-weight: 700; color: var(--q-acc); border-radius: 6px; }
+.c-go:hover { text-decoration: underline; }
+.c-pick { all: unset; cursor: pointer; margin-left: auto; height: 30px; padding: 0 12px; border-radius: 9px; background: var(--q-ink); color: #fff; font-size: var(--q-fs-info); font-weight: 700; display: inline-flex; align-items: center; }
+.c-pick:hover { background: #2f2c4a; }
+.c-done { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; font-size: var(--q-fs-info); font-weight: 700; color: var(--q-ok); }
+.c-done svg { width: 13px; height: 13px; }
+
+/* ===== At most three quick replies over the box you write in (C34; mk83.css c-quick) ===== */
+.c-quick { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 20px 10px; flex: none; }
+.c-q { all: unset; cursor: pointer; height: 32px; padding: 0 13px; border-radius: 99px; border: 1px solid #e4dcff; background: #faf8ff; font-size: var(--q-fs-info); font-weight: 600; color: var(--q-acc-d); display: inline-flex; align-items: center; white-space: nowrap; animation: c-in 260ms var(--x-in, cubic-bezier(.2, .8, .2, 1)) both; }
+.c-q:hover { background: #f1edff; }
+.c-q:disabled { opacity: .5; cursor: default; }
+.c-q:focus-visible, .c-go:focus-visible, .c-pick:focus-visible, .c-lk-b:focus-visible { outline: 2px solid var(--q-acc); outline-offset: 2px; }
+
+/* ===== A link that couldn't be read (C35; z83_jp.py's dashed card): Okunamadı · Tekrar dene · Kaldır ===== */
+.c-link { align-self: stretch; display: grid; grid-template-columns: 36px minmax(0, 1fr); grid-template-areas: "ic main" "ic acts"; gap: 6px 10px; margin-top: 6px; padding: 10px 12px; border: 1.5px dashed #d6d2e4; border-radius: 14px; background: #fff; white-space: normal; animation: c-in 260ms var(--x-in, cubic-bezier(.2, .8, .2, 1)) both; }
+.c-lk-ic { grid-area: ic; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--q-soft); color: var(--q-mut); }
+.c-lk-ic .ar-favimg { width: 18px; height: 18px; }
+.c-lk-m { grid-area: main; display: grid; gap: 2px; min-width: 0; }
+.c-lk-tag { justify-self: start; font-size: var(--q-fs-badge); font-weight: 800; color: #7a4b00; background: #fff8eb; border-radius: 99px; padding: 2px 8px; box-shadow: inset 0 0 0 1px #fedf89; }
+.c-lk-m b { font-size: var(--q-fs-info); font-weight: 750; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.c-lk-m small { font-size: var(--q-fs-small); color: var(--q-mut); }
+.c-lk-a { grid-area: acts; display: flex; gap: 8px; flex-wrap: wrap; }
+.c-lk-b { all: unset; cursor: pointer; height: 30px; padding: 0 12px; border-radius: 9px; background: var(--q-ink); color: #fff; font-size: var(--q-fs-info); font-weight: 700; display: inline-flex; align-items: center; }
+.c-lk-b.quiet { background: #fff; color: var(--q-mut); box-shadow: inset 0 0 0 1px var(--q-line); }
+
+@keyframes c-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* ===== Under 860 px: the plan first, the chat a drawer from the bottom (v83 "860 px altı", A7; mk83.css) =====
+   This takes the place of app.css's 860 px rule for the chat (on top, 70vh), which is marked there. */
+@media (max-width: 860px) {
+  .board { display: block; height: auto; }
+  /* In the page's flow only its top line stays: "← Seyahatlerim". The drawer says "Asistan". */
+  section.chat { height: auto; border: 0; min-height: 0; }
+  /* Its height kept while "← Seyahatlerim" is pinned on top of the open drawer: the page doesn't jump. */
+  section.chat .chat-top { padding: 12px 16px 0; min-height: 46px; }
+  section.chat .chat-title, section.chat .chat-sub { display: none; }
+  .c-sheet { display: flex; flex-direction: column; position: fixed; left: 0; right: 0; bottom: 0; z-index: 45; max-height: 82vh; background: #fff; border-radius: 22px 22px 0 0; box-shadow: 0 -10px 30px -12px rgba(20, 16, 40, .28); overflow: hidden; }
+  section.chat:not(.open) .c-sheet > .messages, section.chat:not(.open) .c-sheet > .c-quick { display: none; }
+  section.chat.open .c-sheet { height: 82vh; }
+  section.chat.open .c-sheet > .messages { flex: 1 1 auto; min-height: 0; outline: 0; }
+  section.chat.open .c-hs { visibility: hidden; }
+  .c-handle { all: unset; box-sizing: border-box; cursor: pointer; flex: none; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 10px; padding: 16px 20px 8px; position: relative; }
+  .c-handle i { position: absolute; top: 6px; left: 50%; width: 40px; height: 4px; margin-left: -20px; border-radius: 99px; background: #d0d5dd; }
+  .c-hl { font-size: var(--q-fs-info); font-weight: 800; color: var(--q-acc-d); background: #f1edff; border-radius: 99px; padding: 6px 10px; }
+  .c-hs { font-size: var(--q-fs-small); color: var(--q-mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .c-handle:focus-visible { outline: 2px solid var(--q-acc); outline-offset: -4px; border-radius: 22px 22px 0 0; }
+  section.chat .c-sheet > .composer { flex: none; margin: 0 14px 12px; }
+  section.chat .c-sheet > .chat-banner { flex: none; margin: 0 14px 8px; }
+  .c-quick { padding: 0 14px 10px; }
+  /* The plan's end isn't under the shut drawer. */
+  main.panel { padding-bottom: 160px; }
+  /* "← Seyahatlerim" stays on top while the drawer is open. */
+  section.chat.open .trip-switch { position: fixed; top: 10px; left: 12px; z-index: 46; background: #fff; border-radius: 99px; padding: 6px 14px 6px 10px; box-shadow: 0 4px 16px rgba(20, 16, 40, .18); font-size: var(--q-fs-button); }
+  /* The toasts over the drawer's handle, not under it. */
+  .toast, .pk-undo, .ar-toast { bottom: 148px; z-index: 47; }
+}
+
+/* E: the cards and chips come in over 260 ms; nothing moves for reduced motion or "Hareketi duraklat". */
+@media (prefers-reduced-motion: reduce) {
+  .c-card, .c-q, .c-link { animation: none !important; }
+}
+body.still .c-card, body.still .c-q, body.still .c-link { animation: none !important; }
