@@ -11,6 +11,7 @@ import { lowerFirst, nDays } from "./i18nText";
 import { shortDay } from "./ideas";
 import { selfSearches, type SelfSearch, type SelfSearchAt } from "./intentFrame";
 import type { IntentVM, OptionSource, OptionVM } from "./intents";
+import { pickProviders } from "./providers";
 import { BRANDS, transferLinks } from "./searchLinks";
 import { formatDateRange, isoDate } from "./items";
 import { bagChip, type TicketCarrier, type TicketChip, type TicketEnd, type TicketMode, type TicketVM } from "./ticketView";
@@ -267,6 +268,53 @@ export function waySearches(vm: Pick<IntentVM, "kind" | "head" | "options" | "ch
   const from = placeOf(vm.ticket?.from ?? null, vm.head.city);
   const to = placeOf(vm.ticket?.to ?? null, vm.head.city);
   return transferLinks({ from, to }).map((l) => ({ id: l.brand, name: BRANDS[l.brand].name, color: BRANDS[l.brand].color, letter: BRANDS[l.brand].letter, url: l.url }));
+}
+
+/** Önerimiz on the road from an airport in another city (IntentVM.wayPicks): one way, its drawing and words, and its search. */
+export interface WayPick {
+  mode: LegMode;
+  art: string;
+  label: string;
+  /** Where it is looked up: the country's own rail site, else the map's directions; a ride's app. Null with no end to look for. */
+  site: SelfSearch | null;
+}
+
+const PICK_WORDS: Partial<Record<LegMode, () => string>> = {
+  train: () => L("Tren", "Train"),
+  taxi: () => L("Taksi ya da özel transfer", "Taxi or private transfer"),
+};
+
+/** Google Maps' directions between two places by public transport (`maps/dir/?api=1&origin&destination&travelmode=transit`). */
+function transitSearch(from: string | null, to: string | null): SelfSearch | null {
+  if (!to) return null;
+  const q = new URLSearchParams({ api: "1", ...(from ? { origin: from } : {}), destination: to, travelmode: "transit" });
+  return { id: "maps", name: L("Google Haritalar", "Google Maps"), color: BRANDS.maps.color, letter: BRANDS.maps.letter, url: `https://www.google.com/maps/dir/?${q}` };
+}
+
+/**
+ * Önerimiz's rows for an intent (only one with `wayPicks`): the train with the trip's country's own rail site when the
+ * register has one (JR in Japan), else the map's public transport directions; a taxi or a private transfer with Uber
+ * (searchLinks.transferLinks), else the map's directions. No length, hour or price: none is known (C19).
+ */
+export function wayPicks(vm: Pick<IntentVM, "wayPicks" | "ticket" | "head">, at: Pick<SelfSearchAt, "countries">): WayPick[] {
+  if (!vm.wayPicks?.length) return [];
+  const from = placeOf(vm.ticket?.from ?? null, vm.head.city);
+  const to = placeOf(vm.ticket?.to ?? null, vm.head.city);
+  const rail = pickProviders("train", { country: at.countries }).find((p) => p.countries !== "global") ?? null;
+  return vm.wayPicks.flatMap((mode): WayPick[] => {
+    const words = PICK_WORDS[mode];
+    const way = wayChoices([mode])[0];
+    if (!words || !way) return [];
+    let site: SelfSearch | null = null;
+    if (mode === "train") {
+      const url = rail?.search({ from, to }) ?? null;
+      site = rail && url ? { id: rail.id, name: rail.name(), color: rail.logo.color, letter: rail.logo.letter, url } : transitSearch(from, to);
+    } else {
+      const l = transferLinks({ from, to })[0] ?? null;
+      site = l ? { id: l.brand, name: BRANDS[l.brand].name, color: BRANDS[l.brand].color, letter: BRANDS[l.brand].letter, url: l.url } : null;
+    }
+    return [{ mode, art: way.art, label: words(), site }];
+  });
 }
 
 // --- an option row (Karar bekliyor on a flight, a train, a bus) -----------------------------------------------------

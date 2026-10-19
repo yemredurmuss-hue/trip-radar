@@ -16,7 +16,7 @@ import { delayOf, flightTiles, phaseOf, sourceText, stageOf, type FlightSeen, ty
 import { L } from "./i18n";
 import { nStops } from "./i18nText";
 import { formatDateRange, isoDate, metricsOf, nightsBetween } from "./items";
-import type { Leg } from "./legs";
+import { farEnd, type Leg } from "./legs";
 import { wayName } from "./tripShape";
 import type { Item, LegMode } from "./types";
 
@@ -244,6 +244,14 @@ export function ticketViewOf(shown: readonly Item[], ctx: TicketCtx): TicketVM {
     const end = (side: "from" | "to"): TicketEnd | null => {
       if (!ctx.leg || ctx.leg.kind === "move" || ctx.leg.kind === "change") return empty(ctx.route?.[side]);
       const e = legEnd(ctx.leg, side);
+      // The road from an airport in another city (legs.farEnd): two cities, the airport's code small ("Kolombo" · "CMB"),
+      // the stay's name small under its town.
+      const far = farEnd(ctx.leg);
+      if (far) {
+        const hubSide = (ctx.leg.kind === "arrival") === (side === "from");
+        const stay = ctx.leg[side];
+        return hubSide ? { city: far.city, place: far.code, time: e.time, plus: null, full: e.city } : { city: stay.city ?? e.city, place: stay.item?.name ?? null, time: e.time, plus: null };
+      }
       // On the ticket the hub is its one word, big ("Havalimanı"), its code and city small ("OPO · Porto"), as the design's.
       const hub = hubWord(ctx.leg, side);
       if (hub && e.city) return { city: hub, place: [e.sub, ctx.leg[side].city].filter(Boolean).join(" · ") || null, time: e.time, plus: null, full: e.city };

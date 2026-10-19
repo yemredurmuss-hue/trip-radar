@@ -200,3 +200,18 @@ body.still .q-row.z-r:hover { transform: none; }
   /* "Kendin ara" keeps the sites' marks when their names go (intent.css hides the names). */
   .q-oh .z-pl > .q-logo { display: grid; }
 }
+
+/* ---- Önerimiz on the road from an airport in another city (Kolombo → Ahangama): two usual ways over C15's tiles ---- */
+.z-wpk { display: grid; grid-auto-rows: auto; align-content: center; gap: 4px; min-width: 0; min-height: 0; }
+.z-wph { display: flex; align-items: center; gap: 8px; min-width: 0; height: 16px; font-size: var(--q-fs-small); line-height: 16px; color: var(--q-acc); }
+.z-wph > b { font-weight: 800; }
+.z-wpm { margin-left: auto; padding: 0; border: 0; background: none; font: inherit; font-size: var(--q-fs-small); font-weight: 700; color: var(--q-mut); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.z-wpm:hover { color: var(--q-acc); }
+.z-wp { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto auto; align-items: center; gap: 10px; min-width: 0; height: 36px; padding: 0 4px 0 8px; border: 1px solid var(--q-line); border-radius: 12px; background: #fff; box-sizing: border-box; }
+.z-wp > img { width: 34px; height: 26px; object-fit: contain; mix-blend-mode: multiply; }
+.z-wp > b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--q-fs-info); font-weight: 700; color: var(--q-ink); }
+.z-wps { display: inline-flex; align-items: center; gap: 5px; min-width: 0; font-size: var(--q-fs-small); font-weight: 700; color: var(--q-ink); text-decoration: none; white-space: nowrap; }
+.z-wps:hover > .z-wpn { text-decoration: underline; }
+.q-pick.z-wpt { min-height: 28px; padding: 0 12px; }
+.z-wpm:focus-visible, .z-wps:focus-visible, .q-pick.z-wpt:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 2px; }
+@media (max-width: 560px) { .z-wps > .z-wpn { display: none; } }
