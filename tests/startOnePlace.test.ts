@@ -129,3 +129,13 @@ describe("a chip's next question in the model's words", () => {
     expect(tr(() => nextPrompt({ today: TODAY, known: "x", answered: "want", label: "Doğa", next: "who" }))).toMatch(/^<start_reply>[\s\S]*<\/start_reply>$/);
   });
 });
+
+describe("Emre's second try (0.38.5): \"Bali'de 1 ay kalırız canggu da sabit sabinle bunu planla\"", () => {
+  it("'sabit' alone is one place: Canggu, all the nights, no route asked; Sabin goes too", () => {
+    const { after } = first("Bali'de 1 ay kalırız canggu da sabit sabinle bunu planla");
+    expect(after.base).toBe("Canggu");
+    expect(after.where?.place).toBe("Bali");
+    expect(wantsRouteAdvice(after)).toBe(false);
+    expect(tr(() => whoText(after.who, null))).toMatch(/Sabin/);
+  });
+});

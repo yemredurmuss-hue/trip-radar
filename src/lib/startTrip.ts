@@ -861,9 +861,9 @@ const NOT_NAMES = new Set(["ben", "biz", "sen", "o", "onlar", "partner", "aile",
 
 /**
  * One place for the whole trip said in words (0.38.5): "bir sabit yerde kalmalı", "tek yerde", "aynı yerde kalacağız",
- * "one base", "stay put".
+ * "one base", "stay put"; "sabit" alone too ("canggu da sabit", Emre's second try).
  */
-const ONE_PLACE = /(?<![\p{L}])(sabit (bir )?(yer|yerde|üs|üste)(?![\p{L}])|tek (bir )?(yer|yerde|üs|üste)(?![\p{L}])|(bir|aynı|tek) yerde kal\p{L}*|hep aynı yer|yer değiştirmeden|(one|single) (place|base|spot)(?![\p{L}])|stay put|base (ourselves )?(in|at)(?![\p{L}]))/iu;
+const ONE_PLACE = /(?<![\p{L}])(sabit(iz|lenelim|leyelim)?(?![\p{L}])|sabit (bir )?(yer|yerde|üs|üste)(?![\p{L}])|tek (bir )?(yer|yerde|üs|üste)(?![\p{L}])|(bir|aynı|tek) yerde kal\p{L}*|hep aynı yer|yer değiştirmeden|(one|single) (place|base|spot)(?![\p{L}])|stay put|base (ourselves )?(in|at)(?![\p{L}]))/iu;
 /** "Canggu'da kalacağız", "Canggu da kalalım": the town before "kal…" (taken only when it is a known town). */
 const STAY_AT = /(?<![\p{L}])(\p{L}+)(?:['’]?\s?[dt][ae])\s+kal(?:acağ|al|ır|mak|ma|ıyor|dık|ıca)\p{L}*/giu;
 /** "sadece Canggu", "only Canggu": the town after it (taken only when it is a known town). */
@@ -1282,7 +1282,7 @@ duration_days: gün olarak süre (gece söylendiyse gece + 1); "1 ay" gibi ay s�
 "Kullanıcının cevapladığı soru" verildiyse mesaj o soruyu cevaplar: "nereden" sorusuna verilen yer adı origin'dir, destination değil. Gidilecek yer bilinirken destination yalnız kullanıcı açıkça başka yere gitmek istediğini söylerse ("aslında Bali'ye gidelim") dolar.
 event: kullanıcı bir etkinliğe, festivale ya da temaya gitmek istiyorsa onun bilinen adı ("burning man africa" → "AfrikaBurn", "kuzey ışıkları" → "Kuzey Işıkları"); yoksa "". event_kind: event | theme. event_place: yapıldığı yer (destination da o olur, ör. "Tankwa Karoo"); event_country_code: ülkesinin ISO kodu. event_start / event_end: bildiğin sıradaki tarihleri (bugünden sonraki ilk) YYYY-MM-DD, bilmiyorsan "". event_dates_sure: yalnız tarihlerden kesin eminsen true.
 choice: cevaplanan soru seçenekleriyle verildiyse ("değer = etiket"), mesajın seçtiği seçeneğin değeri; cevap vermek istemiyorsa ya da hiçbirine uymuyorsa "skip"; seçenek yoksa "".
-one_place: kullanıcı gezi boyunca tek bir yerde kalmak istediğini söylüyorsa ("sabit bir yerde", "tek yer", "sadece Canggu", "Canggu'da kalacağız") o yerin adı, ek olmadan; söylemiyorsa "". Bu durumda destination gidilen ada, bölge ya da ülke kalır ("Bali"), one_place kasaba ("Canggu").`,
+one_place: kullanıcı gezi boyunca tek bir yerde kalmak istediğini söylüyorsa ("sabit bir yerde", "Canggu'da sabit", "tek yer", "sadece Canggu", "Canggu'da kalacağız") o yerin adı, ek olmadan; söylemiyorsa "". Bu durumda destination gidilen ada, bölge ya da ülke kalır ("Bali"), one_place kasaba ("Canggu").`,
     `From the user's message in a trip-planning chat, take only what is clearly said. Never invent; what isn't said stays empty ("" or 0 or []).
 destination: the place to go (a city, island, region or country), its name only; when several are said, the most specific ("Thailand, Koh Phangan" → "Koh Phangan", country Thailand), spelled correctly. destination_country: its country when known; destination_country_code: that country's ISO 3166-1 alpha-2 code ("TH").
 origin: the city they leave from. companions: solo | partner | friends | family or "". names: the people going with them (not the user).

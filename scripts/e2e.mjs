@@ -3556,6 +3556,11 @@ try {
     }
     if (prompt.includes("<start_reply>")) {
       replyPrompts.push(prompt);
+      // Lizbon's month tapped (step 20e): the day asked in the model's words, after the 6 s the old wait gave it (0.38.5).
+      if (prompt.includes("Lizbon") && prompt.includes("→ Aralık")) {
+        await new Promise((r) => setTimeout(r, 7000));
+        return route.fulfill(reply([{ text: JSON.stringify({ text: "", question: "Aralık'ta Lizbon güzel olur; ayın kaçında yola çıkmayı düşünüyorsun?" }) }]));
+      }
       return route.fulfill(reply([{ text: JSON.stringify({ text: "", question: "" }) }]));
     }
     if (prompt.includes("<route_request>")) {
@@ -4402,7 +4407,9 @@ try {
   await board.locator(".st-msg-bot", { hasText: "Lizbon'da kaç gün kalmak istersin?" }).waitFor();
   await answers.getByRole("button", { name: "1 hafta", exact: true }).click();
   await answers.getByRole("button", { name: "Aralık", exact: true }).click();
+  // The code's line at once, then the model's words in its place (a slower model too: 7 s here).
   await board.locator(".st-msg-bot", { hasText: "Lizbon'a Aralık'ta hangi gün çıkıyorsun?" }).waitFor();
+  await board.locator(".st-msg-bot", { hasText: "Aralık'ta Lizbon güzel olur; ayın kaçında yola çıkmayı düşünüyorsun?" }).waitFor({ timeout: 15000 });
   assert.deepEqual(await answers.locator(".st-chip").allInnerTexts(), ["Ayın başı", "Ortası", "Sonu"]);
   await answers.locator("input[type=date]").waitFor();
   await board.screenshot({ path: `${out}/20e-start-day.png` });

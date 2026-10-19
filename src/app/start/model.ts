@@ -21,6 +21,11 @@ export const READ_MS = 25_000;
 export const LIMIT_MS = READ_MS;
 /** The model's richer line over the code's (shown already): not waited for longer than this. */
 export const REPLY_MS = 6_000;
+/**
+ * A quick answer's next question in the model's words: the code's line is shown at once and only replaced while
+ * nothing was said since, so it may take longer (0.38.5: 6 s dropped nearly every one with a slower model).
+ */
+export const NEXT_MS = 20_000;
 /** The route proposal: given up after this (the circuit or one stop stands). */
 export const ROUTE_MS = 15_000;
 
@@ -108,8 +113,10 @@ export async function askNext(
   try {
     const llm = await getProvider();
     const [system, prompt] = withLang(a.lang, () => [nextSystem(), nextPrompt(a)]);
-    const raw = await timed((sig) => llm.generateJson(system, prompt, replySchema, [], { signal: sig, maxRetries: 0 }), REPLY_MS, signal);
-    return acceptQuestion(raw.question, a.lang);
+    const raw = await timed((sig) => llm.generateJson(system, prompt, replySchema, [], { signal: sig, maxRetries: 0 }), NEXT_MS, signal);
+    const question = acceptQuestion(raw.question, a.lang);
+    if (!question) console.info("[start] the next question not taken", raw.question);
+    return question;
   } catch (error) {
     if (!signal?.aborted) console.warn("[start] the next question", error);
     return null;
