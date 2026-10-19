@@ -838,8 +838,9 @@ function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
 
 /** What a category is told is missing (C16: a return ticket, an eSIM, insurance): an intent still to find, never booked. */
 function suggestedIntent(section: SectionId, s: Suggestion, env: Env): IntentVM {
-  // (a way of travel is named by its own words: the AI's "Sahil ulaşımı için motosiklet kiralama" is a motorbike, drawn as one)
-  const mode = section === "transport" ? modeOfText(`${s.title} ${s.why ?? ""}`) : null;
+  // (the AI's way of travel is named by its own words: "Sahil ulaşımı için motosiklet kiralama" is a motorbike, drawn as one;
+  // a rule's own title stays, "Aylık motor ya da araç kiralama" is either)
+  const mode = section === "transport" && s.source === "ai" ? modeOfText(`${s.title} ${s.why ?? ""}`) : null;
   const kind: CardKind = s.template === "esim" ? "esim" : s.template === "insurance" ? "insurance" : (mode ?? DEFAULT_KIND[section] ?? "other");
   // A rental says what it is ("Motosiklet kiralama"), the AI's longer line stays its note (Emre, 19 Ekim).
   const name = mode && RENTAL_MODES.includes(mode) ? L(`${cardKindLabel(kind)} kiralama`, `${cardKindLabel(kind)} rental`) : s.title;
