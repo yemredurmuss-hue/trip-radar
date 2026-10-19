@@ -21,7 +21,7 @@ import { journeyChapters, type StepTarget } from "../lib/journeyChapters";
 import { countedIntents, localNow, tripModeOf } from "../lib/tripPhase";
 import { timedNext, timedNextLabel, todayStrip, type TimedNext, type TodayInput } from "../lib/tripToday";
 import type { PlanTarget } from "../lib/chatCards";
-import { linksOf, momentsOf, mosaicOf, placesOfIntents } from "../lib/heroMosaic";
+import { linksOf, momentsOf, mosaicOf, offerTiles, placesOfIntents, tourNeeds } from "../lib/heroMosaic";
 import { budgetView, datesTip, docsMissing, heroCounts, heroLine } from "../lib/heroStrip";
 import { allSet, nextLabel, nextShort, nextStep, type NextIntent, type NextStep } from "../lib/nextStep";
 import { nNights } from "../lib/i18nText";
@@ -59,6 +59,7 @@ import { acceptNoteLabel, type Pref } from "../lib/preferences";
 import { acceptStyle, budgetLevel, styleChips, styleKey, stylePrompt } from "../lib/tripStyle";
 import { intentEntries } from "./IntentCard";
 import { Hero } from "./hero/Hero";
+import { useTourOffers } from "./hero/useTourOffers";
 import { HeroMini } from "./hero/HeroMini";
 import type { HeroNext } from "./hero/HeroStrip";
 import { TodayStrip, todayRowEl, useMinuteClock } from "./hero/TodayStrip";
@@ -634,6 +635,14 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   // plane. The shares, "n karar", "Sıradaki" and the first decision go by these.
   const counted = useMemo(() => countedIntents(heroIntents, { today, mode, plan, items }), [heroIntents, today, mode, plan, items]);
   const counts = useMemo(() => heroCounts(counted), [counted]);
+  // 0.38.3: the source's tours for the Etkinlik cities (the rows' own questions, answered from the source's store), with
+  // their photos: the mosaic's fourth source and the Etkinlik row's small pictures.
+  const tourAsks = useMemo(
+    () => tourNeeds(plan, heroIntents.filter((i) => i.section === "activity" && i.frame === "collection").map((i) => i.head.city), who.count || null),
+    [plan, heroIntents, who.count],
+  );
+  const tours = useTourOffers(liveSource, tourAsks);
+  const tourPlaces = useMemo(() => offerTiles(tours), [tours]);
   const mosaic = useMemo(
     () =>
       mosaicOf({
@@ -644,9 +653,11 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
         places: placesOfIntents(heroIntents, (image) => creditOf(image, trip.photoCredits)),
         // Row 14: then what was saved for the trip, the cities, the trip's moments (the start's scenes), a drawing.
         links: linksOf(items, (image) => creditOf(image, trip.photoCredits)),
+        // 0.38.3: after the cities, the source's tours for them (Viator's photos); then the moments, a drawing last.
+        offers: tourPlaces,
         moments: momentsOf(trip.cityImages, momentPhotoKeys(), (image) => creditOf(image, trip.photoCredits)),
       }),
-    [cities, places, heroIntents, items, trip.cityImages, trip.photoCredits],
+    [cities, places, heroIntents, items, tourPlaces, trip.cityImages, trip.photoCredits],
   );
   const estimated = !!range && !trip.confirmedDates && !plan.range;
   // D15: dates still the guess the start made from a month or a season say only the nights ("~ · 10 gece"); an event's
@@ -1081,6 +1092,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
             suggestions={suggestions}
             visa={facts.visa}
             visaDone={!!trip.visaDone}
+            tourPhotos={tourPlaces}
             decide={counts.open}
             order={<PlanOrder view="plan" onView={(v) => setView(v)} off={orderOff} />}
             onVisaDone={(done) => void setVisaDone(trip.id, done)}

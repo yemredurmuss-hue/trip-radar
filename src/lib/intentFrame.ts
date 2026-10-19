@@ -306,24 +306,37 @@ export function offerNeed(vm: Pick<IntentVM, "kind" | "head">, at: SelfSearchAt)
 
 // --- the closed row (K0) ----------------------------------------------------------------------------------------
 
-/** One small picture of the closed row: a record's photo, else its kind's drawing (the component draws it). */
+/** One small picture of the closed row: always a real photo (a record's, an option's, a source's tour's), never a drawing. */
 export interface RowThumb {
-  src: string | null;
+  src: string;
   kind: CardKind;
+  /** The record it is the photo of; null for a source's tour. */
   item: Item | null;
 }
 
 /**
- * At most three small pictures for a category's closed row (the chosen ones first, then each need's best option; a need
- * still to find has none), and how many more there are.
+ * At most three small pictures for a category's closed row, each a real photo (0.38.3, Emre: never the kind's drawing):
+ * what's on the plan first (a row's planned cards, the chosen one), then each need's first option that has a photo, then
+ * the connected source's tours for the category (Viator's, for Etkinlik). A record with no photo has no picture; a row
+ * with none has none at all. `more`: how many more photos there are.
  */
-export function rowThumbs(intents: readonly IntentVM[], max = 3): { thumbs: RowThumb[]; more: number } {
+export function rowThumbs(intents: readonly IntentVM[], { max = 3, tours = [] }: { max?: number; tours?: readonly { image: string | null }[] } = {}): { thumbs: RowThumb[]; more: number } {
   const all: RowThumb[] = [];
+  const add = (src: string | null, kind: CardKind, item: Item | null) => {
+    if (src && !all.some((t) => t.src === src)) all.push({ src, kind, item });
+  };
   for (const i of intents) {
     if (i.status === "skipped") continue;
-    const shown = i.planned.length ? i.planned : i.chosen ? [i.chosen] : i.options.slice(0, 1);
-    for (const o of shown) all.push({ src: o.image, kind: i.kind, item: o.item });
+    const settled = i.planned.length ? i.planned : i.chosen ? [i.chosen] : [];
+    for (const o of settled) add(o.image, i.kind, o.item);
+    // A need still open shows its first option that has a photo; a settled one only its own (never another's photo).
+    if (!settled.length) {
+      const option = i.options.find((o) => o.image);
+      if (option) add(option.image, i.kind, option.item);
+    }
   }
+  const kind = intents[0]?.kind ?? "activity";
+  for (const t of tours) add(t.image, kind, null);
   return { thumbs: all.slice(0, max), more: Math.max(0, all.length - max) };
 }
 
