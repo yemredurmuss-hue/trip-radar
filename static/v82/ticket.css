@@ -169,13 +169,16 @@ body.still .q-row.z-r:hover { transform: none; }
 @media (max-width: 640px) {
   .z-tk { grid-template-columns: minmax(0, 1fr); padding-left: 12px; gap: 12px; }
   .z-tk > .z-ib { right: 10px; }
-  .z-tm { grid-template-rows: auto auto auto; padding-right: 28px; gap: 10px; }
+  .z-tm { grid-template-rows: auto auto auto; padding-right: 0; gap: 10px; }
   .z-tm > .z-l3 { flex-wrap: wrap; overflow: visible; }
-  .z-car { white-space: normal; }
+  /* (the ⓘ sits at the carrier line's end; the route has the frame's whole width) */
+  .z-car { white-space: normal; padding-right: 28px; }
+  /* Nothing of an end is cut on a phone: its code and hour go under one another when they don't fit. */
+  .q-tm.q-city small { white-space: normal; font-size: var(--q-fs-small); }
   .z-cn { flex-wrap: wrap; }
   .q-tm.q-city b { font-size: 18px; }
   .q-tm.q-city small strong { font-size: var(--q-fs-info); }
-  .z-route { gap: 6px; grid-template-columns: minmax(0, 1fr) minmax(60px, .6fr) minmax(0, 1fr); }
+  .z-route { gap: 6px; grid-template-columns: minmax(0, 1fr) minmax(62px, .6fr) minmax(0, 1fr); }
   .q-mid.big i img { max-width: 44px; height: 28px; }
   .q-mid.big i::before { right: calc(50% + 24px); }
   .q-mid.big i::after { left: calc(50% + 24px); }
