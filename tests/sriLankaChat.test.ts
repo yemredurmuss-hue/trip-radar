@@ -7,6 +7,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { replacedPlaceholders, sendMessage, stayAtExit, systemPrompt, tripState } from "../src/lib/assistant";
 import { db, listItems } from "../src/lib/db";
+import { runStep, stepsFor } from "../src/lib/startCreate";
 import { setLang, withLang } from "../src/lib/i18n";
 import { anthropicProvider } from "../src/lib/llm/anthropic";
 import { plannedItem, type PlannedInput } from "../src/lib/planned";
@@ -201,6 +202,32 @@ describe("the route typed and the trip's name (items 3, 4)", () => {
     expect(c.title).toBe("Sri Lanka Gezisi");
     expect(c.stays.map((x) => x.city)).toEqual(["Ahangama"]);
     expect(c.travel.map((x) => `${x.from}→${x.to}`)).toEqual(["Bodrum→Kolombo", "Kolombo→Bodrum"]);
+  });
+
+  it("one line naming both ('Tayland Kohphandan'), read by the code then by the model as StartChat does: Koh Phangan Gezisi, made with that title", async () => {
+    const line = "Sabine ile beraber Tayland Kohphandan 1 ay 10 ocak civarları gitmeyi düşünüyorum";
+    const model = raw({ destination: "Koh Phangan", destination_country: "Tayland", destination_country_code: "TH", names: ["Sabine"], start_date: "2027-01-10", duration_months: 1 });
+    const s0 = withTypedLang(newStart(`kp-${Math.random()}`, "plan", 1), line);
+    const q = nextQuestion(s0);
+    const asked = { ...s0, messages: [...s0.messages, { role: "user" as const, text: line, at: 2 }] };
+    const made = withLang("tr", () => {
+      const code = parseStartText(line, TODAY, q);
+      // The code's reading committed at once, then the model's merged reading applied over it (StartChat.tsx).
+      const first = applyText(asked, line, code, 2, q);
+      const second = applyText(first.understood ? first.state : asked, line, mergeExtracted(code, acceptExtraction(model, TODAY)), 3, q);
+      return second.state;
+    });
+    expect(made.where).toMatchObject({ place: "Koh Phangan", code: "TH" });
+    expect(made.where?.within).toBeUndefined();
+    const s = { ...made, from: "İstanbul" };
+    const c = withLang("tr", () => creationOf(s))!;
+    expect(c.title).toBe("Koh Phangan Gezisi");
+    // "Oluştur": the trip the board opens has the title the generating screen says.
+    for (const step of stepsFor(s, c)) {
+      const { tripId } = await runStep(step.id, s, { provider: "gemini" });
+      if (step.id === "trip") s.tripId = tripId;
+    }
+    expect((await (await db()).get("trips", s.tripId!))!.title).toBe("Koh Phangan Gezisi");
   });
 
   it("a stop with no airport of its own flies to the country's (Sri Lanka → Kolombo), never to the stop's name", () => {
