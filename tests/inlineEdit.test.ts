@@ -2,7 +2,7 @@
 import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
 import { db, listMessages } from "../src/lib/db";
-import { editableFields, editField, fieldInput, firstField, fieldPlaceholder, fieldValue, dropDraft, keepDraftFor, nextField, resumeDraft, saveCardField, saveField } from "../src/lib/inlineEdit";
+import { drawnFields, editableFields, editField, NAME_IN_PLACE, fieldInput, firstField, fieldPlaceholder, fieldValue, dropDraft, keepDraftFor, nextField, resumeDraft, saveCardField, saveField } from "../src/lib/inlineEdit";
 import { plannedItem, type PlannedInput } from "../src/lib/planned";
 import { quickItem, TEMPLATES, type TemplateId } from "../src/lib/templates";
 import { makeItem } from "./fixtures/makeItem";
@@ -14,6 +14,25 @@ const ok = (r: ReturnType<typeof editField>) => {
   if (r == null || typeof r === "string") throw new Error(`no record: ${r}`);
   return r;
 };
+
+describe("0.39.0: a name isn't drawn for editing where it stands (the chat corrects it)", () => {
+  it("drops the name from a card's drawn fields, so no pencil and no Tab onto it", () => {
+    expect(NAME_IN_PLACE).toBe(false);
+    expect(drawnFields(editableFields(quick("hotel")), null)).toEqual(["city", "date", "end", "price"]);
+    expect(drawnFields(editableFields(quick("activity")), "price")).toEqual(["city", "date", "time", "price"]);
+    // A record with only its name on that face (a tile, a chore): nothing to edit.
+    expect(drawnFields(["name"], null)).toEqual([]);
+    expect(nextField(drawnFields(editableFields(quick("hotel")), "city"), "city", true)).toBeNull();
+  });
+  it("keeps it for a card just added from the sheet, which opens on its name", () => {
+    const hotel = quick("hotel");
+    expect(firstField(hotel)).toBe("name");
+    expect(drawnFields(editableFields(hotel), "name")).toEqual(["name", "city", "date", "end", "price"]);
+  });
+  it("a ticket's ends stay editable (no name there)", () => {
+    expect(drawnFields(editableFields(quick("bus")), null)).toEqual(["from", "to", "date", "time", "price"]);
+  });
+});
 
 describe("which fields a card offers, in Tab order", () => {
   it("by kind: a trip, a rental, a stay, a restaurant or an activity, the rest", () => {
