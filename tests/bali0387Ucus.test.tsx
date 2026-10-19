@@ -22,6 +22,7 @@ import { buildPlan, flightNeeds } from "../src/lib/plan";
 import { runStep, stepsFor } from "../src/lib/startCreate";
 import { applyAnswer, applyText, creationOf, isPlaceholder, newStart, parseStartText, type StartState } from "../src/lib/startTrip";
 import { carrierMark } from "../src/lib/ticketFrame";
+import { shiftTrip } from "../src/lib/shiftTrip";
 import { buildTimeline } from "../src/lib/timeline";
 import type { Item, Trip } from "../src/lib/types";
 
@@ -158,5 +159,23 @@ describe("Emre's Bali: one flight out, the offers its options", () => {
     const needs = flightNeeds(byNeed([first, second, late]));
     expect(needs.map((n) => n.items.map((i) => i.id))).toEqual([["b1"], ["b2", "o3"]]);
     expect(new Set(needs.map((n) => n.key)).size).toBe(2);
+  });
+
+  it("moved by the chat's own shift (shiftTrip, 0.38.7), then three offers: one flight out, one back, no Bodrum → Bodrum", async () => {
+    const made = await create();
+    const dates = { start: "2026-12-10", end: "2027-01-10" };
+    const shift = shiftTrip(made, await listItems(made.id), dates);
+    const trip: Trip = {
+      ...made, confirmedDates: dates,
+      startGuide: made.startGuide?.placeholders ? { ...made.startGuide, placeholders: { ...made.startGuide.placeholders, ...shift.prints } } : made.startGuide,
+    };
+    await (await db()).put("trips", trip);
+    for (const i of shift.moved) await (await db()).put("items", i);
+    const { tk, ist, qr } = await addThree(trip);
+    const r = flights(trip, await listItems(trip.id));
+    expect(r.out).toHaveLength(1);
+    expect(r.out[0].options.map((o) => o.id).sort()).toEqual([tk.id, ist.id, qr.id].sort());
+    expect(r.intents.map((i) => i.head.name)).not.toContainEqual(expect.stringMatching(/Bodrum\s*→\s*Bodrum/));
+    expect(r.intents).toHaveLength(2);
   });
 });
