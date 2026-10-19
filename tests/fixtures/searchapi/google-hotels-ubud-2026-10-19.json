@@ -1,0 +1,697 @@
+{
+ "search_parameters": {
+  "engine": "google_hotels",
+  "q": "Ubud, Indonesia hotels",
+  "check_in_date": "2026-11-12",
+  "check_out_date": "2026-11-16",
+  "currency": "EUR",
+  "hl": "tr",
+  "gl": "us",
+  "adults": 2,
+  "property_type": "hotel"
+ },
+ "properties": [
+  {
+   "type": "hotel",
+   "property_token": "ChgI56yqtNfw86kxGgwvZy8xMXpicXFianMQAQ",
+   "data_id": "0x2dd23d6c35a395c7:0x3153cf85768a9667",
+   "name": "Alaya Resort Ubud",
+   "link": "https://alayahotels.com/alaya-resort-ubud/?utm_source=GMB&utm_medium=displaylink&utm_campaign=profile&utm_id=ARU",
+   "gps_coordinates": {
+    "latitude": -8.518769700000002,
+    "longitude": 115.263528
+   },
+   "city": "Ubud",
+   "country": "ID",
+   "check_in_time": "15:00",
+   "check_out_time": "12:00",
+   "price_per_night": {
+    "price": "€113",
+    "extracted_price": 113,
+    "price_before_taxes": "€94",
+    "extracted_price_before_taxes": 94
+   },
+   "total_price": {
+    "price": "€453",
+    "extracted_price": 453,
+    "price_before_taxes": "€375",
+    "extracted_price_before_taxes": 375
+   },
+   "nearby_places": [
+    {
+     "name": "Agung Rai Museum of Art",
+     "transportations": [
+      {
+       "type": "Walking",
+       "duration": "7 dk."
+      }
+     ]
+    },
+    {
+     "name": "Gianyar Jalan Raya Pengosekan Ubud",
+     "transportations": [
+      {
+       "type": "Walking",
+       "duration": "1 dk."
+      }
+     ]
+    },
+    {
+     "name": "Ngurah Rai Uluslararası Havaalanı",
+     "transportations": [
+      {
+       "type": "Taxi",
+       "duration": "1 sa. 9 dk."
+      },
+      {
+       "type": "Public Transport",
+       "duration": "2 sa. 11 dk."
+      }
+     ]
+    },
+    {
+     "name": "Citrus Berry Ubud",
+     "transportations": [
+      {
+       "type": "Walking",
+       "duration": "2 dk."
+      }
+     ]
+    }
+   ],
+   "hotel_class": "5 yıldızlı otel",
+   "extracted_hotel_class": 5,
+   "rating": 4.7,
+   "reviews": 4102,
+   "reviews_histogram": {
+    "1": 62,
+    "2": 43,
+    "3": 114,
+    "4": 522,
+    "5": 3361
+   },
+   "location_rating": 4.7,
+   "proximity_to_things_to_do_rating": 4.9,
+   "proximity_to_transit_rating": 4.8,
+   "airport_access_rating": 2.4,
+   "reviews_breakdown": [
+    {
+     "name": "Sağlıklı Yaşam",
+     "description": "Wellness",
+     "total": 179,
+     "positive": 165,
+     "neutral": 11,
+     "negative": 3
+    },
+    {
+     "name": "Spa",
+     "description": "Spa",
+     "total": 145,
+     "positive": 136,
+     "neutral": 6,
+     "negative": 3
+    },
+    {
+     "name": "Hizmet",
+     "description": "Service",
+     "total": 705,
+     "positive": 667,
+     "neutral": 10,
+     "negative": 28
+    },
+    {
+     "name": "Mülk",
+     "description": "Property",
+     "total": 621,
+     "positive": 570,
+     "neutral": 21,
+     "negative": 30
+    },
+    {
+     "name": "Dining",
+     "description": "Food and Beverage",
+     "total": 158,
+     "positive": 130,
+     "neutral": 8,
+     "negative": 20
+    },
+    {
+     "name": "Konum",
+     "description": "Location",
+     "total": 423,
+     "positive": 384,
+     "neutral": 28,
+     "negative": 11
+    }
+   ],
+   "amenities": [
+    "Breakfast",
+    "Free Wi‑Fi",
+    "Free parking",
+    "Outdoor pool",
+    "Hot tub"
+   ],
+   "images": [
+    {
+     "thumbnail": "https://lh3.googleusercontent.com/grass-cs/AABkmLdrw10y7N9s19TrZsszWr-xSrdox1DPUD7oWTYcfLmV-HIKUjZxHkfmCOxLQgI74QecOLHkuEKd98uiC-TravssHczoGPb6Oy6pr-7mBocwl2dEr-L5ahlU_2Prmm4e4g1fNWNj=s287-w287-h192-n-k-no-v1",
+     "original": "https://lh3.googleusercontent.com/grass-cs/AABkmLdrw10y7N9s19TrZsszWr-xSrdox1DPUD7oWTYcfLmV-HIKUjZxHkfmCOxLQgI74QecOLHkuEKd98uiC-TravssHczoGPb6Oy6pr-7mBocwl2dEr-L5ahlU_2Prmm4e4g1fNWNj=s10000"
+    },
+    {
+     "thumbnail": "https://lh3.googleusercontent.com/grass-cs/AABkmLf-DZD5fW9KBoJNdtIrAEwlY83PIiTaqMNjH28UIoMfWLuUZ0QDyJd3lVnJZjHr9HVJZdJSyvn_LaR4mBu9yUWPkzQGhgw9s9qoTDPJw-pqKcd4j2dfpvzm1Nph8GQDZWQA_Yw_zwIKjUU=s287-w287-h192-n-k-no-v1",
+     "original": "https://lh3.googleusercontent.com/grass-cs/AABkmLf-DZD5fW9KBoJNdtIrAEwlY83PIiTaqMNjH28UIoMfWLuUZ0QDyJd3lVnJZjHr9HVJZdJSyvn_LaR4mBu9yUWPkzQGhgw9s9qoTDPJw-pqKcd4j2dfpvzm1Nph8GQDZWQA_Yw_zwIKjUU=s10000"
+    }
+   ]
+  },
+  {
+   "type": "hotel",
+   "property_token": "ChkIjJ2ht8Gcu_h5Gg0vZy8xMWM1cnRwc3lmEAE",
+   "data_id": "0x2dd23d4c975f6299:0x79f0ece416e84e8c",
+   "name": "The Udaya Resorts & Spa",
+   "link": "http://theudayaresort.com/",
+   "gps_coordinates": {
+    "latitude": -8.4863584,
+    "longitude": 115.2667323
+   },
+   "city": "Ubud",
+   "country": "ID",
+   "price_per_night": {
+    "price": "€130",
+    "extracted_price": 130,
+    "price_before_taxes": "€107",
+    "extracted_price_before_taxes": 107
+   },
+   "total_price": {
+    "price": "€519",
+    "extracted_price": 519,
+    "price_before_taxes": "€429",
+    "extracted_price_before_taxes": 429
+   },
+   "nearby_places": [
+    {
+     "name": "Ubud Art Market",
+     "transportations": [
+      {
+       "type": "Taxi",
+       "duration": "7 dk."
+      }
+     ]
+    },
+    {
+     "name": "Ngurah Rai Uluslararası Havaalanı",
+     "transportations": [
+      {
+       "type": "Taxi",
+       "duration": "1 sa. 20 dk."
+      }
+     ]
+    },
+    {
+     "name": "Laddu Restaurant",
+     "transportations": [
+      {
+       "type": "Walking",
+       "duration": "9 dk."
+      }
+     ]
+    }
+   ],
+   "hotel_class": "4 yıldızlı otel",
+   "extracted_hotel_class": 4,
+   "rating": 4.8,
+   "reviews": 1407,
+   "reviews_histogram": {
+    "1": 26,
+    "2": 13,
+    "3": 30,
+    "4": 119,
+    "5": 1219
+   },
+   "location_rating": 3.8,
+   "proximity_to_things_to_do_rating": 4.5,
+   "airport_access_rating": 2.1,
+   "reviews_breakdown": [
+    {
+     "name": "Sağlıklı Yaşam",
+     "description": "Wellness",
+     "total": 175,
+     "positive": 159,
+     "neutral": 11,
+     "negative": 5
+    },
+    {
+     "name": "Spa",
+     "description": "Spa",
+     "total": 153,
+     "positive": 138,
+     "neutral": 10,
+     "negative": 5
+    },
+    {
+     "name": "Çiftler",
+     "description": "Couple friendly",
+     "total": 70,
+     "positive": 61,
+     "neutral": 5,
+     "negative": 4
+    },
+    {
+     "name": "Fitness",
+     "description": "Fitness",
+     "total": 143,
+     "positive": 117,
+     "neutral": 12,
+     "negative": 14
+    },
+    {
+     "name": "Hizmet",
+     "description": "Service",
+     "total": 371,
+     "positive": 350,
+     "neutral": 8,
+     "negative": 13
+    },
+    {
+     "name": "Dining",
+     "description": "Food and Beverage",
+     "total": 114,
+     "positive": 101,
+     "neutral": 7,
+     "negative": 6
+    }
+   ],
+   "amenities": [
+    "Breakfast",
+    "Free Wi‑Fi",
+    "Free parking",
+    "Outdoor pool",
+    "Hot tub"
+   ],
+   "images": [
+    {
+     "thumbnail": "https://lh3.googleusercontent.com/grass-proxy/AIM7gW29T_-DaYdbetSCfWxA7v4QpnSMN60weHzwUXDFDU2VEe4AqUr_TbhGNh7SBIXQP4ynqkD7Uui9Tm_q5ae0ntPZJHOM9T4RVEPA89VGRgnS88cIq-VY5_hm6eboLUGiDR9Fo7WOR-U41RJjM1rBRiV3Jl4yS3rF_zQcBMQKTS_1nju3C9EG5-J1-w=s287-w287-h192-n-k-no-v1",
+     "original": "https://photos.hotelbeds.com/giata/original/61/614920/614920a_hb_p_009.jpg"
+    },
+    {
+     "thumbnail": "https://lh3.googleusercontent.com/grass-proxy/AIM7gW1_Za9xyoopdUnuDJIPotrw498-k5qB3IealUHvj007KQR8sTKGuE8fEun0oERIZl_Gm8HgXTIMH-0goLQp-b28dWYwfdNq-qVll14RlLDwZtnyvxM1MOL9MDqmwjHY6dRwQapRajgSbYQVNQ98wYWk0XqWg-s9Kls7Aybet1VWjGjQ8nAUuEEP=s287-w287-h192-n-k-no-v1",
+     "original": "https://photos.hotelbeds.com/giata/original/61/614920/614920a_hb_f_009.jpg"
+    }
+   ]
+  },
+  {
+   "type": "hotel",
+   "property_token": "ChkIxoi78crX_uoPGg0vZy8xMWJ6X19ubXE3EAE",
+   "data_id": "0x2dd23d4bb923195d:0xfd5fabcae2ec446",
+   "name": "Visesa Ubud Resort",
+   "link": "https://visesaubud.com/",
+   "gps_coordinates": {
+    "latitude": -8.4901777,
+    "longitude": 115.2627411
+   },
+   "city": "Ubud",
+   "country": "ID",
+   "check_out_time": "12:00",
+   "price_per_night": {
+    "price": "€90",
+    "extracted_price": 90,
+    "price_before_taxes": "€74",
+    "extracted_price_before_taxes": 74
+   },
+   "total_price": {
+    "price": "€359",
+    "extracted_price": 359,
+    "price_before_taxes": "€297",
+    "extracted_price_before_taxes": 297
+   },
+   "nearby_places": [
+    {
+     "name": "Ubud Art Market",
+     "transportations": [
+      {
+       "type": "Taxi",
+       "duration": "8 dk."
+      }
+     ]
+    },
+    {
+     "name": "Ngurah Rai Uluslararası Havaalanı",
+     "transportations": [
+      {
+       "type": "Taxi",
+       "duration": "1 sa. 21 dk."
+      },
+      {
+       "type": "Public Transport",
+       "duration": "2 sa. 32 dk."
+      }
+     ]
+    },
+    {
+     "name": "Lumbung Restaurant",
+     "transportations": [
+      {
+       "type": "Walking",
+       "duration": "2 dk."
+      }
+     ]
+    }
+   ],
+   "hotel_class": "5 yıldızlı otel",
+   "extracted_hotel_class": 5,
+   "rating": 4.6,
+   "reviews": 2164,
+   "reviews_histogram": {
+    "1": 64,
+    "2": 33,
+    "3": 78,
+    "4": 318,
+    "5": 1671
+   },
+   "location_rating": 3.9,
+   "proximity_to_things_to_do_rating": 4.6,
+   "airport_access_rating": 2.1,
+   "reviews_breakdown": [
+    {
+     "name": "Doğa",
+     "description": "Nature and outdoor activities",
+     "total": 59,
+     "positive": 56,
+     "neutral": 1,
+     "negative": 2
+    },
+    {
+     "name": "Fitness",
+     "description": "Fitness",
+     "total": 111,
+     "positive": 86,
+     "neutral": 11,
+     "negative": 14
+    },
+    {
+     "name": "Dining",
+     "description": "Food and Beverage",
+     "total": 90,
+     "positive": 69,
+     "neutral": 6,
+     "negative": 15
+    },
+    {
+     "name": "Hizmet",
+     "description": "Service",
+     "total": 274,
+     "positive": 245,
+     "neutral": 9,
+     "negative": 20
+    },
+    {
+     "name": "Mülk",
+     "description": "Property",
+     "total": 326,
+     "positive": 288,
+     "neutral": 17,
+     "negative": 21
+    },
+    {
+     "name": "Toplu Taşıma",
+     "description": "Public transit",
+     "total": 43,
+     "positive": 26,
+     "neutral": 7,
+     "negative": 10
+    }
+   ],
+   "amenities": [
+    "Free breakfast",
+    "Free Wi‑Fi",
+    "Free parking",
+    "Outdoor pool",
+    "Air conditioning"
+   ],
+   "images": [
+    {
+     "thumbnail": "https://lh3.googleusercontent.com/grass-cs/AABkmLfbxD7yr751PeGFhBA-O7EdlJ6w_vqXcmKuWr6fipdJj6LG7498Qb7PsyqweiDQ8t3yGqJjq9M0MWyAjfhPRYsxbiNQ3wSivYEDiTot5F6UA02WGH4NjdTvQvijO_ZsiBHdiKqa=s287-w287-h192-n-k-no-v1",
+     "original": "https://lh3.googleusercontent.com/grass-cs/AABkmLfbxD7yr751PeGFhBA-O7EdlJ6w_vqXcmKuWr6fipdJj6LG7498Qb7PsyqweiDQ8t3yGqJjq9M0MWyAjfhPRYsxbiNQ3wSivYEDiTot5F6UA02WGH4NjdTvQvijO_ZsiBHdiKqa=s10000"
+    },
+    {
+     "thumbnail": "https://lh3.googleusercontent.com/grass-cs/AABkmLdpfMyEgey-FFL6oRV6kGTHs9nF8juWhdpf-zGTcWls8hv9gvyiaOjBwGNDwbdCi1dSn2H3aWYZsnSL903T50IoWT8nOXBGgKKvtvnkqQ4d-f16zhAZ5m2g8-U_GdSLPFtWTAnmTg=s287-w287-h192-n-k-no-v1",
+     "original": "https://lh3.googleusercontent.com/grass-cs/AABkmLdpfMyEgey-FFL6oRV6kGTHs9nF8juWhdpf-zGTcWls8hv9gvyiaOjBwGNDwbdCi1dSn2H3aWYZsnSL903T50IoWT8nOXBGgKKvtvnkqQ4d-f16zhAZ5m2g8-U_GdSLPFtWTAnmTg=s10000"
+    }
+   ]
+  },
+  {
+   "type": "hotel",
+   "property_token": "ChoIouT-zeK3sun6ARoNL2cvMTFjNTEzejBsdBAB",
+   "data_id": "0x2dd23d4e4c956acf:0xfad2c9be29bfb222",
+   "name": "Calma Ubud Suite & Villas",
+   "link": "http://www.calmaubud.com/",
+   "gps_coordinates": {
+    "latitude": -8.486875,
+    "longitude": 115.2702713
+   },
+   "city": "Ubud",
+   "country": "ID",
+   "check_in_time": "14:00",
+   "check_out_time": "12:00",
+   "price_per_night": {
+    "price": "€46",
+    "extracted_price": 46,
+    "price_before_taxes": "€42",
+    "extracted_price_before_taxes": 42
+   },
+   "total_price": {
+    "price": "€186",
+    "extracted_price": 186,
+    "price_before_taxes": "€170",
+    "extracted_price_before_taxes": 170
+   },
+   "nearby_places": [
+    {
+     "name": "Ngurah Rai Uluslararası Havaalanı",
+     "transportations": [
+      {
+       "type": "Taxi",
+       "duration": "1 sa. 19 dk."
+      }
+     ]
+    },
+    {
+     "name": "Lumbung Restaurant"
+    }
+   ],
+   "hotel_class": "4 yıldızlı otel",
+   "extracted_hotel_class": 4,
+   "rating": 4.6,
+   "reviews": 354,
+   "reviews_histogram": {
+    "1": 10,
+    "2": 8,
+    "3": 12,
+    "4": 41,
+    "5": 283
+   },
+   "location_rating": 3.4,
+   "proximity_to_things_to_do_rating": 4.5,
+   "airport_access_rating": 2.2,
+   "reviews_breakdown": [
+    {
+     "name": "Fitness",
+     "description": "Fitness",
+     "total": 31,
+     "positive": 27,
+     "neutral": 1,
+     "negative": 3
+    },
+    {
+     "name": "Dining",
+     "description": "Food and Beverage",
+     "total": 19,
+     "positive": 19,
+     "neutral": 0,
+     "negative": 0
+    },
+    {
+     "name": "Sağlıklı Yaşam",
+     "description": "Wellness",
+     "total": 9,
+     "positive": 7,
+     "neutral": 0,
+     "negative": 2
+    },
+    {
+     "name": "Spa",
+     "description": "Spa",
+     "total": 8,
+     "positive": 7,
+     "neutral": 0,
+     "negative": 1
+    },
+    {
+     "name": "Havuz",
+     "description": "Pool",
+     "total": 20,
+     "positive": 19,
+     "neutral": 0,
+     "negative": 1
+    },
+    {
+     "name": "Mülk",
+     "description": "Property",
+     "total": 50,
+     "positive": 41,
+     "neutral": 4,
+     "negative": 5
+    }
+   ],
+   "amenities": [
+    "Breakfast",
+    "Free Wi‑Fi",
+    "Free parking",
+    "Outdoor pool",
+    "Air conditioning"
+   ],
+   "images": [
+    {
+     "thumbnail": "https://lh3.googleusercontent.com/grass-cs/AABkmLetDaovUjyNGdq_yKQ4H2xaAl0YnJrgzf-kceV7eyBuCxRMCvtyQsc9aJptUOj7a_AVwkT7vQvFHVTVkYV2nCWCoZbOQwH5quIMzqsYntracZHGuH_sIXNcq-GqE1FjkEiUJU7Y=s287-w287-h192-n-k-no-v1",
+     "original": "https://lh3.googleusercontent.com/grass-cs/AABkmLetDaovUjyNGdq_yKQ4H2xaAl0YnJrgzf-kceV7eyBuCxRMCvtyQsc9aJptUOj7a_AVwkT7vQvFHVTVkYV2nCWCoZbOQwH5quIMzqsYntracZHGuH_sIXNcq-GqE1FjkEiUJU7Y=s10000"
+    },
+    {
+     "thumbnail": "https://lh3.googleusercontent.com/grass-proxy/AIM7gW3ueVgpUoUE4EORQrwqcV6pB21MjDzMhHYbavDOQP-ZNkThdalxAeOpEpPlCW1tCTJIjMVh_906PaH5kmzvJ37qHnOK6S-I5fVlJfML7kihpLnNt3A8FHB-MMk3RrEvxRaW7pTVGXOTMg1k0wEcfmoK0YFAvecmFJg0h2MAb6d_P_n8OpwJm264=s287-w287-h192-n-k-no-v1",
+     "original": "https://photos.hotelbeds.com/giata/original/68/681127/681127a_hb_ro_003_20250423_133905.jpg"
+    }
+   ]
+  },
+  {
+   "type": "hotel",
+   "property_token": "ChkIoPj1jqHyvKg4Gg0vZy8xMWNqa3FiOF9nEAE",
+   "data_id": "0x2dd23d13121682b9:0x3850f39211dd7c20",
+   "name": "Goya Boutique Resort",
+   "link": "http://www.goyaboutiqueresorts.com/",
+   "gps_coordinates": {
+    "latitude": -8.51202,
+    "longitude": 115.2581302
+   },
+   "city": "Ubud",
+   "country": "ID",
+   "price_per_night": {
+    "price": "€141",
+    "extracted_price": 141,
+    "price_before_taxes": "€128",
+    "extracted_price_before_taxes": 128
+   },
+   "total_price": {
+    "price": "€565",
+    "extracted_price": 565,
+    "price_before_taxes": "€514",
+    "extracted_price_before_taxes": 514
+   },
+   "nearby_places": [
+    {
+     "name": "Gianyar Jl. Bisma",
+     "transportations": [
+      {
+       "type": "Walking",
+       "duration": "2 dk."
+      }
+     ]
+    },
+    {
+     "name": "Ngurah Rai Uluslararası Havaalanı",
+     "transportations": [
+      {
+       "type": "Taxi",
+       "duration": "1 sa. 21 dk."
+      },
+      {
+       "type": "Public Transport",
+       "duration": "2 sa. 14 dk."
+      }
+     ]
+    },
+    {
+     "name": "Warung Pondok Madu"
+    }
+   ],
+   "hotel_class": "5 yıldızlı otel",
+   "extracted_hotel_class": 5,
+   "rating": 4.7,
+   "reviews": 866,
+   "reviews_histogram": {
+    "1": 23,
+    "2": 9,
+    "3": 20,
+    "4": 84,
+    "5": 730
+   },
+   "location_rating": 4.5,
+   "proximity_to_things_to_do_rating": 4.9,
+   "proximity_to_transit_rating": 4.7,
+   "airport_access_rating": 2.1,
+   "reviews_breakdown": [
+    {
+     "name": "Fitness",
+     "description": "Fitness",
+     "total": 116,
+     "positive": 106,
+     "neutral": 7,
+     "negative": 3
+    },
+    {
+     "name": "Havuz",
+     "description": "Pool",
+     "total": 86,
+     "positive": 79,
+     "neutral": 3,
+     "negative": 4
+    },
+    {
+     "name": "Sağlıklı Yaşam",
+     "description": "Wellness",
+     "total": 25,
+     "positive": 24,
+     "neutral": 1,
+     "negative": 0
+    },
+    {
+     "name": "Hizmet",
+     "description": "Service",
+     "total": 174,
+     "positive": 166,
+     "neutral": 1,
+     "negative": 7
+    },
+    {
+     "name": "Mülk",
+     "description": "Property",
+     "total": 176,
+     "positive": 170,
+     "neutral": 0,
+     "negative": 6
+    },
+    {
+     "name": "Dining",
+     "description": "Food and Beverage",
+     "total": 46,
+     "positive": 40,
+     "neutral": 2,
+     "negative": 4
+    }
+   ],
+   "amenities": [
+    "Free breakfast",
+    "Free Wi‑Fi",
+    "Free parking",
+    "Outdoor pool",
+    "Hot tub"
+   ],
+   "images": [
+    {
+     "thumbnail": "https://lh3.googleusercontent.com/grass-cs/AABkmLdQ-EFAO5opuInR-Ikx6TaAuoOB4O9x7fftZh7GUjHAKj9gdp6J48nad3C2OmD4mcOno-dUW-ToMtwahy6Uh83UIqt28ZeQOUnbzAJcD3PQTyF8GvzdZLnU0H_Qbg5ZPfazzWChvdDF1jS-=s287-w287-h192-n-k-no-v1",
+     "original": "https://lh3.googleusercontent.com/grass-cs/AABkmLdQ-EFAO5opuInR-Ikx6TaAuoOB4O9x7fftZh7GUjHAKj9gdp6J48nad3C2OmD4mcOno-dUW-ToMtwahy6Uh83UIqt28ZeQOUnbzAJcD3PQTyF8GvzdZLnU0H_Qbg5ZPfazzWChvdDF1jS-=s10000"
+    },
+    {
+     "thumbnail": "https://lh3.googleusercontent.com/grass-cs/AABkmLcDFz3tXJg5wckwn9YjR7tqs9GfOPxxGjyJT_q6xUq43v_LE4u0jkWdiuAwog-syWVCc-xGtZzf4mPooFdnIVZw75VzRHWfXh19JTAE6q03FMYn5_ODk8SY1WrVTJ8vwNWHkl3aD_pXyp8-=s287-w287-h192-n-k-no-v1",
+     "original": "https://lh3.googleusercontent.com/grass-cs/AABkmLcDFz3tXJg5wckwn9YjR7tqs9GfOPxxGjyJT_q6xUq43v_LE4u0jkWdiuAwog-syWVCc-xGtZzf4mPooFdnIVZw75VzRHWfXh19JTAE6q03FMYn5_ODk8SY1WrVTJ8vwNWHkl3aD_pXyp8-=s10000"
+    }
+   ]
+  }
+ ]
+}

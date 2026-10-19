@@ -10,11 +10,21 @@
 import { lang } from "../i18n";
 import { airportCode } from "../searchLinks";
 import { chromeKV, DEFAULT_SERVER, type KV } from "../share/store";
-import type { Need, Offer, SuggestionSource } from "../offerSource";
+import { validOffers, type Need, type Offer, type SuggestionSource } from "../offerSource";
+import { validDays, validInsight, type DayFare, type PriceAsk, type PriceInsight } from "../priceVerdict";
+import { validSights, type Sight } from "../citySights";
 import { acceptStyle, type StyleId } from "../tripStyle";
 import type { Trip } from "../types";
 
 const STORE_KEY = "offersSeen";
+const PRICE_KEY = "priceSeen";
+const PRICE_HOURS = 24;
+const SIGHTS_KEY = "sightsSeen";
+const SIGHTS_DAYS = 30;
+const DAYS_KEY = "daysSeen";
+const DAYS_HOURS = 12;
+const EVENTS_KEY = "eventsSeen";
+const EVENTS_HOURS = 24;
 const KEEP_HOURS = 6;
 /** Answers kept at most; the oldest go first. */
 const KEEP_MAX = 60;
@@ -268,6 +278,7 @@ export function queryOf(need: Need, language: "tr" | "en" = lang(), narrow: Narr
     const q: Record<string, string> = { kind: "stay", city, start: need.start, end: need.end, adults, lang: language };
     const country = countryName(need.country);
     if (country) q.country = country;
+    if (need.home) q.home = "1";
     return new URLSearchParams(narrowed(q, narrow)).toString();
   }
   if (need.kind === "transfer") {
@@ -301,6 +312,10 @@ export function makeLiveSource(opts: { kv?: KV; fetcher?: typeof fetch; now?: ()
   find(need: Need, narrow?: Narrow): Promise<Offer[]>;
   candidates(need: Need): Promise<StayCandidate[]>;
   places(search: string): Promise<MapsPlace[]>;
+  price(ask: PriceAsk): Promise<PriceInsight | null>;
+  sights(city: string, country?: string | null): Promise<Sight[]>;
+  days(ask: PriceAsk): Promise<DayFare[]>;
+  events(city: string, start: string, end: string): Promise<Offer[]>;
 } {
   const kv = opts.kv ?? chromeKV;
   const get = opts.fetcher ?? ((...a: Parameters<typeof fetch>) => fetch(...a));
@@ -371,12 +386,167 @@ export function makeLiveSource(opts: { kv?: KV; fetcher?: typeof fetch; now?: ()
     return q ? ((await once(q)).places ?? []) : [];
   };
 
+  /**
+   * A flight's fare judged (spec 2026-10-19 SerpApi, 2 and 4): Google's usual range and last weeks for one person on the
+   * route and day, kept a day here (PRICE_KEY) so a card drawn again asks nothing; null when the server has none.
+   */
+  const pricing = new Map<string, Promise<PriceInsight | null>>();
+  async function askPrice(a: PriceAsk): Promise<PriceInsight | null> {
+    const q = `kind=price&from=${a.from}&to=${a.to}&day=${a.day}`;
+    let seen: Record<string, { at: number; insight: PriceInsight | null }> = {};
+    try {
+      seen = (await kv.get<typeof seen>(PRICE_KEY)) ?? {};
+    } catch {
+      // no storage: asked every time
+    }
+    const had = seen[q];
+    if (had && now() - had.at < PRICE_HOURS * 36e5) return had.insight;
+    try {
+      const res = await get(`${server}/functions/v1/offers?${q}`);
+      if (!res.ok) return null;
+      const insight = validInsight(((await res.json()) as { insight?: unknown }).insight);
+      const kept = Object.entries({ ...seen, [q]: { at: now(), insight } })
+        .filter(([, v]) => now() - v.at < PRICE_HOURS * 36e5)
+        .sort((x, y) => y[1].at - x[1].at)
+        .slice(0, KEEP_MAX);
+      try {
+        await kv.set(PRICE_KEY, Object.fromEntries(kept));
+      } catch {
+        // not kept this time
+      }
+      return insight;
+    } catch {
+      return null;
+    }
+  }
+  const price = (a: PriceAsk): Promise<PriceInsight | null> => {
+    const k = `${a.from}|${a.to}|${a.day}`;
+    const going = pricing.get(k) ?? askPrice(a).finally(() => pricing.delete(k));
+    pricing.set(k, going);
+    return going;
+  };
+
+  /** A city's sights (spec 2026-10-19 SerpApi, item 3), kept 30 days here (SIGHTS_KEY): they change slowly. */
+  const sighting = new Map<string, Promise<Sight[]>>();
+  async function askSights(city: string, country: string | null): Promise<Sight[]> {
+    const q = new URLSearchParams({ kind: "sights", city, ...(country ? { country } : {}), lang: lang() }).toString();
+    let seen: Record<string, { at: number; sights: Sight[] }> = {};
+    try {
+      seen = (await kv.get<typeof seen>(SIGHTS_KEY)) ?? {};
+    } catch {
+      // no storage: asked every time
+    }
+    const had = seen[q];
+    if (had && now() - had.at < SIGHTS_DAYS * 864e5) return had.sights;
+    try {
+      const res = await get(`${server}/functions/v1/offers?${q}`);
+      if (!res.ok) return [];
+      const sights = validSights(((await res.json()) as { sights?: unknown }).sights);
+      const kept = Object.entries({ ...seen, [q]: { at: now(), sights } })
+        .filter(([, v]) => now() - v.at < SIGHTS_DAYS * 864e5)
+        .sort((x, y) => y[1].at - x[1].at)
+        .slice(0, KEEP_MAX);
+      try {
+        await kv.set(SIGHTS_KEY, Object.fromEntries(kept));
+      } catch {
+        // not kept this time
+      }
+      return sights;
+    } catch {
+      return [];
+    }
+  }
+  const sights = (city: string, country: string | null = null): Promise<Sight[]> => {
+    const k = `${city.toLocaleLowerCase("tr")}|${country ?? ""}`;
+    const going = sighting.get(k) ?? askSights(city, country).finally(() => sighting.delete(k));
+    sighting.set(k, going);
+    return going;
+  };
+
+  /** A route's fares a day either side of three (item 5), kept 12 hours here (DAYS_KEY). */
+  const daying = new Map<string, Promise<DayFare[]>>();
+  async function askDays(a: PriceAsk): Promise<DayFare[]> {
+    const q = `kind=days&from=${a.from}&to=${a.to}&day=${a.day}`;
+    let seen: Record<string, { at: number; days: DayFare[] }> = {};
+    try {
+      seen = (await kv.get<typeof seen>(DAYS_KEY)) ?? {};
+    } catch {
+      // no storage: asked every time
+    }
+    const had = seen[q];
+    if (had && now() - had.at < DAYS_HOURS * 36e5) return had.days;
+    try {
+      const res = await get(`${server}/functions/v1/offers?${q}`);
+      if (!res.ok) return [];
+      const days = validDays(((await res.json()) as { days?: unknown }).days);
+      const kept = Object.entries({ ...seen, [q]: { at: now(), days } })
+        .filter(([, v]) => now() - v.at < DAYS_HOURS * 36e5)
+        .sort((x, y) => y[1].at - x[1].at)
+        .slice(0, KEEP_MAX);
+      try {
+        await kv.set(DAYS_KEY, Object.fromEntries(kept));
+      } catch {
+        // not kept this time
+      }
+      return days;
+    } catch {
+      return [];
+    }
+  }
+  const days = (a: PriceAsk): Promise<DayFare[]> => {
+    const k = `${a.from}|${a.to}|${a.day}`;
+    const going = daying.get(k) ?? askDays(a).finally(() => daying.delete(k));
+    daying.set(k, going);
+    return going;
+  };
+
+  /** What's on in a city on a stay's days (spec 2026-10-19 SerpApi, item 8), kept a day here (EVENTS_KEY). */
+  const eventing = new Map<string, Promise<Offer[]>>();
+  async function askEvents(city: string, start: string, end: string): Promise<Offer[]> {
+    const q = new URLSearchParams({ kind: "events", city, start, end, lang: lang() }).toString();
+    let seen: Record<string, { at: number; offers: Offer[] }> = {};
+    try {
+      seen = (await kv.get<typeof seen>(EVENTS_KEY)) ?? {};
+    } catch {
+      // no storage: asked every time
+    }
+    const had = seen[q];
+    if (had && now() - had.at < EVENTS_HOURS * 36e5) return had.offers;
+    try {
+      const res = await get(`${server}/functions/v1/offers?${q}`);
+      if (!res.ok) return [];
+      const offers = validOffers(((await res.json()) as { offers?: unknown }).offers, { kind: "activity" });
+      const kept = Object.entries({ ...seen, [q]: { at: now(), offers } })
+        .filter(([, v]) => now() - v.at < EVENTS_HOURS * 36e5)
+        .sort((x, y) => y[1].at - x[1].at)
+        .slice(0, KEEP_MAX);
+      try {
+        await kv.set(EVENTS_KEY, Object.fromEntries(kept));
+      } catch {
+        // not kept this time
+      }
+      return offers;
+    } catch {
+      return [];
+    }
+  }
+  const events = (city: string, start: string, end: string): Promise<Offer[]> => {
+    const k = `${city.toLocaleLowerCase("tr")}|${start}|${end}`;
+    const going = eventing.get(k) ?? askEvents(city, start, end).finally(() => eventing.delete(k));
+    eventing.set(k, going);
+    return going;
+  };
+
   return {
     available: () => true,
     offers: (need) => find(need),
     find,
     candidates,
     places,
+    price,
+    sights,
+    days,
+    events,
   };
 }
 
@@ -391,5 +561,16 @@ export const stayCandidates = (need: Need): Promise<StayCandidate[]> => liveSour
 
 /** Google Maps' places for a search (a place's name and town, or a kind of place): [] when the sources have none. */
 export const findPlaces = (search: string): Promise<MapsPlace[]> => liveSource.places(search);
+/** A flight's fare judged: Google's usual range and its last weeks, or null (spec 2026-10-19 SerpApi, 2 and 4). */
+export const flightPrice = (ask: PriceAsk): Promise<PriceInsight | null> => liveSource.price(ask);
+
+/** A city's sights from Google, or [] (spec 2026-10-19 SerpApi, item 3). */
+export const citySights = (city: string, country: string | null = null): Promise<Sight[]> => liveSource.sights(city, country);
+
+/** A route's fares a day either side of three, from the shared flight search, or [] (spec 2026-10-19 SerpApi, 5). */
+export const flightDays = (ask: PriceAsk): Promise<DayFare[]> => liveSource.days(ask);
+
+/** What's on in a city on a stay's days, from Google, or [] (spec 2026-10-19 SerpApi, item 8). */
+export const cityEvents = (city: string, start: string, end: string): Promise<Offer[]> => liveSource.events(city, start, end);
 
 export const liveSource = makeLiveSource();

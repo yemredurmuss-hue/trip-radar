@@ -1,0 +1,334 @@
+{
+ "search_parameters": {
+  "engine": "airbnb",
+  "airbnb_domain": "airbnb.com",
+  "currency": "EUR",
+  "q": "Lisbon, Portugal",
+  "check_in_date": "2026-11-12",
+  "check_out_date": "2026-11-16",
+  "adults": "2"
+ },
+ "properties": [
+  {
+   "position": 1,
+   "id": "563650864219417274",
+   "title": "18th-century charm 100m from São Jorge Castle, with a private balcony",
+   "description": "Apartment in Santa Maria Maior",
+   "link": "https://www.airbnb.com/rooms/563650864219417274",
+   "booking_link": "https://www.airbnb.com/rooms/563650864219417274?check_in=2026-11-12&check_out=2026-11-16&adults=2&children=0&infants=0&pets=0&federated_search_id=586fe56b-081a-4927-8146-2dca26b88c71",
+   "rating": 4.93,
+   "reviews": 285,
+   "price": {
+    "total_price": "€543",
+    "extracted_total_price": 543,
+    "qualifier": "for 4 nights",
+    "extracted_qualifier": 4,
+    "original_price": "€753",
+    "extracted_original_price": 753,
+    "price_per_qualifier": "4 nights x €135.75",
+    "extracted_price_per_qualifier": 135.75,
+    "breakdown": [
+     {
+      "description": "4 nights x €135.75",
+      "price": "€543.00",
+      "extracted_price": 543
+     }
+    ]
+   },
+   "gps_coordinates": {
+    "latitude": 38.71326,
+    "longitude": -9.1326
+   },
+   "has_free_cancellation": true,
+   "badges": [
+    "Guest favorite"
+   ],
+   "images": [
+    "https://a0.muscache.com/im/pictures/miso/Hosting-563650864219417274/original/b9aa4b41-969f-4a53-9c1a-0126da613dfe.jpeg",
+    "https://a0.muscache.com/im/pictures/miso/Hosting-563650864219417274/original/71de508f-6f3a-41f7-8350-f35ec70af821.jpeg"
+   ]
+  },
+  {
+   "position": 2,
+   "id": "7892815",
+   "title": "Quiet retreat in the heart of Chiado, with an open-plan living area",
+   "description": "Apartment in São Paulo",
+   "link": "https://www.airbnb.com/rooms/7892815",
+   "booking_link": "https://www.airbnb.com/rooms/7892815?check_in=2026-11-12&check_out=2026-11-16&adults=2&children=0&infants=0&pets=0&federated_search_id=586fe56b-081a-4927-8146-2dca26b88c71",
+   "rating": 4.86,
+   "reviews": 476,
+   "price": {
+    "total_price": "€511",
+    "extracted_total_price": 511,
+    "qualifier": "for 4 nights",
+    "extracted_qualifier": 4,
+    "original_price": "€588",
+    "extracted_original_price": 588,
+    "price_per_qualifier": "4 nights x €127.75",
+    "extracted_price_per_qualifier": 127.75,
+    "breakdown": [
+     {
+      "description": "4 nights x €127.75",
+      "price": "€511.00",
+      "extracted_price": 511
+     }
+    ]
+   },
+   "gps_coordinates": {
+    "latitude": 38.70951,
+    "longitude": -9.14414
+   },
+   "has_free_cancellation": true,
+   "badges": [
+    "Superhost"
+   ],
+   "images": [
+    "https://a0.muscache.com/im/pictures/781d26c7-0573-45ea-8ec6-bfced057c5d9.jpg",
+    "https://a0.muscache.com/im/pictures/edc551d5-a7e4-4f38-8e48-6d54fd06fc67.jpg"
+   ]
+  },
+  {
+   "position": 3,
+   "id": "1549906",
+   "title": "Frontal Tagus river views in historic Alfama, with a fully equipped kitchen",
+   "description": "Apartment in Lisbon",
+   "link": "https://www.airbnb.com/rooms/1549906",
+   "booking_link": "https://www.airbnb.com/rooms/1549906?check_in=2026-11-12&check_out=2026-11-16&adults=2&children=0&infants=0&pets=0&federated_search_id=586fe56b-081a-4927-8146-2dca26b88c71",
+   "rating": 4.82,
+   "reviews": 668,
+   "price": {
+    "total_price": "€420",
+    "extracted_total_price": 420,
+    "qualifier": "for 4 nights",
+    "extracted_qualifier": 4,
+    "original_price": "€532",
+    "extracted_original_price": 532,
+    "price_per_qualifier": "4 nights x €105.00",
+    "extracted_price_per_qualifier": 105,
+    "breakdown": [
+     {
+      "description": "4 nights x €105.00",
+      "price": "€420.00",
+      "extracted_price": 420
+     }
+    ]
+   },
+   "gps_coordinates": {
+    "latitude": 38.7155,
+    "longitude": -9.12446
+   },
+   "has_free_cancellation": true,
+   "badges": [
+    "Superhost"
+   ],
+   "images": [
+    "https://a0.muscache.com/im/pictures/4257d9fa-00ff-4bfc-a759-30d8a653d8c4.jpg",
+    "https://a0.muscache.com/im/pictures/22651509/795ea073_original.jpg"
+   ]
+  },
+  {
+   "position": 4,
+   "id": "15144002",
+   "title": "18th-century charm with contemporary design, a balcony, and A/C",
+   "description": "Apartment in Santa Maria Maior",
+   "link": "https://www.airbnb.com/rooms/15144002",
+   "booking_link": "https://www.airbnb.com/rooms/15144002?check_in=2026-11-12&check_out=2026-11-16&adults=2&children=0&infants=0&pets=0&federated_search_id=586fe56b-081a-4927-8146-2dca26b88c71",
+   "rating": 4.96,
+   "reviews": 492,
+   "price": {
+    "total_price": "€635",
+    "extracted_total_price": 635,
+    "qualifier": "for 4 nights",
+    "extracted_qualifier": 4,
+    "original_price": "€945",
+    "extracted_original_price": 945,
+    "discount": "-€310.80",
+    "extracted_discount": 310.8,
+    "price_per_qualifier": "4 nights x €236.25",
+    "extracted_price_per_qualifier": 236.25,
+    "breakdown": [
+     {
+      "description": "4 nights x €236.25",
+      "price": "€945.00",
+      "extracted_price": 945
+     },
+     {
+      "description": "Special offer",
+      "price": "-€310.80",
+      "extracted_price": -310.8
+     },
+     {
+      "description": "Price after discount",
+      "price": "€634.20",
+      "extracted_price": 634.2
+     }
+    ]
+   },
+   "gps_coordinates": {
+    "latitude": 38.7112,
+    "longitude": -9.1357
+   },
+   "badges": [
+    "Guest favorite"
+   ],
+   "images": [
+    "https://a0.muscache.com/im/pictures/b706f9fb-1203-4e78-9a5c-2eb5e7596515.jpg",
+    "https://a0.muscache.com/im/pictures/9cb3d6d4-263d-4590-afa9-f462c7fbccd2.jpg"
+   ]
+  },
+  {
+   "position": 5,
+   "id": "25361239",
+   "title": "In the heart of Bairro Alto, with a balcony and Tram 28 100 meters away",
+   "description": "Apartment in Santa Maria Maior",
+   "link": "https://www.airbnb.com/rooms/25361239",
+   "booking_link": "https://www.airbnb.com/rooms/25361239?check_in=2026-11-12&check_out=2026-11-16&adults=2&children=0&infants=0&pets=0&federated_search_id=586fe56b-081a-4927-8146-2dca26b88c71",
+   "rating": 4.85,
+   "reviews": 564,
+   "price": {
+    "total_price": "€449",
+    "extracted_total_price": 449,
+    "qualifier": "for 4 nights",
+    "extracted_qualifier": 4,
+    "original_price": "€494",
+    "extracted_original_price": 494,
+    "price_per_qualifier": "4 nights x €112.25",
+    "extracted_price_per_qualifier": 112.25,
+    "breakdown": [
+     {
+      "description": "4 nights x €112.25",
+      "price": "€449.00",
+      "extracted_price": 449
+     }
+    ]
+   },
+   "gps_coordinates": {
+    "latitude": 38.71158,
+    "longitude": -9.14459
+   },
+   "has_free_cancellation": true,
+   "badges": [
+    "Superhost"
+   ],
+   "images": [
+    "https://a0.muscache.com/im/pictures/b000e61b-81e5-4ae6-8fad-6cd541ddeb77.jpg",
+    "https://a0.muscache.com/im/pictures/cb352867-afdf-4c52-a246-38ee0f2f0060.jpg"
+   ]
+  },
+  {
+   "position": 6,
+   "id": "2700676",
+   "title": "Elegant Príncipe Real hideaway with a dedicated workspace and a full kitchen",
+   "description": "Apartment in Misericórdia",
+   "link": "https://www.airbnb.com/rooms/2700676",
+   "booking_link": "https://www.airbnb.com/rooms/2700676?check_in=2026-11-12&check_out=2026-11-16&adults=2&children=0&infants=0&pets=0&federated_search_id=586fe56b-081a-4927-8146-2dca26b88c71",
+   "rating": 4.7,
+   "reviews": 74,
+   "price": {
+    "total_price": "€395",
+    "extracted_total_price": 395,
+    "qualifier": "for 4 nights",
+    "extracted_qualifier": 4,
+    "original_price": "€472",
+    "extracted_original_price": 472,
+    "price_per_qualifier": "4 nights x €98.75",
+    "extracted_price_per_qualifier": 98.75,
+    "breakdown": [
+     {
+      "description": "4 nights x €98.75",
+      "price": "€395.00",
+      "extracted_price": 395
+     }
+    ]
+   },
+   "gps_coordinates": {
+    "latitude": 38.71435,
+    "longitude": -9.14887
+   },
+   "has_free_cancellation": true,
+   "badges": [
+    "Superhost"
+   ],
+   "images": [
+    "https://a0.muscache.com/im/pictures/795a3186-3cf8-49c9-a51d-9fc560181d6d.jpg",
+    "https://a0.muscache.com/im/pictures/35305217/207031d6_original.jpg"
+   ]
+  },
+  {
+   "position": 7,
+   "id": "27023726",
+   "title": "Historic Misericórdia stay near the Tagus, with a full kitchen and in-unit laundry",
+   "description": "Apartment in São Paulo",
+   "link": "https://www.airbnb.com/rooms/27023726",
+   "booking_link": "https://www.airbnb.com/rooms/27023726?check_in=2026-11-12&check_out=2026-11-16&adults=2&children=0&infants=0&pets=0&federated_search_id=586fe56b-081a-4927-8146-2dca26b88c71",
+   "rating": 4.91,
+   "reviews": 325,
+   "price": {
+    "total_price": "€530",
+    "extracted_total_price": 530,
+    "qualifier": "for 4 nights",
+    "extracted_qualifier": 4,
+    "original_price": "€665",
+    "extracted_original_price": 665,
+    "price_per_qualifier": "4 nights x €132.50",
+    "extracted_price_per_qualifier": 132.5,
+    "breakdown": [
+     {
+      "description": "4 nights x €132.50",
+      "price": "€530.00",
+      "extracted_price": 530
+     }
+    ]
+   },
+   "gps_coordinates": {
+    "latitude": 38.7082,
+    "longitude": -9.1453
+   },
+   "has_free_cancellation": true,
+   "badges": [
+    "Guest favorite"
+   ],
+   "images": [
+    "https://a0.muscache.com/im/pictures/airflow/Hosting-27023726/original/62944f4d-a02e-491d-98b0-6edffa0413e5.jpg",
+    "https://a0.muscache.com/im/pictures/airflow/Hosting-27023726/original/51b7891f-d90c-4dda-affb-f43cd4c1f86b.jpg"
+   ]
+  },
+  {
+   "position": 8,
+   "id": "5829860",
+   "title": "Vaulted vintage loft in historic Madragoa, with a private entrance and full kitchen",
+   "description": "Apartment in Estrela",
+   "link": "https://www.airbnb.com/rooms/5829860",
+   "booking_link": "https://www.airbnb.com/rooms/5829860?check_in=2026-11-12&check_out=2026-11-16&adults=2&children=0&infants=0&pets=0&federated_search_id=586fe56b-081a-4927-8146-2dca26b88c71",
+   "rating": 4.89,
+   "reviews": 462,
+   "price": {
+    "total_price": "€379",
+    "extracted_total_price": 379,
+    "qualifier": "for 4 nights",
+    "extracted_qualifier": 4,
+    "price_per_qualifier": "4 nights x €94.70",
+    "extracted_price_per_qualifier": 94.7,
+    "breakdown": [
+     {
+      "description": "4 nights x €94.70",
+      "price": "€378.80",
+      "extracted_price": 378.8
+     }
+    ]
+   },
+   "gps_coordinates": {
+    "latitude": 38.70794,
+    "longitude": -9.15527
+   },
+   "has_free_cancellation": true,
+   "badges": [
+    "Guest favorite"
+   ],
+   "images": [
+    "https://a0.muscache.com/im/pictures/abee4a4c-32b7-480b-9cdf-e91f83f5033c.jpg",
+    "https://a0.muscache.com/im/pictures/07bc06cc-d953-4235-ad61-4b7f88d37b06.jpg"
+   ]
+  }
+ ]
+}

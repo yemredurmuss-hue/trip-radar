@@ -221,3 +221,11 @@ body.still .z-k.q-opt:hover { transform: none; }
   .z-kf .q-act .q-open { padding: 0 9px; }
   .z-kf .q-act .q-open > span, .z-kf .q-act .q-doc.add:not(:only-child) > span { display: none; }
 }
+
+/* A place's Google rating on its picture (spec 2026-10-19 SerpApi, item 3). */
+.z-kp > .z-prate { position: absolute; right: 8px; bottom: 8px; z-index: 1; padding: 2px 7px; border-radius: 99px; background: rgba(255, 255, 255, .94); color: var(--q-ink); font-size: var(--q-fs-badge); font-weight: 700; box-shadow: 0 1px 4px rgba(28, 26, 51, .18); white-space: nowrap; }
+/* the place's word (bottom left) stops short of the rating (bottom right) */
+.z-kp:has(> .z-prate) .z-kd { right: 52px; }
+/* What's on in the city on the stay's days (spec 2026-10-19 SerpApi, item 8): its own row under the suggestions. */
+.z-evs { margin-top: 14px; }
+.z-evsrc { font-size: var(--q-fs-small); color: var(--q-mut); }

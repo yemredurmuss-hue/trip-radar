@@ -10,7 +10,7 @@ import { L } from "./i18n";
 import { num as numText } from "./i18nText";
 import { plannedItem } from "./planned";
 import type { StayCandidate } from "./offerSources";
-import type { Item, PlannedKind } from "./types";
+import type { Item, NightStop, PlannedKind, ReviewTopic, StayNearby } from "./types";
 
 export type OfferKind = "flight" | "stay" | "transfer" | "activity" | "esim";
 
@@ -34,6 +34,8 @@ export interface Need {
   toCode?: string | null;
   /** An activity the card names ("Tekne turu", "Yemek kursu"): searched by its words in the city. */
   query?: string | null;
+  /** A stay where a home of one's own is wanted (intentFrame.wantsHome): Airbnb is asked too (spec 2026-10-19 SerpApi, 7). */
+  home?: boolean | null;
 }
 
 export interface Offer {
@@ -77,6 +79,11 @@ export interface Offer {
   pick?: "best" | "cheaper" | "comfier" | null;
   /** A city's tour: the place it was asked for (the town, a nearby city of the trip, the country), said on its card. */
   place?: string | null;
+  /** A stay's nearest place and airport with their minutes, and what its reviews praise and fault (Google Hotels). */
+  nearby?: StayNearby[];
+  topics?: ReviewTopic[];
+  /** A flight's change of plane at night (spec 2026-10-19 SerpApi, item 6). */
+  nightStop?: NightStop | null;
 }
 
 export interface SuggestionSource {
@@ -102,6 +109,43 @@ const https = (url: unknown): url is string => {
 };
 const text = (v: unknown, max: number): string | null => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null);
 const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : null);
+
+const MODES = new Set(["walk", "taxi", "transit"]);
+/** A stay's places and minutes as the source sent them: two at most, each with a name, a known way and a time. */
+export function nearbyList(v: unknown): StayNearby[] {
+  if (!Array.isArray(v)) return [];
+  const out: StayNearby[] = [];
+  for (const r of v as Record<string, unknown>[]) {
+    const name = text(r?.name, 60);
+    const minutes = num(r?.minutes);
+    if (name && minutes != null && minutes <= 600 && typeof r.mode === "string" && MODES.has(r.mode))
+      out.push({ name, mode: r.mode as StayNearby["mode"], minutes: Math.round(minutes), airport: r.airport === true });
+    if (out.length === 2) break;
+  }
+  return out;
+}
+const CLOCK = /^\d{2}:\d{2}$/;
+/** A flight's night change of plane as the source sent it: an airport code, the minutes, two clocks; else null. */
+export function nightStopOf(v: unknown): NightStop | null {
+  if (!v || typeof v !== "object") return null;
+  const r = v as Record<string, unknown>;
+  const minutes = num(r.minutes);
+  if (typeof r.at !== "string" || !/^[A-Z]{3}$/.test(r.at) || minutes == null || minutes < 60 || minutes > 1440) return null;
+  if (typeof r.from !== "string" || !CLOCK.test(r.from) || typeof r.to !== "string" || !CLOCK.test(r.to)) return null;
+  return { at: r.at, minutes: Math.round(minutes), from: r.from, to: r.to };
+}
+
+/** A stay's review topics as the source sent them: three at most, each a short name and up or down. */
+export function topicList(v: unknown): ReviewTopic[] {
+  if (!Array.isArray(v)) return [];
+  const out: ReviewTopic[] = [];
+  for (const r of v as Record<string, unknown>[]) {
+    const topic = text(r?.topic, 30);
+    if (topic && typeof r.up === "boolean") out.push({ topic, up: r.up });
+    if (out.length === 3) break;
+  }
+  return out;
+}
 const clock = (v: unknown): string | null => (typeof v === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(v) ? v : null);
 
 /**
@@ -169,6 +213,8 @@ export function validOffers(list: unknown, need: Pick<Need, "kind">): Offer[] {
       via: text(raw.via, 40),
       area: text(raw.area, 80),
       meta: text(raw.meta, 80),
+      ...(need.kind === "stay" ? { nearby: nearbyList(raw.nearby), topics: topicList(raw.topics) } : {}),
+      ...(need.kind === "flight" && nightStopOf(raw.nightStop) ? { nightStop: nightStopOf(raw.nightStop) } : {}),
     });
     if (out.length === MAX_OFFERS) break;
   }
@@ -264,6 +310,9 @@ export function offerItem(offer: Offer, need: Need, tripId: string, id: string, 
     price: { ...base.price, amount: offer.price ?? null, currency: offer.price == null ? null : (offer.currency ?? null), scope: offer.price == null ? "unknown" : "total", source: offer.price == null ? "none" : "url", observedAt: offer.fetchedAt || now },
     // 0.39.0: a hotel with no price for these nights keeps its usual range ("tipik €21–64 / gece") on the plan too.
     ...(offer.kind === "stay" && offer.price == null && usualRange(offer.typical) ? { typicalNight: usualRange(offer.typical)! } : {}),
+    ...(offer.nearby?.length ? { nearby: offer.nearby } : {}),
+    ...(offer.topics?.length ? { reviewTopics: offer.topics } : {}),
+    ...(offer.nightStop ? { nightStop: offer.nightStop } : {}),
     // A flight's or transfer's row as the source read it: the carrier, the hours on the need's day, the ends' codes.
     flight: offer.kind === "flight" || offer.kind === "transfer" ? offerFlight(offer, need, base.flight) : base.flight,
   };

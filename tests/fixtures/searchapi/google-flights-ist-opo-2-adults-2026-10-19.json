@@ -1,0 +1,194 @@
+{
+ "search_parameters": {
+  "engine": "google_flights",
+  "departure_id": "IST",
+  "arrival_id": "OPO",
+  "currency": "EUR",
+  "hl": "en",
+  "gl": "us",
+  "outbound_date": "2026-11-12",
+  "flight_type": "one_way",
+  "travel_class": "economy",
+  "stops": "any",
+  "adults": "2",
+  "children": "0",
+  "infants_in_seat": "0",
+  "infants_on_lap": "0"
+ },
+ "best_flights": [
+  {
+   "flights": [
+    {
+     "departure_airport": {
+      "name": "Istanbul Airport",
+      "id": "IST",
+      "date": "2026-11-12",
+      "time": "13:25"
+     },
+     "arrival_airport": {
+      "name": "Francisco Sá Carneiro Airport",
+      "id": "OPO",
+      "date": "2026-11-12",
+      "time": "15:25"
+     },
+     "duration": 300,
+     "airline": "Turkish Airlines",
+     "travel_class": "Economy",
+     "flight_number": "TK 1451",
+     "ticket_also_sold_by": [
+      "Tap Air Portugal"
+     ]
+    }
+   ],
+   "total_duration": 300,
+   "price": 441,
+   "type": "One way"
+  }
+ ],
+ "other_flights": [
+  {
+   "flights": [
+    {
+     "departure_airport": {
+      "name": "Istanbul Airport",
+      "id": "IST",
+      "date": "2026-11-12",
+      "time": "19:20"
+     },
+     "arrival_airport": {
+      "name": "Josep Tarradellas Barcelona-El Prat Airport",
+      "id": "BCN",
+      "date": "2026-11-12",
+      "time": "21:00"
+     },
+     "duration": 220,
+     "airline": "Vueling",
+     "travel_class": "Economy",
+     "flight_number": "VY 8611",
+     "ticket_also_sold_by": [
+      "Iberia"
+     ]
+    },
+    {
+     "departure_airport": {
+      "name": "Josep Tarradellas Barcelona-El Prat Airport",
+      "id": "BCN",
+      "date": "2026-11-13",
+      "time": "07:10"
+     },
+     "arrival_airport": {
+      "name": "Francisco Sá Carneiro Airport",
+      "id": "OPO",
+      "date": "2026-11-13",
+      "time": "08:10"
+     },
+     "duration": 120,
+     "airline": "Vueling",
+     "travel_class": "Economy",
+     "flight_number": "VY 1170",
+     "ticket_also_sold_by": [
+      "Iberia"
+     ]
+    }
+   ],
+   "layovers": [
+    {
+     "duration": 610,
+     "name": "Josep Tarradellas Barcelona-El Prat Airport",
+     "id": "BCN",
+     "is_overnight": true
+    }
+   ],
+   "total_duration": 950,
+   "price": 402,
+   "type": "One way"
+  },
+  {
+   "flights": [
+    {
+     "departure_airport": {
+      "name": "Istanbul Airport",
+      "id": "IST",
+      "date": "2026-11-12",
+      "time": "16:45"
+     },
+     "arrival_airport": {
+      "name": "Adolfo Suárez Madrid-Barajas Airport",
+      "id": "MAD",
+      "date": "2026-11-12",
+      "time": "19:00"
+     },
+     "duration": 255,
+     "airline": "Air Europa",
+     "travel_class": "Economy",
+     "flight_number": "UX 1684"
+    },
+    {
+     "departure_airport": {
+      "name": "Adolfo Suárez Madrid-Barajas Airport",
+      "id": "MAD",
+      "date": "2026-11-13",
+      "time": "06:30"
+     },
+     "arrival_airport": {
+      "name": "Francisco Sá Carneiro Airport",
+      "id": "OPO",
+      "date": "2026-11-13",
+      "time": "06:45"
+     },
+     "duration": 75,
+     "airline": "Air Europa",
+     "travel_class": "Economy",
+     "flight_number": "UX 1147"
+    }
+   ],
+   "layovers": [
+    {
+     "duration": 690,
+     "name": "Adolfo Suárez Madrid-Barajas Airport",
+     "id": "MAD",
+     "is_overnight": true
+    }
+   ],
+   "total_duration": 1020,
+   "price": 421,
+   "type": "One way"
+  },
+  {
+   "flights": [
+    {
+     "departure_airport": {
+      "name": "Istanbul Airport",
+      "id": "IST",
+      "date": "2026-11-12",
+      "time": "07:55"
+     },
+     "arrival_airport": {
+      "name": "Francisco Sá Carneiro Airport",
+      "id": "OPO",
+      "date": "2026-11-12",
+      "time": "09:55"
+     },
+     "duration": 300,
+     "airline": "Turkish Airlines",
+     "travel_class": "Economy",
+     "flight_number": "TK 1449",
+     "ticket_also_sold_by": [
+      "Tap Air Portugal"
+     ]
+    }
+   ],
+   "total_duration": 300,
+   "price": 503,
+   "type": "One way"
+  }
+ ],
+ "price_insights": {
+  "lowest_price": 402,
+  "price_level": "high",
+  "typical_price_range": {
+   "low_price": 220,
+   "high_price": 395
+  }
+ }
+}

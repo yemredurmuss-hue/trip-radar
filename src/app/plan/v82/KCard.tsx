@@ -11,12 +11,14 @@
 // it's empty: its head says so); more than the row holds: "+n Pano'da".
 import { useEffect, useState, type ReactNode } from "react";
 import { cardFacts } from "../../../lib/cardFacts";
-import { askLike, askOther, moreLabel, pictureChips, placeRatingLine, type KCardVM } from "../../../lib/collectionCards";
+import { askLike, askOther, moreLabel, pictureChips, placePhotoCredit, placeRatingLine, type KCardVM } from "../../../lib/collectionCards";
 import { L } from "../../../lib/i18n";
 import type { AccessVM, IntentVM, OptionVM } from "../../../lib/intents";
 import { moveToBookings, setDone, setIdeaDay, setPrep } from "../../../lib/ideas";
 import type { Plan } from "../../../lib/plan";
 import { findPlace, knownPlace, placeLookupKey, type PlaceFound } from "../../../lib/placeSuggest";
+import { sightRating } from "../../../lib/citySights";
+import { citySights } from "../../../lib/offerSources";
 import type { Item, Suggestion } from "../../../lib/types";
 import { setItemStatus, setNotNeeded } from "../../actions";
 import type { MenuEntry } from "../../cards/CardShell";
@@ -395,19 +397,24 @@ function RecordFace({ card, vm, plan, search, onPut, onTakeOff }: RecordCardProp
   );
 }
 
-/** A place's photo, rating and Maps page (Google Maps, else its Wikipedia page's photo: placeSuggest.ts), asked once a card shows; null while none is found. */
+/**
+ * A place's photo, rating and Maps page, asked once a card shows (placeSuggest.findPlace): Google Maps, else the place in
+ * its city's Google sights (photo and rating, spec 2026-10-19 SerpApi item 3), else its Wikipedia page's photo; null
+ * while none is found.
+ */
 function usePlaceFound(s: Suggestion | null, on: boolean): PlaceFound | null {
   const key = s && on ? placeLookupKey(s) : "";
+  const city = (on && s?.payload?.city?.trim()) || null;
   const [found, setFound] = useState<{ key: string; place: PlaceFound | null } | null>(null);
   useEffect(() => {
     if (!key || !s || knownPlace(s) !== undefined) return;
     let live = true;
-    void findPlace(s).then((place) => live && setFound({ key, place }));
+    void findPlace(s, { sights: city ? () => citySights(city) : undefined }).then((place) => live && setFound({ key, place }));
     return () => {
       live = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- the place, by its key
-  }, [key]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the place, by its key and city
+  }, [key, city]);
   if (!key || !s) return null;
   return found?.key === key ? found.place : (knownPlace(s) ?? null);
 }
@@ -420,11 +427,15 @@ function usePlaceFound(s: Suggestion | null, on: boolean): PlaceFound | null {
  */
 export function SuggestCard({ card, onPut, onDismiss }: { card: KCardVM; onPut: (photo: string | null, map: string | null) => void; onDismiss: () => void }) {
   const place = card.family !== "event";
-  const found = usePlaceFound(card.suggestion, place);
+  // A sight from Google has its photo and rating already; any other place is looked up (Maps, its city's sights, Wikipedia).
+  const found = usePlaceFound(card.suggestion, place && !card.photo);
   const photo = found?.photo ?? null;
   const shown = photo ? { ...card, photo: photo.url } : card;
   // Maps' own page for the place once it's found there; else the card's Maps search.
   const map = found?.map ?? card.map;
+  // The rating is drawn once: Google's sights' (no review count) on the picture, Maps' with its reviews in the grey line.
+  const rating = card.rating ?? (found?.sight ? sightRating(found.rating) : null);
+  const credit = found ? placePhotoCredit(found.credit) : card.photo ? placePhotoCredit("Google") : undefined;
   return (
     <KCard
       className={`${card.family === "event" ? "q-card" : "q-tile"} q-opt sugg${place ? " z-kplace" : ""}`}
@@ -434,16 +445,16 @@ export function SuggestCard({ card, onPut, onDismiss }: { card: KCardVM; onPut: 
       pic={
         <>
           {place ? (
-            <FallbackImg
-              className="ph"
-              src={shown.photo}
-              fallback={<img className="art" src={card.art} alt="" />}
-              title={found?.credit === "Google Maps" ? L("Fotoğraf: Google Haritalar", "Photo: Google Maps") : found?.credit === "Wikipedia" ? L("Fotoğraf: Wikipedia", "Photo: Wikipedia") : undefined}
-            />
+            <FallbackImg className="ph" src={shown.photo} fallback={<img className="art" src={card.art} alt="" />} title={credit} />
           ) : (
             <Picture card={shown} />
           )}
           <Chips card={card} />
+          {place && rating && (
+            <span className="z-prate" title={L("Google puanı", "Google rating")}>
+              {rating}
+            </span>
+          )}
           <span className="z-kt">
             <button type="button" className="q-rm" aria-label={L(`${card.title}: gerek yok`, `${card.title}: not needed`)} title={L("Gerek yok", "Not needed")} onClick={onDismiss}>
               <Ic name="x" size={12} stroke={2.6} />
@@ -452,11 +463,11 @@ export function SuggestCard({ card, onPut, onDismiss }: { card: KCardVM; onPut: 
         </>
       }
       title={<span className="z-tn">{card.title}</span>}
-      l2={place ? placeRatingLine(card.line, found?.rating, found?.reviews) : card.line}
+      l2={place ? placeRatingLine(card.line, found?.sight ? null : found?.rating, found?.reviews) : card.line}
       foot={
         place && map ? (
           <span className="q-act">
-            {card.canPut && <PutButton title={card.title} onPut={() => onPut(photo?.url ?? null, found?.map ?? null)} />}
+            {card.canPut && <PutButton title={card.title} onPut={() => onPut(photo?.url ?? card.photo ?? null, found?.map ?? null)} />}
             <a className="z-kmap" href={map} target="_blank" rel="noopener noreferrer" data-map="" aria-label={L(`${card.title}: haritada aç`, `${card.title}: open on the map`)} title={L("Haritada aç", "Open on the map")}>
               <Ic name="pin" size={14} stroke={2.2} />
               {!card.canPut && <span>{L("Haritada aç", "Open on the map")}</span>}

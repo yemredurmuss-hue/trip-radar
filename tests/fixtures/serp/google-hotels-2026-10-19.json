@@ -1,0 +1,507 @@
+{
+ "otel-porto": {
+  "properties": [
+   {
+    "type": "hotel",
+    "name": "Porto Palácio Hotel by The Editory",
+    "overall_rating": 4.4,
+    "reviews": 3944,
+    "gps_coordinates": {
+     "latitude": 41.15930350000001,
+     "longitude": -8.6388267
+    },
+    "images": [
+     {
+      "thumbnail": "https://lh3.googleusercontent.com/grass-cs/AABkmLe1scpFBb_TxGQih0GG_xyjfMw3EoUQ8ms-UrLEvMO_uenlFhnIgWdOjXZ2EoZiRd3KdrC1vHGvj7XqDR81aH8ompP7zolE2zLz0aNGVhhQtsxiLYyjepx1ylfJ8__1IKeYEBBYUJaFvDxm=s287-w287-h192-n-k-no-v1",
+      "original_image": "https://lh3.googleusercontent.com/grass-cs/AABkmLe1scpFBb_TxGQih0GG_xyjfMw3EoUQ8ms-UrLEvMO_uenlFhnIgWdOjXZ2EoZiRd3KdrC1vHGvj7XqDR81aH8ompP7zolE2zLz0aNGVhhQtsxiLYyjepx1ylfJ8__1IKeYEBBYUJaFvDxm=s10000"
+     }
+    ],
+    "rate_per_night": {
+     "extracted_lowest": 85
+    },
+    "total_rate": {
+     "extracted_lowest": 255
+    },
+    "nearby_places": [
+     {
+      "name": "Jardins do Palácio de Cristal",
+      "transportations": [
+       {
+        "type": "Taxi",
+        "duration": "8 dk."
+       }
+      ]
+     },
+     {
+      "name": "Francisco de Sá Carneiro Havaalanı",
+      "transportations": [
+       {
+        "type": "Taxi",
+        "duration": "18 dk."
+       },
+       {
+        "type": "Public transport",
+        "duration": "32 dk."
+       }
+      ]
+     },
+     {
+      "name": "San Remo Restaurante",
+      "transportations": [
+       {
+        "type": "Walking",
+        "duration": "5 dk."
+       }
+      ]
+     }
+    ],
+    "reviews_breakdown": [
+     {
+      "name": "Sağlıklı Yaşam",
+      "description": "Wellness",
+      "total_mentioned": 42,
+      "positive": 24,
+      "negative": 15,
+      "neutral": 3
+     },
+     {
+      "name": "Spa",
+      "description": "Spa",
+      "total_mentioned": 33,
+      "positive": 18,
+      "negative": 12,
+      "neutral": 3
+     },
+     {
+      "name": "Bar",
+      "description": "Bar or lounge",
+      "total_mentioned": 78,
+      "positive": 49,
+      "negative": 21,
+      "neutral": 8
+     },
+     {
+      "name": "Fitness",
+      "description": "Fitness",
+      "total_mentioned": 50,
+      "positive": 20,
+      "negative": 21,
+      "neutral": 9
+     },
+     {
+      "name": "Hizmet",
+      "description": "Service",
+      "total_mentioned": 157,
+      "positive": 104,
+      "negative": 42,
+      "neutral": 11
+     },
+     {
+      "name": "Mülk",
+      "description": "Property",
+      "total_mentioned": 154,
+      "positive": 104,
+      "negative": 36,
+      "neutral": 14
+     }
+    ]
+   },
+   {
+    "type": "hotel",
+    "name": "The Central House Porto Ribeira",
+    "overall_rating": 4.4,
+    "reviews": 679,
+    "gps_coordinates": {
+     "latitude": 41.141385,
+     "longitude": -8.613329
+    },
+    "images": [
+     {
+      "thumbnail": "https://lh3.googleusercontent.com/grass-cs/AABkmLfhwOwLVA31XRBZt36nfHa9s6r0PZGaTe1whfv-LOSGjetJQF5VEa8eKe-A8DUoBJkqKRthxxB4Zf0xrfS6ehBaTcno90AM5rk4uSOBvLzZTaQanpC1W3B36LY6nzIHdf6hiPi0=s287-w287-h192-n-k-no-v1",
+      "original_image": "https://lh3.googleusercontent.com/grass-cs/AABkmLfhwOwLVA31XRBZt36nfHa9s6r0PZGaTe1whfv-LOSGjetJQF5VEa8eKe-A8DUoBJkqKRthxxB4Zf0xrfS6ehBaTcno90AM5rk4uSOBvLzZTaQanpC1W3B36LY6nzIHdf6hiPi0=s10000"
+     }
+    ],
+    "rate_per_night": {
+     "extracted_lowest": 54
+    },
+    "total_rate": {
+     "extracted_lowest": 161
+    },
+    "nearby_places": [
+     {
+      "name": "Church of Saint Francis",
+      "transportations": [
+       {
+        "type": "Walking",
+        "duration": "3 dk."
+       }
+      ]
+     },
+     {
+      "name": "Mercado Ferreira Borges",
+      "transportations": [
+       {
+        "type": "Walking",
+        "duration": "1 dk."
+       }
+      ]
+     },
+     {
+      "name": "Francisco de Sá Carneiro Havaalanı",
+      "transportations": [
+       {
+        "type": "Taxi",
+        "duration": "28 dk."
+       },
+       {
+        "type": "Public transport",
+        "duration": "43 dk."
+       }
+      ]
+     }
+    ],
+    "reviews_breakdown": [
+     {
+      "name": "Banyo",
+      "description": "Bathroom and toiletries",
+      "total_mentioned": 49,
+      "positive": 15,
+      "negative": 26,
+      "neutral": 8
+     },
+     {
+      "name": "Uyku",
+      "description": "Sleep",
+      "total_mentioned": 56,
+      "positive": 33,
+      "negative": 14,
+      "neutral": 9
+     },
+     {
+      "name": "Hizmet",
+      "description": "Service",
+      "total_mentioned": 82,
+      "positive": 62,
+      "negative": 20,
+      "neutral": 0
+     },
+     {
+      "name": "Temizlik",
+      "description": "Cleanliness",
+      "total_mentioned": 63,
+      "positive": 42,
+      "negative": 16,
+      "neutral": 5
+     },
+     {
+      "name": "Konum",
+      "description": "Location",
+      "total_mentioned": 85,
+      "positive": 73,
+      "negative": 7,
+      "neutral": 5
+     },
+     {
+      "name": "Mülk",
+      "description": "Property",
+      "total_mentioned": 74,
+      "positive": 61,
+      "negative": 10,
+      "neutral": 3
+     }
+    ]
+   },
+   {
+    "type": "hotel",
+    "name": "Acta The Avenue hótelið",
+    "overall_rating": 4.4,
+    "reviews": 1246,
+    "gps_coordinates": {
+     "latitude": 41.1517341,
+     "longitude": -8.5971687
+    },
+    "images": [
+     {
+      "thumbnail": "https://lh3.googleusercontent.com/grass-cs/AABkmLcDe39KjH_DAq3mRUyl8XksqUzn-uqxAfsD6Uy--h3_5FICX8F00XNtwrzsArRMaRYl-YPyarqRgal_YIG5kRmbyH5n5LFgOd63p1Xd5uQEhrfTr6pg_UbIn0DGjJZwqFH37jfr=s287-w287-h192-n-k-no-v1",
+      "original_image": "https://lh3.googleusercontent.com/grass-cs/AABkmLcDe39KjH_DAq3mRUyl8XksqUzn-uqxAfsD6Uy--h3_5FICX8F00XNtwrzsArRMaRYl-YPyarqRgal_YIG5kRmbyH5n5LFgOd63p1Xd5uQEhrfTr6pg_UbIn0DGjJZwqFH37jfr=s10000"
+     }
+    ],
+    "rate_per_night": {
+     "extracted_lowest": 70
+    },
+    "total_rate": {
+     "extracted_lowest": 210
+    },
+    "nearby_places": [
+     {
+      "name": "Bolhão Market",
+      "transportations": [
+       {
+        "type": "Public transport",
+        "duration": "7 dk."
+       }
+      ]
+     },
+     {
+      "name": "Moreda",
+      "transportations": [
+       {
+        "type": "Walking",
+        "duration": "7 dk."
+       }
+      ]
+     },
+     {
+      "name": "Francisco de Sá Carneiro Havaalanı",
+      "transportations": [
+       {
+        "type": "Taxi",
+        "duration": "24 dk."
+       },
+       {
+        "type": "Public transport",
+        "duration": "36 dk."
+       }
+      ]
+     }
+    ],
+    "reviews_breakdown": [
+     {
+      "name": "Hizmet",
+      "description": "Service",
+      "total_mentioned": 90,
+      "positive": 65,
+      "negative": 22,
+      "neutral": 3
+     },
+     {
+      "name": "Klima",
+      "description": "Air conditioning",
+      "total_mentioned": 15,
+      "positive": 1,
+      "negative": 14,
+      "neutral": 0
+     },
+     {
+      "name": "Mülk",
+      "description": "Property",
+      "total_mentioned": 109,
+      "positive": 89,
+      "negative": 12,
+      "neutral": 8
+     },
+     {
+      "name": "Oda",
+      "description": "Room amenities",
+      "total_mentioned": 40,
+      "positive": 18,
+      "negative": 19,
+      "neutral": 3
+     },
+     {
+      "name": "Temizlik",
+      "description": "Cleanliness",
+      "total_mentioned": 61,
+      "positive": 52,
+      "negative": 8,
+      "neutral": 1
+     },
+     {
+      "name": "Konum",
+      "description": "Location",
+      "total_mentioned": 71,
+      "positive": 55,
+      "negative": 7,
+      "neutral": 9
+     }
+    ]
+   }
+  ]
+ },
+ "otel-ubud": {
+  "properties": [
+   {
+    "type": "hotel",
+    "name": "Pita Maha Resort & Spa",
+    "overall_rating": 4.8,
+    "reviews": 1239,
+    "gps_coordinates": {
+     "latitude": -8.4956394,
+     "longitude": 115.25377639999999
+    },
+    "images": [
+     {
+      "thumbnail": "https://lh3.googleusercontent.com/grass-cs/AABkmLfQe8w2UlTlHx8982qWN1QdQhuE5UbSiBt37to8caA1HkOeGJ7Joh4FVr7rn-6RdNsk1IjOa-lVVdxymYCBb-ewofP1g3mLwvdgKoH_7retAJAJalaRhN5LJLBzi3cg7CkMgQOP=s287-w287-h192-n-k-no-v1",
+      "original_image": "https://lh3.googleusercontent.com/grass-cs/AABkmLfQe8w2UlTlHx8982qWN1QdQhuE5UbSiBt37to8caA1HkOeGJ7Joh4FVr7rn-6RdNsk1IjOa-lVVdxymYCBb-ewofP1g3mLwvdgKoH_7retAJAJalaRhN5LJLBzi3cg7CkMgQOP=s10000"
+     }
+    ],
+    "rate_per_night": {
+     "extracted_lowest": 112
+    },
+    "total_rate": {
+     "extracted_lowest": 337
+    },
+    "nearby_places": [
+     {
+      "name": "Neka Art Museum",
+      "transportations": [
+       {
+        "type": "Walking",
+        "duration": "7 dk."
+       }
+      ]
+     },
+     {
+      "name": "Ngurah Rai Uluslararası Havaalanı",
+      "transportations": [
+       {
+        "type": "Taxi",
+        "duration": "1 sa. 15 dk."
+       },
+       {
+        "type": "Public transport",
+        "duration": "2 sa. 28 dk."
+       }
+      ]
+     },
+     {
+      "name": "Terrace Restaurant",
+      "transportations": [
+       {
+        "type": "Walking",
+        "duration": "1 dk."
+       }
+      ]
+     }
+    ],
+    "reviews_breakdown": [
+     {
+      "name": "Hizmet",
+      "description": "Service",
+      "total_mentioned": 199,
+      "positive": 189,
+      "negative": 6,
+      "neutral": 4
+     },
+     {
+      "name": "Mülk",
+      "description": "Property",
+      "total_mentioned": 197,
+      "positive": 184,
+      "negative": 3,
+      "neutral": 10
+     },
+     {
+      "name": "Fitness",
+      "description": "Fitness",
+      "total_mentioned": 98,
+      "positive": 85,
+      "negative": 4,
+      "neutral": 9
+     }
+    ]
+   },
+   {
+    "type": "hotel",
+    "name": "The Sankara Suites & Villas",
+    "overall_rating": 4.6,
+    "reviews": 684,
+    "gps_coordinates": {
+     "latitude": -8.4812129,
+     "longitude": 115.26792680000001
+    },
+    "images": [
+     {
+      "thumbnail": "https://lh3.googleusercontent.com/grass-cs/AABkmLfxooS-B8ngx2S48VvKeya6A0ainXi54SypT3D1jTC3fghqYWR6L-AYiumPHqqLQ0nuoEbiLAbDFGNxfcTtv73V4IfytNxbU0cTRwki2UQLJlwmeQi9cwi-vKqUNXvKNn-2Q7rq5T4tKZg=s287-w287-h192-n-k-no-v1",
+      "original_image": "https://lh3.googleusercontent.com/grass-cs/AABkmLfxooS-B8ngx2S48VvKeya6A0ainXi54SypT3D1jTC3fghqYWR6L-AYiumPHqqLQ0nuoEbiLAbDFGNxfcTtv73V4IfytNxbU0cTRwki2UQLJlwmeQi9cwi-vKqUNXvKNn-2Q7rq5T4tKZg=s10000"
+     }
+    ],
+    "rate_per_night": {
+     "extracted_lowest": 64
+    },
+    "total_rate": {
+     "extracted_lowest": 192
+    },
+    "nearby_places": [
+     {
+      "name": "Ubud Art Market",
+      "transportations": [
+       {
+        "type": "Taxi",
+        "duration": "8 dk."
+       }
+      ]
+     },
+     {
+      "name": "Ngurah Rai Uluslararası Havaalanı",
+      "transportations": [
+       {
+        "type": "Taxi",
+        "duration": "1 sa. 22 dk."
+       }
+      ]
+     },
+     {
+      "name": "Laddu Restaurant",
+      "transportations": [
+       {
+        "type": "Walking",
+        "duration": "1 dk."
+       }
+      ]
+     }
+    ],
+    "reviews_breakdown": [
+     {
+      "name": "Sağlıklı Yaşam",
+      "description": "Wellness",
+      "total_mentioned": 61,
+      "positive": 53,
+      "negative": 7,
+      "neutral": 1
+     },
+     {
+      "name": "Spa",
+      "description": "Spa",
+      "total_mentioned": 57,
+      "positive": 47,
+      "negative": 7,
+      "neutral": 3
+     },
+     {
+      "name": "Fitness",
+      "description": "Fitness",
+      "total_mentioned": 94,
+      "positive": 77,
+      "negative": 10,
+      "neutral": 7
+     },
+     {
+      "name": "Hizmet",
+      "description": "Service",
+      "total_mentioned": 158,
+      "positive": 139,
+      "negative": 13,
+      "neutral": 6
+     },
+     {
+      "name": "Çiftler",
+      "description": "Couple friendly",
+      "total_mentioned": 18,
+      "positive": 17,
+      "negative": 1,
+      "neutral": 0
+     },
+     {
+      "name": "Havuz",
+      "description": "Pool",
+      "total_mentioned": 56,
+      "positive": 50,
+      "negative": 4,
+      "neutral": 2
+     }
+    ]
+   }
+  ]
+ }
+}

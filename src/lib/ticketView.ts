@@ -14,7 +14,7 @@ import { hubWord, legEnd, transportFace } from "./cardView";
 import { isPass } from "./covers";
 import { delayOf, flightTiles, phaseOf, sourceText, stageOf, type FlightSeen, type FlightTile } from "./flightData";
 import { L } from "./i18n";
-import { nStops } from "./i18nText";
+import { locative, nStops } from "./i18nText";
 import { formatDateRange, isoDate, metricsOf, nightsBetween } from "./items";
 import { farEnd, type Leg } from "./legs";
 import { wayName } from "./tripShape";
@@ -57,7 +57,7 @@ export interface TicketLeg {
 }
 
 export interface TicketChip {
-  kind: "bag" | "platform" | "seat" | "covers" | "where";
+  kind: "bag" | "platform" | "seat" | "covers" | "where" | "night";
   text: string;
 }
 
@@ -276,6 +276,9 @@ export function ticketViewOf(shown: readonly Item[], ctx: TicketCtx): TicketVM {
   const chips: TicketChip[] = [bagChip(lead), ...seatChips(lead)].filter((c): c is TicketChip => Boolean(c));
   if (pass && ctx.covers) chips.push({ kind: "covers", text: L(`${ctx.covers} yolculuk dahil`, ctx.covers === 1 ? "1 way included" : `${ctx.covers} ways included`) });
   if (lead.status === "booked" && lead.location.address) chips.push({ kind: "where", text: lead.location.address });
+  // A change of plane at night (spec 2026-10-19 SerpApi, item 6): where, how long, from when to when there.
+  const night = lead.category === "flight" ? nightChip(lead) : null;
+  if (night) chips.push(night);
   const start = isoDate(lead.dates.start);
   const end = isoDate(lead.dates.end);
   const days = start && end ? nightsBetween(start, end) + (pass ? 1 : 0) : (lead.metrics?.validityDays ?? null);
@@ -304,4 +307,14 @@ export function hoursTo(item: Pick<Item, "flight" | "dates">, now: Date): number
   if (!at || at.length < 16) return null;
   const t = Date.parse(`${at.slice(0, 16)}:00Z`);
   return Number.isFinite(t) ? (t - now.getTime()) / 36e5 : null;
+}
+
+/** "Gece aktarması · Madrid'de 7 sa (00:55–07:55)": a flight's night change of plane, as its source's legs said. */
+export function nightChip(item: Pick<Item, "nightStop">): TicketChip | null {
+  const n = item.nightStop;
+  if (!n) return null;
+  const city = cityOfAirport(n.at);
+  const h = Math.floor(n.minutes / 60), m = n.minutes % 60;
+  const long = m ? L(`${h} sa ${m} dk`, `${h} h ${m} min`) : L(`${h} sa`, `${h} h`);
+  return { kind: "night", text: L(`Gece aktarması · ${locative(city)} ${long} (${n.from}–${n.to})`, `Night change · ${long} in ${city} (${n.from}–${n.to})`) };
 }

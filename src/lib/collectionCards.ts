@@ -27,7 +27,8 @@ import { clockOf } from "./legs";
 import type { Offer } from "./offerSource";
 import type { NearPlace } from "./offerSources";
 import { adderOf } from "./pano";
-import { cleanPlaceTitle, placeMapsUrl } from "./placeSuggest";
+import { foldName, matchSight, sightRating } from "./citySights";
+import { cleanPlaceTitle, photoNames, placeMapsUrl, type PlaceFound } from "./placeSuggest";
 import { sameCity, type Plan } from "./plan";
 import { reasonItemOf } from "./reason";
 import type { Item, Suggestion, Trip } from "./types";
@@ -73,6 +74,8 @@ export interface KCardVM {
   tag: string | null;
   /** The grey line: a ticket's day and price a person, a place's note, area and rating, a suggestion's why. */
   line: string | null;
+  /** A place's rating on its picture ("★ 4,6"), Google's (citySights.ts); none, nothing drawn. */
+  rating?: string | null;
   /** Gezinin sebebi (plan v30): the ticket the trip is for (a festival's), pinned first. */
   reason: boolean;
   /** Its day on the plan ("8 Eki", a restaurant's "8 Eki akşam"). */
@@ -230,6 +233,8 @@ export function suggestionCard(s: Suggestion, section: SectionId): KCardVM {
   const food = s.section === "food" || s.template === "food";
   const family: KFamily = section === "activity" ? "event" : food ? "food" : "place";
   const place = family !== "event";
+  // A city's sight from Google (spec 2026-10-19 SerpApi, item 3): its photo and rating are Google's, its badge says so.
+  const google = s.payload?.from === "google";
   return {
     key: `s:${s.key}`,
     item: null,
@@ -239,9 +244,10 @@ export function suggestionCard(s: Suggestion, section: SectionId): KCardVM {
     state: "idea",
     // A place's name as a name (one stored cut in a sentence: "Tanah Lot Tapınağı'nın"); its photo comes from its page (KCard).
     title: place ? cleanPlaceTitle(s.title) : s.title,
-    photo: null,
+    photo: google ? (s.payload?.photo ?? null) : null,
     art: ART[family],
-    badge: { tone: "ai", text: `✨ ${L("Öneri", "Suggestion")}`, initial: null },
+    badge: google ? { tone: "mine", text: "Google", initial: null } : { tone: "ai", text: `✨ ${L("Öneri", "Suggestion")}`, initial: null },
+    rating: google ? sightRating(s.payload?.rating) : null,
     brand: null,
     tag: family === "food" ? L("Restoran", "Restaurant") : family === "place" ? L("Gezilecek", "To see") : null,
     line: s.why.trim() || null,
@@ -263,6 +269,13 @@ export function placeRatingLine(why: string | null, rating: number | null | unde
   const stars = rating != null && rating > 0 ? `★ ${num(rating)}` : null;
   const said = reviews != null && reviews > 0 ? nReviews(reviews) : null;
   return uniq([stars, stars ? said : null, why]).join(" · ") || null;
+}
+
+/** A suggested place's photo credit (its title): Google Maps', a city's Google sights' ("Google"), or Wikipedia's. */
+export function placePhotoCredit(credit: PlaceFound["credit"] | undefined): string | undefined {
+  if (credit === "Google Maps") return L("Fotoğraf: Google Haritalar", "Photo: Google Maps");
+  if (credit === "Google") return L("Fotoğraf: Google", "Photo: Google");
+  return credit === "Wikipedia" ? L("Fotoğraf: Wikipedia", "Photo: Wikipedia") : undefined;
 }
 
 /** The country (ISO alpha-2) of the stay the plan has in a city: its record's, the first that says. */
@@ -316,7 +329,8 @@ export function offerCard(o: Offer, people: number | null): KCardVM {
     badge: { tone: "mine", text: o.place ? `${o.source} · ${o.place}` : o.source, initial: null },
     brand: brandOf(o.source, null),
     tag: null,
-    line: [o.durationMinutes ? durationText(o.durationMinutes) : null, price].filter(Boolean).join(" · ") || null,
+    // A city's event (Google Events, spec 2026-10-19 SerpApi item 8) has no price: its day and hour, then its place.
+    line: [o.durationMinutes ? durationText(o.durationMinutes) : null, price].filter(Boolean).join(" · ") || (o.id.startsWith("ev:") ? [o.why, o.meta].filter(Boolean).join(" · ") || null : null),
     reason: false,
     day: null,
     takesTable: false,
@@ -369,7 +383,7 @@ export function pictureChips(card: Pick<KCardVM, "reason" | "badge" | "brand" | 
 export function collectionRow(
   vm: Pick<IntentVM, "section" | "itemIds" | "planned" | "wanted" | "suggestions">,
   byId: ReadonlyMap<string, Item>,
-  at: Omit<CardCtx, "section"> & { trip: Pick<Trip, "intent">; offers?: readonly Offer[] },
+  at: Omit<CardCtx, "section"> & { trip: Pick<Trip, "intent">; offers?: readonly Offer[]; sights?: readonly Suggestion[] },
 ): CollectionRowVM {
   const section = vm.section;
   const live = vm.itemIds.map((id) => byId.get(id)).filter((i): i is Item => i != null && i.status !== "dismissed");
@@ -383,13 +397,27 @@ export function collectionRow(
   const saved = live.filter((i) => !onPlan.includes(i));
   const offers = (at.offers ?? []).filter((o) => !live.some((i) => (i.url && i.url === o.url) || sameName(i.name, o.title)));
   // The saved ones, then the source's real tours, then the model's ideas (Emre, 19 Ekim).
-  const ideas = [...saved.map(card), ...offers.map((o) => offerCard(o, at.people)), ...vm.suggestions.map((s) => suggestionCard(s, section))];
+  const base = [...saved.map(card), ...offers.map((o) => offerCard(o, at.people)), ...vm.suggestions.map((s) => suggestionCard(s, section))];
+  // Fewer than three places to see: the city's sights from Google fill the row up to three (spec 2026-10-19 SerpApi, 3),
+  // none already there by its name or its key.
+  // The same place is never drawn twice: a sight goes when a record or an idea (its Maps name too: suggestReview's real
+  // places) has its name, or holds it whole (citySights.matchSight: "Livraria Lello" in "Livraria Lello Kitapçısı").
+  const names = [...live.map((i) => i.name), ...vm.suggestions.flatMap((s) => photoNames(s))];
+  const named = new Set(names.map(foldName));
+  const keys = new Set(vm.suggestions.map((s) => s.key));
+  const taken = (title: string) => named.has(foldName(title)) || matchSight(names, [{ title, rating: null, photo: null }]) != null;
+  const short = Math.max(0, SIGHTS_UP_TO - base.filter((c) => filterOf(c) === "go").length);
+  const sights = section === "todo" ? (at.sights ?? []).filter((s) => !keys.has(s.key) && !taken(s.title)).slice(0, short) : [];
+  const ideas = [...base, ...sights.map((s) => suggestionCard(s, section))];
   const all = [...plan, ...ideas];
   return { plan, ideas, counts: { all: all.length, go: all.filter((c) => filterOf(c) === "go").length, food: all.filter((c) => filterOf(c) === "food").length } };
 }
 
 const fold = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLocaleLowerCase("tr").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 const sameName = (a: string, b: string) => fold(a) === fold(b);
+
+/** Places to see a city's row is filled up to with Google's sights. */
+const SIGHTS_UP_TO = 3;
 
 /**
  * Öneriler shows four cards at most (Emre, 0.38.9: the saved ones, the source's tours and the model's ideas counted

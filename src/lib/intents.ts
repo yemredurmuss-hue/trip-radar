@@ -213,6 +213,26 @@ export interface OptionVM {
   carrier: TicketCarrier | null;
   /** Chosen or booked: "Seçili" when the options open again (Değiştir). */
   current: boolean;
+  /** A stay's: how far the nearest place and the airport are ("🚶 Church of Saint Francis · 3 dk yürüme"). */
+  near: string[];
+  /** A stay's: what its reviews praise and fault, Google's topic names. */
+  topics: { label: string; up: boolean }[];
+}
+
+/** "6 dk", "1 sa 15 dk" (minutes as a duration). */
+function minutesText(m: number): string {
+  if (m < 60) return L(`${m} dk`, `${m} min`);
+  const h = Math.floor(m / 60), r = m % 60;
+  return r ? L(`${h} sa ${r} dk`, `${h} hr ${r} min`) : L(`${h} sa`, `${h} hr`);
+}
+
+/** A stay's nearby lines from Google Hotels (offers 2026-10-19): the place on foot or by taxi, then the airport. */
+export function nearTexts(item: Pick<Item, "nearby">): string[] {
+  return (item.nearby ?? []).map((n) => {
+    const t = minutesText(n.minutes);
+    if (n.airport) return n.mode === "transit" ? L(`✈ Havalimanı · ${t} toplu taşıma`, `✈ Airport · ${t} by transit`) : L(`✈ Havalimanı · ${t} taksi`, `✈ Airport · ${t} by taxi`);
+    return n.mode === "walk" ? L(`🚶 ${n.name} · ${t} yürüme`, `🚶 ${n.name} · ${t} walk`) : L(`🚕 ${n.name} · ${t} taksi`, `🚕 ${n.name} · ${t} by taxi`);
+  });
 }
 
 export interface AccessVM {
@@ -503,6 +523,8 @@ function optionVM(item: Item, env: Env, at: { place: number; frame: FrameFamily;
     leg: at.frame === "ticket" ? flightLeg(item) : null,
     carrier: at.frame === "ticket" ? ticketCarrier(item, at.kind) : null,
     current: item.status === "chosen" || item.status === "booked",
+    near: at.frame === "stay" ? nearTexts(item) : [],
+    topics: at.frame === "stay" ? (item.reviewTopics ?? []).map((t) => ({ label: t.topic.toLocaleLowerCase(L("tr", "en")), up: t.up })) : [],
   };
 }
 

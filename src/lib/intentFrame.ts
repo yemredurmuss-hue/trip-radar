@@ -315,15 +315,32 @@ export const decisionNames = (intents: readonly IntentVM[]): string[] =>
 const codeOf = (city: string, end: { place: string | null } | null | undefined): string | null =>
   end?.place && /^[A-Z]{3}$/.test(end.place) ? end.place : airportCode(city);
 
+/** From this many nights a stay is a long one (stayPicks.LONG_STAY_NIGHTS): a home of one's own comes first. */
+const LONG_NIGHTS = 21;
+/** From this many people a home fits better than rooms. */
+const BIG_GROUP = 5;
+
+/**
+ * A stay where a home of one's own is wanted (spec 2026-10-19 SerpApi, item 7): a long stay, a big group, or a flat or a
+ * house already among its options (the traveller saved one). Nothing else is guessed.
+ */
+export function wantsHome(nights: number | null | undefined, adults: number | null | undefined, options: readonly Pick<OptionVM, "item">[]): boolean {
+  if ((nights ?? 0) >= LONG_NIGHTS || (adults ?? 0) >= BIG_GROUP) return true;
+  return options.some((o) => o.item.metrics?.stayKind === "apartment" || o.item.metrics?.stayKind === "house");
+}
+
 /**
  * The offers' question for an intent still to choose (offerSource.Need, the empty cards' own): a stay's city and nights, a
  * flight's two ends and its day (0.38.5: looked for by itself once the route and the day are known), a way between two
  * cities' ends and day, an eSIM's country; null for anything else or when it isn't known.
  */
-export function offerNeed(vm: Pick<IntentVM, "kind" | "head"> & { ticket?: IntentVM["ticket"] }, at: SelfSearchAt): Need | null {
+export function offerNeed(vm: Pick<IntentVM, "kind" | "head"> & { ticket?: IntentVM["ticket"]; options?: readonly Pick<OptionVM, "item">[] }, at: SelfSearchAt): Need | null {
   const { city, date: start, nights } = vm.head;
   const end = start && nights ? addDays(start, nights) : null;
-  if (vm.kind === "stay" && city && start && end) return { key: needKey("stay", city, start, end), section: "stay", kind: "stay", city, start, end, adults: at.adults, country: at.countries[0] ?? null };
+  if (vm.kind === "stay" && city && start && end) {
+    const home = wantsHome(nights, at.adults, vm.options ?? []);
+    return { key: needKey("stay", city, start, end), section: "stay", kind: "stay", city, start, end, adults: at.adults, country: at.countries[0] ?? null, ...(home ? { home } : {}) };
+  }
   const route = vm.head.route;
   if (vm.kind === "flight" && route?.from && route.to && start) {
     const [fromCode, toCode] = [codeOf(route.from, vm.ticket?.from), codeOf(route.to, vm.ticket?.to)];

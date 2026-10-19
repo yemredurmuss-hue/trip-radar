@@ -1,0 +1,491 @@
+{
+ "search_parameters": {
+  "engine": "google_flights",
+  "departure_id": "IST",
+  "arrival_id": "OPO",
+  "currency": "EUR",
+  "hl": "en",
+  "gl": "us",
+  "outbound_date": "2026-11-12",
+  "flight_type": "one_way",
+  "travel_class": "economy",
+  "stops": "any",
+  "adults": "1",
+  "children": "0",
+  "infants_in_seat": "0",
+  "infants_on_lap": "0"
+ },
+ "best_flights": [
+  {
+   "flights": [
+    {
+     "departure_airport": {
+      "name": "Istanbul Airport",
+      "id": "IST",
+      "date": "2026-11-12",
+      "time": "13:25"
+     },
+     "arrival_airport": {
+      "name": "Francisco Sá Carneiro Airport",
+      "id": "OPO",
+      "date": "2026-11-12",
+      "time": "15:25"
+     },
+     "duration": 300,
+     "airline": "Turkish Airlines",
+     "travel_class": "Economy",
+     "flight_number": "TK 1451",
+     "ticket_also_sold_by": [
+      "Tap Air Portugal"
+     ]
+    }
+   ],
+   "total_duration": 300,
+   "price": 221,
+   "type": "One way"
+  }
+ ],
+ "other_flights": [
+  {
+   "flights": [
+    {
+     "departure_airport": {
+      "name": "Istanbul Airport",
+      "id": "IST",
+      "date": "2026-11-12",
+      "time": "19:20"
+     },
+     "arrival_airport": {
+      "name": "Josep Tarradellas Barcelona-El Prat Airport",
+      "id": "BCN",
+      "date": "2026-11-12",
+      "time": "21:00"
+     },
+     "duration": 220,
+     "airline": "Vueling",
+     "travel_class": "Economy",
+     "flight_number": "VY 8611",
+     "ticket_also_sold_by": [
+      "Iberia"
+     ]
+    },
+    {
+     "departure_airport": {
+      "name": "Josep Tarradellas Barcelona-El Prat Airport",
+      "id": "BCN",
+      "date": "2026-11-13",
+      "time": "07:10"
+     },
+     "arrival_airport": {
+      "name": "Francisco Sá Carneiro Airport",
+      "id": "OPO",
+      "date": "2026-11-13",
+      "time": "08:10"
+     },
+     "duration": 120,
+     "airline": "Vueling",
+     "travel_class": "Economy",
+     "flight_number": "VY 1170",
+     "ticket_also_sold_by": [
+      "Iberia"
+     ]
+    }
+   ],
+   "layovers": [
+    {
+     "duration": 610,
+     "name": "Josep Tarradellas Barcelona-El Prat Airport",
+     "id": "BCN",
+     "is_overnight": true
+    }
+   ],
+   "total_duration": 950,
+   "price": 201,
+   "type": "One way"
+  },
+  {
+   "flights": [
+    {
+     "departure_airport": {
+      "name": "Istanbul Airport",
+      "id": "IST",
+      "date": "2026-11-12",
+      "time": "16:45"
+     },
+     "arrival_airport": {
+      "name": "Adolfo Suárez Madrid-Barajas Airport",
+      "id": "MAD",
+      "date": "2026-11-12",
+      "time": "19:00"
+     },
+     "duration": 255,
+     "airline": "Air Europa",
+     "travel_class": "Economy",
+     "flight_number": "UX 1684"
+    },
+    {
+     "departure_airport": {
+      "name": "Adolfo Suárez Madrid-Barajas Airport",
+      "id": "MAD",
+      "date": "2026-11-13",
+      "time": "06:30"
+     },
+     "arrival_airport": {
+      "name": "Francisco Sá Carneiro Airport",
+      "id": "OPO",
+      "date": "2026-11-13",
+      "time": "06:45"
+     },
+     "duration": 75,
+     "airline": "Air Europa",
+     "travel_class": "Economy",
+     "flight_number": "UX 1147"
+    }
+   ],
+   "layovers": [
+    {
+     "duration": 690,
+     "name": "Adolfo Suárez Madrid-Barajas Airport",
+     "id": "MAD",
+     "is_overnight": true
+    }
+   ],
+   "total_duration": 1020,
+   "price": 211,
+   "type": "One way"
+  },
+  {
+   "flights": [
+    {
+     "departure_airport": {
+      "name": "Istanbul Airport",
+      "id": "IST",
+      "date": "2026-11-12",
+      "time": "07:55"
+     },
+     "arrival_airport": {
+      "name": "Francisco Sá Carneiro Airport",
+      "id": "OPO",
+      "date": "2026-11-12",
+      "time": "09:55"
+     },
+     "duration": 300,
+     "airline": "Turkish Airlines",
+     "travel_class": "Economy",
+     "flight_number": "TK 1449",
+     "ticket_also_sold_by": [
+      "Tap Air Portugal"
+     ]
+    }
+   ],
+   "total_duration": 300,
+   "price": 252,
+   "type": "One way"
+  },
+  {
+   "flights": [
+    {
+     "departure_airport": {
+      "name": "Istanbul Airport",
+      "id": "IST",
+      "date": "2026-11-12",
+      "time": "18:00"
+     },
+     "arrival_airport": {
+      "name": "Amsterdam Airport Schiphol",
+      "id": "AMS",
+      "date": "2026-11-12",
+      "time": "19:35"
+     },
+     "duration": 215,
+     "airline": "KLM",
+     "travel_class": "Economy",
+     "flight_number": "KL 1960",
+     "is_often_delayed": true
+    },
+    {
+     "departure_airport": {
+      "name": "Amsterdam Airport Schiphol",
+      "id": "AMS",
+      "date": "2026-11-12",
+      "time": "20:50"
+     },
+     "arrival_airport": {
+      "name": "Francisco Sá Carneiro Airport",
+      "id": "OPO",
+      "date": "2026-11-12",
+      "time": "22:30"
+     },
+     "duration": 160,
+     "airline": "KLM",
+     "travel_class": "Economy",
+     "flight_number": "KL 1577"
+    }
+   ],
+   "layovers": [
+    {
+     "duration": 75,
+     "name": "Amsterdam Airport Schiphol",
+     "id": "AMS"
+    }
+   ],
+   "total_duration": 450,
+   "price": 301,
+   "type": "One way"
+  }
+ ],
+ "price_insights": {
+  "lowest_price": 201,
+  "price_level": "high",
+  "typical_price_range": {
+   "low_price": 110,
+   "high_price": 200
+  },
+  "price_history": [
+   {
+    "price": 147,
+    "iso_date": "2026-08-19T21:00:00Z"
+   },
+   {
+    "price": 146,
+    "iso_date": "2026-08-20T21:00:00Z"
+   },
+   {
+    "price": 146,
+    "iso_date": "2026-08-21T21:00:00Z"
+   },
+   {
+    "price": 147,
+    "iso_date": "2026-08-22T21:00:00Z"
+   },
+   {
+    "price": 147,
+    "iso_date": "2026-08-23T21:00:00Z"
+   },
+   {
+    "price": 146,
+    "iso_date": "2026-08-24T21:00:00Z"
+   },
+   {
+    "price": 147,
+    "iso_date": "2026-08-25T21:00:00Z"
+   },
+   {
+    "price": 124,
+    "iso_date": "2026-08-26T21:00:00Z"
+   },
+   {
+    "price": 124,
+    "iso_date": "2026-08-27T21:00:00Z"
+   },
+   {
+    "price": 123,
+    "iso_date": "2026-08-28T21:00:00Z"
+   },
+   {
+    "price": 124,
+    "iso_date": "2026-08-29T21:00:00Z"
+   },
+   {
+    "price": 147,
+    "iso_date": "2026-08-30T21:00:00Z"
+   },
+   {
+    "price": 147,
+    "iso_date": "2026-08-31T21:00:00Z"
+   },
+   {
+    "price": 129,
+    "iso_date": "2026-09-01T21:00:00Z"
+   },
+   {
+    "price": 130,
+    "iso_date": "2026-09-02T21:00:00Z"
+   },
+   {
+    "price": 124,
+    "iso_date": "2026-09-03T21:00:00Z"
+   },
+   {
+    "price": 123,
+    "iso_date": "2026-09-04T21:00:00Z"
+   },
+   {
+    "price": 129,
+    "iso_date": "2026-09-05T21:00:00Z"
+   },
+   {
+    "price": 129,
+    "iso_date": "2026-09-06T21:00:00Z"
+   },
+   {
+    "price": 129,
+    "iso_date": "2026-09-07T21:00:00Z"
+   },
+   {
+    "price": 141,
+    "iso_date": "2026-09-08T21:00:00Z"
+   },
+   {
+    "price": 147,
+    "iso_date": "2026-09-09T21:00:00Z"
+   },
+   {
+    "price": 124,
+    "iso_date": "2026-09-10T21:00:00Z"
+   },
+   {
+    "price": 124,
+    "iso_date": "2026-09-11T21:00:00Z"
+   },
+   {
+    "price": 124,
+    "iso_date": "2026-09-12T21:00:00Z"
+   },
+   {
+    "price": 125,
+    "iso_date": "2026-09-13T21:00:00Z"
+   },
+   {
+    "price": 111,
+    "iso_date": "2026-09-14T21:00:00Z"
+   },
+   {
+    "price": 112,
+    "iso_date": "2026-09-15T21:00:00Z"
+   },
+   {
+    "price": 111,
+    "iso_date": "2026-09-16T21:00:00Z"
+   },
+   {
+    "price": 112,
+    "iso_date": "2026-09-17T21:00:00Z"
+   },
+   {
+    "price": 112,
+    "iso_date": "2026-09-18T21:00:00Z"
+   },
+   {
+    "price": 112,
+    "iso_date": "2026-09-19T21:00:00Z"
+   },
+   {
+    "price": 153,
+    "iso_date": "2026-09-20T21:00:00Z"
+   },
+   {
+    "price": 147,
+    "iso_date": "2026-09-21T21:00:00Z"
+   },
+   {
+    "price": 142,
+    "iso_date": "2026-09-22T21:00:00Z"
+   },
+   {
+    "price": 147,
+    "iso_date": "2026-09-23T21:00:00Z"
+   },
+   {
+    "price": 148,
+    "iso_date": "2026-09-24T21:00:00Z"
+   },
+   {
+    "price": 148,
+    "iso_date": "2026-09-25T21:00:00Z"
+   },
+   {
+    "price": 148,
+    "iso_date": "2026-09-26T21:00:00Z"
+   },
+   {
+    "price": 136,
+    "iso_date": "2026-09-27T21:00:00Z"
+   },
+   {
+    "price": 125,
+    "iso_date": "2026-09-28T21:00:00Z"
+   },
+   {
+    "price": 125,
+    "iso_date": "2026-09-29T21:00:00Z"
+   },
+   {
+    "price": 125,
+    "iso_date": "2026-09-30T21:00:00Z"
+   },
+   {
+    "price": 150,
+    "iso_date": "2026-10-01T21:00:00Z"
+   },
+   {
+    "price": 149,
+    "iso_date": "2026-10-02T21:00:00Z"
+   },
+   {
+    "price": 142,
+    "iso_date": "2026-10-03T21:00:00Z"
+   },
+   {
+    "price": 142,
+    "iso_date": "2026-10-04T21:00:00Z"
+   },
+   {
+    "price": 147,
+    "iso_date": "2026-10-05T21:00:00Z"
+   },
+   {
+    "price": 165,
+    "iso_date": "2026-10-06T21:00:00Z"
+   },
+   {
+    "price": 166,
+    "iso_date": "2026-10-07T21:00:00Z"
+   },
+   {
+    "price": 166,
+    "iso_date": "2026-10-08T21:00:00Z"
+   },
+   {
+    "price": 150,
+    "iso_date": "2026-10-09T21:00:00Z"
+   },
+   {
+    "price": 150,
+    "iso_date": "2026-10-10T21:00:00Z"
+   },
+   {
+    "price": 163,
+    "iso_date": "2026-10-11T21:00:00Z"
+   },
+   {
+    "price": 162,
+    "iso_date": "2026-10-12T21:00:00Z"
+   },
+   {
+    "price": 166,
+    "iso_date": "2026-10-13T21:00:00Z"
+   },
+   {
+    "price": 183,
+    "iso_date": "2026-10-14T21:00:00Z"
+   },
+   {
+    "price": 185,
+    "iso_date": "2026-10-15T21:00:00Z"
+   },
+   {
+    "price": 185,
+    "iso_date": "2026-10-16T21:00:00Z"
+   },
+   {
+    "price": 185,
+    "iso_date": "2026-10-17T21:00:00Z"
+   },
+   {
+    "price": 201,
+    "iso_date": "2026-10-18T21:00:00Z"
+   }
+  ]
+ }
+}

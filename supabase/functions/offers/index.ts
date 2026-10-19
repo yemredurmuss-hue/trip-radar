@@ -12,8 +12,25 @@
 // in euros (a stay's by the night, a flight's per person). A stay's `candidates=1` adds up to six hotels from the
 // same list, each priced for the dates (one Xotelo call each, cached a day; one it can't price keeps its usual range).
 // Live flights from the shared flight search on Hetzner (UCUS_SERVIS_URL, UCUS_SERVIS_ANAHTAR: Kiwi finds, Google
-// Flights checks) and live prices from SerpApi (Google Flights, Google Hotels; SERPAPI_KEY, a small free quota) only
-// when those have nothing, or on `live=1` (the chat's live look); the page opened stays a partner's where it can be.
+// Flights checks) and SerpApi's Google Flights (SERPAPI_KEY, a small free quota) only when those have nothing, or on
+// `live=1` (the chat's live look). Stays: SerpApi's Google Hotels first (its own cap, `serp_otel`: photos, the nearest
+// place and the airport, what reviews say), Xotelo when that is over its cap or has too few. The page opened stays a
+// partner's where it can be.
+// A route's fares by day (?kind=days&from=IST&to=OPO&day=2026-11-12): the shared flight search for the day ±3, each
+// day's cheapest for one person (`ucus` cap, kept 12 hours) → { days }.
+// A stay with `home=1` (a home wanted: a long stay, a big group, a flat already saved) also asks Airbnb (SerpApi,
+// the hotels' `serp_otel` cap): its best liked listing takes the third place, its page Airbnb's own (no partner pays).
+// SerpApi's free 250 a month as daily caps: hotels 5, a fare judged 1, a city's sights 1, its events 1; a flight's
+// last resort none (the shared flight search covers it). The places' own 5 (serpmaps) come on top: spent every day,
+// they'd pass the free 250 (OFFERS_CAP_SERPMAPS lowers them). An empty answer is never kept.
+// SearchApi.io (SEARCHAPI_KEY, `searchapi` cap, searchapi.ts) answers those same searches when SerpApi can't (no key,
+// its cap spent, or it failed): the same cache entries, its answers turned into SerpApi's shape.
+// A city's events on the stay's days (?kind=events&city=Porto&start=…&end=…): Google Events, "Events in {city}"
+// (SerpApi, `serp_etkinlik` cap, kept a day), nights out left out, three at most → { offers } (activities, no price).
+// A city's sights (?kind=sights&city=Porto[&country=Portugal]&lang=tr): Google's Top Sights, name, rating, photo
+// (SerpApi, `serp_yer` cap, kept 30 days) → { sights }.
+// A flight's fare judged (?kind=price&from=IST&to=OPO&day=2026-11-12): Google Flights' usual range and last weeks for
+// one person (SerpApi, `serp_fiyat` cap), else the fares recorded here (trip_radar.price_log) → { insight } or null.
 // Activities (?kind=activity&city=Ubud&start=…&end=…&adults=2[&q=cooking class]) from Viator's Partner API (VIATOR_KEY):
 // its pages carry the project's Viator partner code already, so they aren't turned; kept an hour, as Viator asks.
 // eSIMs (?kind=esim&country=PT&start=…&end=…) from Airalo's public product feed, three packages that last the trip,
@@ -22,7 +39,7 @@
 // and time, its page a partner link.
 // A place to see or eat at (?kind=place&q=Tanah Lot Temple, Tabanan&lang=en, or a kind of place: "romantic restaurants
 // in Canggu") from Google Maps through SerpApi (google_maps, type=search): { offers: [], places } with its photo, rating,
-// reviews and own Maps page; kept a month, under a part of SerpApi's daily cap (serpmaps).
+// reviews and own Maps page; kept a month, under its own SerpApi cap (serpmaps); SearchApi isn't asked for it.
 // Each source is its own part: one failing leaves that kind with no offers and the card with its search buttons.
 // Calls out are capped per source and day. Deployed with verify_jwt off like `flight`: nothing personal comes in,
 // only places, days and a head-count.
@@ -31,11 +48,12 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { gunzipSync, strFromU8, unzipSync } from "npm:fflate@0.8.2";
 import {
   adultsOf, airportCodeOk, askableDay, bookingSearch, cheapest, flightOffer, geoFromTypeahead, langOf, maxOf, nightsBetween,
-  candidateOffer, pickCandidates, pickCheapFlights, pickCheapStays, pickFlights, pickLiveStays, pickStays, placeOk, preferOf,
+  airbnbCandidate, airbnbOffer, candidateOffer, cityEvents, dayFares, logInsight, topSights, type DayFare, pickCandidates, priceInsightOf, type PriceInsightOut, pickCheapFlights, pickCheapStays, pickFlights, pickLiveStays, pickStays, placeOk, preferOf,
   airaloPacks, airaloPlace, omioName, omioRoutes, pickActivities, pickEsims, pickTransfers, placeKey, serpFlights, serpStays, stayCandidate, stayOffer, ucusFlights, viatorDestination, type AviaFlight, type OfferOut, type StayCandidate,
   placeSearchOk, serpPlaces,
   type EsimPack, type OmioRoute, type ViProduct, type XoHotel, type XoRate,
 } from "./shape.ts";
+import { searchapiFetch, searchapiQuery } from "./searchapi.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -45,9 +63,9 @@ const cors = {
 const reply = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 
 const HOURS = { flight: 12, stay: 24, activity: 1, esim: 24, transfer: 24, place: 24 * 30 };
-// serpmaps: the places' share of SerpApi's own daily cap (each place search takes from both), so the cards' photos
-// never use up the live flight and hotel look.
-const CAPS: Record<string, number> = { aviasales: 400, xotelo: 400, tripadvisor: 5, links: 300, serpapi: 8, serpmaps: 5, viator: 300, airalo: 6, omio: 4, ucus: 450 };
+// serpmaps: the place searches' own SerpApi cap (the cards' photos and ratings, kind=place), so they never use up the
+// hotels', the fares' or the sights' look.
+const CAPS: Record<string, number> = { aviasales: 400, xotelo: 400, tripadvisor: 20, links: 300, serpapi: 0, serp_otel: 5, serp_fiyat: 1, serp_yer: 1, serp_etkinlik: 1, serpmaps: 5, searchapi: 2, viator: 300, airalo: 6, omio: 4, ucus: 450 };
 const cap = (source: string) => Number(Deno.env.get(`OFFERS_CAP_${source.toUpperCase()}`)) || CAPS[source];
 
 type Sb = ReturnType<typeof createClient>;
@@ -86,24 +104,43 @@ async function loadNames() {
 type Ask = { adults: number; lang: "tr" | "en"; prefer: "cheap" | null; max: number | null; live: boolean };
 
 /**
- * One SerpApi search, cached (its answers don't change in hours), under its own small daily cap; `share`, a part of
- * that cap a kind of search may take at most (the places').
- */
-async function serp(sb: Sb, params: Record<string, string>, hours: number, share?: string): Promise<unknown | null> {
+  * One SerpApi search, cached (its answers don't change in hours), under its own small daily cap: `source`, the cap a
+  * kind of search takes from (the hotels' `serp_otel`, the places' `serpmaps`...; a flight's last resort `serpapi`).
+  * When SerpApi can't answer (no SERPAPI_KEY, its cap for this kind spent, or it failed) and SEARCHAPI_KEY is set,
+  * SearchApi.io answers instead under its own cap (`searchapi`, 2 a day: its 100 free requests are for good, mostly kept
+  * for the tests' fixtures; with a plan bought only the key and OFFERS_CAP_SEARCHAPI change), for the engines it was
+  * checked for (searchapi.ts; not Google Maps: a place search has no backup). The cache key is made from SerpApi's words
+  * before either is asked, so both providers fill and read the same cached answer (SearchApi's, turned into SerpApi's
+  * shape in searchapi.ts).
+  */
+async function serp(sb: Sb, params: Record<string, string>, hours: number, source = "serpapi"): Promise<unknown | null> {
   const key = (Deno.env.get("SERPAPI_KEY") ?? "").trim();
-  if (!key) return null;
+  const backup = (Deno.env.get("SEARCHAPI_KEY") ?? "").trim();
+  if (!key && !backup) return null;
   const q = new URLSearchParams(params);
   const cacheKey = `serp|${q}`;
   const had = await cached<unknown>(sb, cacheKey, hours);
   if (had) return had;
-  if ((share && !(await take(sb, share))) || !(await take(sb, "serpapi"))) return (await cached<unknown>(sb, cacheKey, null)) ?? null;
-  q.set("api_key", key);
-  const res = await fetch(`https://serpapi.com/search.json?${q}`);
-  if (!res.ok) return null;
-  const body = await res.json();
-  if ((body as { error?: unknown }).error) return null;
-  await store(sb, cacheKey, body);
-  return body;
+  let failed = false;
+  if (key && (await take(sb, source))) {
+    q.set("api_key", key);
+    const res = await fetch(`https://serpapi.com/search.json?${q}`);
+    const body = res.ok ? await res.json() : null;
+    if (body && !(body as { error?: unknown }).error) {
+      await store(sb, cacheKey, body);
+      return body;
+    }
+    failed = true;
+  }
+  if (backup && searchapiQuery(params) && (await take(sb, "searchapi"))) {
+    const body = await searchapiFetch(params, backup);
+    if (body) {
+      await store(sb, cacheKey, body);
+      return body;
+    }
+    failed = true;
+  }
+  return failed ? null : ((await cached<unknown>(sb, cacheKey, null)) ?? null);
 }
 
 /**
@@ -125,6 +162,27 @@ async function ucus(sb: Sb, from: string, to: string, day: string, adults: numbe
     return res.ok ? await res.json() : null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * A route's fares a day either side of three (item 5): the shared flight search asked once for the window (Kiwi
+ * covers it in one call), one person, euros; [] when it isn't set up, is over its cap or fails.
+ */
+async function ucusDays(sb: Sb, from: string, to: string, day: string): Promise<DayFare[]> {
+  const base = (Deno.env.get("UCUS_SERVIS_URL") ?? "").trim().replace(/\/+$/, "");
+  const key = (Deno.env.get("UCUS_SERVIS_ANAHTAR") ?? "").trim();
+  if (!base || !key || !(await take(sb, "ucus"))) return [];
+  try {
+    const res = await fetch(`${base}/ucus/ara`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", "X-Butce-Ms": "9000" },
+      body: JSON.stringify({ origins: [from], destinations: [{ name: to, type: "airport" }], depart: { on: day, flex_days: 3 }, adults: 1, currency: "EUR", sort: "price", limit: 30 }),
+      signal: AbortSignal.timeout(12_000),
+    });
+    return res.ok ? dayFares(await res.json(), day) : [];
+  } catch {
+    return [];
   }
 }
 
@@ -157,14 +215,52 @@ async function flights(sb: Sb, token: string, from: string, to: string, day: str
   if (!picked.length) return [];
   await loadNames();
   const now = Date.now();
-  return picked.map((p) => flightOffer(p, { adults, now, airline: (c) => airlines?.get(c) ?? null, zone: (a) => zones?.get(a) ?? null }));
+  const out = picked.map((p) => flightOffer(p, { adults, now, airline: (c) => airlines?.get(c) ?? null, zone: (a) => zones?.get(a) ?? null }));
+  // Our own record of the route's fares (one person's lowest), for the card's history when Google's isn't asked.
+  const each = out.map((o) => (o.price ?? 0) / Math.max(1, adults)).filter((x) => x > 0);
+  if (each.length) await logFare(sb, from, to, day, Math.min(...each), out[0].source);
+  return out;
 }
 
+/** One fare into trip_radar.price_log (an hour's first per route, day and source); never fails the answer. */
+async function logFare(sb: Sb, from: string, to: string, day: string, price: number, source: string): Promise<void> {
+  try {
+    await sb.rpc("price_log_add", { p_route: `${from}-${to}`, p_day: day, p_price: Math.round(price), p_source: source.slice(0, 40) });
+  } catch {
+    // not recorded this time
+  }
+}
+
+/**
+ * A route and day's fare judged (items 2 and 4): Google Flights' price insights for one person, under its own cap and
+ * kept a day for everyone (the same search the flights' last resort makes, so either fills the other's cache); without
+ * them, the fares this function has recorded for that route and day; null when neither has enough.
+ */
+async function priceInsight(sb: Sb, from: string, to: string, day: string): Promise<PriceInsightOut | null> {
+  const body = await serp(sb, { engine: "google_flights", departure_id: from, arrival_id: to, outbound_date: day, type: "2", currency: "EUR", hl: "en", adults: "1" }, 24, "serp_fiyat");
+  const google = priceInsightOf(body);
+  if (google) return google;
+  try {
+    const rows = (await sb.rpc("price_log_read", { p_route: `${from}-${to}`, p_day: day })).data as { seen_at: string; price: number }[] | null;
+    return logInsight(rows ?? []);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A city's Tripadvisor id, the key to Xotelo's list: kept for good once found, "none" kept 30 days; the city's id found
+ * without its country (or with) is used before a lookup is spent. RapidAPI's free plan is 150 a month with a hard
+ * limit (nothing billed past it), so the daily cap only spreads it: 20 new cities a day.
+ */
 async function geoOf(sb: Sb, rapidKey: string, city: string, country: string | null): Promise<string | null> {
   const query = country ? `${city} ${country}` : city;
   const key = `geo|${query.toLocaleLowerCase("en")}`;
   const had = await cached<{ geo: string | null }>(sb, key, null);
-  if (had) return had.geo;
+  if (had?.geo) return had.geo;
+  const other = country ? (await cached<{ geo: string | null }>(sb, `geo|${city.toLocaleLowerCase("en")}`, null))?.geo : null;
+  if (other) return other;
+  if (had && (await cached<{ geo: string | null }>(sb, key, 24 * 30))) return null;
   if (!rapidKey || !(await take(sb, "tripadvisor"))) return null;
   const host = "tripadvisor-com1.p.rapidapi.com";
   const res = await fetch(`https://${host}/auto-complete?query=${encodeURIComponent(query)}`, { headers: { "x-rapidapi-key": rapidKey, "x-rapidapi-host": host } });
@@ -192,7 +288,7 @@ type Stays = { offers: OfferOut[]; candidates: StayCandidate[] };
 /** Google Hotels for these nights (live): its hotels with their prices; the row's three from them. */
 async function liveStays(sb: Sb, city: string, country: string | null, start: string, end: string, { adults, lang, prefer, max }: Ask): Promise<Stays> {
   const nights = nightsBetween(start, end);
-  const body = await serp(sb, { engine: "google_hotels", q: `${city}${country ? `, ${country}` : ""} hotels`, check_in_date: start, check_out_date: end, adults: String(adults), currency: "EUR", hl: lang === "en" ? "en" : "tr" }, 12);
+  const body = await serp(sb, { engine: "google_hotels", q: `${city}${country ? `, ${country}` : ""} hotels`, check_in_date: start, check_out_date: end, adults: String(adults), currency: "EUR", hl: lang === "en" ? "en" : "tr" }, 24, "serp_otel");
   const all = serpStays(body, { lang, nights, now: Date.now(), search: (name) => bookingSearch(name, city, start, end, adults) });
   const within = max != null ? all.filter((c) => (c.nightly ?? Infinity) <= max) : all;
   const offers = prefer === "cheap" || max != null ? cheapest(within.map((c) => candidateOffer(c, "", lang)), lang, max) : pickLiveStays(within, lang);
@@ -203,9 +299,12 @@ async function stays(sb: Sb, rapidKey: string, city: string, country: string | n
   const { adults, lang, prefer, max } = ask;
   const nights = nightsBetween(start, end);
   if (nights < 1 || nights > 60) return { offers: [], candidates: [] };
-  if (ask.live) return liveStays(sb, city, country, start, end, ask);
+  // Google Hotels first (photos, the nearest place and the airport, what reviews say), under its own small daily
+  // cap and cached a day for everyone; Xotelo when it is over its cap or has too few (spec 2026-10-19 SerpApi).
+  const live = await liveStays(sb, city, country, start, end, ask);
+  if (ask.live || live.offers.length >= 2) return live;
   const geo = await geoOf(sb, rapidKey, city, country);
-  if (!geo) return liveStays(sb, city, country, start, end, ask);
+  if (!geo) return live;
   const cheap = prefer === "cheap" || max != null;
   // Asked for cheaper ones, a longer list: the cheap ones are seldom in the best value's first thirty.
   const list = await xotelo<{ list?: XoHotel[] }>(sb, `list?location_key=g${geo}&limit=${cheap ? 100 : 30}&sort=best_value`, 24 * 7);
@@ -223,11 +322,8 @@ async function stays(sb: Sb, rapidKey: string, city: string, country: string | n
   const offers = cheap ? cheapest(priced, lang, max) : priced;
   const offerOf = new Map([...priced, ...extra.filter((o): o is OfferOut => !!o)].map((o) => [o.id, o]));
   const candidates = chosen.map((h) => stayCandidate(h, offerOf.get(`xo:${h.key}`) ?? null, { lang, nights, now, url: bookingSearch(h.name!, city, start, end, adults) }));
-  // Too few priced for these nights: Google Hotels' live list instead (when it has any).
-  if (offers.length < 2 || candidates.filter((c) => c.total != null).length < 3) {
-    const live = await liveStays(sb, city, country, start, end, ask);
-    if (live.offers.length >= offers.length && live.candidates.length) return live;
-  }
+  // Xotelo found fewer than Google's short list: Google's, when it has any.
+  if (live.offers.length > offers.length && live.candidates.length) return live;
   return { offers, candidates };
 }
 
@@ -359,17 +455,49 @@ Deno.serve(async (req: Request) => {
   const how = `${ask.prefer ?? ""}|${ask.max ?? ""}${ask.live ? "|live" : ""}`;
   let offers: OfferOut[] = [];
   try {
+    if (p("kind") === "price") {
+      const from = airportCodeOk(p("from")), to = airportCodeOk(p("to")), day = askableDay(p("day"), now);
+      if (!from || !to || !day || from === to) return reply(400, { error: "ask" });
+      return reply(200, { insight: await priceInsight(sb, from, to, day) });
+    }
+    if (p("kind") === "days") {
+      const from = airportCodeOk(p("from")), to = airportCodeOk(p("to")), day = askableDay(p("day"), now);
+      if (!from || !to || !day || from === to) return reply(400, { error: "ask" });
+      const key = `out|days|${from}|${to}|${day}`;
+      const had = await cached<DayFare[]>(sb, key, 12);
+      const days = had ?? (await ucusDays(sb, from, to, day));
+      if (!had && days.length) await store(sb, key, days);
+      return reply(200, { days });
+    }
+    if (p("kind") === "events") {
+      const city = placeOk(p("city")), start = askableDay(p("start"), now), end = askableDay(p("end"), now);
+      if (!city || !start || !end || end < start) return reply(400, { error: "ask" });
+      // Google lists what's on soon: a stay more than 60 days away isn't asked (nothing to find, a search spent).
+      if (Date.parse(`${start}T00:00:00Z`) - now.getTime() > 60 * 864e5) return reply(200, { offers: [] });
+      const body = await serp(sb, { engine: "google_events", q: `Events in ${city}` }, 24, "serp_etkinlik");
+      return reply(200, { offers: cityEvents(body, { start, end, today: now.toISOString().slice(0, 10), lang: ask.lang, now: now.getTime() }) });
+    }
+    if (p("kind") === "sights") {
+      const city = placeOk(p("city")), country = placeOk(p("country"));
+      if (!city) return reply(400, { error: "ask" });
+      const where = country ? `${city} ${country}` : city;
+      const q = ask.lang === "en" ? `things to do in ${where}` : `${where} gezilecek yerler`;
+      // A city's sights change slowly: kept 30 days for everyone, at most one new city a day (`serp_yer`).
+      const body = await serp(sb, { engine: "google", q, hl: ask.lang, gl: "tr" }, 24 * 30, "serp_yer");
+      return reply(200, { sights: topSights(body) });
+    }
     if (p("kind") === "flight") {
       const from = airportCodeOk(p("from")), to = airportCodeOk(p("to")), day = askableDay(p("day"), now);
       if (!from || !to || !day || from === to) return reply(400, { error: "ask" });
       const key = `out|f|${from}|${to}|${day}|${ask.adults}|${ask.lang}|${how}`;
       const had = await cached<OfferOut[]>(sb, key, HOURS.flight);
       offers = had ?? (await partnerLinks(sb, token, await flights(sb, token, from, to, day, ask)));
-      if (!had) await store(sb, key, offers);
+      if (!had && offers.length) await store(sb, key, offers);
     } else if (p("kind") === "stay") {
       const city = placeOk(p("city")), country = placeOk(p("country")), start = askableDay(p("start"), now), end = askableDay(p("end"), now);
       if (!city || !start || !end || end <= start) return reply(400, { error: "ask" });
-      const key = `out2|s|${city.toLocaleLowerCase("en")}|${country ?? ""}|${start}|${end}|${ask.adults}|${ask.lang}|${how}`;
+      const home = p("home") === "1";
+      const key = `out2|s|${city.toLocaleLowerCase("en")}|${country ?? ""}|${start}|${end}|${ask.adults}|${ask.lang}|${how}${home ? "|home" : ""}`;
       let found = await cached<Stays>(sb, key, HOURS.stay);
       if (!found) {
         const fresh = await stays(sb, (Deno.env.get("AERODATABOX_KEY") ?? "").trim(), city, country, start, end, ask);
@@ -378,7 +506,15 @@ Deno.serve(async (req: Request) => {
           offers: fresh.offers.map((o) => ({ ...o, url: turned.get(o.url) ?? o.url })),
           candidates: fresh.candidates.map((c) => ({ ...c, url: turned.get(c.url) ?? c.url })),
         };
-        await store(sb, key, found);
+        // A home wanted (item 7): Airbnb's best liked listing takes the third place; its page stays Airbnb's own.
+        if (home) {
+          const body = await serp(sb, { engine: "airbnb", q: country ? `${city}, ${country}` : city, check_in_date: start, check_out_date: end, adults: String(ask.adults), currency: "EUR" }, 24, "serp_otel");
+          const ab = airbnbOffer(body, { lang: ask.lang, nights: nightsBetween(start, end), now: Date.now() });
+          if (ab) found = { offers: [...found.offers.slice(0, 2), ab], candidates: [...found.candidates.slice(0, 5), airbnbCandidate(ab)] };
+        }
+        // An empty answer isn't kept: a source over its cap today may answer tomorrow, or in an hour (19 Oct 2026:
+        // Tromsø and Egypt said "none" for a day after the caps ran out).
+        if (found.offers.length || found.candidates.length) await store(sb, key, found);
       }
       if (p("candidates") === "1") return reply(200, { offers: found.offers, candidates: found.candidates });
       offers = found.offers;
@@ -391,7 +527,7 @@ Deno.serve(async (req: Request) => {
       const key = `out|a|${city.toLocaleLowerCase("en")}|${country ?? ""}|${start ?? ""}|${end ?? ""}|${q ?? ""}|${ask.adults}|${ask.lang}|${how}`;
       const had = await cached<OfferOut[]>(sb, key, HOURS.activity);
       offers = had ?? (await activities(sb, city, country, start, end, q, ask));
-      if (!had) await store(sb, key, offers);
+      if (!had && offers.length) await store(sb, key, offers);
     } else if (p("kind") === "place") {
       const q = placeSearchOk(p("q"));
       if (!q) return reply(400, { error: "ask" });

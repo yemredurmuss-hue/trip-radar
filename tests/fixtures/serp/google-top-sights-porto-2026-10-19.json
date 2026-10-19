@@ -1,0 +1,77 @@
+{
+ "search_parameters": {
+  "engine": "google",
+  "q": "Porto gezilecek yerler",
+  "google_domain": "google.com",
+  "hl": "tr",
+  "gl": "tr",
+  "device": "desktop"
+ },
+ "top_sights": {
+  "sights": [
+   {
+    "title": "Luís I Bridge",
+    "description": "Köprü",
+    "rating": 4.8,
+    "reviews": 99000000000,
+    "price": "Ücretsiz",
+    "thumbnail": "https://lh3.googleusercontent.com/grass-cs/AABkmLfbF96OvNdSlP3YRYg1PA3L408o_4j2AlmADZCCptshjByrww4REzwztLbzfaeIb_QP-ojmnP2W9Y6LNLA1lztGffLypbX2-srNgkeAbCNy7uyyFLB1zOMbnH8XdPE2LBH2vEa5Sg=s148-w148-h148-n-k-no"
+   },
+   {
+    "title": "Porto Cathedral",
+    "description": "Açık",
+    "rating": 4.6,
+    "reviews": 40000000000,
+    "price": "₺222,30",
+    "thumbnail": "https://lh3.googleusercontent.com/grass-cs/AABkmLdjBjvvp2IeXHCXC93ywLWQki_d47xvksqoWz9UjCzKBPflAEcBPqiopphaJL2LwkLHIk5O-8yTQ_7xqdlDddTnzBPJDz7bfJJ3pM0BEtRyGMH3wobrdRmpqB6D65-lTjjaHa8xmQ=s148-w148-h148-n-k-no"
+   },
+   {
+    "title": "Palácio da Bolsa",
+    "description": "Açık",
+    "rating": 4.5,
+    "reviews": 15000000000,
+    "price": "₺778,04",
+    "thumbnail": "https://lh3.googleusercontent.com/grass-cs/AABkmLeh33PJHn9i_JDk6wLcb7KiAoel43ZyF4miUS3S_0ViT5k5I2yETmI68bawXbdh_HCBDMiqtSJHHtC7L7-t4l-txepflP6FKEXRdYV6eLetcyDcA7eukiy9NNse2opMsp4ol4Vz=s148-w148-h148-n-k-no"
+   },
+   {
+    "title": "Clérigos Kilisesi",
+    "description": "Açık",
+    "rating": 4.6,
+    "reviews": 14000000000,
+    "price": "₺277,87",
+    "thumbnail": "https://lh3.googleusercontent.com/grass-cs/AABkmLdUmVeLLiC182gXhGzgtjmi5vpFkE5o9laiokgBjnsvXhvWoqv7yr8zPAReFGrsANEFQuw-J5N5UK0XCwuJdTvJgah2M2UVgBIYml4LDhVMtQALp9Sav8RQ2dZmXb777i3a7Hw=s148-w148-h148-n-k-no"
+   },
+   {
+    "title": "Church of Saint Francis",
+    "description": "Açık",
+    "rating": 4.4,
+    "reviews": 10000000000,
+    "thumbnail": "https://lh3.googleusercontent.com/grass-cs/AABkmLcer5BRFgrUFWj5t4ySUHUtOazu84eedYckNMeWqLBWrkpbU-5O4F5XsqA-QTcbWClWgDaOqrJgkwzrmARknVtEiOXei9U9e2z9y_sKTz_Z3UaNOmMe_xXX5u1T_8fNuUWhm31f=s148-w148-h148-n-k-no"
+   },
+   {
+    "title": "Porto São Bento",
+    "description": "Tren İstasyonu",
+    "rating": 4.7,
+    "reviews": 6700000000,
+    "price": "Ücretsiz",
+    "thumbnail": "https://lh3.googleusercontent.com/grass-cs/AABkmLfc6Bui6_ht-46Vt3fiNAgUrWoLcrBk1256S5Dzh-2_rBcEyv-3i2yD6fxBk_L2PJATgGBG_sU4JUHjLj4tS2kZrIi8cbEY6T4_irOPLSGVrOipdF42I9NyTaCVupOjcX_iil4Y=s148-w148-h148-n-k-no"
+   },
+   {
+    "title": "Chapel of Souls",
+    "description": "Açık",
+    "rating": 4.6,
+    "reviews": 12000000000,
+    "price": "Ücretsiz",
+    "thumbnail": "https://lh3.googleusercontent.com/grass-cs/AABkmLdT8SgiK8GpQnl89aaqk6EHvweaHT97hmWISP3aG9YNFDhDaNd0VMIa3Do98F-pjHGiRjgTNjl0htVlHESYanSz8-PDijqrqyp0ku66IMEMRaCUTN2VmlHxVsxZRsxdUmrHefjHa7ytA-NW=s148-w148-h148-n-k-no"
+   },
+   {
+    "title": "Bolhão Market",
+    "description": "Açık",
+    "rating": 4.5,
+    "reviews": 37000000000,
+    "price": "Ücretsiz",
+    "thumbnail": "https://lh3.googleusercontent.com/grass-cs/AABkmLf4ydGoAc8tGkz6RGEuNhmhISfrjDb06jLLkDjNa6tMxv0ILm9ec7mjoskk2saOiv_GKYlUpMu2W5kOXrD-WjYT-p9Zm9enlz6Q9bGHQFRSPVJgwZEShI4i3gHSKFwraq9GR9Vm=s148-w148-h148-n-k-no"
+   }
+  ]
+ }
+}

@@ -6,6 +6,7 @@
 // (Unsplash, Pexels) isn't asked: it finds a photo like the words, not of the place. No page: the family's drawing.
 // The trip's kinds of place (offerSources placeSearches) are searched on Maps too, for the review to pick real places
 // from (mapsIdeas). Pure but for the requests.
+import { matchSight, type Sight } from "./citySights";
 import { isPhoto } from "./cityImages";
 import { lang } from "./i18n";
 import { placeMapUrl } from "./items";
@@ -134,11 +135,14 @@ export const withPlacePhoto = (s: Suggestion, photo: string | null, map: string 
 /** What a suggestion's card shows of its place: the photo and whose, the rating and reviews (Maps' only), its Maps page. */
 export interface PlaceFound {
   photo: PlacePhoto | null;
-  credit: "Google Maps" | "Wikipedia" | null;
+  /** Whose photo: Google Maps', the city's Google sights' ("Google", spec 2026-10-19 SerpApi item 3) or Wikipedia's. */
+  credit: "Google Maps" | "Google" | "Wikipedia" | null;
   rating: number | null;
   reviews: number | null;
   /** The place's own Maps page; null: the card's Maps search stays. */
   map: string | null;
+  /** The rating is the city's Google sights' (no review count: the card draws it on the picture); unset: Maps' or none. */
+  sight?: true;
 }
 
 export type FindPlaces = (search: string) => Promise<MapsPlace[]>;
@@ -176,32 +180,45 @@ export const knownPlace = (s: Pick<Suggestion, "title" | "payload">): PlaceFound
 
 /**
  * The suggestion's place: Google Maps' (a place the trip's kinds of place found, else Maps searched by its name and
- * town, its first answer when the names agree) with its photo, rating, reviews and page; without a photo there, its
- * Wikipedia page's photo (findPlacePhoto). Asked once per place; null when neither has anything, and a request that
- * got no answer isn't remembered.
+ * town, its first answer when the names agree) with its photo, rating, reviews and page. Given its city's Google sights
+ * (citySights.ts, asked once per city), a place listed there with a photo needs no Maps search of its own: its photo and
+ * rating are Google's (spec 2026-10-19 SerpApi item 3). Without a photo from either, its Wikipedia page's photo
+ * (findPlacePhoto), with the sight's rating when it is listed. Asked once per place; null when none has anything, and a
+ * request that got no answer isn't remembered.
  */
 export function findPlace(
   s: Pick<Suggestion, "title" | "payload">,
-  deps: { places?: FindPlaces; fetchJson?: FetchJson } = {},
+  deps: { places?: FindPlaces; fetchJson?: FetchJson; sights?: () => Promise<readonly Sight[]> } = {},
 ): Promise<PlaceFound | null> {
   const key = placeLookupKey(s);
   const was = placeAsked.get(key);
   if (was) return was;
   const run = (async (): Promise<{ found: PlaceFound | null; sure: boolean }> => {
+    const names = photoNames(s);
     let maps = rememberedFor(s);
-    if (!maps) {
+    const sight = !maps && deps.sights ? matchSight(names, await deps.sights().catch(() => [] as Sight[])) : null;
+    if (!maps && !sight?.photo) {
       const search = placeQuery(s);
       const list = search ? await (deps.places ?? findPlaces)(search).catch(() => [] as MapsPlace[]) : [];
       maps = list.find((p) => samePlace(s, p.name)) ?? null;
     }
-    const names = photoNames(s);
-    const wiki = maps?.photo ? null : await findPlacePhoto(names, deps.fetchJson);
+    const google = maps?.photo ? { url: maps.photo, page: maps.url } : !maps && sight?.photo ? { url: sight.photo, page: null } : null;
+    const wiki = google ? null : await findPlacePhoto(names, deps.fetchJson);
     // Wikipedia had no answer at all (offline): not remembered, asked again on the next card.
-    const sure = !!maps?.photo || wiki != null || !names.length || knownPlacePhoto(names) !== undefined;
-    const photo = maps?.photo ? { url: maps.photo, page: maps.url } : wiki;
-    if (!photo && !maps) return { found: null, sure };
+    const sure = !!google || wiki != null || !names.length || knownPlacePhoto(names) !== undefined;
+    const photo = google ?? wiki;
+    // Maps' place decides the rating; else the sight's, drawn as Google's.
+    const rated = maps ? null : sight?.rating != null ? sight : null;
+    if (!photo && !maps && !rated) return { found: null, sure };
     return {
-      found: { photo, credit: maps?.photo ? "Google Maps" : wiki ? "Wikipedia" : null, rating: maps?.rating ?? null, reviews: maps?.reviews ?? null, map: maps?.url ?? null },
+      found: {
+        photo,
+        credit: maps?.photo ? "Google Maps" : google ? "Google" : wiki ? "Wikipedia" : null,
+        rating: maps?.rating ?? rated?.rating ?? null,
+        reviews: maps?.reviews ?? null,
+        map: maps?.url ?? null,
+        ...(rated ? { sight: true as const } : {}),
+      },
       sure,
     };
   })();

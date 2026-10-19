@@ -14,10 +14,13 @@
 //   Aranıyor   the two ends, the estimate, "Kendin ara" and "AI'dan öner"; a change of city nobody planned draws its ways
 //              (C15, ModePicker) in the route's place, the road from an airport in another city Önerimiz's two (WayPicks).
 // Only what the record says is drawn (C19); the frame is as tall in every state, live or late (288 px with its head).
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { L } from "../../../lib/i18n";
 import { codeLabel, emptyLine, type SelfSearch } from "../../../lib/intentFrame";
 import type { OptionVM } from "../../../lib/intents";
+import { flightDays, flightPrice } from "../../../lib/offerSources";
+import { dayBars, daysSentence, fareEach, historyDrawing, historySentence, priceAsk, verdictOf, type DayFare, type PriceInsight, type Verdict } from "../../../lib/priceVerdict";
+import type { Item } from "../../../lib/types";
 import { checkinUrl, ownEnds, ticketBookedWord, ticketBookWord, ticketCodeLabel, ticketDocWord, ticketFace, ticketPrice, wayPicks, type TicketFace } from "../../../lib/ticketFrame";
 import type { TicketChip, TicketEnd, TicketLive as Live, TicketMode } from "../../../lib/ticketView";
 import type { LegMode } from "../../../lib/types";
@@ -86,9 +89,9 @@ function endFields(face: TicketFace): { from: FieldKey | null; to: FieldKey | nu
 }
 
 function Chip({ chip }: { chip: TicketChip }) {
-  const icon = chip.kind === "bag" ? <BagIcon /> : chip.kind === "where" || chip.kind === "platform" ? <Ic name="pin" size={12} /> : chip.kind === "covers" ? <Ic name="check" size={12} stroke={2.6} /> : null;
+  const icon = chip.kind === "bag" ? <BagIcon /> : chip.kind === "where" || chip.kind === "platform" ? <Ic name="pin" size={12} /> : chip.kind === "covers" ? <Ic name="check" size={12} stroke={2.6} /> : chip.kind === "night" ? <span aria-hidden="true">⚠</span> : null;
   return (
-    <span className="z-chip" title={chip.text}>
+    <span className={chip.kind === "night" ? "z-chip night" : "z-chip"} title={chip.text}>
       {icon}
       {chip.text}
     </span>
@@ -204,6 +207,86 @@ function Frame({ cls = "", info, title, main, side, detail }: { cls?: string; in
   );
 }
 
+/**
+ * A flight's fare judged (spec 2026-10-19 SerpApi, items 2 and 4): asked once per route and day while the card shows a
+ * fare not yet bought; null until it comes, and when there is none.
+ */
+function useFareInsight(item: Item | null, today: string): { insight: PriceInsight | null; days: DayFare[]; day: string | null } {
+  const ask = item ? priceAsk(item, today) : null;
+  const key = ask ? `${ask.from}|${ask.to}|${ask.day}` : "";
+  const [got, setGot] = useState<{ key: string; insight: PriceInsight | null; days: DayFare[] } | null>(null);
+  useEffect(() => {
+    if (!ask) return;
+    let live = true;
+    // Google's judgement (item 2, 4) and the day either side (item 5) come in together; either may be missing.
+    Promise.all([flightPrice(ask).catch(() => null), flightDays(ask).catch(() => [])]).then(([insight, days]) => live && setGot({ key, insight, days }));
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- asked again only when the route or the day changes
+  }, [key]);
+  return got?.key === key ? { insight: got.insight, days: got.days, day: ask?.day ?? null } : { insight: null, days: [], day: null };
+}
+
+const FARE_W = 640;
+const FARE_H = 120;
+
+/** Under the card, when its pill is tapped: the fare's last weeks, Google's usual range as a band, what it means. */
+function FarePanel({ insight, verdict, each, days, day }: { insight: PriceInsight | null; verdict: Verdict; each: number | null; days: DayFare[]; day: string | null }) {
+  const d = insight ? historyDrawing(insight, FARE_W, FARE_H, each) : null;
+  const said = insight ? historySentence(insight, Date.now()) : null;
+  const bars = day ? dayBars(days, day) : [];
+  return (
+    <div className="z-pvp" role="region" aria-label={L("Fiyat geçmişi", "Fare history")}>
+      {d && (
+      <div className="z-pvc">
+      <b className="z-pvh">{L("Fiyat nasıl değişti", "How the fare moved")}</b>
+      {d && (
+        <svg className="z-pvg" viewBox={`-6 -6 ${FARE_W + 12} ${FARE_H + 12}`} aria-hidden="true">
+          {d.band && <rect className="band" x={0} y={d.band.y} width={FARE_W} height={Math.max(2, d.band.h)} rx={4} />}
+          <polyline className="line" points={d.points} />
+          <circle className="dot" cx={d.last.x} cy={d.last.y} r={6} />
+          {d.mark != null && each != null && (
+            <>
+              <line className="mark" x1={0} x2={FARE_W} y1={d.mark} y2={d.mark} />
+              <text className="markt" x={4} y={d.mark > 30 ? d.mark - 8 : d.mark + 26}>
+                {L(`bu kart €${Math.round(each)}`, `this card €${Math.round(each)}`)}
+              </text>
+            </>
+          )}
+        </svg>
+      )}
+      {(said || d?.band) && (
+        <small className="z-pvs">
+          {said}
+          {said && d?.band ? " · " : ""}
+          {d?.band ? L("mor bant: bu rota için normal aralık", "band: the usual range on this route") : ""}
+        </small>
+      )}
+      <small className="z-pvsrc">{insight?.source === "google" ? L("Kaynak: Google Flights, kişi başı", "Source: Google Flights, per person") : L("Kaynak: Trip Radar'ın gördüğü fiyatlar", "Source: fares Trip Radar has seen")}</small>
+      </div>
+      )}
+      {bars.length > 0 && day && (
+        <div className="z-pvc">
+          <b className="z-pvh">{L("Hangi gün uçarsan · kişi başı", "By the day you fly · per person")}</b>
+          <div className="z-pvb" role="list">
+            {bars.map((b) => (
+              <span key={b.day} role="listitem" className={`z-pvbar${b.chosen ? " on" : ""}${b.cheapest ? " low" : ""}`} aria-label={`${b.label}: €${b.price}`}>
+                <small>€{b.price}</small>
+                <i style={{ height: `${Math.round(b.share * 84)}px` }} />
+                <em>{b.label}</em>
+              </span>
+            ))}
+          </div>
+          <small className="z-pvs">{daysSentence(days, day)}</small>
+          <small className="z-pvsrc">{L("Kaynak: Kiwi ve Google Flights, bu haftanın en ucuzları", "Source: Kiwi and Google Flights, the week's cheapest")}</small>
+        </div>
+      )}
+      {verdict.sentence && <p className={`z-pvf ${verdict.tone}`}>{verdict.sentence}</p>}
+    </div>
+  );
+}
+
 /** "Kendin ara" and the sites' marks (the empty frame's side column, as the stay family's). */
 function SelfMarks({ links }: { links: SelfSearch[] }) {
   if (!links.length) return null;
@@ -235,6 +318,10 @@ export function FrameTicket({ vm, form, page, links, info, detail, quiet, on, on
   const [fly] = useState(() => face?.mode === "flight" && flysIn(o?.item.id));
   // A transfer arranged by its way (metro, a taxi): Değiştir draws the ways again where the route is, until one is tapped.
   const [rechoose, setRechoose] = useState(false);
+  // Items 2 and 4: the fare's pill under the price, and its history under the card when the pill is tapped.
+  const fare = useFareInsight(form === "suggested" || form === "chosen" ? (o?.item ?? null) : null, env.today);
+  const insight = fare.insight;
+  const [fareOpen, setFareOpen] = useState(false);
   if (!face || !vm.ticket) return null;
   // The way's own drawing (a pass a train, a rental its car), between the ends and in place of a carrier's mark.
   const draw = `illus/${vm.ticket.art}.png`;
@@ -279,7 +366,25 @@ export function FrameTicket({ vm, form, page, links, info, detail, quiet, on, on
           {on.change && <button type="button" className="q-chg" onClick={on.change}>{L("Değiştir", "Change")}</button>}
         </>
       );
-    return <Frame info={info} title={title} main={<TicketMain face={face} art={draw} fly={fly} dated={Boolean(vm.head.date)} badge={badge} live={null} />} side={<Side top={<Price o={o} mode={face.mode} />} primary={primary} row={row} />} detail={detail} />;
+    // The pill: Google's judgement; without it, the day either side alone still opens (item 5).
+    const judged = insight && face.mode === "flight" ? verdictOf(fareEach(o.item), insight) : null;
+    const verdict: Verdict | null = judged ?? (face.mode === "flight" && fare.days.length >= 3 ? { tone: "history", pill: L("Günlere göre fiyat", "Fares by day"), sentence: null } : null);
+    const top = (
+      <>
+        <Price o={o} mode={face.mode} />
+        {verdict && (
+          <button type="button" className={`z-pv ${verdict.tone}`} aria-expanded={fareOpen} title={L("Fiyat geçmişini göster", "Show the fare's history")} onClick={() => setFareOpen((v) => !v)}>
+            {verdict.pill}
+          </button>
+        )}
+      </>
+    );
+    return (
+      <>
+        <Frame info={info} title={title} main={<TicketMain face={face} art={draw} fly={fly} dated={Boolean(vm.head.date)} badge={badge} live={null} />} side={<Side top={top} primary={primary} row={row} />} detail={detail} />
+        {fareOpen && verdict && <FarePanel insight={insight} verdict={verdict} each={fareEach(o.item)} days={fare.days} day={fare.day} />}
+      </>
+    );
   }
   if (form === "booked" && o) {
     const a = vm.access;
