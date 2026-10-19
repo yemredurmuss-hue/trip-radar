@@ -13,13 +13,13 @@ import { loadDemoTrip } from "../src/lib/demo";
 import { draftOf } from "../src/lib/draft";
 import { isEmptyRecord } from "../src/lib/emptyCards";
 import { withLang } from "../src/lib/i18n";
-import { bookedShare, collectionsOf, collectionSummary, frameOf, planShare, statusWord, suggestsFor, type IntentInput, type IntentStatus, type IntentVM } from "../src/lib/intents";
+import { bookedShare, collectionPlaces, collectionsOf, collectionSummary, frameOf, planShare, statusWord, suggestsFor, type IntentInput, type IntentStatus, type IntentVM } from "../src/lib/intents";
 import { EMPTY_METRICS } from "../src/lib/items";
 import { buildLegs } from "../src/lib/legs";
 import { buildPlan } from "../src/lib/plan";
 import { isPlaceholder } from "../src/lib/startTrip";
 import { buildTimeline } from "../src/lib/timeline";
-import type { Item, Trip } from "../src/lib/types";
+import type { Item, Suggestion, Trip } from "../src/lib/types";
 import { makeItem } from "./fixtures/makeItem";
 
 const TODAY = "2026-10-01";
@@ -281,6 +281,50 @@ describe("many picks: things to book and do, one row per city", () => {
   it("every card on the plan bought: the row is bought", () => {
     const b = board(base, [...stays, act("Shibuya Sky bileti", "booked")]);
     expect(b.all.find((c) => c.section.id === "activity")!.intents[0]).toMatchObject({ status: "booked" });
+  });
+});
+
+describe("a country and a town in it are one box, the town's (0.38.9: İstanbul → Mısır, then Şarm El-Şeyh)", () => {
+  const egypt: Trip = { ...base, title: "Mısır", confirmedDates: { start: "2026-11-01", end: "2026-11-07" } };
+  const act = (name: string, city: string | null, status: Item["status"] = "saved", countryCode: string | null = "EG") =>
+    makeItem({ id: next("a"), name, category: "activity", needKey: `activity:${name}`, city, countryCode, status, price: eur(45), dates: { start: null, end: null, source: "page" } });
+  const sharm = () => stay("Reef Oasis", "Şarm El-Şeyh", "2026-11-01", "2026-11-07", "booked", { countryCode: "EG", needKey: "stay:sarm" });
+  const rows = (b: ReturnType<typeof board>, id: string) => b.all.find((c) => c.section.id === id)?.intents ?? [];
+
+  it("Etkinlik: what was saved for Mısır joins Şarm's box, no Mısır box", () => {
+    const b = board(egypt, [sharm(), act("ATV turu", "Mısır"), act("Ras Muhammed tekne turu", "Mısır", "chosen"), act("Tiran adası şnorkel", "Şarm El-Şeyh")]);
+    const act0 = rows(b, "activity");
+    expect(act0.map((i) => i.head.name)).toEqual(["Şarm El-Şeyh"]);
+    expect(act0[0].head.city).toBe("Şarm El-Şeyh");
+    expect(act0[0].planned.map((o) => o.title)).toEqual(["Ras Muhammed tekne turu"]);
+    expect(act0[0].options.map((o) => o.title).sort()).toEqual(["ATV turu", "Tiran adası şnorkel"]);
+  });
+  it("the town known only from the airports' table (a stay with no country), a suggestion for Mısır in Yapılacaklar too", () => {
+    const sug: Suggestion = { key: "s1", kind: "add", section: "todo", source: "ai", title: "Eski Pazar", why: "Akşam yürüyüşü", payload: { city: "Mısır" }, createdAt: 1, state: "open" };
+    const todo = makeItem({ id: next("t"), name: "Naama Bay", category: "activity", needKey: "todo:naama", city: "Mısır", countryCode: null, status: "saved" });
+    const b = board(egypt, [sharm(), act("ATV turu", "Mısır", "saved", null), todo], { suggestions: { todo: [sug] } });
+    expect(rows(b, "activity").map((i) => i.head.name)).toEqual(["Şarm El-Şeyh"]);
+    expect(rows(b, "todo").filter((i) => i.frame === "collection").map((i) => i.head.name)).toEqual(["Şarm El-Şeyh"]);
+  });
+  it("a Mısır stop beside Şarm's goes; two towns in Mısır: no Mısır box, Mısır's ideas in the first town", () => {
+    const placeholder = stay("Mısır Konaklama", "Mısır", "2026-11-01", "2026-11-03", "saved", { countryCode: "EG", needKey: "stay:misir" });
+    const b = board(egypt, [placeholder, sharm(), act("ATV turu", "Mısır")]);
+    expect(rows(b, "activity").map((i) => i.head.name)).toEqual(["Şarm El-Şeyh"]);
+    const two = collectionPlaces(
+      [
+        { city: "Kahire", start: "2026-11-01", end: "2026-11-03", nights: 2 },
+        { city: "Şarm El-Şeyh", start: "2026-11-03", end: "2026-11-07", nights: 4 },
+      ],
+      ["Mısır", "Şarm El-Şeyh", null],
+      [],
+    );
+    expect(two.stops.map((s) => s.city)).toEqual(["Kahire", "Şarm El-Şeyh"]);
+    expect([two.homeOf("Mısır"), two.homeOf("Şarm El-Şeyh"), two.homeOf(null), two.homeOf("Tokyo")]).toEqual(["Kahire", "Şarm El-Şeyh", null, "Tokyo"]);
+  });
+  it("only a Mısır stop and a tour in Şarm: one box, Şarm's, on the stop's days", () => {
+    const one = collectionPlaces([{ city: "Mısır", start: "2026-11-01", end: "2026-11-07", nights: 6 }], ["Şarm El-Şeyh"], []);
+    expect(one.stops).toEqual([{ city: "Şarm El-Şeyh", start: "2026-11-01", end: "2026-11-07", nights: 6 }]);
+    expect(collectionPlaces([{ city: "Tokyo", start: "a", end: "b", nights: 1 }, { city: "Kyoto", start: "b", end: "c", nights: 1 }], ["Japonya"], []).homeOf("Japonya")).toBe("Tokyo");
   });
 });
 

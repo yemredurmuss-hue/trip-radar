@@ -18,7 +18,7 @@
 // Aşama 3b: the trip's shape (gezi biçimi, playbooks/shape.ts) puts a part's record in its category and frame (a ski pass
 // one choice in Etkinlik), gives a category its short line (kısa bilgi satırı) and closes one it makes needless (a day out:
 // Konaklama); the ticket frame's view is ticketView.ts's. Pure.
-import { cityOfAirport } from "./airports";
+import { airportEntries, cityOfAirport, countryOfAirport } from "./airports";
 import { boardBadges, boardOptions } from "./board";
 import { brandOf, type Brand } from "./brands";
 import { isCampStay } from "./campStay";
@@ -33,6 +33,7 @@ import type { GroupDecision } from "./decision";
 import { needsDoc } from "./docs";
 import { afterExit, allAboard, nightsAboard } from "./nightsAboard";
 import { campCoverOf, coversWays, isPass, partCoverOf, rideCoverOf, wayCoverOf } from "./covers";
+import { regionTownOf } from "./destinations";
 import { draftOf } from "./draft";
 import { estimatedRange, rangeLabel, type EstRange } from "./estRange";
 import { L } from "./i18n";
@@ -44,14 +45,14 @@ import { noCounts, type Stage } from "./lifecycle";
 import { cancellationText } from "./needs";
 import { ratingText } from "./offerSource";
 import { adderOf } from "./pano";
-import { groupKeyOf, sameCity, stayRange, type Plan } from "./plan";
+import { cityKeyOf, groupKeyOf, sameCity, stayRange, type Plan } from "./plan";
 import { bareChatPlan } from "./emptyCards";
 import type { BudgetSlice } from "./progress";
 import { coverWords, shapeOf, type SignalId, type TripShape } from "./playbooks/shape";
 import { prepSummary, storedTask, type PrepSummary } from "./prepDays";
 import { isPackLine } from "./prepPack";
 import { lookWord } from "./stageWords";
-import { isPlaceholder, isRouteDraft } from "./startTrip";
+import { countryCodeOfName, isPlaceholder, isRouteDraft, knownPlaceOf } from "./startTrip";
 import { hoursTo, ticketCarrier, ticketViewOf, type TicketCarrier, type TicketVM } from "./ticketView";
 import { whoGoes } from "./tripSettings";
 import { headCountOf } from "./whose";
@@ -944,16 +945,74 @@ const isWanted = (item: Item, env: Env): boolean => item.status === "chosen" && 
 
 type Card = { city: string | null; rank: number; at: string | null; item?: Item; suggestion?: Suggestion };
 
+/** The country (ISO alpha-2) a place of the trip is in: a record there that says, else the airports' or the places' table. */
+function countryOfPlace(city: string, items: readonly Item[]): string | null {
+  const own = items.find((i) => i.status !== "dismissed" && i.category !== "flight" && i.countryCode && sameCity(i.city, city));
+  if (own?.countryCode) return own.countryCode.toUpperCase();
+  const airport = airportEntries().find(([, names]) => names.some((n) => sameCity(n, city)));
+  if (airport) return countryOfAirport(airport[0]);
+  const known = knownPlaceOf(city);
+  return (known?.countryTr ? countryCodeOfName(known.countryTr) : null) ?? regionTownOf(city)?.country ?? null;
+}
+
+/**
+ * The places a row of cards is by (0.38.9): a country or a region and a town inside it are one box, the town's. The trip
+ * set up as "İstanbul → Mısır" and then staying in Şarm El-Şeyh had a "Mısır" box beside Şarm's, its ideas apart: what was
+ * said of Mısır goes to Şarm. With several towns there, to the first of them. Returns the stops to group by and where a
+ * card's city goes.
+ */
+export function collectionPlaces(
+  stops: readonly { city: string; start: string; end: string; nights: number }[],
+  cities: readonly (string | null)[],
+  items: readonly Item[],
+): { stops: { city: string; start: string; end: string; nights: number }[]; homeOf: (city: string | null) => string | null } {
+  const countries = new Map<string, string | null>();
+  const countryOf = (city: string) => {
+    const key = cityKeyOf(city) ?? city;
+    if (!countries.has(key)) countries.set(key, countryOfPlace(city, items));
+    return countries.get(key) ?? null;
+  };
+  // Whether `outer` is a country or a region `town` is in ("Mısır" holds Şarm El-Şeyh, "Bali" Canggu).
+  const holds = (outer: string, town: string): boolean => {
+    if (sameCity(outer, town)) return false;
+    const code = countryCodeOfName(outer);
+    if (code) return countryOf(town) === code;
+    const region = regionTownOf(town)?.region;
+    return region != null && sameCity(region, outer);
+  };
+  const named = [...stops.map((s) => s.city), ...cities.filter(nonNull)];
+  const homeOf = (city: string | null): string | null => {
+    let at = city;
+    // (a town in a region in a country: a step for each)
+    for (let step = 0; at && step < 3; step++) {
+      const inner: string | null = named.find((n) => holds(at!, n)) ?? null;
+      if (!inner) break;
+      at = inner;
+    }
+    return at;
+  };
+  // A stop that is a country with its town a stop too goes; one whose town only a card names becomes the town's, its days kept.
+  const out: { city: string; start: string; end: string; nights: number }[] = [];
+  for (const s of stops) {
+    const city = homeOf(s.city) ?? s.city;
+    if (sameCity(city, s.city)) out.push(s);
+    else if (!stops.some((o) => sameCity(o.city, city)) && !out.some((o) => sameCity(o.city, city))) out.push({ ...s, city });
+  }
+  return { stops: out, homeOf };
+}
+
 function collectionIntents(section: CatSection, env: Env): IntentVM[] {
   const id = section.id;
   const records = uniq(section.entries.map(recordOf).filter(nonNull)).filter((i) => i.status !== "dismissed");
   const open = [...(env.input.suggestions?.[id] ?? []), ...(id === "todo" ? (env.input.suggestions?.food ?? []) : [])].filter((s) => s.kind === "add");
-  const cards: Card[] = [
+  const raw: Card[] = [
     ...records.map((item) => ({ city: item.city, rank: item.status === "booked" ? EVENT_RANK.booked : isPlanned(id, item) && !isWanted(item, env) ? EVENT_RANK.plan : EVENT_RANK.idea, at: isoDate(item.dates.start), item })),
     ...open.map((s) => ({ city: s.payload?.city ?? null, rank: EVENT_RANK.idea, at: isoDate(s.payload?.start ?? null), suggestion: s })),
   ];
+  const places = collectionPlaces(citiesOfPlan(env.input.plan), raw.map((c) => c.city), env.input.items);
+  const cards = raw.map((c) => ({ ...c, city: places.homeOf(c.city) }));
   const kind: CardKind = id === "activity" ? "activity" : "todo";
-  return eventsByCity(citiesOfPlan(env.input.plan), cards)
+  return eventsByCity(places.stops, cards)
     .filter((g) => g.cards.length)
     .map((g) => {
       const items = g.cards.map((c) => c.item).filter(nonNull);
