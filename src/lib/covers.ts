@@ -105,6 +105,15 @@ export function wayCoverOf(leg: Leg, items: readonly Item[], trip?: TripSpan, fa
 }
 
 /**
+ * A rented car (or scooter, campervan: not a pass) over `day` (0.39.4, Emre: a train suggested for a day the car is
+ * driven): the record, else null. A car with no last day runs to the trip's end (daysOf), as on the board.
+ */
+export function carOnDay(items: readonly Item[], day: string | null, trip?: TripSpan): Item | null {
+  if (!day) return null;
+  return items.find((i) => coversWays(i) && !isPass(i) && covers(i, day, [], trip)) ?? null;
+}
+
+/**
  * What covers a way of travel planned with nothing to pay of its own (a boat on the lake said in the chat): a pass over its
  * day in its area. A car covers only the drives; a ticket bought or priced is its own.
  */

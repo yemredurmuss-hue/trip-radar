@@ -46,7 +46,7 @@ export async function reviewNewTrip(tripId: string): Promise<number> {
   const timeline = buildTimeline(plan, legs, items, new Set(after.hidden ?? []));
   const today = new Date().toISOString().slice(0, 10);
   const rules = ruleSuggestions({ trip: after, plan, items, timeline, legs, mains, home: await loadHome(), today });
-  return shownSuggestions(after.suggestions, rules).length;
+  return shownSuggestions(after.suggestions, rules, items).length;
 }
 
 setSuggestionsReview(reviewNewTrip);

@@ -2116,7 +2116,10 @@ async function runTool(tripId: string, name: string, input: any, choices: string
           "Panoda aynı konuda bir öneri kartı zaten var (suggestions.on_board); ikincisi bırakılmadı. Ona yönlendir.",
           "The board already shows a suggestion on this (suggestions.on_board); a second one wasn't left. Point the user to it.",
         ),
-        already_on_plan: L("Planda bu zaten var (o günler için bir araç, bir poliçe ya da eSIM); öneri bırakılmadı.", "The plan already has this (a vehicle for those days, a policy or an eSIM); no suggestion was left."),
+        already_on_plan: L(
+          "Planda bu zaten var (o günler için bir araç: o günlerin yolları da arabayla gidilir, tren ya da otobüs önerilmez; bir poliçe ya da eSIM); öneri bırakılmadı.",
+          "The plan already has this (a vehicle for those days: those days' roads are driven, no train or bus is suggested; a policy or an eSIM); no suggestion was left.",
+        ),
         dismissed_before: L(
           "Kullanıcı bu öneriye daha önce 'Gerek yok' dedi; tekrar bırakılmadı. Yeniden önerme.",
           "The user already said 'Not needed' to this suggestion; it wasn't left again. Don't suggest it again.",
