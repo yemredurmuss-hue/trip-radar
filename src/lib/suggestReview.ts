@@ -81,6 +81,7 @@ const reviewRules = (): string =>
 - title kısa (en fazla 6 kelime), why TEK cümle ve yalnız plandaki olgulara dayanır. Fiyat, saat, yüzde ya da uydurma rakam yazma.
 - city, start, end (YYYY-MM-DD) plandan belliyse doldur, değilse "". place yalnız yapılacaklar ve yeme-içmede, öbürlerinde "".
 - Omurga (transport, stay): bu gezinin kendisine özel ulaşım öner: araç ya da motosiklet kiralama, havalimanından şehre tren, otobüs ya da transfer, duraklar arası yerel ulaşım, bölge bileti ya da kartı; planda olmayan bir gece ya da konaklama eksiği varsa onu.
+- Araç kiralama önerdiysen ya da planda bir kiralama varsa şehirler arası her yol için ayrıca ulaşım önerme (o yollar arabayla gidilir); yalnız arabanın gidemediği yer için (feribot, uçuş) öner.
 - Yapılacaklar (todo) ve yeme-içme (food): duraklara özel gezilecek yer, yapılacak şey ve yerel yemek ya da restoran öner; gezinin türüne ("kind") ve tarzına ("style") uysun (sörf gezisinde sörf noktaları, doğa gezisinde yürüyüş yolları).
 - Yapılacaklar ve yeme-içmede title gerçek bir yerin kendi adıdır, Google Haritalar'da aranınca bulunur ("Tanah Lot Tapınağı", "Warung Bu Mi"): cümle parçası, ekli hâl ("Tanah Lot Tapınağı'nın") ya da genel söz ("Yerel bir warung") değil. Ne yapılacağını why söyler. place: Haritalar'da aranacak tam ad ve kasaba ("Tanah Lot Temple, Tabanan"); adı olmayan bir şey önerme.
 - Önerileri bölümlere yay: omurgaya da, yapılacaklara da, yeme-içmeye de yaz.
@@ -93,6 +94,7 @@ const reviewRules = (): string =>
 - title short (at most 6 words), why ONE sentence resting only on facts in the plan. No prices, times, percentages or made-up numbers.
 - city, start, end (YYYY-MM-DD) when the plan makes them clear, else "". place only in things to do and food, else "".
 - The backbone (transport, stay): ways of getting around this trip in particular: a car or motorbike rental, the train, bus or transfer from the airport into town, local transport between the stops, a regional pass or card; a night or stay missing from the plan.
+- If you suggest a car rental, or the plan has a rental, don't suggest a way of travel for each road between the cities as well (those are driven); only where the car can't go (a ferry, a flight).
 - Things to do (todo) and food (food): places to see, things to do and local food or restaurants at the stops; they fit the trip's kind ("kind") and style ("style") (surf spots on a surf trip, trails on a nature trip).
 - In things to do and food, title is a real place's own name that a Google Maps search finds ("Tanah Lot Temple", "Warung Bu Mi"): not a fragment of a sentence or a generic phrase ("A local warung"). The why says what to do there. place: the full name and town to search on Maps ("Tanah Lot Temple, Tabanan"); don't suggest something without a name.
 - Spread them over the sections: the backbone, things to do and food alike.

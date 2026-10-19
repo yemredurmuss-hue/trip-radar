@@ -27,11 +27,21 @@ export function coversWays(item: Item): boolean {
 /** A pass (not a car): a ticket for many rides. */
 export const isPass = (item: Pick<Item, "name" | "category" | "plannedKind">): boolean => PASS.test(item.name) && item.plannedKind !== "car_rental";
 
-/** The days a covering record runs: its own dates, else its first day and its validity. */
-function daysOf(item: Item): { start: string; end: string } | null {
-  const start = item.dates.start?.slice(0, 10) ?? null;
-  if (!start) return null;
+/** The trip's first and last day, for a rented car that doesn't say its own. */
+export type TripSpan = { start: string; end: string } | null | undefined;
+
+/**
+ * The days a covering record runs: its own dates, else its first day and its validity. A rented car put on the plan with
+ * no last day (the AI's "Araç kiralama" from the trip's first day, or with no day at all) runs to the trip's end, as its
+ * own box says (intents.suggestedIntent).
+ */
+function daysOf(item: Item, trip?: TripSpan): { start: string; end: string } | null {
+  const own = item.dates.start?.slice(0, 10) ?? null;
   const end = item.dates.end?.slice(0, 10) ?? null;
+  const car = !isPass(item) && isRental(item) && !end;
+  if (car && trip && (!own || own === trip.start)) return { start: trip.start, end: trip.end };
+  const start = own;
+  if (!start) return null;
   const valid = item.metrics?.validityDays ?? null;
   if (end && end >= start) return { start, end };
   if (valid && valid > 1) {
@@ -43,8 +53,8 @@ function daysOf(item: Item): { start: string; end: string } | null {
 }
 
 /** Whether a way on `day` touching these places is the covering record's: within its days, within its area (a pass for one place). */
-function covers(item: Item, day: string | null, places: (string | null | undefined)[]): boolean {
-  const days = daysOf(item);
+function covers(item: Item, day: string | null, places: (string | null | undefined)[], trip?: TripSpan): boolean {
+  const days = daysOf(item, trip);
   if (!days || !day || day < days.start || day > days.end) return false;
   // A pass for one place (Hakone Free Pass): a way touching that place; a car or a country's pass: any way.
   if (!isPass(item) || WIDE_PASS.test(item.name) || !item.city) return true;
@@ -55,19 +65,41 @@ function covers(item: Item, day: string | null, places: (string | null | undefin
 const PASS_MODES = new Set(["train", "bus", "ferry", "metro"]);
 const CAR_MODES = new Set(["car"]);
 
+/** A rental picked up (or left) at the airport: its words say so. */
+const AT_AIRPORT = /havaliman|airport|aeroporto|aeropuerto|a[ée]roport|flughafen/i;
+
+/**
+ * Whether a car covers the transfer to the first stay or from the last one (0.38.8, Emre): picked up the day it lands (or
+ * left the day it leaves) where that transfer is, at the airport (its words say so) or in the same city as the airport and
+ * the stay. With the airport in another city than the stay (legs.farHub), only a car picked up there; anything vaguer is
+ * left as it is.
+ */
+function carAtHub(item: Item, leg: Leg, far: string | null, trip?: TripSpan): boolean {
+  if (isPass(item) || !isRental(item)) return false;
+  const days = daysOf(item, trip);
+  if (!days || leg.date !== (leg.kind === "arrival" ? days.start : days.end)) return false;
+  const stay = leg.kind === "arrival" ? leg.to.city : leg.from.city;
+  const airport = AT_AIRPORT.test([item.name, item.location.address, item.location.area].filter(Boolean).join(" "));
+  if (far) return sameCity(item.city, far) || (airport && (!item.city || sameCity(item.city, far)));
+  return Boolean(stay) && (sameCity(item.city, stay) || (airport && !item.city));
+}
+
 /**
  * What covers a change of city with nothing of its own (D10): a pass or a car over its day (the way picked, if any, its
- * own: a pass a train, a bus or a boat; a car the drive). Null when nothing does.
+ * own: a pass a train, a bus or a boat; a car the drive). A car also covers the transfer from the airport to the first
+ * stay, or back, when it's picked up or left there (carAtHub; `far`: legs.farHub). Null when nothing does.
  */
-export function wayCoverOf(leg: Leg, items: readonly Item[]): Item | null {
-  if (leg.kind !== "move" && leg.kind !== "change") return null;
+export function wayCoverOf(leg: Leg, items: readonly Item[], trip?: TripSpan, far: string | null = null): Item | null {
+  // (home ↔ the airport, a step the traveller added, is never the car's)
+  const hub = (leg.kind === "arrival" || leg.kind === "departure") && !leg.key.endsWith(":home");
+  if (leg.kind !== "move" && leg.kind !== "change" && !hub) return null;
   const mode = leg.choice?.mode ?? null;
   if (mode === "flight") return null;
   for (const item of items) {
     if (!coversWays(item)) continue;
     const pass = isPass(item);
     if (mode && !(pass ? PASS_MODES : CAR_MODES).has(mode)) continue;
-    if (covers(item, leg.date, [leg.from.city, leg.to.city])) return item;
+    if (hub ? carAtHub(item, leg, far, trip) : covers(item, leg.date, [leg.from.city, leg.to.city], trip)) return item;
   }
   return null;
 }

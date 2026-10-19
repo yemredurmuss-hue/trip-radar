@@ -117,6 +117,9 @@ describe("Emre's Sri Lanka surf trip (0.38.5: AI suggestions come)", () => {
     expect(rules).toContain("araç ya da motosiklet kiralama");
     expect(rules).toContain("havalimanından şehre tren, otobüs ya da transfer");
     expect(rules).toContain("bölge bileti");
+    // 0.38.8 (Emre, Patagonya): with a rental, no way of travel per road between the cities; only a ferry or a flight.
+    expect(rules).toContain("planda bir kiralama varsa şehirler arası her yol için ayrıca ulaşım önerme");
+    expect(rules).toContain("yalnız arabanın gidemediği yer için (feribot, uçuş) öner");
     expect(rules).toContain("Yapılacaklar (todo) ve yeme-içme (food)");
     expect(rules).toContain("sörf gezisinde sörf noktaları");
     expect(rules).toContain("omurgaya da, yapılacaklara da, yeme-içmeye de");

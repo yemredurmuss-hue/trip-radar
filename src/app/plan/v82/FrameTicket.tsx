@@ -364,7 +364,8 @@ export function FrameTicket({ vm, form, page, links, info, detail, quiet, on, on
         {L("Fiyat ekle", "Add the price")}
       </button>
     ) : null;
-    const reways = !inc && !o && ways != null && vm.modes.length > 0;
+    // (a way a rented car covers too: its other ways one tap away, 0.38.8)
+    const reways = !o && ways != null && vm.modes.length > 0;
     const back = reways ? () => setRechoose(!rechoose) : (on.unarrange ?? onReset);
     const row = back && <button type="button" className="q-chg" onClick={back}>{rechoose && reways ? L("Vazgeç", "Cancel") : L("Değiştir", "Change")}</button>;
     const done = (then: () => void) => () => {
