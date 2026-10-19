@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useRef, useState, type ClipboardEvent, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type ClipboardEvent, type ReactNode } from "react";
 import { resumeSearches, sendMessage } from "../lib/assistant";
+import { chatCards, quickReplies, type ChatCardVM, type PlanTarget } from "../lib/chatCards";
+import { chatPeek } from "../lib/chatPeek";
 import { chatStatusOf, chatStepsOf, onChatStatus, type ChatStatus, type ChatStep } from "../lib/chatStatus";
 import { L, lang } from "../lib/i18n";
 import { reloadIfLangChanged } from "./langSwitch";
@@ -16,6 +18,10 @@ import { requestReveal } from "./arrive/intake";
 import { droppedLinks, useDropZone } from "./arrive/useDropZone";
 import { addLinks, addTripFiles, isTripFile } from "./capture";
 import { UiIcon } from "./cards/Silhouettes";
+import { ChatCard } from "./chat/ChatCard";
+import type { PlanLink } from "./chat/planLink";
+import { QuickReplies } from "./chat/QuickReplies";
+import { useChatDrawer } from "./chat/useChatDrawer";
 import { EventFold, foldRuns } from "./ChatFold";
 import { ChatOffers } from "./ChatOffers";
 import { ArrowUp, Back } from "./Icons";
@@ -34,10 +40,15 @@ interface Props {
   /** A line handed over from the home ("Porto'da bir otel daha" for this trip): sent as if typed here, once. */
   pending?: { id: string; text: string } | null;
   onPendingTaken?: (id: string) => void;
+  /** The Plan beside it (TripPanel): its boxes for the reply's cards, "Planda göster" and "Bunu seç" (C34). */
+  plan?: PlanLink | null;
 }
 
-/** The selected trip's own conversation; every trip has its own chat and context. */
-export function Chat({ trip, messages, onBack, items, trips, openCaptures, pending, onPendingTaken }: Props) {
+/**
+ * The selected trip's own conversation; every trip has its own chat and context. A reply that put a record on the board
+ * carries its card (C34), at most three quick replies sit over the box, and under 860 px it is a drawer from the bottom.
+ */
+export function Chat({ trip, messages, onBack, items, trips, openCaptures, pending, onPendingTaken, plan }: Props) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   // What the answer is waiting on beyond thinking: a web search ("Web'de arıyorum…"), prices ("Fiyatlara bakıyorum…").
@@ -98,6 +109,27 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
   const choices = last?.role === "assistant" && !busy ? last.choices : [];
   // Links and files handed here this session, with their chips (arrive/ChatArrivals.tsx).
   const arrivals = useChatArrivals({ trip, messages: visible, items, trips, openCaptures });
+  // C34: the record each turn put on the board or suggested, as the Plan's compact card; the quick replies under it all.
+  const link = plan?.tripId === trip.id ? plan : null;
+  const cards = useMemo(() => (link ? chatCards({ trip, messages, items, collections: link.collections }) : new Map<string, ChatCardVM>()), [link, trip, messages, items]);
+  const quick = useMemo(() => (link && !busy ? quickReplies({ trip, messages, cards, collections: link.collections }) : []), [link, trip, messages, cards, busy]);
+  // Under 860 px: the drawer, its handle's line the last thing said.
+  const drawer = useChatDrawer();
+  const bodyId = useId();
+  const peek = thinking ? thinkingLine(status, waitedLong ? LONG_WAIT : 0) : chatPeek(messages);
+  /** "Planda göster": the drawer shuts (the plan is what's to be seen) and the box comes into view, flashing. */
+  const showOnPlan = (target: PlanTarget) => {
+    drawer.shut();
+    link?.show(target);
+  };
+  const pickOnPlan = (itemId: string, target: PlanTarget) => {
+    drawer.shut();
+    link?.pick(itemId, target);
+  };
+  const cardOf = (id: string) => {
+    const card = cards.get(id);
+    return card ? <ChatCard card={card} onShow={showOnPlan} onPick={pickOnPlan} /> : null;
+  };
 
   // Block body on purpose: newer Chrome returns a Promise from scrollIntoView, and a value returned
   // from an effect is treated as its cleanup function (React then crashes calling it).
@@ -119,6 +151,8 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
     }
     setText("");
     setBusy(true);
+    // Under 860 px the reply is worth seeing: the drawer opens for it.
+    drawer.reveal();
     const langBefore = lang();
     let failed = false;
     try {
@@ -174,7 +208,7 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
   const dragging = drop.rect != null;
 
   return (
-    <section className="chat" {...drop.handlers}>
+    <section className={`chat${drawer.open ? " open" : ""}`} {...drop.handlers}>
       {drop.rect && <DropOverlay rect={drop.rect} />}
       <div className="chat-top">
         <button className="trip-switch" onClick={onBack}>
@@ -189,125 +223,153 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
         </div>
         <div className="muted chat-sub">{L(`${trip.title} için`, `For ${trip.title}`)}</div>
       </div>
-      {/* (hareket dili) "Asistana bağlanamadım · Ayarlar'a git": comes down from the top for what the traveller can fix; it goes once acted on. */}
-      {error && errKind && (
-        <div className={`chat-banner ${errKind}`} role="alert">
-          <Mascot state="oops" size={30} />
-          <span>
-            <b>{errKind === "settings" ? L("Asistana bağlanamadım.", "I couldn't reach the assistant.") : L("İnternete bağlanamadım.", "I couldn't get online.")}</b> {error}
-          </span>
-          {errKind === "settings" && (
-            <button
-              type="button"
-              className="small-btn"
-              onClick={() => {
-                clearError();
-                location.hash = "#settings";
-              }}
-            >
-              {L("Ayarlar'a git", "Go to Settings")}
-            </button>
-          )}
-        </div>
-      )}
-
-      <div className="messages">
-        {arrivals.rows.length === 0 && (
-          <div className="muted" style={{ fontSize: 16, lineHeight: 1.6 }}>
-            {L(
-              'Seçeneklerini kaydettikçe burada birlikte karar veririz. Bütçeni, neyin önemli olduğunu ya da "hangisi daha iyi?" diye sorabilirsin.',
-              'Save your options and we\'ll decide here together. Tell me your budget, what matters to you, or ask "which one is better?"',
+      {/* Wide: the column's own parts (display: contents). Under 860 px: the drawer from the bottom (chat.css). */}
+      <div className="c-sheet" ref={drawer.sheet} onKeyDown={drawer.onKeyDown}>
+        <button
+          type="button"
+          ref={drawer.handle}
+          className="c-handle"
+          aria-expanded={drawer.open}
+          aria-controls={bodyId}
+          aria-label={drawer.open ? L("Sohbeti kapat", "Close the chat") : L("Sohbeti aç", "Open the chat")}
+          onClick={drawer.toggle}
+        >
+          <i aria-hidden />
+          <span className="c-hl">{L("Asistan", "Assistant")}</span>
+          {peek && <small className="c-hs">{peek}</small>}
+        </button>
+        {/* (hareket dili) "Asistana bağlanamadım · Ayarlar'a git": comes down from the top for what the traveller can fix; it goes once acted on. */}
+        {error && errKind && (
+          <div className={`chat-banner ${errKind}`} role="alert">
+            <Mascot state="oops" size={30} />
+            <span>
+              <b>{errKind === "settings" ? L("Asistana bağlanamadım.", "I couldn't reach the assistant.") : L("İnternete bağlanamadım.", "I couldn't get online.")}</b> {error}
+            </span>
+            {errKind === "settings" && (
+              <button
+                type="button"
+                className="small-btn"
+                onClick={() => {
+                  clearError();
+                  location.hash = "#settings";
+                }}
+              >
+                {L("Ayarlar'a git", "Go to Settings")}
+              </button>
             )}
           </div>
         )}
-        {foldRows(arrivals.rows, (row) => {
-          if (row.kind === "intake") return arrivals.bubble(row.e);
-          const m = row.m;
-          // A capture that went to the trip of its place, or the question about one (placeCheck.ts).
-          if (m.routing) return <RoutingLine key={m.id} m={m} routing={m.routing} trips={trips} />;
-          // An event line about a record goes to its card ("✓ Casa Azul kaydedildi → Konaklama").
-          const about = arrivals.eventItem(m);
-          if (about) {
-            return (
-              <button key={m.id} type="button" className="msg-event ar-ev" title={L("Panoda göster", "Show on the board")} onClick={() => requestReveal(about.id)}>
-                {m.text}
-              </button>
-            );
-          }
-          const line = (
-            <div key={m.id} className={`msg-${m.role}`} data-who={m.role === "assistant" ? L("Asistan", "Assistant") : undefined}>
-              {/* A reply stored before the filter (the raw trip state as the answer) is cleaned here too. */}
-              <RichText text={m.role === "assistant" ? shownReply(m.text) : m.text} links={m.role === "assistant" ? m.webSources : undefined} names={m.role === "assistant" ? names : undefined} />
-              {/* A change said with no tool that made it (claims.ts): on screen only, never in the model's history. */}
-              {m.role === "assistant" && m.unbacked && <p className="msg-note">{noChangeNote()}</p>}
-              {/* find_offers: the real offers it found, as cards with "Ekle". */}
-              {m.role === "assistant" && m.offers && <ChatOffers m={m} />}
-            </div>
-          );
-          return row.file ? (
-            <div key={m.id} className="ar-sent">
-              {line}
-              {arrivals.fileChip(row.file)}
-            </div>
-          ) : (
-            line
-          );
-        })}
-        {choices.length > 0 && (
-          <div className="choices">
-            {choices.map((c, i) => (
-              <button key={c} className={i === 0 ? "btn-primary" : "btn-link"} onClick={() => void submit(c)}>
-                {c}
-              </button>
-            ))}
-          </div>
-        )}
-        {busy && steps.length > 0 && (
-          <ul className="chat-steps" aria-live="polite">
-            {steps.map((s, i) => (
-              <li key={i} className={s.done ? "done" : "now"}>
-                <span aria-hidden>{s.done ? "✓" : "•"}</span> {s.text}
-              </li>
-            ))}
-          </ul>
-        )}
-        {thinking && (
-          <div className="thinking">
-            <span className="th-dots" aria-hidden><i /><i /><i /></span>
-            <span key={thinkingLine(status, waitedLong ? LONG_WAIT : 0)} className="th-line">{thinkingLine(status, waitedLong ? LONG_WAIT : 0)}</span>
-          </div>
-        )}
-        {error && !errKind && <div className="chat-error" role="alert">{error}</div>}
-        <div ref={bottom} />
-      </div>
 
-      <form className={`composer${dragging ? " drag" : ""}`} onSubmit={(e) => (e.preventDefault(), void submit())}>
-        <button type="button" className="icon-btn" title={L("Belge ya da görsel ekle (PDF, PNG, JPG)", "Add a document or picture (PDF, PNG, JPG)")}
-          aria-label={L("Belge ya da görsel ekle", "Add a document or picture")} onClick={() => fileInput.current?.click()}>
-          <UiIcon name="clip" size={18} />
-        </button>
-        <input
-          type="file"
-          accept={`${DOC_ACCEPT},image/*`}
-          multiple
-          hidden
-          ref={fileInput}
-          onChange={(e) => {
-            void addFiles(Array.from(e.target.files ?? []));
-            e.target.value = "";
-          }}
-        />
-        <input
-          type="text"
-          placeholder={L("Bir link bırak, görsel yapıştır veya yaz…", "Drop a link, paste an image or type…")}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onPaste={onPaste}
-        />
-        <button type="submit" className="send-btn" disabled={!text.trim() || busy} aria-label={L("Gönder", "Send")}>
-          <ArrowUp />
-        </button>
-      </form>
+        <div className="messages" id={bodyId} ref={drawer.body} tabIndex={-1} aria-label={L("Sohbet", "Chat")}>
+          {arrivals.rows.length === 0 && (
+            <div className="muted c-empty">
+              {L(
+                'Seçeneklerini kaydettikçe burada birlikte karar veririz. Bütçeni, neyin önemli olduğunu ya da "hangisi daha iyi?" diye sorabilirsin.',
+                'Save your options and we\'ll decide here together. Tell me your budget, what matters to you, or ask "which one is better?"',
+              )}
+            </div>
+          )}
+          {foldRows(arrivals.rows, (row) => {
+            if (row.kind === "intake") return arrivals.bubble(row.e);
+            const m = row.m;
+            // A capture that went to the trip of its place, or the question about one (placeCheck.ts).
+            if (m.routing) return <RoutingLine key={m.id} m={m} routing={m.routing} trips={trips} />;
+            // An event line about a record ("✓ Casa Azul kaydedildi → Konaklama") carries its record's card (C34); without
+            // one (the Plan not drawn yet), the line itself goes to the card.
+            const about = arrivals.eventItem(m);
+            if (about) {
+              const card = cardOf(m.id);
+              return card ? (
+                <div key={m.id} className="c-ev">
+                  <div className="msg-event">{m.text}</div>
+                  {card}
+                </div>
+              ) : (
+                <button key={m.id} type="button" className="msg-event ar-ev" title={L("Panoda göster", "Show on the board")} onClick={() => requestReveal(about.id)}>
+                  {m.text}
+                </button>
+              );
+            }
+            const line = (
+              <div key={m.id} className={`msg-${m.role}`} data-who={m.role === "assistant" ? L("Asistan", "Assistant") : undefined}>
+                {/* A reply stored before the filter (the raw trip state as the answer) is cleaned here too. */}
+                <RichText text={m.role === "assistant" ? shownReply(m.text) : m.text} links={m.role === "assistant" ? m.webSources : undefined} names={m.role === "assistant" ? names : undefined} />
+                {/* A change said with no tool that made it (claims.ts): on screen only, never in the model's history. */}
+                {m.role === "assistant" && m.unbacked && <p className="msg-note">{noChangeNote()}</p>}
+                {/* find_offers: the real offers it found, as cards with "Ekle". */}
+                {m.role === "assistant" && m.offers && <ChatOffers m={m} />}
+                {/* C34: the record this turn put on the board or suggested. */}
+                {m.role === "assistant" && cardOf(m.id)}
+              </div>
+            );
+            return row.file ? (
+              <div key={m.id} className="ar-sent">
+                {line}
+                {arrivals.fileChip(row.file)}
+              </div>
+            ) : (
+              line
+            );
+          })}
+          {choices.length > 0 && (
+            <div className="choices">
+              {choices.map((c, i) => (
+                <button key={c} className={i === 0 ? "btn-primary" : "btn-link"} onClick={() => void submit(c)}>
+                  {c}
+                </button>
+              ))}
+            </div>
+          )}
+          {busy && steps.length > 0 && (
+            <ul className="chat-steps" aria-live="polite">
+              {steps.map((s, i) => (
+                <li key={i} className={s.done ? "done" : "now"}>
+                  <span aria-hidden>{s.done ? "✓" : "•"}</span> {s.text}
+                </li>
+              ))}
+            </ul>
+          )}
+          {thinking && (
+            <div className="thinking">
+              <span className="th-dots" aria-hidden><i /><i /><i /></span>
+              <span key={thinkingLine(status, waitedLong ? LONG_WAIT : 0)} className="th-line">{thinkingLine(status, waitedLong ? LONG_WAIT : 0)}</span>
+            </div>
+          )}
+          {error && !errKind && <div className="chat-error" role="alert">{error}</div>}
+          <div ref={bottom} />
+        </div>
+
+        {/* C34: at most three quick replies over the box; a tap is sent as if typed. */}
+        <QuickReplies replies={quick} busy={busy} onAsk={(q) => void submit(q)} />
+
+        <form className={`composer${dragging ? " drag" : ""}`} onSubmit={(e) => (e.preventDefault(), void submit())}>
+          <button type="button" className="icon-btn" title={L("Belge ya da görsel ekle (PDF, PNG, JPG)", "Add a document or picture (PDF, PNG, JPG)")}
+            aria-label={L("Belge ya da görsel ekle", "Add a document or picture")} onClick={() => fileInput.current?.click()}>
+            <UiIcon name="clip" size={18} />
+          </button>
+          <input
+            type="file"
+            accept={`${DOC_ACCEPT},image/*`}
+            multiple
+            hidden
+            ref={fileInput}
+            onChange={(e) => {
+              void addFiles(Array.from(e.target.files ?? []));
+              e.target.value = "";
+            }}
+          />
+          <input
+            type="text"
+            placeholder={L("Bir link bırak, görsel yapıştır veya yaz…", "Drop a link, paste an image or type…")}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onPaste={onPaste}
+          />
+          <button type="submit" className="send-btn" disabled={!text.trim() || busy} aria-label={L("Gönder", "Send")}>
+            <ArrowUp />
+          </button>
+        </form>
+      </div>
     </section>
   );
 }

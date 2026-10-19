@@ -20,7 +20,12 @@ export function PlanKey() {
   );
 }
 
-export function PlanOrder({ view, onView }: { view: PlanOrderView; onView: (v: PlanOrderView) => void }) {
+export function PlanOrder({ view, onView, off }: {
+  view: PlanOrderView;
+  onView: (v: PlanOrderView) => void;
+  /** A way to read it that's shut, with why (D15: "Yolculuk sırasıyla" on a trip with no dates): faded, not pressed. */
+  off?: Partial<Record<PlanOrderView, string>>;
+}) {
   const tabs: [PlanOrderView, string][] = [
     ["plan", L("Kategoriye göre", "By category")],
     ["story", L("Yolculuk sırasıyla", "In trip order")],
@@ -28,11 +33,16 @@ export function PlanOrder({ view, onView }: { view: PlanOrderView; onView: (v: P
   ];
   return (
     <span className="plan-order" role="tablist" aria-label={L("Sıra", "Order")}>
-      {tabs.map(([id, label]) => (
-        <button key={id} type="button" role="tab" aria-selected={view === id} aria-pressed={view === id} className={view === id ? "on" : ""} onClick={() => onView(id)}>
-          {label}
-        </button>
-      ))}
+      {tabs.map(([id, label]) => {
+        const why = off?.[id];
+        return (
+          <button key={id} type="button" role="tab" aria-selected={view === id} aria-pressed={view === id} aria-disabled={why != null || undefined} title={why || undefined}
+            className={`${view === id ? "on" : ""}${why != null ? " off" : ""}`.trim()} onClick={() => why == null && onView(id)}>
+            {label}
+            {why && <span className="sr-only"> · {why}</span>}
+          </button>
+        );
+      })}
     </span>
   );
 }

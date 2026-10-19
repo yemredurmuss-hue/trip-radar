@@ -9,14 +9,18 @@ import { needsReading } from "../lib/listing";
 import { cardFacts } from "../lib/cardFacts";
 import { budgetBar, sectionAllotments, decisionProgress, entryDomId, type Todo } from "../lib/progress";
 import { cachedWeather } from "../lib/climate";
-import { cityKeyOf, groupKeyOf, sameCity, type OptionGroup, type Plan } from "../lib/plan";
+import { addDays, cityKeyOf, groupKeyOf, sameCity, type OptionGroup, type Plan } from "../lib/plan";
 import { retryCapture } from "../lib/process";
 import { L } from "../lib/i18n";
 import { creditOf, findCityPhoto, imageProxy, keptCredits, nextCityImage, nextHeroImage, wantsCityImage } from "../lib/cityImages";
 import { acceptMood, moodKey } from "../lib/heroText";
 import { getProvider, MissingKeyError } from "../lib/llm";
 import { resetConversation } from "../lib/assistant";
-import { collectionsOf } from "../lib/intents";
+import { collectionsOf, type IntentInput } from "../lib/intents";
+import { journeyChapters, type StepTarget } from "../lib/journeyChapters";
+import { countedIntents, localNow, tripModeOf } from "../lib/tripPhase";
+import { timedNext, timedNextLabel, todayStrip, type TimedNext, type TodayInput } from "../lib/tripToday";
+import type { PlanTarget } from "../lib/chatCards";
 import { mosaicOf, placesOfIntents } from "../lib/heroMosaic";
 import { budgetView, datesTip, heroCounts, heroLine } from "../lib/heroStrip";
 import { nextLabel, nextShort, nextStep, type NextIntent, type NextStep } from "../lib/nextStep";
@@ -38,7 +42,7 @@ import { planList } from "../lib/planList";
 import { firstField, keepDraftFor, type CardFocus } from "../lib/inlineEdit";
 import { newId } from "../lib/db";
 import { AddButton, AddSheet } from "./cards/AddSheet";
-import { useTripDocs } from "./cards/DocAccess";
+import { openDoc, useTripDocs } from "./cards/DocAccess";
 import { LegCard } from "./cards/LegCard";
 import { EmptyLegCard, EmptyRecordCard } from "./cards/EmptyCard";
 import { EmptyEnvContext, type EmptyEnv } from "./cards/emptyEnv";
@@ -59,15 +63,18 @@ import type { HeroCity } from "./TripHero";
 import { Hero } from "./hero/Hero";
 import { HeroMini } from "./hero/HeroMini";
 import type { HeroNext } from "./hero/HeroStrip";
+import { TodayStrip, todayRowEl, useMinuteClock } from "./hero/TodayStrip";
 import type { TripMenuActions } from "./hero/TripMenu";
 import { PrintPlan } from "./PrintPlan";
 import { PlanKey, PlanOrder } from "./plan/PlanOrder";
 import type { GoTarget } from "./plan/JourneyCards";
-import { StoryView } from "./plan/StoryView";
+import { chapterDomId, JourneyView } from "./plan/journey/JourneyView";
+import type { PlanLink } from "./chat/planLink";
 import { TipOn } from "./HoverTip";
 import { PanoNewsTip } from "./PanoNewsTip";
 import { usePanoDot } from "./usePanoDot";
 import { claimOpening, playOpening } from "./opening";
+import { reducedMotion } from "./motion";
 import { heroNumbers, openNeedsText, plannedBookedText } from "../lib/lifecycle";
 import { panoEntries } from "../lib/pano";
 import type { PanoAt, PanoView } from "../lib/panoBoard";
@@ -120,9 +127,11 @@ interface Props {
   onHistory?: () => void;
   onSettings?: () => void;
   onDeleteTrip?: () => void;
+  /** C34: the boxes and "Planda göster" / "Bunu seç", handed up for the chat beside the Plan (App.tsx); null once gone. */
+  onPlanLink?: (link: PlanLink | null) => void;
 }
 
-export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenItem, onCompare, onShare, historyOpen = false, onHistoryClose, onAsk, onHistory, onSettings, onDeleteTrip }: Props) {
+export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenItem, onCompare, onShare, historyOpen = false, onHistoryClose, onAsk, onHistory, onSettings, onDeleteTrip, onPlanLink }: Props) {
   // The plan's dates: the ones set, widened by any stay booked or chosen outside them.
   const range = plan.range ?? trip.confirmedDates ?? tripDateRange(items);
   const today = decisions?.ctx.today ?? new Date().toISOString().slice(0, 10);
@@ -610,15 +619,24 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   // What the PDF's own summary says when the hero can't be copied (lifecycle.heroNumbers).
   const numbers = heroNumbers(todo.counts);
 
+  // --- the trip in time (F2, D8): its own clock (the destination's), and whether it is being planned, lived or over ---
+  const zone = facts.local?.info.timeZone ?? null;
+  // A new moment each minute from two days before the first day to the last (check-in, the Bugün strip's hours).
+  const at = useMinuteClock(!!range && today >= addDays(range.start, -2) && today <= range.end);
+  const local = localNow(at, zone);
+  const mode = tripModeOf(range, today);
+
   // --- the v82 hero (aşama 1): the backbone's intents (lib/intents.ts) give its two shares (B9), its mosaic and "Sıradaki" ---
-  const heroIntents = useMemo(
-    () =>
-      collectionsOf({ trip, plan, sections, items, today, decisions: decisions?.byGroup, ctx: decisions?.ctx, docsFor, people: who.count || null, suggestions: suggestions.bySection }).flatMap(
-        (c) => c.intents,
-      ),
-    [trip, plan, sections, items, today, decisions, docsFor, who.count, suggestions.bySection],
+  const intentInput = useMemo<IntentInput>(
+    () => ({ trip, plan, sections, items, today, decisions: decisions?.byGroup, ctx: decisions?.ctx, docsFor, people: who.count || null, suggestions: suggestions.bySection, now: at }),
+    [trip, plan, sections, items, today, decisions, docsFor, who.count, suggestions.bySection, at],
   );
-  const counts = useMemo(() => heroCounts(heroIntents), [heroIntents]);
+  const collections = useMemo(() => collectionsOf(intentInput), [intentInput]);
+  const heroIntents = useMemo(() => collections.flatMap((c) => c.intents), [collections]);
+  // Row 127 (D8, K17): on the trip a need left open on a day gone by is no decision, after it none is; never a night on the
+  // plane. The shares, "n karar", "Sıradaki" and the first decision go by these.
+  const counted = useMemo(() => countedIntents(heroIntents, { today, mode, plan, items }), [heroIntents, today, mode, plan, items]);
+  const counts = useMemo(() => heroCounts(counted), [counted]);
   const mosaic = useMemo(
     () =>
       mosaicOf({
@@ -649,7 +667,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     setTimeout(() => show(document.querySelector("[data-visa]")), 60);
   };
   // F4: "Sıradaki" updates itself; C30: "İlk kaydı ekle" with nothing saved, the PDF once all is bought, sharing when nothing is left.
-  const step: NextStep = nextStep({ intents: heroIntents, saved: done.total > 0, visa: visaToGet, sharable: !!onShare });
+  const step: NextStep = nextStep({ intents: counted, saved: done.total > 0, visa: visaToGet, sharable: !!onShare });
   const runStep: Record<NextStep["kind"], (() => void) | null> = {
     first: () => addIn(null, null),
     visa: goVisa,
@@ -658,13 +676,33 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     share: onShare ?? null,
     ready: null,
   };
-  const heroNext: HeroNext = {
-    label: step.kind === "pdf" && printing ? L("PDF hazırlanıyor…", "Making the PDF…") : nextLabel(step),
-    title: step.kind === "pdf" ? L("Gezinin özeti ve gün gün akışı, bir PDF dosyası olarak", "The trip's summary and its days, as a PDF file") : undefined,
-    run: runStep[step.kind],
+  // --- "Bugün" (D8, v83 "gezi sırasında"): on the trip's days the strip in the hero's place, by the trip's own clock ---
+  const todayInput = useMemo<TodayInput>(
+    () => ({ trip, plan, timeline, items, today: local.day, time: local.time, at, listings, docsFor }),
+    [trip, plan, timeline, items, local.day, local.time, at, listings, docsFor],
+  );
+  const strip = useMemo(() => todayStrip(todayInput), [todayInput]);
+  // F2, F4: time decides "Sıradaki" on the trip (today's next thing) and in a booked flight's last 48 hours (its check-in);
+  // else the decisions do.
+  const timed = useMemo(() => timedNext(todayInput, strip), [todayInput, strip]);
+  const runTimed = (n: TimedNext): (() => void) => {
+    if (n.kind === "checkin") {
+      const box = heroIntents.find((i) => i.itemIds.includes(n.item.id));
+      return () => (box ? goIntent(box) : reveal({ item: n.item.id }));
+    }
+    return () => show(n.kind === "today" ? todayRowEl(n.row.key) : document.querySelector(".x-today .xt-next"));
   };
+  const timedTitle = (n: TimedNext): string | undefined =>
+    n.kind === "checkin" && n.item.bookingRef ? L(`PNR ${n.item.bookingRef} · kalkışa ${n.hours} saat`, `PNR ${n.item.bookingRef} · ${n.hours} hours to go`) : undefined;
+  const heroNext: HeroNext = timed
+    ? { label: timedNextLabel(timed), title: timedTitle(timed), run: runTimed(timed) }
+    : {
+        label: step.kind === "pdf" && printing ? L("PDF hazırlanıyor…", "Making the PDF…") : nextLabel(step),
+        title: step.kind === "pdf" ? L("Gezinin özeti ve gün gün akışı, bir PDF dosyası olarak", "The trip's summary and its days, as a PDF file") : undefined,
+        run: runStep[step.kind],
+      };
   // F5: a tap on "%61 planda" goes to the first decision (a visa to get first, as "Sıradaki" does).
-  const firstOpen = heroIntents.find((i) => i.status === "suggested" || i.status === "deciding" || i.status === "searching");
+  const firstOpen = counted.find((i) => i.status === "suggested" || i.status === "deciding" || i.status === "searching");
   const onFirstDecision = visaToGet ? goVisa : firstOpen ? () => goIntent(firstOpen) : null;
   const tripMenu: TripMenuActions = {
     onDocs: openDocs,
@@ -677,6 +715,84 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     onSettings,
     onDelete: onDeleteTrip,
   };
+
+  // --- "Yolculuk sırasıyla" (v81-v83; lib/journeyChapters.ts): the same boxes in the order the trip is lived ---
+  const journey = useMemo(() => journeyChapters({ input: intentInput, timeline, collections }), [intentInput, timeline, collections]);
+  /**
+   * A box on the Plan by category: its category opens, the box (plan v82: `data-intent`) or its card comes into view with
+   * a flash; else its entry, else its category. `card`: the record's own card first (a row's card, a chat card's record).
+   */
+  const goBox = (t: { intentKey: string | null; section: SectionId; domKeys: readonly string[]; itemId: string | null }, card = false) => {
+    if (card && t.itemId && findInSections(sections, { item: t.itemId })) return showFromStory({ item: t.itemId });
+    setView("plan");
+    setOpened(t.section, true);
+    setTimeout(() => {
+      const box = t.intentKey ? document.querySelector(`[data-intent="${CSS.escape(t.intentKey)}"]`) : null;
+      const entry = t.domKeys.map((k) => document.getElementById(entryDomId(k))).find(Boolean) ?? null;
+      const record = t.itemId ? findTarget({ item: t.itemId }) : null;
+      show((card ? (record ?? box) : (box ?? record)) ?? entry ?? document.querySelector(`[data-section="${t.section}"]`));
+    }, 60);
+  };
+  /** "Bunu seç" / "Plana koy": the record taken in its box (one chosen before it for the same need goes back to the options). */
+  const take = (itemId: string) => {
+    const item = items.find((i) => i.id === itemId);
+    if (!item) return;
+    const box = heroIntents.find((i) => i.itemIds.includes(itemId));
+    void chooseItem(item, box ? items.filter((i) => box.itemIds.includes(i.id)) : [item]);
+  };
+  /** A booking's file, the first one (the box's Ayrıntı lists them all). */
+  const openFirstDoc = (itemId: string) => {
+    const first = docsFor(itemId)[0];
+    if (first) void openDoc(first.id);
+  };
+  const journeyOn = {
+    onGo: (t: StepTarget) => goBox(t, t.itemId != null),
+    // The choice is the Plan's at once: the step turns "Seçildi" where it stands.
+    onTake: (itemId: string) => take(itemId),
+    onDoc: openFirstDoc,
+  };
+  /** The Bugün strip's "Yolculuk sırasıyla →": the view, at today's chapter. */
+  const openJourneyToday = () => {
+    setView("story");
+    const key = journey.todayKey;
+    if (key) setTimeout(() => document.getElementById(chapterDomId(key))?.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "start" }), 60);
+  };
+  // D8: on the trip the Plan opens in trip order (today's chapter first, the ones behind folded), once per trip shown.
+  const viewFor = useRef<string | null>(null);
+  useLayoutEffect(() => {
+    if (viewFor.current === trip.id) return;
+    viewFor.current = trip.id;
+    if (mode === "trip" && journey.available) setView("story");
+  }, [trip.id, mode, journey.available]);
+  // D15: no dates, no trip order; a trip whose dates went while it was open goes back to the categories.
+  useEffect(() => {
+    if (view === "story" && !journey.available) setView("plan");
+  }, [view, journey.available]);
+  const orderOff = journey.available ? undefined : { story: journey.reason ?? "" };
+
+  // C34: the chat beside the Plan draws its cards from these boxes and goes to them ("Planda göster", "Bunu seç").
+  const chatLive = useRef({ goBox, take, openPano });
+  chatLive.current = { goBox, take, openPano };
+  useEffect(() => {
+    const show = (t: PlanTarget) => {
+      const { goBox: go, openPano: pano } = chatLive.current;
+      if (t.kind === "intent") go({ ...t, itemId: null });
+      else if (t.kind === "section") go({ intentKey: null, section: t.section, domKeys: [], itemId: t.itemId }, true);
+      else pano(t.intentKey ? { need: t.intentKey } : { section: t.section });
+    };
+    onPlanLink?.({
+      tripId: trip.id,
+      collections,
+      show,
+      pick: (itemId, t) => {
+        chatLive.current.take(itemId);
+        // Taken, it is what its box shows (an option past the first three too): the box comes into view.
+        if (t.kind !== "section") chatLive.current.goBox({ intentKey: t.intentKey, section: t.section, domKeys: t.kind === "intent" ? t.domKeys : [], itemId: null });
+        else show(t);
+      },
+    });
+  }, [trip.id, collections, onPlanLink]);
+  useEffect(() => () => onPlanLink?.(null), [onPlanLink]);
   const decisionOf = (item: Item) => decisionByItem.get(item.id);
   /** A stay keeps its decision card; everything else is a plan card (cards/PlanCard.tsx). */
   const card: CardFor = (item, group, decision, ranked, onCompareGroup) =>
@@ -784,7 +900,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
         view="plan"
         onView={(v) => (v === "board" ? (setPanoFocus(null), setView("board")) : setView("plan"))}
         next={heroNext}
-        nextShort={nextShort(step)}
+        nextShort={timed ? timedNextLabel(timed) : nextShort(step)}
       />
       {/* The Pano is a work table of its own: no hero over it (v11). */}
       {view !== "board" && (
@@ -812,6 +928,11 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           now={today}
           styles={chips}
           decisions={decisions}
+          today={
+            strip ? (
+              <TodayStrip vm={strip} places={places} country={countryNames(countries).length === 1 ? countryNames(countries)[0] : null} now={today} onJourney={openJourneyToday} onDoc={openFirstDoc} />
+            ) : undefined
+          }
         />
       )}
       {todoOpen && view !== "board" && <TodoList list={todo} open={todoOpen} onGo={reveal} />}
@@ -886,7 +1007,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       {(view === "story" || view === "days" || view === "map") && timeline.entries.length > 0 && (
         <div className="plan-bar-slim">
           <strong className="plan-h">{L("Plan", "Plan")}</strong>
-          <PlanOrder view={view === "story" ? "story" : "days"} onView={(v) => setView(v)} />
+          <PlanOrder view={view === "story" ? "story" : "days"} onView={(v) => setView(v)} off={orderOff} />
           <AddButton onClick={() => addIn(null, null)} />
           <PlanKey />
         </div>
@@ -923,15 +1044,16 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           offer={offer}
         />
       )}
-      {view === "story" ? (
-        <EmptyEnvContext.Provider value={emptyEnv}>
+      {view === "story" && journey.available ? (
+        <>
           {plan.notices.map((x) => (
             <div key={x.text} className="notice">
               ⚠ {x.text}
             </div>
           ))}
-          <StoryView timeline={timeline} items={items} tripStart={range?.start ?? null} cards={{ legCard: planLegCard, renderGroup: planRenderGroup, settled: planSettled }} onGo={showFromStory} />
-        </EmptyEnvContext.Provider>
+          {/* v81-v83 "Yolculuk sırasıyla": the same boxes in the order the trip is lived (plan/journey). */}
+          <JourneyView journey={journey} tripId={trip.id} on={journeyOn} />
+        </>
       ) : view === "map" ? (
         <BoardMap trip={trip} plan={plan} legs={legs} />
       ) : view === "days" && timeline.entries.length > 0 ? (
@@ -964,7 +1086,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
             visaDone={!!trip.visaDone}
             shape={shape && { ...shape, photos: trip.cityImages, places, today }}
             onStop={(s) => openSection(s.kind === "end" ? "flight" : "stay")}
-            order={<PlanOrder view="plan" onView={(v) => setView(v)} />}
+            order={<PlanOrder view="plan" onView={(v) => setView(v)} off={orderOff} />}
             onVisaDone={(done) => void setVisaDone(trip.id, done)}
           />
         </EmptyEnvContext.Provider>

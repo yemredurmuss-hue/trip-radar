@@ -1,17 +1,20 @@
 // The chat's side of an arrival: a link sent in the chat is shown as the traveller's own bubble with a chip
 // under it (the site, a spinner, then "✓ Konaklama'ya eklendi · göster" or "⚠ okunamadı · Tekrar dene"); a
 // file dropped or picked gets the same ("📎 poliçe.pdf" → "→ Diğer · Seyahat sigortası"); an event line
-// about a record ("✓ Casa Azul kaydedildi → Konaklama") goes to its card when tapped.
+// about a record ("✓ Casa Azul kaydedildi → Konaklama") goes to its card when tapped. A link that couldn't be read is a
+// dashed card of its own (C35, chat/LinkCard): "Okunamadı", what went wrong, "Tekrar dene" and "Kaldır".
 import { useEffect, useMemo, useState } from "react";
 import { chipState, eventItemName, hostOf, siteOf, type ChipState } from "../../lib/arrive";
+import { linkCard } from "../../lib/chatCards";
 import { requestProcessing } from "../../lib/browser";
 import { sectionOfItem } from "../../lib/categories";
 import { L } from "../../lib/i18n";
 import { retryCapture } from "../../lib/process";
 import type { Capture, ChatMessage, Item, Trip } from "../../lib/types";
 import { SECTION_META } from "../plan/sectionMeta";
+import { LinkCard } from "../chat/LinkCard";
 import { ArriveChip } from "./ArriveViews";
-import { captureById, endIntake, requestReveal, useIntake, type FileIntake, type Intake } from "./intake";
+import { captureById, dropCapture, endIntake, requestReveal, useIntake, type FileIntake, type Intake } from "./intake";
 
 /** A capture as it stands: the open ones from the board, a finished one read back once. Undefined: not known yet. */
 function useCaptures(ids: readonly string[], open: Capture[]): (id: string) => Capture | null | undefined {
@@ -98,6 +101,17 @@ export function useChatArrivals({ trip, messages, items, trips, openCaptures }: 
     const c = capture(captureId);
     const item = c?.itemId ? items.find((i) => i.id === c.itemId) : undefined;
     const state = chipState(c, item ? { id: item.id, tripId: item.tripId, section: sectionOfItem(item) } : null, { tripId: trip.id, site: siteOf(url), tripTitle, screenshot });
+    // A link that couldn't be read: its card, read again or taken away from here (as the Plan's own card does).
+    if (c && state.tone === "error" && !screenshot) {
+      return (
+        <LinkCard
+          card={linkCard(c)}
+          host={hostOf(url)}
+          onRetry={() => void retryCapture(c.id).then(requestProcessing)}
+          onRemove={() => void dropCapture(c.id)}
+        />
+      );
+    }
     return (
       <ArriveChip
         host={hostOf(url)}
