@@ -10,7 +10,8 @@ import { L, withLang, type Lang } from "./i18n";
 import { getProvider, MissingKeyError, type LlmProvider } from "./llm";
 import { cityKeyOf, type DateRange } from "./plan";
 import { allowedSuggestions, blockedWords, type KindOrIntent } from "./playbooks";
-import { checkSuggestionInput, mergeIncoming, SECTION_TEMPLATES, SUGGESTION_SECTIONS } from "./suggestions";
+import { checkSuggestionInput, mergeIncoming, prepFromSuggestion, SECTION_TEMPLATES, SUGGESTION_SECTIONS } from "./suggestions";
+import { withPrepLine } from "./prepPack";
 import { acceptStyle, STYLES } from "./tripStyle";
 import type { Item, PlaybookKind, Suggestion, Trip } from "./types";
 
@@ -86,6 +87,7 @@ const reviewRules = (): string =>
 - Omurga (transport, stay): bu gezinin kendisine özel ulaşım öner: araç ya da motosiklet kiralama, havalimanından şehre tren, otobüs ya da transfer, duraklar arası yerel ulaşım, bölge bileti ya da kartı; planda olmayan bir gece ya da konaklama eksiği varsa onu.
 - Araç kiralama önerdiysen ya da planda bir kiralama varsa şehirler arası her yol için ayrıca ulaşım önerme (o yollar arabayla gidilir); yalnız arabanın gidemediği yer için (feribot, uçuş) öner.
 - Yapılacaklar (todo) ve yeme-içme (food): duraklara özel gezilecek yer, yapılacak şey ve yerel yemek ya da restoran öner; gezinin türüne ("kind") ve tarzına ("style") uysun (sörf gezisinde sörf noktaları, doğa gezisinde yürüyüş yolları).
+- Yapılacaklar orada yapılacak ya da görülecek şeylerdir: gezilecek yer, manzara noktası, gün batımı, yerel yemek ya da tatlı, pazar, deneyim. Kiralama, ekipman, eşya, hizmet, rezervasyon, ulaşım ya da belge Yapılacaklar'a yazılmaz ("Şnorkel ekipmanı kiralama" yapılacak değil, hazırlıktır).
 - Yapılacaklar ve yeme-içmede title gerçek bir yerin kendi adıdır, Google Haritalar'da aranınca bulunur ("Tanah Lot Tapınağı", "Warung Bu Mi"): cümle parçası, ekli hâl ("Tanah Lot Tapınağı'nın") ya da genel söz ("Yerel bir warung") değil. Ne yapılacağını why söyler. place: Haritalar'da aranacak tam ad ve kasaba ("Tanah Lot Temple, Tabanan"); adı olmayan bir şey önerme.
 - Önerileri bölümlere yay: omurgaya da, yapılacaklara da, yeme-içmeye de yaz.
 - Tur ya da biletli etkinlik önerme: onlar yalnız gerçek kaynaktan (Viator) ya da yolcunun kaydettiklerinden gelir.
@@ -99,6 +101,7 @@ const reviewRules = (): string =>
 - The backbone (transport, stay): ways of getting around this trip in particular: a car or motorbike rental, the train, bus or transfer from the airport into town, local transport between the stops, a regional pass or card; a night or stay missing from the plan.
 - If you suggest a car rental, or the plan has a rental, don't suggest a way of travel for each road between the cities as well (those are driven); only where the car can't go (a ferry, a flight).
 - Things to do (todo) and food (food): places to see, things to do and local food or restaurants at the stops; they fit the trip's kind ("kind") and style ("style") (surf spots on a surf trip, trails on a nature trip).
+- Things to do are what to do or see there: a place to visit, a viewpoint, a sunset, a local dish or sweet, a market, an experience. A rental, gear, things, a service, a booking, transport or a document never go in things to do ("Snorkel gear rental" isn't a thing to do, it's prep).
 - In things to do and food, title is a real place's own name that a Google Maps search finds ("Tanah Lot Temple", "Warung Bu Mi"): not a fragment of a sentence or a generic phrase ("A local warung"). The why says what to do there. place: the full name and town to search on Maps ("Tanah Lot Temple, Tabanan"); don't suggest something without a name.
 - Spread them over the sections: the backbone, things to do and food alike.
 - Don't suggest tours or ticketed activities: they come only from a real source (Viator) or what the traveller saved.
@@ -148,7 +151,14 @@ export function reviewPrompt(input: {
  * The answer checked: at most six valid new ones, none the traveller dismissed (by key or topic), none that doesn't
  * belong on this kind of trip (playbooks/: no tours on a festival trip, one activity at most on a retreat).
  */
-export function acceptReview(answer: ReviewAnswer, stored: Suggestion[] | undefined, now: number, playbook?: KindOrIntent): { list: Suggestion[]; added: Suggestion[] } {
+export function acceptReview(
+  answer: ReviewAnswer,
+  stored: Suggestion[] | undefined,
+  now: number,
+  playbook?: KindOrIntent,
+): { list: Suggestion[]; added: Suggestion[]; prep: { name: string; why: string }[] } {
+  // A chore sent as a thing to do ("Şnorkel ekipmanı kiralama") is never a Yapılacaklar card: a Hazırlık line instead.
+  const prep = answer.suggestions.map((raw) => prepFromSuggestion(raw, now)).filter((p): p is { name: string; why: string } => p != null);
   const checked = answer.suggestions
     .map((raw) => checkSuggestionInput(raw, "ai", now))
     .filter((s): s is Suggestion => typeof s !== "string");
@@ -163,7 +173,7 @@ export function acceptReview(answer: ReviewAnswer, stored: Suggestion[] | undefi
       added.push(s);
     }
   }
-  return { list, added };
+  return { list, added, prep };
 }
 
 /**
@@ -200,7 +210,12 @@ export async function runReview(args: {
   if (!claimed) return "skipped";
   try {
     const answer = await llm.generateJson(withLang(args.lang, () => reviewSystem(args.playbook)), args.prompt, ReviewSchema);
-    await args.save((t) => ({ ...t, suggestions: acceptReview(answer, t.suggestions, now, t.intent ?? args.playbook).list, suggestReview: { key: args.key, at: now, state: "done" } }));
+    await args.save((t) => {
+      const got = acceptReview(answer, t.suggestions, now, t.intent ?? args.playbook);
+      // On the Bavul the trip already has; with none yet, the chore is dropped (prepPack.ts withPrepLine).
+      const packing = got.prep.reduce((p, x) => withPrepLine(p, x.name, x.why) ?? p, t.packing);
+      return { ...t, suggestions: got.list, ...(packing !== t.packing ? { packing } : {}), suggestReview: { key: args.key, at: now, state: "done" } };
+    });
     return "done";
   } catch (error) {
     if (error instanceof MissingKeyError) {

@@ -25,7 +25,7 @@ import { TEMPLATES, type TemplateId } from "./templates";
 import { airportCode } from "./searchLinks";
 import { buildTimeline, nightsKey, type Timeline } from "./timeline";
 import { cleanPlaceTitle, placeMapsUrl } from "./placeSuggest";
-import { ESIM_WORDS, isInsurance } from "./travelKinds";
+import { ESIM_WORDS, isInsurance, shoppingThere } from "./travelKinds";
 import type { Item, Listing, Suggestion, SuggestionKind, SuggestionSection, SuggestionState, Trip } from "./types";
 import { overlaps, periodOf, vehicleOf } from "./vehicles";
 
@@ -379,6 +379,8 @@ export function shownSuggestions(
   const others = list.filter((s) => {
     // One stored before Etkinlik took only sourced cards (the chat's "Sörf deneyimi") isn't shown either.
     if (s.source === "rule" || s.state !== "open" || seen.has(s.key) || sourcedOnly(s)) return false;
+    // A chore stored in Yapılacaklar before it took only things to do there ("Şnorkel ekipmanı kiralama", 0.38.9).
+    if (s.section === "todo" && isGearChore(s.title)) return false;
     seen.add(s.key);
     const topic = topicOf(s);
     if (arrangedTransfer(s, legs)) return false;
@@ -482,12 +484,49 @@ export function suggestionKey(source: Suggestion["source"], section: SuggestionS
   return `${source}:${section}:${template || kind}:${words.join("-") || slug(title)}`;
 }
 
+/** Renting, gear, a thing to get: words of a chore before the trip, never of a thing to do there. */
+const GEAR =
+  /(?<![\p{L}])(kirala\p{L}*|kiralık|ekipman\p{L}*|teçhizat\p{L}*|malzeme\p{L}*|satın al\p{L}*|rental|rent|renting|hire|gear|equipment)(?![\p{L}])/iu;
+/** A vehicle rented for days is a way about (Ulaşım), not a chore: "Araç kiralama", "Scooter rental". */
+const VEHICLE = /(?<![\p{L}])(araç|araba|otomobil|motor\p{L}*|motosiklet\p{L}*|scooter\p{L}*|mobilet|bisiklet\p{L}*|karavan\p{L}*|taşıt|cars?|bikes?|motorbikes?|moto|campervan|rv|vehicle)(?![\p{L}])/iu;
+
+/**
+ * Yapılacaklar is what's seen and done there (Emre, 0.38.9: "Things to do": a temple, a sunset, a dish, an ice cream
+ * shop); renting gear or getting things is Hazırlık ("Şnorkel ekipmanı kiralama"). A vehicle rented stays in Ulaşım, and
+ * shopping there ("hediyelik eşya satın al") is a thing to do.
+ */
+export const isGearChore = (title: string | null | undefined): boolean => {
+  const t = title ?? "";
+  return GEAR.test(t) && !VEHICLE.test(t) && !shoppingThere(t);
+};
+
+const gearRefusal = () =>
+  L(
+    "Kiralama, ekipman ya da alınacak eşya Yapılacaklar'a girmez: orası orada görülecek ve yapılacak şeyler içindir (gezilecek yer, manzara, yerel yemek). Bu bir Hazırlık işi.",
+    "Renting, gear or things to get don't go in Things to do: it's for what to see and do there (a place, a view, local food). This is a Prep chore.",
+  );
+
+/**
+ * A thing to do the model sent that is gear to rent or a thing to get ("Şnorkel ekipmanı kiralama"): its Hazırlık
+ * line (the title and the why, checked like any suggestion), null for anything else.
+ */
+export function prepFromSuggestion(raw: Partial<Record<keyof SuggestionInput, unknown>>, now: number): { name: string; why: string } | null {
+  if (typeof raw.section !== "string" || raw.section.trim() !== "todo") return null;
+  const s = checkInput(raw, "ai", now);
+  return typeof s !== "string" && isGearChore(s.title) ? { name: s.title, why: s.why } : null;
+}
+
 /**
  * A suggestion from the model, checked: an allowed section and kind, a template of that section (one is picked when
  * the section has only one), a short title, a one-sentence why, valid days, and no price, time or percentage it could
- * have made up. The reason as a string when it doesn't pass.
+ * have made up; no chore in Yapılacaklar (prepFromSuggestion). The reason as a string when it doesn't pass.
  */
 export function checkSuggestionInput(raw: Partial<Record<keyof SuggestionInput, unknown>>, source: "ai" | "chat", now: number): Suggestion | string {
+  const s = checkInput(raw, source, now);
+  return typeof s !== "string" && s.section === "todo" && isGearChore(s.title) ? gearRefusal() : s;
+}
+
+function checkInput(raw: Partial<Record<keyof SuggestionInput, unknown>>, source: "ai" | "chat", now: number): Suggestion | string {
   const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
   const section = str(raw.section);
   if (!isSuggestionSection(section)) return L(`Geçersiz bölüm: "${section}". Olanlar: ${SUGGESTION_SECTIONS.join(", ")}.`, `Invalid section: "${section}". Allowed: ${SUGGESTION_SECTIONS.join(", ")}.`);
