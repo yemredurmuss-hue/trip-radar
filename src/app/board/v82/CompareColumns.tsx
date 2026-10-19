@@ -2,13 +2,26 @@
 // them (subgrid), best fit first: the picture and who it's from · its name · its price and whole, the fit score and its place ·
 // what was asked for, ✓ or ✕ (B5) · pluses · minuses · rating, cancellation, bag · the heart, its page, Seç. Fewer than three: a
 // last column for more ("Daha fazla seçenek", the AI asked in the chat). More than three scroll sideways. The order never moves
-// on a choice (E report §2.10).
+// on a choice (E report §2.10). What an option doesn't have leaves its cell empty, the rows still lined up (C19: nothing is
+// written as "yok").
 import { L } from "../../../lib/i18n";
 import type { PanoNeed, PanoOption } from "../../../lib/panoBoard";
 import { Likes, PickButton, Score, SourceBadge, StateChip, tintOf, Visual } from "./parts";
 
-const list = (lines: string[]) =>
-  lines.length ? lines.map((t) => <li key={t}>{t}</li>) : <li className="q-na nb">{L("yok", "none")}</li>;
+/** Its pluses or minuses under their label; none: the cell stays, empty. */
+function Lines({ lines, label, tone }: { lines: string[]; label: string; tone: "p" | "m" }) {
+  if (!lines.length) return null;
+  return (
+    <>
+      <small className={`q-lbl ${tone}`}>{label}</small>
+      <ul className={`q-pl ${tone}`}>
+        {lines.map((t) => (
+          <li key={t}>{t}</li>
+        ))}
+      </ul>
+    </>
+  );
+}
 
 function Column({ option, need }: { option: PanoOption; need: PanoNeed }) {
   const r = option.rating;
@@ -36,23 +49,17 @@ function Column({ option, need }: { option: PanoOption; need: PanoNeed }) {
         <Score option={option} ranked />
       </div>
       <div className="q-c4">
-        {option.checks.length ? (
-          option.checks.map((c) => (
-            <span key={c.label} className={`q-mc ${c.ok ? "y" : "n"}`}>
-              {c.ok ? "✓" : "✕"} {c.label}
-            </span>
-          ))
-        ) : (
-          <span className="q-na">{L("istek yok", "nothing asked")}</span>
-        )}
+        {option.checks.map((c) => (
+          <span key={c.label} className={`q-mc ${c.ok ? "y" : "n"}`}>
+            {c.ok ? "✓" : "✕"} {c.label}
+          </span>
+        ))}
       </div>
       <div className="q-c5">
-        <small className="q-lbl p">{L("Artılar", "Pros")}</small>
-        <ul className="q-pl p">{list(option.pros)}</ul>
+        <Lines lines={option.pros} label={L("Artılar", "Pros")} tone="p" />
       </div>
       <div className="q-c6">
-        <small className="q-lbl m">{L("Eksiler", "Cons")}</small>
-        <ul className="q-pl m">{list(option.cons)}</ul>
+        <Lines lines={option.cons} label={L("Eksiler", "Cons")} tone="m" />
       </div>
       <div className="q-c7">
         {r && (
@@ -63,7 +70,6 @@ function Column({ option, need }: { option: PanoOption; need: PanoNeed }) {
         )}
         {option.cancel && <span className={`q-cw ${option.cancel.tone}`}>{option.cancel.text}</span>}
         {option.bag && <span className="q-bg">{option.bag}</span>}
-        {!r && !option.cancel && !option.bag && <span className="q-na">—</span>}
       </div>
       <div className="q-c8">
         <Likes option={option} />

@@ -41,7 +41,7 @@ export function DayButton({ item, plan, pooled = false, today = false }: { item:
   );
 }
 
-function DayPicker({ item, days, onDone }: { item: Item; days: ReturnType<typeof dayChoices>; onDone: () => void }) {
+export function DayPicker({ item, days, onDone }: { item: Item; days: ReturnType<typeof dayChoices>; onDone: () => void }) {
   const food = isFoodIdea(item);
   const [meal, setMeal] = useState<MealSlot>(item.meal ?? "dinner");
   const current = isoDate(item.dates.start);

@@ -34,6 +34,8 @@ export interface PanoAt {
   view?: PanoView;
   section?: SectionId;
   need?: string;
+  /** A record to light once it is open ("Planda göster" on an option past the box's first three: its card, `pn-<id>`). */
+  item?: string;
 }
 
 /** Who an option is from, as its badge says it: our pick, the AI's find, the traveller's own link, a person who added it. */

@@ -779,7 +779,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       const { goBox: go, openPano: pano } = chatLive.current;
       if (t.kind === "intent") go({ ...t, itemId: null });
       else if (t.kind === "section") go({ intentKey: null, section: t.section, domKeys: [], itemId: t.itemId }, true);
-      else pano(t.intentKey ? { need: t.intentKey } : { section: t.section });
+      else pano(t.intentKey ? { need: t.intentKey, item: t.itemId } : { section: t.section, item: t.itemId });
     };
     onPlanLink?.({
       tripId: trip.id,
