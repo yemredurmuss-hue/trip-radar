@@ -160,6 +160,7 @@ export function travellersTitle(names: string[], count: number): string {
 
 /** "2 kişi" / "2 people". */
 export const nPeople = (n: number): string => L(`${n} kişi`, n === 1 ? "1 person" : `${n} people`);
+export const nChildren = (n: number): string => L(`${n} çocuk`, n === 1 ? "1 child" : `${n} children`);
 
 /**
  * Each city's own days (from its nights), else the whole trip's: what its weather is read for. A main place

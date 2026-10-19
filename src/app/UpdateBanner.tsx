@@ -7,9 +7,11 @@ const COUNTDOWN_MS = 3_000;
 
 /**
  * What holds a reload back: a dialog, a drawer, the comparison, a reply on its way, anything opened (a menu, a card's
- * details). A Plan category open is no such thing (plan v82: one is always open, B8), so its row's button doesn't count.
+ * details). A Plan category open is no such thing (plan v82: one is always open, B8), so its row's button doesn't count;
+ * nor does the hero's "Özeti küçült" / "Özeti aç" (an open summary holds nothing either).
  */
-export const RELOAD_BLOCKERS = '.drawer:not(.mv-leaving), .compare-modal:not(.mv-leaving), .modal:not(.mv-leaving), .thinking, [aria-expanded="true"]:not(.q-tt)';
+export const RELOAD_BLOCKERS =
+  '.drawer:not(.mv-leaving), .compare-modal:not(.mv-leaving), .modal:not(.mv-leaving), .thinking, [aria-expanded="true"]:not(.q-tt):not(.x-fold):not(.x-unfold)';
 
 /** Nothing would be lost by reloading now: no typed text, no reply on its way, no dialog, drawer or opened card. */
 function safeToReload(): boolean {

@@ -4,11 +4,12 @@
 import { L } from "../lib/i18n";
 import type { PlanList } from "../lib/planList";
 import { entryDomId, nextStepText, type Todo, type TodoKind } from "../lib/progress";
+import { reducedMotion } from "./motion";
 
-/** Scrolls to an element and makes it glow for a moment. */
+/** Scrolls to an element and makes it glow for a moment (at once with reduced motion or "Hareketi duraklat"). */
 export function show(el: Element | null) {
   if (!el) return;
-  el.scrollIntoView({ behavior: "smooth", block: "center" });
+  el.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "center" });
   el.classList.remove("flash");
   void (el as HTMLElement).offsetWidth; // restart the animation
   el.classList.add("flash");

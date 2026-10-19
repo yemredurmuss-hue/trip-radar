@@ -8,7 +8,7 @@ import { factChips, heroLine, weatherChip, type BudgetView, type HeroCounts } fr
 import type { Mosaic } from "../../lib/heroMosaic";
 import { L, locale } from "../../lib/i18n";
 import type { BudgetBar } from "../../lib/progress";
-import type { TripFacts } from "../../lib/tripFacts";
+import type { CountryFacts, TripFacts } from "../../lib/tripFacts";
 import type { Who } from "../../lib/tripSettings";
 import type { StyleChip } from "../../lib/tripStyle";
 import type { Item, Trip } from "../../lib/types";
@@ -17,7 +17,7 @@ import type { Decisions } from "../useDecisions";
 import { useWeather } from "../useWeather";
 import { FactChips } from "./FactChips";
 import { HeroMosaic } from "./HeroMosaic";
-import { HeroStrip, type HeroDates, type HeroNext } from "./HeroStrip";
+import { HeroStrip, type HeroBudgetSet, type HeroDates, type HeroDocs, type HeroNext } from "./HeroStrip";
 import { XIcon } from "./icons";
 import { PrefsRow } from "./PrefsRow";
 import { TripMenu, type TripMenuActions } from "./TripMenu";
@@ -60,10 +60,16 @@ export interface HeroProps {
   counts: HeroCounts;
   onFirstDecision: (() => void) | null;
   budget: { view: BudgetView; bar: BudgetBar } | null;
+  /** D16: a trip with no budget sets one in the budget segment. */
+  budgetSet: HeroBudgetSet | null;
+  /** B15: the bookings in their last two weeks without their file. */
+  docs: HeroDocs | null;
   next: HeroNext;
   facts: TripFacts;
   /** The trip's countries by name. */
   countries: string[];
+  /** With several countries, each one's own facts in the same order (D9). */
+  perCountry: CountryFacts[];
   /** Each city's days, for its weather. */
   places: { city: string; start: string; end: string }[];
   /** The traveller's passport country. */
@@ -87,7 +93,7 @@ export function Hero(props: HeroProps) {
   const weather = useWeather(props.places, props.countries.length === 1 ? props.countries[0] : null, props.now);
   const month = props.dates ? new Date(`${props.dates.range.start}T12:00:00Z`).toLocaleDateString(locale(), { month: "long", timeZone: "UTC" }) : "";
   const sky = weatherChip(weather, month);
-  const chips = factChips({ facts: props.facts, countries: props.countries, cities: props.cities, weather: sky, home: props.home, visaDone: !!trip.visaDone });
+  const chips = factChips({ facts: props.facts, countries: props.countries, cities: props.cities, weather: sky, home: props.home, visaDone: !!trip.visaDone, perCountry: props.perCountry });
 
   const toggle = (on: boolean) => {
     const el = box.current;
@@ -121,7 +127,7 @@ export function Hero(props: HeroProps) {
   const cover = props.mosaic.cover?.image ?? null;
   const during = props.today != null;
   const slimOn = folded || during;
-  const line = heroLine({ range: props.dates?.range ?? null, estimated: !!props.dates?.estimated, people: props.who.count, counts, budget: budget?.view ?? null });
+  const line = heroLine({ range: props.dates?.range ?? null, estimated: !!props.dates?.estimated, rough: !!props.dates?.rough, people: props.who.count, counts, budget: budget?.view ?? null });
   return (
     <section
       className={`h-hero x-hero${folded && !during ? " fold" : ""}${during ? " during" : ""}`}
@@ -143,9 +149,10 @@ export function Hero(props: HeroProps) {
             counts={counts}
             onFirstDecision={props.onFirstDecision}
             budget={budget}
+            budgetSet={props.budgetSet}
             next={props.next}
           />
-          <FactChips chips={chips} sky={sky?.sky ?? null} />
+          <FactChips chips={chips} sky={sky?.sky ?? null} docs={props.docs} />
           <PrefsRow trip={trip} decisions={props.decisions} styles={props.styles} folded={folded} onFold={() => toggle(true)} />
         </>
       )}

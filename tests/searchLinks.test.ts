@@ -108,6 +108,10 @@ describe("stay searches", () => {
     expect(airbnb).toEqual({ brand: "airbnb", label: "Airbnb", url: "https://www.airbnb.com/s/Amsterdam/homes?checkin=2026-12-10&checkout=2026-12-17&adults=2" });
   });
   it("dates that don't make a stay are left out, a place with spaces or slashes is encoded, no place is nothing", () => {
+    // D12: the children who go and the rooms said.
+    const [family, home] = stayLinks({ city: "Lizbon", checkin: "2026-12-10", checkout: "2026-12-17", adults: 4, children: 4, rooms: 2 });
+    expect(family.url).toBe("https://www.booking.com/searchresults.html?ss=Lizbon&checkin=2026-12-10&checkout=2026-12-17&group_adults=4&group_children=4&no_rooms=2");
+    expect(home.url).toBe("https://www.airbnb.com/s/Lizbon/homes?checkin=2026-12-10&checkout=2026-12-17&adults=4&children=4");
     const [booking, airbnb] = stayLinks({ city: "São Paulo/Centro", checkin: "2026-12-17", checkout: "2026-12-10", adults: null });
     expect(booking.url).toBe("https://www.booking.com/searchresults.html?ss=S%C3%A3o+Paulo%2FCentro&no_rooms=1");
     expect(airbnb.url).toBe("https://www.airbnb.com/s/S%C3%A3o%20Paulo%2FCentro/homes");

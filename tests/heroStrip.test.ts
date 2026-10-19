@@ -1,10 +1,13 @@
 // The hero strip's words (lib/heroStrip.ts, v83 B9, C19, Etsy T5): the two shares and their sentence with the Turkish
-// endings, a new backbone's line, the dates' tip, the weather chip, the budget window and each person's share.
+// endings, a new backbone's line, the dates' tip (and only the nights for a guessed start, D15), the weather chip, the
+// budget window and each person's share, a budget typed in (D16), the bookings without their file (B15), each country of
+// a trip of several (D9).
 import { describe, expect, it } from "vitest";
 import type { CityWeather } from "../src/lib/climate";
 import { withLang } from "../src/lib/i18n";
 import type { IntentStatus } from "../src/lib/intents";
-import { budgetView, datesTip, factChips, freshWords, heroCounts, heroLine, numberLocative, shareSentence, shareWords, shortRange, weatherChip } from "../src/lib/heroStrip";
+import { budgetAmount, budgetView, countryRows, datesTip, datesWords, docsMissing, docsWords, factChips, freshWords, heroCounts, heroLine, numberLocative, shareSentence, shareWords, shortRange, weatherChip } from "../src/lib/heroStrip";
+import type { CountryFacts } from "../src/lib/tripFacts";
 import type { BudgetBar } from "../src/lib/progress";
 
 // A Dahil box counts as what covers it (spec §1.3): here a pass already bought (Hakone Free Pass), so it is alındı.
@@ -75,6 +78,9 @@ describe("budgetView", () => {
     expect(v.perPerson).toEqual({ amount: 510, people: 2 });
     expect(v.note).toEqual(["Karar bekleyenler seçilince yaklaşık €442 daha eklenir.", "Tahmini toplam ~€1.019, bütçeye sığar · €481 pay."]);
     expect(v.over).toBe(0);
+    expect(v.sign).toBe("~");
+    // D17: converted from another money, the likely total is said with "≈".
+    expect(budgetView(bar({ converted: true }), 2)!.sign).toBe("≈");
   });
 
   it("says what's over, and no share for one person or with no budget", () => {
@@ -125,11 +131,77 @@ describe("factChips", () => {
 
 describe("heroLine", () => {
   const counts = heroCounts(of([["booked", 2], ["chosen", 1], ["deciding", 4]]));
-  const view = { currency: "EUR", likely: 1019, total: 1500, over: 0, lines: [], perPerson: null, note: [] };
+  const view = { currency: "EUR", sign: "~" as const, likely: 1019, total: 1500, over: 0, lines: [], perPerson: null, note: [] };
   it("folds the summary into one line, leaving out what isn't known", () => {
     const range = { start: "2026-10-08", end: "2026-10-14" };
     expect(heroLine({ range, estimated: false, people: 2, counts, budget: view })).toBe("8–14 Ekim · 2 kişi · %43 planda · ~€1.019 / €1.500");
     expect(heroLine({ range, estimated: true, people: 2, counts, budget: view, short: true })).toBe("~8–14 Eki · 2 kişi");
     expect(heroLine({ range: null, estimated: false, people: 0, counts: heroCounts(of([["suggested", 2], ["searching", 1]])), budget: null })).toBe("3 ihtiyaç · 2'sinde önerimiz var");
+    // D17: sums converted from another money are said with "≈".
+    expect(heroLine({ range: null, estimated: false, people: 0, counts, budget: { ...view, currency: "JPY", sign: "≈", likely: 160000, total: null } })).toBe("%43 planda · ≈¥160.000");
+  });
+});
+
+describe("D15: a start guessed from a month or a season says only the nights", () => {
+  const range = { start: "2027-07-01", end: "2027-07-11" };
+  it("is \"~ · 10 gece\" in the strip and in the folded line, the real dates otherwise", () => {
+    expect(datesWords({ range, estimated: false, rough: true })).toBe("~ · 10 gece");
+    expect(datesWords({ range, estimated: true })).toBe("~1–11 Temmuz");
+    expect(datesWords({ range, estimated: false }, true)).toBe("1–11 Tem");
+    const counts = heroCounts(of([["booked", 1]]));
+    expect(heroLine({ range, estimated: false, rough: true, people: 2, counts, budget: null, short: true })).toBe("~ · 10 gece · 2 kişi");
+    expect(withLang("en", () => datesWords({ range, estimated: false, rough: true }))).toBe("~ · 10 nights");
+  });
+});
+
+describe("B15: the bookings without their file in their last two weeks", () => {
+  const vm = (status: IntentStatus, docMissing: boolean | null) => ({ status, access: docMissing == null ? null : { docMissing } });
+  it("counts only a booking whose box says \"belge yok\"", () => {
+    expect(docsMissing([vm("booked", true), vm("booked", false), vm("chosen", null), vm("booked", null), vm("booked", true)])).toHaveLength(2);
+    expect(docsWords(2).text).toBe("2 belge yok");
+    expect(docsWords(1).tip).toBe("1 rezervasyonun belgesi eklenmedi; 14 gün içinde başlıyor. Basınca ilkine gider.");
+    expect(withLang("en", () => docsWords(1).text)).toBe("1 file missing");
+  });
+});
+
+describe("D16: a budget typed in the window", () => {
+  it("reads a whole amount with any thousands mark, nothing else", () => {
+    expect(budgetAmount("1500")).toBe(1500);
+    expect(budgetAmount("1.500")).toBe(1500);
+    expect(budgetAmount("1 500 €")).toBe(1500);
+    expect(budgetAmount("€1,500.50")).toBe(1501);
+    expect(budgetAmount("2.500,75")).toBe(2501);
+    expect(budgetAmount("12.000.000")).toBe(12000000);
+    expect(budgetAmount("")).toBeNull();
+    expect(budgetAmount("abc")).toBeNull();
+    expect(budgetAmount("0")).toBeNull();
+  });
+});
+
+describe("D9: each country of a trip of several", () => {
+  const pt: CountryFacts = {
+    country: "PT",
+    visa: { kind: "visa", label: "Schengen vizesi", link: "x" },
+    local: { currency: "EUR", rateText: null, hours: -2, info: { currency: "EUR", language: { tr: "Portekizce", en: "Portuguese" }, timeZone: "Europe/Lisbon", plugs: ["C", "F"] } },
+  };
+  const ma: CountryFacts = {
+    country: "MA",
+    visa: { kind: "free", label: "Vizesiz · 90 gün", days: 90, link: "x" },
+    local: { currency: "MAD", rateText: null, hours: -2, info: { currency: "MAD", language: { tr: "Arapça", en: "Arabic" }, timeZone: "Africa/Casablanca", plugs: [] } },
+  };
+  const xx: CountryFacts = { country: "XX", visa: { kind: "unknown", label: "Resmi kaynağa bak", link: "x" }, local: null };
+  it("a row for each with its money, clock, plug and visa; a country nothing is known of has none", () => {
+    const rows = countryRows([pt, ma, xx], ["Portekiz", "Fas", "Bilinmez"], false);
+    expect(rows.map((r) => [r.name, r.parts])).toEqual([
+      ["Portekiz", ["Euro", "−2 saat", "C/F priz", "Schengen vizesi gerekiyor"]],
+      ["Fas", [expect.stringMatching(/Dirhem/i), "−2 saat", "Vizesiz · 90 gün"]],
+    ]);
+    expect(countryRows([pt], ["Portekiz"], true)[0].parts.at(-1)).toBe("Schengen vizesi alındı");
+  });
+  it("puts them under the \"n ülke\" chip", () => {
+    const facts = { origin: null, adults: 2, country: "PT", visa: pt.visa, local: pt.local };
+    const chips = factChips({ facts, countries: ["Portekiz", "Fas"], cities: ["Lizbon", "Marakeş"], weather: null, home: "TR", visaDone: false, perCountry: [pt, ma] });
+    expect(chips[0]).toMatchObject({ key: "country", text: "2 ülke" });
+    expect(chips[0].rows?.map((r) => r.name)).toEqual(["Portekiz", "Fas"]);
   });
 });

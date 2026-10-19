@@ -21,16 +21,16 @@ import { journeyChapters, type StepTarget } from "../lib/journeyChapters";
 import { countedIntents, localNow, tripModeOf } from "../lib/tripPhase";
 import { timedNext, timedNextLabel, todayStrip, type TimedNext, type TodayInput } from "../lib/tripToday";
 import type { PlanTarget } from "../lib/chatCards";
-import { mosaicOf, placesOfIntents } from "../lib/heroMosaic";
-import { budgetView, datesTip, heroCounts, heroLine } from "../lib/heroStrip";
-import { nextLabel, nextShort, nextStep, type NextIntent, type NextStep } from "../lib/nextStep";
+import { linksOf, momentsOf, mosaicOf, placesOfIntents } from "../lib/heroMosaic";
+import { budgetView, datesTip, docsMissing, heroCounts, heroLine } from "../lib/heroStrip";
+import { allSet, nextLabel, nextShort, nextStep, type NextIntent, type NextStep } from "../lib/nextStep";
 import { nNights } from "../lib/i18nText";
 import { loadHome, loadPassport } from "../lib/passport";
 import { displayCurrency } from "../lib/displayCurrency";
-import { homeCurrencyOf, tripFacts } from "../lib/tripFacts";
+import { countryFacts, homeCurrencyOf, tripFacts } from "../lib/tripFacts";
 
 import type { Capture, Item, Suggestion, Trip } from "../lib/types";
-import { chooseItem, hideNights, markSuggestionAdded, setVisaDone, undo as takeBack, updateTrip } from "./actions";
+import { chooseItem, hideNights, markSuggestionAdded, setBudget, setVisaDone, undo as takeBack, updateTrip } from "./actions";
 import { legEndsByItem, legModeByItem } from "../lib/cardKinds";
 import { inheritedDocs } from "../lib/docs";
 import { deleteItem, onHidden, onRemoved } from "../lib/removal";
@@ -108,7 +108,7 @@ import { onTripChange } from "../lib/tripUndo";
 import { takeLangUndo } from "./langSwitch";
 import { START_CARD_SHOWN, StartGuideCard } from "./start/StartGuideCard";
 import { WorkLine } from "./WorkPill";
-import { isPlaceholder } from "../lib/startTrip";
+import { approxDates, dayText, isPlaceholder, momentPhotoKeys } from "../lib/startTrip";
 
 interface Props {
   trip: Trip;
@@ -133,7 +133,7 @@ interface Props {
   onPlanLink?: (link: PlanLink | null) => void;
 }
 
-export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenItem, onCompare, onShare, historyOpen = false, onHistoryClose, onAsk, onHistory, onSettings, onDeleteTrip, onPlanLink }: Props) {
+export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenItem, onShare, historyOpen = false, onHistoryClose, onAsk, onHistory, onSettings, onDeleteTrip, onPlanLink }: Props) {
   // The plan's dates: the ones set, widened by any stay booked or chosen outside them.
   const range = plan.range ?? trip.confirmedDates ?? tripDateRange(items);
   const today = decisions?.ctx.today ?? new Date().toISOString().slice(0, 10);
@@ -336,7 +336,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     focus,
     setFocus,
     onOpenItem,
-    onCompare,
+    // C11 (row 199): one comparison, the Pano's; the old window with its priorities has no button on the board any more.
+    onCompare: (group) => openPano({ need: group }),
     onPano: (group) => openPano({ need: group }),
     ask: onAsk,
     weather: (city) => {
@@ -557,18 +558,18 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const bar = decisions ? budgetBar(plan, items, decisions.ctx, decisions.byGroup) : null;
   // v11: each section's share of the budget ("€500 ayrıldı"), by what it's likely to cost.
   const allot = bar ? sectionAllotments(bar) : null;
-  const facts = useMemo(
-    () =>
-      tripFacts(items, {
-        passport,
-        // The traveller's own money (a TR passport: TRY), not the budget's: "€1 = ₺38,20".
-        homeCurrency: displayCurrency() ?? homeCurrencyOf(passport, decisions?.ctx.currency ?? "EUR"),
-        rates: decisions?.ctx.rates ?? null,
-        homeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        start: range?.start ?? null,
-      }),
-    [items, passport, decisions?.ctx.currency, decisions?.ctx.rates, range?.start],
+  const factsOpts = useMemo(
+    () => ({
+      passport,
+      // The traveller's own money (a TR passport: TRY), not the budget's: "€1 = ₺38,20".
+      homeCurrency: displayCurrency() ?? homeCurrencyOf(passport, decisions?.ctx.currency ?? "EUR"),
+      rates: decisions?.ctx.rates ?? null,
+      homeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      start: range?.start ?? null,
+    }),
+    [passport, decisions?.ctx.currency, decisions?.ctx.rates, range?.start],
   );
+  const facts = useMemo(() => tripFacts(items, factsOpts), [items, factsOpts]);
   const who = useWho(trip, facts.adults);
   // The countries abroad an eSIM is for (the eSIM's empty card): home as Settings has it, else where the first flight leaves.
   const esimCountries = useMemo(() => {
@@ -599,6 +600,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const cityImageOf = (city: string | null) =>
     (city ? (trip.cityImages?.[cityKeyOf(city)!] ?? trip.cityImages?.[cityKeyOf(mainPlaceOf(mains, city))!]) : null) ?? trip.heroImage ?? null;
   const countries = useMemo(() => countryCodesOf(items), [items]);
+  // D9: a trip of several countries, each one's own money, clock, plug and visa (the "n ülke" chip's rows).
+  const perCountry = useMemo(() => (countries.length > 1 ? countries.map((c) => countryFacts(c, factsOpts)) : []), [countries, factsOpts]);
   const places = useMemo(() => cityRanges(plan, mains, range), [plan, mains, range]);
   const mood = trip.mood?.key === moodFor && trip.mood.text ? trip.mood.text : null;
   // The sections' "3/4"s added up: whether anything is saved yet, and (with nothing left to do) all set.
@@ -613,7 +616,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     if (drawn) setOpened(id, true);
     setTimeout(() => {
       const el = document.querySelector(`[data-section="${id}"]`);
-      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (el) el.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "start" });
       else show(document.querySelector(`[data-section-chip="${id}"]`));
     }, 60);
   };
@@ -650,16 +653,31 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           return { name: c.name, image: c.image, credit: c.credit ?? null, nights: days ? nNights(nightsBetween(days.start, days.end)) : null };
         }),
         places: placesOfIntents(heroIntents, (image) => creditOf(image, trip.photoCredits)),
+        // Row 14: then what was saved for the trip, the cities, the trip's moments (the start's scenes), a drawing.
+        links: linksOf(items, (image) => creditOf(image, trip.photoCredits)),
+        moments: momentsOf(trip.cityImages, momentPhotoKeys(), (image) => creditOf(image, trip.photoCredits)),
       }),
-    [cities, places, heroIntents, trip.photoCredits],
+    [cities, places, heroIntents, items, trip.cityImages, trip.photoCredits],
   );
   const estimated = !!range && !trip.confirmedDates && !plan.range;
-  const heroDates = range ? { range, estimated, countdown: countdownText(countdown(range, today)), tip: datesTip(places, estimated) } : null;
+  // D15: dates still the guess the start made from a month or a season say only the nights ("~ · 10 gece"); an event's
+  // own days, read from its official site, are days.
+  const rough = !!range && approxDates(trip) && !trip.intent?.url;
+  const roughTip = () => {
+    const day = dayText(range!.start);
+    return L(`Gece sayısı belli; başlangıç yaklaşık ${day}. Kesinleşince sohbette söylemen yeter.`, `The nights are known; the start, ${day}, is a rough guess. Say the dates in the chat once they're set.`);
+  };
+  const heroDates = range ? { range, estimated, rough, countdown: rough ? null : countdownText(countdown(range, today)), tip: rough ? roughTip() : datesTip(places, estimated) } : null;
   const heroBudget = useMemo(() => {
     const view = budgetView(bar, who.count || facts.adults || 0);
     return bar && view ? { view, bar } : null;
   }, [bar, who.count, facts.adults]);
-  const visaToGet = facts.visa?.kind === "visa" && !trip.visaDone;
+  // Row 127: a visa is a thing to get only while the trip is being planned.
+  const visaToGet = mode === "plan" && facts.visa?.kind === "visa" && !trip.visaDone;
+  // B15: the bookings in their last two weeks with no file yet; a tap goes to the first.
+  const missingDocs = docsMissing(counted);
+  // D16: no budget yet: one is set in the budget segment, in the money the board shows the trip in.
+  const budgetSet = !trip.budget && decisions ? { currency: decisions.ctx.currency, save: (amount: number) => void setBudget(trip.id, amount, decisions.ctx.currency) } : null;
   /** An intent of the Plan: its category opens, the page goes to it with a flash. */
   const goIntent = (intent: NextIntent) => {
     setView("plan");
@@ -671,8 +689,9 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     setOpened("other", true);
     setTimeout(() => show(document.querySelector("[data-visa]")), 60);
   };
-  // F4: "Sıradaki" updates itself; C30: "İlk kaydı ekle" with nothing saved, the PDF once all is bought, sharing when nothing is left.
-  const step: NextStep = nextStep({ intents: counted, saved: done.total > 0, visa: visaToGet, sharable: !!onShare });
+  // F4: "Sıradaki" updates itself; C30: "İlk kaydı ekle" with nothing saved, the PDF with every need on the plan, sharing once
+  // every need is bought; on the trip and after it no decision (row 127).
+  const step: NextStep = nextStep({ intents: counted, saved: done.total > 0, visa: visaToGet, sharable: !!onShare, mode });
   const runStep: Record<NextStep["kind"], (() => void) | null> = {
     first: () => addIn(null, null),
     visa: goVisa,
@@ -703,7 +722,12 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     ? { label: timedNextLabel(timed), title: timedTitle(timed), run: runTimed(timed) }
     : {
         label: step.kind === "pdf" && printing ? L("PDF hazırlanıyor…", "Making the PDF…") : nextLabel(step),
-        title: step.kind === "pdf" ? L("Gezinin özeti ve gün gün akışı, bir PDF dosyası olarak", "The trip's summary and its days, as a PDF file") : undefined,
+        title:
+          step.kind === "pdf"
+            ? L("Gezinin özeti ve gün gün akışı, bir PDF dosyası olarak", "The trip's summary and its days, as a PDF file")
+            : step.kind === "share"
+              ? L("Her şey alındı. Bu geziyi paylaş", "Everything is booked. Share this trip")
+              : undefined,
         run: runStep[step.kind],
       };
   // F5: a tap on "%61 planda" goes to the first decision (a visa to get first, as "Sıradaki" does).
@@ -827,7 +851,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       ctx={decisions?.ctx}
       renderCard={card}
       renderSettled={settled}
-      onCompare={() => onCompare(group.key)}
+      onCompare={() => openPano({ need: group.key })}
     />
   );
 
@@ -861,6 +885,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const emptyEnv: EmptyEnv = {
     tripId: trip.id,
     travellers: who.count || null,
+    group: { adults: who.adults || null, children: who.children, rooms: who.rooms },
     esimCountries,
     // No offers' source is connected yet: the "✨ Senin için N öneri" row is never drawn.
     offers: liveSource,
@@ -899,12 +924,13 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
         active={view !== "board"}
         title={trip.title}
         cover={mosaic.cover?.image ?? trip.heroImage ?? null}
-        line={heroLine({ range, estimated, people: who.count, counts, budget: null, short: true })}
+        line={heroLine({ range, estimated, rough, people: who.count, counts, budget: null, short: true })}
         counts={counts}
         budget={heroBudget?.view ?? null}
         view="plan"
         onView={(v) => (v === "board" ? (setPanoFocus(null), setView("board")) : setView("plan"))}
-        next={heroNext}
+        // C24: every need bought, the thin bar says "✓ Her şey hazır" where the hero offers sharing.
+        next={!timed && allSet(step) ? { label: nextLabel({ kind: "ready" }), run: null } : heroNext}
         nextShort={timed ? timedNextLabel(timed) : nextShort(step)}
       />
       {/* The Pano is a work table of its own: no hero over it (v11). */}
@@ -925,6 +951,9 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           counts={counts}
           onFirstDecision={onFirstDecision}
           budget={heroBudget}
+          budgetSet={budgetSet}
+          docs={missingDocs.length ? { count: missingDocs.length, go: () => goIntent(missingDocs[0]) } : null}
+          perCountry={perCountry}
           next={heroNext}
           facts={facts}
           countries={countryNames(countries)}

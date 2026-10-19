@@ -11,7 +11,8 @@ import { creditLine, creditOf } from "../lib/cityImages";
 import { tripCardPhoto, tripCardPlaces } from "../lib/tripBrief";
 import { isDemoTrip } from "../lib/trips";
 import { getSettings, listMessages, onChanged } from "../lib/db";
-import { CURRENCIES, CURRENCY_SIGN, displayCurrency, saveCurrency, type DisplayCurrency } from "../lib/displayCurrency";
+import { canPick, CURRENCIES, CURRENCY_SIGN, displayCurrency, saveCurrency, type DisplayCurrency } from "../lib/displayCurrency";
+import { getRates, type Rates } from "../lib/currency";
 import type { Capture, ChatMessage, Item, Settings, Trip } from "../lib/types";
 import { RoutingLine } from "./Chat";
 import { UiIcon } from "./cards/Silhouettes";
@@ -115,7 +116,7 @@ function usePopover(): { open: boolean; setOpen: (v: boolean) => void; box: Reac
 }
 
 /** A small pill in the top bar (₺, TR) opening its list of choices. */
-function Picker({ label, shown, current, options, onPick }: { label: string; shown: string; current: string | null; options: { value: string; text: string }[]; onPick: (v: string) => void }) {
+function Picker({ label, shown, current, options, onPick }: { label: string; shown: string; current: string | null; options: { value: string; text: string; off?: string }[]; onPick: (v: string) => void }) {
   const { open, setOpen, box, button } = usePopover();
   return (
     <div className="hm-pick" ref={box}>
@@ -126,7 +127,16 @@ function Picker({ label, shown, current, options, onPick }: { label: string; sho
         <ul className="hm-pop hm-pop-sm" role="listbox" aria-label={label}>
           {options.map((o) => (
             <li key={o.value}>
-              <button type="button" role="option" aria-selected={o.value === current} className={o.value === current ? "on" : ""} onClick={() => (setOpen(false), o.value !== current && onPick(o.value))}>
+              <button
+                type="button"
+                role="option"
+                aria-selected={o.value === current}
+                aria-disabled={o.off ? true : undefined}
+                disabled={Boolean(o.off)}
+                title={o.off}
+                className={o.value === current ? "on" : ""}
+                onClick={() => (setOpen(false), o.value !== current && onPick(o.value))}
+              >
                 {o.text}
                 {o.value === current && <UiIcon name="check" size={13} />}
               </button>
@@ -203,6 +213,9 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
   const [drafts, setDrafts] = useState<StartState[]>([]);
   const [removed, setRemoved] = useState<StartState | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
+  // D17: the exchange rates, so a money with none known can't be picked.
+  const [rates, setRates] = useState<Rates | null>(null);
+  useEffect(() => void getRates().then(setRates).catch(() => undefined), []);
   const fileInput = useRef<HTMLInputElement>(null);
   const myPhoto = useMyPhoto();
   const peoplePhoto = usePeoplePhotos();
@@ -305,7 +318,11 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
             label={L("Para birimi", "Currency")}
             shown={CURRENCY_SIGN[displayCurrency() ?? "EUR"]}
             current={displayCurrency()}
-            options={CURRENCIES.map((c) => ({ value: c, text: `${CURRENCY_SIGN[c]}  ${c}` }))}
+            options={CURRENCIES.map((c) => ({
+              value: c,
+              text: `${CURRENCY_SIGN[c]}  ${c}`,
+              off: canPick(c, rates, displayCurrency()) ? undefined : L("Kur bilgisi gelince seçilebilir", "Can be picked once its exchange rate is known"),
+            }))}
             onPick={(c) => void saveCurrency(c as DisplayCurrency)}
           />
           <Picker

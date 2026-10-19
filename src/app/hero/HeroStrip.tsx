@@ -1,13 +1,14 @@
 // The hero's strip in four parts (v82, v83 B9, F4, F5, C22, C30, Etsy T5): the dates (a "~" when guessed, the days and
-// how many are left; each city's days on hover), who goes (the faces, "Kimler gidiyor" in full on a tap) with the
-// backbone's two shares and the bar in two greens (a tap on the numbers goes to the first decision), the budget (its
-// window: booked, planned, free, each person's share, by kind, what's still to come) and "Sıradaki", the one next step.
-// A part with nothing to say isn't drawn (C19).
-import type { ReactNode } from "react";
+// how many are left; each city's days on hover; only "~ · 10 gece" while they are a guess from a month or a season, D15),
+// who goes (the faces, "Kimler gidiyor" in full on a tap) with the backbone's two shares and the bar in two greens (a tap
+// on the numbers goes to the first decision), the budget (its window: booked, planned, free, each person's share, by
+// kind, what's still to come; "Bütçe belirle" without one, D16) and "Sıradaki", the one next step. A part with nothing
+// to say isn't drawn (C19).
+import { useState, type ReactNode } from "react";
 import { BUDGET_SLICES, type BudgetBar, type BudgetSlice } from "../../lib/progress";
-import { formatDateRange, formatPrice, nightsBetween } from "../../lib/items";
+import { formatPrice, nightsBetween } from "../../lib/items";
 import { initials, nPeople } from "../../lib/heroInfo";
-import { freshWords, shareSentence, shareWords, type BudgetView, type HeroCounts } from "../../lib/heroStrip";
+import { budgetAmount, datesWords, freshWords, shareSentence, shareWords, type BudgetView, type HeroCounts } from "../../lib/heroStrip";
 import { L } from "../../lib/i18n";
 import { nDays } from "../../lib/i18nText";
 import type { Who } from "../../lib/tripSettings";
@@ -24,10 +25,24 @@ import { usePop } from "./usePop";
 export interface HeroDates {
   range: { start: string; end: string };
   estimated: boolean;
+  /** Still the guess made from a month or a season (startTrip.approxDates): only the nights are said (D15). */
+  rough?: boolean;
   /** "3 gün kaldı", "3. gün / 7", "Bitti". */
   countdown: string | null;
   /** Each city's days, and "Tahmini · kayıtlardan". */
   tip: string | null;
+}
+
+/** B15: the bookings in their last two weeks with no file yet, and the way to the first. */
+export interface HeroDocs {
+  count: number;
+  go: () => void;
+}
+
+/** D16: a trip with no budget sets one in the budget window, in this money. */
+export interface HeroBudgetSet {
+  currency: string;
+  save: (amount: number) => void;
 }
 
 export interface HeroNext {
@@ -41,7 +56,8 @@ export interface HeroNext {
 function Dates({ dates }: { dates: HeroDates }) {
   const { range } = dates;
   const days = nightsBetween(range.start, range.end) + 1;
-  const small = [nDays(days), dates.countdown].filter(Boolean).join(" · ");
+  // A guessed start has no days to count to: the nights alone (D15).
+  const small = dates.rough ? "" : [nDays(days), dates.countdown].filter(Boolean).join(" · ");
   return (
     <TipOn tip={dates.tip} below>
       {(bind) => (
@@ -50,11 +66,8 @@ function Dates({ dates }: { dates: HeroDates }) {
             <XIcon name="cal" size={20} stroke={1.8} />
           </span>
           <span className="x-sv">
-            <b>
-              {dates.estimated ? "~" : ""}
-              {formatDateRange(range.start, range.end)}
-            </b>
-            <small>{small}</small>
+            <b>{datesWords(dates)}</b>
+            {small && <small>{small}</small>}
           </span>
         </div>
       )}
@@ -168,16 +181,68 @@ function People({ trip, who, items, onShare, counts, onFirstDecision }: { trip: 
   );
 }
 
+/** D16: the budget window's own line to set one ("Toplam bütçe" in the trip's money, Enter or Kaydet). */
+function SetBudget({ set, onDone }: { set: HeroBudgetSet; onDone: () => void }) {
+  const [text, setText] = useState("");
+  const amount = budgetAmount(text);
+  const save = () => {
+    if (amount == null) return;
+    set.save(amount);
+    onDone();
+  };
+  return (
+    <form
+      className="x-bset"
+      onSubmit={(e) => {
+        e.preventDefault();
+        save();
+      }}
+    >
+      <label>
+        <span>{L("Toplam bütçe", "Total budget")}</span>
+        <span className="x-bin">
+          <input type="text" inputMode="decimal" value={text} autoFocus placeholder={formatPrice(1500, set.currency)} onChange={(e) => setText(e.target.value)} aria-label={L(`Toplam bütçe (${set.currency})`, `Total budget (${set.currency})`)} />
+        </span>
+      </label>
+      <button type="submit" className="x-bsave" disabled={amount == null}>
+        {L("Kaydet", "Save")}
+      </button>
+      <small className="x-pn">{L("Sohbette söylemen de yeter.", "Saying it in the chat works too.")}</small>
+    </form>
+  );
+}
+
 const sliceLabel = (s: BudgetSlice) =>
   ({ flight: L("Uçuş", "Flights"), stay: L("Konaklama", "Stays"), transport: L("Ulaşım", "Transport"), activity: L("Etkinlik", "Experiences"), other: L("Diğer", "Other") })[s];
 
-function Budget({ view, bar }: { view: BudgetView; bar: BudgetBar }) {
+/** D16: no budget and no price yet: the segment is the way to set one. */
+function NoBudget({ set }: { set: HeroBudgetSet }) {
+  const pop = usePop();
+  return (
+    <div className="x-seg x-s3" ref={pop.box}>
+      <span className="x-ico">
+        <XIcon name="wallet" size={20} stroke={1.8} />
+      </span>
+      <button ref={pop.trigger} type="button" className="x-sv x-budb set" aria-expanded={pop.open} aria-haspopup="dialog" onClick={pop.toggle}>
+        <b>{L("Bütçe belirle", "Set a budget")}</b>
+      </button>
+      {pop.shown && (
+        <div className={`x-pop x-bud-pop${pop.leaving ? " x-out" : ""}`} role="dialog" aria-label={L("Bütçe belirle", "Set a budget")}>
+          <b className="x-pt">{L("Bütçe belirle", "Set a budget")}</b>
+          <SetBudget set={set} onDone={() => pop.close(true)} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Budget({ view, bar, set }: { view: BudgetView; bar: BudgetBar; set: HeroBudgetSet | null }) {
   const pop = usePop();
   const money = (n: number) => formatPrice(n, view.currency);
   const slices = BUDGET_SLICES.filter((s) => bar.byCategory[s] > 0);
   const said = [
-    `${L("Bütçe", "Budget")}: ~${money(view.likely)}`,
-    view.total != null ? L(`${money(view.total)} bütçe`, `${money(view.total)} budget`) : L("tahmini toplam", "likely total"),
+    `${L("Bütçe", "Budget")}: ${view.sign}${money(view.likely)}`,
+    view.total != null ? L(`${money(view.total)} bütçe`, `${money(view.total)} budget`) : set ? L("tahmini toplam, bütçe belirle", "likely total, set a budget") : L("tahmini toplam", "likely total"),
     view.over ? L(`bütçeyi ${money(view.over)} aşar`, `${money(view.over)} over`) : null,
   ]
     .filter(Boolean)
@@ -189,13 +254,13 @@ function Budget({ view, bar }: { view: BudgetView; bar: BudgetBar }) {
       </span>
       <button ref={pop.trigger} type="button" className={`x-sv x-budb${view.over ? " over" : ""}`} aria-expanded={pop.open} aria-haspopup="dialog" aria-label={said} onClick={pop.toggle}>
         <b data-count>
-          <Counted value={view.likely} format={(n) => `~${money(n)}`} />
+          <Counted value={view.likely} format={(n) => `${view.sign}${money(n)}`} />
         </b>
-        <small>{view.total != null ? L(`/ ${money(view.total)} bütçe`, `/ ${money(view.total)} budget`) : L("tahmini toplam", "likely total")}</small>
+        {view.total != null ? <small>{L(`/ ${money(view.total)} bütçe`, `/ ${money(view.total)} budget`)}</small> : set ? <small className="x-bsetl">{L("Bütçe belirle", "Set a budget")}</small> : <small>{L("tahmini toplam", "likely total")}</small>}
       </button>
       {pop.shown && (
         <div className={`x-pop x-bud-pop${pop.leaving ? " x-out" : ""}`} role="dialog" aria-label={L("Bütçe", "Budget")}>
-          <b className="x-pt">{view.total != null ? `${L("Bütçe", "Budget")} · ${money(view.total)}` : `${L("Tahmini toplam", "Likely total")} · ~${money(view.likely)}`}</b>
+          <b className="x-pt">{view.total != null ? `${L("Bütçe", "Budget")} · ${money(view.total)}` : `${L("Tahmini toplam", "Likely total")} · ${view.sign}${money(view.likely)}`}</b>
           {view.lines.map((l) => (
             <div key={l.key} className={`x-bl ${l.key}`}>
               <span>
@@ -209,7 +274,8 @@ function Budget({ view, bar }: { view: BudgetView; bar: BudgetBar }) {
             <div className="x-bl pp">
               <span>{L("Kişi başı", "Per person")}</span>
               <b>
-                ~{money(view.perPerson.amount)} · {nPeople(view.perPerson.people)}
+                {view.sign}
+                {money(view.perPerson.amount)} · {nPeople(view.perPerson.people)}
               </b>
             </div>
           )}
@@ -225,6 +291,12 @@ function Budget({ view, bar }: { view: BudgetView; bar: BudgetBar }) {
             </>
           )}
           {view.note.length > 0 && <p className="x-pn">{view.note.join(" ")}</p>}
+          {view.total == null && set && (
+            <>
+              <div className="x-sep" />
+              <SetBudget set={set} onDone={() => pop.close(true)} />
+            </>
+          )}
         </div>
       )}
     </div>
@@ -260,12 +332,14 @@ export function HeroStrip(props: {
   counts: HeroCounts;
   onFirstDecision: (() => void) | null;
   budget: { view: BudgetView; bar: BudgetBar } | null;
+  /** D16: with no budget, the way to set one (null: not known yet in which money). */
+  budgetSet: HeroBudgetSet | null;
   next: HeroNext;
 }) {
   const segs: ReactNode[] = [
     props.dates && <Dates key="dates" dates={props.dates} />,
     <People key="people" trip={props.trip} who={props.who} items={props.items} onShare={props.onShare} counts={props.counts} onFirstDecision={props.onFirstDecision} />,
-    props.budget && <Budget key="budget" view={props.budget.view} bar={props.budget.bar} />,
+    props.budget ? <Budget key="budget" view={props.budget.view} bar={props.budget.bar} set={props.budgetSet} /> : props.budgetSet && <NoBudget key="budget" set={props.budgetSet} />,
   ].filter(Boolean);
   return (
     <div className="x-strip" data-pit-children>

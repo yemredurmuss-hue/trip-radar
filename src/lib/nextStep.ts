@@ -1,11 +1,13 @@
 // The hero's "Sıradaki" (F4, C30): the one next thing, which updates itself as decisions are made (no toast). A visa to
 // get comes first; then our pick waiting to be taken (Önerimiz), then a decision with options, then a need with none
-// yet, then something chosen but not bought. With nothing saved it is "İlk kaydı ekle"; with everything bought the
-// plan as a PDF; with nothing left to do and no booking, sharing (or simply "all set"). Pure.
+// yet. C30's other faces: with nothing saved "İlk kaydı ekle"; with every need on the plan the plan as a PDF; with every
+// need bought (or sorted) sharing, or simply "all set" when the trip can't be shared. On the trip there is no visa to get,
+// only the needs still ahead to decide; after it nothing is left to decide (D8, row 127): the PDF, or sharing. Pure.
 import { L } from "./i18n";
 import { locative } from "./i18nText";
 import type { CardKind } from "./cardKinds";
 import type { IntentStatus, IntentVM } from "./intents";
+import type { TripMode } from "./tripPhase";
 
 export type NextIntent = Pick<IntentVM, "key" | "section" | "kind" | "status" | "frame" | "domKeys"> & { head: Pick<IntentVM["head"], "name" | "route"> };
 
@@ -17,27 +19,37 @@ export type NextStep =
   | { kind: "share" }
   | { kind: "ready" };
 
-/** The order a need waiting for something is taken in (F4). */
-const ORDER: readonly IntentStatus[] = ["suggested", "deciding", "searching", "chosen"];
+/** The order a need waiting for a decision is taken in (F4). */
+const ORDER: readonly IntentStatus[] = ["suggested", "deciding", "searching"];
+/** Bought, or nothing to buy: what "hepsi alındı" counts (a need said not needed is no need). */
+const SETTLED: readonly IntentStatus[] = ["booked", "arranged", "included", "skipped"];
 
-export function nextStep({ intents, saved, visa, sharable }: {
+export function nextStep({ intents, saved, visa, sharable, mode = "plan" }: {
   intents: readonly NextIntent[];
   /** Anything saved on the trip at all (else "İlk kaydı ekle"). */
   saved: boolean;
   /** A visa is needed and not marked as got. */
   visa: boolean;
   sharable: boolean;
+  /** Planning it, on it, back from it (tripPhase.tripModeOf): a visa only while planning, a decision until the trip is over. */
+  mode?: TripMode;
 }): NextStep {
   if (!saved && !intents.length) return { kind: "first" };
-  if (visa) return { kind: "visa" };
-  for (const status of ORDER) {
-    const hit = intents.find((i) => i.status === status);
-    if (hit) return { kind: "intent", intent: hit };
-  }
+  if (mode === "plan" && visa) return { kind: "visa" };
+  // (on the trip the intents are tripPhase.countedIntents': a need whose day went by is gone, one still ahead is a decision)
+  if (mode !== "archive")
+    for (const status of ORDER) {
+      const hit = intents.find((i) => i.status === status);
+      if (hit) return { kind: "intent", intent: hit };
+    }
   if (!saved) return { kind: "first" };
-  if (intents.some((i) => i.status === "booked" || i.status === "arranged")) return { kind: "pdf" };
-  return sharable ? { kind: "share" } : { kind: "ready" };
+  // C30: every need bought or sorted: sharing (or all set); else every need is on the plan (nothing left to decide): the PDF.
+  if (intents.every((i) => SETTLED.includes(i.status))) return sharable ? { kind: "share" } : { kind: "ready" };
+  return { kind: "pdf" };
 }
+
+/** C24: the thin bar says "✓ Her şey hazır" once every need is bought, where the hero offers sharing. */
+export const allSet = (step: NextStep): boolean => step.kind === "share" || step.kind === "ready";
 
 /** A need's own word after its name ("Porto konaklaması", "İstanbul → Porto uçuşu"). */
 const WORD: Partial<Record<CardKind, [string, string]>> = {

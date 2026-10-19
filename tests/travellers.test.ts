@@ -20,7 +20,7 @@ const trip = (over: Partial<Trip> = {}): Trip => ({ id: "w1", title: "Porto", co
 
 describe("who goes", () => {
   it("merges the names said, me and the shared trip's people, each once whatever the case; me first", () => {
-    expect(whoGoes({ travellers: { names: ["Sabine"] }, me: "Emre", adults: 1 })).toEqual({ names: ["Emre", "Sabine"], count: 2, me: "Emre" });
+    expect(whoGoes({ travellers: { names: ["Sabine"] }, me: "Emre", adults: 1 })).toEqual({ names: ["Emre", "Sabine"], count: 2, adults: 2, children: 0, rooms: null, me: "Emre" });
     // No profile name: "Ben".
     expect(whoGoes({ travellers: { names: ["Sabine"] }, adults: null }).names).toEqual(["Ben", "Sabine"]);
     // Shared: the sharing name and the members, the names said added, "sabine " the same as "Sabine".
@@ -32,12 +32,32 @@ describe("who goes", () => {
   });
 
   it("counts the count said, else the saves' adults, never fewer than the names", () => {
-    expect(whoGoes({ adults: 2 })).toEqual({ names: [], count: 2, me: null }); // nobody named: the saves, as before
+    expect(whoGoes({ adults: 2 })).toEqual({ names: [], count: 2, adults: 2, children: 0, rooms: null, me: null }); // nobody named: the saves, as before
     expect(whoGoes({ adults: null }).count).toBe(0);
     expect(whoGoes({ travellers: { names: ["Sabine", "Ali"] }, adults: 1 }).count).toBe(3);
     expect(whoGoes({ travellers: { names: ["Sabine"], count: 4 }, adults: 2 }).count).toBe(4);
     expect(whoGoes({ travellers: { names: [], count: 1 }, adults: 2 }).count).toBe(1); // "tek gidiyorum" wins over the saves
     expect(whoGoes({ travellers: { names: ["Sabine", "Ali"], count: 1 } }).count).toBe(3);
+  });
+
+  it("D12: 4 adults and 4 children count as 8 going, 4 of them children; the rooms said ride along", () => {
+    const set = withTravellers({ names: [], count: 4 }, { count: 8, children: 4 });
+    if (typeof set === "string") throw new Error(set);
+    expect(set.travellers).toEqual({ names: [], count: 8, children: 4 });
+    expect(whoGoes({ travellers: set.travellers })).toMatchObject({ count: 8, adults: 4, children: 4, rooms: null });
+    const rooms = withTravellers(set.travellers, { rooms: 2 });
+    if (typeof rooms === "string") throw new Error(rooms);
+    expect(rooms.travellers).toEqual({ names: [], count: 8, children: 4, rooms: 2 });
+    expect(whoGoes({ travellers: rooms.travellers })).toMatchObject({ adults: 4, children: 4, rooms: 2 });
+    // A change of names keeps them; no children (0 or null) and one room take them off.
+    const named = withTravellers(rooms.travellers, { add: ["Sabine"] });
+    expect(typeof named !== "string" && named.travellers).toMatchObject({ names: ["Sabine"], children: 4, rooms: 2 });
+    const off = withTravellers(rooms.travellers, { children: 0, rooms: null });
+    expect(typeof off !== "string" && off.travellers).toEqual({ names: [], count: 8 });
+    expect(typeof withTravellers(rooms.travellers, { children: -1 })).toBe("string");
+    expect(typeof withTravellers(rooms.travellers, { rooms: 0 })).toBe("string");
+    // Never more children than go.
+    expect(whoGoes({ travellers: { names: [], count: 2, children: 5 } })).toMatchObject({ count: 2, adults: 0, children: 2 });
   });
 
   it("adds and removes names (case aside, trimmed, once), keeps or sets the count, and refuses a bad count", () => {

@@ -10,6 +10,7 @@ import { L } from "../../lib/i18n";
 import { dropDraft, editableFields, fieldInput, fieldLabel, fieldPlaceholder, fieldValue, nextField, resumeDraft, saveCardField, type FieldKey } from "../../lib/inlineEdit";
 import type { Item } from "../../lib/types";
 import { clearUserEdit, correctionOf } from "../../lib/userEdits";
+import { reducedMotion } from "../motion";
 import { useCardEnv } from "./PlanCard";
 
 interface EditApi {
@@ -32,7 +33,7 @@ export function InlineEdit({ item, only, children }: { item: Item; only?: FieldK
   // Just added, or moved by a new day: bring it into view once it's drawn in its place.
   useEffect(() => {
     if (!mine?.scroll) return;
-    document.querySelector(`[data-item-id="${CSS.escape(item.id)}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    document.querySelector(`[data-item-id="${CSS.escape(item.id)}"]`)?.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "center" });
     env.setFocus({ ...mine, scroll: false });
   });
   const api: EditApi = {

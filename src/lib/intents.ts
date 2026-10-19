@@ -316,6 +316,8 @@ interface Env {
   input: IntentInput;
   byId: Map<string, Item>;
   people: number | null;
+  /** D12: the trip's children (of `people`) and the rooms said in Kimler gidiyor; none said: no children, one room. */
+  group: { children: number; rooms: number | null };
   /** The trip's shape (gezi biçimi): its short lines, what it closes. */
   shape: TripShape;
   now: Date;
@@ -341,6 +343,7 @@ function envOf(input: IntentInput): Env {
     input,
     byId: new Map(input.items.map((i) => [i.id, i])),
     people: input.people ?? (whoGoes({ travellers: input.trip.travellers }).count || null),
+    group: { children: Math.max(0, input.trip.travellers?.children ?? 0), rooms: input.trip.travellers?.rooms ?? null },
     shape: shapeOf(input.trip),
     now: input.now ?? new Date(`${input.today}T12:00:00Z`),
     placeholder: (item) => isPlaceholder(input.trip, item),
@@ -495,10 +498,19 @@ function routeOf(b: Bucket, lead: Item | null, leg: Leg | null): IntentHead["rou
   return null;
 }
 
-/** The record's own head count, only when it isn't the trip's ("2 kişi" on every intent says nothing). */
+/**
+ * The record's own head count, only where it isn't the trip's ("2 kişi" on every intent says nothing; D12): its adults,
+ * its children, its rooms, each only when it says one the trip's Kimler gidiyor doesn't.
+ */
 function peoplePart(lead: Item | null, env: Env): string | null {
-  const n = lead?.guests.adults ?? null;
-  return n != null && env.people != null && n !== env.people ? count(n, "kişi", "person", "people") : null;
+  if (!lead) return null;
+  const { adults, children, rooms } = lead.guests;
+  const kids = env.group.children;
+  const parts: string[] = [];
+  if (adults != null && env.people != null && adults !== env.people - kids) parts.push(kids || children ? count(adults, "yetişkin", "adult") : count(adults, "kişi", "person", "people"));
+  if (children != null && children > 0 && children !== kids) parts.push(count(children, "çocuk", "child", "children"));
+  if (rooms != null && rooms > 0 && rooms !== (env.group.rooms ?? 1)) parts.push(count(rooms, "oda", "room"));
+  return parts.length ? parts.join(" · ") : null;
 }
 
 function headOf(section: SectionId, frame: FrameFamily, b: Bucket, lead: Item | null, leg: Leg | null, kind: CardKind, env: Env): IntentHead {

@@ -9,6 +9,8 @@ export interface EmptyEnv {
   tripId: string;
   /** The effective travellers (trip.travellers / whoGoes); null when unknown. */
   travellers: number | null;
+  /** D12: of them, the adults and children, and the rooms said (Kimler gidiyor), for the stays' searches. */
+  group?: { adults: number | null; children: number; rooms: number | null };
   /** The trip's countries abroad (suggestions.foreignCountries), for the eSIM card's name and pages. */
   esimCountries: string[];
   offers: SuggestionSource;

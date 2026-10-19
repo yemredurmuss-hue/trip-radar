@@ -110,6 +110,15 @@ describe("the searches are the existing ones", () => {
     expect(providerLinks("flight", {}, { from: "IST", to: "Gaula", start: "2026-10-08" }).map((l) => l.provider.id)).toEqual(["gflights"]);
   });
 
+  it("D12: a stay's search takes the children who go and the rooms said (one room when none is)", () => {
+    const q = { city: "Lizbon", start: "2026-12-10", end: "2026-12-17", adults: 4, children: 4, rooms: 2 };
+    const [booking, airbnb, agoda] = providerLinks("stay", { country: "PT" }, q);
+    expect(booking.url).toContain("group_adults=4&group_children=4&no_rooms=2");
+    expect(airbnb.url).toContain("adults=4&children=4");
+    expect(agoda.url).toContain("adults=4&children=4&rooms=2");
+    expect(providerLinks("stay", { country: "PT" }, { ...q, children: null, rooms: null })[0].url).toContain("group_adults=4&no_rooms=1");
+  });
+
   it("Hazırlık's shops: only a thing to buy (prepBuy), with no country known the same Amazon search it opens today", () => {
     const amazon = shopLinks("A tipi priz adaptörü");
     expect(amazon.map((l) => l.provider.id)).toEqual(["amazon"]);

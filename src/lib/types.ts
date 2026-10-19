@@ -144,6 +144,12 @@ export interface Travellers {
   /** How many go, when it's more than the names (null: as many as the names, or the saves say). */
   count?: number | null;
   /**
+   * D12: of those who go, how many are children (the rest are adults), and how many rooms they take, when said (the
+   * hero's Kimler gidiyor). Unset: no children, the sites' own room count. The searches of the boxes take them.
+   */
+  children?: number | null;
+  rooms?: number | null;
+  /**
    * Kişiye özel rezervasyon (spec 2026-10-06): who comes from somewhere other than where the trip leaves from, by
    * name as on the trip ("Sabine" → "Alicante"; me by my profile name). Shared with the settings like the names;
    * a name taken off leaves it, a name changed takes it along (tripSettings.withTravellers).

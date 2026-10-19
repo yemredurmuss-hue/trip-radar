@@ -1,7 +1,9 @@
 // A screen change carried by the browser's View Transitions (2026-10-09): the home's box flows into the chat's first
 // message, the plan slides in beside it, the board settles in after "Oluştur". The named parts are in app.css
-// (view-transition-name). Without the API, with reduced motion, or in a hidden tab the change is made at once.
+// (view-transition-name). Without the API, with reduced motion (or the app's own "Hareketi duraklat", E17), or in a
+// hidden tab the change is made at once.
 import { flushSync } from "react-dom";
+import { reducedMotion } from "./motion";
 
 type Transition = { ready: Promise<void>; updateCallbackDone: Promise<void>; finished: Promise<void> };
 type WithTransitions = Document & { startViewTransition?: (update: () => void) => Transition };
@@ -16,8 +18,7 @@ function quietly(t: Transition): Promise<void> {
 }
 
 function canTransition(doc: WithTransitions): boolean {
-  const still = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
-  return !!doc.startViewTransition && !still && doc.visibilityState === "visible";
+  return !!doc.startViewTransition && doc.visibilityState === "visible" && !reducedMotion();
 }
 
 export function withTransition(update: () => void): void {

@@ -227,8 +227,11 @@ export interface SelfSearchAt {
   countries: readonly string[];
   /** The countries' names, for a search in words (insurance). */
   countryNames: readonly string[];
-  /** How many go (the searches' head count). */
+  /** How many adults go (the searches' head count). */
   adults: number | null;
+  /** D12: the children who go and the rooms said (a stay's search), from the trip's Kimler gidiyor. */
+  children?: number | null;
+  rooms?: number | null;
 }
 
 const PROVIDER_KIND: Partial<Record<CardKind, ProviderKind>> = { stay: "stay", esim: "esim", flight: "flight", train: "train", activity: "activity" };
@@ -253,6 +256,8 @@ export function selfSearches(vm: Pick<IntentVM, "kind" | "head" | "options" | "c
     start,
     end,
     adults: at.adults,
+    children: at.children ?? null,
+    rooms: at.rooms ?? null,
     country: at.countries[0] ?? null,
     from: route ? route.from : null,
     to: route ? route.to : null,

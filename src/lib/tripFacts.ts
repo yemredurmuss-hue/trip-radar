@@ -15,6 +15,11 @@ export interface TripFacts {
   local: { currency: string; rateText: string | null; hours: number | null; info: CountryInfo } | null;
 }
 
+/** One country's own rules and clock (a trip of several countries has one for each, D9). */
+export type CountryFacts = Pick<TripFacts, "visa" | "local"> & { country: string };
+
+type FactsOpts = { passport: string; homeCurrency: string; rates: Rates | null; homeZone: string; start: string | null };
+
 /** Passports whose own money we know; any other traveller is shown the trip's budget currency. */
 const HOME_CURRENCY: Record<string, string> = { TR: "TRY", DE: "EUR", GB: "GBP", US: "USD" };
 /** The traveller's own money for the "Yerel" row (€1 = ₺38,20): from the passport set in Settings, else `fallback`. */
@@ -41,22 +46,8 @@ export function utcOffsetHours(zone: string, date: string): number {
 const money = (n: number, cur: string, d: number) =>
   new Intl.NumberFormat(locale(), { style: "currency", currency: cur, currencyDisplay: "narrowSymbol", minimumFractionDigits: d, maximumFractionDigits: d }).format(n);
 
-export function tripFacts(
-  items: Item[],
-  opts: { passport: string; homeCurrency: string; rates: Rates | null; homeZone: string; start: string | null },
-): TripFacts {
-  const live = items.filter((i) => i.status !== "dismissed");
-  // The earliest flight is the way out; a booked or chosen one only wins a tie on the same date.
-  const flights = live.filter((i) => i.category === "flight" && i.flight?.from).sort((a, b) => {
-    const byDate = (a.dates.start ?? "9").localeCompare(b.dates.start ?? "9");
-    if (byDate) return byDate;
-    const settled = (i: Item) => (i.status === "booked" || i.status === "chosen" ? 0 : 1);
-    return settled(a) - settled(b);
-  });
-  const from = flights[0]?.flight?.from;
-  const origin = from ? cityOfAirport(from) : null;
-  const adults = adultsOf(live);
-  const country = mostCommon(live.filter((i) => i.category !== "flight").map((i) => i.countryCode?.toUpperCase() ?? null).filter((c): c is string => !!c));
+/** A country's money (and its rate against the traveller's own), its clock against the traveller's, its visa. */
+export function countryFacts(country: string, opts: FactsOpts): CountryFacts {
   const info = countryInfo(country);
   let local: TripFacts["local"] = null;
   if (info) {
@@ -76,5 +67,23 @@ export function tripFacts(
     }
     local = { currency: info.currency, rateText, hours, info };
   }
-  return { origin, adults, country, visa: country ? visaFor(opts.passport, country) : null, local };
+  return { country, visa: visaFor(opts.passport, country), local };
+}
+
+export function tripFacts(items: Item[], opts: FactsOpts): TripFacts {
+  const live = items.filter((i) => i.status !== "dismissed");
+  // The earliest flight is the way out; a booked or chosen one only wins a tie on the same date.
+  const flights = live.filter((i) => i.category === "flight" && i.flight?.from).sort((a, b) => {
+    const byDate = (a.dates.start ?? "9").localeCompare(b.dates.start ?? "9");
+    if (byDate) return byDate;
+    const settled = (i: Item) => (i.status === "booked" || i.status === "chosen" ? 0 : 1);
+    return settled(a) - settled(b);
+  });
+  const from = flights[0]?.flight?.from;
+  const origin = from ? cityOfAirport(from) : null;
+  const adults = adultsOf(live);
+  const country = mostCommon(live.filter((i) => i.category !== "flight").map((i) => i.countryCode?.toUpperCase() ?? null).filter((c): c is string => !!c));
+  if (!country) return { origin, adults, country, visa: null, local: null };
+  const { visa, local } = countryFacts(country, opts);
+  return { origin, adults, country, visa, local };
 }

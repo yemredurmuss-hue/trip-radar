@@ -269,8 +269,11 @@ try {
   // The style (C23, at the start of Tercihler's row): no model key here, so only the budget's word (€1.500 for 2 people, 7 days ≈ €107 a day each).
   assert.deepEqual(await hero.locator(".x-styles .x-style").allInnerTexts(), ["Orta bütçe"]);
   // The chips: the country, the money, the plug, the time, the language and the visa (the weather too where the network has it).
-  assert.deepEqual(flat(await hero.locator(".x-chips .x-chip:not(.c-weather)").allInnerTexts()), ["Portekiz", "Euro", "C/F priz", "−2 saat", "Portekizce", "Schengen vizesi gerekiyor"]);
+  assert.deepEqual(flat(await hero.locator(".x-chips .x-chip:not(.c-weather):not(.c-docs)").allInnerTexts()), ["Portekiz", "Euro", "C/F priz", "−2 saat", "Portekizce", "Schengen vizesi gerekiyor"]);
   assert.equal(await hero.locator(".x-chip.c-visa.warn").count(), 1, "the visa to get is amber");
+  // B15: beside it, in the same amber, the bookings in their last two weeks still without their file (the Lizbon stay and
+  // the way home); a tap goes to the first.
+  assert.equal(flat([await hero.locator(".x-chips button.x-chip.c-docs.warn").innerText()])[0], "2 belge yok");
   // (the rate is a tip over the money, drawn on hover, not a native title)
   await hero.locator(".x-chip.c-money").hover();
   assert.match(await app.locator(".tipx-box").innerText(), /^€1 = ₺/);
@@ -2504,7 +2507,9 @@ try {
   const bare = app.locator(".x-hero");
   await bare.locator(".x-mos.solo .x-big.empty h1", { hasText: "Yeni gezi" }).waitFor();
   assert.equal(await bare.locator(".x-big figcaption span, .x-big .x-mood, .x-tiles").count(), 0, "no cities, no mood, no tiles");
-  assert.equal(await bare.locator(".x-s1, .x-s3, .x-prog, .x-ps").count(), 0, "no dates, no countdown, no shares, no budget");
+  assert.equal(await bare.locator(".x-s1, .x-prog, .x-ps").count(), 0, "no dates, no countdown, no shares");
+  // D16: no budget yet: the budget's place is the way to set one, an action, not a "bütçe yok" (C19).
+  assert.equal(flat([await bare.locator(".x-s3 .x-budb.set").innerText()])[0], "Bütçe belirle");
   assert.equal(await bare.locator(".x-chips, .x-prefs, .x-styles").count(), 0, "no chips, no Tercihler, no style yet");
   assert.equal(await bare.locator(".x-whob").innerText(), "Kimler gidiyor?");
   assert.equal(await bare.locator(".x-face.none").count(), 1, "one dashed face to start from");

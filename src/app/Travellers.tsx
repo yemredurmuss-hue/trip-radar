@@ -1,9 +1,10 @@
 // Who goes, in the hero's card (0.37): the people by name (the names typed here or said in the chat, the shared
 // trip's people, me), else as many as the saves say. A tap opens a small box under it: the names with ×, "İsim
-// ekle" (Enter), how many go, and, apart, "Birini davet et (paylaş)" for the share dialog. Naming someone shares
-// nothing. Each name's circle takes a photo (0.37, kept only on this computer). Closes on a click outside or Esc.
+// ekle" (Enter), how many go (D12: the adults, the children, the rooms), and, apart, "Birini davet et (paylaş)" for
+// the share dialog. Naming someone shares nothing. Each name's circle takes a photo (0.37, kept only on this
+// computer). Closes on a click outside or Esc.
 import { useEffect, useId, useRef, useState } from "react";
-import { initials, nPeople, travellersTitle } from "../lib/heroInfo";
+import { initials, nChildren, nPeople, travellersTitle } from "../lib/heroInfo";
 import { agoText, latestOf, type Action } from "../lib/share/activity";
 import { L } from "../lib/i18n";
 import { ablative } from "../lib/i18nText";
@@ -193,10 +194,34 @@ export function WhoPopover({ trip, who, latest, isShared, shared, ownPhotos, onI
   };
   const remove = (n: string) => void changeTravellers(trip.id, { remove: [n] }, L(`Gidenler: ${n} çıkarıldı`, `Who's going: ${n} taken off`));
   // Said here, the count stands over the saves' ("tek gidiyorum" though the hotel page was for two), never under the names.
-  const setCount = (next: number) => {
-    const n = Math.max(next, named);
+  // D12: the adults and the children make the count; the rooms are said apart (the stays' searches take them).
+  const kids = who.children;
+  const setAdults = (next: number) => {
+    const n = Math.max(next + kids, named, kids + 1);
     void changeTravellers(trip.id, { count: n }, L(`Gidenler: ${nPeople(n)}`, `Who's going: ${nPeople(n)}`));
   };
+  const setChildren = (next: number) => {
+    const c = Math.max(0, next);
+    const n = Math.max(who.adults + c, named);
+    const said = c ? `${nPeople(n)}, ${nChildren(c)}` : nPeople(n);
+    void changeTravellers(trip.id, { count: n, children: c || null }, L(`Gidenler: ${said}`, `Who's going: ${said}`));
+  };
+  const rooms = who.rooms ?? 1;
+  const setRooms = (next: number) => void changeTravellers(trip.id, { rooms: next > 1 ? next : null }, L(`Oda: ${next}`, `Rooms: ${next}`));
+  const stepper = (label: string, value: number, set: (n: number) => void, min: number, max: number, words: [string, string, string, string]) => (
+    <div className="hx-who-count">
+      <span>{label}</span>
+      <span className="stepper">
+        <button type="button" aria-label={L(words[0], words[1])} disabled={value <= min} onClick={() => set(value - 1)}>
+          −
+        </button>
+        <b aria-live="polite">{value}</b>
+        <button type="button" aria-label={L(words[2], words[3])} disabled={value >= max} onClick={() => set(value + 1)}>
+          +
+        </button>
+      </span>
+    </div>
+  );
   return (
     <div className="hx-pop hx-who-pop" role="dialog" aria-modal="false" aria-labelledby={titleId}>
       <h4 id={titleId}>{L("Kimler gidiyor?", "Who's going?")}</h4>
@@ -258,18 +283,9 @@ export function WhoPopover({ trip, who, latest, isShared, shared, ownPhotos, onI
           {note}
         </p>
       )}
-      <div className="hx-who-count">
-        <span>{L("Kişi sayısı", "Number of people")}</span>
-        <span className="stepper">
-          <button type="button" aria-label={L("Bir kişi az", "One fewer")} disabled={who.count <= Math.max(1, named)} onClick={() => setCount(who.count - 1)}>
-            −
-          </button>
-          <b aria-live="polite">{who.count}</b>
-          <button type="button" aria-label={L("Bir kişi fazla", "One more")} disabled={who.count >= 50} onClick={() => setCount(who.count + 1)}>
-            +
-          </button>
-        </span>
-      </div>
+      {stepper(L("Yetişkin", "Adults"), who.adults, setAdults, Math.max(1, named - kids), 50 - kids, ["Bir yetişkin az", "One adult fewer", "Bir yetişkin fazla", "One more adult"])}
+      {stepper(L("Çocuk", "Children"), kids, setChildren, 0, 50 - who.adults, ["Bir çocuk az", "One child fewer", "Bir çocuk fazla", "One more child"])}
+      {stepper(L("Oda", "Rooms"), rooms, setRooms, 1, 20, ["Bir oda az", "One room fewer", "Bir oda fazla", "One more room"])}
       {count != null && count > named && (
         <p className="hx-who-note">{L(`${count - named} kişinin adı yok; sayıya dahil.`, `${count - named} without a name, counted.`)}</p>
       )}

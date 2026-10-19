@@ -1,14 +1,16 @@
-// The hero's "Sıradaki" (lib/nextStep.ts, F4 and C30): a visa first, then our pick to take, a decision, a need to find,
-// something to book; "İlk kaydı ekle" with nothing saved, the PDF once all is bought, sharing when there's nothing to do.
+// The hero's "Sıradaki" (lib/nextStep.ts, F4 and C30): a visa first, then our pick to take, a decision, a need to find;
+// "İlk kaydı ekle" with nothing saved, the PDF with every need on the plan, sharing (or all set) with every need bought.
+// On the trip and after it, no visa and no decision.
 import { describe, expect, it } from "vitest";
 import { withLang } from "../src/lib/i18n";
 import type { IntentStatus } from "../src/lib/intents";
-import { intentLabel, nextLabel, nextShort, nextStep, type NextIntent } from "../src/lib/nextStep";
+import { allSet, intentLabel, nextLabel, nextShort, nextStep, type NextIntent } from "../src/lib/nextStep";
+import type { TripMode } from "../src/lib/tripPhase";
 
 const intent = (status: IntentStatus, over: Partial<NextIntent> = {}): NextIntent => ({
   key: `k-${status}`, section: "stay", kind: "stay", status, frame: "stay", domKeys: [], head: { name: "Porto", route: null }, ...over,
 });
-const go = (intents: NextIntent[], o: Partial<{ saved: boolean; visa: boolean; sharable: boolean }> = {}) => nextStep({ intents, saved: true, visa: false, sharable: true, ...o });
+const go = (intents: NextIntent[], o: Partial<{ saved: boolean; visa: boolean; sharable: boolean; mode: TripMode }> = {}) => nextStep({ intents, saved: true, visa: false, sharable: true, ...o });
 
 describe("nextStep", () => {
   it("is the first save with nothing saved and nothing to find", () => {
@@ -21,21 +23,44 @@ describe("nextStep", () => {
     expect(nextLabel({ kind: "visa" })).toBe("Sıradaki: vize randevusu");
   });
 
-  it("takes our pick first, then a decision, then a need to find, then what's chosen to book", () => {
+  it("takes our pick first, then a decision, then a need to find", () => {
     const flight = intent("deciding", { key: "f", section: "flight", kind: "flight", frame: "ticket", head: { name: "İstanbul → Porto", route: { from: "İstanbul", to: "Porto" } } });
     const all = [intent("booked"), intent("chosen", { key: "c" }), intent("searching", { key: "s" }), flight, intent("suggested", { key: "a", head: { name: "Lizbon", route: null } })];
     expect(go(all)).toMatchObject({ kind: "intent", intent: { key: "a" } });
     expect(go(all.filter((i) => i.key !== "a"))).toMatchObject({ intent: { key: "f" } });
     expect(go(all.filter((i) => i.key !== "a" && i.key !== "f"))).toMatchObject({ intent: { key: "s" } });
-    expect(go([intent("booked"), intent("chosen", { key: "c" }), intent("skipped")])).toMatchObject({ intent: { key: "c" } });
-  });
-
-  it("is the PDF once every need is bought or sorted, sharing with no booking, all set when it can't be shared", () => {
-    expect(go([intent("booked"), intent("arranged"), intent("skipped"), intent("included")])).toEqual({ kind: "pdf" });
-    expect(go([intent("included")])).toEqual({ kind: "share" });
-    expect(go([intent("included")], { sharable: false })).toEqual({ kind: "ready" });
     // Only told what's missing (a suggestion), nothing saved yet: that need is next.
     expect(go([intent("searching")], { saved: false })).toMatchObject({ kind: "intent" });
+  });
+
+  it("C30: every need on the plan (one only chosen): the PDF; every need bought: sharing, else all set", () => {
+    expect(go([intent("booked"), intent("chosen", { key: "c" }), intent("skipped")])).toEqual({ kind: "pdf" });
+    expect(nextLabel({ kind: "pdf" })).toBe("Planı PDF indir");
+    expect(go([intent("booked"), intent("arranged"), intent("skipped"), intent("included")])).toEqual({ kind: "share" });
+    expect(go([intent("booked"), intent("arranged")], { sharable: false })).toEqual({ kind: "ready" });
+    expect(go([intent("included")])).toEqual({ kind: "share" });
+    expect(nextLabel({ kind: "share" })).toBe("Paylaş");
+    expect(nextLabel({ kind: "ready" })).toBe("Her şey hazır");
+  });
+
+  it("C24: the thin bar's all set is every need bought, not merely planned", () => {
+    expect(allSet(go([intent("booked")]))).toBe(true);
+    expect(allSet(go([intent("booked")], { sharable: false }))).toBe(true);
+    expect(allSet(go([intent("chosen")]))).toBe(false);
+    expect(allSet(go([intent("deciding")]))).toBe(false);
+  });
+
+  it("row 127: on the trip no visa, only a need still ahead; after it no decision, the PDF or sharing instead", () => {
+    const open = [intent("booked"), intent("deciding", { key: "d" }), intent("suggested", { key: "a" })];
+    // (on the trip a need whose day went by is already out of the list: countedIntents)
+    expect(go(open, { visa: true, mode: "trip" })).toMatchObject({ kind: "intent", intent: { key: "a" } });
+    expect(go([intent("booked"), intent("chosen", { key: "c" })], { visa: true, mode: "trip" })).toEqual({ kind: "pdf" });
+    expect(go(open, { visa: true, mode: "archive" })).toEqual({ kind: "pdf" });
+    expect(go([intent("booked"), intent("chosen", { key: "c" })], { visa: true, mode: "archive" })).toEqual({ kind: "pdf" });
+    expect(go([intent("booked")], { visa: true, mode: "archive" })).toEqual({ kind: "share" });
+    expect(go([intent("booked")], { visa: true, mode: "archive", sharable: false })).toEqual({ kind: "ready" });
+    // Before it the visa still comes first.
+    expect(go(open, { visa: true, mode: "plan" })).toEqual({ kind: "visa" });
   });
 });
 
