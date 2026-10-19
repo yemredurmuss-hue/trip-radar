@@ -4817,7 +4817,7 @@ try {
     assert.doesNotMatch(line, /Got it:/, `an echo: ${line}`);
   }
   await board.locator(".st-side .st-gen-btn").click();
-  await board.getByRole("heading", { name: "Papua New Guinea trip", exact: true }).waitFor({ timeout: 20000 });
+  await board.getByRole("heading", { name: "Papua New Guinea Trip", exact: true }).waitFor({ timeout: 20000 });
   await board.locator(".chat .msg-assistant", { hasText: "Tell me their names if you like." }).waitFor();
   console.log("✓ start rev 3, the second report (English): \"Papua New Gune\" asked back as Papua New Guinea, a friend, November · 3 weeks at once; then the day, what they want, where from last; no names before the trip; the board's chat asks them once");
 
