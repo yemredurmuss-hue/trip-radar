@@ -2,6 +2,7 @@
 // uçuyoruz", "11 Ekim'de Madeira'ya uçakla geçeriz", "Madeira'da araba kiralarız". Each becomes an item
 // on the board straight away, on its day and in its place, planned until they say it's booked. When a
 // saved page for the same need is chosen or booked, it takes the plan's place (see plan.ts). Pure.
+import { airportCities, countryOfAirport } from "./airports";
 import { L } from "./i18n";
 import { liveLabels } from "./i18nText";
 import { EMPTY_METRICS, isoDate } from "./items";
@@ -145,14 +146,52 @@ const GENERIC_NAMES = [
 
 /**
  * Whether a plan said in the chat names a concrete thing ("TK1449", "Jardim Stay", "Europcar"): a title of its own,
- * not the kind's word the chat names it by when nothing was said ("Uçuş · Porto → Lizbon", "Konaklama · Porto").
- * A named plan is Planlandı; an unnamed one is a place to fill (lifecycle.ts Aranacak).
+ * not the kind's word the chat names it by when nothing was said ("Uçuş · Porto → Lizbon", "Konaklama · Porto"), nor
+ * that word with its own places in any order ("Ahangama Konaklama", "Bodrum → Kolombo Uçuşu", 0.38.2). Read when the
+ * record is drawn, so the plans saved before it are read the same. A named plan is Planlandı; an unnamed one is a place to fill (lifecycle.ts Aranacak).
  */
-export function namesSomething(item: Pick<Item, "name" | "provider">): boolean {
+export function namesSomething(item: Pick<Item, "name" | "provider"> & Partial<Pick<Item, "city" | "country" | "flight">>): boolean {
   if (item.provider?.trim()) return true;
   const name = item.name.trim();
-  return !GENERIC_NAMES.some((w) => name === w || name.startsWith(`${w} · `));
+  if (GENERIC_NAMES.some((w) => name === w || name.startsWith(`${w} · `))) return false;
+  // What's left of the name once its kind's words, its own places and the arrows are taken out ("Ahangama Konaklama",
+  // "Bodrum → Kolombo Uçuşu", "Sri Lanka → Bali", "Flight to Bali"): nothing, and the name only says the kind and where.
+  const ends = [item.flight?.from, item.flight?.to];
+  const places = new Set(
+    [item.city, item.country, ...ends, ...ends.flatMap((p) => regionNames(countryOfAirport(p)))]
+      .flatMap((p) => (p ? [p, ...airportCities(p)] : []))
+      .flatMap((p) => [cityKeyOf(p), ...(cityKeyOf(p)?.split(" ") ?? [])])
+      .filter((k): k is string => !!k),
+  );
+  const words = (cityKeyOf(name) ?? "").split(" ").filter(Boolean);
+  return words.some((w) => !KIND_TOKENS.has(w) && !places.has(w) && !places.has(cityKeyOf(w) ?? w));
 }
+
+/** A country's name in both languages ("Sri Lanka"), for an airport's country; none when the runtime can't name it. */
+function regionNames(code: string | null): string[] {
+  if (!code) return [];
+  return ["tr", "en"].flatMap((lang) => {
+    try {
+      return [new Intl.DisplayNames([lang], { type: "region" }).of(code) ?? ""];
+    } catch {
+      return [];
+    }
+  });
+}
+
+/**
+ * The words a name says its kind with (as cityKeyOf writes them: no accents, ı as i), with their suffixes ("Konaklaması",
+ * "Uçuşu"), the case endings left after an apostrophe ("Kolombo'ya") and the small words between ("Flight to Bali").
+ */
+const KIND_TOKENS = new Set([
+  ...["konaklama", "konaklamasi", "ucus", "ucusu", "ucak", "ucagi", "otel", "oteli", "ev", "evi", "daire", "dairesi", "transfer", "transferi"],
+  ...["tren", "treni", "otobus", "otobusu", "minibus", "minibusu", "feribot", "feribotu", "taksi", "taksisi", "arac", "araci", "araba", "arabasi"],
+  ...["kiralama", "kiralamasi", "motosiklet", "karavan", "bisiklet", "yolculuk", "yolculugu", "bilet", "bileti", "gidis", "donus"],
+  ...["seyahat", "sigorta", "sigortasi", "restoran", "not", "yapilacak", "hazirlik", "etkinlik", "esim", "plan", "plani"],
+  ...["flight", "flights", "stay", "stays", "hotel", "hotels", "accommodation", "home", "flat", "train", "bus", "minibus", "ferry", "taxi"],
+  ...["car", "motorbike", "camper", "van", "bike", "rental", "trip", "ticket", "travel", "insurance", "restaurant", "note", "to", "do", "prep", "activity"],
+  ...["a", "e", "ya", "ye", "da", "de", "ta", "te", "dan", "den", "tan", "ten", "ve", "ile", "and", "in", "at", "from"],
+]);
 
 function nameOf(i: PlannedInput): string {
   if (i.title?.trim()) return i.title.trim().slice(0, 80);

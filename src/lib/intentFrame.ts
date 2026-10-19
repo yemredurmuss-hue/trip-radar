@@ -13,10 +13,9 @@ import { shortDay } from "./ideas";
 import { isEmptyRecord, needKey } from "./emptyCards";
 import type { Need } from "./offerSource";
 import { addDays, stayRange } from "./plan";
-import { isGeneratedName } from "./planned";
+import { namesSomething } from "./planned";
 import { providerLinks, type ProviderKind } from "./providers";
 import { BRANDS, insuranceLinks } from "./searchLinks";
-import { isKindWord } from "./templates";
 import type { Item, Trip } from "./types";
 
 /**
@@ -340,12 +339,12 @@ export function countParts(counts: Collection["summary"]["counts"], multi: boole
 
 /**
  * What the start only made room for, or a bare "Otel" added in one tap (a plan with nothing concrete and no name of its own:
- * emptyCards.isEmptyRecord, a kind's word or a made-up name), is never a chosen box: it is still to find (Aranıyor), as the
- * old empty card was (Emre's rule). Named by the traveller ("Casa do Rio"), it's theirs: chosen.
+ * emptyCards.isEmptyRecord, and a name saying only its kind and its places: planned.namesSomething), is never a chosen box:
+ * it is still to find (Aranıyor), as the old empty card was (Emre's rule). Named by the traveller ("Casa do Rio"), it's theirs: chosen.
  */
 export function unlessEmpty(vm: IntentVM, trip: Pick<Trip, "startGuide">, records: Item[], files: (id: string) => number): IntentVM {
   const item = vm.status === "chosen" ? vm.chosen?.item : null;
   if (!item || !isEmptyRecord(trip, item, files(item.id), records)) return vm;
-  if (!isKindWord(item.name) && !isGeneratedName(item.name)) return vm;
+  if (namesSomething(item)) return vm;
   return { ...vm, status: "searching", word: statusWord("searching", vm.kind), chosen: null, access: null, paid: null };
 }

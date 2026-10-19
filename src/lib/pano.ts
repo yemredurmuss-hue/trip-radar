@@ -8,6 +8,7 @@ import { cardKind, cardKindLabel } from "./cardKinds";
 import { planSectionOfItem, type SectionId } from "./categories";
 import { advantageOver, type GroupDecision } from "./decision";
 import { draftOf } from "./draft";
+import { bareChatPlan } from "./emptyCards";
 import { L } from "./i18n";
 import { capitalize, nNights } from "./i18nText";
 import { formatDateRange, isoDate, nightsBetween } from "./items";
@@ -37,8 +38,12 @@ export interface PanoEntry {
   open: boolean;
 }
 
-/** A link on the board: anything live but a chore before the trip (Hazırlık is a list, not a link). */
-const onPano = (item: Item) => item.status !== "dismissed" && planSectionOfItem(item) !== "prep";
+/**
+ * A link on the board: anything live but a chore before the trip (Hazırlık is a list, not a link) and but a plan
+ * said in the chat with nothing concrete on it (emptyCards.bareChatPlan: no page, shop, price or hour), which only
+ * holds a room on the Plan.
+ */
+const onPano = (item: Item) => item.status !== "dismissed" && planSectionOfItem(item) !== "prep" && !bareChatPlan(item);
 
 export function panoEntries(items: Item[], decisions?: Map<string, GroupDecision> | null): PanoEntry[] {
   const live = items.filter(onPano);
