@@ -35,6 +35,14 @@
 .x-t b { font-size: 15px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .x-t small { font-size: var(--q-fs-small); color: #ece9fb; }
 /* A city with no photo yet (row 14, the last source): drawn on the cover's own soft ground, its words in ink. */
+/* A tile of a thing on the plan goes to its card (0.38.9): the whole tile is its button, the credit's "i" over it. */
+.x-tgo { all: unset; position: absolute; inset: 0; z-index: 1; cursor: pointer; border-radius: inherit; }
+.x-tgo:focus-visible { outline: 3px solid #fff; outline-offset: -4px; box-shadow: inset 0 0 0 6px rgba(91, 75, 219, .55); }
+.x-t.go img { transition: transform 240ms ease-out; }
+.x-t.go:hover img { transform: scale(1.03); }
+@media (prefers-reduced-motion: reduce) { .x-t.go img { transition: none; } .x-t.go:hover img { transform: none; } }
+body.still .x-t.go img { transition: none; }
+body.still .x-t.go:hover img { transform: none; }
 .x-t.art { background: linear-gradient(135deg, #ebe7fb 0%, #e4e0f6 55%, #efeaf3 100%); }
 .x-t.art::after { display: none; }
 .x-t.art figcaption { color: var(--q-ink); text-shadow: none; }

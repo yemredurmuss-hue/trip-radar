@@ -2,7 +2,8 @@
 // first; then what was saved, the cities, the trip's moments and a drawing; never a photo that isn't there, never the
 // cover's twice, never more drawings than photos; credits only when known (C7).
 import { describe, expect, it } from "vitest";
-import { linksOf, momentsOf, mosaicOf, placesOfIntents, shownTiles, type MosaicCity, type MosaicPlace } from "../src/lib/heroMosaic";
+import { linksOf, momentsOf, mosaicOf, placesOfIntents, shownTiles, tileGoLabel, tileSelectors, type MosaicCity, type MosaicPlace } from "../src/lib/heroMosaic";
+import { withLang } from "../src/lib/i18n";
 import type { IntentVM } from "../src/lib/intents";
 import { cityKeyOf } from "../src/lib/plan";
 import { momentPhotoKeys } from "../src/lib/startTrip";
@@ -122,5 +123,31 @@ describe("the mosaic's other sources", () => {
     const keys = momentPhotoKeys();
     expect(keys).toContainEqual({ key: cityKeyOf("Romantik akşam"), name: "Romantik akşam" });
     expect(keys).toContainEqual({ key: cityKeyOf("A romantic evening"), name: "Romantik akşam" });
+  });
+});
+
+describe("a tile goes to its card (0.38.9: the ATV tour's photo to the ATV tour in Etkinlik)", () => {
+  it("a record's photo (on the plan, saved, a stay) and the source's tour carry their card; a city's or a moment's none", () => {
+    const m = mosaicOf({
+      cities: [city("Şarm El-Şeyh", "s.jpg"), city("Dahab", "d.jpg")],
+      places: [place("i-atv", "Şarm El-Şeyh", "atv.jpg")],
+      links: [place("i-reef", "Şarm El-Şeyh", "reef.jpg")],
+      offers: [{ key: "v-123", name: "Ras Muhammed tekne turu", city: "Şarm El-Şeyh", image: "ras.jpg", credit: null, booked: false }],
+      moments: [{ name: "Deniz", image: "sea.jpg", credit: null }],
+    });
+    expect(m.tiles.map((t) => [t.from, t.target])).toEqual([
+      ["place", { item: "i-atv" }],
+      ["link", { item: "i-reef" }],
+      ["city", null],
+      ["offer", { offer: "v-123", city: "Şarm El-Şeyh" }],
+    ]);
+    const atv = mosaicOf({ cities: [city("Şarm El-Şeyh", "s.jpg")], places: [{ key: "i-atv", name: "ATV turu", city: "Şarm El-Şeyh", image: "atv.jpg", credit: null, booked: true }] }).tiles[0];
+    expect(tileGoLabel(atv)).toBe("ATV turu kartına git");
+    expect(withLang("en", () => tileGoLabel(atv))).toBe("Go to ATV turu");
+  });
+  it("where the page goes: the record's card; the tour in its city's Öneriler, else the city's Etkinlik box, else Etkinlik", () => {
+    expect(tileSelectors({ item: "i-atv" })).toEqual(['[data-item-id="i-atv"]']);
+    expect(tileSelectors({ offer: "v-123", city: "Şarm El-Şeyh" })).toEqual(['[data-k="o:v-123"]', '[data-intent="activity:Şarm El-Şeyh"]', '[data-section="activity"]']);
+    expect(tileSelectors({ offer: "v-1", city: null })).toEqual(['[data-k="o:v-1"]', '[data-section="activity"]']);
   });
 });

@@ -5,10 +5,12 @@
 // photos, the same answers the Etkinlik rows were given), then the trip's moments (a romantic evening, the food: the
 // start's scenes), and last a drawing for a city with no photo yet. A source with nothing is passed over. A photo that
 // isn't there is never drawn and a drawing never outnumbers the photos: no photo at all is one cover alone (C19). Each
-// photo carries its credit only when one is known (C7). Pure.
+// photo carries its credit only when one is known (C7). A photo of a thing on the plan (a record's, the source's tour) goes to
+// its card when tapped (0.38.9); a city's or a moment's doesn't. Pure.
 import { stopCountry } from "./collectionCards";
 import { citiesOfPlan } from "./categories";
 import { needKey } from "./emptyCards";
+import { L } from "./i18n";
 import { cityKeyOf, sameCity, type Plan } from "./plan";
 import type { IntentVM } from "./intents";
 import type { Need, Offer } from "./offerSource";
@@ -23,9 +25,17 @@ export interface MosaicPhoto {
 /** Where a tile comes from, in the order they are taken. */
 export type TileSource = "place" | "link" | "city" | "offer" | "moment" | "art";
 
+/**
+ * Where a tile's photo is on the plan (0.38.9): a record's card (a place on the plan, a link saved, a stay), or the
+ * source's tour among a city's Öneriler. A city, a moment or a drawing has none: it isn't a thing to go to.
+ */
+export type TileTarget = { item: string } | { offer: string; city: string | null };
+
 export interface MosaicTile {
   key: string;
   from: TileSource;
+  /** The card a tap on it goes to; null: it isn't tapped. */
+  target: TileTarget | null;
   /** The photo; null only for a drawing ("art"). */
   image: string | null;
   credit: PhotoCredit | null;
@@ -130,20 +140,42 @@ export function mosaicOf({ cities, places, links = [], offers = [], moments = []
       photos.push(t);
     }
   };
-  const placeTile = (from: "place" | "link" | "offer") => (p: MosaicPlace): MosaicTile => ({ key: `${from}:${p.key}`, from, name: p.name, sub: p.city, image: p.image, credit: p.credit });
+  const placeTile = (from: "place" | "link" | "offer") => (p: MosaicPlace): MosaicTile => ({
+    key: `${from}:${p.key}`,
+    from,
+    target: from === "offer" ? { offer: p.key, city: p.city } : { item: p.key },
+    name: p.name,
+    sub: p.city,
+    image: p.image,
+    credit: p.credit,
+  });
   take(spread(places, places.length).map(placeTile("place")));
   take(spread(links, links.length).map(placeTile("link")));
-  take(cities.map((c) => ({ key: `city:${c.name}`, from: "city", name: c.name, sub: c.nights, image: c.image, credit: c.credit })));
+  take(cities.map((c) => ({ key: `city:${c.name}`, from: "city", target: null, name: c.name, sub: c.nights, image: c.image, credit: c.credit })));
   take(spread(offers, offers.length).map(placeTile("offer")));
-  take(moments.map((m) => ({ key: `moment:${m.name}`, from: "moment", name: m.name, sub: null, image: m.image, credit: m.credit })));
+  take(moments.map((m) => ({ key: `moment:${m.name}`, from: "moment", target: null, name: m.name, sub: null, image: m.image, credit: m.credit })));
   // Last, a city with no photo yet as a drawing (its name and nights on it), never the cover's own.
   if (first) seenName.add(nameKey(first.name));
   const art: MosaicTile[] = cities
     .filter((c) => !c.image && c.name.trim() && !seenName.has(nameKey(c.name)))
-    .map((c) => ({ key: `art:${c.name}`, from: "art", name: c.name, sub: c.nights, image: null, credit: null }));
+    .map((c) => ({ key: `art:${c.name}`, from: "art", target: null, name: c.name, sub: c.nights, image: null, credit: null }));
   const tiles = shownTiles([...photos, ...art.slice(0, Math.max(0, max - photos.length))]);
   const placed = tiles.filter((t) => t.from === "place" || t.from === "link" || t.from === "offer").length;
   return { cover, tiles, kind: !tiles.length ? null : placed * 2 >= tiles.length ? "place" : "city" };
+}
+
+/** A tile that goes to its card, in words for a reader ("ATV turu kartına git"). */
+export const tileGoLabel = (tile: Pick<MosaicTile, "name">): string => L(`${tile.name} kartına git`, `Go to ${tile.name}`);
+
+/**
+ * Where on the page a tile's card is, the first found taken: a record's card (its section opened by the caller); the
+ * source's tour in its city's Öneriler, else that city's Etkinlik box (Öneriler folded, the tour not among its four), else
+ * Etkinlik itself.
+ */
+export function tileSelectors(t: TileTarget): string[] {
+  const q = (v: string) => JSON.stringify(v);
+  if ("item" in t) return [`[data-item-id=${q(t.item)}]`];
+  return [`[data-k=${q(`o:${t.offer}`)}]`, ...(t.city ? [`[data-intent=${q(`activity:${t.city}`)}]`] : []), `[data-section="activity"]`];
 }
 
 /** The trip's moments among its photos (startTrip photoMoments: kept in `cityImages` under their own words). */
