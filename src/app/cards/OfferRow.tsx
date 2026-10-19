@@ -12,7 +12,7 @@ import { durationText } from "../../lib/cardFacts";
 import { L } from "../../lib/i18n";
 import { nStops } from "../../lib/i18nText";
 import type { StayCandidate } from "../../lib/offerSources";
-import { candidateOffer, pickCard, pickList, pickOnPlan, picksContext, pickThree, type PickKind, type StayPick } from "../../lib/stayPicks";
+import { candidateOffer, fitsTrip, pickCard, pickList, pickOnPlan, picksContext, pickThree, savedAlready, type PickKind, type StayPick } from "../../lib/stayPicks";
 import type { Item } from "../../lib/types";
 import { formatPrice } from "../../lib/items";
 import {
@@ -276,13 +276,21 @@ function StayPicksRow({ need, onChoose, placeholder }: { need: Need; onChoose: (
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- asked again only for another need
   }, [available, source, need.key]);
-  const picks = useMemo(() => pickList(pickThree(cands ?? [], picksContext(need, trip, items ?? []))), [cands, need, trip, items]);
+  // What the box already holds as an option is its own card there, never a second one here (0.38.6); the one just
+  // tapped stays until the box shows it chosen and this row goes.
+  const fresh = useMemo(() => (cands ?? []).filter((c) => tapped.includes(c.id) || !savedAlready(c, items ?? [])), [cands, items, tapped]);
+  const ctx = useMemo(() => picksContext(need, trip, items ?? []), [need, trip, items]);
+  const picks = useMemo(() => pickList(pickThree(fresh, ctx)), [fresh, ctx]);
   const recordOf = (c: StayCandidate): Item | undefined => pickOnPlan(c, items ?? []);
   const onPlan = (cands ?? []).filter((c) => ["chosen", "booked"].includes(recordOf(c)?.status ?? "")).map((c) => c.id);
   // The one tapped answers at once (the box then shows it chosen and this row goes); else what the records say.
   const chosen = tapped.length ? tapped : onPlan;
   if (!available) return null;
-  if (cands && !picks.length) return <NoOffers />;
+  if (cands && !picks.length) {
+    // Every one is already in the box: nothing to add here. Some came but none fits the trip: said so, honestly.
+    if (!fresh.length && cands.length) return null;
+    return fresh.some((c) => !fitsTrip(c, ctx.fit)) ? <NoFit /> : <NoOffers />;
+  }
   const toggle = () => {
     writeOffersOpen(storeKey, !open);
     setOpen(!open);
@@ -320,6 +328,11 @@ export function OfferRow({ need, onChoose = null, placeholder = null }: {
 /** The source asked and nothing came back: said plainly, nothing made up (0.38.5). */
 export function NoOffers() {
   return <p className="ek-none">{L("Kaynaklarda bu tarihler için seçenek çıkmadı. Kendin ara ile bakabilirsin.", "The sources had nothing for these dates. Try Search yourself.")}</p>;
+}
+
+/** The source's places were all of a kind the trip doesn't stay in (a hostel for two on a romantic month, stayPicks.fitsTrip). */
+export function NoFit() {
+  return <p className="ek-none">{L("Kaynakların bulduğu yerler bu geziye uymadı (hostel ya da ortak oda). Kendin ara ile bakabilirsin.", "The places the sources found don't suit this trip (hostels or shared rooms). Try Search yourself.")}</p>;
 }
 
 /** The plain row: asks the source once per need, nothing at all while no source is connected. */

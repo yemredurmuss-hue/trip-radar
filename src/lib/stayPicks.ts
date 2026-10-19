@@ -13,10 +13,11 @@ import { levelFor, levelSource, wantedAmenities } from "./decision";
 import { distanceKm } from "./geo";
 import { L } from "./i18n";
 import { nNights, nReviews, num } from "./i18nText";
-import { formatPrice } from "./items";
+import { formatPrice, nightsBetween } from "./items";
 import { ratingText, type Need, type Offer } from "./offerSource";
 import type { StayCandidate } from "./offerSources";
 import { cityKeyOf, sameCity } from "./plan";
+import { budgetLevel } from "./tripStyle";
 import type { Amenity, CriterionId, Item, PriorityLevel, Trip } from "./types";
 
 export type PickKind = "best" | "cheaper" | "comfier";
@@ -35,6 +36,52 @@ export interface PickCtx {
   centre: { lat: number; lng: number } | null;
   /** The trip's own priorities and musts (decision.ts); missing: the defaults. */
   trip?: Partial<Pick<Trip, "priorities" | "categoryPriorities" | "requirements" | "wantedAmenities" | "intent">> | null;
+  /** Who goes, for how long, in what style (stayFitOf): which kinds of place fit at all; missing: every kind. */
+  fit?: StayFit | null;
+}
+
+/**
+ * What kind of place fits the trip (0.38.6, Emre: "Sabin'le 1 ay sabit dememe rağmen hostel önermiş"): how many sleep
+ * there, how many nights, a romantic trip, a budget said to be cheap. Only what the trip says; nothing guessed.
+ */
+export interface StayFit {
+  /** How many go; null when nobody said. */
+  people: number | null;
+  nights: number;
+  romantic: boolean;
+  cheap: boolean;
+}
+
+/** From this many nights a stay is a long one (a month in Canggu): a home of one's own (villa, flat, guesthouse) comes first. */
+export const LONG_STAY_NIGHTS = 21;
+/** A bed in a shared room: a hostel, a dorm, a bunk, a capsule (the name or a label says it). */
+const DORM = /\b(hostels?|hostal|dorms?|dormitor(?:y|ies)|bunks?|bunk ?beds?|capsules?|backpackers?)\b|kapsül|yatakhane|ranza/i;
+/** A place of one's own for a long stay. */
+const HOME = /\b(villas?|apartments?|apartemen|aparts?|flats?|guest ?houses?|homestays?|bungalows?|residences?|houses?|cottages?|condos?|lofts?|pansiyon|daire)\b/i;
+const HOME_BONUS = 0.12;
+
+const words = (c: Pick<StayCandidate, "name" | "labels">): string => [c.name, ...(c.labels ?? [])].join(" · ");
+export const isDorm = (c: Pick<StayCandidate, "name" | "labels">): boolean => DORM.test(words(c));
+export const isHome = (c: Pick<StayCandidate, "name" | "labels">): boolean => HOME.test(words(c));
+
+/** A dorm bed only for one going alone or a budget said cheap, and never on a romantic trip. */
+export const dormFits = (fit: StayFit): boolean => !fit.romantic && (fit.people === 1 || fit.cheap);
+
+/** The candidate is a kind of place this trip can stay in (no fit known: any). */
+export const fitsTrip = (c: Pick<StayCandidate, "name" | "labels">, fit: StayFit | null | undefined): boolean => !fit || !isDorm(c) || dormFits(fit);
+
+/** The trip's fit for a stay's nights: the need's head count (else the trip's travellers), its style, its budget. */
+export function stayFitOf(need: Partial<Pick<Need, "adults" | "start" | "end">>, trip: Partial<Pick<Trip, "travellers" | "style" | "budget" | "confirmedDates" | "priorities" | "categoryPriorities">> | null | undefined): StayFit {
+  const t = trip ?? {};
+  const named = t.travellers?.names?.length ? t.travellers.names.length + 1 : null;
+  const people = need.adults ?? t.travellers?.count ?? named;
+  const nights = nightsBetween(need.start ?? null, need.end ?? null);
+  const romantic = (t.style?.ids ?? []).includes("romantic");
+  const days = t.confirmedDates ? nightsBetween(t.confirmedDates.start, t.confirmedDates.end) + 1 : nights + 1;
+  const asTrip = t as Trip;
+  const cheap =
+    budgetLevel(t.budget ?? null, days, people, null) === "low" || (levelSource(asTrip, "stay", "price") === "explicit" && levelFor(asTrip, "stay", "price") >= 3);
+  return { people: people ?? null, nights, romantic, cheap };
 }
 
 /** The order the three are shown in, and their labels. */
@@ -63,9 +110,21 @@ export function centreOf(items: Item[], city: string | null | undefined): { lat:
   return { lat: here.reduce((s, i) => s + i.geo!.lat, 0) / here.length, lng: here.reduce((s, i) => s + i.geo!.lng, 0) / here.length };
 }
 
-/** Everything the picks need from the board: the plans' middle there, the priorities. */
-export function picksContext(need: Pick<Need, "city">, trip: Trip | null | undefined, items: Item[]): PickCtx {
-  return { centre: centreOf(items, need.city), trip: trip ?? null };
+/** Everything the picks need from the board: the plans' middle there, the priorities, the kind of place that fits. */
+export function picksContext(need: Pick<Need, "city"> & Partial<Pick<Need, "adults" | "start" | "end">>, trip: Trip | null | undefined, items: Item[]): PickCtx {
+  return { centre: centreOf(items, need.city), trip: trip ?? null, fit: stayFitOf(need, trip) };
+}
+
+/**
+ * A candidate the trip already holds as an option (its page, or the same name from the same site), not taken off:
+ * "Senin için n öneri" never shows it a second time beside the box's own card.
+ */
+export function savedAlready(c: Pick<StayCandidate, "url" | "name" | "source">, items: readonly Pick<Item, "url" | "name" | "provider" | "status">[]): boolean {
+  const key = cityKeyOf(c.name);
+  const site = (c.source ?? "Tripadvisor").toLocaleLowerCase("tr");
+  return items.some(
+    (i) => i.status !== "dismissed" && ((c.url && i.url === c.url) || (key && cityKeyOf(i.name) === key && (i.provider ?? "").toLocaleLowerCase("tr") === site)),
+  );
 }
 
 // --- the candidates ------------------------------------------------------------------------------------
@@ -165,7 +224,9 @@ function fitScore(c: StayCandidate, all: StayCandidate[], ctx: PickCtx, wants: W
   if (!known_w) return 0;
   const mean = known.reduce((s, x) => s + x.w * x.s!, 0) / known_w;
   const bonus = wants.reduce((s, w) => s + (c.labels.some((l) => w.test.test(l)) ? (w.must ? MUST_BONUS : WISH_BONUS) : 0), 0);
-  return mean * (0.6 + (0.4 * known_w) / all_w) + bonus;
+  // A month in one place (or a group): a home of one's own first, as its name or a label says it.
+  const home = ctx.fit && (ctx.fit.nights >= LONG_STAY_NIGHTS || (ctx.fit.people ?? 0) >= 3) && isHome(c) ? HOME_BONUS : 0;
+  return mean * (0.6 + (0.4 * known_w) / all_w) + bonus + home;
 }
 
 // --- the three -----------------------------------------------------------------------------------------
@@ -177,7 +238,8 @@ function fitScore(c: StayCandidate, all: StayCandidate[], ctx: PickCtx, wants: W
  * fewer than three hotels, fewer cards ("Sana en uygun" first, the other only when it really is cheaper or better rated).
  */
 export function pickThree(cands: StayCandidate[], ctx: PickCtx): Picks {
-  const list = distinct(cands ?? []);
+  // Only the kinds of place this trip can stay in (stayFitOf: no dorm bed for two on a romantic month).
+  const list = distinct(cands ?? []).filter((c) => fitsTrip(c, ctx.fit));
   const none: Picks = { best: null, cheaper: null, comfier: null };
   if (!list.length) return none;
   const wants = wantsOf(ctx.trip ?? null);
@@ -289,6 +351,12 @@ export function priceParts(c: StayCandidate): { main: string | null; rest: strin
   }
   return { main: null, rest: L("tarihli fiyat yok", "no price for your dates") };
 }
+/** The source's usual range by the night as a card draws it ("tipik €21–64", "/ gece"), never as this stay's price; null without one. */
+export function typicalNight(range: StayCandidate["priceRange"] | undefined): { amount: string; unit: string; title: string } | null {
+  const main = range ? priceParts({ nightly: null, priceRange: range } as StayCandidate).main : null;
+  const perNight = L("/ gece", "/ night");
+  return main ? { amount: main.replace(` ${perNight}`, ""), unit: perNight, title: L("tarihli fiyat yok", "no price for your dates") } : null;
+}
 export const priceLine = (c: StayCandidate): string => {
   const { main, rest } = priceParts(c);
   return [main, rest].filter(Boolean).join(" · ");
@@ -349,7 +417,7 @@ export function pickCard(kind: PickKind, { cand: c, why }: StayPick): PickCard {
   const perNight = L("/ gece", "/ night");
   let price: PickCard["price"] = null;
   if (c.nightly != null) price = { amount: eur(c.nightly), unit: perNight, title: parts.rest || null };
-  else if (c.priceRange && parts.main) price = { amount: parts.main.replace(` ${perNight}`, ""), unit: perNight, title: parts.rest };
+  else price = typicalNight(c.priceRange);
   return {
     id: c.id,
     kind,

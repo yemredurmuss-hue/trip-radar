@@ -10,7 +10,8 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { isCampStay } from "../../../lib/campStay";
 import { L } from "../../../lib/i18n";
 import { areaSearch, changeList, currentOption, frameForm, headName, offerNeed, otherOptions, placeholderOf, railState, SHOWN_OPTIONS, statusChip, unlessEmpty } from "../../../lib/intentFrame";
-import { queryOf } from "../../../lib/offerSources";
+import { queryOf, type StayCandidate } from "../../../lib/offerSources";
+import { typicalNight } from "../../../lib/stayPicks";
 import type { IntentStatus, IntentVM, OptionVM } from "../../../lib/intents";
 import { addDays } from "../../../lib/plan";
 import { regionHints, type RegionHint } from "../../../lib/regionHints";
@@ -39,7 +40,7 @@ import { FrameCard } from "./FrameCard";
 import { FrameTicket } from "./FrameTicket";
 import { IntentHead } from "./IntentHead";
 import { IntentMenu } from "./IntentMenu";
-import { OptionList } from "./OptionCompact";
+import { OptionList, type Typical } from "./OptionCompact";
 import { OptionRows } from "./OptionRow";
 import { useCrossfade, type Entry } from "./useCrossfade";
 import { useIntentActions } from "./useIntentActions";
@@ -93,6 +94,31 @@ function useRegionHints(vm: IntentVM, ask: boolean): RegionHint[] {
     };
   }, [need?.key, source]);
   return need && hints?.key === need.key ? hints.list : [];
+}
+
+/**
+ * A stay's options with no price: the source's usual range by the night for the same hotel (its page), as the picks under
+ * the box show it (0.38.6); asked only while its option cards are drawn, the source keeps the answer for hours.
+ */
+function useTypical(vm: IntentVM, ask: boolean): Typical | null {
+  const { offers: source } = useEmptyEnv();
+  const { selfAt } = useV82Env();
+  const need = ask && vm.kind === "stay" && vm.options.some((o) => !o.price) ? offerNeed(vm, selfAt) : null;
+  const [got, setGot] = useState<{ key: string; byUrl: Map<string, StayCandidate["priceRange"]> } | null>(null);
+  useEffect(() => {
+    if (!need || !source.candidates || !source.available()) return;
+    let alive = true;
+    source.candidates(need).then(
+      (list) => alive && setGot({ key: need.key, byUrl: new Map((Array.isArray(list) ? list : []).filter((c) => c.priceRange).map((c) => [c.url, c.priceRange])) }),
+      () => undefined,
+    );
+    return () => {
+      alive = false;
+    };
+  }, [need?.key, source]);
+  if (!need || got?.key !== need.key) return null;
+  const byUrl = got.byUrl;
+  return (o) => (o.item.url ? typicalNight(byUrl.get(o.item.url)) : null);
 }
 
 /** The fields a box draws (its head's days, its card's name and price): Tab never opens one that isn't there. */
@@ -197,6 +223,9 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
   const links = waySearches(vm, v82.selfAt, itemId ? (v82.byId.get(itemId) ?? null) : null);
   const searchingNow = form === "searching" && a.searching;
   const hints = useRegionHints(vm, form === "searching");
+  // Chosen or booked, it stands big; the need's other options wait under it (0.38.5), not while it turns back to them.
+  const others = changing ? [] : otherOptions(vm);
+  const typical = useTypical(vm, (showOptions && !searchingNow) || others.length > 0);
   const record = vm.chosen?.item ?? null;
   const decision = record ? decisionOf(env.decisions?.byGroup, record) : undefined;
   const page = record ? (datedLink(record, decision).url ?? record.url) : null;
@@ -293,7 +322,7 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
     );
   } else if (showOptions) {
     const options = changing ? changeList(vm) : vm.options.slice(0, SHOWN_OPTIONS);
-    const list = { vm, options, current: changing ? currentOption(vm) : null, changing, art, links, onPick: pick, onOpen: (o: OptionVM) => env.onOpenItem(o.item), onCancel: cancelChange, onAsk: a.ask };
+    const list = { vm, options, current: changing ? currentOption(vm) : null, changing, art, links, typical, onPick: pick, onOpen: (o: OptionVM) => env.onOpenItem(o.item), onCancel: cancelChange, onAsk: a.ask };
     body = vm.frame === "ticket" ? <OptionRows {...list} /> : <OptionList {...list} />;
   } else if (form) {
     const props = {
@@ -350,8 +379,6 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
   // "Aranıyor" only while something looks or has looked: the source asked by itself (OfferRow), or the chat (0.38.5).
   const looking = a.searching || hasSearched(`intent:${vm.key}`) || (need != null && offers.available() && queryOf(need) != null);
   const chip = statusChip(vm, looking);
-  // Chosen or booked, it stands big; the need's other options wait under it (0.38.5), not while it turns back to them.
-  const others = changing ? [] : otherOptions(vm);
   const placeholder = need?.kind === "stay" ? placeholderOf(vm.itemIds.map((id) => v82.byId.get(id)).filter((i): i is Item => i != null), env.trip, "stay") : null;
   const headArt = vm.head.image ? { src: vm.head.image, photo: true } : { src: art, photo: false };
   const camp = record != null && vm.kind === "stay" && isCampStay(record);
@@ -402,7 +429,7 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
       {others.length > 0 && (
         <div className="q-offers q-others">
           {(() => {
-            const list = { vm: { ...vm, optionCount: others.length }, options: others, current: null, changing: false, art, links, onPick: pick, onOpen: (o: OptionVM) => env.onOpenItem(o.item), onCancel: cancelChange, onAsk: vm.status === "booked" ? null : a.ask };
+            const list = { vm: { ...vm, optionCount: others.length }, options: others, current: null, changing: false, art, links, typical, onPick: pick, onOpen: (o: OptionVM) => env.onOpenItem(o.item), onCancel: cancelChange, onAsk: vm.status === "booked" ? null : a.ask };
             return vm.frame === "ticket" ? <OptionRows {...list} /> : <OptionList {...list} />;
           })()}
         </div>

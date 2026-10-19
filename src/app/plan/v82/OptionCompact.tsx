@@ -1,6 +1,8 @@
 // The options of a single choice in the frame (plan v82: Karar bekliyor, and Değiştir turning the chosen card back to them):
-// "Seçenekler · 4 · ilk 3, tümü Pano'da", "Kendin ara" with the sites on the right, three cards as tall as the frame. Each
-// card: its picture (who added it, our pick, En ucuz), the site's label and its rating, the name, the price and "Seç". While
+// "Seçenekler · 4 · ilk 3, tümü Pano'da", "Kendin ara" with the sites on the right, three cards. Each card (0.38.6, Emre:
+// the picks' card under the box is the right one): its photo near its own shape, 4:3 (square when narrow), never a thin
+// strip, with who added it, our pick, En ucuz; the site's label and its rating, the name, the price (else the source's
+// usual range, "tipik €21–64 / gece") and "Seç"; the box is as tall as its cards while they're shown. While
 // changing, the one chosen is marked ("Seçili") and "Vazgeç" turns the card back. Fewer than three: the rest asks for more.
 // Its name and price edit where they stand (C2): the price on a click, the name when the card was just added (or by Tab).
 import { L } from "../../../lib/i18n";
@@ -57,7 +59,10 @@ export function SourceBadge({ option }: { option: OptionVM }) {
   );
 }
 
-type CardProps = { o: OptionVM; art: string; current: boolean; onPick: () => void; onOpen: () => void };
+/** A stay's usual range by the night as its source gives it (stayPicks.typicalNight), for an option with no price. */
+export type Typical = (o: OptionVM) => { amount: string; unit: string; title: string } | null;
+
+type CardProps = { o: OptionVM; art: string; current: boolean; typical: Typical | null; onPick: () => void; onOpen: () => void };
 
 function OptionCard(props: CardProps) {
   return (
@@ -67,8 +72,9 @@ function OptionCard(props: CardProps) {
   );
 }
 
-function OptionFace({ o, art, current, onPick, onOpen }: CardProps) {
+function OptionFace({ o, art, current, typical, onPick, onOpen }: CardProps) {
   const price = optionPrice(o.price);
+  const usual = price ? null : (typical?.(o) ?? null);
   const tag = o.badges[0];
   const edit = useInlineEdit();
   return (
@@ -107,6 +113,12 @@ function OptionFace({ o, art, current, onPick, onOpen }: CardProps) {
                 )}
               </span>
             )}
+            {usual && (
+              <span className="q-pr" title={usual.title}>
+                <b>{usual.amount}</b>
+                <small>{usual.unit}</small>
+              </span>
+            )}
           </Editable>
           <button type="button" className="q-pick" aria-pressed={current || undefined} aria-label={current ? L(`${o.title}: seçili`, `${o.title}: chosen`) : L(`${o.title}: seç`, `${o.title}: choose`)}
             onClick={current ? undefined : onPick}>
@@ -118,7 +130,7 @@ function OptionFace({ o, art, current, onPick, onOpen }: CardProps) {
   );
 }
 
-export function OptionList({ vm, options, current, changing, art, links, onPick, onOpen, onCancel, onAsk }: {
+export function OptionList({ vm, options, current, changing, art, links, typical = null, onPick, onOpen, onCancel, onAsk }: {
   vm: IntentVM;
   options: OptionVM[];
   /** The one chosen, marked while changing. */
@@ -127,6 +139,7 @@ export function OptionList({ vm, options, current, changing, art, links, onPick,
   /** The kind's drawing for an option with no photo. */
   art: string;
   links: SelfSearch[];
+  typical?: Typical | null;
   onPick: (o: OptionVM) => void;
   /** An option's record (its drawer). */
   onOpen: (o: OptionVM) => void;
@@ -136,7 +149,7 @@ export function OptionList({ vm, options, current, changing, art, links, onPick,
   const head = optionsHead(vm, changing);
   const left = SHOWN_OPTIONS - options.length;
   return (
-    <div className="q-opts">
+    <div className="q-opts z-optc">
       <div className="q-oh">
         <b className="q-ot">{head.title}</b>
         {head.caption && <small className="q-oc">{head.caption}</small>}
@@ -150,7 +163,7 @@ export function OptionList({ vm, options, current, changing, art, links, onPick,
       </div>
       <div className="q-cards z-ocs">
         {options.map((o) => (
-          <OptionCard key={o.id} o={o} art={art} current={o.id === current} onPick={() => onPick(o)} onOpen={() => onOpen(o)} />
+          <OptionCard key={o.id} o={o} art={art} current={o.id === current} typical={typical} onPick={() => onPick(o)} onOpen={() => onOpen(o)} />
         ))}
         {left > 0 && (
           <div className="z-oc0" style={{ "--span": left } as React.CSSProperties}>

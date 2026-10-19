@@ -863,9 +863,13 @@ try {
   assert.deepEqual(await portoDraft.locator(".q-opts .z-oc .z-t").allInnerTexts(), ["Jardim Stay", "Ribeira Rooms", "Casa Azul"], "the options best first");
   assert.equal(flat([await portoDraft.locator(".q-opts .z-oc").first().locator(".q-src").innerText()])[0], "✨ Önerimiz");
   assert.equal(await portoDraft.locator(".q-opts .q-tag", { hasText: "En ucuz" }).count(), 1);
-  assert.equal(Math.round((await portoDraft.boundingBox()).height), 288, "Değiştir turns the card back to its options in place: the box doesn't grow");
+  // 0.38.6 (Emre: the picks' card is the right one): the options in place are the picks' cards, their photo 4:3, never the
+  // thin strip; the box is as tall as they are while they're shown, and 288 px again once it's turned back.
+  const optRatio = await optionCards.first().locator(".z-op").evaluate((el) => el.getBoundingClientRect().width / el.getBoundingClientRect().height);
+  assert.ok(optRatio > 1.25 && optRatio < 1.42, `Değiştir's option photo is 4:3 (${optRatio.toFixed(2)})`);
   await portoDraft.getByRole("button", { name: "Vazgeç" }).click();
   await portoDraft.locator(".z-bt .q-take").waitFor();
+  assert.equal(Math.round((await portoDraft.boundingBox()).height), 288, "turned back, the box is 288 px again");
   await openSec("flight");
   // Flights (v82 bilet ailesi, F7): the need with two real priced options is our pick, the Pegasus (the engine's), drawn as the
   // ticket: the airline's mark, its name and number with the day small, İstanbul and Porto big with the airport code and the
@@ -1190,9 +1194,11 @@ try {
   assert.equal(await otherStays.locator(".z-oc").count(), 3, "three small cards in place of the chosen one");
   assert.equal(await otherStays.locator(".z-oc.is-cur .q-pick").innerText(), "Seçili");
   assert.equal(await otherStays.locator(".q-oc").innerText(), "seçtiğin işaretli");
-  assert.equal(Math.round((await jardimRow.boundingBox()).height), 288, "the box doesn't grow while changing");
+  // (0.38.6: the options' cards with their 4:3 photo, the box as tall as they are while changing, 288 px turned back)
+  assert.ok(await otherStays.locator(".z-oc .z-op").first().evaluate((el) => { const r = el.getBoundingClientRect(); return r.width / r.height > 1.25 && r.width / r.height < 1.42; }), "the options' photo is 4:3 while changing");
   await otherStays.getByRole("button", { name: "Vazgeç" }).click();
   await otherStays.waitFor({ state: "detached" });
+  assert.equal(Math.round((await jardimRow.boundingBox()).height), 288, "turned back, the box is 288 px again");
   await jardimRow.getByRole("button", { name: "Değiştir" }).click();
   await otherStays.waitFor();
   await app.keyboard.press("Escape");
