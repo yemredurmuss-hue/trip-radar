@@ -94,6 +94,7 @@ import { DAY_MODES } from "../lib/dayView";
 import { setDayMode, useDayMode } from "./days/dayMode";
 import { TimelineView, type CardFor, type RenderGroup, type SettledFor, type TimelineMode } from "./Timeline";
 import { PanoDialog } from "./board/v82/PanoDialog";
+import { usePrepSummaryWith } from "./plan/prep/usePrep";
 import { NeedGroup } from "./cards/NeedCard";
 import { draftOf } from "../lib/draft";
 import { journeyOf } from "../lib/tripShape";
@@ -105,7 +106,7 @@ import type { Decisions } from "./useDecisions";
 import { useWho } from "./Travellers";
 import { onTripChange } from "../lib/tripUndo";
 import { takeLangUndo } from "./langSwitch";
-import { StartGuideCard } from "./start/StartGuideCard";
+import { START_CARD_SHOWN, StartGuideCard } from "./start/StartGuideCard";
 import { WorkLine } from "./WorkPill";
 import { isPlaceholder } from "../lib/startTrip";
 
@@ -628,9 +629,12 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const mode = tripModeOf(range, today);
 
   // --- the v82 hero (aşama 1): the backbone's intents (lib/intents.ts) give its two shares (B9), its mosaic and "Sıradaki" ---
+  // Row 144: Hazırlık as its closed row counts it (the chores worked out from the trip too), for the journey's step.
+  const prepEntries = useMemo(() => sections.find((s) => s.id === "prep")?.prep ?? [], [sections]);
+  const prep = usePrepSummaryWith(prepEntries, { trip, items, today, rates: decisions?.ctx.rates ?? null, currency: decisions?.ctx.currency ?? "EUR", esimCountries });
   const intentInput = useMemo<IntentInput>(
-    () => ({ trip, plan, sections, items, today, decisions: decisions?.byGroup, ctx: decisions?.ctx, docsFor, people: who.count || null, suggestions: suggestions.bySection, now: at }),
-    [trip, plan, sections, items, today, decisions, docsFor, who.count, suggestions.bySection, at],
+    () => ({ trip, plan, sections, items, today, decisions: decisions?.byGroup, ctx: decisions?.ctx, docsFor, people: who.count || null, suggestions: suggestions.bySection, now: at, prep }),
+    [trip, plan, sections, items, today, decisions, docsFor, who.count, suggestions.bySection, at, prep],
   );
   const collections = useMemo(() => collectionsOf(intentInput), [intentInput]);
   const heroIntents = useMemo(() => collections.flatMap((c) => c.intents), [collections]);
@@ -779,7 +783,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       const { goBox: go, openPano: pano } = chatLive.current;
       if (t.kind === "intent") go({ ...t, itemId: null });
       else if (t.kind === "section") go({ intentKey: null, section: t.section, domKeys: [], itemId: t.itemId }, true);
-      else pano(t.intentKey ? { need: t.intentKey } : { section: t.section });
+      else pano(t.intentKey ? { need: t.intentKey, item: t.itemId } : { section: t.section, item: t.itemId });
     };
     onPlanLink?.({
       tripId: trip.id,
@@ -988,8 +992,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       )}
 
       <ChangeNotices tripId={trip.id} />
-      {/* A trip made by the start chat: its one-time start card above the plan (start/StartGuideCard.tsx). */}
-      {trip.startGuide && !trip.startGuide.closed && (
+      {/* A trip made by the start chat: its one-time start card above the plan (start/StartGuideCard.tsx); not in this version (C18). */}
+      {START_CARD_SHOWN && trip.startGuide && !trip.startGuide.closed && (
         <StartGuideCard
           trip={trip}
           items={items}

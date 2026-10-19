@@ -4,6 +4,7 @@
 // changing, the one chosen is marked ("Seçili") and "Vazgeç" turns the card back. Fewer than three: the rest asks for more.
 // Its name and price edit where they stand (C2): the price on a click, the name when the card was just added (or by Tab).
 import { L } from "../../../lib/i18n";
+import { locative } from "../../../lib/i18nText";
 import { badgeWord, optionPrice, optionsHead, ratingParts, SHOWN_OPTIONS, sourceBadge, type SelfSearch } from "../../../lib/intentFrame";
 import type { IntentVM, OptionVM } from "../../../lib/intents";
 import { Editable, InlineEdit, useInlineEdit } from "../../cards/InlineEdit";
@@ -15,7 +16,7 @@ export function SelfLinks({ links, label = true }: { links: SelfSearch[]; label?
     <span className="z-self">
       {label && <small>{L("Kendin ara", "Search yourself")}</small>}
       {links.map((l) => (
-        <a key={l.id} className="z-pl" href={l.url} target="_blank" rel="noopener noreferrer" title={L(`${l.name}'da ara · yeni sekmede açılır`, `Search ${l.name} · opens in a new tab`)}>
+        <a key={l.id} className="z-pl" href={l.url} target="_blank" rel="noopener noreferrer" title={L(`${locative(l.name)} ara · yeni sekmede açılır`, `Search ${l.name} · opens in a new tab`)}>
           <Mark color={l.color} letter={l.letter} small />
           <span>{l.name}</span>
         </a>

@@ -13,6 +13,7 @@ import { isPackLine, loadPackMine, savePackMine, type PackMine } from "../../../
 import { chromeKV } from "../../../lib/share/store";
 import { homeFromFlights } from "../../../lib/suggestions";
 import { homeCurrencyOf, tripFacts, type TripFacts } from "../../../lib/tripFacts";
+import type { Rates } from "../../../lib/currency";
 import type { Item, Trip } from "../../../lib/types";
 import { useEmptyEnv } from "../../cards/emptyEnv";
 import { useCardEnv } from "../../cards/PlanCard";
@@ -67,11 +68,33 @@ export interface PrepModel {
   plug: ReturnType<typeof plugFit>;
 }
 
+/** What Hazırlık reads of the board: the Plan's card envs (usePrep), or the board's own values where it provides them (TripPanel). */
+export interface PrepEnv {
+  trip: Trip;
+  items: Item[];
+  today: string;
+  rates: Rates | null;
+  currency: string;
+  /** The trip's countries abroad an eSIM is for. */
+  esimCountries: string[];
+}
+
 export function usePrep(entries: CatEntry[]): PrepModel {
   const env = useCardEnv();
   const empty = useEmptyEnv();
-  const trip = empty.trip ?? env.trip;
   const items = useMemo(() => empty.items ?? [], [empty.items]);
+  return usePrepWith(entries, {
+    trip: empty.trip ?? env.trip,
+    items,
+    today: env.today,
+    rates: env.decisions?.ctx.rates ?? null,
+    currency: env.decisions?.ctx.currency ?? "EUR",
+    esimCountries: empty.esimCountries,
+  });
+}
+
+export function usePrepWith(entries: CatEntry[], env: PrepEnv): PrepModel {
+  const { trip, items } = env;
   const passport = useStored(loadPassport, "TR", ["passport"]);
   const home = useStored(loadHome, null, ["passport"]);
   const stored = useStored(() => loadPackMine(chromeKV), MINE_EMPTY, ["packMine"]);
@@ -83,29 +106,30 @@ export function usePrep(entries: CatEntry[]): PrepModel {
   const packs = useMemo(() => records.filter(isPackLine), [records]);
   const chores = useMemo(() => records.filter((r) => !isPackLine(r)), [records]);
   const range = trip.confirmedDates ?? tripDateRange(items);
-  const rates = env.decisions?.ctx.rates ?? null;
-  const currency = env.decisions?.ctx.currency ?? "EUR";
+  const { rates, currency } = env;
   const facts = useMemo(
     () => tripFacts(items, { passport, homeCurrency: displayCurrency() ?? homeCurrencyOf(passport, currency), rates, homeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, start: range?.start ?? null }),
     [items, passport, currency, rates, range?.start],
   );
   const countries = useMemo(() => {
-    const all = [...countryCodesOf(items), ...empty.esimCountries.map((c) => c.toUpperCase())];
+    const all = [...countryCodesOf(items), ...env.esimCountries.map((c) => c.toUpperCase())];
     const main = facts.country;
     return [...new Set(main ? [main, ...all] : all)];
-  }, [items, empty.esimCountries, facts.country]);
+  }, [items, env.esimCountries, facts.country]);
   const tasks = useMemo(
     () => prepTasks({ chores, items, trip, range, passport, countries, today: env.today }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the trip's fields it reads
     [chores, items, trip.prepDone, trip.hidden, trip.visaDone, range?.start, range?.end, passport, countries, env.today],
   );
   const local = facts.local;
+  // (one object while the chores stand: the board's intents are worked out again only when it changes)
+  const summary = useMemo(() => prepSummary(tasks), [tasks]);
   return {
     trip,
     items,
     today: env.today,
     tasks,
-    summary: prepSummary(tasks),
+    summary,
     packs,
     range,
     countries,
@@ -129,3 +153,6 @@ export function usePrep(entries: CatEntry[]): PrepModel {
  * Hazırlık line, count and bar.
  */
 export const usePrepSummary = (entries: CatEntry[]): PrepSummary => usePrep(entries).summary;
+
+/** The same summary where the board provides the envs itself (TripPanel: "Yolculuk sırasıyla"'s Hazırlık step, row 144). */
+export const usePrepSummaryWith = (entries: CatEntry[], env: PrepEnv): PrepSummary => usePrepWith(entries, env).summary;

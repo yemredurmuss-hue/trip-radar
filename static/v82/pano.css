@@ -55,6 +55,7 @@
 .q-sheetp .q-ph2 b { display: block; font-size: 22px; font-weight: 800; letter-spacing: -.015em; }
 .q-sheetp .q-ph2 small { font-size: 13.5px; color: var(--q-mut); }
 .q-sheetp .q-ph2 small.q-hint2 { font-size: 12px; }
+.q-sheetp .q-hint2 .inf { width: 18px; height: 18px; margin: 0 0 0 5px; vertical-align: -4px; }
 
 /* the atoms of a card (the prototype's mk81 atoms, the Pano's own copy) */
 .q-sheetp .q-src { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; color: var(--q-mut); background: #fff; border-radius: 99px; padding: 2px 8px; white-space: nowrap; box-shadow: inset 0 0 0 1px var(--q-line); }
@@ -86,9 +87,6 @@
 .q-sheetp .q-pl li::before { position: absolute; left: 0; font-weight: 800; }
 .q-sheetp .q-pl.p li::before { content: "+"; color: var(--q-ok); }
 .q-sheetp .q-pl.m li::before { content: "−"; color: var(--q-bad); }
-.q-sheetp .q-na { color: #b3afc9; font-size: 12px; font-weight: 600; }
-.q-sheetp .q-pl li.q-na.nb { padding-left: 0; }
-.q-sheetp .q-pl li.q-na.nb::before { content: none; }
 .q-sheetp .q-srcl { font-size: 12px; color: var(--q-mut); text-decoration: none; white-space: nowrap; }
 .q-sheetp .q-srcl:hover { color: var(--q-acc); }
 .q-sheetp .q-bigl { display: grid; place-items: center; background: var(--bl); color: #fff; font-weight: 800; }
@@ -164,8 +162,9 @@
 
 /* İlham: videos, reels and posts */
 .q-sheetp .q-ihg { display: grid; grid-template-columns: repeat(auto-fill, 236px); gap: 12px; }
-.q-sheetp .q-ih { position: relative; width: 236px; border: 1px solid var(--q-line); border-radius: 14px; overflow: hidden; background: #fff; display: flex; flex-direction: column; }
-.q-sheetp .q-ihp { position: relative; height: 150px; display: grid; place-items: center; background: color-mix(in srgb, var(--pc, #c0256b) 12%, #fbfaf7); color: var(--pc, #c0256b); }
+.q-sheetp .q-ih { position: relative; width: 236px; border: 1px solid var(--q-line); border-radius: 14px; background: #fff; display: flex; flex-direction: column; }
+/* (the picture keeps the card's corners; the card itself doesn't clip, so its ⋯ and the day picker can open over the next one) */
+.q-sheetp .q-ihp { position: relative; height: 150px; display: grid; place-items: center; overflow: hidden; border-radius: 13px 13px 0 0; background: color-mix(in srgb, var(--pc, #c0256b) 12%, #fbfaf7); color: var(--pc, #c0256b); }
 .q-sheetp .q-ihp img.q-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .q-sheetp .q-play { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 44px; height: 44px; border-radius: 50%; background: rgba(255, 255, 255, .92); color: var(--q-ink); display: grid; place-items: center; box-shadow: 0 4px 14px rgba(0, 0, 0, .25); }
 .q-sheetp .q-plat { position: absolute; left: 8px; top: 8px; font-size: 11px; font-weight: 800; color: #fff; background: var(--pc); border-radius: 6px; padding: 2px 7px; }
@@ -177,38 +176,39 @@
 .q-sheetp .q-ihw { font-size: 12px; font-weight: 700; color: var(--q-mut); }
 .q-sheetp .q-ihx { font: inherit; font-size: 12px; font-weight: 700; color: var(--q-acc); background: var(--q-acc-s); border: 0; border-radius: 8px; padding: 5px 8px; cursor: pointer; }
 /* C31: a day for it (the plan's "+ Gün") and ×, on the card. */
-.q-sheetp .q-ih .fk-daywrap { position: relative; }
-.q-sheetp .q-ih .q-ihdel { position: absolute; right: 8px; top: 8px; z-index: 2; background: rgba(255, 255, 255, .92); }
-.q-sheetp .q-ih:hover .q-ihdel, .q-sheetp .q-ih:focus-within .q-ihdel { opacity: 1; }
-@media (hover: none) { .q-sheetp .q-ih .q-ihdel { opacity: .7; } }
+/* C31: the card's one ⋯ (+ Gün, Sil) over the picture's corner; the trip's days open under it. */
+.q-sheetp .q-ihm { position: absolute; right: 8px; top: 8px; z-index: 3; }
+.q-sheetp .q-ihm .z-mb { background: rgba(255, 255, 255, .94); }
+.q-sheetp .q-ihm .fk-daywrap { position: absolute; right: 0; top: 0; }
+.q-sheetp .q-ihday { font-size: 12px; font-weight: 700; color: #fff; background: var(--q-ink); border-radius: 99px; padding: 2px 9px; white-space: nowrap; }
 
 /* Belgeler (C5): by kind, each file on its card */
 .q-sheetp .q-docs { display: grid; gap: 18px; }
 .q-sheetp .q-dg { display: grid; gap: 8px; }
-.q-sheetp .q-dg > b { font-size: 13px; font-weight: 800; color: var(--q-mut); }
+.q-sheetp .q-dg > b { font-size: 13.5px; font-weight: 800; color: var(--q-mut); }
 .q-sheetp .q-d1 { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto auto auto; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--q-line); border-radius: 14px; background: #fff; }
 .q-sheetp .q-d1 .q-dic { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: #f3f1fa; color: var(--q-acc); overflow: hidden; }
 .q-sheetp .q-d1 .q-dic img { width: 100%; height: 100%; object-fit: cover; }
 .q-sheetp .q-d1 .q-dm { display: grid; gap: 2px; min-width: 0; }
-.q-sheetp .q-d1 .q-dm b { font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.q-sheetp .q-d1 .q-dm b { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .q-sheetp .q-d1 .q-dm b button { all: unset; cursor: pointer; }
 .q-sheetp .q-d1 .q-dm b button:hover { color: var(--q-acc); }
 .q-sheetp .q-d1 .q-dm b button:focus-visible { outline: 3px solid #cfc7ff; }
-.q-sheetp .q-d1 .q-dm small { font-size: 12.5px; color: var(--q-mut); }
+.q-sheetp .q-d1 .q-dm small { font-size: 12px; color: var(--q-mut); }
 .q-sheetp .q-dst { font-size: 12px; font-weight: 700; border-radius: 99px; padding: 4px 10px; white-space: nowrap; }
 .q-sheetp .q-dst.ok { background: #e7f6ec; color: #067647; }
 .q-sheetp .q-dst.wait { background: #f2f4f7; color: #475467; }
 .q-sheetp .q-dst.add { background: #fff8eb; color: #7a4b00; }
 .q-sheetp .q-dst.link { background: #f1edff; color: #4a36c9; }
-.q-sheetp .q-dgo { all: unset; cursor: pointer; font-size: 13px; font-weight: 700; color: var(--q-acc); white-space: nowrap; }
+.q-sheetp .q-dgo { all: unset; cursor: pointer; font-size: 13.5px; font-weight: 700; color: var(--q-acc); white-space: nowrap; }
 .q-sheetp select.q-dgo { appearance: none; max-width: 160px; text-overflow: ellipsis; }
 .q-sheetp .q-dx { width: 26px; height: 26px; border-radius: 8px; border: 0; background: none; color: var(--q-mut); display: grid; place-items: center; cursor: pointer; }
 .q-sheetp .q-dx:hover { background: var(--q-soft); color: var(--q-bad); }
 .q-sheetp .q-d1.drop { all: unset; box-sizing: border-box; display: grid; grid-template-columns: 40px minmax(0, 1fr); align-items: center; gap: 12px; padding: 12px 14px; border: 1px dashed var(--q-line); border-radius: 14px; background: #fcfcfd; cursor: pointer; }
 .q-sheetp .q-d1.drop:hover, .q-sheetp .q-d1.drop.over { border-color: var(--q-acc); background: var(--q-acc-s); }
 .q-sheetp .q-d1.drop:focus-visible { outline: 3px solid #cfc7ff; }
-.q-sheetp .q-d1.drop .q-dic { font-size: 18px; font-weight: 700; }
-.q-sheetp .q-derr { color: var(--q-bad); font-size: 12.5px; }
+.q-sheetp .q-d1.drop .q-dic { font-size: 17px; font-weight: 700; }
+.q-sheetp .q-derr { color: var(--q-bad); font-size: 12px; }
 
 /* 860 px and under: the window from below (E8); 640 and under: a drawer, the side menu one row of the top entries. */
 @media (max-width: 640px) {
@@ -259,3 +259,5 @@
 }
 body.still .q-scrim, body.still .q-scrim.leaving, body.still .q-sheetp, body.still .q-sheetp.leaving, body.still .q-sheetp .q-sc > *, body.still .q-sheetp *, body.still .q-sheetp *::before, body.still .q-sheetp *::after { animation: none !important; transition: none !important; }
 body.still .q-sheetp .q-pg:hover { transform: none; }
+/* A card lit on the way in (Planda göster), held still: a ring instead of the pulse. */
+body.still .q-sheetp .flash { outline: 3px solid var(--accent); outline-offset: -3px; }

@@ -1,9 +1,9 @@
 import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
-import { removeItem, setInstalled, updateTrip } from "../src/app/actions";
-import { db } from "../src/lib/db";
+import { addArrangedLike, addArrangedPlanned, arrangeSuggested, removeItem, setArranged, setInstalled, updateTrip } from "../src/app/actions";
+import { db, listItems } from "../src/lib/db";
 import { onRemoved, restoreItem, type Removed } from "../src/lib/removal";
-import type { Trip } from "../src/lib/types";
+import type { Suggestion, Trip } from "../src/lib/types";
 import { makeItem } from "./fixtures/makeItem";
 
 const trip = (id: string): Trip => ({ id, title: id, confirmedDates: null, budget: null, heroImage: null, createdAt: 1, updatedAt: 5 });
@@ -56,5 +56,51 @@ describe("a delete from outside a card (the drawer, a stay's Kaldır)", () => {
     expect(heard.map((r) => r.item.name)).toEqual(["Casa Azul"]);
     await restoreItem(removed);
     expect((await d.get("items", stay.id))?.name).toBe("Casa Azul");
+  });
+});
+
+describe("Ben hallettim, taken back (B13; row 65)", () => {
+  it("a record it made for a need with only saved options goes again: our pick is our pick, nothing stays Seçildi", async () => {
+    const d = await db();
+    const pick = makeItem({ category: "stay", name: "Jardim Stay", tripId: "t20", needKey: "stay:porto", status: "saved" });
+    await d.put("items", pick);
+    await addArrangedLike(pick, "Porto");
+    const made = (await listItems("t20")).find((i) => i.id !== pick.id)!;
+    expect(made).toMatchObject({ status: "chosen", arranged: true, arrangedMade: { suggestion: null }, url: null });
+    await setArranged(made, false);
+    expect((await listItems("t20")).map((i) => [i.name, i.status])).toEqual([["Jardim Stay", "saved"]]);
+    // Nothing of the traveller's was in it: no trash entry.
+    expect((await d.getAll("trash")).filter((t) => t.tripId === "t20")).toEqual([]);
+  });
+
+  it("the nights it made a record for are empty again", async () => {
+    await addArrangedPlanned("t21", { kind: "stay", date: "2026-10-08", end_date: "2026-10-11", time: null, from: null, to: null, city: "Porto", title: null, booked: false, note: null }, "Porto 8–11 Eki");
+    const [made] = await listItems("t21");
+    expect(made.arrangedMade).toEqual({ suggestion: null });
+    await setArranged(made, false);
+    expect(await listItems("t21")).toEqual([]);
+  });
+
+  it("a suggestion it took as arranged is open again", async () => {
+    const d = await db();
+    await d.put("trips", { id: "t22", title: "Bali", confirmedDates: { start: "2026-12-10", end: "2027-01-10" }, budget: null, heroImage: null, createdAt: 1, updatedAt: 1 });
+    const esim: Suggestion = { key: "rule:esim", section: "other", kind: "add", title: "eSIM (Endonezya)", why: "Planda eSIM yok.", source: "rule", template: "esim", payload: { title: "eSIM (Endonezya)" }, createdAt: 0, state: "open" };
+    await arrangeSuggested("t22", esim);
+    const [made] = await listItems("t22");
+    expect(made).toMatchObject({ arranged: true, arrangedMade: { suggestion: "rule:esim" } });
+    expect((await d.get("trips", "t22"))!.suggestions).toMatchObject([{ key: "rule:esim", state: "added" }]);
+    await setArranged(made, false);
+    expect(await listItems("t22")).toEqual([]);
+    expect((await d.get("trips", "t22"))!.suggestions?.find((s) => s.key === "rule:esim")?.state ?? "open").toBe("open");
+  });
+
+  it("a record the traveller chose keeps its choice: only the mark goes", async () => {
+    const d = await db();
+    const chosen = makeItem({ category: "stay", name: "Casa Azul", tripId: "t23", status: "chosen" });
+    await d.put("items", chosen);
+    await setArranged(chosen, true);
+    await setArranged(chosen, false);
+    const back = (await d.get("items", chosen.id))!;
+    expect([back.status, back.arranged, back.noBooking, back.arrangedMade]).toEqual(["chosen", undefined, undefined, undefined]);
   });
 });

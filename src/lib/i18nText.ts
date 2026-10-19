@@ -64,7 +64,8 @@ const caseLocale = (t: string) => (lang() === "tr" || /[çğıöşüİı]/i.test
 
 /** First letter up / down, by the text's own casing rules. */
 export const capitalize = (t: string) => (t ? t.charAt(0).toLocaleUpperCase(caseLocale(t)) + t.slice(1) : t);
-export const lowerFirst = (t: string) => (t ? t.charAt(0).toLocaleLowerCase(caseLocale(t)) + t.slice(1) : t);
+/** An abbreviation or a name written with capitals inside it ("TV yok", "Wi-Fi", "AC") keeps its first letter. */
+export const lowerFirst = (t: string) => (!t || /^\p{Lu}\S*\p{Lu}/u.test(t) ? t : t.charAt(0).toLocaleLowerCase(caseLocale(t)) + t.slice(1));
 /** Lower case for display, by the text's own casing rules. */
 export const lowerText = (t: string) => t.toLocaleLowerCase(caseLocale(t));
 

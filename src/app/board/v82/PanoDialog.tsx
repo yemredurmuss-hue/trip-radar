@@ -5,7 +5,7 @@
 // group by group (PanoGrid), one intent's options side by side (CompareColumns), the inspiration (IlhamGrid), the trip's files
 // (PanoDocs). Choosing here changes the plan at once (no toast, E16); "Kartı göster" closes the window and goes to the card.
 // Search, the state filter and the sort of the v11 Pano (board/Pano.tsx) are not drawn in this version (C32).
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import type { CatSection, SectionId } from "../../../lib/categories";
 import { L } from "../../../lib/i18n";
@@ -15,9 +15,11 @@ import { findNeed, inView, panoBoardOf, recordsText, type PanoAt, type PanoBoard
 import type { Plan } from "../../../lib/plan";
 import type { DocMeta, Item, Trip } from "../../../lib/types";
 import type { Undoable } from "../../../lib/undoables";
+import { InfoButton } from "../../cards/InfoButton";
 import { UiIcon } from "../../cards/Silhouettes";
 import { Mascot } from "../../Mascot";
 import { reducedMotion } from "../../motion";
+import { show } from "../../Progress";
 import { useMyName } from "../../Profile";
 import { useShare } from "../../Share";
 import type { Decisions } from "../../useDecisions";
@@ -37,6 +39,16 @@ const seenOnDevice = (tripId: string): Set<string> => {
 };
 
 const placeOf = (at: PanoAt): PanoPlace => ({ view: at.view ?? "all", section: at.section ?? null, need: at.need ?? null });
+
+/**
+ * Where the focus goes back to when the window shuts: what had it, or for an item of a menu (gezi ⋯ > Belgeler: the item goes
+ * with its menu) the menu's own button.
+ */
+function openerOf(el: Element | null): HTMLElement | null {
+  if (!(el instanceof HTMLElement) || el === document.body) return null;
+  const menu = el.closest('[role="menu"]');
+  return menu?.parentElement?.querySelector<HTMLElement>('[aria-haspopup="menu"]') ?? el;
+}
 
 /** The window's way out (pano.css): 180 ms, a drawer's 220. */
 const leaveMs = () => (matchMedia("(max-width: 640px)").matches ? 220 : 180);
@@ -99,7 +111,7 @@ export function PanoDialog({ at, trip, plan, sections, items, today, decisions, 
   const titleId = useId();
   const sheet = useRef<HTMLDivElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
-  const [opener] = useState(() => (document.activeElement instanceof HTMLElement ? document.activeElement : null));
+  const [opener] = useState(() => openerOf(document.activeElement));
   const [leaving, setLeaving] = useState(false);
   const going = useRef(false);
   const close = useCallback(
@@ -107,7 +119,7 @@ export function PanoDialog({ at, trip, plan, sections, items, today, decisions, 
       if (going.current) return;
       going.current = true;
       const done = () => {
-        opener?.focus({ preventScroll: true });
+        if (opener?.isConnected) opener.focus({ preventScroll: true });
         onClose();
         then?.();
       };
@@ -118,6 +130,13 @@ export function PanoDialog({ at, trip, plan, sections, items, today, decisions, 
     [opener, onClose],
   );
   useLayoutEffect(() => closeButton.current?.focus({ preventScroll: true }), []);
+  // Row 141: opened at a record ("Planda göster" on an option past its box's three), its card is lit once the window is in.
+  useEffect(() => {
+    const id = at.item;
+    if (!id) return;
+    const t = setTimeout(() => show(sheet.current?.querySelector(`#pn-${CSS.escape(id)}`) ?? null), reducedMotion() ? 0 : 300);
+    return () => clearTimeout(t);
+  }, [at]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // A day's small window inside closes first (DayPicker's own Escape).
@@ -201,7 +220,7 @@ export function PanoDialog({ at, trip, plan, sections, items, today, decisions, 
   );
 }
 
-function Head({ title, line, hint }: { title: string; line?: string | null; hint?: string | null }) {
+function Head({ title, line, hint }: { title: string; line?: string | null; hint?: ReactNode }) {
   return (
     <div className="q-ph2">
       <div>
@@ -232,7 +251,16 @@ function Empty({ text, sleepy = false }: { text: string; sleepy?: boolean }) {
 function NeedPage({ need, fresh, onAsk }: { need: PanoNeed; fresh: ReadonlySet<string>; onAsk?: (need: PanoNeed) => void }) {
   const line = [need.word, need.info || null, need.compare ? null : L("biriktirdiklerin", "what you saved")].filter(Boolean).join(" · ");
   const n = need.options.length;
-  const hint = need.compare ? [L("AI uyum puanına göre sıralı", "Best fit first"), L(`${n} seçenek`, `${n} options`), n > 3 ? L("yana kaydır →", "scroll sideways →") : null].filter(Boolean).join(" · ") : null;
+  // B3: the score is "Uyum puanı"; that the AI's reading is in it is said in its ⓘ.
+  const hint = need.compare ? (
+    <>
+      {L("Uyum puanına göre sıralı", "Best fit first")}
+      <InfoButton>
+        <span className="inf-note">{L("Uyum puanı: niyetine ve tercihlerine ne kadar uyduğu, 100 üzerinden. AI analizi dahil.", "Fit score: how well it fits what you want and prefer, out of 100. The AI's reading included.")}</span>
+      </InfoButton>
+      {` · ${[L(`${n} seçenek`, `${n} options`), n > 3 ? L("yana kaydır →", "scroll sideways →") : null].filter(Boolean).join(" · ")}`}
+    </>
+  ) : null;
   return (
     <>
       <Head title={need.name} line={line} hint={hint} />

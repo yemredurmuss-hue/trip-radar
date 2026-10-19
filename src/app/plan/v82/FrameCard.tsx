@@ -9,6 +9,7 @@
 // A record's name and price edit where they stand (C2, inside the box's InlineEdit); elsewhere they're plain text.
 import type { ReactNode } from "react";
 import { L } from "../../../lib/i18n";
+import { locative } from "../../../lib/i18nText";
 import { bookedWhen, bookedWord, bookWord, codeLabel, docWord, emptyLine, emptyTitle, headName, sidePrice, type FrameForm, type SelfSearch } from "../../../lib/intentFrame";
 import type { IntentVM, OptionVM } from "../../../lib/intents";
 import type { RegionHint } from "../../../lib/regionHints";
@@ -298,7 +299,7 @@ export function FrameCard({ vm, form, art, page, links, hints, info, detail, qui
       title={emptyTitle(vm)}
       l2={line && <span className="q-est">{line}</span>}
       l3={hints.map((h) => (
-        <a key={h.area} className="z-rg" href={links[0]?.url ?? undefined} target="_blank" rel="noreferrer" title={links[0] ? L(`${h.area} · ${links[0].name}'da ara`, `${h.area} · search ${links[0].name}`) : h.area}>
+        <a key={h.area} className="z-rg" href={links[0]?.url ?? undefined} target="_blank" rel="noreferrer" title={links[0] ? L(`${h.area} · ${locative(links[0].name)} ara`, `${h.area} · search ${links[0].name}`) : h.area}>
           {h.area}
           {h.nightly != null && <small>{formatPrice(h.nightly, h.currency)}</small>}
         </a>
@@ -309,7 +310,7 @@ export function FrameCard({ vm, form, art, page, links, hints, info, detail, qui
             <small className="z-lbl">{L("Kendin ara", "Search yourself")}</small>
             <span className="z-pis">
               {links.map((l) => (
-                <a key={l.id} className="z-pi" href={l.url} target="_blank" rel="noopener noreferrer" title={L(`${l.name}'da ara`, `Search ${l.name}`)} aria-label={L(`${l.name}'da ara`, `Search ${l.name}`)}>
+                <a key={l.id} className="z-pi" href={l.url} target="_blank" rel="noopener noreferrer" title={L(`${locative(l.name)} ara`, `Search ${l.name}`)} aria-label={L(`${locative(l.name)} ara`, `Search ${l.name}`)}>
                   <Mark color={l.color} letter={l.letter} />
                 </a>
               ))}
