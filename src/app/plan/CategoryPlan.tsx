@@ -5,6 +5,7 @@
 // rail inside (TimelineRail, IntentBox); Hazırlık has its list and İlham its tiles (ideas/IdeaList InspoGrid). Hazırlık
 // is drawn on every trip (its list works out chores from the trip, Bilmen gerekenler and the Bavul, aşama 7); any other
 // category with nothing in it isn't; "+ Yeni ihtiyaç ekle" at the end adds any kind (B6).
+import { stayQueryOf } from "../../lib/travelWants";
 import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { isIdeaSection, planSectionOfItem, sectionProgress, type CatEntry, type CatSection, type SectionId } from "../../lib/categories";
 import { activityGaps } from "../../lib/emptyCards";
@@ -212,7 +213,7 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
     byId: new Map(items.map((i) => [i.id, i])),
     addSuggestion: suggestions?.add ?? null,
     dismissSuggestion: suggestions?.dismiss ?? null,
-    selfAt: { countries: empty.esimCountries, countryNames: countryNames(empty.esimCountries), adults: empty.group?.adults ?? empty.travellers, children: empty.group?.children ?? null, rooms: empty.group?.rooms ?? null },
+    selfAt: { countries: empty.esimCountries, countryNames: countryNames(empty.esimCountries), adults: empty.group?.adults ?? empty.travellers, children: empty.group?.children ?? null, rooms: empty.group?.rooms ?? null, stay: stayQueryOf(env.trip.wants) },
     goTo,
   };
   const first = firstDecision(collections);

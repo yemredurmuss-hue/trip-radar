@@ -17,6 +17,7 @@ import { formatPrice, nightsBetween } from "./items";
 import { ratingText, type Need, type Offer } from "./offerSource";
 import type { StayCandidate } from "./offerSources";
 import { cityKeyOf, sameCity } from "./plan";
+import { stayKindsOf, wantsIn, type StayWish, type TripWants } from "./travelWants";
 import { budgetLevel } from "./tripStyle";
 import type { Amenity, CriterionId, Item, PriorityLevel, Trip } from "./types";
 
@@ -50,6 +51,15 @@ export interface StayFit {
   nights: number;
   romantic: boolean;
   cheap: boolean;
+  /**
+   * The kinds of stay the traveller asked for (Trip.wants, or this search's own wish: "bize hostel bul"): one of them always
+   * fits, whatever else the trip says, and comes first among the picks (0.39.4: an asked-for hostel was filtered away).
+   */
+  asked?: StayWish[];
+  /** The kinds ruled out ("hostel olmasın"): never fit. */
+  avoid?: StayWish[];
+  /** "Lüks" said: a dorm bed isn't suggested unless asked for. */
+  high?: boolean;
 }
 
 /** From this many nights a stay is a long one (a month in Canggu): a home of one's own (villa, flat, guesthouse) comes first. */
@@ -64,14 +74,34 @@ const words = (c: Pick<StayCandidate, "name" | "labels">): string => [c.name, ..
 export const isDorm = (c: Pick<StayCandidate, "name" | "labels">): boolean => DORM.test(words(c));
 export const isHome = (c: Pick<StayCandidate, "name" | "labels">): boolean => HOME.test(words(c));
 
-/** A dorm bed only for one going alone or a budget said cheap, and never on a romantic trip. */
-export const dormFits = (fit: StayFit): boolean => !fit.romantic && (fit.people === 1 || fit.cheap);
+/** A dorm bed when asked for; else only for one going alone or a budget said cheap, never on a romantic or a luxury trip. */
+export const dormFits = (fit: StayFit): boolean => !!fit.asked?.includes("hostel") || (!fit.romantic && !fit.high && (fit.people === 1 || fit.cheap));
 
-/** The candidate is a kind of place this trip can stay in (no fit known: any). */
-export const fitsTrip = (c: Pick<StayCandidate, "name" | "labels">, fit: StayFit | null | undefined): boolean => !fit || !isDorm(c) || dormFits(fit);
+/** The kinds a candidate's name and labels say it is ("Mad Monkey Hostel": hostel; a dorm label: hostel). */
+const kindsOf = (c: Pick<StayCandidate, "name" | "labels">): StayWish[] => {
+  const kinds = stayKindsOf(words(c));
+  return isDorm(c) && !kinds.includes("hostel") ? [...kinds, "hostel"] : kinds;
+};
+/** The candidate is a kind the traveller asked for. */
+export const askedFor = (c: Pick<StayCandidate, "name" | "labels">, fit: StayFit | null | undefined): boolean =>
+  !!fit?.asked?.length && kindsOf(c).some((k) => fit.asked!.includes(k));
+
+/**
+ * The candidate is a kind of place this trip can stay in (no fit known: any): a kind asked for always is (no filter takes
+ * away what the traveller asked for), a kind ruled out never is, a dorm bed only where dormFits.
+ */
+export function fitsTrip(c: Pick<StayCandidate, "name" | "labels">, fit: StayFit | null | undefined): boolean {
+  if (!fit) return true;
+  if (askedFor(c, fit)) return true;
+  if (fit.avoid?.length && kindsOf(c).some((k) => fit.avoid!.includes(k))) return false;
+  return !isDorm(c) || dormFits(fit);
+}
 
 /** The trip's fit for a stay's nights: the need's head count (else the trip's travellers), its style, its budget. */
-export function stayFitOf(need: Partial<Pick<Need, "adults" | "start" | "end">>, trip: Partial<Pick<Trip, "travellers" | "style" | "budget" | "confirmedDates" | "priorities" | "categoryPriorities">> | null | undefined): StayFit {
+export function stayFitOf(
+  need: Partial<Pick<Need, "adults" | "start" | "end" | "stay">>,
+  trip: Partial<Pick<Trip, "travellers" | "style" | "budget" | "confirmedDates" | "priorities" | "categoryPriorities" | "wants">> | null | undefined,
+): StayFit {
   const t = trip ?? {};
   const named = t.travellers?.names?.length ? t.travellers.names.length + 1 : null;
   const people = need.adults ?? t.travellers?.count ?? named;
@@ -79,9 +109,25 @@ export function stayFitOf(need: Partial<Pick<Need, "adults" | "start" | "end">>,
   const romantic = (t.style?.ids ?? []).includes("romantic");
   const days = t.confirmedDates ? nightsBetween(t.confirmedDates.start, t.confirmedDates.end) + 1 : nights + 1;
   const asTrip = t as Trip;
+  // The money level said ("Ekonomik" in the start chat) counts as much as an amount that works out low.
+  const said: TripWants = need.stay ? wantsIn(need.stay) : {};
+  const level = said.budget ?? t.wants?.budget ?? null;
   const cheap =
-    budgetLevel(t.budget ?? null, days, people, null) === "low" || (levelSource(asTrip, "stay", "price") === "explicit" && levelFor(asTrip, "stay", "price") >= 3);
-  return { people: people ?? null, nights, romantic, cheap };
+    level === "low" ||
+    budgetLevel(t.budget ?? null, days, people, null) === "low" ||
+    (levelSource(asTrip, "stay", "price") === "explicit" && levelFor(asTrip, "stay", "price") >= 3);
+  // This search's own wish first ("hostel bul"), then the trip's.
+  const asked = [...new Set([...(said.stays ?? []), ...(t.wants?.stays ?? [])])].filter((k) => !said.avoid?.includes(k));
+  const avoid = [...new Set([...(said.avoid ?? []), ...(t.wants?.avoid ?? [])])].filter((k) => !asked.includes(k));
+  return {
+    people: people ?? null,
+    nights,
+    romantic,
+    cheap,
+    ...(asked.length ? { asked } : {}),
+    ...(avoid.length ? { avoid } : {}),
+    ...(level === "high" ? { high: true } : {}),
+  };
 }
 
 /** The order the three are shown in, and their labels. */
@@ -226,7 +272,9 @@ function fitScore(c: StayCandidate, all: StayCandidate[], ctx: PickCtx, wants: W
   const bonus = wants.reduce((s, w) => s + (c.labels.some((l) => w.test.test(l)) ? (w.must ? MUST_BONUS : WISH_BONUS) : 0), 0);
   // A month in one place (or a group): a home of one's own first, as its name or a label says it.
   const home = ctx.fit && (ctx.fit.nights >= LONG_STAY_NIGHTS || (ctx.fit.people ?? 0) >= 3) && isHome(c) ? HOME_BONUS : 0;
-  return mean * (0.6 + (0.4 * known_w) / all_w) + bonus + home;
+  // A kind the traveller asked for (a hostel, a villa) comes first: as a must answered.
+  const asked = askedFor(c, ctx.fit) ? MUST_BONUS : 0;
+  return mean * (0.6 + (0.4 * known_w) / all_w) + bonus + home + asked;
 }
 
 // --- the three -----------------------------------------------------------------------------------------

@@ -240,6 +240,8 @@ export interface SelfSearchAt {
   /** D12: the children who go and the rooms said (a stay's search), from the trip's Kimler gidiyor. */
   children?: number | null;
   rooms?: number | null;
+  /** A stay's search words from the trip's intent ("hostels", "budget hotels and hostels": travelWants.stayQueryOf); none: hotels. */
+  stay?: string | null;
 }
 
 // (a bus or a boat is looked for where every way is compared, as a train; a rented car or bike on the rental sites)
@@ -339,7 +341,7 @@ export function offerNeed(vm: Pick<IntentVM, "kind" | "head"> & { ticket?: Inten
   const end = start && nights ? addDays(start, nights) : null;
   if (vm.kind === "stay" && city && start && end) {
     const home = wantsHome(nights, at.adults, vm.options ?? []);
-    return { key: needKey("stay", city, start, end), section: "stay", kind: "stay", city, start, end, adults: at.adults, country: at.countries[0] ?? null, ...(home ? { home } : {}) };
+    return { key: needKey("stay", city, start, end), section: "stay", kind: "stay", city, start, end, adults: at.adults, country: at.countries[0] ?? null, ...(home ? { home } : {}), ...(at.stay ? { stay: at.stay } : {}) };
   }
   const route = vm.head.route;
   if (vm.kind === "flight" && route?.from && route.to && start) {

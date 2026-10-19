@@ -36,6 +36,11 @@ export interface Need {
   query?: string | null;
   /** A stay where a home of one's own is wanted (intentFrame.wantsHome): Airbnb is asked too (spec 2026-10-19 SerpApi, 7). */
   home?: boolean | null;
+  /**
+   * A stay: what kind of place it is looked for as, in the search's words ("hostels", "villas city centre", "budget hotels
+   * and hostels": travelWants.stayQueryOf, from the trip's intent or the chat's own wish); none: hotels (0.39.4).
+   */
+  stay?: string | null;
 }
 
 export interface Offer {

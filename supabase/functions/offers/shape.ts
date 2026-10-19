@@ -90,6 +90,18 @@ export function placeOk(raw: string | null): string | null {
   return s && s.length <= 80 && /^[\p{L}\p{M} .,'’()-]+$/u.test(s) ? s : null;
 }
 
+/**
+ * A stay looked for as a kind of place (0.39.4: "hostels", "villas city centre", "budget hotels and hostels"): the words
+ * kept when plain (letters, digits, spaces, & ' -; at most 60), lower-cased; null otherwise (the search is hotels').
+ */
+export function stayWordsOk(raw: string | null): string | null {
+  const s = raw?.normalize("NFC").replace(/\s+/g, " ").trim().toLocaleLowerCase("en");
+  return s && s.length <= 60 && /^[\p{L}\p{M}\p{N} &'’-]+$/u.test(s) ? s : null;
+}
+
+/** Google Hotels' words for a stay: the place, then the kind of place wanted, else "hotels" (as before 0.39.4). */
+export const stayQuery = (city: string, country: string | null, words: string | null): string => `${city}${country ? `, ${country}` : ""} ${words ?? "hotels"}`;
+
 export const nightsBetween = (start: string, end: string): number => Math.round((dayMs(end) - dayMs(start)) / 864e5);
 
 // --- flights (Aviasales prices_for_dates, one way) --------------------------------------------------------

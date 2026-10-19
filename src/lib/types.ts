@@ -267,6 +267,12 @@ export interface Trip {
   /** The style words the model picked for the hero (tripStyle.ts) and what they were picked for. */
   style?: { key: string; ids: string[] } | null;
   /**
+   * The traveller's intent for the whole trip (0.39.4, travelWants.ts): the money level said ("Ekonomik"), who goes, the
+   * kinds of stay asked for or ruled out, where to stay. Written by the start chat and the trip's chat; every suggestion
+   * (the stay picks, the hotels' search, the AI review, the chat) reads it. Unset: nothing said.
+   */
+  wants?: import("./travelWants").TripWants | null;
+  /**
    * The hero card's "Tercihler": the model's 1–3 word name for a note the code can't name itself
    * (preferences.ts noteLabelKey → "Şarap tadımı"); "" when its answer wasn't one (the first words stand).
    */
