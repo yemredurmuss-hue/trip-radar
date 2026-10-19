@@ -116,13 +116,15 @@ describe("the row as drawn", () => {
     const html = renderToStaticMarkup(<OfferRowView offers={[flight]} open adults={2} onToggle={noop} onAdd={noop} onLess={noop} />);
     for (const part of ["Turkish Airlines", "07:40", "IST", "10:25", "AMS", "3 sa 45 dk", "Direkt", "€312", "€156", "kişi başı · €312 toplam"]) expect(html).toContain(part);
     expect(html).not.toContain("/ gece");
-    // No code given: the carrier's initial, never one made from its name (TU, SU, İB).
-    expect(html).toContain('<span class="ek-of-air" aria-hidden="true">T</span>');
-    const coded = renderToStaticMarkup(<OfferRowView offers={[{ ...flight, carrierCode: "TK" }]} open onToggle={noop} onAdd={noop} onLess={noop} />);
-    expect(coded).toContain('<span class="ek-of-air" aria-hidden="true">TK</span>');
-    const iberia = renderToStaticMarkup(<OfferRowView offers={[{ ...flight, carrier: "iberia", source: "iberia.com" }]} open onToggle={noop} onAdd={noop} onLess={noop} />);
-    expect(iberia).toContain('<span class="ek-of-air" aria-hidden="true">I</span>');
-    expect(iberia).not.toContain("İ");
+    // No code given: an airline listed by its name has its logo by its code (0.38.7, Emre: "gerçek bir Turkish Airlines
+    // uçuşuysa logosuyla gelmeli"); one we don't list keeps its initial, never a code made from its name (TU, SU, İB).
+    expect(html).toContain('<img class="ek-of-air ek-of-logo" src="https://images.kiwi.com/airlines/64/TK.png"');
+    const coded = renderToStaticMarkup(<OfferRowView offers={[{ ...flight, carrier: "Skyline Air", carrierCode: "SK" }]} open onToggle={noop} onAdd={noop} onLess={noop} />);
+    expect(coded).toContain('src="https://images.kiwi.com/airlines/64/SK.png"');
+    const unknown = renderToStaticMarkup(<OfferRowView offers={[{ ...flight, carrier: "indigo", source: "goindigo.in" }]} open onToggle={noop} onAdd={noop} onLess={noop} />);
+    expect(unknown).toContain('<span class="ek-of-air" aria-hidden="true">I</span>');
+    expect(unknown).not.toContain("İ");
+    expect(unknown).not.toContain("<img");
   });
   it("a carrier code is kept only as two letters or digits; an added flight keeps its carrier, hours and codes", () => {
     const raw = { ...offer({ id: "f2", kind: "flight", title: "TK 1951", carrier: "Turkish Airlines", depart: "07:40", arrive: "10:25", fromCode: "IST", toCode: "AMS", stops: 0 }) };

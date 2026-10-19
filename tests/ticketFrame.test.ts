@@ -52,7 +52,7 @@ const boxOf = (items: Item[], id: string, trip = japan) => board(trip, items).in
 
 describe("the carrier's mark", () => {
   it("the airline's code from the flight number, a short operator as it is, else its initials; the same colour for the same name", () => {
-    expect(carrierMark({ brand: { label: "Turkish Airlines", color: "#c8102e" }, name: "Turkish Airlines" }, { flight: { flightNumber: "TK 52" } as Item["flight"] })).toEqual({ color: "#c8102e", letter: "TK" });
+    expect(carrierMark({ brand: { label: "Turkish Airlines", color: "#c8102e" }, name: "Turkish Airlines" }, { flight: { flightNumber: "TK 52" } as Item["flight"] })).toEqual({ color: "#c8102e", letter: "TK", code: "TK" });
     expect(carrierMark({ brand: { label: "JR", color: "#2a7a46" }, name: "Nozomi" })).toEqual({ color: "#2a7a46", letter: "JR" });
     expect(carrierMark({ brand: { label: "Odakyu", color: null }, name: "Hakone Free Pass" })?.letter).toBe("O");
     expect(carrierMark({ brand: { label: "Ozora Shuttle", color: null }, name: "Festival otobüsü" })?.letter).toBe("OS");

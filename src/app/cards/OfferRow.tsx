@@ -8,6 +8,7 @@
 // A stay, when the source has candidates, shows its three picks instead (stayPicks.ts: "Sana en uygun", "Daha
 // ekonomik", "Daha konforlu") as the plan's option cards with "Seç"; the same row's open/closed state.
 import { useEffect, useMemo, useState } from "react";
+import { airlineCode, airlineColor, airlineLogos } from "../../lib/airlines";
 import { durationText } from "../../lib/cardFacts";
 import { L } from "../../lib/i18n";
 import { nStops } from "../../lib/i18nText";
@@ -33,6 +34,7 @@ import {
 } from "../../lib/offerSource";
 import { BRANDS } from "../../lib/searchLinks";
 import { addOffer, fillOffer, setItemStatus } from "../actions";
+import { FallbackImg } from "../FallbackImg";
 import { BrandChip, Rating } from "../plan/v82/OptionCompact";
 import { useEmptyEnv } from "./emptyEnv";
 import { KindIcon, UiIcon } from "./Silhouettes";
@@ -52,6 +54,23 @@ function SourceMark({ source }: { source: string }) {
 /** A name's first letter, upper-cased the plain way (Iberia → I, never İ). */
 const initial = (name: string): string => [...name.trim()][0]?.toUpperCase() ?? "";
 
+/**
+ * The carrier's tile: the airline's logo by its code (the source's own, else the one its name is listed with: airlines.ts),
+ * its code on its colour when the logo won't load; an airline we can't name by code keeps its initial (never a made-up code).
+ */
+function CarrierTile({ o }: { o: Offer }) {
+  const code = o.carrierCode?.trim() || airlineCode(o.carrier);
+  const color = airlineColor(code);
+  const tile = (
+    <span className="ek-of-air" style={color ? { background: color } : undefined} aria-hidden>
+      {code ?? initial(o.carrier ?? "")}
+    </span>
+  );
+  if (!code) return tile;
+  const [first, second] = airlineLogos(code);
+  return <FallbackImg className="ek-of-air ek-of-logo" src={first} fallback={<FallbackImg className="ek-of-air ek-of-logo" src={second} fallback={tile} />} />;
+}
+
 /** "2 sa önce": how fresh the source's price is (in the source name's tooltip only). */
 function freshness(fetchedAt: number, now: number): string {
   const hours = Math.max(0, Math.round((now - fetchedAt) / 3_600_000));
@@ -68,10 +87,7 @@ function RouteBody({ o }: { o: Offer }) {
       {o.carrier && (
         <span className="ek-of-carrier">
           {o.carrier}
-          {/* The carrier's own code when the source gives it (TK), else its initial: never a code made from the name. */}
-          <span className="ek-of-air" aria-hidden>
-            {o.carrierCode ?? initial(o.carrier)}
-          </span>
+          <CarrierTile o={o} />
         </span>
       )}
       <span className="ek-of-tm">
