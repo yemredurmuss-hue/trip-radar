@@ -78,7 +78,10 @@ describe("chooseTrip", () => {
 
   it("falls back to the model, then the latest trip, when the country is unknown", () => {
     expect(chooseTrip(signal({ suggestedTripId: "th" }), profiles)).toEqual({ tripId: "th" });
-    expect(chooseTrip(signal({}), profiles)).toEqual({ tripId: "pt" });
+    // The latest, with the others offered (0.39.4: the toolbar asks which when nothing says).
+    const unsure = chooseTrip(signal({}), profiles);
+    expect(unsure).toMatchObject({ tripId: "pt" });
+    expect("candidates" in unsure && unsure.candidates?.[0]).toBe("pt");
     expect(chooseTrip(signal({ suggestedTitle: "Gezi" }), [])).toEqual({ newTitle: "Gezi" });
   });
 });

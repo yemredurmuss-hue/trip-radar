@@ -4,23 +4,37 @@ import { createRoot } from "react-dom/client";
 import { downscale, openBoard, requestProcessing } from "./lib/browser";
 import { db, hasActiveKey, onChanged } from "./lib/db";
 import { L, lang, loadLang } from "./lib/i18n";
-import { CATEGORY_LABELS } from "./lib/items";
+import { CATEGORY_LABELS, formatDateRange } from "./lib/items";
 import { collectPage } from "./lib/pagecapture";
 import { saveSnapshot } from "./lib/process";
-import { answerHeld } from "./lib/routing";
+import { answerHeld, moveToTrip } from "./lib/routing";
+import { isDemoTrip } from "./lib/trips";
+import type { Trip } from "./lib/types";
 import { reloadIfStale } from "./lib/update";
 
 type State =
   | { step: "saving" }
   | { step: "working"; captureId: string }
-  | { step: "done"; text: string; tripId: string }
-  /** Read, not added (placeCheck.ts): the same question the trip's chat asks. */
-  | { step: "held"; captureId: string; text: string; reason: "place" | "travel"; newTitle: string; tripTitle: string | null }
+  | { step: "done"; text: string; tripId: string; itemId?: string }
+  /**
+   * Read, not added (placeCheck.ts): the same question the trip's chat asks; reason trip (0.39.4): which of the trips it
+   * could be (`candidates`, the most likely first), under the button.
+   */
+  | { step: "held"; captureId: string; text: string; reason: "place" | "travel" | "trip"; newTitle: string; tripTitle: string | null; candidates?: TripPick[] }
   | { step: "skipped" }
   | { step: "error"; text: string }
   | { step: "hint"; text: string };
 
 class HintError extends Error {}
+
+/** A trip as the popup offers it: its name and its dates when set. */
+interface TripPick {
+  id: string;
+  title: string;
+  when: string | null;
+}
+const pickOf = (t: Trip): TripPick => ({ id: t.id, title: t.title, when: t.confirmedDates ? formatDateRange(t.confirmedDates.start, t.confirmedDates.end) : null });
+const pickLabel = (t: TripPick) => (t.when ? `${t.title} · ${t.when}` : t.title);
 
 async function captureActiveTab(): Promise<string> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -77,13 +91,14 @@ function Popup() {
       // Asked (a record already saved stays on its trip while asked, so it has an itemId too).
       if (capture?.status === "done" && held && !held.answer) {
         const trip = held.tripId ? await d.get("trips", held.tripId) : undefined;
-        setState({ step: "held", captureId: capture.id, text: held.question ?? held.item.name, reason: held.reason, newTitle: held.newTitle, tripTitle: trip?.title ?? null });
+        const candidates = (await Promise.all((held.candidates ?? []).map((id) => d.get("trips", id)))).filter((t): t is Trip => t != null).map(pickOf);
+        setState({ step: "held", captureId: capture.id, text: held.question ?? held.item.name, reason: held.reason, newTitle: held.newTitle, tripTitle: trip?.title ?? null, ...(candidates.length ? { candidates } : {}) });
       } else if (capture?.status === "done" && capture.itemId) {
         const item = await d.get("items", capture.itemId);
         const trip = item ? await d.get("trips", item.tripId) : undefined;
         if (item) {
           const where = [trip?.title, CATEGORY_LABELS[item.category], item.city].filter(Boolean).join(" · ");
-          setState({ step: "done", text: `${item.name} → ${where}`, tripId: item.tripId });
+          setState({ step: "done", text: `${item.name} → ${where}`, tripId: item.tripId, itemId: item.id });
         }
       }
     };
@@ -102,7 +117,12 @@ function Popup() {
           <span className="muted">{L("Pencereyi kapatabilirsin; arkada devam eder.", "You can close this; it keeps going in the background.")}</span>
         </p>
       )}
-      {state.step === "done" && <p>✓ {state.text}</p>}
+      {state.step === "done" && (
+        <p>
+          ✓ {state.text}
+          {state.itemId && <MoveTrip itemId={state.itemId} tripId={state.tripId} onDone={setState} />}
+        </p>
+      )}
       {state.step === "held" && <HeldQuestion state={state} onDone={setState} />}
       {state.step === "skipped" && <p>{L("Eklenmedi.", "Not added.")}</p>}
       {state.step === "error" && <p className="error">{state.text}</p>}
@@ -119,13 +139,52 @@ function Popup() {
   );
 }
 
+/**
+ * "Başka geziye taşı" beside the done line (0.39.4): the other trips (the latest first), one tap moves the record there
+ * (routing.moveToTrip). Folded until asked.
+ */
+function MoveTrip({ itemId, tripId, onDone }: { itemId: string; tripId: string; onDone: (next: State) => void }) {
+  const [others, setOthers] = useState<TripPick[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  async function open() {
+    const trips = await (await db()).getAll("trips");
+    setOthers(trips.filter((t) => t.id !== tripId && !isDemoTrip(t)).sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 6).map(pickOf));
+  }
+  async function move(to: TripPick) {
+    setBusy(true);
+    try {
+      await moveToTrip(itemId, to.id);
+      const item = await (await db()).get("items", itemId);
+      onDone({ step: "done", text: `${item?.name ?? ""} → ${to.title}`, tripId: to.id, itemId });
+      setOthers(null);
+    } catch (error) {
+      onDone({ step: "error", text: error instanceof Error ? error.message : String(error) });
+    } finally {
+      setBusy(false);
+    }
+  }
+  if (!others) {
+    return (
+      <>
+        <br />
+        <button type="button" className="btn-link popup-move" onClick={() => void open()}>{L("Başka geziye taşı", "Move to another trip")}</button>
+      </>
+    );
+  }
+  return (
+    <span className="popup-held-actions">
+      {others.length ? others.map((t) => <button key={t.id} type="button" className="small-btn" disabled={busy} onClick={() => void move(t)}>{pickLabel(t)}</button>) : <span className="muted">{L("Başka gezi yok.", "No other trip.")}</span>}
+    </span>
+  );
+}
+
 /** The question the trip's chat asks too; answered here, it's answered there. */
 function HeldQuestion({ state, onDone }: { state: Extract<State, { step: "held" }>; onDone: (next: State) => void }) {
   const [busy, setBusy] = useState(false);
-  async function answer(a: "here" | "new" | "skip") {
+  async function answer(a: "here" | "there" | "new" | "skip", picked?: string) {
     setBusy(true);
     try {
-      const tripId = await answerHeld(state.captureId, a);
+      const tripId = await answerHeld(state.captureId, a, picked);
       if (!tripId) return onDone({ step: "skipped" });
       const d = await db();
       const trip = await d.get("trips", tripId);
@@ -133,6 +192,23 @@ function HeldQuestion({ state, onDone }: { state: Extract<State, { step: "held" 
     } catch (error) {
       onDone({ step: "error", text: error instanceof Error ? error.message : String(error) });
     }
+  }
+  // Which trip (two India trips): each one a button, the most likely first and said so, then a new trip, or none.
+  if (state.reason === "trip" && state.candidates?.length) {
+    return (
+      <div className="popup-held">
+        <p>{state.text}</p>
+        <div className="popup-held-actions">
+          {state.candidates.map((t, n) => (
+            <button key={t.id} type="button" className="small-btn" disabled={busy} aria-current={n === 0 ? "true" : undefined} onClick={() => void answer("there", t.id)}>
+              {n === 0 ? L(`${pickLabel(t)} (en olası)`, `${pickLabel(t)} (most likely)`) : pickLabel(t)}
+            </button>
+          ))}
+          <button type="button" className="small-btn" disabled={busy} onClick={() => void answer("new")}>{L(`Yeni gezi: ${state.newTitle}`, `New trip: ${state.newTitle}`)}</button>
+          <button type="button" className="small-btn" disabled={busy} onClick={() => void answer("skip")}>{L("Ekleme", "Don't add")}</button>
+        </div>
+      </div>
+    );
   }
   // With no trip to ask in, "here" makes the new trip too: only one way to add it.
   const here = state.tripTitle ? (state.reason === "place" ? L(`${state.tripTitle}: yine de ekle`, `${state.tripTitle}: add anyway`) : L("Yine de ekle", "Add it anyway")) : null;

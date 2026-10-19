@@ -615,8 +615,13 @@ export interface Capture {
 export type HeldAnswer = "here" | "there" | "new" | "skip";
 
 export interface HeldCapture {
-  /** place: far from the trip it was handed to, and no trip of its own; travel: not a trip page at all. */
-  reason: "place" | "travel";
+  /**
+   * place: far from the trip it was handed to, and no trip of its own; travel: not a trip page at all; trip (0.39.4): saved
+   * from the toolbar with more than one trip it could be (two India trips), asked which (`candidates`).
+   */
+  reason: "place" | "travel" | "trip";
+  /** reason trip: the trips it could go to, the most likely first (trips.chooseTrip). */
+  candidates?: string[];
   /** The record as it would have been saved (its trip: the one asked in, or a new one's id). */
   item: Item;
   /** The trip whose chat asks; null when there was none to ask in (the popup asks). */
@@ -910,7 +915,7 @@ export interface OwnerChange {
  */
 export type RoutingNote =
   | { kind: "moved"; itemId: string; fromTripId: string; toTripId: string; far: boolean; merged: boolean; undoneAt?: number; dates?: Item["dates"] }
-  | { kind: "ask"; captureId: string; reason: "place" | "travel"; newTitle: string; toTripId?: string | null; answer?: HeldAnswer; answeredTripId?: string }
+  | { kind: "ask"; captureId: string; reason: "place" | "travel" | "trip"; newTitle: string; toTripId?: string | null; candidates?: string[]; answer?: HeldAnswer; answeredTripId?: string }
   /** Records already saved whose place looks like another trip's (strays.ts): asked about one by one, never moved by itself. */
   | { kind: "stray"; entries: StrayEntry[] }
   /**

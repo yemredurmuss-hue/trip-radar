@@ -180,9 +180,15 @@ export async function processCapture(captureId: string, deps: Deps = defaultDeps
     const pageDates = item.dates; // the moved note keeps them for Geri al
     const landed = trips.find((t) => t.id === item.tripId);
     if (!duplicate && signal.softDates && landed) item = { ...item, dates: datesIn(item, landed, allItems) };
+    // Saved from the toolbar with more than one trip it could be and nothing that says which (two India trips, an undated
+    // page; 0.39.4): asked under the button (popup) and in Bekleyen kayıtlar, never put in one by a guess. A page saved
+    // before (merged) stays where it is; a chat's or a board's capture has its own trip.
+    const candidates = "tripId" in choice && !duplicate && !anchor && !capture.sharedAt && capture.kind === "extension" ? (choice.candidates ?? []) : [];
     const route: Route = capture.sharedAt
       ? { kind: "keep" }
-      : routeCapture({
+      : candidates.length > 1
+        ? { kind: "ask", reason: "trip", askIn: null, candidates }
+        : routeCapture({
           item,
           merged: Boolean(duplicate),
           newTrip: item.tripId === newTripId,
@@ -317,13 +323,16 @@ async function holdCapture(capture: Capture, item: Item, route: Extract<Route, {
     askedAt: Date.now(),
     ...(existed ? { existing: true } : {}),
     ...(toTripId ? { toTripId } : {}),
+    ...(route.candidates?.length ? { candidates: route.candidates } : {}),
   };
   // A record already saved stays as it is (with what this save updated) until the traveller answers: never
   // removed behind their back. "Ekleme" puts it in the trash (routing.ts).
   if (existed) await d.put("items", item);
   await d.put("captures", { ...capture, status: "done", error: null, itemId: existed ? item.id : null, held });
   // No trip to ask in (no trip at all): the home's "Bekleyen kayıtlar" asks (messages of no trip, tripId "").
-  await addEvent(route.askIn ?? "", question, { routing: { kind: "ask", captureId: capture.id, reason: route.reason, newTitle, ...(toTripId ? { toTripId } : {}) } });
+  await addEvent(route.askIn ?? "", question, {
+    routing: { kind: "ask", captureId: capture.id, reason: route.reason, newTitle, ...(toTripId ? { toTripId } : {}), ...(route.candidates?.length ? { candidates: route.candidates } : {}) },
+  });
 }
 
 /**

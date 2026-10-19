@@ -146,7 +146,7 @@ export type Route =
    * Nothing is added (a record already saved stays as it is): the trip `askIn` (null: none to ask in, the home
    * asks) asks where it goes, or whether it goes at all; `toTripId`: the trip of its place, offered as a choice.
    */
-  | { kind: "ask"; reason: "place" | "travel"; askIn: string | null; toTripId?: string | null };
+  | { kind: "ask"; reason: "place" | "travel" | "trip"; askIn: string | null; toTripId?: string | null; candidates?: string[] };
 
 export interface RouteInput {
   /** The record as it would be saved (merged into an earlier save of the same page, when there was one). */
@@ -221,7 +221,8 @@ export function countriesText(codes: Iterable<string>): string {
 }
 
 /** The question's words: "Nusa Penida: bu yer Endonezya'da, gezin Portekiz'de. Nereye ekleyeyim?" */
-export function askText(reason: "place" | "travel", name: string, placeCodesOfItem: readonly string[], tripCodes: Iterable<string>): string {
+export function askText(reason: "place" | "travel" | "trip", name: string, placeCodesOfItem: readonly string[], tripCodes: Iterable<string>): string {
+  if (reason === "trip") return L(`${name}: hangi geziye ekleyeyim?`, `${name}: which trip should it go to?`);
   if (reason === "travel") return L(`${name}: bu sayfa bir gezi planına benzemiyor. Yine de eklensin mi?`, `${name}: this page doesn't look like part of a trip plan. Add it anyway?`);
   const here = countriesText(placeCodesOfItem.slice(0, 1));
   const trip = countriesText(tripCodes);

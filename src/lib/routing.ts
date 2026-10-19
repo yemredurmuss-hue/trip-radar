@@ -22,7 +22,7 @@ const NO_DATES: Item["dates"] = { start: null, end: null, source: "none" };
  * record already saved goes to the trash (Geri al, Çöp kutusu). Returns the trip it is in (null for skip, or
  * when it was answered already).
  */
-export async function answerHeld(captureId: string, answer: HeldAnswer): Promise<string | null> {
+export async function answerHeld(captureId: string, answer: HeldAnswer, pickedTripId?: string): Promise<string | null> {
   const d = await db();
   const capture = await d.get("captures", captureId);
   const held = capture?.held;
@@ -37,8 +37,11 @@ export async function answerHeld(captureId: string, answer: HeldAnswer): Promise
   } else {
     const trips = await listTrips();
     const allItems = await d.getAll("items");
+    // "there": the trip of its place, or (asked which trip, reason trip) the one picked among the candidates.
+    const there = pickedTripId && held.candidates?.includes(pickedTripId) ? pickedTripId : held.toTripId;
     let target: Trip | undefined =
-      answer === "here" && held.tripId ? trips.find((t) => t.id === held.tripId) : answer === "there" && held.toTripId ? trips.find((t) => t.id === held.toTripId) : undefined;
+      answer === "here" && held.tripId ? trips.find((t) => t.id === held.tripId) : answer === "there" && there ? trips.find((t) => t.id === there) : undefined;
+    if (answer === "there" && !target && held.reason === "trip") throw new RoutingChanged(L("O gezi artık yok.", "That trip is gone."));
     if (!target) {
       const now = Date.now();
       target = {
@@ -74,6 +77,26 @@ export async function answerHeld(captureId: string, answer: HeldAnswer): Promise
   }
   notifyChanged();
   return tripId;
+}
+
+/**
+ * "Başka geziye taşı" (0.39.4, the toolbar's done line): a record just saved goes to another trip, its dates kept only
+ * when they fall in that one's (as a stray moved: answerStray), its files with it; both trips' chats say so.
+ */
+export async function moveToTrip(itemId: string, toTripId: string): Promise<void> {
+  const d = await db();
+  const item = await d.get("items", itemId);
+  const to = await d.get("trips", toTripId);
+  if (!item) throw new RoutingChanged(L("Bu kayıt sonra silindi.", "This record was deleted since."));
+  if (!to) throw new RoutingChanged(L("O gezi artık yok.", "That trip is gone."));
+  if (item.tripId === to.id) return;
+  const from = item.tripId;
+  await d.put("items", { ...item, tripId: to.id, dates: datesIn(item, to, await d.getAll("items")), updatedAt: Date.now() });
+  await moveDocsToTrip(item.id, to.id);
+  await addEvent(to.id, L(`${item.name} bu geziye taşındı`, `${item.name} moved to this trip`));
+  await addEvent(from, L(`${item.name} → ${to.title} gezisine taşındı`, `${item.name} moved to ${to.title}`));
+  await d.put("trips", { ...to, heroImage: to.heroImage ?? item.imageUrl, updatedAt: Date.now() });
+  notifyChanged();
 }
 
 /**

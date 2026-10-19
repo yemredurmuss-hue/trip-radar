@@ -476,10 +476,20 @@ export function RoutingLine({ m, routing, trips }: { m: ChatMessage; routing: Ro
     const went = title(routing.answeredTripId);
     actions = <span className="muted">{routing.answer === "skip" || !went ? L("Eklenmedi", "Not added") : L(`→ ${went} gezisine eklendi`, `→ Added to ${went}`)}</span>;
   } else {
-    const answer = (a: HeldAnswer) => () => void act(() => answerHeld(routing.captureId, a));
+    const answer = (a: HeldAnswer, picked?: string) => () => void act(() => answerHeld(routing.captureId, a, picked));
     const there = title(routing.toTripId ?? undefined);
+    // Which trip (saved from the toolbar with two that could be it, 0.39.4): each one, the most likely first, or a new one.
+    const picks = (routing.candidates ?? []).filter((id) => title(id));
     actions =
-      routing.reason === "place" ? (
+      routing.reason === "trip" && picks.length ? (
+        <>
+          {picks.map((id) => (
+            <button key={id} type="button" className="small-btn" disabled={busy} onClick={answer("there", id)}>{L(`${title(id)} gezisine ekle`, `Add to ${title(id)}`)}</button>
+          ))}
+          <button type="button" className="small-btn" disabled={busy} onClick={answer("new")}>{L(`Yeni gezi: ${routing.newTitle}`, `New trip: ${routing.newTitle}`)}</button>
+          <button type="button" className="btn-link" disabled={busy} onClick={answer("skip")}>{L("Ekleme", "Don't add")}</button>
+        </>
+      ) : routing.reason === "place" ? (
         <>
           <button type="button" className="small-btn" disabled={busy} onClick={answer("here")}>{L("Bu geziye yine de ekle", "Add to this trip anyway")}</button>
           {there ? (
