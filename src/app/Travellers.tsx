@@ -1,7 +1,8 @@
 // Who goes, in the hero's card (0.37): the people by name (the names typed here or said in the chat, the shared
 // trip's people, me), else as many as the saves say. A tap opens a small box under it: the names with ×, "İsim
-// ekle" (Enter), how many go, and, apart, "Birini davet et (paylaş)" for the share dialog. Naming someone shares
-// nothing. Each name's circle takes a photo (0.37, kept only on this computer). Closes on a click outside or Esc.
+// ekle" (Enter), how many go (D12: the adults, the children, the rooms), and, apart, "Birini davet et (paylaş)" for
+// the share dialog. Naming someone shares nothing. Each name's circle takes a photo (0.37, kept only on this
+// computer). Closes on a click outside or Esc.
 import { useEffect, useId, useRef, useState } from "react";
 import { initials, nChildren, nPeople, travellersTitle } from "../lib/heroInfo";
 import { agoText, latestOf, type Action } from "../lib/share/activity";

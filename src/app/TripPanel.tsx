@@ -107,7 +107,7 @@ import { onTripChange } from "../lib/tripUndo";
 import { takeLangUndo } from "./langSwitch";
 import { StartGuideCard } from "./start/StartGuideCard";
 import { WorkLine } from "./WorkPill";
-import { approxDates, isPlaceholder, momentPhotoKeys } from "../lib/startTrip";
+import { approxDates, dayText, isPlaceholder, momentPhotoKeys } from "../lib/startTrip";
 
 interface Props {
   trip: Trip;
@@ -655,11 +655,14 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     [cities, places, heroIntents, items, trip.cityImages, trip.photoCredits],
   );
   const estimated = !!range && !trip.confirmedDates && !plan.range;
-  // D15: dates still the guess made from a month or a season say only the nights ("~ · 10 gece").
-  const rough = !!range && approxDates(trip);
-  const heroDates = range
-    ? { range, estimated, rough, countdown: rough ? null : countdownText(countdown(range, today)), tip: rough ? L("Gece sayısı belli, tarih yaklaşık. Kesinleşince sohbette söylemen yeter.", "The nights are known, the dates are a guess. Say them in the chat once they're set.") : datesTip(places, estimated) }
-    : null;
+  // D15: dates still the guess the start made from a month or a season say only the nights ("~ · 10 gece"); an event's
+  // own days, read from its official site, are days.
+  const rough = !!range && approxDates(trip) && !trip.intent?.url;
+  const roughTip = () => {
+    const day = dayText(range!.start);
+    return L(`Gece sayısı belli; başlangıç yaklaşık ${day}. Kesinleşince sohbette söylemen yeter.`, `The nights are known; the start, ${day}, is a rough guess. Say the dates in the chat once they're set.`);
+  };
+  const heroDates = range ? { range, estimated, rough, countdown: rough ? null : countdownText(countdown(range, today)), tip: rough ? roughTip() : datesTip(places, estimated) } : null;
   const heroBudget = useMemo(() => {
     const view = budgetView(bar, who.count || facts.adults || 0);
     return bar && view ? { view, bar } : null;

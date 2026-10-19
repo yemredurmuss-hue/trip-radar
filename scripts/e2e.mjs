@@ -2379,7 +2379,9 @@ try {
   const bare = app.locator(".x-hero");
   await bare.locator(".x-mos.solo .x-big.empty h1", { hasText: "Yeni gezi" }).waitFor();
   assert.equal(await bare.locator(".x-big figcaption span, .x-big .x-mood, .x-tiles").count(), 0, "no cities, no mood, no tiles");
-  assert.equal(await bare.locator(".x-s1, .x-s3, .x-prog, .x-ps").count(), 0, "no dates, no countdown, no shares, no budget");
+  assert.equal(await bare.locator(".x-s1, .x-prog, .x-ps").count(), 0, "no dates, no countdown, no shares");
+  // D16: no budget yet: the budget's place is the way to set one, an action, not a "bütçe yok" (C19).
+  assert.equal(flat([await bare.locator(".x-s3 .x-budb.set").innerText()])[0], "Bütçe belirle");
   assert.equal(await bare.locator(".x-chips, .x-prefs, .x-styles").count(), 0, "no chips, no Tercihler, no style yet");
   assert.equal(await bare.locator(".x-whob").innerText(), "Kimler gidiyor?");
   assert.equal(await bare.locator(".x-face.none").count(), 1, "one dashed face to start from");
