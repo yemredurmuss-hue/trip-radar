@@ -34,6 +34,12 @@
 .x-t figcaption { padding: 10px 12px; }
 .x-t b { font-size: 15px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .x-t small { font-size: var(--q-fs-small); color: #ece9fb; }
+/* A city with no photo yet (row 14, the last source): drawn on the cover's own soft ground, its words in ink. */
+.x-t.art { background: linear-gradient(135deg, #ebe7fb 0%, #e4e0f6 55%, #efeaf3 100%); }
+.x-t.art::after { display: none; }
+.x-t.art figcaption { color: var(--q-ink); text-shadow: none; }
+.x-t.art small { color: var(--q-mut); }
+.x-art { position: absolute; inset: 0 0 34% 0; display: grid; place-items: center; color: #b9b2d8; }
 /* "N kayıt işleniyor" on the cover's top right. */
 .x-busy { position: absolute; top: 12px; right: 12px; z-index: 3; display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border-radius: 99px; background: rgba(255, 255, 255, .92); color: var(--q-ink); font-size: var(--q-fs-small); font-weight: 700; white-space: nowrap; box-shadow: 0 2px 10px rgba(0, 0, 0, .12); }
 .x-busy i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #d2d2d7; border-top-color: var(--q-ink); animation: x-spin 1s linear infinite; }
@@ -81,6 +87,16 @@ button.x-sv { cursor: pointer; border-radius: 8px; }
 button.x-sv:hover b { color: var(--q-acc); }
 button.x-sv:focus-visible { outline: 2px solid var(--q-acc); outline-offset: 3px; }
 .x-budb.over b { color: var(--q-bad); }
+/* D16: no budget yet: "Bütçe belirle" says what a tap does. */
+.x-budb.set b, .x-budb .x-bsetl { color: var(--q-acc); }
+.x-budb .x-bsetl { font-weight: 650; }
+.x-bset { display: grid; gap: 8px; margin: 0; }
+.x-bset label { display: grid; gap: 4px; font-size: var(--q-fs-small); color: var(--q-mut); }
+.x-bin input { box-sizing: border-box; width: 100%; height: 36px; padding: 0 12px; border: 1px solid var(--q-line); border-radius: 10px; font: inherit; font-size: var(--q-fs-button); color: var(--q-ink); background: #fff; }
+.x-bin input:focus-visible { outline: 2px solid var(--q-acc); outline-offset: 1px; border-color: var(--q-acc); }
+.x-bsave { justify-self: start; height: 34px; padding: 0 16px; border: 0; border-radius: 10px; background: var(--q-ink); color: #fff; font: inherit; font-size: var(--q-fs-info); font-weight: 700; cursor: pointer; }
+.x-bsave:disabled { opacity: .45; cursor: default; }
+.x-bsave:focus-visible { outline: 3px solid #c9bff3; outline-offset: 2px; }
 .x-avs { display: flex; flex: none; }
 .x-face { all: unset; box-sizing: border-box; cursor: pointer; position: relative; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; overflow: hidden; font-size: 12px; font-weight: 800; background: #e8e4ff; color: #4a36c9; border: 2px solid #fff; }
 .x-face.me { background: #fde7d7; color: #9a4b12; }
@@ -159,6 +175,15 @@ button.x-ps:focus-visible { outline: 2px solid var(--q-acc); outline-offset: 2px
 .x-chip.ok svg { color: var(--q-ok); }
 .x-chip.warn { background: #fff8eb; border-color: #fedf89; color: #7a4b00; }
 .x-chip.warn svg { color: #f79009; }
+/* B15: the bookings without their file, a chip that is a button (it goes to the first). */
+button.x-chip { font: inherit; font-size: var(--q-fs-info); font-weight: 650; cursor: pointer; }
+button.x-chip.warn:hover { border-color: #f5c35b; }
+button.x-chip:focus-visible { outline: 2px solid var(--q-acc); outline-offset: 2px; }
+/* D9: "n ülke"'s tip, a row for each country. */
+.x-ctab { display: grid; gap: 6px; text-align: left; }
+.x-ctl { color: inherit; opacity: .8; }
+.x-ctr { display: grid; gap: 1px; }
+.x-ctr b { font-weight: 750; }
 
 /* ---- the style words, Tercihler, Özeti küçült ---- */
 .x-prow { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; padding: 0 2px; min-width: 0; }
@@ -192,6 +217,10 @@ button.x-ps:focus-visible { outline: 2px solid var(--q-acc); outline-offset: 2px
 .x-slim .h-sp { flex: 1 1 0; }
 .x-unfold { all: unset; flex: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px; box-sizing: border-box; border-radius: 99px; background: #fff; border: 1px solid var(--q-line); font-size: var(--q-fs-info); font-weight: 700; }
 .x-today-slot { min-width: 0; }
+
+/* ---- the home's money picker (D17): a money with no exchange rate known can't be picked ---- */
+.hm-pop-sm button:disabled { opacity: .45; cursor: default; }
+.hm-pop-sm button:disabled:hover { background: none; }
 
 /* ---- the thin bar while the hero is scrolled away (C24) ---- */
 .h-mini-slot { position: sticky; top: -8px; height: 0; z-index: 9; }
@@ -252,6 +281,8 @@ button.x-ps:focus-visible { outline: 2px solid var(--q-acc); outline-offset: 2px
 /* ---- on paper (PrintPlan copies the hero as drawn): no buttons, the whole summary even when folded ---- */
 .pp-hero-copy .x-hero { margin: 0 0 8px; }
 .pp-hero-copy .x-tmenu, .pp-hero-copy .x-next, .pp-hero-copy .x-fold, .pp-hero-copy .x-cr, .pp-hero-copy .x-busy, .pp-hero-copy .x-unfold, .pp-hero-copy .x-prefb svg, .pp-hero-copy .x-q, .pp-hero-copy .x-pop { display: none !important; }
+/* (an action is no line on paper: "Bütçe belirle", the files still to add) */
+.pp-hero-copy .x-bsetl, .pp-hero-copy .c-docs, .pp-hero-copy .x-s3:has(.x-budb.set), .pp-hero-copy .x-dv:has(+ .x-s3 .x-budb.set) { display: none !important; }
 .pp-hero-copy .x-hero.fold .x-mos { display: grid !important; }
 .pp-hero-copy .x-hero.fold .x-strip, .pp-hero-copy .x-hero.fold .x-chips, .pp-hero-copy .x-hero.fold .x-prow { display: flex !important; }
 .pp-hero-copy .x-hero.fold { padding: 16px; border-radius: 30px; }

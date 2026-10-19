@@ -63,7 +63,9 @@ export function HeroMini({ hero, active, title, cover, line, counts, budget, vie
         )}
         {budget && (
           <span className="h-mb" title={fits == null ? undefined : fits ? L("Bütçeye sığar", "Fits the budget") : L("Bütçeyi aşar", "Over the budget")}>
-            {fits != null && <i className={fits ? "ok" : "over"} aria-hidden />}~{money(budget.likely)}
+            {fits != null && <i className={fits ? "ok" : "over"} aria-hidden />}
+            {budget.sign}
+            {money(budget.likely)}
             {budget.total != null && <small> / {money(budget.total)}</small>}
             {fits != null && <span className="sr-only">{fits ? L("bütçeye sığar", "fits the budget") : L("bütçeyi aşar", "over the budget")}</span>}
           </span>

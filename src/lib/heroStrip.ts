@@ -1,17 +1,19 @@
 // The words of the hero's strip and its windows (v82, v83 B9 and C19, Etsy T5): where the backbone stands ("%61 planda
 // · %33 alındı" and its sentence), what a new backbone says instead ("18 ihtiyaç · 5'inde önerimiz var"), the dates'
-// tip city by city, the budget window's lines and each person's share, the weather's one chip and the facts' chips
-// (country, money, plug, time, language, visa). Nothing is said
-// that isn't known: a missing part is left out, never written as "yok". Pure.
+// tip city by city (and only the nights while the dates are a guess, D15), the budget window's lines and each person's
+// share, the bookings whose file is missing (B15), the weather's one chip and the facts' chips (country, money, plug,
+// time, language, visa; a trip of several countries each one's own, D9). Nothing is said that isn't known: a missing
+// part is left out, never written as "yok". Pure.
 import { weatherTitle, type CityWeather, type Sky } from "./climate";
 import { countryInfo } from "./countries";
 import { countryNames, currencyName, nPeople, offsetText, plugFit, plugFitText } from "./heroInfo";
-import { formatDateRange, formatPrice } from "./items";
+import { formatDateRange, formatPrice, nightsBetween } from "./items";
 import { L, locale } from "./i18n";
-import { bookedShare, planShare, type IntentStatus, type Share } from "./intents";
+import { nNights } from "./i18nText";
+import { bookedShare, DOC_SOON_DAYS, planShare, type IntentStatus, type Share } from "./intents";
 import { numberPossessive, percentPossessive } from "./lifecycle";
 import type { BudgetBar } from "./progress";
-import type { TripFacts } from "./tripFacts";
+import type { CountryFacts, TripFacts } from "./tripFacts";
 
 export interface HeroCounts {
   /** Every intent but those said not needed. */
@@ -71,6 +73,31 @@ export function freshWords(c: HeroCounts): string {
   return `${needs} · ${L(`${numberLocative(c.suggested)} önerimiz var`, `${c.suggested} with our pick`)}`;
 }
 
+/** B15: the bookings with no file in their last two weeks (their boxes' amber "belge yok"), for the hero's count. */
+export function docsMissing<T extends { status: IntentStatus; access: { docMissing: boolean } | null }>(intents: readonly T[]): T[] {
+  return intents.filter((i) => i.status === "booked" && Boolean(i.access?.docMissing));
+}
+
+/** The count's words and its tip: "1 belge yok"; "2 rezervasyonun belgesi eklenmedi; 14 gün içinde başlıyor." */
+export function docsWords(n: number): { text: string; tip: string } {
+  return {
+    text: L(`${n} belge yok`, n === 1 ? "1 file missing" : `${n} files missing`),
+    tip: L(
+      `${n} rezervasyonun belgesi eklenmedi; ${DOC_SOON_DAYS} gün içinde başlıyor. Basınca ilkine gider.`,
+      `${n === 1 ? "A booking has" : `${n} bookings have`} no file yet and ${n === 1 ? "starts" : "start"} within ${DOC_SOON_DAYS} days. A click goes to the first.`,
+    ),
+  };
+}
+
+/**
+ * The dates' big line: "8–14 Ekim", "~8–14 Ekim" when read from the saves; "~ · 10 gece" while they are still the guess
+ * made from a month or a season (D15): only the nights are known then, a day would be made up.
+ */
+export function datesWords(d: { range: { start: string; end: string }; estimated: boolean; rough?: boolean }, short = false): string {
+  if (d.rough) return `~ · ${nNights(nightsBetween(d.range.start, d.range.end))}`;
+  return `${d.estimated ? "~" : ""}${short ? shortRange(d.range.start, d.range.end) : formatDateRange(d.range.start, d.range.end)}`;
+}
+
 /** The dates' tip: each city's own days ("Porto 8–11 Ekim · Lizbon 11–14 Ekim"), and that they are a guess. */
 export function datesTip(places: readonly { city: string; start: string; end: string }[], estimated: boolean): string | null {
   const parts = places.map((p) => `${p.city} ${formatDateRange(p.start, p.end)}`);
@@ -98,6 +125,8 @@ export function weatherChip(list: readonly CityWeather[], month: string): { text
 
 export interface BudgetView {
   currency: string;
+  /** How the likely total is said: "~" (what it will likely cost), "≈" when prices in another money were converted (D17). */
+  sign: "~" | "≈";
   /** What it will likely cost: booked + chosen + each open decision's leading option. */
   likely: number;
   /** The trip's budget; null when none is set. */
@@ -136,6 +165,7 @@ export function budgetView(bar: BudgetBar | null, people: number): BudgetView | 
   if (bar.uncounted > 0) note.push(L(`${bar.uncounted} fiyat sayılamadı.`, bar.uncounted === 1 ? "1 price couldn't be counted." : `${bar.uncounted} prices couldn't be counted.`));
   return {
     currency: bar.currency,
+    sign: bar.converted ? "≈" : "~",
     likely,
     total: bar.total,
     over: bar.total != null && likely > bar.total ? likely - bar.total : 0,
@@ -143,6 +173,20 @@ export function budgetView(bar: BudgetBar | null, people: number): BudgetView | 
     perPerson: bar.total != null && people >= 2 && likely > 0 ? { amount: Math.round(likely / people), people } : null,
     note,
   };
+}
+
+/**
+ * A budget typed in the budget window (D16): "1500", "1.500", "1 500 €", "1,500.50" as a whole amount; null for anything
+ * that isn't a positive number.
+ */
+export function budgetAmount(text: string): number | null {
+  const raw = text.replace(/[^\d.,]/g, "");
+  if (!/\d/.test(raw)) return null;
+  // The last "," or "." followed by one or two digits is the decimal point; any other is a thousands mark.
+  const dec = /[.,](\d{1,2})$/.exec(raw);
+  const whole = (dec ? raw.slice(0, dec.index) : raw).replace(/[.,]/g, "");
+  const n = Number(`${whole || "0"}${dec ? `.${dec[1]}` : ""}`);
+  return Number.isFinite(n) && n > 0 ? Math.round(n) : null;
 }
 
 // --- the chips under the strip ------------------------------------------------------------------------------------
@@ -156,6 +200,36 @@ export interface FactChip {
   tip: string | null;
   /** Green (no visa needed, got it), amber (a visa to get, C25). */
   tone?: "ok" | "warn";
+  /** "n ülke" (D9): each country's own money, time, plug and visa under the tip, a row each. */
+  rows?: CountryRow[];
+}
+
+export interface CountryRow {
+  code: string;
+  name: string;
+  /** Its money, its time against the traveller's, its plug, its visa: only what's known. */
+  parts: string[];
+}
+
+/**
+ * D9: a trip of several countries, a row for each in the trip's order: its money, its clock, its plug and its visa
+ * ("Schengen vizesi" for each country of the regime). A country nothing is known of has no row; a fact not known has no
+ * part.
+ */
+export function countryRows(list: readonly CountryFacts[], names: readonly string[], visaDone: boolean): CountryRow[] {
+  return list.flatMap((c, n): CountryRow[] => {
+    const parts: string[] = [];
+    if (c.local) {
+      parts.push(currencyName(c.local.currency));
+      const offset = offsetText(c.local.hours);
+      if (offset) parts.push(offset);
+      if (c.local.info.plugs.length) parts.push(L(`${c.local.info.plugs.join("/")} priz`, `${c.local.info.plugs.join("/")} plug`));
+    }
+    if (c.visa?.kind === "visa") parts.push(visaDone ? L(`${c.visa.label} alındı`, `${c.visa.label} got`) : L(`${c.visa.label} gerekiyor`, `${c.visa.label} needed`));
+    else if (c.visa?.kind === "free") parts.push(c.visa.label);
+    else if (c.visa?.kind === "none") parts.push(L("Vize gerekmiyor", "No visa needed"));
+    return parts.length ? [{ code: c.country, name: names[n] ?? c.country, parts }] : [];
+  });
 }
 
 /** "Sende 12:00 iken orada 18:00": the difference as an hour, against the traveller's own clock. */
@@ -179,12 +253,17 @@ export function factChips(input: {
   /** The traveller's passport country (home's plugs and the visa rules). */
   home: string;
   visaDone: boolean;
+  /** With several countries, each one's facts in the same order as `countries` (D9). */
+  perCountry?: readonly CountryFacts[];
 }): FactChip[] {
   const { facts, countries, cities } = input;
   const out: FactChip[] = [];
   const where = cities.length ? `${cities.join(", ")} · ${L(`${cities.length} şehir`, `${cities.length} ${cities.length === 1 ? "city" : "cities"}`)}` : null;
   if (countries.length === 1) out.push({ key: "country", text: countries[0], tip: where });
-  else if (countries.length > 1) out.push({ key: "country", text: L(`${countries.length} ülke`, `${countries.length} countries`), tip: [countries.join(", "), where].filter(Boolean).join(" · ") });
+  else if (countries.length > 1) {
+    const rows = countryRows(input.perCountry ?? [], countries, input.visaDone);
+    out.push({ key: "country", text: L(`${countries.length} ülke`, `${countries.length} countries`), tip: [countries.join(", "), where].filter(Boolean).join(" · "), ...(rows.length ? { rows } : {}) });
+  }
   if (input.weather) out.push({ key: "weather", text: input.weather.text, tip: input.weather.tip });
   const local = facts.local;
   if (local) {
@@ -216,19 +295,21 @@ export function factChips(input: {
  * The folded summary's one line (and the thin bar's): "8–14 Ekim · 2 kişi · %61 planda · ~€1.019 / €1.500"; a part not
  * known is left out, a new backbone says how many needs instead of "%0".
  */
-export function heroLine({ range, estimated, people, counts, budget, short = false }: {
+export function heroLine({ range, estimated, rough = false, people, counts, budget, short = false }: {
   range: { start: string; end: string } | null;
   estimated: boolean;
+  /** The dates are a guess from a month or a season: only the nights are said ("~ · 10 gece"). */
+  rough?: boolean;
   people: number;
   counts: HeroCounts;
   budget: BudgetView | null;
   /** The thin bar's: short month, no share and no money (it has its own). */
   short?: boolean;
 }): string {
-  const dates = range ? `${estimated ? "~" : ""}${short ? shortRange(range.start, range.end) : formatDateRange(range.start, range.end)}` : null;
+  const dates = range ? datesWords({ range, estimated, rough }, short) : null;
   const who = people > 0 ? nPeople(people) : null;
   if (short) return [dates, who].filter(Boolean).join(" · ");
   const share = counts.total ? (counts.fresh ? freshWords(counts) : shareWords(counts).plan) : null;
-  const money = budget ? `~${formatPrice(budget.likely, budget.currency)}${budget.total != null ? ` / ${formatPrice(budget.total, budget.currency)}` : ""}` : null;
+  const money = budget ? `${budget.sign}${formatPrice(budget.likely, budget.currency)}${budget.total != null ? ` / ${formatPrice(budget.total, budget.currency)}` : ""}` : null;
   return [dates, who, share, money].filter(Boolean).join(" · ");
 }

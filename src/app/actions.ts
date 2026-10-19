@@ -7,6 +7,7 @@ import { namesChanged, ownersAfter, restoreFields, withTravellers, type Travelle
 import { ownerWords } from "../lib/whose";
 import { cleanOwners, saveOwners, writeOwners } from "../lib/whoseStore";
 import { latestLangLine, undoEvent } from "../lib/eventUndo";
+import { formatPrice } from "../lib/items";
 import { stableJson } from "../lib/share/settings";
 import { suggestedAdd, withState } from "../lib/suggestions";
 import type { InsertAt, TemplateId } from "../lib/templates";
@@ -82,6 +83,24 @@ export async function setNeedNotNeeded(items: Item[]): Promise<Undoable> {
 export async function setVisaDone(tripId: string, done: boolean): Promise<void> {
   await updateTrip(tripId, (t) => ({ ...t, visaDone: done || undefined }));
   await addEvent(tripId, done ? L("Vize alındı olarak işaretlendi", "Visa marked as got") : L("Vize alınmadı olarak geri alındı", "Visa marked as not got"));
+  notifyChanged();
+}
+
+/**
+ * D16: a budget set in the hero's budget window (a trip that had none): the amount in the money the board shows the trip
+ * in. A line in Geçmiş, and its "Geri al" takes it off again (the fields' undo, as the chat's update_trip has).
+ */
+export async function setBudget(tripId: string, amount: number, currency: string): Promise<void> {
+  let before: Trip["budget"] | undefined;
+  const budget = { amount, currency };
+  await updateTrip(tripId, (t) => {
+    before = t.budget;
+    return { ...t, budget };
+  });
+  if (before === undefined) return;
+  await addEvent(tripId, L(`Bütçe: ${formatPrice(amount, currency)}`, `Budget: ${formatPrice(amount, currency)}`), {
+    undo: { kind: "fields", fields: ["budget"], before: { budget: before }, after: { budget } },
+  });
   notifyChanged();
 }
 
