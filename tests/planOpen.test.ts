@@ -45,4 +45,10 @@ describe("an update waits for nothing a category being open holds (B8)", () => {
     expect(RELOAD_BLOCKERS).toContain('[aria-expanded="true"]:not(.q-tt)');
     expect(RELOAD_BLOCKERS).not.toMatch(/\[aria-expanded="true"\](,|$)/);
   });
+  it("nor is the hero's open summary: its fold buttons say expanded, they hold nothing", async () => {
+    const { RELOAD_BLOCKERS } = await import("../src/app/UpdateBanner");
+    const opened = RELOAD_BLOCKERS.split(",").map((s) => s.trim()).find((s) => s.startsWith('[aria-expanded="true"]'));
+    expect(opened).toContain(":not(.x-fold)");
+    expect(opened).toContain(":not(.x-unfold)");
+  });
 });
