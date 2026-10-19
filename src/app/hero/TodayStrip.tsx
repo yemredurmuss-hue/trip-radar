@@ -96,7 +96,10 @@ export function TodayStrip({ vm, places, country, now, onJourney, onDoc }: {
         <ol className="xt-l" aria-label={L("Bugünün akışı", "Today's flow")}>
           {vm.rows.map((r) => (
             <li key={r.key} className={`xt-r ${PHASE[r.phase]}${r.alert ? " alert" : ""}`} data-row={r.kind} data-key={r.key} aria-current={r.phase === "now" ? "time" : undefined}>
-              <time>{r.time ? `${r.estimated ? "~" : ""}${r.time}` : ""}</time>
+              <time>
+                {r.time ? `${r.estimated ? "~" : ""}${r.time}` : ""}
+                {r.nextDay && <sup title={L("ertesi gün", "the next day")}>+1</sup>}
+              </time>
               <span className="xt-k">{r.kindWord}</span>
               <span className="xt-m">
                 <b>{r.title}</b>

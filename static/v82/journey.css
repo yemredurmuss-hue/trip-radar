@@ -3,8 +3,8 @@
 
 /* ===== Yolculuk sırasıyla (v81, v82, v83; src/app/plan/journey): chapters, a line of dots, one card a step =====
    The buttons are scoped to .q-trip (the plan's boxes have their own in plan.css / intent.css). */
-.q-trip { display: grid; gap: 22px; margin-top: 6px; color: var(--q-ink); }
-.q-chap { display: grid; gap: 10px; position: relative; scroll-margin-top: 76px; }
+.q-trip { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; margin-top: 6px; color: var(--q-ink); }
+.q-chap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; position: relative; scroll-margin-top: 76px; }
 .q-chap-h { display: flex; align-items: center; gap: 14px; min-width: 0; }
 .q-chap-h b { display: block; font-size: var(--q-fs-intent); font-weight: 800; letter-spacing: -.01em; overflow-wrap: anywhere; }
 .q-chap-h small { font-size: var(--q-fs-info); color: var(--q-mut); }
@@ -32,11 +32,11 @@
 .q-pastc { flex: none; color: var(--q-mut); transition: transform 180ms var(--x-in, ease); }
 .q-past.open .q-pastc { transform: rotate(180deg); }
 .q-pastb:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 2px; border-radius: 16px; }
-.q-pastl { display: grid; gap: 22px; padding: 4px 16px 18px; }
+.q-pastl { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; padding: 4px 16px 18px; }
 .q-pastl[hidden] { display: none; }
 
 /* The line and its dots: dashed to decide, purple our pick, sand chosen, green bought, teal covered, grey arranged. */
-.q-steps { display: grid; gap: 8px; position: relative; }
+.q-steps { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; position: relative; }
 .q-step { display: grid; grid-template-columns: 62px 18px minmax(0, 1fr); align-items: stretch; gap: 0 10px; position: relative; }
 .q-sdate { font-size: var(--q-fs-small); font-weight: 700; color: var(--q-mut); padding-top: 20px; text-align: right; font-variant-numeric: tabular-nums; }
 .q-sdot { position: relative; }
@@ -79,7 +79,8 @@
 .q-skind .gr { color: #6b6880; }
 .q-sacc { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 4px; }
 .q-trip .q-code { display: inline-flex; align-items: center; gap: 6px; font-size: var(--q-fs-small); color: var(--q-mut); }
-.q-trip .q-code b { color: var(--q-ink); font-size: var(--q-fs-button); font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: .04em; }
+.q-trip .q-code b { color: var(--q-ink); font-size: var(--q-fs-button); font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: .04em; white-space: nowrap; }
+.q-trip .q-code { flex-wrap: wrap; row-gap: 2px; }
 /* F2, B15: booked, two weeks to go, no file. */
 .q-nodoc { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 99px; background: #fff8eb; color: #7a4b00; font-size: var(--q-fs-small); font-weight: 700; box-shadow: inset 0 0 0 1px #fedf89; }
 .q-trip .q-sp { flex: 1 1 0; }
@@ -119,6 +120,8 @@
   .q-trip .q-scard > .q-sp { flex-basis: 100%; height: 0; }
   .q-chap-img { width: 120px; height: 80px; }
   .q-chap-h.city b { font-size: var(--q-fs-intent); }
+  /* The code on a line of its own under its label: its "Kopyala" (always shown on a touch screen) stays inside the card. */
+  .q-trip .q-code { display: grid; justify-items: start; gap: 0; }
 }
 
 /* ===== "Bugün" (v83 "gezi sırasında", D8, F2; src/app/hero/TodayStrip.tsx): the day in the hero's place ===== */
@@ -135,7 +138,8 @@
 .xt-l { list-style: none; margin: 0; padding: 0; display: grid; }
 .xt-r { display: grid; grid-template-columns: 62px 104px minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 11px 4px; border-top: 1px solid var(--q-line); min-height: 52px; animation: q-step-in 260ms var(--x-in, cubic-bezier(.2, .8, .2, 1)) both; }
 .xt-r:first-child { border-top: 0; }
-.xt-r time { font-size: var(--q-fs-button); font-weight: 800; font-variant-numeric: tabular-nums; }
+.xt-r time { font-size: var(--q-fs-button); font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.xt-r time sup { font-size: var(--q-fs-badge); font-weight: 700; color: var(--q-mut); margin-left: 2px; }
 .xt-k { font-size: var(--q-fs-small); font-weight: 700; color: var(--q-mut); }
 .xt-m { display: grid; gap: 2px; min-width: 0; }
 .xt-m b { font-size: var(--q-fs-button); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

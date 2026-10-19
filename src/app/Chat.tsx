@@ -111,7 +111,15 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
   const arrivals = useChatArrivals({ trip, messages: visible, items, trips, openCaptures });
   // C34: the record each turn put on the board or suggested, as the Plan's compact card; the quick replies under it all.
   const link = plan?.tripId === trip.id ? plan : null;
-  const cards = useMemo(() => (link ? chatCards({ trip, messages, items, collections: link.collections }) : new Map<string, ChatCardVM>()), [link, trip, messages, items]);
+  // A card stays on its reply for the session once its record moves on (taken from the card, it says "Seçildi").
+  const kept = useRef<{ tripId: string; cards: Map<string, string> }>({ tripId: trip.id, cards: new Map() });
+  if (kept.current.tripId !== trip.id) kept.current = { tripId: trip.id, cards: new Map() };
+  const cards = useMemo(() => {
+    if (!link) return new Map<string, ChatCardVM>();
+    const out = chatCards({ trip, messages, items, collections: link.collections, kept: kept.current.cards });
+    for (const [id, card] of out) kept.current.cards.set(id, card.itemId);
+    return out;
+  }, [link, trip, messages, items]);
   const quick = useMemo(() => (link && !busy ? quickReplies({ trip, messages, cards, collections: link.collections }) : []), [link, trip, messages, cards, busy]);
   // Under 860 px: the drawer, its handle's line the last thing said.
   const drawer = useChatDrawer();
@@ -225,19 +233,22 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
       </div>
       {/* Wide: the column's own parts (display: contents). Under 860 px: the drawer from the bottom (chat.css). */}
       <div className="c-sheet" ref={drawer.sheet} onKeyDown={drawer.onKeyDown}>
-        <button
-          type="button"
-          ref={drawer.handle}
-          className="c-handle"
-          aria-expanded={drawer.open}
-          aria-controls={bodyId}
-          aria-label={drawer.open ? L("Sohbeti kapat", "Close the chat") : L("Sohbeti aç", "Open the chat")}
-          onClick={drawer.toggle}
-        >
-          <i aria-hidden />
-          <span className="c-hl">{L("Asistan", "Assistant")}</span>
-          {peek && <small className="c-hs">{peek}</small>}
-        </button>
+        {/* The drawer's handle: under 860 px only (the column needs none, and its line would be the chat's words twice). */}
+        {drawer.narrow && (
+          <button
+            type="button"
+            ref={drawer.handle}
+            className="c-handle"
+            aria-expanded={drawer.open}
+            aria-controls={bodyId}
+            aria-label={drawer.open ? L("Sohbeti kapat", "Close the chat") : L("Sohbeti aç", "Open the chat")}
+            onClick={drawer.toggle}
+          >
+            <i aria-hidden />
+            <span className="c-hl">{L("Asistan", "Assistant")}</span>
+            {peek && <small className="c-hs">{peek}</small>}
+          </button>
+        )}
         {/* (hareket dili) "Asistana bağlanamadım · Ayarlar'a git": comes down from the top for what the traveller can fix; it goes once acted on. */}
         {error && errKind && (
           <div className={`chat-banner ${errKind}`} role="alert">
