@@ -67,8 +67,8 @@ function End({ end, right = false, field = null, timed = false }: { end: TicketE
       <b title={end?.city}>{field ? <Editable field={field}>{end?.city}</Editable> : end?.city}</b>
       {small && (
         <small>
-          {end?.place}
-          {end?.place && (hour || clock) ? " · " : ""}
+          {end?.place && <span className="q-tplace" title={end.place}>{end.place}</span>}
+          {end?.place && (hour || clock) ? <span className="q-tsep">{" · "}</span> : ""}
           {clock ? <Editable field="time">{hour}</Editable> : hour}
           {end?.plus ? <sup>+{end.plus}</sup> : null}
         </small>

@@ -34,6 +34,9 @@
 .q-pbody .q-pr1:first-child { border-top: 0; }
 .q-pbody .q-ck { flex: none; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid #c7c4d6; background: #fff; display: grid; place-items: center; color: #fff; cursor: pointer; padding: 0; }
 .q-pbody .q-ck:hover { border-color: var(--q-ok); }
+/* (a 32 px hit area around the 22 px circle) */
+.q-pbody .q-ck { position: relative; }
+.q-pbody .q-ck::after { content: ""; position: absolute; inset: -7px; border-radius: 50%; }
 .q-pbody .q-pr1.done .q-ck { background: var(--q-ok); border-color: var(--q-ok); }
 .q-pbody .q-pt1 { display: grid; gap: 1px; flex: 1; min-width: 0; }
 .q-pbody .q-pt1 b { font-size: 15px; font-weight: 650; color: var(--q-ink); overflow-wrap: anywhere; }
