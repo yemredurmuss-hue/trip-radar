@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { sectionOfItem, type SectionId } from "../lib/categories";
 import type { MainPlace } from "../lib/destinations";
-import { withLang } from "../lib/i18n";
+import { contentLang, contentTag, withLang } from "../lib/i18n";
 import type { HiddenInput } from "../lib/history";
 import type { Leg } from "../lib/legs";
 import { newId } from "../lib/db";
@@ -109,7 +109,9 @@ export function useSuggestions(args: {
   // The AI review: once the trip has places and dates, then after a big change (other places or dates soon, a new stay
   // at most once a day).
   const range = plan.range ?? trip.confirmedDates ?? null;
-  const key = reviewKey(mains, range, items);
+  // Written in the board's language: another one than the last review's asks again, once (i18n.ts contentTag).
+  const write = contentLang(trip.lang);
+  const key = reviewKey(mains, range, items, contentTag(trip.lang, write));
   const can = ready && !trip.demo && mains.length > 0 && !!range && range.end >= today;
   const due = can && reviewDue(trip.suggestReview, key, Date.now());
   // Not due only for a few minutes yet (the gap after the start's review, a claim gone stale): looked at again then.
@@ -132,9 +134,8 @@ export function useSuggestions(args: {
       const keys = new Set([m.name, ...m.members].map(cityKeyOf));
       nights[cityKeyOf(m.name) ?? m.name] = plan.stayBlocks.filter((b) => b.city && keys.has(cityKeyOf(b.city))).reduce((n, b) => n + b.nights, 0);
     }
-    // In the trip's own language when it has one (started by chat in another language than the board's).
-    const prompt = withLang(trip.lang, () => reviewPrompt({ mains, nights, range, items, sectionOf: sectionOfItem, suggestions: trip.suggestions ?? [], travellers, ...tripTaste(trip) }));
-    void runReview({ key, prompt, lang: trip.lang, playbook: trip.intent, save: (change) => updateTrip(trip.id, change, { touch: false }) });
+    const prompt = withLang(write, () => reviewPrompt({ mains, nights, range, items, sectionOf: sectionOfItem, suggestions: trip.suggestions ?? [], travellers, ...tripTaste(trip), lang: write }));
+    void runReview({ key, prompt, lang: write, playbook: trip.intent, save: (change) => updateTrip(trip.id, change, { touch: false }) });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- asked once per trip state (key)
   }, [trip.id, key, due]);
 

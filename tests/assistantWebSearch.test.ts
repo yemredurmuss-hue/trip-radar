@@ -182,8 +182,9 @@ describe("assistant: web_search", () => {
     expect(asked).toHaveLength(1);
   });
 
-  it("a trip in English searches in English and says 'Source:', whatever the board's language", async () => {
-    await seed("ws7", "en");
+  it("an English board searches in English and says 'Source:', whatever the trip's language (0.39.1)", async () => {
+    setLang("en");
+    await seed("ws7", "tr");
     const asked = server({ answer: "Open daily 9:00–19:00.", sources: [{ title: "louvre.fr", url: "https://www.louvre.fr/" }], kind: "fact", cached: false, at: "2026-10-06T10:00:00Z" });
     const { client } = fakeClient([searchCalls("Louvre opening hours"), done("It's open daily 9:00–19:00.")]);
     await sendMessage("ws7", "check the Louvre's hours", anthropicProvider(client, "claude-opus-5"));

@@ -1,10 +1,11 @@
 // The trip's own language (0.39.0, Emre: "İngilizce başladıysa başlık vs. İngilizce olsun"): a trip whose start chat
-// began in English has an English title ("Bali Trip"), English places to fill ("Flight · …", "Stay · …"), an English
-// chat and an English AI review, even on a Turkish board; one begun in Turkish stays Turkish.
+// began in English has an English title ("Bali Trip"), English places to fill ("Flight · …", "Stay · …") and an English
+// start chat, even on a Turkish board; one begun in Turkish stays Turkish. What the AI writes after (the review, the
+// Bavul's list) is in the board's language (0.39.1, Emre: "Dili İngilizce yapmama rağmen AI tavsiyeleri Türkçe gelmiş").
 import "fake-indexeddb/auto";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { db, listItems, listMessages } from "../src/lib/db";
-import { L, lang, setLang, withLang } from "../src/lib/i18n";
+import { contentLang, L, lang, setLang, withLang } from "../src/lib/i18n";
 import { packSystemPrompt } from "../src/lib/prepPack";
 import { runStep, stepsFor } from "../src/lib/startCreate";
 import { applyText, creationOf, mergeExtracted, newStart, nextQuestion, parseStartText, questionOf, tripTitle, withTypedLang, type StartState } from "../src/lib/startTrip";
@@ -52,7 +53,7 @@ async function make(s: StartState): Promise<StartState> {
 afterEach(() => setLang("tr"));
 
 describe("the trip's language", () => {
-  it("begun in English on a Turkish board: English title, places to fill, chat and review", async () => {
+  it("begun in English on a Turkish board: English title, places to fill and chat; the review in Turkish", async () => {
     setLang("tr");
     let s = typed(opened(`en-${Math.random()}`), "2 weeks in Bali with my wife in December", 2);
     expect(s.lang).toBe("en");
@@ -69,30 +70,39 @@ describe("the trip's language", () => {
     expect(chat).toMatch(/^Plan a new trip\n/);
     expect(chat).toContain("Bali Trip is ready");
     expect(chat).not.toMatch(/Nereye|Yeni gezi|gece|hazır/);
-    // The AI review (the start's last step registers it) is asked in English.
+    // The AI review (the start's last step registers it) is asked in the board's language, Turkish; its key says so.
     const { reviewNewTrip } = await import("../src/app/start/registerReview");
     systems.length = 0;
     await reviewNewTrip(s.tripId!);
     expect(systems).toHaveLength(1);
-    expect(systems[0]).toMatch(/English/);
-    expect(systems[0]).not.toMatch(/Türkçe yaz/);
-    // The packing list's prompt in the trip's language (usePackAi), whatever the board's.
-    expect(withLang(trip.lang, packSystemPrompt)).toBe(withLang("en", packSystemPrompt));
+    expect(systems[0]).toMatch(/Türkçe yaz\.$/);
+    expect(systems[0]).not.toMatch(/English/);
+    expect((await (await db()).get("trips", s.tripId!))!.suggestReview?.key).toMatch(/^tr:/);
+    // The packing list's prompt in the board's language too (usePackAi), whatever the trip's.
+    expect(withLang(contentLang(trip.lang), packSystemPrompt)).toBe(withLang("tr", packSystemPrompt));
     expect(lang()).toBe("tr");
   });
 
-  it("begun in Turkish on an English board: all Turkish, as before", async () => {
+  it("begun in Turkish on an English board: Turkish title and places to fill; the review in English", async () => {
     setLang("en");
     let s = typed(opened(`tr-${Math.random()}`), "Aralıkta eşimle 2 hafta Bali'ye gitmek istiyoruz", 2);
     expect(s.lang).toBe("tr");
     expect(s.messages.slice(0, 2).map((m) => m.text)).toEqual(["Yeni gezi planla", "Nereye gidiyoruz?"]);
     s = typed({ ...s, asking: "from" }, "İstanbul", 3);
+    systems.length = 0;
     s = await make(s);
     const trip = (await (await db()).get("trips", s.tripId!))!;
     expect(trip.title).toBe("Bali Gezisi");
     expect(trip.lang).toBe("tr");
     const names = (await listItems(s.tripId!)).map((i) => i.name).sort();
     expect(names).toEqual(["Konaklama · Bali", "Uçuş · Denpasar → İstanbul", "Uçuş · İstanbul → Denpasar"]);
+    // Emre's Bali Gezisi on his English board: the review (the start's last step) writes in English, its key says so.
+    const reviews = systems.filter((x) => /travel plan|seyahat planına/.test(x));
+    expect(reviews).toHaveLength(1);
+    expect(reviews[0]).toMatch(/Write in English\.$/);
+    expect(reviews[0]).not.toMatch(/Türkçe/);
+    expect((await (await db()).get("trips", s.tripId!))!.suggestReview?.key).toMatch(/^en:/);
+    expect(withLang(contentLang(trip.lang), packSystemPrompt)).toBe(withLang("en", packSystemPrompt));
     expect(lang()).toBe("en");
   });
 

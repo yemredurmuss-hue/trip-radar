@@ -270,8 +270,9 @@ export interface Trip {
    */
   intent?: TripIntent | null;
   /**
-   * The language of the conversation the trip was started with (start chat, revision 2): its chat goes on in it and
-   * its suggestions are written in it, whatever the board's language. Unset: the board's.
+   * The language of the conversation the trip was started with (start chat, revision 2). What the AI writes later (the
+   * review's suggestions, the chat, the Bavul's list, the mood sentence) is in the board's language at the time
+   * (i18n.ts contentLang, 0.39.1); this one only when the board's isn't known.
    */
   lang?: Lang | null;
   /** When this computer looked once for records that seem to belong to another trip (strays.ts); never again after. Local. */
@@ -309,6 +310,8 @@ export interface PackTip {
 /** The list the AI made once for the trip (prepPack.ts acceptPack): checked, plain data. */
 export interface PackList {
   at: number;
+  /** The language it was written in (0.39.1); unset on older lists (prepPack.ts packListLang reads it from the words). */
+  lang?: Lang;
   groups: PackGroup[];
   ask: PackAsk[];
   tips: PackTip[];
@@ -358,6 +361,8 @@ export interface Suggestion {
   createdAt: number;
   state: SuggestionState;
   stateAt?: number;
+  /** The language the AI wrote it in (the review's, 0.39.1); unset on older ones and the rules' (written in the board's). */
+  lang?: Lang;
 }
 
 /**

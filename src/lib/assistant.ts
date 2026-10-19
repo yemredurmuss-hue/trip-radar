@@ -32,7 +32,7 @@ import { isIdea } from "./booking";
 import { sectionOfItem, type SectionId } from "./categories";
 import { addDays, buildPlan, cityKeyOf, liveGroups, sameCity, stayRange, type Plan } from "./plan";
 import { fromPage, saidEdits, withEdits, withoutEdits } from "./userEdits";
-import { L, lang, saveLang, setLang, withLang, type Lang } from "./i18n";
+import { contentLang, L, lang, saveLang, setLang, withLang, type Lang } from "./i18n";
 import { datePlaceholders, isPlaceholder, regionName } from "./startTrip";
 import { narrowStart } from "./startCreate";
 import { shiftText, shiftTrip } from "./shiftTrip";
@@ -645,8 +645,8 @@ function buildTools(en: boolean): ToolSpec[] {
     {
       name: "suggest",
       description: t(
-        "Kullanıcının istemediği ama işine yarayacak bir şeyi plana EKLEMEDEN, ait olduğu bölümün başına öneri kartı olarak bırakır (✨ başlık · tek cümle neden · Plana ekle / Gerek yok). Plana girmez, sayılmaz; kullanıcı 'Plana ekle'ye basarsa kayıt kurulur. Kullanıcı açıkça eklemeni isterse bunun yerine plan_item. Yalnız plana girecek somut bir şey için (araç, konaklama, sigorta, eSIM); genel ipucu için değil. Tur ve etkinlik için değil: onlar find_offers ile (Viator) gelir; activity bölümüne yalnız warning bırakılır. section: flight, stay, transport (araç/motor kiralama, taksi, tren...), activity, todo (orada görülecek ya da yapılacak yer ve deneyim; kiralama, ekipman, eşya, hizmet değil), food, other (sigorta, eSIM). kind: add (eklenecek bir şey) ya da warning (kontrol edilecek bir şey; template \"\"). template: bölümün şablonu (transport: train/bus/minibus/ferry/taxi/car/moto/rv/bike; stay: hotel/home; other: esim/insurance; flight/activity/todo/food: kendi adı) ya da \"\". title kısa; why tek cümle, plandaki olgulara dayanır; fiyat, saat ya da yüzde yazma. city, start, end (YYYY-MM-DD) bilinmiyorsa \"\". Kullanıcının daha önce 'Gerek yok' dediği bir öneri tekrar bırakılmaz; sonuç ne olduğunu söyler.",
-        "Leaves something the user didn't ask for but would help them as a suggestion card at the top of its section, WITHOUT adding it to the plan (✨ title · one-sentence why · Add to plan / Not needed). It isn't part of the plan or counted; the record is made only if the user taps 'Add to plan'. If the user explicitly asks you to add it, use plan_item instead. Only for something concrete that would go on the plan (a vehicle, a stay, insurance, an eSIM); never for a general tip. Not for a tour or an activity: those come from find_offers (Viator); only a warning goes in the activity section. section: flight, stay, transport (car/scooter rental, taxi, train...), activity, todo (a place or an experience to see or do there; not a rental, gear, things or a service), food, other (insurance, eSIM). kind: add (something to add) or warning (something to check; template \"\"). template: the section's template (transport: train/bus/minibus/ferry/taxi/car/moto/rv/bike; stay: hotel/home; other: esim/insurance; flight/activity/todo/food: its own name) or \"\". title short, in English; why one sentence resting on facts in the plan; no prices, times or percentages. city, start, end (YYYY-MM-DD) \"\" when not known. A suggestion the user already said 'Not needed' to isn't left again; the result says what happened.",
+        "Kullanıcının istemediği ama işine yarayacak bir şeyi plana EKLEMEDEN, ait olduğu bölümün başına öneri kartı olarak bırakır (✨ başlık · tek cümle neden · Plana ekle / Gerek yok). Plana girmez, sayılmaz; kullanıcı 'Plana ekle'ye basarsa kayıt kurulur. Kullanıcı açıkça eklemeni isterse bunun yerine plan_item. Yalnız plana girecek somut bir şey için (araç, konaklama, sigorta, eSIM); genel ipucu için değil. Tur ve etkinlik için değil: onlar find_offers ile (Viator) gelir; activity bölümüne yalnız warning bırakılır. section: flight, stay, transport (araç/motor kiralama, taksi, tren...), activity, todo (orada görülecek ya da yapılacak yer ve deneyim; kiralama, ekipman, eşya, hizmet değil), food, other (sigorta, eSIM). kind: add (eklenecek bir şey) ya da warning (kontrol edilecek bir şey; template \"\"). template: bölümün şablonu (transport: train/bus/minibus/ferry/taxi/car/moto/rv/bike; stay: hotel/home; other: esim/insurance; flight/activity/todo/food: kendi adı) ya da \"\". title kısa; todo ve food'da title gerçek bir yerin kendi adıdır, Google Haritalar'da aranınca bulunur (\"Tanah Lot Tapınağı\", \"Warung Bu Mi\"), emir cümlesi ya da genel söz değil (\"Nusa Penida adasına gezi düzenleyin\" değil, \"Nusa Penida\"); ne yapılacağını why söyler; why tek cümle, plandaki olgulara dayanır; fiyat, saat ya da yüzde yazma. city, start, end (YYYY-MM-DD) bilinmiyorsa \"\". Kullanıcının daha önce 'Gerek yok' dediği bir öneri tekrar bırakılmaz; sonuç ne olduğunu söyler.",
+        "Leaves something the user didn't ask for but would help them as a suggestion card at the top of its section, WITHOUT adding it to the plan (✨ title · one-sentence why · Add to plan / Not needed). It isn't part of the plan or counted; the record is made only if the user taps 'Add to plan'. If the user explicitly asks you to add it, use plan_item instead. Only for something concrete that would go on the plan (a vehicle, a stay, insurance, an eSIM); never for a general tip. Not for a tour or an activity: those come from find_offers (Viator); only a warning goes in the activity section. section: flight, stay, transport (car/scooter rental, taxi, train...), activity, todo (a place or an experience to see or do there; not a rental, gear, things or a service), food, other (insurance, eSIM). kind: add (something to add) or warning (something to check; template \"\"). template: the section's template (transport: train/bus/minibus/ferry/taxi/car/moto/rv/bike; stay: hotel/home; other: esim/insurance; flight/activity/todo/food: its own name) or \"\". title short, in English; in todo and food, title is a real place's own name that a Google Maps search finds (\"Tanah Lot Temple\", \"Warung Bu Mi\"), not an instruction or a generic phrase (\"Nusa Penida\", not \"Organise a trip to Nusa Penida island\"); the why says what to do there; why one sentence resting on facts in the plan; no prices, times or percentages. city, start, end (YYYY-MM-DD) \"\" when not known. A suggestion the user already said 'Not needed' to isn't left again; the result says what happened.",
       ),
       schema: {
         type: "object",
@@ -967,8 +967,8 @@ export function tripState(
       // The money every price and the budget show in (set_settings changes it), and the board's language.
       currency: reading?.ctx.currency ?? makeContext(trip, items).currency,
       board_language: lang(),
-      // The language this trip's conversation is in, when it was started in another one: answer in it.
-      ...(trip.lang && trip.lang !== lang() ? { conversation_language: trip.lang } : {}),
+      // The language to answer in when it isn't the board's (only when the board's isn't known: contentLang).
+      ...(contentLang(trip.lang) !== lang() ? { conversation_language: contentLang(trip.lang) } : {}),
       // Who goes, said without sharing (set_travellers); the user themself isn't in the names.
       // Who comes from elsewhere (kişiye özel rezervasyon), and my own name (owners are written by name).
       ...(trip.travellers || me
@@ -2244,8 +2244,8 @@ async function runTool(tripId: string, name: string, input: any, choices: string
       turn.searches++;
       const kind: SearchKind = SEARCH_KINDS.includes(input.kind) ? input.kind : "fact";
       const year = Number(query.match(/\b(20\d{2})\b/)?.[1]) || null;
-      // In the chat's language (a trip started in English goes on in English), whatever the board's.
-      const searchLang = (await d.get("trips", tripId))?.lang ?? lang();
+      // In the chat's language: the board's (0.39.1), whatever the trip's start chat spoke (contentLang).
+      const searchLang = contentLang((await d.get("trips", tripId))?.lang);
       const search: PendingSearch = { query, kind, lang: searchLang, year };
       // "Web'de arıyorum…" for as long as it runs, even after this turn's reply (searchEnded when it lands).
       searchStarted(tripId);
@@ -2833,7 +2833,7 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
   const lastStateHash = session.findLast((m) => m.stateHash)?.stateHash;
   // The trip in a few words with every message, right before the traveller's (spec 2026-10-07 §D): the full state goes
   // only when it changes and sinks back as the chat grows; this keeps the trip at the end of the context.
-  const brief = withLang(trip.lang, () => tripBrief(trip, items, who.me ?? null));
+  const brief = withLang(contentLang(trip.lang), () => tripBrief(trip, items, who.me ?? null));
   const texts = [...(stateHash === lastStateHash ? [] : [`<trip_state>${state}</trip_state>`]), `<trip_brief>${brief}</trip_brief>`, userText];
   // A search still running from before: its result comes as its own line; it isn't asked for again.
   if (chatStatusOf(tripId) === "web") {
@@ -2859,8 +2859,8 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
   let askedAgain = false;
   for (let step = 0; step < MAX_STEPS; step++) {
     const history = currentSession(await listMessages(tripId), provider.id);
-    // A trip started by chat in another language goes on in it (trip.lang), whatever the board's.
-    const answer = await answerInTime(tripId, (signal) => provider.chatStep(history, withLang(trip.lang, systemPrompt), withLang(trip.lang, tools), { signal }));
+    // In the board's language (0.39.1), whatever the trip's start chat spoke: contentLang.
+    const answer = await answerInTime(tripId, (signal) => provider.chatStep(history, withLang(contentLang(trip.lang), systemPrompt), withLang(contentLang(trip.lang), tools), { signal }));
     if (!answer) return;
 
     const choices: string[] = [];
@@ -2931,7 +2931,7 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
     }
     // A web search this turn: its sources at the end ("Kaynak: …"), and the plain word when it couldn't search.
     if (last && (turn.searchFound || turn.searchDown)) {
-      const noted = withLang(trip.lang, () => withSearchNotes(text, turn));
+      const noted = withLang(contentLang(trip.lang), () => withSearchNotes(text, turn));
       if (noted !== text) {
         // What the code added goes in the model's own turn too, so it knows it was said.
         const added = noted.replace(text, "").trim();

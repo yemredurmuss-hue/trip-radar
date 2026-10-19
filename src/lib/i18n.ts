@@ -7,12 +7,28 @@ export type Lang = "tr" | "en";
 export const LANGS: Lang[] = ["tr", "en"];
 
 let current: Lang = "tr";
+/** Whether a language was set (loaded or chosen): until then the board's is only the default. */
+let known = false;
 
 export const lang = (): Lang => current;
 
 export function setLang(next: Lang): void {
   current = next;
+  known = true;
 }
+
+/**
+ * The language what the AI writes now is written in (0.39.1, Emre: "Dili İngilizce yapmama rağmen AI tavsiyeleri
+ * Türkçe gelmiş"): the board's, whatever the trip's (its start chat's). The trip's only when the board's isn't known.
+ */
+export const contentLang = (tripLang?: Lang | null): Lang => (known ? current : (tripLang ?? current));
+
+/**
+ * The language part of the key of something the AI wrote for a trip (its review, its mood sentence): the language it's
+ * written in now (contentLang), left out when it's the one it was written in before 0.39.1 (the trip's, else Turkish),
+ * so what stays in its language isn't asked again, and another language asks once.
+ */
+export const contentTag = (tripLang?: Lang | null, write: Lang = contentLang(tripLang)): string => (write === (tripLang ?? "tr") ? "" : write);
 
 /** The text in the current language. */
 export const L = (tr: string, en: string): string => (current === "en" ? en : tr);
