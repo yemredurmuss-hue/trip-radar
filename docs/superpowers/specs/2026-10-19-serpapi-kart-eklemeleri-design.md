@@ -224,8 +224,9 @@ numarası diğer Trip Radar oturumlarıyla paylaşılır, yayından önce sorulu
 
 ## Kota durumu (2026-10-19 sonu)
 
-Günlük tavanlar: `serp_otel` 2, `serp_fiyat` 2, `serp_yer` 1, `serp_airbnb` 1, `serp_etkinlik` 1, `serpapi` (uçuş son
-çare) 1 = 8 → ayda ≈240, ücretsiz 250'nin altında. Bu ay denemelerle 9 arama harcandı.
+Günlük tavanlar (sürüm 21'den beri): `serp_otel` 5 (Airbnb de buradan), `serp_fiyat` 1, `serp_yer` 1, `serp_etkinlik` 1,
+`serpapi` (uçuş son çaresi) 0 = 8 → ayda ≈240, ücretsiz 250'nin altında. Uçuşun son çaresi kapalı: ortak uçuş servisi
+(Kiwi + Fli) karşılıyor. Hesap 19 Ekim'de 79/250 (aşağıya bkz.).
 
 ## Yayından önce yapılacaklar (hiçbiri yapılmadı)
 
@@ -245,3 +246,16 @@ Günlük tavanlar: `serp_otel` 2, `serp_fiyat` 2, `serp_yer` 1, `serp_airbnb` 1,
 - SerpApi hesabı 19 Ekim'de 79/250 (canlı sistem eski `serpapi` tavanıyla günde 8'e kadar kullanıyordu).
 - Eklentinin yeni sürümü henüz yok: kullanıcılar sunucudaki otel değişikliğini (Google önde) şimdiden alıyor; rozet,
   grafik, fikirler, etkinlik ve Airbnb eklenti sürümüyle gelir.
+
+## Otel bulunamama düzeltmesi (2026-10-19 gece, sürüm 21)
+
+- Sorun: Norveç (Tromsø, Senja) ve Mısır'da "otel bulamadım". Sebep: o gün `tripadvisor` (5/5) ve eski `serpapi` (8/8)
+  tavanları dolmuştu, `serp_otel` 2'ydi; boş cevap 24 saat önbellekte kalıyordu. Ayrıca eklenti "Mısır"ı şehir adı
+  olarak arıyor (ayrı hata, düzeltilmedi).
+- Düzeltme (commit `a022bd6e`): boş cevap (otel, uçuş, etkinlik) saklanmaz; `serp_otel` 2 → 5, `serp_fiyat` 2 → 1,
+  `serpapi` 1 → 0, Airbnb `serp_otel`'den. `offers` sürüm 21 yüklendi; bugünkü 8 boş otel kaydı silindi.
+- Canlı deneme (2 arama): Tromsø 3 öneri + 6 aday (Google Hotels, fotoğraf, yakın yer, yorum konusu), Şarm el-Şeyh
+  3 öneri + 6 aday; eSIM (SerpApi harcamaz) eskisi gibi.
+- Gözlenen kalite sorunları (düzeltilmedi): Google Hotels listesine tur firması karışabiliyor ("Sinai Vibes Tours");
+  Tromsø aramasında şehre 1 saatten uzak yerler (Sommarøy, Svensby) çıkıyor. Yakın yer süresi kartta görünüyor ama
+  sıralama uzaklığa bakmıyor.
