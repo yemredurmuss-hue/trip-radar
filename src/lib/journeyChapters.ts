@@ -238,7 +238,7 @@ function intentStep(i: IntentVM, env: Env, title: string): JourneyStep {
     }
     case "arranged":
     case "included":
-      sub = [i.section === "stay" ? null : (o?.title ?? null), i.note];
+      sub = [i.section === "stay" ? null : (o?.title ?? null), i.cover?.by ?? i.note];
       break;
     case "skipped":
       break;
@@ -413,6 +413,7 @@ export function journeyChapters({ input, timeline, collections }: JourneyInput):
   const all = collections ?? collectionsOf(input);
   const env: Env = { input, today, docs: (id) => input.docsFor?.(id).length ?? 0 };
   const aboard = nightsAboard(input.items);
+  const aboardDrawn = new Set<string>();
   const [first, last] = [cityAt[0], cityAt.at(-1)!];
 
   // Where each block of the front sits.
@@ -512,6 +513,7 @@ export function journeyChapters({ input, timeline, collections }: JourneyInput):
           const flights = aboard.get(night)!;
           const owner = all.flatMap((x) => x.intents).find((x) => flights.some((f) => x.itemIds.includes(f.id)));
           (owner ? chapterOf(owner) : chapterOf(i)).steps.push(onboardStep(night, flights));
+          aboardDrawn.add(night);
         }
         continue;
       }
@@ -530,6 +532,14 @@ export function journeyChapters({ input, timeline, collections }: JourneyInput):
       }
       home.steps.push(intentStep(i, env, title));
     }
+  }
+
+  // D14: once its flight is taken the Plan opens no bed for a night in the air (intents.ts), so that night's "Uçakta"
+  // line comes from the night itself, beside the flight that spends it.
+  for (const [night, flights] of aboard) {
+    if (aboardDrawn.has(night)) continue;
+    const owner = all.flatMap((x) => x.intents).find((x) => flights.some((f) => x.itemIds.includes(f.id)));
+    if (owner) chapterOf(owner).steps.push(onboardStep(night, flights));
   }
 
   const { in: inbound, out: outbound } = ways;

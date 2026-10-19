@@ -171,7 +171,7 @@ describe("Ozora: the festival's chapters", () => {
       ["27 Tem", "Etkinlik · Bilet alındı", "Ozora Festival bileti"],
       ["2 Ağu", "Otobüs · Karar bekliyor", "Ozora → Budapeşte"],
     ]);
-    expect(oz.steps[1]).toMatchObject({ ready: true, action: null, sub: "Rezervasyon gerekmez · bilete dahil" });
+    expect(oz.steps[1]).toMatchObject({ ready: true, action: null, sub: "festival biletiyle" });
     expect(oz.steps[3].sub).toBe(`1 seçenek · en iyi: ${by.busBack.name} €35`);
     expect(oz.summary.text).toBe("2 hazır · 2 karar");
     // No photo known for Ozora: none drawn, the key is there for the hero's own.
