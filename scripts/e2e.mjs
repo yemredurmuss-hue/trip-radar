@@ -1967,22 +1967,63 @@ try {
   });
   await todoRow("Dom Luís'te gün batımı").waitFor();
   if (await sec("prep").evaluate((el) => el.classList.contains("closed"))) await sec("prep").locator(".cat-title").click();
-  const prepRow = sec("prep").locator(`.prep-row[aria-label="Decathlon'dan yağmurluk al"]`);
+  // v82 (aşama 7): Hazırlık's rows are the prototype's .q-pr1, the chores by their day.
+  const prepRow = sec("prep").locator(`.q-pr1[aria-label="Decathlon'dan yağmurluk al"]`);
   await prepRow.waitFor();
   assert.equal(await app.locator(`.it-tile[aria-label="Decathlon'dan yağmurluk al"]`).count(), 0, "a chore is never a thing to do");
-  assert.equal(await sec("prep").locator(`.prep-row[aria-label="Dom Luís'te gün batımı"]`).count(), 0, "an experience is never a chore");
-  // Moved by hand both ways (0.35.9): "Hazırlığa taşı" on a thing to do, "Orada yapılacak" back from Hazırlık.
+  assert.equal(await sec("prep").locator(`.q-pr1[aria-label="Dom Luís'te gün batımı"]`).count(), 0, "an experience is never a chore");
+  // Moved by hand both ways (0.35.9): "Hazırlığa taşı" on a thing to do; back from Hazırlık in the row's ⋯ (C29).
   if (await sec("prep").evaluate((el) => el.classList.contains("closed"))) await sec("prep").locator(".cat-title").click();
   await tileMenu(todoRow("Dom Luís'te gün batımı"), "Hazırlık'a taşı");
-  const sunsetPrep = sec("prep").locator(`.prep-row[aria-label="Dom Luís'te gün batımı"]`);
+  const sunsetPrep = sec("prep").locator(`.q-pr1[aria-label="Dom Luís'te gün batımı"]`);
   await sunsetPrep.waitFor();
   await todoRow("Dom Luís'te gün batımı").waitFor({ state: "detached" });
   await sunsetPrep.hover();
-  await sunsetPrep.getByRole("button", { name: "Dom Luís'te gün batımı: Yapılacak şeyler'e taşı" }).click();
+  await tileMenu(sunsetPrep, "Yapılacak şeyler'e taşı");
   await todoRow("Dom Luís'te gün batımı").waitFor();
   await sunsetPrep.waitFor({ state: "detached" });
-  // v11: no amber line; the list says how many are ready.
-  assert.equal(await sec("prep").locator(".prep-head span").innerText(), "0/1 hazır");
+  // T3 a: the chores worked out from the trip carry their day and where they came from (the booked TAP flight's
+  // check-in opens 24 hours before; a Turkish passport to Portugal applies for the Schengen visa 15 days ahead), the list
+  // goes by day and what has none comes last, "tarih yok" is never written; the count is the list's.
+  const prepRows = sec("prep").locator(".q-prows > .q-pr1");
+  const checkin = sec("prep").locator('.q-pr1[data-task^="checkin:"]');
+  await checkin.waitFor();
+  assert.match((await checkin.innerText()).replace(/\s+/g, " "), /Online check-in · TP 1760 .*kalkıştan 24 saat önce açılır uçuş kartından 13 Eki 19:40/);
+  assert.match((await sec("prep").locator('.q-pr1[data-task="visa:schengen"]').innerText()).replace(/\s+/g, " "), /Schengen vizesine başvur .*vize kuralından 23 Eyl'e kadar Resmî site/);
+  const days = await prepRows.evaluateAll((els) => els.map((e) => e.getAttribute("data-day")));
+  assert.deepEqual(days, [...days].sort((a, b) => (a == null) - (b == null)), "the chores with a day first, the rest after");
+  assert.equal(days.at(-1), null, "the chore said without a day is last");
+  assert.ok(!(await sec("prep").innerText()).includes("tarih yok"), "no 'tarih yok'");
+  assert.equal(await sec("prep").locator(".q-pc2").innerText(), `0/${await prepRows.count()} hazır`);
+  // T8 b: "Bilmen gerekenler" on top, only what has a source: the EU's 112, the money, the plugs, the embassy as a map search.
+  const know = sec("prep").locator(".q-bm");
+  assert.equal(await know.locator('[data-know="emergency"] small').innerText(), "112 (AB ortak numara)");
+  assert.match(await know.locator('[data-know="embassy"] a').getAttribute("href"), /^https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=T%C3%BCrkiye%20B%C3%BCy%C3%BCkel%C3%A7ili%C4%9Fi%20Portekiz$/);
+  assert.equal(await know.locator('[data-know^="tip:"]').count(), 0, "no AI note without the AI");
+  // T6 a: the Bavul is the list's last line, folded, with its count; open, its groups with their reasons, a tick, and
+  // "bana göre değil" folding a line with its own "Geri al" (no toast).
+  const bavul = sec("prep").locator(".q-bvli");
+  assert.equal(await sec("prep").locator(".q-prows > li").last().getAttribute("class"), "q-bvli");
+  const bavulCount = async () => (await bavul.locator(".q-bvn").innerText()).trim();
+  assert.match(await bavulCount(), /^0\/\d+ hazır$/);
+  await bavul.getByRole("button", { name: /^Bavul/ }).click();
+  assert.equal(await bavul.locator(".q-bvs").getAttribute("aria-expanded"), "true");
+  const passport = bavul.locator('.q-bv1[aria-label="Pasaport"]');
+  await passport.getByRole("checkbox").click();
+  await bavul.locator('.q-bv1.done[aria-label="Pasaport"]').waitFor();
+  assert.match(await bavulCount(), /^1\/\d+ hazır$/);
+  await passport.getByRole("checkbox").click();
+  await bavul.locator('.q-bv1:not(.done)[aria-label="Pasaport"]').waitFor();
+  const money = bavul.locator('.q-bv1[aria-label="Kart ve biraz Euro"]');
+  await app.locator(".pk-undo").waitFor({ state: "detached", timeout: 10000 }); // an earlier "Geri al" over the list
+  await money.hover();
+  await money.getByRole("button", { name: "Kart ve biraz Euro: bana göre değil" }).click();
+  await money.waitFor({ state: "detached" });
+  assert.equal(await app.locator(".pk-undo").count(), 0, "no toast for it");
+  await bavul.locator(".q-bv1.gone").getByRole("button", { name: "Geri al" }).click();
+  await money.waitFor();
+  await bavul.getByRole("button", { name: /^Bavul/ }).click();
+  await bavul.locator(".q-bvb").waitFor({ state: "detached" });
   await app.locator(".pk-undo").waitFor({ state: "detached", timeout: 10000 }); // an earlier "Geri al" over the list
   await app.setViewportSize({ width: 1440, height: 1500 });
   await sec("prep").screenshot({ path: `${out}/5f-diger-hazirlik.png` });
@@ -1991,8 +2032,8 @@ try {
   assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll with Hazırlık");
   await app.setViewportSize({ width: 1440, height: 900 });
   // Ticked: done, struck through; then both lines go again, so the rest of the run sees the sample as it was.
-  await prepRow.locator(".prep-check").click();
-  await sec("prep").locator(".prep-row.done").waitFor();
+  await prepRow.locator(".q-ck").click();
+  await sec("prep").locator('.q-pr1.done[aria-label="Decathlon\'dan yağmurluk al"]').waitFor();
   await app.evaluate(async () => {
     const request = indexedDB.open("trip-radar");
     const database = await new Promise((resolve, reject) => {
@@ -2071,7 +2112,7 @@ try {
   const visaRow = sec("other").locator(".visa-row");
   // v11 as drawn: one full-width line; the visa to get has its source and "✓ Vize alındı" like a plan's "Aldım".
   assert.match((await visaRow.innerText()).replace(/\s+/g, " "), /^! Vize gerekiyor · Schengen vizesi Resmî kaynak ↗ ✓ Vize alındı$/);
-  assert.equal(await app.locator(".prep .visa-row, .prep-visa").count(), 0, "not in Hazırlık");
+  assert.equal(await app.locator(".q-pbody .visa-row, .prep-visa").count(), 0, "not in Hazırlık");
   await visaRow.getByRole("checkbox").click();
   await sec("other").locator(".visa-row.ok", { hasText: "Vize alındı" }).waitFor();
   // The records read again (as after any save): nothing "moves" (a restaurant drawn under Yapılacak şeyler, a chore

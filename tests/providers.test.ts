@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { brandOf } from "../src/lib/brands";
 import { withLang } from "../src/lib/i18n";
 import { amazonLink } from "../src/lib/prepBuy";
-import { amazonHost, pickProviders, providerById, providerLinks, providerOfLink, PROVIDERS, shopLinks, type ProviderKind } from "../src/lib/providers";
+import { amazonHost, pickProviders, providerById, providerLinks, providerOfLink, PROVIDERS, shopFor, shopLabel, shopLinks, type ProviderKind } from "../src/lib/providers";
 import { activityLinks, esimLinks, flightLinks, stayLinks } from "../src/lib/searchLinks";
 
 const ids = (kind: ProviderKind, at: Parameters<typeof pickProviders>[1] = {}) => pickProviders(kind, at).map((p) => p.id);
@@ -123,5 +123,14 @@ describe("the searches are the existing ones", () => {
     expect(shopLinks("Yağmurluk", "DE")[0].url).toBe("https://www.amazon.de/s?k=Ya%C4%9Fmurluk");
     expect(shopLinks("Nakit yen", "TR")).toEqual([]);
     expect(shopLinks("Decathlon'dan yağmurluk al", "TR")).toEqual([]);
+  });
+
+  it("the Bavul's shop for a line marked to buy: the traveller's own first shop, its words as they are, and its words", () => {
+    expect(shopFor("Uyku tulumu", "TR")).toMatchObject({ provider: { id: "trendyol" }, url: "https://www.trendyol.com/sr?q=Uyku%20tulumu" });
+    expect(shopFor("Uyku tulumu", "DE")?.url).toBe("https://www.amazon.de/s?k=Uyku%20tulumu");
+    expect(shopFor("Kafa lambası")?.provider.id).toBe("amazon");
+    expect(shopFor("  ")).toBeNull();
+    expect(["trendyol", "hepsiburada", "amazon"].map((id) => shopLabel(providerById(id as "amazon")))).toEqual(["Trendyol'da al ↗", "Hepsiburada'da al ↗", "Amazon'da al ↗"]);
+    expect(withLang("en", () => shopLabel(providerById("amazon")))).toBe("Buy on Amazon ↗");
   });
 });

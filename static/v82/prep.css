@@ -1,2 +1,139 @@
 /* v82 prep: docs/superpowers/specs/2026-10-18-v82-gecis/02-spec.md. Rules are ported from the approved prototype
-   (plan-v32-tasarim: docs/mockups/plan-v83-turler/kaynak/mk81.css, mk82.css, mk83.css) and keep its class names. */
+   (plan-v32-tasarim: docs/mockups/plan-v83-turler/kaynak/mk81.css, mk82.css, mk83.css) and keep its class names.
+   Hazırlık open (aşama 7): Bilmen gerekenler (T8 b), the dated chores (T3 a), the folded Bavul (T6 a). Scoped to the list's
+   own box (.q-pbody) so the same names elsewhere (the intent boxes' .q-ck, .q-ai) keep their own rules. */
+
+.q-pbody { display: grid; gap: 10px; }
+.q-pbody .q-sp { flex: 1; }
+
+/* ---- Bilmen gerekenler (T8 b) ---- */
+.q-pbody .q-bm { border: 1px solid var(--q-line); border-radius: 16px; background: #fff; padding: 14px 16px; margin: 0 0 14px; display: grid; gap: 10px; }
+.q-pbody .q-bmh { display: flex; align-items: baseline; gap: 10px; }
+.q-pbody .q-bmh b { font-size: 15px; font-weight: 800; color: var(--q-ink); }
+.q-pbody .q-bmh small { font-size: 13px; color: var(--q-mut); }
+.q-pbody .q-bmg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 18px; }
+.q-pbody .q-bm1 { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 10px; align-items: start; }
+.q-pbody .q-bmi { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: #f3f1fa; color: var(--q-acc); }
+.q-pbody .q-bm1 b { display: block; font-size: 13px; font-weight: 800; color: var(--q-ink); }
+.q-pbody .q-bm1 small { display: block; font-size: 12.5px; color: var(--q-mut); line-height: 1.4; overflow-wrap: anywhere; }
+.q-pbody .q-alk { font-size: 12.5px; font-weight: 650; color: var(--q-ink); text-decoration: none; white-space: nowrap; }
+.q-pbody .q-alk:hover { color: var(--q-acc); }
+
+/* ---- the head: "2/6 hazır · güne göre sıralı", Hazırları gizle, Daha fazla öner ---- */
+.q-pbody .q-ph1 { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-height: 40px; }
+.q-pbody .q-pc2 { font-size: 13.5px; font-weight: 800; color: var(--q-ink); }
+.q-pbody .q-ph1 > small { font-size: 13.5px; color: var(--q-mut); margin-left: 2px; }
+.q-pbody .q-phide { font: inherit; font-size: 13.5px; color: var(--q-mut); background: none; border: 0; padding: 0; text-decoration: underline dotted; text-underline-offset: 3px; cursor: pointer; }
+.q-pbody .q-phide:hover { color: var(--q-ink); }
+.q-pbody .q-ai.sm { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 14px; border: 0; border-radius: 10px; background: var(--q-acc-s); color: var(--q-acc); font: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; }
+.q-pbody .q-ai.sm:hover { background: #e4dcff; }
+
+/* ---- the chores (T3 a) ---- */
+.q-pbody .q-prows { list-style: none; margin: 0; padding: 0; border: 1px solid var(--q-line); border-radius: 14px; overflow: hidden; background: #fff; }
+.q-pbody .q-pr1 { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-top: 1px solid var(--q-line); min-height: 52px; scroll-margin-top: 12px; }
+.q-pbody .q-pr1:first-child { border-top: 0; }
+.q-pbody .q-ck { flex: none; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid #c7c4d6; background: #fff; display: grid; place-items: center; color: #fff; cursor: pointer; padding: 0; }
+.q-pbody .q-ck:hover { border-color: var(--q-ok); }
+.q-pbody .q-pr1.done .q-ck { background: var(--q-ok); border-color: var(--q-ok); }
+.q-pbody .q-pt1 { display: grid; gap: 1px; flex: 1; min-width: 0; }
+.q-pbody .q-pt1 b { font-size: 15px; font-weight: 650; color: var(--q-ink); overflow-wrap: anywhere; }
+.q-pbody .q-pt1 small { font-size: 12px; color: var(--q-mut); }
+.q-pbody .q-pr1.done .q-pt1 b { color: #8e8aa6; text-decoration: line-through; }
+.q-pbody .q-pday { flex: none; font-size: 12px; font-weight: 800; color: #3d3566; background: #f3f1fa; border-radius: 8px; padding: 4px 9px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.q-pbody .q-pday.soon { background: #fff4e5; color: #b54708; }
+.q-pbody .q-pr1.done .q-pday { opacity: .5; }
+.q-pbody .q-ptag { font-style: normal; font-size: 11px; font-weight: 700; color: var(--q-mut); background: #f2f4f7; border-radius: 6px; padding: 1px 6px; margin-left: 3px; white-space: nowrap; }
+.q-pbody .q-pdone { flex: none; font-size: 12px; font-weight: 700; color: var(--q-ok); }
+.q-pbody .q-pr1.done .q-buy1 { display: none; }
+.q-pbody .q-ib { flex: none; width: 28px; height: 28px; border-radius: 8px; border: 0; background: none; display: grid; place-items: center; color: var(--q-mut); cursor: pointer; padding: 0; }
+.q-pbody .q-ib:hover { background: var(--q-soft); color: var(--q-ink); }
+.q-pbody .q-pdel, .q-pbody .q-pr1 .pk-menu-wrap { opacity: 0; transition: opacity .15s; }
+.q-pbody .q-pr1:hover .q-pdel, .q-pbody .q-pr1:focus-within .q-pdel,
+.q-pbody .q-pr1:hover .pk-menu-wrap, .q-pbody .q-pr1:focus-within .pk-menu-wrap,
+.q-pbody .q-pr1 .pk-menu-wrap:has([aria-expanded="true"]) { opacity: 1; }
+@media (hover: none) { .q-pbody .q-pdel, .q-pbody .q-pr1 .pk-menu-wrap { opacity: 1; } }
+
+/* a shop or the official page: Amazon, Trendyol, Hepsiburada as drawn, any other by the register's mark */
+.q-pbody .q-buy1 { flex: none; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 650; color: var(--q-ink); text-decoration: none; border: 1px solid var(--q-line); border-radius: 99px; padding: 3px 10px; white-space: nowrap; background: #fff; }
+.q-pbody .q-buy1:hover { border-color: var(--q-acc); }
+.q-pbody .q-buy1.amz, .q-pbody .q-buy1.ty, .q-pbody .q-buy1.hb, .q-pbody .q-buy1:has(.q-logo) { padding: 3px 12px 3px 4px; }
+.q-pbody .q-buy1.amz { border-color: #f0d6a8; background: #fffaf1; }
+.q-pbody .q-buy1.amz:hover { border-color: #ff9900; }
+.q-pbody .q-buy1.ty { border-color: #fbd9bd; background: #fff8f2; }
+.q-pbody .q-buy1.ty:hover { border-color: #f27a1a; }
+.q-pbody .q-buy1.hb { border-color: #ffd2b3; background: #fff7f2; }
+.q-pbody .q-buy1.hb:hover { border-color: #ff6000; }
+.q-pbody .q-amz, .q-pbody .q-ty, .q-pbody .q-hb, .q-pbody .q-buy1 .q-logo { width: 20px; height: 20px; border-radius: 6px; display: grid; place-items: center; font-size: 12px; font-weight: 900; color: #fff; flex: none; }
+.q-pbody .q-amz { background: #232f3e; color: #ff9900; font-family: Georgia, serif; }
+.q-pbody .q-ty { background: #f27a1a; }
+.q-pbody .q-hb { background: #ff6000; }
+
+/* ---- Bavul, the last line, folded (T6 a) ---- */
+.q-pbody .q-bvli { list-style: none; border-top: 1px solid var(--q-line); }
+.q-pbody .q-prows > .q-bvli:first-child { border-top: 0; }
+.q-pbody .q-bvs { all: unset; box-sizing: border-box; width: 100%; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 10px 14px; min-height: 56px; background: #fbfaf7; }
+.q-pbody .q-bvs:focus-visible { outline: 2px solid var(--q-acc); outline-offset: -2px; }
+.q-pbody .q-bvic { width: 24px; height: 24px; display: grid; place-items: center; color: #475467; flex: none; }
+.q-pbody .q-bvs .q-pt1 b { display: block; font-size: 15px; }
+.q-pbody .q-bvs .q-pt1 small { display: block; font-size: 12.5px; color: var(--q-mut); }
+.q-pbody .q-bvn { font-size: 12.5px; font-weight: 700; color: var(--q-mut); white-space: nowrap; }
+.q-pbody .q-bvchev { display: inline-grid; color: var(--q-mut); transition: transform var(--m-pop, 180ms); }
+.q-pbody .q-bv.open .q-bvchev { transform: rotate(90deg); }
+.q-pbody .q-bvb { padding: 12px 14px 14px 50px; display: grid; gap: 12px; background: #fbfaf7; border-top: 1px dashed var(--q-line); }
+.q-pbody .q-bvqs { display: flex; gap: 8px; flex-wrap: wrap; }
+.q-pbody .q-bvq { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--q-line); background: #fff; border-radius: 12px; padding: 6px 8px 6px 12px; font-size: 13px; }
+.q-pbody .q-bvq small { color: var(--q-mut); font-size: 12.5px; }
+.q-pbody .q-bvq b { font-size: 13px; }
+.q-pbody .q-bvq.done { padding-right: 12px; }
+.q-pbody .q-bva { all: unset; cursor: pointer; font-size: 12.5px; font-weight: 700; color: var(--q-acc); background: #f1edff; border-radius: 8px; padding: 4px 10px; }
+.q-pbody .q-bvans { all: unset; cursor: pointer; font-size: 13px; font-weight: 700; color: var(--q-ink); text-decoration: underline dotted; text-underline-offset: 3px; }
+.q-pbody .q-bva:focus-visible, .q-pbody .q-bvans:focus-visible, .q-pbody .q-bvx:focus-visible, .q-pbody .q-bvadd:focus-visible, .q-pbody .q-bvundo:focus-visible, .q-pbody .q-bvmx:focus-visible { outline: 2px solid var(--q-acc); outline-offset: 1px; }
+.q-pbody .q-bvgs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 18px; }
+.q-pbody .q-bvg > b { display: block; font-size: 12.5px; font-weight: 800; color: var(--q-mut); margin: 0 0 4px; }
+.q-pbody .q-bvg ul { list-style: none; margin: 0; padding: 0; border: 1px solid var(--q-line); border-radius: 12px; background: #fff; overflow: hidden; }
+.q-pbody .q-bv1 { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-top: 1px solid var(--q-line); min-height: 44px; box-sizing: border-box; }
+.q-pbody .q-bv1:first-child { border-top: 0; }
+.q-pbody .q-bv1 .q-ck { width: 20px; height: 20px; }
+.q-pbody .q-bv1 .q-pt1 b { font-size: 13.5px; font-weight: 650; }
+.q-pbody .q-bv1 .q-pt1 small { display: block; font-size: 12px; color: var(--q-mut); }
+.q-pbody .q-bv1.done .q-ck { background: var(--q-ok); border-color: var(--q-ok); color: #fff; }
+.q-pbody .q-bv1.done .q-pt1 b { color: #8e8aa6; text-decoration: line-through; }
+.q-pbody .q-bv1.done .q-buy1 { display: none; }
+.q-pbody .q-bvx { all: unset; cursor: pointer; flex: none; width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center; color: #98a2b3; opacity: 0; }
+.q-pbody .q-bv1:hover .q-bvx, .q-pbody .q-bv1:focus-within .q-bvx { opacity: 1; }
+.q-pbody .q-bvx:hover { background: #f2f4f7; color: #475467; }
+@media (hover: none) { .q-pbody .q-bvx { opacity: 1; } }
+/* a line said "bana göre değil", folded where it stood for the undo's seconds */
+.q-pbody .q-bv1.gone { background: var(--q-soft); }
+.q-pbody .q-bvundo { all: unset; cursor: pointer; font-size: 12.5px; font-weight: 700; color: var(--q-acc); padding: 2px 6px; }
+.q-pbody .q-bvf { display: grid; gap: 6px; }
+.q-pbody .q-bvml { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.q-pbody .q-bvml > small { font-size: 12.5px; color: var(--q-mut); margin-right: 4px; }
+.q-pbody .q-bvm { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; font-weight: 650; background: #fff; border: 1px solid var(--q-line); border-radius: 99px; padding: 3px 6px 3px 10px; }
+.q-pbody .q-bvmx { all: unset; cursor: pointer; width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; color: #98a2b3; }
+.q-pbody .q-bvmx:hover { background: #f2f4f7; color: #475467; }
+.q-pbody .q-bvadd { all: unset; cursor: pointer; font-size: 12.5px; font-weight: 700; color: var(--q-acc); padding: 3px 6px; }
+.q-pbody .q-bvin { font: inherit; font-size: 12.5px; border: 1px solid var(--q-acc); border-radius: 99px; padding: 3px 10px; width: 160px; max-width: 100%; outline: 0; background: #fff; color: var(--q-ink); }
+.q-pbody .q-bvnote { font-size: 12px; color: var(--q-mut); }
+
+@media (max-width: 860px) {
+  .q-pbody .q-bmg { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .q-pbody .q-bvgs { grid-template-columns: 1fr; }
+  .q-pbody .q-bvb { padding-left: 14px; }
+}
+@media (max-width: 520px) {
+  .q-pbody .q-bmg { grid-template-columns: 1fr; }
+  .q-pbody .q-bmh { display: grid; gap: 2px; }
+  /* the tick, the title and its tools on the first line; the day, the shop and "Hazır" under the title */
+  .q-pbody .q-pr1 { flex-wrap: wrap; row-gap: 6px; }
+  .q-pbody .q-pr1 > .q-pt1 { flex: 1 1 calc(100% - 120px); }
+  .q-pbody .q-pr1 > .q-pday, .q-pbody .q-pr1 > .q-buy1, .q-pbody .q-pr1 > .q-pdone { order: 2; margin-left: 34px; }
+  .q-pbody .q-pr1 > .q-pday + .q-buy1, .q-pbody .q-pr1 > .q-pday ~ .q-pdone, .q-pbody .q-pr1 > .q-buy1 ~ .q-pdone { margin-left: 0; }
+  .q-pbody .q-bvs { flex-wrap: wrap; }
+  .q-pbody .q-bvs .q-pt1 { flex: 1 1 calc(100% - 80px); }
+  .q-pbody .q-bvs .q-bvn { order: 3; flex-basis: 100%; padding-left: 36px; }
+}
+
+/* "Hareketi duraklat" and reduced motion: the chevron just turns. */
+body.still .q-pbody .q-bvchev, body.still .q-pbody .q-pdel, body.still .q-pbody .q-pr1 .pk-menu-wrap { transition: none; }
+@media (prefers-reduced-motion: reduce) { .q-pbody .q-bvchev, .q-pbody .q-pdel, .q-pbody .q-pr1 .pk-menu-wrap { transition: none; } }

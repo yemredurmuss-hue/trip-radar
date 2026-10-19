@@ -219,6 +219,13 @@ export interface Trip {
   hidden?: string[];
   /** The visa the trip needs, ticked as got (Belgeler ve internet's first line, v11). Absent: not ticked. */
   visaDone?: boolean;
+  /**
+   * Hazırlık's chores worked out from the trip (v82 T3, prepDays.ts: an online check-in, a visa application), ticked: when,
+   * by the chore's key. They aren't stored themselves; one taken off is trip.hidden's `prep:<key>`. This computer only.
+   */
+  prepDone?: Record<string, number>;
+  /** Hazırlık's Bavul (v82 T6, prepPack.ts): the traveller's own packing list for this trip. This computer only. */
+  packing?: TripPacking;
   /** Shared with someone (see share/): the secret id of the shared copy on the sharing server. */
   shareId?: string;
   /** Hero photo per city (city key → URL, null when none was found); fetched once. */
@@ -265,6 +272,49 @@ export interface Trip {
   strayCheckedAt?: number;
   createdAt: number;
   updatedAt: number;
+}
+
+/** A line of the Bavul (v82 T6): a thing to pack, why it's on the list ("Kyoto için"), and whether it's still to buy. */
+export interface PackLine {
+  name: string;
+  why: string | null;
+  buy: boolean;
+}
+
+/** The Bavul's groups, each titled with its reason ("Hava · 6–19°, Kyoto'da yağmur", "Plandaki yerler"). */
+export interface PackGroup {
+  title: string;
+  lines: PackLine[];
+}
+
+/** A question the list hangs on ("16 günde çamaşır yıkayacak mısın?"): each answer adds its lines. */
+export interface PackAsk {
+  id: string;
+  text: string;
+  options: { label: string; add: PackLine[] }[];
+}
+
+/** A thing worth knowing there, as the AI wrote it (Bilmen gerekenler, T8 b): shown marked as the AI's. */
+export interface PackTip {
+  label: string;
+  text: string;
+}
+
+/** The list the AI made once for the trip (prepPack.ts acceptPack): checked, plain data. */
+export interface PackList {
+  at: number;
+  groups: PackGroup[];
+  ask: PackAsk[];
+  tips: PackTip[];
+}
+
+export interface TripPacking {
+  /** The AI's list, made once; absent: the list is worked out from the trip each time (prepPack.ts rulesPack). */
+  list?: PackList | null;
+  /** The lines ticked as packed, by their key (prepPack.ts packKey). */
+  ready?: string[];
+  /** The questions answered: the option's label, by question id. */
+  answers?: Record<string, string>;
 }
 
 /** A section a suggestion can sit in (İlham is filled by sending links, never suggested). */
