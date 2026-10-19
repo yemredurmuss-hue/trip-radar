@@ -18,8 +18,8 @@
 .z-kp > img.ph { object-fit: cover; background: var(--q-soft); }
 .z-kp > .q-src { position: absolute; left: 8px; top: 8px; z-index: 2; max-width: calc(100% - 52px); overflow: hidden; text-overflow: ellipsis; }
 .z-kp > .q-src.rsn { background: var(--k, #a8336f); color: #fff; box-shadow: none; gap: 4px; }
-/* Bought: the green band at the picture's foot (v80 "alındı dönüşüyor"; the card keeps its size). */
-.z-kp .q-vband { position: absolute; left: 0; right: 0; bottom: 0; z-index: 1; display: flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; background: var(--q-ok); color: #fff; font-size: var(--q-fs-small); font-weight: 800; }
+/* Bought: a small green chip on the picture's foot (v80 "alındı dönüşüyor"; the card keeps its size, the photo stays whole). */
+.z-kp .q-vband { position: absolute; left: 8px; bottom: 8px; z-index: 1; display: inline-flex; align-items: center; gap: 4px; max-width: calc(100% - 16px); height: 22px; box-sizing: border-box; padding: 0 8px; border-radius: 99px; background: var(--q-ok); color: #fff; font-size: var(--q-fs-badge); font-weight: 800; white-space: nowrap; overflow: hidden; box-shadow: 0 1px 4px rgba(28, 26, 51, .2); }
 /* The picture's top right: × Plandan çıkar and ⋯, faint until the card is pointed at or has the focus; ⓘ on a bought one. */
 .z-kt { position: absolute; right: 8px; top: 8px; z-index: 4; display: flex; gap: 6px; }
 .q-rm, .z-kmb { width: 26px; height: 26px; border-radius: 50%; border: 0; padding: 0; background: #fff; color: var(--q-mut); display: grid; place-items: center; cursor: pointer; box-shadow: 0 1px 4px rgba(28, 26, 51, .18); opacity: 0; transition: opacity var(--t-quick) var(--e-out); }
@@ -65,8 +65,10 @@
 .z-kf .q-open { padding: 0 10px; gap: 5px; white-space: nowrap; }
 .z-kf .q-act .q-open, .z-kf .q-act .q-doc.add { flex: 0 0 auto; }
 .z-kf .q-act .q-code:only-child, .z-kf .q-act .q-open:only-child, .z-kf .q-act .q-doc.add:only-child { flex: 1 1 auto; }
-.z-kf .q-doc.add { display: inline-flex; align-items: center; gap: 5px; padding: 0 10px; background: #fff; border: 1.5px dashed #b9b4cf; color: var(--q-ink); font-weight: 700; white-space: nowrap; cursor: pointer; }
-.z-kf .q-doc.add:hover { border-color: var(--q-acc); color: var(--q-acc); }
+/* "📎 Bilet ekle": a quiet link on the foot's line, not a box (the file is a second thing to do once it's bought). */
+.z-kf .q-act > .q-doc.add { display: inline-flex; align-items: center; justify-content: flex-start; gap: 4px; height: 22px; min-height: 22px; padding: 0 2px; border: 0; border-radius: 6px; background: none; color: var(--q-mut); font: inherit; font-size: var(--q-fs-small); font-weight: 700; white-space: nowrap; cursor: pointer; }
+.z-kf .q-act > .q-doc.add:not(:only-child) { padding: 0 2px 0 4px; }
+.z-kf .q-doc.add:hover { color: var(--q-acc); text-decoration: underline; }
 .z-kf .q-day { all: unset; box-sizing: border-box; cursor: pointer; margin-left: auto; font-size: var(--q-fs-info); font-weight: 700; color: var(--q-ok); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 70%; border-radius: 6px; }
 .z-kf .q-act .q-day { margin-left: 0; display: inline-flex; align-items: center; justify-content: center; max-width: none; border: 1px solid var(--q-line); background: #fff; }
 .z-kf .q-day:hover { text-decoration: underline; }
@@ -174,6 +176,6 @@ body.still .z-k.q-opt:hover { transform: none; }
   .z-int.multi .q-oh .z-self, .q-gapl .z-self { flex: none; }
   .q-gapl .z-self > small, .q-gapl .z-pl > span:not(.q-logo) { display: none; }
   /* A bought ticket's foot: its code and the clip (its words in its label). */
-  .z-kf .q-act .q-open, .z-kf .q-act .q-doc.add { padding: 0 9px; }
-  .z-kf .q-act .q-open > span, .z-kf .q-act .q-doc.add > span { display: none; }
+  .z-kf .q-act .q-open { padding: 0 9px; }
+  .z-kf .q-act .q-open > span, .z-kf .q-act .q-doc.add:not(:only-child) > span { display: none; }
 }
