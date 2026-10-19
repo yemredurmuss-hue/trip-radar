@@ -82,7 +82,7 @@ import { chatStatusOf, searchEnded, searchStarted, stepsCleared, stepsDone, step
 import { needKey } from "./emptyCards";
 import { chatOptions, dealPrice, offerItem, validOffers, type Need, type Offer } from "./offerSource";
 import { findOffers, stayCandidates } from "./offerSources";
-import { candidateOffer, pickLabel, pickList, picksContext, pickThree } from "./stayPicks";
+import { candidateOffer, fitsTrip, pickLabel, pickList, picksContext, pickThree, stayFitOf } from "./stayPicks";
 import { airportCode } from "./searchLinks";
 
 /** What became of the chat's suggestion, as its result says it. */
@@ -2313,9 +2313,12 @@ export async function findOffersTool(tripId: string, input: any, items: Item[]):
       if (picks.length) return { need, offers: picks.map(({ kind, pick }) => candidateOffer(pick.cand, kind, pick.why)), overMax: null };
     }
     if (need.kind === "activity") return { need, offers: await activityOffers(need), overMax: null };
-    const first = validOffers(await findOffers(need, { prefer, max, ...(live ? { live } : {}) }), need);
+    // A stay's offers keep to the kinds of place the trip stays in (stayPicks.fitsTrip: no dorm bed for two on a romantic month).
+    const fit = need.kind === "stay" ? stayFitOf(need, trip ?? null) : null;
+    const fitting = (list: Offer[]) => (fit ? list.filter((o) => fitsTrip({ name: [o.title, o.meta].filter(Boolean).join(" · "), labels: [] }, fit)) : list);
+    const first = fitting(validOffers(await findOffers(need, { prefer, max, ...(live ? { live } : {}) }), need));
     if (first.length || max == null) return { need, offers: first, overMax: null };
-    const cheapest = validOffers(await findOffers(need, { prefer: "cheap", ...(live ? { live } : {}) }), need);
+    const cheapest = fitting(validOffers(await findOffers(need, { prefer: "cheap", ...(live ? { live } : {}) }), need));
     const prices = cheapest.map((o) => ({ o, at: unitPrice(o, need) })).filter((x): x is { o: Offer; at: number } => x.at != null);
     const low = prices.length ? prices.reduce((a, b) => (b.at < a.at ? b : a)) : null;
     const amount = low ? formatPrice(Math.round(low.at), low.o.currency ?? "EUR") : null;
