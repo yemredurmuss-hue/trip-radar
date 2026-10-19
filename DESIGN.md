@@ -1,279 +1,307 @@
 # Trip Radar arayüz kuralları
 
-Bu panonun tek işi karar vermeyi kolaylaştırmak. Her yeni ekran ve bileşen bu kurallara uyar; stiller
-`static/app.css` içinde, renkler ve boşluklar oradaki değişkenlerden gelir.
+Bu panonun tek işi karar vermeyi kolaylaştırmak. Her yeni ekran ve bileşen bu kurallara uyar.
+
+- Onaylı tasarım v82/v83 prototipidir: `docs/mockups/plan-v83-turler/` (Japonya `index.html`, festival `ozora.html`,
+  gezi biçimi `turler.html`). Ölçüler ve davranış `docs/superpowers/specs/2026-10-18-plan-v77-katmanli-tasarim-notu.md`
+  (v81, v82, v83 bölümleri), kararlar `docs/superpowers/specs/2026-10-18-v82-gecis/01-kararlar.md`.
+- Renkler, yazı boyları ve kutu ölçüleri `static/app.css` sonundaki `--q-*` değişkenlerinden gelir. Yeni stiller
+  `static/v82/` altındaki dosyalara yazılır (hero, plan, intent, ticket, collect, journey, pano, prep, chat, motion);
+  prototipin sınıf adları korunur.
+- Saf mantık (durum, sayım, sıralama, metin seçimi) `src/lib/` altında ve testlidir; bileşenler ince kalır.
 
 ## Önce karar
 
-- Bir bakışta üç şey görünür: **ne kaldı** (hero'da sıradaki adım ve altındaki sessiz satır: Karar ver / Rezerve et / Planla / ⏳), **ne öneriliyor** (tek satır öneri), **neden**
-  (kartın solunda artılar, sağında eksiler). Gerisi bir dokunuş ötededir: kartın "Detaylar"ı, sonra
-  "Tüm detaylar".
-- Aynı şey iki yerde söylenmez. Öneri tek satırdır; uzun gerekçe Karşılaştır'da durur.
-- Sıralama kararın omurgası: seçenekler 1, 2, 3, 4… alt alta, bir satırda bir kart (ilk beşi açık). Üstte tek cümle:
-  önerin ve nedeni, sonra bir önceliğe göre öne çıkan alternatifler sırasıyla.
-- Fotoğraf büyük, sitedeki gibi: geniş kartta solda kartın ~%42'si boyunca, dar kartta üstte tam genişlik. Sıra
-  numarası (sol üst), uyum puanı (sağ üst) ve site bağlantısı (sol alt) fotoğrafın üstünde.
-- Yanında okunacak yer: neyde en güçlü olduğu (küçük büyük harf etiket, tek vurgu rengi), büyük ad, tür ve puan tek
-  gri satır, büyük fiyat; sonra "1.'ye göre" satırı (fark, kazanç, eksik), istek işaretleri (✓/✕/?) ve artı/eksiler.
-  Detaylar kartın altında tam genişlik açılır; fotoğraf uzamaz.
-- Durum tek satır ve renkli zeminle: Seçmeden kontrol et (amber), Kısmi (gri), Uygun değil (kırmızı, soluk kart).
-- Metni kısaltarak değil düzenle okunur yaparız: satırlar tam cümle, 14 px, rahat satır aralığı, kalın yalnız
-  eleme sebebinde. Dar sütuna sıkıştırmak yok; artı/eksi yan yana yalnız kart genişse.
-- Plan'da her şey kendi kartı: ulaşım kartı (uçuş, tren, otobüs, minibüs, vapur, taksi·transfer, araç/motosiklet/karavan/bisiklet
-  kiralama) ve medya kartı (etkinlik, eSIM, sigorta, restoran, not). Konaklama kendi karar kartını korur.
-- Seçim yapılınca artı/eksi kalkar: karşılaştırma bitmiştir, kart sade durur.
+- Bir bakışta üç şey görünür: **ne kaldı** (hero şeridinde hazırlık sayısı ve "Sıradaki" düğmesi), **ne öneriliyor**
+  (niyet kutusundaki "Önerimiz"), **neden** (kutunun Ayrıntı'sı ve Pano'nun karşılaştırması). Gerisi bir dokunuş ötededir.
+- Dört katman, her bilgi tek katmanda (F1): kapalı kategori satırı (K0) · niyet kutusu (K1) · kutunun üstünde açılan
+  Ayrıntı (K2) · Pano (K3). Ayrıntı'nın altında "Tüm detaylar ›" (başka geziye taşı, puan parçaları, fiyat geçmişi,
+  kanıt, asıl sayfa, sil; B14).
+- Aynı şey iki yerde söylenmez. Öneri kısadır; uzun gerekçe Ayrıntı'da ve Pano karşılaştırmasında durur.
+- Kutunun önünde yalnız karar değiştiren şey durur: seçeneği diğerlerinden ayıran ("yalnız bunda") önce; tek yorumdaki
+  küçük şey, hepsinde olan şey ve bilgi (giriş saati, iptal günü) Ayrıntı'ya kalır.
+- Seçim yapılınca karşılaştırma bitmiştir: kutu seçili haline döner, artı ve eksi Ayrıntı'da kalır.
+- Uydurma yok. Fiyat, saat, süre yalnız kayıttan ya da hesaptan gelir. Bilinmeyen parça görünmez, "yok" diye yazılmaz;
+  düzen kalanlara göre kurulur (C19).
+- Seçince bildirim çıkmaz (E16). Hero'daki "Sıradaki" ve sayılar kendini günceller (F4).
+- Eksik olan (dönüş bileti, transfer, alınmamış bilet) ayrı uyarı satırı değildir: omurgaya niyet olarak gelir, durumu
+  tamamlanmadığını söyler (C16).
 
-## Renklerin tek anlamı var
+## Renklerin tek anlamı
 
-| Renk | Anlamı | Nerede |
+Her rengin bir anlamı var; durum hiçbir yerde yalnız renkle anlatılmaz, yanında hep yazısı olur ("Seçildi", "Alındı").
+
+| Renk | Anlamı | Değişkenler | Nerede |
+| --- | --- | --- | --- |
+| Mor | Eylem ve bizim önerimiz | `--q-acc`, `--q-acc-d`, `--q-acc-s`; kutu `--q-st-pick-bg`, `--q-st-pick-line` | Bunu seç, Rezerve et, AI'dan öner, Plana koy; "Önerimiz" çipi ve kutusu; Değiştir gibi metin düğmeleri |
+| Kum | **Seçildi**: karar verildi, henüz alınmadı (B7) | `--q-sand`, `--q-sand-l`, `--q-sand-ink`; kutu `--q-st-chosen-bg`, `--q-st-chosen-line`, nokta `--q-st-chosen-dot` | Seçili kutunun zemini ve çizgisi, "Seçildi" ve "Planda" çipleri, kart sırasının "Planında" kartı |
+| Yeşil | Alındı: rezerve edildi, bilet alındı; artı | `--q-ok`, `--q-ok-s`, `--q-ok-l`; kutu `--q-st-booked-bg` | Alındı kutusu, mühür (✓), "Belgeyi aç", "E-bilet aç", istekte ✓ |
+| Yeşilin iki tonu | Yalnız hazırlık çubuğunda: koyu ton alındı, açık ton planda (B9) | `--q-ok`, `--q-ok-l` | Hero şeridi, ince şerit, kategori satırının çubuğu |
+| Gri, kesikli çizgi | Karar bekliyor ya da aranıyor | `--q-st-wait-bg`, `--q-st-wait-line`, `--q-st-wait-dot` | Seçeneği olmayan ya da seçilmemiş kutu |
+| Gri, düz | Ayarlandı, Dahil, Gerek yok | `--q-st-arranged-dot` | Transferi kendin ayarladın, paketin kapsadığı kutu, katlanan kutu |
+| Amber | Süre ve belge uyarısı | `--q-warn` | 14 gün kala "belge yok" (B15), yaklaşan Hazırlık günü, vize gerekiyor |
+| Kırmızı | Eksi, şart karşılanmadı, kaçan gün, geziyi sil | `--q-bad` | İstekte ✕, eksi, son günü geçmiş Hazırlık maddesinin günü (yumuşak kırmızı zeminde), "Geziyi sil". AI hatası kırmızı değildir: yan sütunda ince gri satır (E15) |
+| Kategori renkleri | Yalnız hangi kategori | `SECTION_META` (`src/app/plan/sectionMeta.ts`): uçuş `#6a4fe0`, konaklama `#23998b`, ulaşım `#2563c9`, etkinlik `#a8336f`, yapılacaklar `#1f7a45`, belgeler ve internet `#0f7a5e`, hazırlık `#475467`, İlham `#c0256b` | Kategori satırının ikonu, kart sırasının çizimi |
+| Tür renkleri | Yalnız hangi tür | `cardKindColor` (`src/lib/cardKinds.ts`): tren `#2563c9`, otobüs `#d9480f`, minibüs `#e8890c`, vapur `#0e8fb0`, taksi `#d29a00`, araç `#475467`, motosiklet `#c0256b`, karavan `#8a6534`, bisiklet `#5d8a1c`, eSIM `#3b6fd1`, sigorta `#0f8a6a` | Tür ikonu, siluet çizgisi, ekleme penceresinin kutuları |
+
+- Açık kategoride niyetler soldaki dikey çizgiye bağlıdır; noktanın rengi durumdur: kesikli gri karar, mor önerimiz,
+  kum seçildi, yeşil alındı, gri ayarlandı. Kutunun zemini durumun açık rengi, içindeki çerçeve beyazdır.
+- Gezginin istekleri kutunun başlığında: ✓ var (yeşil), ✕ yok (kırmızı). Sayfanın söylemediği ("?") gösterilmez, veride
+  kalır (B5). Varsayılanlar bu satıra girmez; yalnız söylediği, ayarladığı ya da sezilen öncelik.
+- Satırlar somut yazar (kaç dakika, kaç puan, hangi saat); "Yakın", "Zor saat" gibi tek kelime yetmez. Bulgu kendi
+  sözleriyle yazılır; genel bir konu adı ("Olanak eksik") yazılmaz.
+
+## Yazı ölçeği
+
+Plan sayfasında dokuz boy var, başkası yok (v81). Değişkenler `--q-fs-*`:
+
+| Boy | Değişken | Ne için |
 | --- | --- | --- |
-| Yeşil `#1f8f4e` | Rezerve edildi, bilet alındı; artı | Durum şeridi, ✓ rozeti, artı işareti |
-| Amber `#f0a53a` | Süre uyarısı (v46'dan beri Seçildi'nin rengi değil: Seçildi beyaz zemin + açık yeşil çerçeve) | "rezerve edilmedi" uyarısı, iptal süresi |
-| Kırmızı `#d9534f` / `--danger` | Eksi, risk, elendi, süresi dolmak üzere | Eksi işareti, eleme sebebi, iptal uyarısı |
-| Mavi `--accent` | Yalnız öneri ve link | Öneri satırı, önerilen kartın çerçevesi, linkler |
-| Gri, kesikli çizgi | Henüz planlanmadı, boş | "Planlanmadı" kartı, boş gün |
-| Kategori renkleri (mor uçuş `#6a4fe0`, turkuaz konaklama `#23998b`, hardal ulaşım `#c58a2e`, bordo etkinlik `#a8336f`) | Yalnız hangi tür | Hero'daki onaylananlar ikonları ve bütçe çubuğu |
-| Tür renkleri (uçuş `#6a4fe0`, tren `#2563c9`, otobüs `#d9480f`, minibüs `#e8890c`, vapur `#0e8fb0`, taksi `#d29a00`, araç `#475467`, motosiklet `#c0256b`, karavan `#8a6534`, bisiklet `#5d8a1c`, etkinlik `#a8336f`, eSIM `#3b6fd1`, sigorta `#0f8a6a`, yapılacak `#1f8f4e`) | Yalnız hangi tür | Plan kartının üst satırındaki ikon ve ad, siluet çizgisi, ekleme penceresinin kutuları |
-| Sarı-bej `#fbf6ea` / yeşil `#eef8f1` zemin | Alınmadı / alındı-planlandı | Plan kartlarının zemini (çember ve alt şerit yazısıyla birlikte) |
+| 11 | `--q-fs-badge` | rozet, kaynak etiketi, sekme sayısı |
+| 12 | `--q-fs-small` | küçük satır, çip, durum çipi |
+| 13,5 | `--q-fs-info` | bilgi satırı, ikincil düğme, tarz çipi |
+| 15 | `--q-fs-button` | ana düğme, seçenek satırı |
+| 17 | `--q-fs-card` | kart başlığı, kategori satırının adı |
+| 19 | `--q-fs-intent` | niyetin adı, Yolculuk bölümünün başlığı |
+| 22 | `--q-fs-category` | Yolculuk'ta şehir bölümünün başlığı |
+| 24 | `--q-fs-price` | büyük fiyat |
+| 30 | `--q-fs-page` | sayfa başlığı ("Plan"), kapaktaki gezi adı |
 
-Durum hiçbir yerde yalnız renkle anlatılmaz: yanında hep yazısı olur ("Bilet alındı", "Planlanıyor").
-Gezginin istedikleri kartın üstünde ayrı bir satırdır ("İstediklerin"): ✓ var (yeşil), ✕ yok (kırmızı),
-? sayfa söylemiyor (gri). Varsayılanlar bu satıra girmez; yalnız söylediği, ayarladığı ya da sezilen öncelik.
-Kart satırları somut yazar (kaç dakika, kaç puan, hangi saat); "Yakın", "Zor saat" gibi tek kelime yetmez.
-Kartın önünde yalnız karar değiştiren şey durur: seçeneği diğerlerinden ayıran ("yalnız bunda") önce; tek yorumdaki
-küçük şey, hepsinde olan şey ve bilgi (giriş saati, "bilgi yok") detaya kalır. Bulgu kendi sözleriyle yazılır; genel
-bir konu adı ("Olanak eksik") yazılmaz.
+- Sohbet sütunu bu ölçeğin dışındadır (v81 notu). Gün gün yeniden çizilmedi; yalnız bu ölçeğe ve yeni renklere uyar (A3).
+- Türkçe büyük harfle etiket yazılmaz (İ/i sorun çıkarır); etiketler küçük ve gri olur. `text-transform: uppercase`
+  yeni bir etikete konmaz.
+- Sayılar hizalı durur (`font-variant-numeric: tabular-nums`).
+- Gri yazı `--q-mut`; daha açık gri zeminde okunmaz, kullanılmaz.
 
-## Hero
+## Niyet kutusu standardı
 
-Panonun üstü tek blok (v9, referans görsel `docs/mockups/ref/2026-10-05-hero-v9-referans.webp`, öğe öğe
-`docs/superpowers/specs/2026-10-05-hero-v9-design.md`): solda hikâye (~%62), sağda kart (~%34); pano 760 px'ten
-darsa tek sütun, kart hikâyenin altına iner. Renkler `--hx-` değişkenlerinde (ink, mor-gri muted, accent, lavanta,
-mint, kart zemini, çizgi). Her bloğun boş hâli var; bilgi geldikçe blok yumuşakça belirir (`hx-appear`, azaltılmış
-hareket tercihinde yok). Uydurma yok.
+Her ihtiyaç bir niyet kutusudur ("Porto'da 3 gece", "İstanbul → Porto"). Kutunun boyu içindeki yazıya, bilginin
+gelip gelmemesine ve duruma göre değişmez (v82). Plan'da her şeyin kendi kartı olması kuralının yerini bu aldı.
 
-- **Ana yerler** (revizyon 1): hero'nun şehirleri gezginin gittiği ana destinasyonlardır (şehir, ada, bölge), gecelediği
-  her kasaba değil. Madeira'daki bir köy (Gaula) Madeira'nın içine katlanır: şehir seçici, fotoğraf, hava, ton cümlesi,
-  tarz ve durum cümlesindeki şehir "Porto | Madeira" der. Hangi yerin hangisinin içinde olduğunu gezginin modeli
-  söyler (şehir kümesi başına bir kez, gezide saklanır). Kod iki gerçek durağı asla birleştirmez: ülke ebeveyn olamaz,
-  bilinen şehir (Porto, Lizbon, Faro) taşınmaz (yalnız başka adı: Madeira ≡ Funchal), bilinmeyen iki konaklama
-  kasabası birbirine katlanmaz; zincir sonuna kadar izlenir (en çok 3 adım), döngü atılır. Ana yerin adı panonun
-  dilinde ("Lizbon"). Model yokken yalnız adresi gezinin başka bir yerini adlandıran konaklama katlanır. Plan ve
-  Günlük akış yerleri olduğu gibi gösterir.
-- **Fotoğraf** ana yer başına bir tane, rota sırasıyla (~1,92:1, dar ekranda 220 px). Sol üstte şehir seçici (6 sn'de
-  bir geçer), sağ üstte geri sayım hapı ("3 gün kaldı") ve ••• menüsü; iş varken işleniyor hapı. Şehir yoksa lavanta
-  zemin + "Şehir belli olunca fotoğrafı gelir".
-- **Başlık, tarih, cümle**: 40 px başlık; altında takvim · "8–14 Ekim · 7 gün" (tahminse "~"); tek mor-gri cümle:
-  AI'nin ton cümlesi, yoksa koddan durum cümlesi ("3 karar ve 1 rezervasyon bekliyor."). İkisi birden yazılmaz.
-- **Plan dört hücrede**: uçuş · konaklama · ulaşım · deneyim, kategori renginde ikon + "2 uçuş". Sayı Plan bölümünün
-  tuttuğu kayıt sayısıdır, bölüm başlığındaki "x/y"nin y'si (revizyon 1): taksi ve transferler Ulaşım'da sayılır;
-  deneyim = Etkinlikler + Yapılacak şeyler + Restoranlar; gizlenen ve "Gerek yok" sayılmaz. Onay ayrı, ilerleme
-  kutusunda. Hücre her zaman tek satır, yazısına göre genişler; dördü bir sıraya sığmazsa 2×2. Sıfır hücre kalır
-  ama soluk. Hücreye basınca Plan'da o bölüm açılır (deneyim: içi dolu ilk bölüm).
-- **Rezervasyonların** (mint kutu): Plan bölüm başlıklarındaki "3/4"lerin toplamı ("2/11 onaylandı · %18") ve çubuk;
-  sayıya basınca bütün yapılacaklar hero'nun altında açılır, "⏳ 2" yalnız iptal süresi yaklaşanları. Koyu düğme
-  "Planı tamamla →" sıradaki işe gider; hepsi tamamsa "Paylaş →", hiç kayıt yoksa "İlk kaydı ekle →".
-- **Sağ kart**, bloklar arasında ince çizgi: **Yolcular** (baş harfli üst üste yuvarlaklar, "Emre & Sabine" ·
-  "2 kişi"; ad yoksa kayıtlardaki kişi sayısı; basınca paylaşım) ve **tarz çipleri** (modelin sabit listeden en
-  fazla iki kelimesi, her biri kendi ikonu ve renginde; bütçenin kelimesi gri cüzdanlı hap; kişi başı günlük €70
-  altı Ekonomik, €180'e kadar Orta bütçe, üstü Yüksek bütçe) · **Bütçe**: rakam (bütçe, yoksa bilinen toplam),
-  altında Rezerve / Planlanan / Boşta ya da kırmızı Aşıyor satırları; basınca kategori kırılımı · **Tercihler**
-  ("Seni böyle anladım"): en fazla iki satır, her biri tek satır anahtar kelime, cümle değil ("Fiyat + konum ·
-  Çok önemli", "Sessiz bir yer istiyoruz" → "Sessizlik · Önemli"; kodun tanımadığı not modelin 1–3 kelimesiyle,
-  o gelene kadar ilk üç kelime + "…"; bulgu kısa etiketiyle, "Gürültülü · Sorun değil"); etiket yalnız son çare
-  olarak "…" ile biter, tam metin pencerede; "+7 tercih ›"; pencere kartın üstüne açılır, sayfayı itmez, her giriş
-  kapsamı ve × ile · **Ülke ve hava**: bayrak + ülke, şehir başına ikon + gündüz
-  derecesi (10 gün kala tahmin, öncesinde son 5 yılın aynı günleri) · en altta sessiz sıra: para (kur üstüne
-  gelince) · priz · saat farkı ("−2 saat", aynıysa "Aynı saat") · dil.
-- **Kart ilerleme kutusuyla aynı hizada biter** (revizyon 1): geniş ekranda kart hikâye sütunu kadar uzar, alt kenarı
-  "Rezervasyonların" kutusunun alt kenarıyla bir; kendi başına sıkı (çizginin iki yanında 14 px), artan yer her
-  çizginin iki yanına eşit dağılır. İçerik hikâyeden uzunsa (dört ülke) kart uzar, hiçbir şey kesilmez.
-- **Sekmeler** hero'nun altında, ortalı ve alt çizgili: **Plan | Pano** (Pano'da kayıt sayısı); seçili olan ink, 3 px accent çizgi. Günlük akış ayrı sekme değildir: Plan'ın üçüncü görünümü "Gün gün"dür (Kategoriye göre · Yolculuk sırasıyla · Gün gün). Belgeler ••• gezi menüsündedir (Belgeler · Paylaş · PDF olarak indir · Geçmiş).
+**Sabit ölçüler** (`static/app.css`, `--q-*`):
 
-## Plan kartları
+| Parça | Ölçü | Değişken |
+| --- | --- | --- |
+| Başlık | 76 px: görsel 52, ad 19 px, tek satır bilgi ve istekler, sağda durum · Pano · ⋯ | `--q-head-h` |
+| Gövde | 196 px (masaüstü) | `--q-body-h` |
+| Yan sütun | 232 px: üstte fiyat ya da kod, altta ana eylem 42 px ve ikincil satır 32 px | `--q-side-w`, `--q-act-h`, `--q-act2-h` |
+| Kart sırasının kartı | 224 px (Etkinlik, Yapılacaklar; 4 sütun) | `--q-card-w` |
+| Pano kartı | 220 px ızgara; tek seçenek de büyümez | `--q-pano-w` |
+| Karşılaştırma sütunu | 280 px | `--q-col-w` |
 
-Uçuş, ulaşım, transfer, etkinlik, eSIM, sigorta, restoran ve not aynı kabuğu paylaşır (onaylı görseller
-`docs/mockups/2026-10-05-ulasim-v3.html` ve `docs/mockups/2026-10-05-etkinlik-v4.html`).
+- **Tekli kutu 288 px**: 1440 ve 860 px'te her durumda aynı yükseklik, iki dilde (A6). Ölçüm:
+  `scripts/v82-shots.mjs` → `heights.json`.
+- **Çerçeve aileleri:** konaklama, eSIM ve sigorta: görsel 196 | bilgi dört satır (marka ve puan ya da durum, ad, konum
+  ya da tarih, çipler) | yan sütun. Uçuş, tren ve transfer: bilet (taşıyıcı satırı, şehirler ve istasyon ya da saat,
+  çipler) | aynı yan sütun; aktarmalı uçuş tek niyet, iki koçan (D7). Etkinlik ve Yapılacaklar: şehir başına iki
+  sıra, "Planında" ve "Öneriler", sırada dört kart. Planında plana konan her kartı gösterir, dörtlü sıralar halinde;
+  son sıra boş yuvalarla dörde tamamlanır, hiç kart yoksa dört boş yuva ("Henüz plana koymadın"). Öneriler tek sıradır,
+  fazlası "+n Pano'da" (Emre, 19 Ekim).
+- **Durumlar aynı çerçevede:** Karar bekliyor (aynı yükseklikte en çok 3 seçenek, "4 · ilk 3, tümü Pano'da"),
+  Önerimiz (fiyat ve "Bunu seç"; onaylanana kadar planda sayılmaz), Seçildi (fiyat, Rezerve et ya da Satın al, altında
+  Aldım · Değiştir), Alındı, Ayarlandı, Dahil, Aranıyor (boş görsel, bölge çipleri, Kendin ara simgeleri, AI'dan öner).
+  AI ya da gezinin biçimi bir kutuyu açtıysa kutu Aranıyor ya da Önerimiz başlar, asla Alındı ya da Ayarlandı (D3).
+- **Alındı = erişim:** karar bitti, ulaşmak önemli. Fiyat önden kalkar; yan sütunda küçük "€900 ödendi" (B10). Öne
+  çıkan: kod ve kopyala, giriş ve çıkış ya da kalkış saati (her zaman, B1), "Belgeyi aç" ya da aynı boyda kesik çizgili
+  "Belgeyi ekle". Belgesi eklenmemiş rezervasyon 14 gün kala amber "belge yok" der (B15).
+- **Değiştir** kutuyu büyütmez: seçili kart yerinde seçeneklere döner, seçili olan işaretli, "Vazgeç" ile geri.
+  Seçenek başlığının sağında "Kendin ara"; karşılaştırma Pano düğmesindedir (B12).
+- **Ayrıntı** kutuyu büyütmez: kutunun üstünde açılır, Esc ve × kapatır, odak ⓘ'ye döner.
+- **⋯ menüsü:** Ayrıntı, Gerek yok, Ben hallettim (Ayarlandı; B13). Gerek yok denince gövde katlanır, kutu kategorinin
+  sonundaki "Gizlenenler · n" altına iner, Geri al ile yerine döner (F3, E7).
+- **Dahil:** bir alım başka kutuları kapsıyorsa (festival bileti kampı, Hakone Free Pass vapuru, kiralık araç aradaki
+  yolları) kapsanan kutu "Dahil · … ile" der, karar istemez ve kapsayanın durumunu izler (D2, D10; spec §1.3).
+- **Kısa bilgi satırı:** gezinin biçimi bir kategoride bir şeyi değiştirdiyse (kamp bilete dahil, yakın havalimanı,
+  kapanan öneriler) o kategorinin başında tek satır. Değişiklik yoksa satır yok (spec §1.4).
+- Niyetin adı tek satırdır; sığmazsa "…" ile biter, tam hali ipucunda ve Ayrıntı'da.
+- 390 px'te yapı aynı kalır: görsel solda, bilgi sağda, yan sütun alta iner, istekler alt satıra kayar. Bu genişlikte
+  eşit boy sonraki iştir (A8).
 
-- **Kabuk (v46 durum dili):** Arıyoruz = hafif gri çerçeve, boş · Önerimiz = beyaz zemin, mor-gri ince düz çerçeve · Seçildi = beyaz zemin, açık yeşil (`--plan-line`) düz çerçeve · Rezerve = yeşil zemin, koyu yeşil çerçeve · Ayarlandı ayrı sözdür. Kesikli çerçeve ve krem/amber zemin (`#fbf6ea`, `#e9d29a`) kalktı; amber yalnız süre uyarısında (iptal süresi, alınmamış bilet) kalır. Eski tarif (bu satırın devamı ve yukarıdaki renk tablosu) v30'a aittir: Üst satır 24 px: çember (kesikli
-  karar bekliyor · amber seçildi · yeşil ✓ alındı) · renkli tür ikonu ve adı · tarih [· saat] | belge · •••.
-  Altta 48 px şerit: solda durum ya da seçenek gezgini, sağda fiyat ve tek koyu eylem. Durum yazısı yalnız altta;
-  sağ üstte durum hapı yok. Alt şerit kısa kalır ("Seçildi · bilet alınmadı · ⏳ 4 gün"), "…" ile kesilmez; uzun tarih
-  uyarısı ayrıntıda. Her kayıt kartında •••'nin solunda yuvarlak × (24 px, gri, üstüne gelince kırmızı): fare kartın
-  üstündeyken ya da kart odaktayken görünür, dar ekranda (≤620 px) ve dokunmatikte hep soluk.
-- **Seçenek gezgini:** bir ihtiyacın seçenekleri yan yana kart değil, tek kart + alt şeritte `‹ 1/2 ›`; önerilen
-  seçenekte "Önerim". Neden önerildiği, "2.'ye göre" satırı ve rozetler ayrıntıdadır.
-- **Ulaşım gövdesi:** solda nereden, sağda nereye: büyük yazı şehir (30 px; uzun ad sütununda sarar, 24 px), altında
-  küçük satır kod ya da istasyon · **saat** (iniş başka günse o gün de); orta sütun siluetin genişliğinde, ad siluetin
-  altına girmez. Kiralıkta sağ taraf gün sayısı ve iade günü. Ortada türün noktalı silueti, kenarları solar. Çizimi olmayan yolda (metro, yürüyüş) orta satır uçların arasında.
-  Transfer ve şehir değişimi kartında uç kısa ad, altında tam ad: konaklama "Airbnb" / "Booking.com" ya da
-  "Otel" / "Daire" (altında konaklamanın adı, sarar), havalimanı "Porto Havalimanı" (altında OPO), gar "Porto Garı"
-  (altında istasyonun adı).
-- **Medya gövdesi:** 176×128 görsel (yoksa türün noktalı silueti), puan köşede; yanında 20 px başlık, bilgi satırı, kaynak.
-- **Ayrıntı:** karta dokununca kartın içinde beyaz panel açılır; eski karttaki her bilgi orada (saatler, işletme,
-  fiyat kırılımı, neden önerildi, istedikler, artı/eksi, bağlantılar, geri almalar).
-- **Belgeler:** yalnız bu bilgisayarda durur. Varsa hap ("bilet.pdf +1", dar ekranda ikon), yoksa soluk ataç.
-- **Eklemek:** Plan başlığındaki "+ Ekle" bütün şablonları açar; bir bölümün "+ Ekle"si ve bölüm içindeki kesik
-  çizgili "+" (hep soluk görünür, üstüne gelince tam; dar ekranda tam) yalnız o bölümün türünü ekler: tek türü olan
-  (Uçuş, Etkinlik, Yapılacak, Restoran) anında, birkaç türü olan (Konaklama, Ulaşım, Diğer) yalnız kendi karolarıyla.
-  Günlük akışta her günde "+". Şehir ve tarih bastığın yerden gelir (konaklamanın ardında yalnız şehir). Karoya
-  basınca form açılmaz: kayıt hemen oluşur ("Planlanıyor"), bölümü açılır, sayfa yeni karta kayar ve kart ilk boş
-  alanı açık gelir (fikirde adı); altta "Otobüs eklendi · Geri al".
-- **Kartın üstünde düzenlemek:** her kayıt kartında ad, şehir, tarih, saat, uçlar ve fiyat durdukları yerde
-  değişir. Üstüne gelince ince alt çizgi ve kalem; tıklayınca aynı boyda kutu (tarih seçici, saat seçici, fiyatta
-  sayı + para birimi). Enter ya da dışarı tıklamak kaydeder, Esc bırakır, Tab sonrakine geçer; "Kaydet" düğmesi yok.
-  Boş alan soluk "Tarih ekle" / "Saat ekle" / "Fiyat ekle". Sayfadan kaydedilen kartta değişiklik düzeltme olarak
-  durur (sayfa yeniden kaydedilse de kalır); üstüne gelince "sayfadaki: X · geri al".
+## Hero = mozaik
 
-## Plan görünümleri: Kategoriye göre · Yolculuk sırasıyla · Gün gün
+Gezinin özeti planın üstünde, kendi açık mor zemininde, yuvarlak bir kutuda durur; altında 40 px boşluk, sonra "Plan"
+başlığı (v82). Bileşenler `src/app/hero/`, biçim `static/v82/hero.css`, saf mantık `src/lib/heroMosaic.ts` ve
+`src/lib/heroStrip.ts`.
 
-> Bu bölüm 0.34–0.35 dönemini anlatır; o zaman Günlük akış ayrı bir sekmeydi. Bugün sekmeler Plan | Pano'dur ve günlük akış Plan'ın içinde "Gün gün" görünümüdür (`plan/PlanOrder.tsx`); "Liste | Kartlar" anahtarı, gün şeridi ve gün satırı kuralları aşağıda Gün gün görünümü için geçerli kalır.
+- **Mozaik:** solda büyük kapak (gezi adı 30 px, altında ana yerler "Porto · Lizbon"), sağda en çok altı kare (3 × 2;
+  beş olursa dört, boşluk kalmaz). Kareler bu sırayla alınır: plandaki yerler (seçilen ya da alınan konaklama, planına
+  konan etkinlik, yapılacak, restoran), Pano'ya biriken linklerin fotoğrafları, gezinin şehirleri gece sayılarıyla,
+  gezinin anları (sohbetle başlarken: yemek, romantik akşam), en son fotoğrafı henüz olmayan şehir için çizim. Çizim
+  fotoğraflardan çok olmaz; hiç fotoğraf yoksa yalnız kapak kalır (C19). Yüklenemeyen fotoğraf çizilmez.
+- **Fotoğraf künyesi:** her karede üzerine gelince küçük "i"; çekenin adı ve kaynağı orada (C7). Fotoğraf kaynakları:
+  `src/lib/cityImages.ts` (paylaşım sunucusunun `city-image` işlevi, bulamazsa Wikipedia) ve kaydedilen sayfanın kendi
+  fotoğrafı. PDF kapağı aynı şehir fotoğraflarını, Seyahatlerim'deki gezi kartı hero kapağının fotoğrafını kullanır.
+- **Gezi ⋯ menüsü** kapağın sol üstünde (C1): Belgeler, Paylaş, Planı PDF indir, Rotayı haritada gör, Geçmiş ve çöp
+  kutusu, Yeni sohbet, Link ekle, Ayarlar; ayrı satırda kırmızı "Geziyi sil".
+- **Şerit, dört bölme:** tarih (tahminse "~", ay ya da mevsimden tahminde "~ · n gece", D15) | kişiler ve hazırlık
+  çubuğu ("%61 planda · %33 alındı", B9) | bütçe (bütçe yoksa "Bütçe belirle", D16) | koyu "Sıradaki" düğmesi (önce
+  vize, sonra Önerimiz onayı, sonra karar bekleyen; C30). Sayıya basınca ilk karara gider, üzerine gelince hangileri
+  olduğunu söyler (F5).
+- **Çipler:** ülke (çok ülkede "n ülke" ve ülke tablosu, D9), hava, para, priz, saat farkı, dil, vize; uyarı çipleri
+  amber ("Schengen vizesi gerekiyor", "2 belge yok"). Üzerine gelince ya da basınca ayrıntılar açılır (şehir şehir hava,
+  kur, priz uyumu, "Sende 12:00 iken orada 18:00", vize ayrıntısı).
+- **Küçük pencereler** (180/120 ms, E12): Tercihler "Seni böyle anladım" (kapsam etiketi, kaynak, × kaldır, AI'nın
+  sorusu Evet/Hayır), Bütçe (Rezerve · Planlanan · Boşta, kategori dağılımı, iki ve daha çok kişide "Kişi başı ~€3.450 ·
+  2 kişi", T5), Kimler gidiyor (yetişkin, çocuk, oda; davet, son hareket; D12).
+- **Ana yerler** (revizyon 1): hero'nun şehirleri gezginin gittiği ana yerlerdir (şehir, ada, bölge), gecelediği her
+  kasaba değil. Madeira'daki bir köy (Gaula) Madeira'nın içine katlanır. Hangi yerin hangisinin içinde olduğunu
+  gezginin modeli söyler (şehir kümesi başına bir kez, gezide saklanır). Kod iki gerçek durağı asla birleştirmez: ülke
+  ebeveyn olamaz, bilinen şehir taşınmaz, bilinmeyen iki konaklama kasabası birbirine katlanmaz. Ana yerin adı panonun
+  dilinde ("Lizbon"). Plan ve Gün gün yerleri olduğu gibi gösterir.
+- **Özeti küçült:** tek satır (görsel, ad, tarih · kişi · %planda · bütçe, "Özeti aç"). Aşağı kaydırınca planın üstünde
+  ince şerit kalır: ad, %planda, karar sayısı, bütçe, Plan | Pano, Sıradaki.
+- **Omurga yeni:** olmayan bilgi yazılmaz, yeri olmaz: yer kareleri yerine şehir kareleri, tarih "~", hazırlık yerine
+  "18 ihtiyaç · 5'inde önerimiz var", tercihler satırı yok (C19).
+- **Gezi sırasında** hero'nun yerine "Bugün" şeridi: tarih, hava, saat saat kalemler, şu anki satır vurgulu, geçenler
+  soluk, her satırda tek eylem, altta yarının ilk işi (D8). Uçuş günü alınmış biletin çip satırı canlı şeride döner
+  (kapı, biniş, rötar; C4).
+- Hero'nun üstünde, ortada sekmeler: **Plan | Pano** (Pano'da kayıt sayısı).
 
-- **Plan kategorilere göre** (`docs/mockups/2026-10-05-kategoriler-v4.html`, spec 0.34): yedi bölüm, bu sırayla —
-  Uçuş · Konaklama (gece blokları dahil) · Ulaşım (transferler, şehir değişimi, kiralama) · Etkinlikler (rezervasyonlu)
-  · Yapılacak şeyler (rezervasyonsuz) · Restoranlar · Diğer (sigorta, eSIM). Her kayıt tam olarak bir bölümde; boş
-  bölüm (gizlisi de yoksa) çizilmez, en altta "Ekle:" satırında tek çip olur.
-- Bölüm kabuğu: bütün bölümler **tek beyaz yüzeyde** (köşe 22, yumuşak gölge), aralarında 1 px ince çizgi `#e9e6e1`.
-  Bölüme ait zemin rengi, renkli çerçeve, ikon karesi, durum hapı yok; renk yalnız ikonda ve çubukta.
-- Kapalı başlık her bölümde aynı: tür renginde çizgi ikon (22 px, karesiz) · ad (17 semibold) … sağda ince ilerleme
-  çubuğu 96×6 (tür rengi = tamam/hepsi; hepsi tamamsa yeşil `#1f8f4e`; boş iz `#efece7`) · sayı "3/4" (tamam koyu,
-  "/4" gri, tabular, sabit genişlik: sayılar alt alta hizalı) · ok (kapalı sağa, açık aşağı). Başka hiçbir şey yok.
-  Başlığa basmak açar/kapar; seçim gezi başına hatırlanır. İlk bakışta işi kalan açık, hepsi tamam olan kapalı; bu
-  ilk bakış ziyaret boyunca sabit (son bilet alınınca bölüm elinin altından kapanmaz). Kart bölüm değiştirirse yeni
-  bölümü açılır ve sayfa ona gider.
-- Açık bölüm: aynı başlık, çubuktan önce "+ Ekle"; başlığın altında, yalnız bekleyen bir şey varsa, tek amber satır
-  (`#9a6400`, 14 px: "1 bilet yok · 2 karar", "2 gece boş", "2 güne eklenmedi").
-- **Gizlenenler bölümün sonunda:** o bölüme ait elenen (Ele), "Gerek yok" denen (transfer, geceler) ve rezervasyonla
-  kapanan seçenekler yalnız sessiz bir bağlantının arkasında durur: "Gizlenenler · N göster" (13 px gri, noktalı alt
-  çizgi). Açılınca her biri kısa satır: elenen "Geri al" ile seçeneklere döner, transfer ve geceler "Geri getir" ile
-  gelir, kapanan seçenek onu kapatan rezervasyonu yazar (rezervasyon geri alınırsa döner; adına basınca ayrıntı açılır).
-  Sayfanın altında ayrı "Kapanan seçenekler / Elenenler / Gizlenenler" bloğu yok. Hangisinin hangi bölüme gittiği
-  `lib/categories.ts` `hiddenThings` (her biri tam bir bölümde).
-- Açık bölüm bir zaman çizelgesi: solda tarih sütunu ("9 Eki", altında hafta günü ve şehir), ince çizgi ve nokta,
-  sağda onaylı kartların kendisi (kart iç tasarımı değişmez). Tarihe göre, sonra saate göre; tarihsizler en sonda
-  "Tarihsiz", şehre göre. Panel ≤620 px: tarih kartın üstüne tek satır iner.
-- **Yapılacak şeyler ve Restoranlar = şehre göre fikir listesi** (0.35.3): kart değil, satır. Satır: küçük ikon
-  (sayfanın fotoğrafı varsa minik foto), ad (tek satır), tek gri satır (kaynak ya da not), sağda gün çipi, harita,
-  kaynağı (yoksa web'de arama), isteğe bağlı tek dokunuş "Yaptım" (✓), üstüne gelince ×. Restoranda rezervasyon
-  gerekiyorsa "Rezerve et"; bilet kelimesi geçen fikirde "Etkinliklere taşı". **Tik kutusu yok, ilerleme çubuğu yok,
-  "güne eklenmedi" uyarısı yok:** günü olmayan fikir eksik plan değildir. Başlıkta nötr sayı: "5 fikir · 2 tanesi bir
-  güne kondu". Sıra: şehirler gezinin sırasıyla, şehir içinde güne konanlar önce. **Gezi sırasında** önce
-  "Bugün · 9 Eki", sonra o gece kalınan şehir ("buradasın"), sonra diğerleri. **Havuz → gün → havuz:** günü geçip
-  "Yaptım" denmemiş fikir kendi şehrinin havuzuna döner ("9 Eki için konmuştu · havuza döndü"); bu yalnız gösterimde
-  hesaplanır, kayda yazılmaz. Yapılanlar en altta kapalı "Yapılanlar (n)" grubunda. Hero'nun "x/y onaylandı"sına
-  fikirler girmez (`planProgress` todo/food/inspo'yu saymaz).
-- **Fikir havuzu v1** (0.35.12, `docs/mockups/2026-10-05-fikir-havuzu-v1.html`, `ideaList.ts`, `ideaKinds.ts`): Yapılacak
-  şeyler ve Restoranlar'da üstte durum sekmeleri sayılarıyla (Hepsi · Havuzda · Günü var · Kaçtı, yalnız gezi
-  sırasında, amber nokta · Yapıldı), altında yalnız olan türlerin çipleri (Manzara, Kültür, Doğa, Pazar &
-  alışveriş, Gezinti, Eğlence; Kahvaltı & kahve, Öğle, Akşam, Tatlı, Bar & şarap); ikisi de filtre. Tür kayıttan
-  (kelimeler, restoranda öğün) çıkar, satırdaki türe dokunup değiştirilir ("Otomatik" geri verir). Satır: tür ikonu ·
-  ad (haritaya link; kalemle yeniden adlandırılır) · gri satır (tür · semt · puan · kaynak küçük link / "Maps'ten") ·
-  gün hapı ("Bugün" mor, "+ Gün") · tek "Harita" (Maps'ten kaydedildiyse o sayfa, değilse yer araması) · ✓. Gezi
-  sırasında gruplar: Bugün → Kaçtı ("Bugüne al") → şehirler (bu gecekinden başlayarak) → Yapıldı. Web arama düğmesi
-  ve ikinci konum kalktı.
-- **İlham** (0.35.3): Plan'ın en altında, kapalı başlayan bölüm. Reels, Pinterest, TikTok, YouTube ve blog linkleri
-  (`inspo.ts`): resim, platform rozeti, başlık, şehir. Restoran nerede bulunursa bulunsun restorandır; Maps linki
-  yerdir, ilham değil. Bir güne konunca Yapılacak şeyler'e geçer. Belgeler'le karışmaz (pasaport, bilet orada).
-- **AI kapısı ve profil** (0.36, `docs/superpowers/specs/2026-10-05-davet-paylasim-design.md`): davet edilen kişi kendi
-  anahtarı olmadan AI kullanır; eklenti Gemini'yi doğrudan değil, davet edenin sunucusundaki `ai` Edge Function'ı
-  üzerinden çağırır (anahtar yalnız sunucuda, `GEMINI_API_KEY`). Her paylaşım kodu bir AI bileti taşır; kişi başı
-  günlük istek sınırı ve aylık tavan (tahmini 20 $). Kendi anahtarı olan onu kullanmaya devam eder. Sahibi Ayarlar →
-  "AI kapısı"nda yönetici anahtarıyla kullanımı görür ve bir daveti kapatır. Profilim: ad + isteğe bağlı fotoğraf
-  (128 px JPEG), yalnız paylaşılan gezinin üyelerine gider; hero'daki yolcu yuvarlaklarında görünür.
-- **Seçenek panosu** (0.36.7, `docs/mockups/2026-10-06-otel-panosu-v2.html`, `board.ts`, `app/board/OptionBoard.tsx`):
-  Karşılaştırma penceresinin iki görünümü: **Kartlar** (konaklamada 2+ seçenek varsa varsayılan) ve **Tablo** (bugünkü
-  kriter tablosu, öncelik seçimleri, "Neden…", olanaklar). Üstte her ikisinde "Senin için" özeti ve AI yorumu. Kart:
-  fotoğraf (yoksa simge), tek rozet (Önerim · Favori · En ucuz · En yüksek puan; yenecek bir şey yoksa rozet yok),
-  motorun puanı, ad, gecelik ve toplam fiyat, kaynak + puan (tek ölçekte) + semt, istediklerin (✓/✕), en büyük
-  artı-eksiler ("yalnız bunda"), paylaşılan gezide **Olmaz · Olur · Süper** (oy -1/1/2; eski 👍=Olur) ve kim ne
-  dedi, Seç / Ele. Sıralama: Önerim (kazanan önde), Fiyat, Puan, Konum; süzgeç: Ücretsiz iptal, Elenenler. 2–3 kart
-  işaretlenince "Tabloda yan yana gör". Plan'daki seçili konaklama kartında "Diğer N seçenek" yerine "Seçenekleri
-  karşılaştır (N)" (karta dokunmak hâlâ seçenekleri yerinde açar).
-- **Nereye bakılır** (0.35.11, `searchLinks.ts`): Uçuş'ta gidiş var, eve dönen uçuş yoksa "Dönüş bileti ara · Porto →
-  İstanbul ↗" (Google Flights, gezinin son şehrinden, son gününde). Etkinlikler'in altında şehir başına
-  "GetYourGuide: Porto etkinliklerini ara ↗". Yalnız arama linki; hiçbir şey kaydedilmez, affiliate kodu yok.
-- **Belge eksik** (0.35.11, `docs.ts` `needsDoc`): rezerve edilmiş (yemek ve fikir dışında) ama dosyası olmayan
-  kartta ataç yerine küçük amber "Belge eksik"; tıklayınca dosya seçer. Asistan da bilir (trip_state
-  `document: "missing"`), o kayıt konuşulurken bir kez hatırlatır.
-- **Etkinlik asla fikir değildir** (0.35.3, `booking.ts` `showSays`): konser, gösteri, maç, festival, open air, DJ,
-  line-up, parti, canlı müzik geçen kayıt — sohbet ya da sayfa "yapılacak / rezervasyon yok" demiş olsa da —
-  Etkinlikler'e gider (bilet gerekir).
-- Plan'da check-in/check-out satırı, boş gün, planı olmayan transfer yok.
-- **Günlük akış · Liste** (0.35.4, referans `docs/mockups/ref/2026-10-05-gunluk-akis-liste-referans.webp`): her gün
-  bir kart; solda günün büyük fotoğrafı, üstünde "1. gün" hapı; sağda kalın başlık, tarih, aç/kapa oku; altında
-  saat saat akış: saat · noktalı çizgide nokta · renkli yumuşak karede ikon · tek satır. **Hepsi aynı hiyerarşide:**
-  check-in, taksi, uçuş, tur aynı boy ve ağırlık (ince bilgi satırı yok). Kartın sağ arkasında günün konusuna göre
-  soluk çizim (deniz, tepeler, şehir). **Sigorta ve eSIM akışta yok** (Plan'da Diğer'de); gün açılınca saatsizlerle
-  birlikte altta durur: "Gün içinde · saatsiz" (o güne konan restoranlar, yapılacak şeyler). Kapalıyken "+ N
-  saatsiz". Boş günde "+ Bu güne ekle" açmadan görünür. Satıra dokunmak Kartlar'da o kartı açar. Liste'de ray yok;
-  ray ve şehir grupları Kartlar'da.
-- **Gün başlıkları kodla, standart** (0.35.5, Emre: "Porto 1. Gün Varış", "Porto 2. Gün"): şehir + gezinin günü;
-  yanında soluk günün türü: Varış, Yolculuk (yeni şehrin adıyla), Dönüş (ayrılınan şehir), Boş gün / Boş günler.
-  Rota ("Porto → Lizbon") tarih satırında. AI başlık yok.
-- **Günün sırası** (0.35.6, `dayCards.ts` `orderRows`): saati olan satırlar her zaman saate göre; saati olmayanlar
-  (fikirler, saatsiz uçuş/check-in) gizlenmez, akışta durur ve **tutamaçtan sürüklenerek** (ya da tutamaçta ↑ ↓)
-  istenen yere taşınır; Liste ve Kartlar aynı sırayı gösterir (`trip.dayOrder`, tarihe göre). Saatsiz satır,
-  konduğu satırın hemen ardında kalır; saat verilince (saate dokun) saatine göre yerine geçer. **Saatli satır da
-  sürüklenir** (0.35.10): bırakıldığı yerde kalır, saati akışta gizlenir ("–", `trip.dayLoose`), senin verdiğin
-  saat unutulur; saate dokunup saat vermek ya da "×" onu saatine geri koyar (bilet saati silinmez, yalnız
-  gizlenir). Yeni gelen satır plandaki sırasına göre yerleşir. Sigorta ve eSIM akışta
-  değil: gün açılınca "Gezi için · sigorta, internet".
-- **Günlük akış** (0.34.8) tek anahtarla iki görünüm, günler tek tek açılıp kapanmaz. Üstte yapışkan çubuk:
-  **Liste | Kartlar** (seçim bu tarayıcıda hatırlanır) ve gün şeridi (1 · 2 · 3 · 4 · 5–6 · 7; bugün mavi), şerit
-  o güne kaydırır. İkisinde de aynı satırlar, aynı sıra.
-- **Liste** ve **Kartlar** aynı hiyerarşi (0.35.1): ray + şehir grupları + gün panelleri (aşağıda). Liste'de her satır
-  tek satır: saat · tür ikonu kendi renginde (✓ / amber nokta) · ad; check-in, check-out, metro ince; güne eklenen
-  fikirler tek tek. Bir satıra dokunmak Kartlar'a geçip o kartı gösterir (kısa vurgu).
-- **Ray** (0.35.1, Layla'dan ilham, bizim farkımız gün gün): yolculuk sırasıyla gruplar, solda ray: yuvarlak
-  koyu ikon + etiket + tarih. Yol günü kendi başına (✈/🚆 "Varış" · "Yolculuk" · "Dönüş"), aradaki şehir günleri
-  birlikte (📍 "2–3. gün", büyük şehir adı ve "N gün"). Her gün kendi beyaz panelinde; başlığı (küçük fotoğraf · "4. gün" hapı · tarih ya da
-  mavi "Bugün" · "N deneyim" / ikinci satırda başlık · haplar) kaydırırken çubuğun altında kalır; Kartlar'da satırlar
-  saatleriyle, her biri Plan'daki kartıyla (giriş günündeki check-in konaklamanın kartı, uçuşa giden transfer
-  "nasıl gideceksin"iyle); diğer bilgi satırları ince. Her günün altında "+ Bu güne ekle". Şeritte günler şehir
-  adlarıyla gruplu ("Porto 1 2 3 · Lizbon 4 5–6 7").
-- **Saatler** (0.35.1, spec `2026-10-05-akilli-saat-design.md`): kesin olan (bilet, rezervasyon, senin verdiğin) düz;
-  hesaplanan "~" ve gri, üstüne gelince nedeni ("En geç 16:40 havalimanında olmalısın; transfer ~1 sa"). Yola çıkış =
-  havalimanında olma − 1 sa (uçuşta Schengen içi 2 sa, dışı 3 sa önce orada); check-out ondan önce; inişten +45 dk
-  çıkış, +1 sa check-in. Saate dokunup kendi saatini verirsin, günün geri kalanı ona uyar; sığmazsa kırmızı tek satır.
-- Saat solda: kayıttan gelen düz, alışılmış ya da hesaplanan "~"; bilinmeyen boş.
+## Sağlayıcı kuralı
+
+Logolu düğmeler sabit marka yazılmaz; tek kayıttan seçilir: `src/lib/providers.ts` (v81 "Sağlayıcılar dinamik
+olmalı"). "Kendin ara" simgeleri, boş şehrin "…'da ara" düğmeleri ve Hazırlık'ın "…'dan al ↗" bağlantıları buradan gelir.
+
+- Kayıt: ad, logo (rengi üstünde tek harf; eklentide çizilir, markadan indirilmez), etiket rengi, hizmet ettiği
+  türler (uçuş, konaklama, tren, etkinlik, eSIM, alışveriş), ülkeler ya da "global", öne çıktığı bölge, arama şablonu,
+  ortaklık.
+- Seçim sırası: (1) gezginin o ihtiyaç için attığı linkin sitesi, (2) gidilen ülkede (alışverişte gezginin kendi
+  ülkesinde) çalışanlar, (3) türün varsayılanları kayıttaki sırasıyla.
+- Varsayılanlar: konaklama Booking.com · Airbnb · Agoda (Asya'da Agoda öne); uçuş Skyscanner · Google Uçuşlar; tren JR
+  (Japonya) · Rome2rio; etkinlik GetYourGuide · Viator · Klook (Asya'da Klook öne); eSIM Airalo · Holafly; Hazırlık
+  alışverişi Türkiye'den gidene Trendyol · Hepsiburada · Amazon.com.tr, başka ülkede o ülkenin Amazon'u.
+- Arama bilineni taşır (şehir, tarihler, yetişkin, çocuk, oda; D12); bilinmeyeni uydurmaz.
+- Yeni düğmeler `<a href>` olur. Ortak bir markanın sayfası yalnız tıklanınca ortaklık bağlantısından (tp.media) geçer;
+  gezginin kendi rezervasyonunu ya da hesabını taşıyan sayfa hiç çevrilmez (`src/lib/affiliate.ts`, C33).
+
+## Plan başlığı ve kategoriler
+
+- Başlık: "Plan" (30 px), altında "Gezinin omurgası · n karar bekliyor" (basınca ilk karar), sağda görünüm seçici:
+  **Kategoriye göre · Yolculuk sırasıyla · Gün gün**. Hero ile kategoriler arasında durum açıklaması ve "+ Ekle" yok.
+- Kategoriler bu sırayla: Uçuş · Konaklama · Ulaşım · Etkinlik ve turlar · Yapılacaklar ve restoranlar · Belgeler ve
+  internet · Hazırlık. İçinde niyet olmayan kategori çizilmez (Hazırlık her gezide var). Gezinin biçimi bir kategoriyi
+  "Gerek yok" ve nedeniyle kapatabilir (D4). İlham Pano'dadır.
+- Kapalı satır en az 78 px: kategori ikonu · ad ve özet ("2 şehir · 6 gece · 4 fikir") · mini görseller · çubuk ve
+  "1 alındı · 1 karar" · bütçe ("€390", altında "€990 ayrıldı") · ok. Hazırlık'ta "Gezi öncesi 6 iş · sıradaki: …".
+- Aynı anda tek kategori açık; gezi başına son açılan hatırlanır (B8). Açılan tek hareketle üste kayar, zaten üstteyse
+  kaymaz (E1); başlık büyümez (E2).
+- Ekleme: her kategorinin sonunda "+ <tür> ekle" ve listenin sonunda tek "+ Yeni ihtiyaç ekle" satırı (B6). Rota
+  şeridi, durum anahtarı, plan başındaki "+ Ekle", Pano'daki "+ Link ekle" ve "Orada yapılacak" kalktı.
+- Konaklama gece aralığına göre ayrılır (D6): açık geceler şehir şehir, her aralık bir kutu. Uçakta geçen gece boşluk
+  sayılmaz (D14). Plan'da check-in ve check-out satırı, boş gün yok.
+- **Etkinlik asla fikir değildir** (`booking.ts` `showSays`): konser, gösteri, maç, festival, open air, DJ, line-up,
+  parti, canlı müzik geçen kayıt, sohbet ya da sayfa "yapılacak, rezervasyon yok" demiş olsa da Etkinlik ve turlar'a
+  gider (bilet gerekir).
+- Yerinde düzenleme (C2): kutudaki ad, tarih, saat ve fiyat durdukları yerde değişir. Üstüne gelince ince alt çizgi ve
+  kalem; tıklayınca aynı boyda kutu. Enter ya da dışarı tıklamak kaydeder, Esc bırakır, Tab sonrakine geçer; "Kaydet"
+  düğmesi yok. Sayfadan kaydedilen kayıtta değişiklik düzeltme olarak durur; üstüne gelince "sayfadaki: X · geri al".
+
+## Yolculuk sırasıyla
+
+- Aynı veri, gezinin yaşandığı sırayla (`src/lib/journeyChapters.ts`): Yola çıkmadan (Hazırlık, eSIM, sigorta) ·
+  gidiş · şehir şehir · dönüş. Şehir bölümünde hero'daki fotoğraf, ad, tarih ve gece, "n hazır · n karar".
+- Her adım: solda tarih, çizgide durum noktası, tür · durum, ad, kısa bilgi, sağda duruma göre tek eylem (Seçeneklere
+  bak, Ara, Bunu seç, fiyat ve Rezerve et, E-bilet aç, Onay e-postası aç). "›" planda o niyete götürür; bir görünümde
+  yapılan seçim diğerine anında yansır.
+- Gezi sırasında bugünden açılır, bugünün bölümünde "Bugün" rozeti (D8). Tarihi belli olmayan gezide kapalıdır (D15).
+  Uçakta geçen gece kendi satırıdır (D14).
+
+## Pano
+
+- Pano biriktirme ve karşılaştırma yeridir; plana konan her şey planda görünür.
+- Planın üstünde pencere: ortadan büyür, dar ekranda alttan çekmece (E8); × ve dışarı tıklama kapatır, odak geri döner.
+  Her yerden açılır: üstteki Plan | Pano sekmesi, her niyetteki "Pano n".
+- Solda kenar menü: Tümü · Biriktirdiklerim · AI önerileri · İlham · Belgeler (sayılarıyla), altında "İhtiyaçlar"
+  ağacı (kategori > niyet, durum noktası ve sayı). Vurgu kayar, içerik belirir (E9).
+- Karşılaştırma yalnız konaklama, eSIM, uçuş ve trende: 280 px sütunlar, satırlar hizalı (görsel ve kim ekledi, ad,
+  fiyat ve toplam, "Uyum puanı n/100 · n. sırada" ve ⓘ'de "AI analizi dahil" (B3), istekler, artılar, eksiler, puan,
+  iptal, bagaj, ♥, kaynak ↗, Seç). Etkinlik ve yapılacaklarda kıyas yok, toplama ızgarası ("+ Plana koy" / "Planda").
+- Beğeni tek ♥; eski oylar beğeniye çevrildi (B16).
+- İlham: reels, YouTube, TikTok, blog kartları (platform rozeti, şehir, kim ekledi), "✨ İçinden yerleri çıkar" ve
+  "Aç ↗". Belgeler: türe göre gruplar, her belge kendi kartına bağlı ("Kartı göster"), "Bağlanmamış" ("Karta bağla"),
+  en altta "Belge ekle" (C5). Belgeler yalnız bu bilgisayarda durur.
+
+## Hazırlık
+
+- Açılınca en üstte "Bilmen gerekenler" (acil numara, para, priz, büyükelçilik, AI'nın günlük hayat notları; bilinmeyen
+  satır yok; T8).
+- Altında "2/6 hazır · güne göre sıralı" ve günlü maddeler: sağda gün ("1 Nis'e kadar", "15 Nis 11:00"), nereden geldiği
+  küçük etiketle ("uçuş kartından", "sohbetten", "vize kuralından"); günü olmayan altta, "tarih yok" yazılmaz; yaklaşan
+  gün turuncu, son günü geçmiş ve yapılmamış madde "geçti" der, günü yumuşak kırmızı (T3; Emre, 19 Ekim).
+- Listenin sonunda katlı tek "Bavul" satırı: hava, gün sayısı ve plandaki yerlere göre gruplar nedenleriyle, alınacakta
+  mağaza bağlantısı, her satırda "bana göre değil" (×), altta "Her gezide götürdüklerin" (T6).
+
+## Sohbet ve dar pencere
+
+- AI'nın eklediği kayıt sohbette kart olarak görünür (marka, puan, fiyat); "Planda göster" kutuya götürüp parlatır,
+  "Bunu seç" kutuda seçer; altında hızlı yanıtlar (C34). Okunamayan link kesik çizgili kart: Tekrar dene, Kaldır.
+- Hedef genişlik 860–1280 px. 860 px altında plan önce gelir, sohbet alttan çekmece olur (tutamak, "Asistan" ve son
+  mesaj); "Planda göster" çekmeceyi kapatıp kutuya gider (A7). 390 px'te yatay kaydırma yok.
+
+## Hareket
+
+- Kutu içeriği durum değişince eskisi 120 ms'de söner, yenisi 260 ms'de gelir (E3). Seçilen seçenek 380 ms'de seçili
+  karta dönüşür (E4); Değiştir'de kart çevrilir (E5); Plana koy'da kart "Planında" yuvasına uçar, sayı sıçrar (E6).
+- Mozaik kareleri açılışta 80 ms arayla (E10). AI seçenekleri gelince 60 ms arayla yerine oturur, "Yeni" işareti alır
+  (E14). Nabız yalnız AI gerçekten ararken, "Aranıyor" kutusunda (E13).
+- Canlı hareket sözlüğü korunur: mühür, parlama, düşüş, aşama geçişi, uçak süzülmesi, nabız, sayaç, sekme kayması,
+  pencere çıkışı.
+- `prefers-reduced-motion` ve uygulamanın "Hareketi duraklat" ayarı (`body.still`) her animasyonu, geçişi ve kaydırmayı
+  durdurur (E17).
 
 ## Azaltmak
 
-- Sayfadan gelen bir seçenek **Ele** ile önden kalkar; transfer **Gerek yok** ile; ikisi de kendi bölümünün sonundaki
-  "Gizlenenler"de durur (Geri al / Geri getir).
-  **Sil** her kayıt kartının ••• menüsündedir ve kalıcıdır: onay penceresi yok, 8 saniye "Geri al" durur; kayıt
-  belgeleriyle birlikte geri gelir. Kart dışındaki silmeler (çekmece, konaklamanın "Kaldır"ı) da aynı 8 saniyelik
-  "Geri al"dan geçer; hiçbir kayıt silmesi onay sormaz. Sayılar ve yapılacaklar yalnız öndekini sayar.
-- Konaklamada seçili karta dokunmak diğer seçenekleri açar (ayrıntı ⓘ'da); diğer kartlarda dokunmak ayrıntıyı açar,
-  diğer seçenekler ayrıntıdaki 'Diğer N seçenek'te.
-- Sohbette söylenen ya da elle eklenen plan yerinde ya da ••• → Düzenle ile değişir, Sil ile gider.
-- Ayrı konaklama bloğunda ve boş gece bloğunda da sağ üstte × var: ayrı konaklama silinir (geceleri çevresindeki
-  konaklamaya döner), boş geceler "Gerek yok" olur ve Konaklama'nın Gizlenenler'ine gider; ikisinde de 8 saniye "Geri al".
-- Bir şehrin söylenen geceleri tek bloktur; seçilen yer bir kısmını kapsıyorsa blok bölünmez, kalan geceler altında yazar.
+- Elenen seçenek ve "Gerek yok" denen niyet (⋯ menüsü) kendi kategorisinin sonundaki "Gizlenenler · n"de durur;
+  oradan Geri al ya da Geri getir ile döner. Bir rezervasyonun kapattığı seçenek onu kapatan rezervasyonu yazar.
+- **Sil** kalıcıdır: onay penceresi yok, 8 saniye "Geri al" durur; kayıt belgeleriyle birlikte geri gelir. Hiçbir kayıt
+  silmesi onay sormaz; silinenler 30 gün çöp kutusunda (Geçmiş ve çöp kutusu). Yalnız "Geziyi sil" onay ister.
+- Sohbette söylenen ya da elle eklenen plan yerinde ya da ⋯ menüsünden değişir, Sil ile gider.
+- Sayılar ve yapılacaklar yalnız öndekini sayar.
 
 ## Butonlar
 
-- **Ana eylem** (Seç, Rezerve ettim): koyu dolgu (`--ink`), beyaz yazı, yuvarlak. Bir alanda en fazla bir tane.
-- **İkincil** (Geri al, Değiştir, Yine de seç): beyaz, ince çerçeve.
-- **Link** (Karşılaştır →, Detaylar ▾, Tüm detaylar): mavi yazı, çerçevesiz.
-- **Sessiz** (Ele, Gerek yok): gri yazı, üstüne gelince kırmızı; ana butonun yanında küçük durur.
+- **Ana eylem** (Bunu seç, Rezerve et, Satın al, AI'dan öner, Plana koy): mor dolgu (`--q-acc`), beyaz yazı. Bir
+  kutuda en fazla bir tane; yan sütunda 42 px.
+- **Alınmışın eylemi** (Belgeyi aç, E-bilet aç, Onay e-postası aç): yeşil dolgu (`--q-ok`). Belge yoksa aynı boyda
+  kesik çizgili "Belgeyi ekle".
+- **Sıradaki:** koyu dolgu (`--q-ink`); hero şeridinde ve ince şeritte.
+- **İkincil** (Aldım, Pano): beyaz, ince çerçeve.
+- **Metin düğmesi** (Değiştir, Vazgeç, Tüm detaylar ›, Listeyi aç ›): mor yazı, çerçevesiz.
+- **Sessiz** (Gerek yok, Ben hallettim): ⋯ menüsünde.
+- Düğmeler gerçek `button` (bağlantılar `<a href>`), metinli ya da `aria-label`'lı. Açılan pencerelerde
+  `aria-expanded`; Escape kapatır, odak geri döner.
 
-## Yazı
+## Gün gün (bu sürümde yeniden çizilmedi)
 
-Ölçek: 40 gezi adı · 22 şehir · 17 kart başlığı · 15 metin · 13–14 kart satırı · 12.5 not. Hero: 40 başlık · 22 özet
-rakamı · 17 metin/değer · 15 küçük satır · 13 etiket. Plan kartları: 30 şehir (ulaşım) · 20 başlık (medya) · 15 metin ·
-13 ikincil · 17 fiyat. Türkçe
-büyük harfle etiket yazılmaz (İ/i sorun çıkarır); etiketler küçük ve gri olur. Kural v46 kartlarında da aynıdır (Seçildi, Önerimiz, Rezerve, Arıyoruz yazıldığı gibi durur); `text-transform: uppercase` yeni bir etikete konmaz. Eski küçük başlıklardaki mevcut kullanımlara görünümü değiştirmemek için dokunulmadı.
+Gün gün Plan'ın üçüncü görünümüdür (`plan/PlanOrder.tsx`). Yerleşimi 0.37.1 ile aynı kalır; yalnız yeni renklere ve
+dokuz basamaklı yazı ölçeğine uyar (A3). Eski kart ailesi (`.pk-*`, `.tk-*`) yalnız burada kullanılır; durum renkleri
+yukarıdaki tablodadır (Seçildi kum, Alındı yeşil).
 
-## Okunurluk
-
-- Gri yazı `--muted` (`#6b665f`); daha açık gri bej zeminde okunmaz, kullanılmaz.
-- Kart satırları kesilmez ("…" yok), sarar.
-- Sayılar hizalı durur (`font-variant-numeric: tabular-nums`).
+- **Liste | Kartlar** tek anahtarla iki görünüm (seçim bu tarayıcıda hatırlanır); üstte yapışkan gün şeridi (1 · 2 · 3
+  · 4 · 5–6 · 7; bugün vurgulu), şehir adlarıyla gruplu ("Porto 1 2 3 · Lizbon 4 5–6 7"). İkisinde de aynı satırlar,
+  aynı sıra.
+- **Liste:** her gün bir kart; solda günün büyük fotoğrafı, üstünde "1. gün" hapı; sağda başlık, tarih, aç/kapa oku;
+  altında saat saat akış (saat · noktalı çizgide nokta · renkli yumuşak karede ikon · tek satır). Check-in, taksi, uçuş,
+  tur aynı boy ve ağırlıkta. Sigorta ve eSIM akışta yok; gün açılınca saatsizlerle birlikte altta "Gün içinde · saatsiz".
+  Boş günde "+ Bu güne ekle" açmadan görünür. Satıra dokunmak Kartlar'da o kartı gösterir.
+- **Gün başlıkları kodla, standart:** şehir ve gezinin günü ("Porto 1. Gün"); yanında soluk günün türü: Varış,
+  Yolculuk (yeni şehrin adıyla), Dönüş, Boş gün. Rota ("Porto → Lizbon") tarih satırında. AI başlık yok.
+- **Günün sırası** (`dayCards.ts` `orderRows`): saati olan satırlar saate göre; saati olmayanlar akışta durur ve
+  tutamaçtan sürüklenerek (ya da ↑ ↓) yerine taşınır (`trip.dayOrder`). Saatli satır da sürüklenir: bırakıldığı yerde
+  kalır, saati gizlenir ("–", `trip.dayLoose`); saate dokunup saat vermek ya da "×" onu saatine geri koyar.
+- **Ray** (Kartlar): yolculuk sırasıyla gruplar; yol günü kendi başına (Varış, Yolculuk, Dönüş), aradaki şehir günleri
+  birlikte ("2–3. gün", büyük şehir adı ve "N gün"). Her gün kendi panelinde; başlığı kaydırırken çubuğun altında
+  kalır; satırlar Plan'daki kartlarıyla. Her günün altında "+ Bu güne ekle".
+- **Saatler** (`2026-10-05-akilli-saat-design.md`): kesin olan (bilet, rezervasyon, senin verdiğin) düz; hesaplanan
+  "~" ve gri, üstüne gelince nedeni ("En geç 16:40 havalimanında olmalısın; transfer ~1 sa"). Yola çıkış =
+  havalimanında olma − 1 sa (Schengen içi uçuşta 2 sa, dışında 3 sa önce orada); check-out ondan önce; inişten +45 dk
+  çıkış, +1 sa check-in. Saate dokunup kendi saatini verirsin, günün kalanı ona uyar; sığmazsa kırmızı tek satır.
 
 ## Dil
 
-- Kısa ve şehirlerle: "Porto → Madeira", "Karar ver 3", "Ücretsiz iptal için 6 gün kaldı".
-- Özet satırı bilet gibi: ne → ne ("Havalimanı → Otel"), adlar ve saat alt satırda, notlar açınca.
-- Artı/eksi birkaç kelimedir; sayfada okunan somut şey kendi sözleriyle yazar ("Karşısında genelev var").
-- Uydurma yok: fiyat, saat, süre yalnız kayıttan ya da hesaptan gelir.
+- Her arayüz metni iki dilde: `L("Türkçe", "English")` (`src/lib/i18n`). Kutu boyları iki dilde ölçülür; AI metinleri
+  panonun dilinde.
+- Türkçede tümü büyük harf yok, uzun tire (—) yok, kısa cümle. İngilizcesi doğal olsun.
+- Kısa ve şehirlerle: "Porto → Lizbon", "3 karar bekliyor", "Ücretsiz iptal".
+- Bilet gibi: ne → ne ("Havalimanı → Otel"), adlar ve saat alt satırda, notlar Ayrıntı'da.
+- Artı ve eksi birkaç kelimedir; sayfada okunan somut şey kendi sözleriyle yazılır ("Karşısında genelev var").
