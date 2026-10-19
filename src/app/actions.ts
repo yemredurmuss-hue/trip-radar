@@ -105,20 +105,39 @@ export async function setNotNeeded(item: Item): Promise<Undoable> {
  * A card's × then "Ben hallettim" (v30): not needed here because the traveller arranged it themselves (a friend picks them up,
  * a ticket bought elsewhere). It stays on the plan, set aside like an idea (noBooking: nothing left to do, out of the booked
  * percentage) with its own words ("Ayarlandı · sen hallettin"). A plan not chosen yet is chosen first: a plan you arranged is in it.
+ * `made`: the record was made for it (arrangeSuggested). Taken back, a record made so goes again (takeBackMade).
  */
-export async function setArranged(item: Item, arranged: boolean): Promise<void> {
+export async function setArranged(item: Item, arranged: boolean, made?: Item["arrangedMade"]): Promise<void> {
   const d = await db();
   const found = (await d.get("items", item.id)) ?? item;
   const now = Date.now();
   if (arranged) {
-    await d.put("items", { ...found, status: found.status === "booked" ? "booked" : "chosen", noBooking: now, arranged: true, statusAt: now, updatedAt: now });
+    const mark = made ? { arrangedMade: made } : {};
+    await d.put("items", { ...found, status: found.status === "booked" ? "booked" : "chosen", noBooking: now, arranged: true, ...mark, statusAt: now, updatedAt: now });
     await addEvent(item.tripId, L(`${item.name}: sen hallettin, plana ayarlandı olarak girdi`, `${item.name}: you arranged it, in the plan as arranged`));
+  } else if (found.arrangedMade) {
+    await takeBackMade(found);
+    return;
   } else {
     const { noBooking: _n, arranged: _a, ...rest } = found;
     await d.put("items", { ...rest, updatedAt: now });
     await addEvent(item.tripId, L(`${item.name}: ayarlandı işareti geri alındı`, `${item.name}: arranged mark taken back`));
   }
   notifyChanged();
+}
+
+/**
+ * "Ayarlandı: geri al" on a record "Ben hallettim" made: it goes again, so the box is what it was (our pick, still to find)
+ * and nothing the traveller never chose stays "Seçildi"; a suggestion it came from is open again. Its files, if any were
+ * added since, wait in the trash with it.
+ */
+async function takeBackMade(made: Item): Promise<void> {
+  const d = await db();
+  const files = await d.getAllFromIndex("docs", "itemId", made.id);
+  await deleteItem(made, L(`${made.name}: ayarlandı işareti geri alındı`, `${made.name}: arranged mark taken back`), { trash: files.length > 0 });
+  const key = made.arrangedMade?.suggestion;
+  const s = key ? (await d.get("trips", made.tripId))?.suggestions?.find((x) => x.key === key) : null;
+  if (s) await setSuggestion(made.tripId, s, "open");
 }
 
 /**
@@ -156,6 +175,7 @@ export async function addArrangedLike(like: Item, name: string): Promise<void> {
     origin: undefined,
     noBooking: now,
     arranged: true,
+    arrangedMade: { suggestion: null },
     createdAt: now,
     updatedAt: now,
   };
@@ -169,15 +189,18 @@ export async function addArrangedPlanned(tripId: string, input: PlannedInput, na
   const now = Date.now();
   const made = plannedItem(input, tripId, newId(), now);
   const named = name ? { ...made, name } : made;
-  await (await db()).put("items", { ...named, noBooking: now, arranged: true, statusAt: now });
+  await (await db()).put("items", { ...named, noBooking: now, arranged: true, arrangedMade: { suggestion: null }, statusAt: now });
   await addEvent(tripId, L(`${named.name}: sen hallettin, plana ayarlandı olarak girdi`, `${named.name}: you arranged it, in the plan as arranged`));
   notifyChanged();
 }
 
-/** "Ben hallettim" on an eSIM or insurance suggestion: the record is added (as "Plana koy" does), then set aside as arranged. */
+/**
+ * "Ben hallettim" on an eSIM or insurance suggestion: the record is added (as "Plana koy" does), then set aside as arranged,
+ * marked as made here (its "Ayarlandı: geri al" takes it away and opens the suggestion again).
+ */
 export async function arrangeSuggested(tripId: string, s: Suggestion): Promise<void> {
   const out = await addSuggested(tripId, s);
-  if (out?.kind === "added" && out.undo.kind === "suggestion" && out.undo.item) await setArranged(out.undo.item, true);
+  if (out?.kind === "added" && out.undo.kind === "suggestion" && out.undo.item) await setArranged(out.undo.item, true, { suggestion: s.key });
 }
 
 /**
