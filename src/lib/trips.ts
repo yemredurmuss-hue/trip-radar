@@ -30,7 +30,14 @@ export interface TripSignal {
   today?: string;
 }
 
-export type TripChoice = { tripId: string } | { newTitle: string };
+/**
+ * The trip a capture goes to, or a new one. `candidates` (0.39.4, Emre: "iki Hindistan gezisi varsa sorsun"): more than
+ * one trip could be it and nothing says which for sure, their ids, the most likely (`tripId`) first: the toolbar asks.
+ */
+export type TripChoice = { tripId: string; candidates?: string[] } | { newTitle: string };
+
+/** At most this many trips are offered to pick from. */
+const CANDIDATES_MAX = 4;
 
 const name = (value: string | null | undefined) =>
   value ? normalize(value).normalize("NFD").replace(/[̀-ͯ]/g, "") : "";
@@ -134,7 +141,12 @@ export function chooseTrip(signal: TripSignal, allProfiles: TripProfile[]): Trip
     });
     if (compatible.length) {
       const dated = compatible.filter((p) => gap(p) !== null).sort((a, b) => gap(a)! - gap(b)!);
-      return { tripId: (dated[0] ?? compatible.find((p) => p === suggested) ?? compatible[0]).trip.id };
+      const pick = dated[0] ?? compatible.find((p) => p === suggested) ?? compatible[0];
+      // The page's dates fall in one trip's (a week either side): that one, nothing asked. Else, with two or more that
+      // could be it (two India trips, an undated page), the toolbar asks which.
+      const clear = signal.start ? compatible.filter((p) => gap(p) !== null && gap(p)! <= SAME_TRIP_DAYS) : [];
+      if (compatible.length === 1 || clear.length === 1) return { tripId: pick.trip.id };
+      return { tripId: pick.trip.id, candidates: candidatesOf([pick, ...dated, ...(suggested ? [suggested] : []), ...compatible]) };
     }
     // Different country whose dates touch an existing trip → one journey, but only a country near the trip's
     // own (Portugal → Spain). Bali never joins the Portugal trip because a page's date picker said 8 October.
@@ -146,11 +158,16 @@ export function chooseTrip(signal: TripSignal, allProfiles: TripProfile[]): Trip
     return journey ? { tripId: journey.trip.id } : newTrip();
   }
 
-  // No country (e.g. a regional eSIM or an unclear screenshot): trust the model, else the latest trip.
+  // No country (e.g. a regional eSIM or an unclear screenshot): trust the model, else the latest trip, asked among the
+  // latest ones when there are several.
   if (suggested) return { tripId: suggested.trip.id };
+  if (byRecency.length > 1) return { tripId: byRecency[0].trip.id, candidates: candidatesOf(byRecency) };
   if (byRecency[0]) return { tripId: byRecency[0].trip.id };
   return newTrip();
 }
+
+/** The trips offered, each once, in the order given, at most CANDIDATES_MAX. */
+const candidatesOf = (ps: TripProfile[]): string[] => [...new Set(ps.map((p) => p.trip.id))].slice(0, CANDIDATES_MAX);
 
 const MONTHS_TR = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
 const MONTHS_EN = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
