@@ -20,7 +20,6 @@ import { ActivityBoard } from "./ActivityBoard";
 import type { CardFor, LegCardFor, RenderGroup, SettledFor } from "../Timeline";
 import type { JourneyHop, JourneyStop } from "../../lib/tripShape";
 import { PlanEntry } from "./PlanEntry";
-import { PrepList } from "./PrepList";
 
 /** How the board draws its cards (TripPanel): the same functions the plan always used. */
 export interface SectionCards {
@@ -79,7 +78,6 @@ export function SectionTimeline({ section, plan, tripId, cities, cards, onAdd, o
           ))}
         </div>
       )}
-      {section.prep.length > 0 && <PrepList entries={section.prep} />}
       <SearchLinks section={section} plan={plan} items={items} />
     </>
   );

@@ -3,9 +3,10 @@
 // category one card with its closed row (78 px), one open at a time (B8): opening one closes the others and brings it to
 // the top in one move unless it is there already (E1). A category drawn the new way (V82_SECTIONS) has its intents on a
 // rail inside (TimelineRail, IntentBox); the others keep their old body for now (their timeline of cards), side by side
-// for a short while. A category with nothing in it isn't drawn; "+ Yeni ihtiyaç ekle" at the end adds any kind (B6).
+// for a short while. Hazırlık is drawn on every trip (its list works out chores from the trip, Bilmen gerekenler and the
+// Bavul, aşama 7); any other category with nothing in it isn't; "+ Yeni ihtiyaç ekle" at the end adds any kind (B6).
 import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { isIdeaSection, planSectionOfItem, sectionProgress, type CatSection, type SectionId } from "../../lib/categories";
+import { isIdeaSection, planSectionOfItem, sectionProgress, type CatEntry, type CatSection, type SectionId } from "../../lib/categories";
 import { activityGaps } from "../../lib/emptyCards";
 import { countryNames } from "../../lib/heroInfo";
 import { L } from "../../lib/i18n";
@@ -29,6 +30,8 @@ import { show } from "../Progress";
 import type { BoardSuggestions } from "../useSuggestions";
 import { ActivityBoard } from "./ActivityBoard";
 import { Hidden } from "./HiddenList";
+import { PrepList } from "./PrepList";
+import { usePrepSummary } from "./prep/usePrep";
 import { ideaCount, Section } from "./Section";
 import { SECTION_META } from "./sectionMeta";
 import { SectionSuggestContext } from "./sectionSuggest";
@@ -52,6 +55,8 @@ const TILED: SectionId[] = ["activity", "todo"];
 export const V82_SECTIONS: ReadonlySet<SectionId> = new Set<SectionId>(["stay", "other"]);
 
 const SLICE: Partial<Record<SectionId, BudgetSlice>> = { flight: "flight", stay: "stay", transport: "transport", activity: "activity", other: "other" };
+
+const NO_ENTRIES: CatEntry[] = [];
 
 /** What sits pinned over the plan when it scrolls (the thin bar, app.css scroll-margin-top 76px). */
 const PINNED = 76;
@@ -129,6 +134,8 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
   const gaps = activityGaps(plan, items);
   const visaLine = (s: CatSection) => s.id === "other" && visa != null && visa.kind !== "none";
   const dismissed = useMemo(() => (env.trip.suggestions ?? []).filter((s) => s.state === "dismissed"), [env.trip.suggestions]);
+  // Hazırlık's closed row counts what its open list does (the worked-out chores too, never the Bavul's lines).
+  const prep = usePrepSummary(sections.find((s) => s.id === "prep")?.prep ?? NO_ENTRIES);
   const input: IntentInput = {
     trip: env.trip,
     plan,
@@ -140,11 +147,13 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
     docsFor: env.docsFor,
     allot,
     suggestions: suggestions?.bySection,
+    prep,
   };
   const collections = collectionsOf(input);
   const collectionOf = (id: SectionId): Collection | null => collections.find((c) => c.section.id === id) ?? null;
   const shown = sections.filter(
     (s) =>
+      s.id === "prep" ||
       s.entries.length ||
       s.hidden.length ||
       waiting(s) ||
@@ -205,10 +214,11 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
     const meta = SECTION_META[s.id];
     const c = collectionOf(s.id);
     const settled = !isIdeaSection(s.id) && (s.entries.length || s.hidden.length) ? { settled: s.settled, total: sectionProgress(s).total } : null;
-    if (s.id === "prep") {
-      const done = s.entries.filter((e) => e.state === "done").length;
-      const total = s.entries.length;
-      return { id: s.id, name: meta.label(), line: L(`Gezi öncesi ${total} iş`, `${total} things before the trip`), thumbs: [], more: 0, bar: total ? { booked: Math.round((done / total) * 100), chosen: 0 } : null, parts: [{ text: L(`${done}/${total} hazır`, `${done}/${total} ready`), decide: false }], spent: null, allot: null, settled };
+    const ready = c?.summary.ready;
+    if (s.id === "prep" && c && ready) {
+      // K0: "Gezi öncesi 6 iş · sıradaki: …" and "2/6 hazır", the bar in one green; nothing to count, no bar and no count.
+      const parts = ready.total ? [{ text: L(`${ready.done}/${ready.total} hazır`, `${ready.done}/${ready.total} ready`), decide: false }] : [];
+      return { id: s.id, name: meta.label(), line: c.summary.line, thumbs: [], more: 0, bar: ready.total ? c.summary.bar : null, parts, spent: null, allot: null, settled: ready.total ? { settled: ready.done, total: ready.total } : null };
     }
     if (!c) {
       const line = s.ideas && (s.entries.length || s.hidden.length) ? ideaCount(s.id, s.ideas, s.entries, suggested(s).length) : "";
@@ -275,7 +285,9 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
                       {/* Etkinlik ve turlar and Yapılacak şeyler show their suggestions among their ideas, as tiles (sectionSuggest). */}
                       {suggestions && !TILED.includes(s.id) && <SuggestionCards list={suggested(s)} onAdd={suggestions.add} onDismiss={suggestions.dismiss} notes={suggestions.notes} />}
                       {pending?.bySection[s.id]}
-                      {own && <SectionTimeline section={s} plan={plan} tripId={tripId} cities={cities} cards={cards} onAdd={(at) => onAdd(s.id, at)} onIdea={(item) => onOpen(planSectionOfItem(item), true)} today={today} items={items} journey={shape} />}
+                      {/* Hazırlık on every trip, a chore saved or not: the check-in and the visa worked out from the trip, Bilmen gerekenler, the Bavul. */}
+                      {s.id === "prep" && <PrepList entries={s.prep} />}
+                      {own && s.id !== "prep" && <SectionTimeline section={s} plan={plan} tripId={tripId} cities={cities} cards={cards} onAdd={(at) => onAdd(s.id, at)} onIdea={(item) => onOpen(planSectionOfItem(item), true)} today={today} items={items} journey={shape} />}
                       {s.id === "activity" && !own ? (
                         // v11: the tours and tickets come from the source as the shelf's tiles (plan/ActivityBoard), no empty card.
                         <ActivityBoard section={s} plan={plan} fallback={() => null} onAdd={() => onAdd(s.id, null)} />

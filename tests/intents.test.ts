@@ -13,7 +13,7 @@ import { loadDemoTrip } from "../src/lib/demo";
 import { draftOf } from "../src/lib/draft";
 import { isEmptyRecord } from "../src/lib/emptyCards";
 import { withLang } from "../src/lib/i18n";
-import { bookedShare, collectionsOf, frameOf, planShare, statusWord, suggestsFor, type IntentInput, type IntentStatus, type IntentVM } from "../src/lib/intents";
+import { bookedShare, collectionsOf, collectionSummary, frameOf, planShare, statusWord, suggestsFor, type IntentInput, type IntentStatus, type IntentVM } from "../src/lib/intents";
 import { EMPTY_METRICS } from "../src/lib/items";
 import { buildLegs } from "../src/lib/legs";
 import { buildPlan } from "../src/lib/plan";
@@ -292,6 +292,30 @@ describe("B9: the hero's two shares", () => {
     expect(planShare(covered("searching"))).toEqual({ count: 0, total: 2, pct: 0 });
     expect(planShare(of([["included", 1], ["deciding", 1]]))).toEqual({ count: 0, total: 2, pct: 0 });
     expect(planShare(of([["skipped", 3]]))).toEqual({ count: 0, total: 0, pct: null });
+  });
+});
+
+describe("Hazırlık's closed row (aşama 7): the open list's count, the Bavul apart", () => {
+  const chore = (name: string, over: Partial<Item> = {}) =>
+    makeItem({ id: next("p"), category: "other", needKey: `other:prep-${name}`, name, plannedKind: "prep", origin: "chat", status: "chosen", booking: "none", ...over });
+  const items = [
+    chore("Decathlon'dan yağmurluk al"),
+    chore("Döviz bozdur", { dates: { start: "2026-10-28", end: null, source: "page" }, doneAt: 1 }),
+    chore("Vize başvurusu yap", { dates: { start: "2026-10-20", end: null, source: "page" } }),
+    // a thing to take: a Bavul line, never one of the chores
+    chore("Kulak tıkacı"),
+  ];
+  const prepRow = (extra: Partial<IntentInput> = {}) => {
+    const { input } = board(base, items, extra);
+    return collectionSummary(input.sections.find((s) => s.id === "prep")!, [], input);
+  };
+  it("given the list's own summary, says its line and its count", () => {
+    const said = { total: 6, done: 2, next: null, line: "Gezi öncesi 6 iş · sıradaki: Yen bozdur, 31 Eki'den önce", nextText: null };
+    expect(prepRow({ prep: said })).toMatchObject({ line: said.line, ready: { done: 2, total: 6 }, bar: { booked: 33, chosen: 0 } });
+  });
+  it("without it, the stored chores by day, the Bavul's lines left out", () => {
+    expect(prepRow()).toMatchObject({ line: "Gezi öncesi 3 iş · sıradaki: Vize başvurusu yap, 20 Eki", ready: { done: 1, total: 3 }, bar: { booked: 33, chosen: 0 } });
+    expect(withLang("en", () => prepRow().line)).toBe("3 things before the trip · next: Vize başvurusu yap, 20 Oct");
   });
 });
 

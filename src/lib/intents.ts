@@ -47,6 +47,8 @@ import { adderOf } from "./pano";
 import { sameCity, stayRange, type Plan } from "./plan";
 import type { BudgetSlice } from "./progress";
 import { coverWords, shapeOf, type SignalId, type TripShape } from "./playbooks/shape";
+import { prepSummary, storedTask, type PrepSummary } from "./prepDays";
+import { isPackLine } from "./prepPack";
 import { lookWord } from "./stageWords";
 import { isPlaceholder } from "./startTrip";
 import { hoursTo, ticketCarrier, ticketViewOf, type TicketCarrier, type TicketVM } from "./ticketView";
@@ -163,6 +165,11 @@ export interface IntentInput {
   suggestions?: Partial<Record<SectionId, readonly Suggestion[]>>;
   /** Now, for what goes by the hour (F2: check-in 48 hours before a flight; the flight's live strip). Default: today's noon. */
   now?: Date;
+  /**
+   * Hazırlık as its open list counts it (plan/prep/usePrepSummary: the stored chores and the ones worked out from the trip,
+   * the Bavul's lines apart): its closed row's line and "2/6 hazır". Without it, the stored chores alone.
+   */
+  prep?: PrepSummary | null;
 }
 
 /** Who put an option on the board: a source the AI found it in, a link the traveller sent, a fellow traveller. */
@@ -1132,6 +1139,12 @@ function infoOf(section: CatSection, intents: IntentVM[], env: Env): CollectionS
   return null;
 }
 
+/** Hazırlık's stored chores (the Bavul's lines apart), by day: its count where the worked-out ones aren't known. */
+function storedPrep(section: CatSection): PrepSummary {
+  const chores = section.prep.map(recordOf).filter((i): i is Item => i != null && !isPackLine(i));
+  return prepSummary(chores.map(storedTask).sort((a, b) => (a.day?.date ?? "9999").localeCompare(b.day?.date ?? "9999")));
+}
+
 /** A category's closed row (K0): its name, its line, three pictures, where its intents stand, its money, its short line. */
 export function collectionSummary(section: CatSection, intents: IntentVM[], input: IntentInput): CollectionSummary {
   return summaryWith(section, intents, envOf(input));
@@ -1141,13 +1154,14 @@ function summaryWith(section: CatSection, intents: IntentVM[], env: Env): Collec
   const input = env.input;
   const allot = SLICE[section.id] && input.allot && input.allot.by[SLICE[section.id]!] > 0 ? { amount: input.allot.by[SLICE[section.id]!], currency: input.allot.currency } : null;
   if (section.id === "prep") {
-    const done = section.entries.filter((e) => e.state === "done").length;
-    const total = section.entries.length;
+    // The open list's own count (K0: "Gezi öncesi 6 iş · sıradaki: …", "2/6 hazır"); the Bavul is never a chore.
+    const prep = input.prep ?? storedPrep(section);
+    const { done, total } = prep;
     const ready = { done, total };
     return {
       id: section.id,
       name: sectionName(section.id),
-      line: L(`${done}/${total} hazır`, `${done}/${total} ready`),
+      line: prep.line ?? "",
       thumbs: [],
       more: 0,
       countsText: "",
@@ -1221,8 +1235,9 @@ export interface Collection {
 export function collectionsOf(input: IntentInput): Collection[] {
   const env = envOf(input);
   return linked(sectionsWith(input.sections, env), env).flatMap(({ section, intents }) => {
-    // Hazırlık is drawn by its list; any other category by its intents (an empty way in on a road trip leaves none).
-    const something = section.id === "prep" ? section.entries.length > 0 : intents.length > 0 || section.hidden.length > 0;
+    // Hazırlık is drawn by its list: on every trip where its list is known (the Plan's, input.prep), else once a chore is
+    // saved; any other category by its intents (an empty way in on a road trip leaves none).
+    const something = section.id === "prep" ? input.prep != null || section.entries.length > 0 : intents.length > 0 || section.hidden.length > 0;
     if (!something && !env.shape.closes[section.id as PartSection]) return [];
     return [{ section, summary: summaryWith(section, intents, env), intents }];
   });

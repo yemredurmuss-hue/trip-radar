@@ -413,7 +413,15 @@ try {
   // 0.34: the Plan by category — a section per kind in this order (the empty ones are chips at the bottom),
   // each a timeline of its blocks: the day on the left, the cards on the right.
   assert.equal(await app.locator(".day-strip").count(), 0, "no band of nights");
-  assert.deepEqual(await app.locator(".q-sec").evaluateAll((els) => els.map((e) => e.getAttribute("data-section"))), ["flight", "stay", "transport", "activity", "todo", "other"]);
+  // v82 (aşama 7): Hazırlık on every trip, no chore saved: its list works out the chores from the trip (the booked flight's
+  // check-in, the Schengen visa), and its closed row says what the list does ("Gezi öncesi 2 iş · sıradaki: …", "0/2 hazır").
+  assert.deepEqual(await app.locator(".q-sec").evaluateAll((els) => els.map((e) => e.getAttribute("data-section"))), ["flight", "stay", "transport", "activity", "todo", "other", "prep"]);
+  {
+    const prepLine = flat([await sec("prep").locator(".q-kw").innerText()])[0];
+    const said = prepLine.match(/^Gezi öncesi (\d+) iş · sıradaki: Schengen vizesine başvur, 23 Eyl'e kadar$/);
+    assert.ok(said, `Hazırlık's line (${prepLine})`);
+    assert.equal(flat([await sec("prep").locator(".q-pl1").innerText()])[0], `0/${said[1]} hazır`);
+  }
   // v82: the Plan's head is "Plan", "Gezinin omurgası · n karar bekliyor" and the three ways to read it. The trip's shape
   // under the head, its cities' tips and the stages' key are no longer drawn (B6: bu sürümde arayüzden düştü).
   assert.equal(await app.locator(".q-planbar h2").innerText(), "Plan");
@@ -1966,6 +1974,9 @@ try {
   assert.equal(days.at(-1), null, "the chore said without a day is last");
   assert.ok(!(await sec("prep").innerText()).includes("tarih yok"), "no 'tarih yok'");
   assert.equal(await sec("prep").locator(".q-pc2").innerText(), `0/${await prepRows.count()} hazır`);
+  // The closed row counts the same chores (the Bavul's lines apart) and names the next one by its day.
+  assert.equal(flat([await sec("prep").locator(".q-pl1").innerText()])[0], `0/${await prepRows.count()} hazır`);
+  assert.equal(flat([await sec("prep").locator(".q-kw").innerText()])[0], `Gezi öncesi ${await prepRows.count()} iş · sıradaki: Schengen vizesine başvur, 23 Eyl'e kadar`);
   // T8 b: "Bilmen gerekenler" on top, only what has a source: the EU's 112, the money, the plugs, the embassy as a map search.
   const know = sec("prep").locator(".q-bm");
   assert.equal(await know.locator('[data-know="emergency"] small').innerText(), "112 (AB ortak numara)");
@@ -2044,7 +2055,7 @@ try {
   await app.setViewportSize({ width: 560, height: 1100 });
   await sec("todo").evaluate((el) => el.scrollIntoView({ block: "start" }));
   await app.screenshot({ path: `${out}/5e-todo-narrow.png` });
-  assert.deepEqual(await app.locator(".q-sec").evaluateAll((els) => els.map((e) => e.getAttribute("data-section"))), ["flight", "stay", "transport", "activity", "todo", "other", "inspo"]);
+  assert.deepEqual(await app.locator(".q-sec").evaluateAll((els) => els.map((e) => e.getAttribute("data-section"))), ["flight", "stay", "transport", "activity", "todo", "other", "prep", "inspo"]);
   assert.equal(await todoRow("Ribeira'da gün batımı").count(), 0);
   // İlham (0.35.3): the Reel waits at the very end as a tile with its platform; never a thing to do or a booking.
   // v82 (B8): one category open at a time; İlham opens like any other, the one open before closes.
@@ -2083,12 +2094,14 @@ try {
   await app.screenshot({ path: `${out}/5a-categories.png` });
   // v11: the visa is Belgeler ve internet's first line (Emre: where the papers are, and something to tick): a
   // Turkish passport to Portugal needs a Schengen visa, amber with its source; ticked, "Vize alındı", green.
+  await openSec("prep");
+  assert.equal(await sec("prep").locator(".q-pbody").count(), 1, "Hazırlık open");
+  assert.equal(await app.locator(".q-pbody .z-visa, .q-pbody .visa-row, .prep-visa").count(), 0, "not in Hazırlık");
   await openSec("other");
   const visaRow = sec("other").locator(".z-visa");
   // v11 as drawn: one full-width line; the visa to get has its source and "✓ Vize alındı" like a plan's "Aldım" (v83 C25: amber).
   assert.match((await visaRow.innerText()).replace(/\s+/g, " "), /^! Schengen vizesi gerekiyor Resmî kaynak ↗ ✓ Vize alındı$/);
   assert.ok(await visaRow.evaluate((el) => el.classList.contains("need")), "C25: amber");
-  assert.equal(await app.locator(".q-pbody .z-visa, .q-pbody .visa-row, .prep-visa").count(), 0, "not in Hazırlık");
   await visaRow.getByRole("checkbox").click();
   await sec("other").locator(".z-visa.ok", { hasText: "Vize alındı" }).waitFor();
   // The records read again (as after any save): nothing "moves" (a restaurant drawn under Yapılacak şeyler, a chore
@@ -2245,7 +2258,7 @@ try {
   const rowH = (await sec("stay").locator(".q-row1").boundingBox()).height;
   await sec("stay").locator(".q-tt").click();
   await app.waitForFunction(() => !document.querySelector(".q-sec.open"));
-  assert.equal(await app.locator(".q-sec").count(), 6);
+  assert.equal(await app.locator(".q-sec").count(), 7, "six categories and Hazırlık");
   assert.equal((await sec("stay").locator(".q-row1").boundingBox()).height, rowH, "E2: the row is the same open or closed");
   // One arrow, pointing right when closed and down when open (it turns in 260 ms: read once it has settled).
   const turn = async (scope) => {
@@ -2262,7 +2275,7 @@ try {
   await app.waitForFunction((sel) => document.querySelectorAll(sel).length === 0, underClosed, { timeout: 3000 });
   assert.equal(await app.locator(underClosed).count(), 0, "nothing under a closed row");
   const counts = [];
-  for (const id of ["flight", "stay", "transport", "activity", "todo", "other"]) {
+  for (const id of ["flight", "stay", "transport", "activity", "todo", "other", "prep"]) {
     const row = await sec(id).locator(".q-row1").boundingBox();
     assert.equal(row.height, 78, `${id}: the closed row is 78 px (${row.height}px)`);
     // Öneriler (C28): a category's suggestions say "1 öneri" after its line, and in its tip.

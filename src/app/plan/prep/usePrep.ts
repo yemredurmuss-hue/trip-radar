@@ -125,6 +125,7 @@ export function usePrep(entries: CatEntry[]): PrepModel {
 
 /**
  * Hazırlık's closed row (K0): "Gezi öncesi 6 iş · sıradaki: Yen bozdur, 1 Nis'ten önce" and "2/6 hazır", the same count as
- * the open list. For the category row's shell (aşama 2): `collectionSummary`'s Hazırlık line and bar.
+ * the open list (the Bavul's lines apart). The Plan passes it to the intents (IntentInput.prep): `collectionSummary`'s
+ * Hazırlık line, count and bar.
  */
 export const usePrepSummary = (entries: CatEntry[]): PrepSummary => usePrep(entries).summary;

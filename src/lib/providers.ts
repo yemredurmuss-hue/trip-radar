@@ -5,9 +5,10 @@
 //   (1) the site of the link the traveller sent for it,
 //   (2) the ones for the country the trip goes to (a shop: the traveller's own country),
 //   (3) the kind's defaults, in the register's order.
-// Phase 0 (temel): read only, nothing calls it yet; the callers are wired in phase 7. It wraps searchLinks.ts (the
-// searches and the marks), brands.ts (the label colours), affiliate.ts (the partner brands) and prepBuy.ts (what is a
-// thing to buy) without changing what any of them does. Pure.
+// Read by the intent boxes' "Kendin ara" (intentFrame.selfSearches, phase 3a) and Hazırlık's shops (a chore's and a Bavul
+// line's "…'da al ↗", plan/prep, phase 7). It wraps searchLinks.ts (the searches and the marks), brands.ts (the label
+// colours), affiliate.ts (the partner brands) and prepBuy.ts (what is a thing to buy) without changing what any of them
+// does. Pure.
 import { partnerUrl } from "./affiliate";
 import { cityOfAirport } from "./airports";
 import { brandOf } from "./brands";
