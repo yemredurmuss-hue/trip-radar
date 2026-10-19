@@ -84,6 +84,8 @@ body.still .z-live .z-ldot::before { animation: none; }
 .z-way:hover { border-color: var(--q-acc); box-shadow: 0 2px 10px rgba(91, 69, 224, .15); color: var(--q-acc); }
 .z-way:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 2px; }
 .z-way.own { border-style: dashed; }
+/* Değiştir on a transfer arranged by its way: the way said is marked. */
+.z-way.on { border-color: var(--q-acc); background: var(--q-acc-s); color: var(--q-acc); }
 
 /* ---- the options of a way of travel (Karar bekliyor, Değiştir): three rows as tall as one another ---- */
 .z-rows { display: grid; grid-auto-rows: calc((var(--zh) - 36px - 12px) / 3); gap: 6px; height: 100%; min-height: 0; }

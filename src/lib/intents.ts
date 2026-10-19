@@ -766,7 +766,8 @@ function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
     wanted: [],
     cover,
     ticket: frame === "ticket" ? ticketViewOf(shown ? [shown] : [], { kind, leg, route: head.route, ends: endsOf(leg), now: env.now }) : null,
-    modes: status === "searching" && leg && !legMode ? (leg.kind === "move" ? [...MOVE_MODES] : leg.kind === "arrival" || leg.kind === "departure" ? [...TRANSFER_MODES] : []) : [],
+    // (and for one whose way was said with nothing to book: Değiştir draws them again in place)
+    modes: (status === "searching" && leg && !legMode) || legSaid ? (leg?.kind === "move" ? [...MOVE_MODES] : leg?.kind === "arrival" || leg?.kind === "departure" ? [...TRANSFER_MODES] : []) : [],
     legKey: leg?.key ?? null,
     ...(draftRoute ? { routeDraft: true } : {}),
     itemIds: records.map((i) => i.id),

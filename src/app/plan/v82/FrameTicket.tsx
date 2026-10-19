@@ -231,6 +231,8 @@ export function FrameTicket({ vm, form, page, links, info, detail, quiet, on, on
   const face = ticketFace(vm);
   // D9: a flight's plane glides to its route the first time this session draws it (once; a new frame of it doesn't again).
   const [fly] = useState(() => face?.mode === "flight" && flysIn(o?.item.id));
+  // A transfer arranged by its way (metro, a taxi): Değiştir draws the ways again where the route is, until one is tapped.
+  const [rechoose, setRechoose] = useState(false);
   if (!face || !vm.ticket) return null;
   // The way's own drawing (a pass a train, a rental its car), between the ends and in place of a carrier's mark.
   const draw = `illus/${vm.ticket.art}.png`;
@@ -360,9 +362,15 @@ export function FrameTicket({ vm, form, page, links, info, detail, quiet, on, on
         {L("Fiyat ekle", "Add the price")}
       </button>
     ) : null;
-    const back = on.unarrange ?? onReset;
-    const row = back && <button type="button" className="q-chg" onClick={back}>{L("Değiştir", "Change")}</button>;
-    return <Frame cls={inc ? " ar inc" : " ar"} info={info} title={title} main={<TicketMain face={face} art={draw} fly={fly} dated={Boolean(vm.head.date)} badge={badge} live={null} />} side={<Side top={top} primary={primary} row={row} />} detail={detail} />;
+    const reways = !inc && !o && ways != null && vm.modes.length > 0;
+    const back = reways ? () => setRechoose(!rechoose) : (on.unarrange ?? onReset);
+    const row = back && <button type="button" className="q-chg" onClick={back}>{rechoose && reways ? L("Vazgeç", "Cancel") : L("Değiştir", "Change")}</button>;
+    const done = (then: () => void) => () => {
+      setRechoose(false);
+      then();
+    };
+    const route = rechoose && reways ? <ModePicker modes={vm.modes} current={vm.ticket?.wayMode ?? null} onPick={(mode) => done(() => ways.pick(mode))()} onOwn={done(ways.own)} /> : undefined;
+    return <Frame cls={inc ? " ar inc" : " ar"} info={info} title={title} main={<TicketMain face={face} art={draw} fly={fly} dated={Boolean(vm.head.date)} badge={badge} live={null} route={route} />} side={<Side top={top} primary={primary} row={row} />} detail={detail} />;
   }
   // Aranıyor: nothing to choose yet. Only what is known is written (C19); a record still being filled in shows what it says.
   const own = edit && !o ? ownEnds(edit.item) : null;

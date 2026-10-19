@@ -18,7 +18,7 @@ import { nStops } from "./i18nText";
 import { formatDateRange, isoDate, metricsOf, nightsBetween } from "./items";
 import type { Leg } from "./legs";
 import { wayName } from "./tripShape";
-import type { Item } from "./types";
+import type { Item, LegMode } from "./types";
 
 /** The way's drawing family: also the static/illus picture in the middle of the ticket. */
 export type TicketMode = "flight" | "train" | "bus" | "ferry" | "car" | "transfer" | "pass";
@@ -100,6 +100,8 @@ export interface TicketVM {
   /** A rented car, a camper, a bike: "alış yeri · n gün · iade". */
   rental: { line: string | null; pick: string | null; days: number | null; back: string | null } | null;
   live: TicketLive | null;
+  /** A transfer or a change of city with no record of its own: the way said on it ("metro"), if any. */
+  wayMode?: LegMode | null;
 }
 
 const ART: Record<string, string> = {
@@ -247,7 +249,7 @@ export function ticketViewOf(shown: readonly Item[], ctx: TicketCtx): TicketVM {
       if (hub && e.city) return { city: hub, place: [e.sub, ctx.leg[side].city].filter(Boolean).join(" · ") || null, time: e.time, plus: null, full: e.city };
       return e.city ? { city: e.city, place: e.sub, time: e.time, plus: null } : empty(ctx.route?.[side]);
     };
-    return { mode, art, carrier: null, from: end("from"), to: end("to"), duration: null, stops: null, chips: [], legs: [], pass: null, rental: null, live: null };
+    return { mode, art, carrier: null, from: end("from"), to: end("to"), duration: null, stops: null, chips: [], legs: [], pass: null, rental: null, live: null, wayMode: ctx.leg ? (ctx.leg.choice?.mode ?? ctx.leg.mode ?? null) : null };
   }
   // The plan's cities name the first leg's way out and the last leg's way in (one leg: both its ends).
   const legs = shown.map((item, n) => legOf(item, ctx.kind, { from: n === 0 ? ctx.ends?.from : null, to: n === shown.length - 1 ? ctx.ends?.to : null }));

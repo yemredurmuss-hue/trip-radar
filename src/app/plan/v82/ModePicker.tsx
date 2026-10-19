@@ -7,11 +7,17 @@ import { wayChoices } from "../../../lib/ticketFrame";
 import type { LegMode } from "../../../lib/types";
 import { Ic } from "./icons";
 
-export function ModePicker({ modes, onPick, onOwn }: { modes: readonly LegMode[]; onPick: (mode: LegMode) => void; onOwn: () => void }) {
+export function ModePicker({ modes, onPick, onOwn, current = null }: {
+  modes: readonly LegMode[];
+  onPick: (mode: LegMode) => void;
+  onOwn: () => void;
+  /** The way already said (Değiştir on an arranged transfer): marked, a tap on it keeps it. */
+  current?: LegMode | null;
+}) {
   return (
     <div className="z-ways" role="group" aria-label={L("Nasıl gideceksin?", "How will you go?")}>
       {wayChoices(modes).map((w) => (
-        <button key={w.mode} type="button" className="z-way" data-mode={w.mode} onClick={() => onPick(w.mode)}>
+        <button key={w.mode} type="button" className={`z-way${w.mode === current ? " on" : ""}`} data-mode={w.mode} aria-pressed={w.mode === current || undefined} onClick={() => onPick(w.mode)}>
           <img src={`illus/${w.art}.png`} alt="" />
           <span>{w.label}</span>
         </button>
