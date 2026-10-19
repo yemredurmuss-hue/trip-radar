@@ -1,7 +1,7 @@
 // One card of a city's rows (plan v82 "etkinlik ve yapılacaklar", the prototype's `kcard`, mk82.css `.z-k`): 224 px tall in
 // every state, the card's picture (92 px) over four fixed lines: the site's label or the place's word, the name (it edits
 // where it stands, C2; a press opens its record), one grey line, and the foot. A bought ticket keeps its size (v80): a
-// green "Bilet alındı" band at the picture's foot, the day and the meeting place (to the map) for the grey line, the code
+// small green "✓ Bilet alındı" chip on the picture's foot (the photo stays whole), the day and the meeting place (to the map) for the grey line, the code
 // to copy and "Bileti aç" for the foot, ⓘ opening Ayrıntı over the card (the files added there). What's on the plan has
 // × "Plandan çıkar" (E §2.6: it fades, 180 ms) and ⋯: ↻ another in its place for a ticket (C26), Yaptım, Haritada aç, taşı
 // and Daha fazla öner for a place (C20). An idea's foot is "+ Plana koy"; a place on the plan gets its day there ("Gün
@@ -268,10 +268,10 @@ function RecordFace({ card, vm, plan, search, onPut, onTakeOff }: RecordCardProp
       <span>{event ? L("Bileti aç", "Open ticket") : L("Aç", "Open")}</span>
     </button>
   ) : event || card.access?.code ? (
-    // v81: the file is added in Ayrıntı too; here it's one small "Ekle" beside the code.
+    // v81: the file is added in Ayrıntı too; here it's one quiet line beside the code ("📎 Bilet ekle"), not a box.
     <button type="button" className="q-doc add" onClick={doc.pick} aria-label={event ? L("Bileti ekle", "Add the ticket") : L(`${card.title}: belgeyi ekle`, `${card.title}: add the document`)}>
       <Ic name="clip" size={12} stroke={2.2} />
-      <span>{L("Ekle", "Add")}</span>
+      <span>{event ? L("Bilet ekle", "Add ticket") : L("Belge ekle", "Add document")}</span>
     </button>
   ) : plan ? (
     <DayGive item={item} plan={plan} />
