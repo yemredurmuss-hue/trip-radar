@@ -109,22 +109,19 @@ function Price({ o }: { o: OptionVM }) {
   const p = sidePrice(o.price);
   // 0.39.0: a hotel chosen with no price for its dates says its source's usual range ("tipik €21–64 / gece"), as its card did.
   const usual = p ? null : typicalNight(o.item.typicalNight);
-  return (
-    <Editable field="price">
-      {p && (
-        <span className="q-pr big">
-          <b>{p.big}</b>
-          {p.small && <small>{p.small}</small>}
-        </span>
-      )}
-      {usual && (
-        <span className="q-pr big" title={usual.title}>
-          <b>{usual.amount}</b>
-          <small>{usual.unit}</small>
-        </span>
-      )}
-    </Editable>
-  );
+  // One child or none: with neither, Editable says "Fiyat ekle" (two empty children read as something, drawn as nothing).
+  const shown = p ? (
+    <span className="q-pr big">
+      <b>{p.big}</b>
+      {p.small && <small>{p.small}</small>}
+    </span>
+  ) : usual ? (
+    <span className="q-pr big" title={usual.title}>
+      <b>{usual.amount}</b>
+      <small>{usual.unit}</small>
+    </span>
+  ) : null;
+  return <Editable field="price">{shown}</Editable>;
 }
 
 /** The option's own lines: its site and rating, where it is, the short cancellation and the wants checked (✓ ✕, two at most). */

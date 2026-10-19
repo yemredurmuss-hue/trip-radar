@@ -5,7 +5,7 @@
 // the next field (Shift+Tab back). A saved page's corrected field shows "sayfadaki: X · geri al" on hover.
 // Which card and field are open lives on the board (CardEnv.focus), so a card that moves to its new day
 // keeps its open field and is scrolled to.
-import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type FocusEvent, type KeyboardEvent, type ReactNode, type SyntheticEvent } from "react";
+import { Children, createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type FocusEvent, type KeyboardEvent, type ReactNode, type SyntheticEvent } from "react";
 import { L } from "../../lib/i18n";
 import { drawnFields, dropDraft, editableFields, fieldInput, fieldLabel, fieldPlaceholder, fieldValue, nextField, resumeDraft, saveCardField, type FieldKey } from "../../lib/inlineEdit";
 import type { Item } from "../../lib/types";
@@ -53,7 +53,8 @@ export function Editable({ field, children }: { field: FieldKey; children?: Reac
   const api = useInlineEdit();
   if (!api || !api.fields.includes(field)) return <>{children}</>;
   if (api.open === field) return <InlineField api={api} field={field} />;
-  const empty = children == null || children === false || children === "";
+  // (Two parts both empty, a price and a usual range neither known, are empty too: "Fiyat ekle" is said, 0.39.0.)
+  const empty = Children.toArray(children).filter((c) => c !== "").length === 0;
   const page = correctionOf(api.item, field);
   const label = fieldLabel(field, api.item);
   return (
