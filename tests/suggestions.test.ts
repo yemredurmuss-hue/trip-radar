@@ -253,6 +253,18 @@ describe("a suggestion from the model, checked", () => {
     expect(typeof checkSuggestionInput({ ...input, why: "31 gece kalıyorsun; aylık kiralama genellikle daha ucuzdur." }, "ai", 1)).toBe("object");
   });
 
+  it("leaves no card in Etkinlik ve turlar (0.38.4: only the source's real tours and saved ones); a warning may sit there", () => {
+    const surf = { section: "activity", kind: "add", title: "Sörf deneyimi", why: "Ahangama sörfüyle bilinir.", template: "activity", city: "Ahangama", start: "", end: "" };
+    const refused = checkSuggestionInput(surf, "chat", 1);
+    expect(refused).toContain("Viator'da bu bölge için tur bulamadım");
+    expect(typeof checkSuggestionInput(surf, "ai", 1)).toBe("string");
+    expect(typeof checkSuggestionInput({ ...surf, kind: "warning", template: "" }, "ai", 1)).toBe("object");
+    // One stored before (the chat's "Sörf deneyimi") isn't shown; a todo idea still is.
+    const stored: Suggestion = { key: "chat:activity:add:activity:sorf", section: "activity", kind: "add", title: "Sörf deneyimi", why: "x", source: "chat", createdAt: 1, state: "open" };
+    const idea: Suggestion = { ...stored, key: "chat:todo:add:todo:galle", section: "todo", template: "todo", title: "Galle kalesi" };
+    expect(shownSuggestions([stored, idea], []).map((s) => s.title)).toEqual(["Galle kalesi"]);
+  });
+
   it("refuses prices, times, percentages, two sentences", () => {
     expect(typeof checkSuggestionInput({ ...input, why: "Günlükten ~%60 ucuz." }, "ai", 1)).toBe("string");
     expect(typeof checkSuggestionInput({ ...input, why: "Aylık 80 € civarı." }, "ai", 1)).toBe("string");

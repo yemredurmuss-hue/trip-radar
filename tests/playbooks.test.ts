@@ -103,11 +103,13 @@ describe("Ozora: a festival", () => {
     const answer = {
       suggestions: [
         { section: "activity", kind: "add", title: "Douro tekne turu", why: "Porto'dayken nehri görmek güzel olur.", template: "activity", city: "", start: "", end: "" },
+        { section: "todo", kind: "add", title: "Douro boat tour", why: "Porto'dayken nehri görmek güzel olur.", template: "todo", city: "", start: "", end: "" },
         { section: "other", kind: "add", title: "Seyahat sigortası", why: "Planda sigorta yok.", template: "insurance", city: "", start: "", end: "" },
       ],
     };
     expect(acceptReview(answer, [], 1, "festival").added.map((x) => x.title)).toEqual(["Seyahat sigortası"]);
-    expect(acceptReview(answer, [], 1).added.map((x) => x.title)).toEqual(["Douro tekne turu", "Seyahat sigortası"]);
+    // On any trip Etkinlik ve turlar takes no suggestion card (0.38.4: only the source's real tours); a todo by its words.
+    expect(acceptReview(answer, [], 1).added.map((x) => x.title)).toEqual(["Douro boat tour", "Seyahat sigortası"]);
     expect(reviewSystem("festival")).toContain("Tur, tekne turu");
     expect(reviewSystem()).not.toContain("Tur, tekne turu");
   });
