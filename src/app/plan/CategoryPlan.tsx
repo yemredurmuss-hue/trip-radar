@@ -1,198 +1,299 @@
-// The Plan tab (spec 0.34, docs/mockups/2026-10-05-kategoriler-v4.html; v11, 2026-10-08-plan-pano-v11-design.md): the trip by
-// category — Uçuş, Konaklama, Ulaşım, Etkinlik ve turlar, Yapılacak şeyler, Belgeler ve internet, Hazırlık, İlham — each a band of one white sheet that
-// opens and closes (remembered per trip), with the approved cards in a timeline inside and what's out of the
-// way at its end. A section with nothing in it (and nothing hidden) isn't drawn; it's one chip in the "Ekle"
-// line at the bottom. Boş kartlar (spec 2026-10-06-bos-kartlar-design.md): Etkinlikler has an empty card per city
-// with nothing booked there, Diğer the eSIM's while a trip abroad has none (the rule's suggestion, drawn as its
-// card); a section with only those is drawn and open, and they're never in its "3/4".
-import type { ReactNode } from "react";
-import { planSectionOfItem, type CatSection, type SectionId } from "../../lib/categories";
+// The Plan by category (plan v82, docs/superpowers/specs/2026-10-18-v82-gecis 02-spec.md §4 aşama 2 and 3a; before it
+// spec 0.34 and v11): the head ("Plan · Gezinin omurgası · n karar bekliyor" and the three ways to read it), then each
+// category one card with its closed row (78 px), one open at a time (B8): opening one closes the others and brings it to
+// the top in one move unless it is there already (E1). A category drawn the new way (V82_SECTIONS) has its intents on a
+// rail inside (TimelineRail, IntentBox); the others keep their old body for now (their timeline of cards), side by side
+// for a short while. A category with nothing in it isn't drawn; "+ Yeni ihtiyaç ekle" at the end adds any kind (B6).
+import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { isIdeaSection, planSectionOfItem, sectionProgress, type CatSection, type SectionId } from "../../lib/categories";
 import { activityGaps } from "../../lib/emptyCards";
+import { countryNames } from "../../lib/heroInfo";
 import { L } from "../../lib/i18n";
+import { countParts, decideCount, decisionNames, firstDecision, rowThumbs } from "../../lib/intentFrame";
+import { collectionsOf, type Collection, type IntentInput } from "../../lib/intents";
+import { formatPrice } from "../../lib/items";
 import { nightsSummary } from "../../lib/lifecycle";
 import type { Plan } from "../../lib/plan";
+import { eMove, scrollBy } from "../../lib/planOpen";
+import type { BudgetSlice } from "../../lib/progress";
+import { entryDomId } from "../../lib/progress";
 import type { InsertAt } from "../../lib/templates";
-import type { Item, Suggestion } from "../../lib/types";
+import type { JourneyHop, JourneyStop } from "../../lib/tripShape";
+import type { Item } from "../../lib/types";
 import type { Visa } from "../../lib/visa";
-import { AddButton } from "../cards/AddSheet";
-import { PlanKey } from "./PlanOrder";
-import { EmptyActivityCard, EmptyEsimCard, EmptyInsuranceCard } from "../cards/EmptyCard";
-import { KindIcon } from "../cards/Silhouettes";
-import { Section } from "./Section";
-import { provisionalSection, SECTION_META } from "./sectionMeta";
+import { useEmptyEnv } from "../cards/emptyEnv";
+import { useCardEnv } from "../cards/PlanCard";
+import { IdeaTiles } from "../ideas/IdeaTiles";
+import { reducedMotion } from "../motion";
+import { show } from "../Progress";
+import type { BoardSuggestions } from "../useSuggestions";
+import { ActivityBoard } from "./ActivityBoard";
+import { Hidden } from "./HiddenList";
+import { ideaCount, Section } from "./Section";
+import { SECTION_META } from "./sectionMeta";
+import { SectionSuggestContext } from "./sectionSuggest";
 import { SectionTimeline, type SectionCards } from "./SectionTimeline";
 import { SuggestionCards } from "./SuggestionCards";
+import type { RowView } from "./v82/CategoryRow";
+import { artOf, IntentBox } from "./v82/IntentBox";
+import { PlanHeader } from "./v82/PlanHeader";
+import { TimelineRail } from "./v82/TimelineRail";
+import { intentEl, V82EnvContext, type V82Env } from "./v82/v82Env";
 import { VisaRow } from "./VisaRow";
-import { ActivityBoard } from "./ActivityBoard";
-import { IdeaTiles } from "../ideas/IdeaTiles";
-import { SectionSuggestContext } from "./sectionSuggest";
-import { TripShape, type ShapeExtras } from "./TripShape";
-import type { JourneyHop, JourneyStop } from "../../lib/tripShape";
-import type { BoardSuggestions } from "../useSuggestions";
-import type { BudgetSlice } from "../../lib/progress";
-import { formatPrice } from "../../lib/items";
 
 /** The sections whose suggestions are tiles among their ideas. */
 const TILED: SectionId[] = ["activity", "todo"];
 
 /**
- * v82 geçişi (docs/superpowers/specs/2026-10-18-v82-gecis, C raporu §3): the categories drawn with the new intent boxes
- * (lib/intents.ts) instead of the timeline below. A category joins once its boxes are built (3a: stay and other; 3b: flight
- * and transport; 4: activity and todo), so the plan is never two whole interfaces at once. Empty in phase 0: nothing on
- * screen changes.
+ * v82 geçişi (C raporu §3): the categories drawn with the new intent boxes (lib/intents.ts) instead of their old timeline.
+ * A category joins once its boxes are built: 3a stay and other (the stay family's frame), 3b flight and transport (the
+ * ticket), 4 activity and todo (the rows of cards).
  */
-export const V82_SECTIONS: ReadonlySet<SectionId> = new Set<SectionId>();
-
-/** Where a v82 category's intent boxes will be drawn (phase 3a's IntentList); nothing yet, and no category reaches it. */
-function V82Intents(_: { section: CatSection }): ReactNode {
-  return null;
-}
+export const V82_SECTIONS: ReadonlySet<SectionId> = new Set<SectionId>(["stay", "other"]);
 
 const SLICE: Partial<Record<SectionId, BudgetSlice>> = { flight: "flight", stay: "stay", transport: "transport", activity: "activity", other: "other" };
 
-export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tripId, cities, cards, onAdd, today, items, pending, suggestions, visa = null, visaDone = false, onVisaDone, shape = null, onStop, order = null }: {
+/** What sits pinned over the plan when it scrolls (the thin bar, app.css scroll-margin-top 76px). */
+const PINNED = 76;
+/** E1's one scroll: 380 ms, e-move. */
+const SCROLL_MS = 380;
+
+/** The element that scrolls the plan (the board's panel), else the page. */
+function scrollerOf(el: HTMLElement): HTMLElement {
+  for (let p = el.parentElement; p; p = p.parentElement) {
+    const y = getComputedStyle(p).overflowY;
+    if ((y === "auto" || y === "scroll") && p.scrollHeight > p.clientHeight) return p;
+  }
+  return (document.scrollingElement as HTMLElement | null) ?? document.documentElement;
+}
+
+/** E1: the head just opened comes up under what's pinned, in one move (at once with reduced motion), unless it's near the top. */
+function bringUp(head: HTMLElement) {
+  const box = scrollerOf(head);
+  const page = box === document.scrollingElement || box === document.documentElement;
+  const view = page ? { top: 0, height: window.innerHeight } : { top: box.getBoundingClientRect().top, height: box.clientHeight };
+  const by = scrollBy(head.getBoundingClientRect().top, view, PINNED);
+  if (!by) return;
+  const from = box.scrollTop;
+  if (reducedMotion()) {
+    box.scrollTop = from + by;
+    return;
+  }
+  const start = performance.now();
+  const step = (now: number) => {
+    const t = Math.min(1, (now - start) / SCROLL_MS);
+    box.scrollTop = from + by * eMove(t);
+    if (t < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tripId, cities, cards, onAdd, today, items, pending, suggestions, visa = null, visaDone = false, onVisaDone, shape = null, order = null, info = {} }: {
   plan: Plan;
   sections: CatSection[];
-  /** Open now: the traveller's choice, else the first look (sectionMeta.useSectionOpen). */
+  /** Open now: the traveller's choice, remembered (sectionMeta.useSectionOpen), or held open while a link is read into it. */
   isOpen: (section: CatSection) => boolean;
   onOpen: (id: SectionId, open: boolean) => void;
   tripId: string;
   cities: string[];
   cards: SectionCards;
-  /** Adds in a section (its kind; at a day and city when given), or (null) anything from the plan's head. */
+  /** Adds in a section (its kind; at a day and city when given), or (null) anything from the plan's end. */
   onAdd: (section: SectionId | null, at: InsertAt | null) => void;
   today: string;
   items: Item[];
-  /** What's being read now (arrive/useArrivals): under the header when its place can't be guessed, else atop its section (drawn even while empty). */
+  /** What's being read now (arrive/useArrivals): under the head when its place can't be guessed, else atop its section (drawn even while empty). */
   pending?: { lead: ReactNode; bySection: Partial<Record<SectionId, ReactNode>> };
-  /** Öneriler (useSuggestions): cards atop their section, "Plana ekle" and "Gerek yok". */
+  /** Öneriler (useSuggestions): a missing eSIM or policy is an intent (C16); the rest cards atop their section. */
   suggestions?: Pick<BoardSuggestions, "bySection" | "add" | "dismiss" | "notes">;
-  /** The traveller's visa for the trip's country: Belgeler ve internet's first line (v11), drawn even with nothing else there. */
+  /** The traveller's visa for the trip's country: Belgeler ve internet's first line, drawn even with nothing else there. */
   visa?: Visa | null;
   visaDone?: boolean;
   onVisaDone?: (done: boolean) => void;
-  /** The trip's shape under the head (v11): its stops, a tap opens a stop's place. */
-  shape?: ({ stops: JourneyStop[]; hops: JourneyHop[] } & ShapeExtras) | null;
-  onStop?: (stop: JourneyStop) => void;
-  /** v30: the three ways to read the plan (PlanOrder), drawn in the plan bar. */
+  /** The trip's stops and the ways between them: Yapılacaklar draws the way between one city's row and the next. */
+  shape?: { stops: JourneyStop[]; hops: JourneyHop[] } | null;
+  /** The three ways to read the plan (PlanOrder), drawn in the plan's head. */
   order?: ReactNode;
   /** v11: the budget shared out by section ("€500 ayrıldı"), when the trip has one. */
   allot?: { by: Record<BudgetSlice, number>; currency: string } | null;
+  /** A category's short note when the trip's form changed something there (spec §1.4; its signals come with phase 3b). */
+  info?: Partial<Record<SectionId, string>>;
 }) {
+  const env = useCardEnv();
+  const empty = useEmptyEnv();
   const n = plan.nights;
   const waiting = (s: CatSection) => pending?.bySection[s.id] != null;
-  // A section with only suggestions is drawn too (its header says "2 öneri"); they never count in its "3/4".
-  // The rule's eSIM suggestion is the eSIM's empty card (its "Gerek yok" the same dismissal), not a suggestion card.
-  const esim = suggestions?.bySection.other?.find((s) => s.key === ESIM_RULE) ?? null;
-  // v11 phase 6: the insurance's suggestion is its empty card too, beside the eSIM's and as large.
-  const insurance = suggestions?.bySection.other?.find((s) => s.key === INS_RULE) ?? null;
-  // v11: a restaurant's suggestion sits atop Yapılacak şeyler, where restaurants are drawn.
-  const suggested = (s: CatSection) => [...(suggestions?.bySection[s.id] ?? []), ...(s.id === "todo" ? (suggestions?.bySection.food ?? []) : [])].filter((x) => x.key !== ESIM_RULE && x.key !== INS_RULE);
+  const suggested = (s: CatSection) => [...(suggestions?.bySection[s.id] ?? []), ...(s.id === "todo" ? (suggestions?.bySection.food ?? []) : [])];
+  const v82 = (s: CatSection) => V82_SECTIONS.has(s.id);
+  // The new categories' suggestions to add are their intents (C16); only a warning stays a card.
+  const cardSuggestions = (s: CatSection) => (v82(s) ? suggested(s).filter((x) => x.kind !== "add") : suggested(s));
   const gaps = activityGaps(plan, items);
-  const emptyRows = (s: CatSection): EmptyRow[] =>
-    s.id === "activity"
-      ? gaps.map((g) => ({ key: `activity:${g.city}`, when: L("Tarihsiz", "No date"), city: g.city, card: <EmptyActivityCard gap={g} />, at: { city: g.city, date: null } }))
-      : s.id === "other" && suggestions
-        ? [
-            ...(insurance ? [{ key: "cover:insurance", when: L("Tüm gezi", "Whole trip"), city: null, card: <EmptyInsuranceCard suggestion={insurance} onAdd={suggestions.add} onDismiss={suggestions.dismiss} />, at: { city: null, date: null } }] : []),
-            ...(esim ? [{ key: "cover:esim", when: L("Tüm gezi", "Whole trip"), city: null, card: <EmptyEsimCard suggestion={esim} onAdd={suggestions.add} onDismiss={suggestions.dismiss} />, at: { city: null, date: null } }] : []),
-          ]
-        : [];
   const visaLine = (s: CatSection) => s.id === "other" && visa != null && visa.kind !== "none";
-  const shown = sections.filter((s) => s.entries.length || s.hidden.length || waiting(s) || suggested(s).length || emptyRows(s).length || visaLine(s));
-  // İlham fills by sending links (a Reel, a pin), never by hand: no "Ekle" chip for it.
-  const empty = sections.filter((s) => !s.entries.length && !s.hidden.length && !waiting(s) && !suggested(s).length && !emptyRows(s).length && !visaLine(s) && SECTION_META[s.id].templates.length > 0);
-  return (
-    <div className="section trip-plan cat-plan" data-pit-children>
-      {/* v11 plan bar: "Plan", the order switch, "+ Ekle", the colours' key on the right; one line. */}
-      <div className="section-head plan-bar" title={n.total > 0 ? nightsSummary(n) : undefined}>
-        <strong className="plan-h">{L("Plan", "Plan")}</strong>
-        {order}
-        <AddButton onClick={() => onAdd(null, null)} />
-        <PlanKey />
-      </div>
-      {shape && shape.stops.length > 1 && <TripShape {...shape} onStop={(s) => onStop?.(s)} />}
-      {plan.notices.map((x) => (
-        <div key={x.text} className="notice">
-          ⚠ {x.text}
-        </div>
-      ))}
-      {pending?.lead && <div className="ar-lead">{pending.lead}</div>}
-      {shown.length > 0 && (
-        <div className="cat-sheet" data-pit-children>
-          {shown.map((s) => {
-            // A section drawn only for its suggestions stays closed ("2 öneri" in its header) and keeps no first look,
-            // so the first real card there gives it its normal one.
-            const rows = emptyRows(s);
-            const own = s.entries.length > 0 || s.hidden.length > 0;
-            const onlySuggested = !own && !waiting(s) && !rows.length && suggested(s).length > 0;
-            // Only empty cards there (a new trip's Etkinlikler, Diğer's eSIM): open at first look, something's left.
-            const opened = isOpen(onlySuggested ? provisionalSection(s) : !own && (rows.length || visaLine(s)) ? { ...s, open: true } : s);
-            return (
-              <Section key={s.id} section={s} allot={allot && SLICE[s.id] && allot.by[SLICE[s.id]!] > 0 ? formatPrice(allot.by[SLICE[s.id]!], allot.currency) : null} allotNum={allot && SLICE[s.id] && allot.by[SLICE[s.id]!] > 0 ? { amount: allot.by[SLICE[s.id]!], currency: allot.currency } : null} open={opened} onToggle={() => onOpen(s.id, !opened)} onAdd={() => onAdd(s.id, null)} suggestions={suggested(s).length}>
-                {V82_SECTIONS.has(s.id) ? (
-                  <V82Intents section={s} />
-                ) : (
-                <SectionSuggestContext.Provider value={suggestions && TILED.includes(s.id) ? { list: suggested(s), add: suggestions.add, dismiss: suggestions.dismiss, notes: suggestions.notes } : null}>
-                {visaLine(s) && <VisaRow visa={visa} done={visaDone} onDone={(d) => onVisaDone?.(d)} />}
-                {/* Etkinlik ve turlar and Yapılacak şeyler show their suggestions among their ideas, as tiles (sectionSuggest). */}
-                {suggestions && !TILED.includes(s.id) && <SuggestionCards list={suggested(s)} onAdd={suggestions.add} onDismiss={suggestions.dismiss} notes={suggestions.notes} />}
-                {pending?.bySection[s.id]}
-                {/* The empty cards join the section's own grid (side by side with its cards), except Etkinlikler's. */}
-                {own && <SectionTimeline section={s} plan={plan} tripId={tripId} cities={cities} cards={cards} onAdd={(at) => onAdd(s.id, at)} onIdea={(item) => onOpen(planSectionOfItem(item), true)} today={today} items={items} journey={shape} extra={s.id === "activity" ? [] : rows} />}
-                {s.id === "activity" ? (
-                  // v11: the tours and tickets come from the source as the shelf's tiles (plan/ActivityBoard), no empty card.
-                  own ? null : <ActivityBoard section={s} plan={plan} fallback={() => null} onAdd={() => onAdd(s.id, null)} />
-                ) : s.id === "todo" && !own ? (
-                  // Only suggestions so far: they're tiles under "Fikirler ve öneriler" all the same.
-                  <IdeaTiles section={s} fallback={() => null} journey={shape} />
-                ) : own ? null : (
-                  <EmptyRows rows={rows} onAdd={(at) => onAdd(s.id, at)} />
-                )}
-                </SectionSuggestContext.Provider>
-                )}
-              </Section>
-            );
-          })}
-        </div>
-      )}
-      {empty.length > 0 && (
-        <div className="cat-more" aria-label={L("Başka bir şey ekle", "Add something else")}>
-          <span>{L("Ekle:", "Add:")}</span>
-          {empty.map((s) => (
-            <button key={s.id} type="button" className="cat-chip" data-section-chip={s.id} style={{ "--c": SECTION_META[s.id].color } as React.CSSProperties} onClick={() => onAdd(s.id, null)}>
-              <KindIcon kind={SECTION_META[s.id].icon} size={15} />
-              {SECTION_META[s.id].short()}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+  const dismissed = useMemo(() => (env.trip.suggestions ?? []).filter((s) => s.state === "dismissed"), [env.trip.suggestions]);
+  const input: IntentInput = {
+    trip: env.trip,
+    plan,
+    sections,
+    items,
+    today,
+    decisions: env.decisions?.byGroup ?? null,
+    ctx: env.decisions?.ctx,
+    docsFor: env.docsFor,
+    allot,
+    suggestions: suggestions?.bySection,
+  };
+  const collections = collectionsOf(input);
+  const collectionOf = (id: SectionId): Collection | null => collections.find((c) => c.section.id === id) ?? null;
+  const shown = sections.filter(
+    (s) =>
+      s.entries.length ||
+      s.hidden.length ||
+      waiting(s) ||
+      suggested(s).length ||
+      (s.id === "activity" && gaps.length > 0) ||
+      visaLine(s) ||
+      (v82(s) && dismissed.some((d) => d.section === s.id && d.kind === "add")),
   );
-}
 
-/** The rule's eSIM suggestion (lib/suggestions.ts), drawn as the eSIM's empty card. */
-const ESIM_RULE: Suggestion["key"] = "rule:esim";
-/** The rule's insurance suggestion, drawn as the insurance's empty card (v11 phase 6). */
-const INS_RULE: Suggestion["key"] = "rule:insurance";
+  // --- one open at a time, brought up in one move (E1) ---
+  const sheet = useRef<HTMLDivElement>(null);
+  const opening = useRef<{ id: SectionId; top: number; goTo: boolean } | null>(null);
+  const [lastOpened, setLastOpened] = useState<SectionId | null>(null);
+  const openId = shown.find((s) => isOpen(s))?.id ?? null;
+  const headOf = (id: SectionId) => sheet.current?.querySelector<HTMLElement>(`.q-sec[data-section="${id}"]`) ?? null;
+  const open = (id: SectionId, goTo = false) => {
+    const el = headOf(id);
+    opening.current = { id, top: el?.getBoundingClientRect().top ?? 0, goTo };
+    setLastOpened(id);
+    // One open at a time (B8): one held open for a card being read lets go too (arrive/useArrivals).
+    for (const other of shown) if (other.id !== id && isOpen(other)) onOpen(other.id, false);
+    onOpen(id, true);
+  };
+  const toggle = (s: CatSection) => (isOpen(s) ? onOpen(s.id, false) : open(s.id));
+  useLayoutEffect(() => {
+    const o = opening.current;
+    if (!o || o.id !== openId) return;
+    opening.current = null;
+    const el = headOf(o.id);
+    if (!el) return;
+    // The one above closed at once: the head is put back where it was (unseen), then it moves once.
+    const box = scrollerOf(el);
+    const shift = el.getBoundingClientRect().top - o.top;
+    if (shift) box.scrollTop += shift;
+    if (!o.goTo) bringUp(el);
+  }, [openId]);
 
-interface EmptyRow {
-  key: string;
-  /** The date column: "Tarihsiz", "Tüm gezi". */
-  when: string;
-  city: string | null;
-  card: ReactNode;
-  at: InsertAt;
-}
+  /** A category opened on one of its intents (F5, the hero's "Sıradaki"): its box comes into view with a flash. */
+  const goTo = (section: SectionId, key: string | null) => {
+    const c = collectionOf(section);
+    const vm = key ? c?.intents.find((i) => i.key === key) : null;
+    if (!openId || openId !== section) open(section, true);
+    setTimeout(() => {
+      const el = (key && intentEl(key)) || (vm?.domKeys[0] ? document.getElementById(entryDomId(vm.domKeys[0])) : null) || headOf(section);
+      show(el);
+    }, openId === section ? 0 : 320);
+  };
+  const v82Env: V82Env = {
+    byId: new Map(items.map((i) => [i.id, i])),
+    addSuggestion: suggestions?.add ?? null,
+    dismissSuggestion: suggestions?.dismiss ?? null,
+    selfAt: { countries: empty.esimCountries, countryNames: countryNames(empty.esimCountries), adults: empty.travellers },
+    goTo,
+  };
+  const first = firstDecision(collections);
 
-/** Empty cards in the section's grid (v11: no date column), each card a cell; "+ Ekle" is at the section's end. */
-function EmptyRows({ rows }: { rows: EmptyRow[]; onAdd?: (at: InsertAt) => void }) {
-  if (!rows.length) return null;
+  const rowOf = (s: CatSection): RowView => {
+    const meta = SECTION_META[s.id];
+    const c = collectionOf(s.id);
+    const settled = !isIdeaSection(s.id) && (s.entries.length || s.hidden.length) ? { settled: s.settled, total: sectionProgress(s).total } : null;
+    if (s.id === "prep") {
+      const done = s.entries.filter((e) => e.state === "done").length;
+      const total = s.entries.length;
+      return { id: s.id, name: meta.label(), line: L(`Gezi öncesi ${total} iş`, `${total} things before the trip`), thumbs: [], more: 0, bar: total ? { booked: Math.round((done / total) * 100), chosen: 0 } : null, parts: [{ text: L(`${done}/${total} hazır`, `${done}/${total} ready`), decide: false }], spent: null, allot: null, settled };
+    }
+    if (!c) {
+      const line = s.ideas && (s.entries.length || s.hidden.length) ? ideaCount(s.id, s.ideas, s.entries, suggested(s).length) : "";
+      return { id: s.id, name: meta.label(), line, thumbs: [], more: 0, bar: null, parts: [], spent: null, allot: null, settled };
+    }
+    const { thumbs, more } = rowThumbs(c.intents);
+    const sum = c.summary;
+    return {
+      id: s.id,
+      name: sum.name,
+      line: sum.line,
+      thumbs,
+      more,
+      bar: c.intents.length ? sum.bar : null,
+      parts: c.intents.length ? countParts(sum.counts, c.intents.some((i) => i.frame === "collection")) : [],
+      spent: sum.spent ? formatPrice(sum.spent.amount, sum.spent.currency) : null,
+      allot: sum.allotted ? formatPrice(sum.allotted.amount, sum.allotted.currency) : null,
+      settled,
+    };
+  };
+
   return (
-    <div className="cat-grid ek-grid">
-      {rows.map((r) => (
-        <div key={r.key} className="ek-cell">{r.card}</div>
-      ))}
-    </div>
+    <V82EnvContext.Provider value={v82Env}>
+      <div className="section trip-plan cat-plan q-plan" data-pit-children>
+        <PlanHeader decide={decideCount(collections)} onDecide={() => first && goTo(first.section, first.intent.key)} order={order} title={n.total > 0 ? nightsSummary(n) : undefined} />
+        {plan.notices.map((x) => (
+          <div key={x.text} className="notice">
+            ⚠ {x.text}
+          </div>
+        ))}
+        {pending?.lead && <div className="ar-lead">{pending.lead}</div>}
+        {shown.length > 0 && (
+          <div className="q-sheet" ref={sheet} data-pit-children>
+            {shown.map((s) => {
+              const opened = isOpen(s);
+              const c = collectionOf(s.id);
+              const own = s.entries.length > 0 || s.hidden.length > 0;
+              const slice = SLICE[s.id];
+              const allotNum = allot && slice && allot.by[slice] > 0 ? { amount: allot.by[slice], currency: allot.currency } : null;
+              const firstHere = c ? firstDecision([c]) : null;
+              return (
+                <Section key={s.id} section={s} row={rowOf(s)} v82={v82(s)} open={opened} instant={!opened && lastOpened != null && lastOpened !== s.id}
+                  onToggle={() => toggle(s)} onAdd={() => onAdd(s.id, null)}
+                  onDecide={() => (firstHere ? goTo(s.id, firstHere.intent.key) : open(s.id))} decideTip={c ? decisionNames(c.intents) : []}
+                  allotNum={allotNum} suggestions={cardSuggestions(s).filter((x) => x.kind === "add").length}>
+                  {v82(s) ? (
+                    <TimelineRail
+                      info={info[s.id]}
+                      lead={
+                        <>
+                          {pending?.bySection[s.id]}
+                          {suggestions && <SuggestionCards list={cardSuggestions(s)} onAdd={suggestions.add} onDismiss={suggestions.dismiss} notes={suggestions.notes} />}
+                          {visaLine(s) && <VisaRow visa={visa} done={visaDone} onDone={(d) => onVisaDone?.(d)} />}
+                        </>
+                      }
+                      hidden={<Hidden section={s} live={items.filter((i) => i.status !== "dismissed" && planSectionOfItem(i) === s.id)} suggestions={dismissed} art={(kind) => artOf(kind)} />}
+                    >
+                      {(c?.intents ?? []).filter((i) => i.status !== "skipped").map((vm) => (
+                        <IntentBox key={vm.key} vm={vm} color={SECTION_META[s.id].color} onHere={s.id === "stay" ? (at) => onAdd(s.id, at) : null} />
+                      ))}
+                    </TimelineRail>
+                  ) : (
+                    <SectionSuggestContext.Provider value={suggestions && TILED.includes(s.id) ? { list: suggested(s), add: suggestions.add, dismiss: suggestions.dismiss, notes: suggestions.notes } : null}>
+                      {/* Etkinlik ve turlar and Yapılacak şeyler show their suggestions among their ideas, as tiles (sectionSuggest). */}
+                      {suggestions && !TILED.includes(s.id) && <SuggestionCards list={suggested(s)} onAdd={suggestions.add} onDismiss={suggestions.dismiss} notes={suggestions.notes} />}
+                      {pending?.bySection[s.id]}
+                      {own && <SectionTimeline section={s} plan={plan} tripId={tripId} cities={cities} cards={cards} onAdd={(at) => onAdd(s.id, at)} onIdea={(item) => onOpen(planSectionOfItem(item), true)} today={today} items={items} journey={shape} />}
+                      {s.id === "activity" && !own ? (
+                        // v11: the tours and tickets come from the source as the shelf's tiles (plan/ActivityBoard), no empty card.
+                        <ActivityBoard section={s} plan={plan} fallback={() => null} onAdd={() => onAdd(s.id, null)} />
+                      ) : s.id === "todo" && !own ? (
+                        // Only suggestions so far: they're tiles under "Fikirler ve öneriler" all the same.
+                        <IdeaTiles section={s} fallback={() => null} journey={shape} />
+                      ) : null}
+                    </SectionSuggestContext.Provider>
+                  )}
+                </Section>
+              );
+            })}
+          </div>
+        )}
+        <button type="button" className="q-add q-addall" onClick={() => onAdd(null, null)}>
+          + {L("Yeni ihtiyaç ekle", "Add a new need")}
+        </button>
+      </div>
+    </V82EnvContext.Provider>
   );
 }

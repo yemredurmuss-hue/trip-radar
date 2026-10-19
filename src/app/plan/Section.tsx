@@ -1,110 +1,58 @@
-// A section of the Plan (kategoriler-v4 .sec): one band of the plan's single white sheet, a hairline above
-// it. The header is the same in every section — the line icon in the section's colour, the name, and on the
-// right a thin bar of settled of all (green once complete), "3/4", the arrow — and opens and closes it. Under the
-// name, its needs in stage words (v11: "1 rezerve · 2 seçildi · 1 aranıyor"). Open, "+ Ekle" joins the header, then the timeline
-// of cards and, last, "Gizlenenler · N göster" for what's out of the way.
+// A category of the Plan (plan v82): one card, its closed row (v82/CategoryRow, 78 px, the same open or closed) and, open,
+// its body folding in under it on a grid (m-bolum: 260 ms, the cards 80 ms late; shut, it folds back before it goes). The
+// categories drawn the new way (CategoryPlan's V82_SECTIONS) put their intents on a rail in it; the others keep their old
+// body as it was (its timeline of cards, "Gizlenenler · N göster"). At its end "+ Konaklama ekle" adds its own kind (B6).
 import type { ReactNode } from "react";
-import { isIdeaSection, sectionProgress, stageLine, type CatSection } from "../../lib/categories";
+import type { CatSection } from "../../lib/categories";
 import { L } from "../../lib/i18n";
 import { formatPrice } from "../../lib/items";
-import { suggestionCount } from "../../lib/suggestions";
-import { HoverTip } from "../HoverTip";
 import { useFold } from "../motion";
 import { lookWord } from "../../lib/stageWords";
-import { KindIcon, UiIcon } from "../cards/Silhouettes";
+import { UiIcon } from "../cards/Silhouettes";
 import { HiddenList } from "./HiddenList";
 import { SECTION_META } from "./sectionMeta";
+import { CategoryRow, type RowView } from "./v82/CategoryRow";
 
-export function Section({ section, allot = null, allotNum = null, open, onToggle, onAdd, suggestions = 0, children }: {
+/** The word of a category's own "+ … ekle" where it isn't its short name (as drawn: "+ Yer ekle", "+ Belge ekle"). */
+const ADD_WORD: Partial<Record<CatSection["id"], () => string>> = { todo: () => L("Yer", "Place"), other: () => L("Belge", "Document") };
+
+export function Section({ section, row, v82, open, instant = false, onToggle, onAdd, onDecide, decideTip, allotNum = null, suggestions = 0, children }: {
   section: CatSection;
-  /** v11: its share of the trip's budget, "€500" ("€285 · €500 ayrıldı"). */
-  allot?: string | null;
-  /** The same share as a number and its currency: what's left of it shows in the budget's box. */
-  allotNum?: { amount: number; currency: string } | null;
+  row: RowView;
+  /** Drawn the new way: intents on a rail (their Gizlenenler among them), no old body around them. */
+  v82: boolean;
   open: boolean;
+  /** Closed because another one opened (the accordion, E1): at once, so the one opening moves only once. */
+  instant?: boolean;
   onToggle: () => void;
-  /** "+ Ekle" in the open header: this section's kind, no day. */
+  /** "+ Konaklama ekle": this category's kind, no day. */
   onAdd: () => void;
-  /** Its open suggestions: "1 öneri" in the header (never part of its "3/4"), shown open or closed. */
+  onDecide: () => void;
+  decideTip: string[];
+  /** Its share of the budget as a number and its currency: what's left of it shows in the money box. */
+  allotNum?: { amount: number; currency: string } | null;
+  /** Its open suggestions ("1 öneri", C28). */
   suggestions?: number;
   children: ReactNode;
 }) {
   const meta = SECTION_META[section.id];
   const label = meta.label();
-  const { total, complete } = sectionProgress(section);
-  const ideas = section.ideas;
-  // v11: the header says where its needs stand in stage words ("1 rezerve · 2 seçildi · 1 aranıyor"); the ideas and
-  // Hazırlık count instead.
-  const line = isIdeaSection(section.id) || section.id === "prep" ? null : section.id === "activity" ? activityLine(section) : stageLine(section.stages, section.drafts);
-  const spent = isIdeaSection(section.id) || section.id === "prep" ? null : spentOf(section);
-  // v11: the bar in two colours, booked (green) then chosen (amber), out of all of its needs.
-  const st = section.stages;
-  const booked = st.booked + st.ready + st.used;
-  const chosen = st.planned;
-  const needs = booked + chosen + st.search + st.options;
-  const pctOf = (n: number) => (needs ? Math.round((n / needs) * 100) : 0);
-  // (hareket dili, m-bolum) a section folds open and shut on a grid (rows 0fr and 1fr, 260 ms); its cards come in 80 ms late; what is under it
-  // slides. Shut, the body stays drawn until it has folded (app.css `.cat-fold`); a section open when the Plan appears is just there.
   const fold = useFold(open);
+  const mounted = instant && !open ? false : fold.mounted;
   return (
-    <section className={`cat-sec${open ? "" : " closed"}`} style={{ "--c": meta.color } as React.CSSProperties} aria-label={label} data-section={section.id}>
-      <div className="cat-head" onClick={onToggle}>
-        <button type="button" className="cat-title" aria-expanded={open} onClick={(e) => { e.stopPropagation(); onToggle(); }}>
-          <span className="cat-ic" aria-hidden>
-            <KindIcon kind={meta.icon} size={20} />
-          </span>
-          <span className="cat-tt">
-            <b>
-              {label}
-              {total > 0 && <i className="cat-n">{total}</i>}
-            </b>
-            {line ? <small className="cat-st">{line}</small> : section.id === "prep" && total > 0 ? <small className="cat-st">{L(`${section.settled}/${total} hazır`, `${section.settled}/${total} ready`)}</small> : ideas && (section.entries.length || section.hidden.length) ? <small className="cat-st cat-ideas">{ideaCount(section.id, ideas, section.entries, suggestions)}</small> : null}
-          </span>
-        </button>
-        <span className="cat-end">
-          {suggestions > 0 && <span className="sg-count">{suggestionCount(suggestions)}</span>}
-          {/* Drawn only for something being read into it (arrive) or suggested: nothing to count yet. */}
-          {!section.entries.length && !section.hidden.length ? null : ideas ? null : (
-            <>
-              {needs > 0 && (
-                <span className={`cat-bar${complete ? " done" : ""}`} aria-hidden>
-                  <span className="bk" style={{ width: `${pctOf(booked)}%` }} />
-                  <span className="ch" style={{ width: `${pctOf(chosen)}%` }} />
-                </span>
-              )}
-              {/* What's settled of all, said for a screen reader (the bar shows it). */}
-              <span className="cat-count sr-only" aria-label={L(`${section.settled} / ${total} tamam`, `${section.settled} of ${total} settled`)}>
-                {section.settled}
-                <i>/{total}</i>
-              </span>
-              {(spent || allot) && (
-                <HoverTip below align="right" className="cat-bud-tip" tip={budgetTip(section, allotNum)}>
-                  <span className="cat-bud">
-                    {spent && <b className="cat-spent">{spent}</b>}
-                    {allot && <small className="cat-allot">{L(`${allot} ayrıldı`, `${allot} set aside`)}</small>}
-                  </span>
-                </HoverTip>
-              )}
-            </>
-          )}
-          <span className="cat-chev" aria-hidden>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
-              <path d="M6 9l6 6 6-6" />
-            </svg>
-          </span>
-        </span>
-      </div>
-      {fold.mounted && (
-        <div className={`cat-fold${fold.expanded ? " on" : ""}${fold.settled ? " settled" : ""}`} inert={!open}>
-          <div className="cat-fold-in">
-            <div className="cat-body" data-pit-children>
+    <section className={`q-sec${open ? " open" : ""}`} id={`cat-${section.id}`} style={{ "--c": meta.color } as React.CSSProperties} aria-label={label} data-section={section.id}>
+      <CategoryRow row={row} meta={meta} open={open} onToggle={onToggle} onDecide={onDecide} decideTip={decideTip}
+        budgetTip={budgetTip(section, allotNum)} extraTip={suggestions > 0 ? L(`${suggestions} öneri`, `${suggestions} suggestion${suggestions === 1 ? "" : "s"}`) : null} />
+      {mounted && (
+        <div className={`q-fold${fold.expanded ? " on" : ""}${fold.settled ? " settled" : ""}`} inert={!open}>
+          <div className="q-fold-in">
+            <div className={v82 ? "q-foldb" : "cat-body"} data-pit-children>
               {children}
-              {section.hidden.length > 0 && <HiddenList things={section.hidden} />}
-              {/* v11: the plan's head has the one "+ Ekle"; a section adds its own kind quietly at its end. */}
+              {!v82 && section.hidden.length > 0 && <HiddenList things={section.hidden} />}
               {meta.templates.length > 0 && (
-                <button type="button" className="cat-add" onClick={onAdd} aria-label={L(`${label}: ekle`, `${label}: add`)}>
+                <button type="button" className="q-add" onClick={onAdd} aria-label={L(`${label}: ekle`, `${label}: add`)}>
                   <UiIcon name="plus" size={13} />
-                  {L("Ekle", "Add")}
+                  {L(`${(ADD_WORD[section.id] ?? meta.short)()} ekle`, `Add: ${(ADD_WORD[section.id] ?? meta.short)()}`)}
                 </button>
               )}
             </div>
@@ -113,28 +61,6 @@ export function Section({ section, allot = null, allotNum = null, open, onToggle
       )}
     </section>
   );
-}
-
-/** v11 Etkinlik ve turlar: "2 planda · 3 fikir" (what's chosen or booked, and the ideas waiting). */
-function activityLine(section: CatSection): string | null {
-  const records = section.entries.map((e) => (e.piece.kind === "item" ? e.piece.item : e.piece.kind === "entry" && e.piece.entry.kind === "event" ? e.piece.entry.item : null)).filter((i): i is NonNullable<typeof i> => i != null);
-  const planned = records.filter((i) => i.status === "chosen" || i.status === "booked").length;
-  const ideas = records.length - planned;
-  const parts = [planned ? L(`${planned} planda`, `${planned} on the plan`) : null, ideas ? L(`${ideas} fikir`, `${ideas} idea${ideas === 1 ? "" : "s"}`) : null].filter(Boolean);
-  return parts.length ? parts.join(" · ") : null;
-}
-
-/** v11: what's chosen and booked in a section, added up in its main currency ("€2.690"); null when nothing is priced. */
-function spentOf(section: CatSection): string | null {
-  const by = new Map<string, number>();
-  for (const e of section.entries) {
-    if (e.state !== "done" && e.state !== "book") continue;
-    const p = e.row.price;
-    if (!p || !p.currency || !(p.amount > 0)) continue;
-    by.set(p.currency, (by.get(p.currency) ?? 0) + p.amount);
-  }
-  const top = [...by.entries()].sort((a, b) => b[1] - a[1])[0];
-  return top ? formatPrice(Math.round(top[1]), top[0]) : null;
 }
 
 /** The header's money box: what's booked, what's chosen, what's left of the section's share (docs/mockups/ux-katmanli-arayuz). */
