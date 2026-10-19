@@ -230,12 +230,16 @@ describe("what's missing, said not needed, covered by a ticket", () => {
     expect(b.intents.find((i) => i.section === "other")).toMatchObject({ kind: "insurance", status: "searching", word: "Aranıyor", estimate: null, note: "Yurt dışına çıkıyorsun.", head: { name: "Seyahat sağlık sigortası", parts: ["1–7 Kasım"] } });
   });
 
+  // Aşama 3b (spec §1.3, D3): Dahil follows what covers it. A camp made before the trip's parts were kept is covered by
+  // the festival's ticket on the plan; with no ticket there it is a stay to find, never "Ayarlandı" by itself.
   it("a festival's camp is covered by its ticket: Dahil", () => {
     const trip: Trip = { ...base, intent: { playbook: "festival" } };
     const camp = stay("Çadır kampı", "Ozora", "2026-11-01", "2026-11-04", "chosen", { noBooking: 1, metrics: metrics({ stayKind: "camp" }), price: eur(null) });
-    const b = board(trip, [camp]);
-    expect(b.of("Ozora")).toMatchObject({ status: "included", word: "Dahil", note: "Rezervasyon gerekmez · bilete dahil" });
-    expect(board(base, [camp]).of("Ozora").status).toBe("arranged");
+    const ticket = makeItem({ id: next("a"), name: "Festival bileti", category: "activity", needKey: "activity:festival", city: "Ozora", status: "booked", dates: { start: "2026-11-01", end: "2026-11-04", source: "page" }, price: eur(245) });
+    const b = board(trip, [camp, ticket]);
+    expect(b.of("Ozora")).toMatchObject({ status: "included", word: "Dahil", cover: { by: "festival biletiyle", status: "booked", itemId: ticket.id } });
+    expect(board(trip, [camp]).of("Ozora").status).toBe("searching");
+    expect(board(base, [camp]).of("Ozora").status).toBe("searching");
   });
 });
 
@@ -277,10 +281,16 @@ describe("B9: the hero's two shares", () => {
     expect(planShare(intents)).toEqual({ count: 8, total: 15, pct: 53 });
     expect(bookedShare(intents)).toEqual({ count: 4, total: 15, pct: 27 });
   });
-  it("our pick isn't on the plan until it's taken; what a ticket covers is on the plan, not bought; nothing: no percentage", () => {
+  // Aşama 3b (spec §1.3, Emre 18 Ekim): a Dahil box counts as its cover does, no longer "on the plan, never bought".
+  it("our pick isn't on the plan until it's taken; what a ticket covers counts as the ticket does; nothing: no percentage", () => {
     expect(planShare(of([["suggested", 2]]))).toEqual({ count: 0, total: 2, pct: 0 });
-    expect(planShare(of([["included", 1], ["deciding", 1]]))).toEqual({ count: 1, total: 2, pct: 50 });
-    expect(bookedShare(of([["included", 1], ["deciding", 1]]))).toEqual({ count: 0, total: 2, pct: 0 });
+    const covered = (status: IntentStatus | null) => [{ status: "included" as const, cover: { status } }, { status: "deciding" as const }];
+    expect(planShare(covered("booked"))).toEqual({ count: 1, total: 2, pct: 50 });
+    expect(bookedShare(covered("booked"))).toEqual({ count: 1, total: 2, pct: 50 });
+    expect(planShare(covered("chosen"))).toEqual({ count: 1, total: 2, pct: 50 });
+    expect(bookedShare(covered("chosen"))).toEqual({ count: 0, total: 2, pct: 0 });
+    expect(planShare(covered("searching"))).toEqual({ count: 0, total: 2, pct: 0 });
+    expect(planShare(of([["included", 1], ["deciding", 1]]))).toEqual({ count: 0, total: 2, pct: 0 });
     expect(planShare(of([["skipped", 3]]))).toEqual({ count: 0, total: 0, pct: null });
   });
 });

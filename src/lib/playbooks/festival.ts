@@ -1,6 +1,7 @@
 // A festival or a burn (AfrikaBurn, Ozora, Sziget): the flight to its gateway, the way out to the site, the festival
 // itself on its fixed days with its ticket to get (the official site on it), the days around it in the gateway city
-// (the event route already makes them). No tours or sightseeing suggested: the festival is the trip.
+// (the event route already makes them). No tours or sightseeing suggested: the festival is the trip. Gezi biçimi: the
+// ticket is the trip's package, it covers the camp nights at the festival's own place ("Dahil · festival biletiyle").
 import { L } from "../i18n";
 import { card, daysOf, stayAt, transferTo } from "./cards";
 import type { Playbook } from "./index";
@@ -27,6 +28,7 @@ export const festival: Playbook = {
         city: place,
         ...days,
         note: it?.url ? L(`Resmî site: ${it.url}`, `Official site: ${it.url}`) : null,
+        part: { ref: "ticket", section: "activity", frame: "collection", word: L("Festival", "Festival"), pick: "multi", covers: ["stay:event"] },
       }),
     ];
   },

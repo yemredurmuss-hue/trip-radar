@@ -1,5 +1,6 @@
 // A ski trip (Bansko, Uludağ, Chamonix): the flight in, the transfer to the resort, the stay, then the ski pass, the
-// equipment and the ski school for the days there.
+// equipment and the ski school for the days there. Gezi biçimi: each is one choice of its own in Etkinlik ve turlar (a
+// card, never a thing to tick off: H1), the pass a right for each day of the stay.
 import { L } from "../i18n";
 import { card, daysOf, firstStay, transferTo } from "./cards";
 import type { Playbook } from "./index";
@@ -27,12 +28,13 @@ export const ski: Playbook = {
     const stay = firstStay(ctx);
     const resort = stay?.city ?? ctx.intent?.place ?? null;
     const days = daysOf(stay, ctx.dates);
-    const there = (ref: string, title: string) => card({ kind: "activity", ref, title, city: resort, ...days });
+    const there = (ref: string, title: string, word: string) =>
+      card({ kind: "activity", ref, title, city: resort, ...days, part: { ref, section: "activity", frame: "stay", word, pick: "single" } });
     return [
       ...transferTo(ctx, resort, stay?.date ?? days.date),
-      there("pass", L("Kayak pası", "Ski pass")),
-      there("rental", L("Ekipman kiralama", "Equipment rental")),
-      there("school", L("Kayak okulu", "Ski school")),
+      there("pass", L("Kayak pası", "Ski pass"), L("Skipass", "Ski pass")),
+      there("rental", L("Ekipman kiralama", "Equipment rental"), L("Ekipman", "Gear")),
+      there("school", L("Kayak okulu", "Ski school"), L("Okul", "School")),
     ];
   },
   blocked: {},

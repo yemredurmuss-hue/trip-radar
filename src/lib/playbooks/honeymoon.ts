@@ -1,5 +1,6 @@
 // A honeymoon (Maldivler, Bali, Santorini): the flight in, the transfer to the resort (a seaplane or a speedboat on
-// the islands that need one), the resort, then a spa for two, a private dinner and, by a reef, a dive.
+// the islands that need one), the resort, then a spa for two, a private dinner and, by a reef, a dive. Gezi biçimi: the
+// seaplane or the speedboat comes with the resort ("Dahil · resort paketiyle"); the evenings are things to book.
 import { L } from "../i18n";
 import { card, daysOf, firstStay, transferTo } from "./cards";
 import type { Playbook } from "./index";
@@ -16,13 +17,15 @@ export const honeymoon: Playbook = {
     const resort = stay?.city ?? ctx.intent?.place ?? null;
     const days = daysOf(stay, ctx.dates);
     // An evening or a dive is one day of the stay, which one is theirs to pick: in the resort's place, undated.
-    const there = (title: string) => card({ kind: "activity", title, city: resort });
+    const there = (ref: string, title: string) => card({ kind: "activity", title, city: resort, part: { ref, section: "activity", frame: "collection", pick: "multi" } });
     const sea = Boolean(ctx.code && BY_SEA.has(ctx.code));
     return [
-      ...transferTo(ctx, resort, stay?.date ?? days.date, sea ? L("Deniz uçağı ya da sürat teknesi transferi", "Seaplane or speedboat transfer") : null),
-      there(L("Çift spası", "Couples spa")),
-      there(L("Özel akşam yemeği", "Private dinner")),
-      ...(ctx.code && DIVING.has(ctx.code) ? [there(L("Dalış", "Diving"))] : []),
+      ...transferTo(ctx, resort, stay?.date ?? days.date, sea ? L("Deniz uçağı ya da sürat teknesi transferi", "Seaplane or speedboat transfer") : null).map((x) =>
+        sea ? { ...x, part: { ref: "transfer", section: "transport" as const, frame: "ticket" as const, by: "stay" } } : x,
+      ),
+      there("spa", L("Çift spası", "Couples spa")),
+      there("dinner", L("Özel akşam yemeği", "Private dinner")),
+      ...(ctx.code && DIVING.has(ctx.code) ? [there("dive", L("Dalış", "Diving"))] : []),
     ];
   },
   blocked: {},

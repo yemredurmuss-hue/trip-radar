@@ -155,8 +155,15 @@ const time = (iso: string | null | undefined): string | null => {
 const hhmm = (t: string | null | undefined): string | null => (t && /^\d{2}:\d{2}$/.test(t) ? t : null);
 const decided = (i: Item) => i.status === "chosen" || i.status === "booked";
 
-/** A record's section, by what it is: a flight, a place to stay, getting around, something to book or to do, a meal, insurance and internet. */
+/**
+ * A record's section, by what it is: a flight, a place to stay, getting around, something to book or to do, a meal,
+ * insurance and internet. A record the start made for a part of the trip's shape goes where the part says (gezi biçimi,
+ * D1, H1: a ski pass in Etkinlik, a retreat's programme in Konaklama), whatever its words say; a way about and a flight
+ * stay where their kind is.
+ */
 export function sectionOfItem(item: Item): SectionId {
+  const part = item.part?.section;
+  if (part && item.category !== "flight" && item.category !== "transport") return part;
   switch (item.category) {
     case "flight":
       return "flight";
@@ -490,6 +497,9 @@ function draftStage(d: Draft, ctxOf: (item: Item) => StageCtx): Stage | null {
   const leg = d.piece.kind === "entry" ? (d.piece.entry.kind === "leg" ? d.piece.entry.leg : d.piece.entry.kind === "travel" ? (d.piece.entry.leg ?? null) : null) : null;
   const anyBooked = d.items.some((i) => i.status === "booked" || (i.installedAt != null && decided(i)));
   if (leg && legBooked(leg) && !anyBooked) return "booked";
+  // What the start only made room for (a transfer to fill), not sorted out since: still to find, never "alındı" (D3, H2).
+  const live = d.items.filter((i) => i.status !== "dismissed");
+  if (!anyBooked && live.length && live.every((i) => ctxOf(i).placeholder && !i.arranged && i.noBooking == null)) return "search";
   // All that's decided there was set aside as needing no booking (booking.setAside): out of the stages.
   if (!anyBooked && asideOnly(d.items)) return null;
   if (d.state === "done" && !anyBooked) return null;

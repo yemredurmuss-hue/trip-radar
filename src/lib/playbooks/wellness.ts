@@ -1,5 +1,6 @@
 // A wellness trip or retreat (a yoga retreat in Bali, a wellness festival in Sweden): the programme on its fixed
-// days first, then the way there and a quiet stay; few activities suggested, the programme fills the days.
+// days first, then the way there and a quiet stay; few activities suggested, the programme fills the days. Gezi biçimi:
+// the programme is the trip's package, one choice in Konaklama; the nights there and the transfer are "Dahil" with it.
 import { L } from "../i18n";
 import { card, daysOf, firstStay, transferTo } from "./cards";
 import type { Playbook } from "./index";
@@ -19,8 +20,9 @@ export const wellness: Playbook = {
         city: place,
         ...days,
         note: it?.url ? L(`Resmî site: ${it.url}`, `Official site: ${it.url}`) : null,
+        part: { ref: "programme", section: "stay", frame: "stay", word: L("Program", "Programme"), pick: "single", covers: ["stay", "transfer"] },
       }),
-      ...transferTo(ctx, stay?.city ?? place, stay?.date ?? days.date),
+      ...transferTo(ctx, stay?.city ?? place, stay?.date ?? days.date).map((x) => ({ ...x, part: { ref: "transfer", section: "transport" as const, frame: "ticket" as const, by: "programme" } })),
     ];
   },
   blocked: { words: /(^| )(tur|turu|tour|tours|excursion|gunubirlik|day trip|party|parti\w*|nightlife|gece hayati)( |$)/, few: ["activity"] },

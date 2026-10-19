@@ -7,6 +7,7 @@
 import { L } from "../i18n";
 import { normWords } from "../startEvents";
 import type { PlannedInput } from "../planned";
+import type { ItemPart } from "../types";
 
 /** Words in both languages (one may be missing: the other is used). */
 export interface Words {
@@ -250,8 +251,11 @@ export const optionsText = (chips: PbChip[]): string => chips.map((c) => `${c.va
 
 // --- the operations on the made trip -----------------------------------------------------------------------------
 
-/** A skeleton card with its name for the operations ("ticket"); the name never goes into the plan. */
-export type Card = PlannedInput & { ref?: string };
+/**
+ * A skeleton card with its name for the operations ("ticket"); the name never goes into the plan. `part` (gezi biçimi):
+ * the part of the trip's spine it stands for, kept on the record it makes (Item.part).
+ */
+export type Card = PlannedInput & { ref?: string; part?: ItemPart };
 
 const sameCity = (a: string | null | undefined, b: string | null | undefined) =>
   !!a && !!b && normWords(a).join(" ") === normWords(b).join(" ");

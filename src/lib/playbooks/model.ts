@@ -4,14 +4,20 @@
 // city, a malformed question or operation is dropped, never a crash; with no label there is no playbook and the trip
 // is made as before. The kept playbook is plain data (stored on the trip) and runs through the same generic machinery
 // as the hand-made ones. What must hold ("babam merdiven çıkamaz", "özel araç") comes as structured musts that the
-// stay picks, the transfer, the suggestions and the chat all read from one place. Pure.
+// stay picks, the transfer, the suggestions and the chat all read from one place.
+//
+// Gezi biçimi (v82 geçişi spec §1.4): the playbook carries the trip's shape signals too: where the nights are spent (a
+// cabin, none at all), the nearest airport, a moving base, a right for each day, each card's category, frame, word, one
+// choice or many, what covers it and what it covers, and a short line per category. Each is checked on its own and
+// dropped alone when it doesn't hold; the nearest ready mix (playbooks/shape.ts) gives what the model leaves out. Pure.
 import { z } from "zod";
 import { L } from "../i18n";
 import { normWords } from "../startEvents";
-import type { Amenity, CustomCard, Item, CustomPlaybook, Must, MustId, PlannedKind, PlaybookKind, Requirement, SuggestionSection, TripIntent } from "../types";
+import type { Amenity, CustomCard, Item, CustomPlaybook, Must, MustId, PartFrame, PartSection, PlannedKind, Requirement, SuggestionSection, TripIntent } from "../types";
 import { card, daysOf, stayAt, firstStay } from "./cards";
 import type { Playbook, PlaybookCtx } from "./index";
 import { validQuestions, type Card } from "./questions";
+import { isShapePreset, MIXES, mixCards, mixPrep, mixQuestions, partOfCard, SLEEP_TYPES } from "./shape";
 
 // --- what the model is asked for (no nullable fields: "" and [] stand for "none") ------------------------------
 
@@ -26,13 +32,33 @@ const effectSchema = z.object({
 });
 const chipSchema = z.object({ value: z.string(), label: z.string(), aliases: z.array(z.string()), effects: z.array(effectSchema) });
 
+const cardSchema = z.object({
+  ref: z.string(),
+  kind: z.string(),
+  title: z.string(),
+  place: z.string(),
+  anchor: z.string(),
+  // Gezi biçimi: where its box goes and how it's drawn, what covers it ("" and [] when the kind says it).
+  section: z.string(),
+  frame: z.string(),
+  word: z.string(),
+  pick: z.string(),
+  covers: z.array(z.string()),
+  by: z.string(),
+});
+
 export const planSchema = z.object({
   label: z.string(),
   base: z.string(),
   focus: z.string(),
   stay_type: z.string(),
   stay_port: z.string(),
-  cards: z.array(z.object({ ref: z.string(), kind: z.string(), title: z.string(), place: z.string(), anchor: z.string() })),
+  // Gezi biçimi: the nearest airport, a moving base, the card that is a right for each day, the short lines.
+  gateway: z.string(),
+  moving_base: z.boolean(),
+  per_day: z.string(),
+  info: z.array(z.object({ section: z.string(), text: z.string() })),
+  cards: z.array(cardSchema),
   questions: z.array(z.object({ id: z.string(), text: z.string(), chips: z.array(chipSchema) })),
   blocked_sections: z.array(z.string()),
   blocked_words: z.array(z.string()),
@@ -42,14 +68,24 @@ export const planSchema = z.object({
   avoid: z.string(),
   musts: z.array(z.object({ id: z.string(), text: z.string() })),
 });
-export type RawPlan = z.infer<typeof planSchema>;
+type ShapeKeys = "gateway" | "moving_base" | "per_day" | "info";
+type CardShapeKeys = "section" | "frame" | "word" | "pick" | "covers" | "by";
+type FullCard = z.infer<typeof cardSchema>;
+/** One card as it may come: a playbook made before gezi biçimi has none of the shape's fields. */
+export type RawCard = Omit<FullCard, CardShapeKeys> & Partial<Pick<FullCard, CardShapeKeys>>;
+/** What the model answers (planSchema), as it may come: one made before gezi biçimi has none of the shape's fields. */
+export type RawPlan = Omit<z.infer<typeof planSchema>, ShapeKeys | "cards"> & Partial<Pick<z.infer<typeof planSchema>, ShapeKeys>> & { cards: RawCard[] };
 
 // --- the checks -------------------------------------------------------------------------------------------------
 
-const BASES: readonly Exclude<PlaybookKind, "custom">[] = ["festival", "ski", "honeymoon", "wellness", "classic"];
-const STAY_TYPES: readonly CustomPlaybook["stayType"][] = ["hotel", "boat", "camp", "vehicle"];
 /** What a playbook's card may be: the ways about and the things to do; never a stay or a flight (the route makes those). */
 export const CARD_KINDS: readonly PlannedKind[] = ["transfer", "taxi", "car_rental", "rv_rental", "moto_rental", "bike_rental", "minibus", "train", "bus", "ferry", "activity", "todo", "esim", "insurance", "other"];
+const PART_SECTIONS: readonly PartSection[] = ["flight", "stay", "transport", "activity", "todo", "other"];
+const PART_FRAMES: readonly PartFrame[] = ["stay", "ticket", "collection"];
+/** The ways about: their box is a ticket in Ulaşım, whatever else a card says. */
+const TRAVEL_KINDS = new Set<PlannedKind>(["transfer", "taxi", "car_rental", "rv_rental", "moto_rental", "bike_rental", "minibus", "train", "bus", "ferry"]);
+/** What a covering card may cover besides another card: the nights at its place, the event's own nights, the ways between the stays. */
+const COVER_SPECIALS = new Set(["stay", "stay:event", "legs"]);
 const ANCHORS: readonly CustomCard["anchor"][] = ["arrive", "stay", "leave"];
 const SECTIONS: readonly SuggestionSection[] = ["stay", "transport", "activity", "todo", "food", "other"];
 const MUSTS: readonly MustId[] = ["step_free", "private_transfer", "kitchen", "quiet", "pool", "pet", "breakfast", "level", "diet", "age", "other"];
@@ -78,24 +114,83 @@ const words = (s: string) => ({ tr: s, en: s });
  * The model's playbook, checked: null when there is none (no label) or nothing to keep. Each piece is kept or dropped
  * on its own: at most 6 cards, 3 questions, 8 list lines, 6 musts; an operation naming a card that isn't there goes.
  */
+/** A part's category as a card may say it: one its kind can go in (a way about only in Ulaşım, an eSIM or a policy in Belgeler). */
+function sectionFor(kind: PlannedKind, v: unknown): PartSection | undefined {
+  if (!(PART_SECTIONS as readonly unknown[]).includes(v) || v === "flight") return undefined;
+  const s = v as PartSection;
+  if (TRAVEL_KINDS.has(kind)) return s === "transport" ? s : undefined;
+  if (kind === "esim" || kind === "insurance") return s === "other" ? s : undefined;
+  return s === "transport" ? undefined : s;
+}
+
+/** Its frame as a card may say it: a ticket only for a way about, never for one; a row of cards only in Etkinlik and Yapılacaklar. */
+function frameFor(kind: PlannedKind, section: PartSection | undefined, v: unknown): PartFrame | undefined {
+  if (!(PART_FRAMES as readonly unknown[]).includes(v)) return undefined;
+  const f = v as PartFrame;
+  if (TRAVEL_KINDS.has(kind)) return f === "ticket" ? f : undefined;
+  if (f === "ticket") return undefined;
+  // Where it goes when no category is said: a thing to do in Etkinlik or Yapılacaklar, anything else in Belgeler.
+  const lands = section ?? (kind === "activity" ? "activity" : kind === "todo" ? "todo" : "other");
+  if (f === "collection" && lands !== "activity" && lands !== "todo") return undefined;
+  return f;
+}
+
+/** A card checked piece by piece: the part's fields that don't hold are dropped, the card stays. */
+function validCard(c: RawCard | null | undefined, refs: readonly string[]): CustomCard | null {
+  const ref = text(c?.ref, 30)?.toLowerCase().replace(/[^a-z0-9_-]/g, "") ?? "";
+  const title = text(c?.title, 80);
+  if (!c || !ref || ref.startsWith("stay") || ref === "legs" || !title || !(CARD_KINDS as readonly string[]).includes(c.kind) || refs.includes(ref)) return null;
+  const kind = c.kind as PlannedKind;
+  const anchor = (ANCHORS as readonly string[]).includes(c.anchor) ? (c.anchor as CustomCard["anchor"]) : "stay";
+  const out: CustomCard = { ref, kind, title, place: realPlace(c.place), anchor };
+  const section = sectionFor(kind, c.section);
+  if (section) out.section = section;
+  const frame = frameFor(kind, section, c.frame);
+  if (frame) out.frame = frame;
+  const word = text(c.word, 24);
+  if (word) out.word = word;
+  if (c.pick === "single" || c.pick === "multi") out.pick = c.pick;
+  const covers = [...new Set((Array.isArray(c.covers) ? c.covers : []).map((x) => (typeof x === "string" ? x.trim().toLowerCase() : "")).filter((x) => x && x !== ref && x.length <= 30))];
+  if (covers.length) out.covers = covers;
+  const by = typeof c.by === "string" ? c.by.trim().toLowerCase() : "";
+  if (by && by !== ref && by.length <= 30) out.by = by;
+  return out;
+}
+
+/** What covers and is covered names only what is there: other cards, the nights ("stay"), the ways between ("legs"). */
+function linkCovers(cards: CustomCard[]): CustomCard[] {
+  const refs = new Set(cards.map((c) => c.ref));
+  return cards.map((c) => {
+    const { covers, by, ...rest } = c;
+    const out: CustomCard = { ...rest };
+    const kept = (covers ?? []).filter((x) => refs.has(x) || COVER_SPECIALS.has(x));
+    if (kept.length) out.covers = kept;
+    // Covered by a card (that covers nothing itself, no chains) or by the nights it sits in.
+    if (by && (by === "stay" || (refs.has(by) && !cards.find((x) => x.ref === by)?.by))) out.by = by;
+    return out;
+  });
+}
+
 export function validModelPlaybook(raw: RawPlan | null | undefined): CustomPlaybook | null {
   if (!raw || typeof raw !== "object") return null;
   const label = text(raw.label, 60);
   if (!label || label.length < 3) return null;
-  const base = (BASES as readonly string[]).includes(raw.base) ? (raw.base as CustomPlaybook["base"]) : "classic";
-  const focus: CustomPlaybook["focus"] = raw.focus === "only" ? "only" : "around";
-  const stayType = (STAY_TYPES as readonly string[]).includes(raw.stay_type) ? (raw.stay_type as CustomPlaybook["stayType"]) : "hotel";
-  const stayPort = stayType === "hotel" ? null : realPlace(raw.stay_port);
+  // The nearest ready mix: what the model leaves out comes from it (gezi biçimi).
+  const base: CustomPlaybook["base"] = isShapePreset(raw.base) ? raw.base : "classic";
+  const mix = MIXES[base];
+  const focus: CustomPlaybook["focus"] = raw.focus === "only" ? "only" : raw.focus === "around" ? "around" : mix.focus;
+  const stayType = (SLEEP_TYPES as readonly string[]).includes(raw.stay_type) ? (raw.stay_type as CustomPlaybook["stayType"]) : mix.sleep;
+  const stayPort = stayType === "boat" || stayType === "camp" || stayType === "cabin" ? realPlace(raw.stay_port) : null;
 
-  const cards: CustomCard[] = [];
+  const own: CustomCard[] = [];
   for (const c of Array.isArray(raw.cards) ? raw.cards : []) {
-    const ref = text(c?.ref, 30)?.toLowerCase().replace(/[^a-z0-9_-]/g, "") ?? "";
-    const title = text(c?.title, 80);
-    if (!ref || ref.startsWith("stay") || !title || !(CARD_KINDS as readonly string[]).includes(c.kind) || cards.some((x) => x.ref === ref)) continue;
-    const anchor = (ANCHORS as readonly string[]).includes(c.anchor) ? (c.anchor as CustomCard["anchor"]) : "stay";
-    cards.push({ ref, kind: c.kind as PlannedKind, title, place: realPlace(c.place), anchor });
-    if (cards.length === 6) break;
+    const kept = validCard(c, own.map((x) => x.ref));
+    if (kept) own.push(kept);
+    if (own.length === 6) break;
   }
+  // None of its own: the mix's (a liveaboard's transfer and dives in the boat's package).
+  const fromMix = !own.length;
+  const cards = linkCovers(fromMix ? mixCards(base) : own);
 
   const refs = new Set([...cards.map((c) => c.ref), "stay:first", "stay:event"]);
   const questions = validQuestions(
@@ -127,16 +222,30 @@ export function validModelPlaybook(raw: RawPlan | null | undefined): CustomPlayb
     if (musts.length === 6) break;
   }
 
+  // The shape's signals, each kept alone: a real town for the airport, a moving base only when said, a right for each
+  // day only when it names a card, a short line only for a category and in a sentence.
+  const gateway = realPlace(raw.gateway);
+  const perDay = typeof raw.per_day === "string" && cards.some((c) => c.ref === raw.per_day!.trim().toLowerCase()) ? raw.per_day.trim().toLowerCase() : fromMix ? (mix.perDay ?? null) : null;
+  const info: Partial<Record<PartSection, string>> = {};
+  for (const row of Array.isArray(raw.info) ? raw.info : []) {
+    const said = text(row?.text, 160);
+    if (said && (PART_SECTIONS as readonly unknown[]).includes(row.section) && !info[row.section as PartSection]) info[row.section as PartSection] = said;
+  }
+
   return {
     label,
     base,
     focus,
     stayType,
     stayPort,
+    ...(gateway ? { gateway } : {}),
+    ...(raw.moving_base === true ? { movingBase: true } : {}),
+    ...(perDay ? { perDay } : {}),
+    ...(Object.keys(info).length ? { info } : {}),
     cards,
-    questions,
+    questions: questions.length || !fromMix ? questions : mixQuestions(base),
     blocked: { sections, words: blockedWords },
-    prep,
+    prep: prep.length ? prep : mixPrep(base),
     tip: text(raw.tip, 200) ?? "",
     tone: text(raw.tone, 160) ?? "",
     avoid: text(raw.avoid, 200) ?? "",
@@ -153,8 +262,11 @@ export const blockedRe = (list: string[]): RegExp | undefined => (list.length ? 
 const MOVING = new Set<PlannedKind>(["transfer", "taxi", "train", "bus", "ferry", "minibus"]);
 const RENTAL = new Set<PlannedKind>(["car_rental", "rv_rental", "moto_rental", "bike_rental"]);
 
-/** The cards on their days: the day they arrive, over the stay, the day they leave; a ride from where the flight lands. */
-function skeletonOf(c: CustomPlaybook, ctx: PlaybookCtx): Card[] {
+/**
+ * The cards on their days: the day they arrive, over the stay, the day they leave; a ride from where the flight lands.
+ * Each keeps the part it stands for (its category, frame, word, what covers it: gezi biçimi), on the record it makes.
+ */
+export function skeletonOf(c: Pick<CustomPlaybook, "cards" | "stayPort">, ctx: PlaybookCtx): Card[] {
   const home = c.stayPort ?? ctx.intent?.place ?? null;
   const stay = stayAt(ctx, home) ?? firstStay(ctx);
   const days = daysOf(stay, ctx.dates);
@@ -163,15 +275,18 @@ function skeletonOf(c: CustomPlaybook, ctx: PlaybookCtx): Card[] {
   return c.cards.flatMap((x): Card[] => {
     const place = x.place ?? home ?? stay?.city ?? null;
     const day = x.anchor === "arrive" ? arrive : x.anchor === "leave" ? leave : days.date;
+    const own = { part: partOfCard(x) };
+    // A pass or a car that covers the ways between the stays runs over the whole trip (D10), never one ride.
+    if (x.covers?.includes("legs")) return [card({ kind: x.kind, ref: x.ref, city: place, title: x.title, date: ctx.dates?.start ?? days.date, end_date: ctx.dates?.end ?? days.end_date, ...own })];
     if (MOVING.has(x.kind)) {
       // On a road trip the car goes there; a ride from the airport only when one is flown into.
       if (ctx.road && x.kind === "transfer") return [];
       const from = x.anchor === "leave" ? place : ctx.arrive && ctx.arrive !== place ? ctx.arrive : null;
       const to = x.anchor === "leave" ? (ctx.arrive && ctx.arrive !== place ? ctx.arrive : null) : place;
-      return [card({ kind: x.kind, ref: x.ref, date: day, from, to, title: x.title })];
+      return [card({ kind: x.kind, ref: x.ref, date: day, from, to, title: x.title, ...own })];
     }
-    if (RENTAL.has(x.kind)) return [card({ kind: x.kind, ref: x.ref, city: place, title: x.title, ...days })];
-    return [card({ kind: x.kind, ref: x.ref, city: place, title: x.title, ...(x.anchor === "stay" ? days : { date: day, end_date: null }) })];
+    if (RENTAL.has(x.kind)) return [card({ kind: x.kind, ref: x.ref, city: place, title: x.title, ...days, ...own })];
+    return [card({ kind: x.kind, ref: x.ref, city: place, title: x.title, ...(x.anchor === "stay" ? days : { date: day, end_date: null }), ...own })];
   });
 }
 
@@ -183,20 +298,24 @@ const onlyAvoid = (label: string) =>
     `The traveller goes for this experience only (${label}): no tours, sightseeing, museums or other stops; suggest only what the experience needs (getting there, tickets, gear, permits, the stay).`,
   );
 
-/** The Playbook a model-made one runs as (the same machinery as the hand-made ones). */
-export function customPlaybook(c: CustomPlaybook, baseTone: () => string = () => ""): Playbook {
+/**
+ * The Playbook a model-made one runs as (the same machinery as the hand-made ones). With no cards of its own, its
+ * nearest built-in kind's skeleton, questions and list stand in (gezi biçimi: the mix gives what the model leaves out).
+ */
+export function customPlaybook(c: CustomPlaybook, base: Playbook | null = null): Playbook {
   const only = c.focus === "only";
   const sections = [...new Set([...c.blocked.sections, ...(only ? (["activity"] as SuggestionSection[]) : [])])];
   const words = [...new Set([...c.blocked.words, ...(only ? ONLY_WORDS : [])])];
   const avoid = [c.avoid, only ? onlyAvoid(c.label) : ""].filter(Boolean).join(" ");
+  const borrowed = !c.cards.length && base ? base : null;
   return {
     kind: "custom",
-    skeleton: (ctx) => skeletonOf(c, ctx),
+    skeleton: (ctx) => (borrowed ? borrowed.skeleton(ctx) : skeletonOf(c, ctx)),
     blocked: { ...(sections.length ? { sections } : {}), ...(words.length ? { words: blockedRe(words) } : {}) },
-    prep: () => c.prep,
+    prep: () => (c.prep.length || !borrowed ? c.prep : borrowed.prep()),
     tip: () => c.tip,
-    questions: c.questions,
-    tone: () => c.tone || baseTone(),
+    questions: c.questions.length || !borrowed ? c.questions : borrowed.questions,
+    tone: () => c.tone || (base?.tone() ?? ""),
     ...(avoid ? { avoid: () => avoid } : {}),
   };
 }
