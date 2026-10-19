@@ -25,7 +25,7 @@ vi.mock("../src/lib/offerSources", () => ({
 
 import { addChatOffer } from "../src/app/actions";
 import { ChatOffersView } from "../src/app/ChatOffers";
-import { FIND_OFFERS_RULES_EN, FIND_OFFERS_RULES_TR, offersNeed, sendMessage, systemPrompt } from "../src/lib/assistant";
+import { FIND_OFFERS_RULES_EN, FIND_OFFERS_RULES_TR, offersNeed, sendMessage, systemPrompt, TOOLS } from "../src/lib/assistant";
 import { onChatStatus, type ChatStatus } from "../src/lib/chatStatus";
 import { db, listItems, listMessages } from "../src/lib/db";
 import { setLang } from "../src/lib/i18n";
@@ -231,4 +231,66 @@ describe("find_offers for a stay: the three picks", () => {
     expect(found.asked).toHaveLength(1);
     expect((await lastReply()).offers!.offers.every((o) => !o.pick)).toBe(true);
   });
+
+  // 0.38.2 (8d): "daha fazla öner" for tours gave the model's own cards with no link; the tours' source is asked first.
+  describe("an activity (Viator)", () => {
+    const lk: Trip = { ...trip, id: "lk", title: "Sri Lanka Gezisi", confirmedDates: { start: "2026-12-01", end: "2026-12-15" } };
+    const ahangama = (): Item => ({
+      ...plannedItem({ kind: "stay", date: "2026-12-01", end_date: "2026-12-15", time: null, from: null, to: null, city: "Ahangama", title: null, booked: false, note: null }, "lk", "ah", 1),
+      countryCode: "LK",
+    });
+    const tour = (over: Partial<Offer> = {}): Offer => ({
+      id: "v1", kind: "activity", title: "Surf lesson in Ahangama", photo: null, rating: 4.9, reviews: 210, price: 90, currency: "EUR",
+      url: "https://www.viator.com/tours/Sri-Lanka/Surf/d1?pid=P1", why: "", source: "Viator", fetchedAt: 5, ...over,
+    });
+    const tours = (over: Record<string, unknown> = {}) => ({ kind: "activity", city: "Ahangama", from: "", to: "", start: "2026-12-01", end: "2026-12-15", query: "sörf dersi", adults: 0, max_per_night: 0, prefer: "best", live: false, ...over });
+    async function putLk() {
+      const d = await db();
+      for (const store of ["items", "messages", "trips"] as const) await d.clear(store);
+      await d.put("trips", lk);
+      await d.put("items", ahangama());
+    }
+
+    it("the tool takes kind activity with the kind of thing wanted; the prompt says to ask it first, suggest only when it finds none", () => {
+      const tool = TOOLS.find((t) => t.name === "find_offers")!;
+      const props = (tool.schema as { properties: Record<string, { enum?: string[] }>; required: string[] }).properties;
+      expect(props.kind.enum).toEqual(["stay", "flight", "activity"]);
+      expect(props.query).toBeDefined();
+      expect((tool.schema as { required: string[] }).required).toContain("query");
+      expect(FIND_OFFERS_RULES_TR).toMatch(/Etkinlik, tur ya da ders istenince.*ÖNCE find_offers kind activity.*found 0.*suggest/s);
+      expect(FIND_OFFERS_RULES_EN).toMatch(/activity, a tour or a class.*find_offers kind activity FIRST.*found 0.*suggest/s);
+      const need = offersNeed(tours(), [ahangama()], 2);
+      expect(need).toMatchObject({ kind: "activity", section: "activity", city: "Ahangama", start: "2026-12-01", end: "2026-12-15", adults: 2, country: "LK", query: "sörf dersi" });
+      // Days are optional for a tour; a city isn't.
+      expect(offersNeed(tours({ start: "", end: "" }), [ahangama()], 2)).toMatchObject({ kind: "activity", start: null, end: null });
+      expect(typeof offersNeed(tours({ city: "" }), [ahangama()], 2)).toBe("string");
+    });
+
+    it("the town's tours as cards; a town with none of its own: the country asked with the town's words, the card still the town's", async () => {
+      await putLk();
+      found.answer = (need) => (need.city === "Sri Lanka" ? [tour(), tour({ id: "v2", title: "Ahangama surf camp day" })] : []);
+      const { llm, calls } = fake([use("find_offers", tours()), say("Viator'da iki sörf dersi var.")]);
+      await sendMessage("lk", "daha fazla öner, sörf dersi olsun", llm);
+      expect(found.calls.map((c) => [c.need.city, c.need.query ?? null])).toEqual([["Ahangama", "sörf dersi"], ["Sri Lanka", "Ahangama sörf dersi"]]);
+      const result = JSON.parse(String(resultOf(calls, 1).content));
+      expect(result).toMatchObject({ found: 2, city: "Ahangama" });
+      expect(result.offers[0]).toMatchObject({ title: "Surf lesson in Ahangama", source: "Viator" });
+      const reply = (await listMessages("lk")).filter((m) => m.role === "assistant" && m.text.trim()).at(-1)!;
+      expect(reply.offers!.need).toMatchObject({ kind: "activity", city: "Ahangama" });
+      expect(reply.offers!.offers.map((o) => o.id)).toEqual(["v1", "v2"]);
+      // Ekle saves the tour in the town, an option of Etkinlik.
+      const item = await addChatOffer(reply.id, reply.offers!.offers[0], reply.offers!.need);
+      expect(item).toMatchObject({ name: "Surf lesson in Ahangama", category: "activity", city: "Ahangama", status: "saved", provider: "Viator" });
+    });
+
+    it("nothing anywhere: found 0, the model may leave a suggestion then", async () => {
+      await putLk();
+      const { llm, calls } = fake([use("find_offers", tours()), say("Kaynakta bulamadım.")]);
+      await sendMessage("lk", "tur öner", llm);
+      expect(JSON.parse(String(resultOf(calls, 1).content))).toMatchObject({ found: 0 });
+      expect((await lastReplyOf("lk")).offers).toBeUndefined();
+    });
+  });
 });
+
+const lastReplyOf = async (tripId: string) => (await listMessages(tripId)).filter((m) => m.role === "assistant" && m.text.trim()).at(-1)!;
