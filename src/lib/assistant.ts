@@ -34,6 +34,7 @@ import { addDays, buildPlan, cityKeyOf, liveGroups, sameCity, stayRange, type Pl
 import { fromPage, saidEdits, withEdits, withoutEdits } from "./userEdits";
 import { L, lang, saveLang, setLang, withLang, type Lang } from "./i18n";
 import { datePlaceholders, isPlaceholder, regionName } from "./startTrip";
+import { narrowStart } from "./startCreate";
 import { shiftText, shiftTrip } from "./shiftTrip";
 import { announceHidden } from "./removal";
 import { getRates } from "./currency";
@@ -2861,6 +2862,8 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
 
     // A change of city hidden before and given a way now comes back for good (its key goes).
     if (results.some((r) => !r.isError)) await pruneStaleMoves(tripId);
+    // The place said as a country turned out one city in it (an offer to Şarm El-Şeyh): the start's places take it.
+    if (results.some((r) => !r.isError && !READ_ONLY_TOOLS.has(r.call.name))) await narrowStart(tripId);
 
     const fallback = answer.refused ? L("Bu isteğe yanıt veremiyorum.", "I can't help with that request.") : "";
     // Never the trip state (or tool scaffolding) on screen, whatever the model wrote.

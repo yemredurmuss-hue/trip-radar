@@ -14,7 +14,7 @@ import type { PlannedInput } from "./planned";
 import { cardsAfter, hasMust, prepAdded, startPlaybook, startPlaybookObj, tripIntentOf, withMusts } from "./playbooks";
 import { styleKeyFor } from "./startBoard";
 import { suggestionsReview } from "./startHooks";
-import { creationOf, dative, historyRows, isPlaceholder, missingInfo, namesToAsk, pbEffects, placeholderPrint, readyText, wantText, whoText, type Creation, type StartCtx, type StartState } from "./startTrip";
+import { creationOf, dative, historyRows, isPlaceholder, missingInfo, namesToAsk, narrowPlaceholders, pbEffects, placeholderPrint, readyText, wantText, whoText, type Creation, type StartCtx, type StartState } from "./startTrip";
 import { withTravellers } from "./tripSettings";
 import { uniqueTitle } from "./trips";
 import type { Item, ItemPart, Trip } from "./types";
@@ -228,6 +228,21 @@ async function change(tripId: string, fn: (t: Trip) => Trip): Promise<void> {
   const t = await tx.store.get(tripId);
   if (t) await tx.store.put(fn(t));
   await tx.done;
+}
+
+/**
+ * The start's places to fill take the city the trip narrowed to (startTrip.narrowPlaceholders: "İstanbul → Mısır" becomes
+ * "İstanbul → Şarm El-Şeyh" once its records name Şarm), still places to fill. Run after the chat's tools and an added offer.
+ */
+export async function narrowStart(tripId: string): Promise<number> {
+  const d = await db();
+  const trip = await d.get("trips", tripId);
+  if (!trip?.startGuide?.placeholders) return 0;
+  const made = narrowPlaceholders(trip, await listItems(tripId));
+  if (!made.items.length) return 0;
+  for (const item of made.items) await d.put("items", { ...item, updatedAt: Date.now() });
+  await change(tripId, (t) => ({ ...t, startGuide: { createdAt: t.startGuide?.createdAt ?? Date.now(), ...t.startGuide, placeholders: { ...t.startGuide?.placeholders, ...made.prints } } }));
+  return made.items.length;
 }
 
 /** The places the start made before and the traveller never touched (isPlaceholder), of this kind: removed. */

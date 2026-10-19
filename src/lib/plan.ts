@@ -1,7 +1,7 @@
 // Trip skeleton: which nights are booked, planned or still open, and which saved options are still
 // live. Pure and derived from the saved items on every render, so it can never go stale: un-booking
 // a stay brings its alternatives straight back, and nothing is ever deleted to "close" a need.
-import { airportCities, airportCityOf } from "./airports";
+import { airportCities, airportCityOf, countryCodeNamed, countryOfCity } from "./airports";
 import { isCampStay } from "./campStay";
 import { L } from "./i18n";
 import { nNights } from "./i18nText";
@@ -461,9 +461,19 @@ function kmBetween(a: { lat: number; lng: number }, b: { lat: number; lng: numbe
   return 12742 * Math.asin(Math.sqrt(h));
 }
 
-/** Stays in the same place: the same city by name, or map points close together. */
+/**
+ * A place said as a country holding the other's city (0.38.9, Emre: the start's "Konaklama · Mısır" and a hotel in Şarm
+ * El-Şeyh are one stay): the country's code is the other's own (countryCode) or its airport city's (SSH: EG).
+ */
+function holdsPlace(country: string | null, city: string | null, items: Item[]): boolean {
+  const code = countryCodeNamed(country);
+  if (!code || !city || countryCodeNamed(city)) return false;
+  return (countryOfCity(city) ?? mostCommon(items.map((i) => i.countryCode?.toUpperCase() ?? null))) === code;
+}
+
+/** Stays in the same place: the same city by name, one said as the country the other is in, or map points close together. */
 function samePlace(a: Item[], b: Item[], cityA = mostCommon(a.map((i) => i.city)), cityB = mostCommon(b.map((i) => i.city))): boolean {
-  if (sameCity(cityA, cityB)) return true;
+  if (sameCity(cityA, cityB) || holdsPlace(cityA, cityB, b) || holdsPlace(cityB, cityA, a)) return true;
   return a.some((x) => x.geo && b.some((y) => y.geo && kmBetween(x.geo!, y.geo!) <= NEAR_KM));
 }
 
@@ -766,7 +776,7 @@ export function buildPlan(trip: Trip, items: Item[]): Plan {
     const byNeed = new Map<string, Item[]>();
     for (const i of live.filter((x) => x.category === category)) byNeed.set(i.needKey, [...(byNeed.get(i.needKey) ?? []), i]);
     const needs =
-      category === "flight" ? flightNeeds(byNeed) : [...byNeed].flatMap(([key, list]) => (category === "esim" ? [{ key, items: list }] : travelNeeds(key, list)));
+      category === "flight" ? flightNeeds(byNeed, trip, range) : [...byNeed].flatMap(([key, list]) => (category === "esim" ? [{ key, items: list }] : travelNeeds(key, list)));
     // A trip said in the chat ("7 Ekim'de uçuyoruz", "Madeira'da araba kiralarız") and a page saved for it
     // (the same kind of trip, within a day, not known to go elsewhere) are the same need.
     if (category === "flight" || category === "transport") {
@@ -942,12 +952,17 @@ const settledFlight = (i: Item) =>
  * forNeed) goes that need's way when another flight goes it (0.38.8, Patagonya: "AEP → USH" from the box "Buenos Aires →
  * Ushuaia" is that box's option, whatever its codes); a need said nowhere else (a region) leaves it its own ends.
  */
-export function flightNeeds(byNeed: ReadonlyMap<string, Item[]>): { key: string; items: Item[] }[] {
+export function flightNeeds(
+  byNeed: ReadonlyMap<string, Item[]>,
+  trip?: Pick<Trip, "startGuide">,
+  range: DateRange | null = null,
+): { key: string; items: Item[] }[] {
   const all = [...byNeed.values()].flat();
   const said = new Set(all.map(direction).filter(Boolean));
+  const slot = slotOf(all, trip, range);
   const own = (i: Item) => {
     const bound = boundWay(i);
-    return bound && said.has(bound) ? bound : direction(i);
+    return slot(i) || (bound && said.has(bound) ? bound : direction(i));
   };
   const way = new Map<Item, string>();
   for (const [key, list] of byNeed) {
@@ -974,6 +989,31 @@ export function flightNeeds(byNeed: ReadonlyMap<string, Item[]>): { key: string;
     }
   }
   return keyed(needs);
+}
+
+/**
+ * The way out and the way home by slot, not by name (0.38.9, Emre: "İstanbul → Mısır" made by the start, the offers for
+ * "IST → SSH" a box of their own each). Home is where the start's first flight leaves from; a flight from home, in the
+ * trip's first half (or undated, or with no dates to the trip), goes the start's way out whatever its end says ("Mısır",
+ * "Şarm", "SSH"); one to home in its second half the start's way home. Flights inside the trip keep their own way;
+ * a trip the start made no flights for has no slots ("" for every flight).
+ */
+function slotOf(all: Item[], trip: Pick<Trip, "startGuide"> | undefined, range: DateRange | null): (i: Item) => string {
+  const made = all.filter((i) => i.origin === "chat" && trip?.startGuide?.placeholders?.[i.id] != null && direction(i)).sort((a, b) => a.createdAt - b.createdAt);
+  const home = made[0] ? endKey(made[0].flight!.from!) : null;
+  if (!home) return () => "";
+  const out = made.find((i) => endKey(i.flight!.from!) === home && endKey(i.flight!.to!) !== home);
+  const back = made.find((i) => endKey(i.flight!.to!) === home && endKey(i.flight!.from!) !== home);
+  const half = range ? addDays(range.start, Math.floor(nightsBetween(range.start, range.end) / 2)) : null;
+  return (i) => {
+    const f = i.flight;
+    if (made.includes(i) || !f?.from || !f.to) return "";
+    const [from, to] = [endKey(f.from), endKey(f.to)];
+    const day = departureDay(i);
+    if (out && from === home && to !== home && (!day || !half || day <= half)) return direction(out);
+    if (back && to === home && from !== home && (!day || !half || day > half)) return direction(back);
+    return "";
+  };
 }
 
 /** Every group whose options are still being decided (what the decision engine ranks). */

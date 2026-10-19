@@ -16,6 +16,7 @@ import { z } from "zod";
 import { L, lang, withLang, type Lang } from "./i18n";
 import { formatDateRange, isoDate, nightsBetween } from "./items";
 import { placesKey, regionTownOf } from "./destinations";
+import { airportCityOf, cityOfAirport, countryCodeNamed, countryOfCity } from "./airports";
 import { addDays, cityKeyOf } from "./plan";
 import { looksLikeUrl } from "./url";
 import type { PlannedInput } from "./planned";
@@ -3674,6 +3675,54 @@ export const placeholderPrint = (i: Item): string =>
 export function isPlaceholder(trip: Pick<Trip, "startGuide">, item: Item): boolean {
   const print = trip.startGuide?.placeholders?.[item.id];
   return print != null && print === placeholderPrint(item) && item.status === "chosen" && item.origin === "chat";
+}
+
+/**
+ * The place narrowed (0.38.9, Emre: "İstanbul'dan Mısır'a omurga eklendi, ama Şarm El-Şeyh olduğunu anlayınca öneriler
+ * Şarm'a çıktı"): the start made its flights and stay for a country ("İstanbul → Mısır", "Konaklama · Mısır") and the
+ * trip's other records name one city in it (an offer to SSH, a hotel in Şarm El-Şeyh). The start's places to fill take
+ * that city ("İstanbul → Şarm El-Şeyh"); the traveller's own records never change, nor a country with two cities in it.
+ * The changed placeholders and their new prints; none when nothing narrowed. Pure.
+ */
+export function narrowPlaceholders(trip: Pick<Trip, "startGuide">, items: Item[]): { items: Item[]; prints: Record<string, string> } {
+  const live = items.filter((i) => i.status !== "dismissed");
+  const held = live.filter((i) => isPlaceholder(trip, i));
+  const others = live.filter((i) => !held.includes(i));
+  /** The one city the other records name inside the country (its code), as the first of them says it. */
+  const cityIn = (code: string): string | null => {
+    const found = new Map<string, string>();
+    for (const i of others) {
+      const ends = i.category === "flight" ? [i.flight?.from, i.flight?.to] : [i.city];
+      for (const end of ends) {
+        if (!end || countryCodeNamed(end)) continue;
+        const country = countryOfCity(end) ?? (i.category === "flight" ? null : (i.countryCode?.toUpperCase() ?? null));
+        if (country !== code) continue;
+        const shown = cityOfAirport(end);
+        const key = cityKeyOf(airportCityOf(shown) ?? shown);
+        if (key && !found.has(key)) found.set(key, shown);
+      }
+    }
+    return found.size === 1 ? [...found.values()][0] : null;
+  };
+  const narrowed = (place: string | null | undefined): string | null => {
+    const code = countryCodeNamed(place);
+    return code ? cityIn(code) : null;
+  };
+  const renamed = (name: string, swaps: [string | null | undefined, string | null][]) =>
+    swaps.reduce((n, [from, to]) => (from && to ? n.split(from).join(to) : n), name);
+  const out: Item[] = [];
+  for (const p of held) {
+    const f = p.flight;
+    const [from, to, city] = [narrowed(f?.from), narrowed(f?.to), narrowed(p.city)];
+    if (!from && !to && !city) continue;
+    out.push({
+      ...p,
+      ...(f ? { flight: { ...f, from: from ?? f.from, to: to ?? f.to } } : {}),
+      city: city ?? p.city,
+      name: renamed(p.name, [[f?.from, from], [f?.to, to], ...(f ? [] : [[p.city, city] as [string | null, string | null]])]),
+    });
+  }
+  return { items: out, prints: Object.fromEntries(out.map((i) => [i.id, placeholderPrint(i)])) };
 }
 
 /** A rented vehicle the start made (a road trip's car), not a playbook's transfer. */
