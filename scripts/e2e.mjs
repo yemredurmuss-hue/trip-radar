@@ -427,7 +427,8 @@ try {
   assert.deepEqual(await app.locator(".q-sec").evaluateAll((els) => els.map((e) => e.getAttribute("data-section"))), ["flight", "stay", "transport", "activity", "todo", "other", "prep"]);
   {
     const prepLine = flat([await sec("prep").locator(".q-kw").innerText()])[0];
-    const said = prepLine.match(/^Gezi öncesi (\d+) iş · sıradaki: Schengen vizesine başvur, 23 Eyl'e kadar$/);
+    // (its day went by, 5 October against 23 September: the closed row says so, as the row does)
+    const said = prepLine.match(/^Gezi öncesi (\d+) iş · sıradaki: Schengen vizesine başvur, 23 Eyl'e kadar · geçti$/);
     assert.ok(said, `Hazırlık's line (${prepLine})`);
     assert.equal(flat([await sec("prep").locator(".q-pl1").innerText()])[0], `0/${said[1]} hazır`);
   }
@@ -1996,7 +1997,7 @@ try {
   assert.equal(await sec("prep").locator(".q-pc2").innerText(), `0/${await prepRows.count()} hazır`);
   // The closed row counts the same chores (the Bavul's lines apart) and names the next one by its day.
   assert.equal(flat([await sec("prep").locator(".q-pl1").innerText()])[0], `0/${await prepRows.count()} hazır`);
-  assert.equal(flat([await sec("prep").locator(".q-kw").innerText()])[0], `Gezi öncesi ${await prepRows.count()} iş · sıradaki: Schengen vizesine başvur, 23 Eyl'e kadar`);
+  assert.equal(flat([await sec("prep").locator(".q-kw").innerText()])[0], `Gezi öncesi ${await prepRows.count()} iş · sıradaki: Schengen vizesine başvur, 23 Eyl'e kadar · geçti`);
   // T8 b: "Bilmen gerekenler" on top, only what has a source: the EU's 112, the money, the plugs, the embassy as a map search.
   const know = sec("prep").locator(".q-bm");
   assert.equal(await know.locator('[data-know="emergency"] small').innerText(), "112 (AB ortak numara)");
