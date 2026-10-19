@@ -2,7 +2,7 @@
 // of looking: it never writes, it is no choice (the budget and the percentage don't count it, the headers say "önerimiz"),
 // and it goes when anything is chosen, booked or set aside.
 import { describe, expect, it } from "vitest";
-import { categorize, planProgress, planStages, stageLine, type CatSection } from "../src/lib/categories";
+import { categorize, planProgress, planStages, type CatSection } from "../src/lib/categories";
 import { decideGroup, makeContext } from "../src/lib/decision";
 import { draftOf } from "../src/lib/draft";
 import { heroNumbers } from "../src/lib/lifecycle";
@@ -132,16 +132,8 @@ describe("the count", () => {
     expect(hero.planned).toBe(0);
     expect(hero.pct).toBe(100);
     expect(hero.open).toBeGreaterThan(0);
-    // Its entry knows it, and says it.
+    // Its entry knows it.
     expect(st.entries.some((e) => e.draft)).toBe(true);
-    expect(stageLine(st.stages, st.drafts)).toBe("1 önerimiz");
-  });
-
-  it("the header line: rezerve · önerimiz · seçildi · aranıyor, the drafts out of the aranıyor", () => {
-    const stages = { search: 1, options: 2, planned: 1, booked: 1, ready: 1, cancelled: 0, notNeeded: 0, used: 0 };
-    expect(stageLine(stages, 2)).toBe("2 rezerve · 2 önerimiz · 1 seçildi · 1 aranıyor");
-    expect(stageLine(stages)).toBe("2 rezerve · 1 seçildi · 3 aranıyor");
-    expect(stageLine({ ...stages, search: 0, options: 1 }, 1)).toBe("2 rezerve · 1 önerimiz · 1 seçildi");
   });
 
   it("choosing the draft makes it Seçildi: the draft is gone and the need is planned", () => {
@@ -150,7 +142,6 @@ describe("the count", () => {
     const after = sectionsOf([stay("Casa Azul", "chosen", 240), stay("Ribeira Rooms", "saved", 330)]);
     expect(only(after, "stay").drafts).toBe(0);
     expect(only(after, "stay").stages.planned).toBe(1);
-    expect(stageLine(only(after, "stay").stages, only(after, "stay").drafts)).toBe("1 seçildi");
   });
 
   it("a need set aside has no draft, and the start's placeholder flight is not one", () => {

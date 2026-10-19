@@ -1,21 +1,19 @@
-// Who goes, in the hero's card (0.37): the people by name (the names typed here or said in the chat, the shared
-// trip's people, me), else as many as the saves say. A tap opens a small box under it: the names with ×, "İsim
-// ekle" (Enter), how many go (D12: the adults, the children, the rooms), and, apart, "Birini davet et (paylaş)" for
-// the share dialog. Naming someone shares nothing. Each name's circle takes a photo (0.37, kept only on this
-// computer). Closes on a click outside or Esc.
+// Who goes (0.37; v82: the hero's strip draws the faces, hero/HeroStrip.tsx): the people by name (the names typed here or
+// said in the chat, the shared trip's people, me), else as many as the saves say. A tap opens a small box under them: the
+// names with ×, "İsim ekle" (Enter), how many go (D12: the adults, the children, the rooms), and, apart, "Birini davet et
+// (paylaş)" for the share dialog. Naming someone shares nothing. Each name's circle takes a photo (0.37, kept only on
+// this computer).
 import { useEffect, useId, useRef, useState } from "react";
-import { initials, nChildren, nPeople, travellersTitle } from "../lib/heroInfo";
+import { nChildren, nPeople } from "../lib/heroInfo";
 import { agoText, latestOf, type Action } from "../lib/share/activity";
 import { L } from "../lib/i18n";
 import { ablative } from "../lib/i18nText";
 import { fromOf, sameName, whoGoes, type Who } from "../lib/tripSettings";
 import type { Item, Trip } from "../lib/types";
 import { changeTravellers } from "./actions";
-import { HeroIcon } from "./Icons";
 import { TipOn } from "./HoverTip";
 import { PersonPhoto, useMyName, useMyPhoto, usePeoplePhotos } from "./Profile";
-import { ShareLine, useShare } from "./Share";
-import { useAppear } from "./useAppear";
+import { useShare } from "./Share";
 
 /** Who goes on the trip on screen, as the hero and the budget's level count them. */
 export function useWho(trip: Trip, adults: number | null): Who {
@@ -34,114 +32,6 @@ export function useWho(trip: Trip, adults: number | null): Who {
 export function useLatest(items: Item[]): (name: string | null | undefined) => Action | null {
   const share = useShare();
   return (name) => (share && name ? latestOf(name, { me: share.me, votes: share.votes, notices: share.notices, items }) : null);
-}
-
-export function Travellers({ trip, who, onShare, items = [] }: { trip: Trip; who: Who; onShare?: () => void; items?: Item[] }) {
-  const share = useShare();
-  const latest = useLatest(items);
-  const [open, setOpen] = useState(false);
-  const box = useRef<HTMLDivElement>(null);
-  const trigger = useRef<HTMLButtonElement>(null);
-  // Profile photos (0.36): the shared trip's people's own, else the one I gave them (0.37); mine in the first circle.
-  const myPhoto = useMyPhoto();
-  const peoplePhoto = usePeoplePhotos();
-  const { names, count } = who;
-  const photoOf = (n: number, name: string | undefined) => (name && share?.photos[name]) || (n === 0 ? myPhoto : peoplePhoto(name)) || null;
-  const appear = useAppear(count > 0);
-  const title = travellersTitle(names, count);
-
-  useEffect(() => {
-    if (!open) return;
-    const outside = (e: MouseEvent) => {
-      if (!box.current?.contains(e.target as Node)) setOpen(false);
-    };
-    const esc = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      setOpen(false);
-      trigger.current?.focus(); // back where the keyboard was
-    };
-    document.addEventListener("mousedown", outside);
-    document.addEventListener("keydown", esc);
-    return () => {
-      document.removeEventListener("mousedown", outside);
-      document.removeEventListener("keydown", esc);
-    };
-  }, [open]);
-
-  const body =
-    count > 0 ? (
-      <>
-        <span className="hx-avatars" aria-hidden>
-          {Array.from({ length: Math.min(count, 4) }, (_, n) => (
-            <FaceTip key={n} name={names[n]} action={latest(names[n])} me={n === 0}>
-              {(bind) => (
-                <i {...bind} className={`p${n % 4}${photoOf(n, names[n]) ? " photo" : ""}`}>
-                  {photoOf(n, names[n]) ? <img src={photoOf(n, names[n])!} alt="" /> : names[n] ? initials(names[n]) : <HeroIcon name="user" size={24} />}
-                </i>
-              )}
-            </FaceTip>
-          ))}
-          {count > 4 && <i className="more">+{count - 4}</i>}
-        </span>
-        <span className="hx-who-text">
-          <b>{title}</b>
-          {names.length > 0 ? <small>{nPeople(count)}</small> : onShare && <small className="accent">{L("Birini davet et", "Invite someone")}</small>}
-        </span>
-      </>
-    ) : (
-      <>
-        <span className="hx-avatars" aria-hidden>
-          <i className="dashed">
-            <HeroIcon name="user" size={24} />
-          </i>
-        </span>
-        <span className="hx-who-text">
-          <b>{L("Kimler gidiyor?", "Who's going?")}</b>
-          <small>{L("Kişi sayısı kayıtlardan anlaşılır", "The saves tell how many")}</small>
-        </span>
-      </>
-    );
-
-  return (
-    <div className="hx-who-box" ref={box}>
-      <button
-        key={count > 0 ? "full" : "none"}
-        ref={trigger}
-        type="button"
-        className={`hx-people${appear}`}
-        title={L("Kimler gidiyor?", "Who's going?")}
-        aria-label={`${count > 0 ? `${title} · ${nPeople(count)}` : L("Kimler gidiyor?", "Who's going?")} · ${L("Düzenle", "Edit")}`}
-        aria-expanded={open}
-        aria-haspopup="dialog"
-        onClick={() => setOpen(!open)}
-      >
-        {body}
-      </button>
-      {open && (
-        <WhoPopover
-          trip={trip}
-          who={who}
-          latest={latest}
-          isShared={Boolean(share)}
-          shared={share ? (share.state?.members ?? []) : []}
-          ownPhotos={share?.photos ?? {}}
-          onInvite={
-            onShare
-              ? () => {
-                  setOpen(false);
-                  onShare();
-                }
-              : undefined
-          }
-        />
-      )}
-      {share && (
-        <div className="hx-share">
-          <ShareLine />
-        </div>
-      )}
-    </div>
-  );
 }
 
 /** Over a face: who it is and what they did last, when something is recorded; the same line is in the box a tap opens. */

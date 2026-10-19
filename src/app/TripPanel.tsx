@@ -9,10 +9,10 @@ import { needsReading } from "../lib/listing";
 import { cardFacts } from "../lib/cardFacts";
 import { budgetBar, sectionAllotments, decisionProgress, entryDomId, type Todo } from "../lib/progress";
 import { cachedWeather } from "../lib/climate";
-import { addDays, cityKeyOf, groupKeyOf, sameCity, type OptionGroup, type Plan } from "../lib/plan";
+import { addDays, cityKeyOf, sameCity, type OptionGroup, type Plan } from "../lib/plan";
 import { retryCapture } from "../lib/process";
 import { L } from "../lib/i18n";
-import { creditOf, findCityPhoto, imageProxy, keptCredits, nextCityImage, nextHeroImage, wantsCityImage } from "../lib/cityImages";
+import { creditOf, findCityPhoto, imageProxy, keptCredits, nextCityImage, nextHeroImage, wantsCityImage, type HeroCity } from "../lib/cityImages";
 import { acceptMood, moodKey } from "../lib/heroText";
 import { getProvider, MissingKeyError } from "../lib/llm";
 import { resetConversation } from "../lib/assistant";
@@ -59,7 +59,6 @@ import { answerParents, answersAny, mainPlaceOf, mainPlaces, placesKey, placesPr
 import { acceptNoteLabel, type Pref } from "../lib/preferences";
 import { acceptStyle, budgetLevel, styleChips, styleKey, stylePrompt } from "../lib/tripStyle";
 import { intentEntries } from "./IntentCard";
-import type { HeroCity } from "./TripHero";
 import { Hero } from "./hero/Hero";
 import { HeroMini } from "./hero/HeroMini";
 import type { HeroNext } from "./hero/HeroStrip";
@@ -68,7 +67,6 @@ import type { TripMenuActions } from "./hero/TripMenu";
 import { PrintPlan } from "./PrintPlan";
 import { PlanKey, PlanOrder } from "./plan/PlanOrder";
 import { PlanHeader } from "./plan/v82/PlanHeader";
-import type { GoTarget } from "./plan/JourneyCards";
 import { chapterDomId, JourneyView } from "./plan/journey/JourneyView";
 import type { PlanLink } from "./chat/planLink";
 import { TipOn } from "./HoverTip";
@@ -117,7 +115,6 @@ interface Props {
   openCaptures: Capture[];
   decisions: Decisions | null;
   onOpenItem: (item: Item) => void;
-  onCompare: (groupKey: string) => void;
   /** Opens the share dialog (absent where the trip can't be shared). */
   onShare?: () => void;
   /** Geçmiş ve çöp kutusu is open (the ••• menu, 0.37); closing it. */
@@ -224,7 +221,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     setTimeout(() => show(document.getElementById(entryDomId(key)) ?? (hit && document.getElementById(entryDomId(hit.dom)))), 60);
   };
   /** A small card of "Yolculuk sırasıyla" (a stay, an event, a place) goes to its real card on the Plan: its section opens, the card comes into view with a flash. */
-  const showFromStory = (target: GoTarget) => {
+  const showFromStory = (target: Todo["target"]) => {
     const hit = findInSections(sections, target);
     setView("plan");
     if (hit) setOpened(hit.section, true);

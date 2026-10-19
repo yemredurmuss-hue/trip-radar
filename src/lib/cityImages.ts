@@ -182,6 +182,14 @@ const hostOf = (url: string): string => {
   }
 };
 
+/** One of the trip's main places with its photo, for the hero's mosaic and the PDF's cover. */
+export interface HeroCity {
+  name: string;
+  image: string | null;
+  /** Who took the photo (creditOf): shown small at its bottom right. */
+  credit?: PhotoCredit | null;
+}
+
 /**
  * A photo's credit: the one stored with it (or given this session), else what its address tells (Wikipedia, a Pexels
  * photo's page, Unsplash); null for anything else (a booking page's own photo).

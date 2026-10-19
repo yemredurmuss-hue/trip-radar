@@ -11,24 +11,24 @@ import { useLegOpen } from "./legOpen";
 import { cityOfAirport } from "../../lib/airports";
 import { cardKind, cardKindColor, cardKindLabel, isTransportKind, RENTAL_MODES, type CardKind, type TransportMode } from "../../lib/cardKinds";
 import { activityDrawing, footOf, legCardView, legEnd, legMenuFor, transportFace, type End, type MediaDrawing } from "../../lib/cardView";
-import { needKey, rangeText, type ActivityGap } from "../../lib/emptyCards";
-import { countryNames, nPeople } from "../../lib/heroInfo";
+import { needKey } from "../../lib/emptyCards";
+import { nPeople } from "../../lib/heroInfo";
 import { L } from "../../lib/i18n";
 import { lookWord } from "../../lib/stageWords";
-import { locative, nNights } from "../../lib/i18nText";
+import { nNights } from "../../lib/i18nText";
 import { formatDateRange, formatPrice, isoDate, nightsBetween } from "../../lib/items";
 import { legItem, withLegChoice, type Leg } from "../../lib/legs";
 import { isOwnStay } from "../../lib/playbooks";
 import type { Need } from "../../lib/offerSource";
 import type { StayBlock } from "../../lib/plan";
-import { activityLinks, airportCode, BRANDS, esimLinks, flightLinks, stayLinks, transferLinks, type SearchLink, insuranceLinks } from "../../lib/searchLinks";
+import { activityLinks, airportCode, BRANDS, esimLinks, flightLinks, stayLinks, transferLinks, type SearchLink } from "../../lib/searchLinks";
 import { countryOfPlace } from "../../lib/chatBooking";
-import type { Item, LegMode, Suggestion } from "../../lib/types";
+import type { Item, LegMode } from "../../lib/types";
 import { UiIcon } from "./Silhouettes";
 import { fromOf } from "../../lib/tripSettings";
 import { headCountOf, whoseOf } from "../../lib/whose";
 import { useWhoCtx, WhoseBadge } from "./WhoseBadge";
-import { addArrangedPlanned, arrangeSuggested, setArranged, setHidden, setItemStatus, setNotNeeded, updateTrip } from "../actions";
+import { addArrangedPlanned, setArranged, setHidden, setItemStatus, setNotNeeded, updateTrip } from "../actions";
 import { kindLabel, LegBody } from "../LegRow";
 import { CardMenu, DeleteX, FoldLine, Ring, type MenuEntry } from "./CardShell";
 import { ILLUS, StayDrawing, stayArtOf, type StayArt } from "./MediaCard";
@@ -642,84 +642,5 @@ function WaysRow({ leg, tripId }: { leg: Leg; tripId: string }) {
         <span>{L("Ben hallettim", "I've got it")}</span>
       </button>
     </div>
-  );
-}
-
-/** Diğer's eSIM while there's none on a trip abroad (the rule's suggestion, drawn as the eSIM's empty card). */
-export function EmptyEsimCard({ suggestion, onAdd, onDismiss }: { suggestion: Suggestion; onAdd: (s: Suggestion) => void; onDismiss: (s: Suggestion) => void }) {
-  const { esimCountries, tripId } = useEmptyEnv();
-  const names = countryNames(esimCountries);
-  const start = isoDate(suggestion.payload?.start ?? null);
-  const end = isoDate(suggestion.payload?.end ?? null);
-  const title = names.length ? `eSIM · ${names.join(", ")}` : suggestion.title;
-  return (
-    <EmptyShell
-      kind="esim"
-      date={start ? formatDateRange(start, end) : null}
-      ariaLabel={title}
-      data={{ "data-suggestion": suggestion.key }}
-      fold={{ gone: () => onDismiss(suggestion), arranged: () => void arrangeSuggested(tripId, suggestion) }}
-      menu={[
-        { label: L("Plana koy", "Add to plan"), run: () => onAdd(suggestion) },
-        { label: L("Ben hallettim", "I've got it"), run: () => void arrangeSuggested(tripId, suggestion) },
-        { label: L("Gerek yok", "Not needed"), run: () => onDismiss(suggestion) },
-      ]}
-      body={<EmptyMedia kind="esim" drawing="esim" title={title} sub={L("tüm gezi için internet", "internet for the whole trip")} />}
-      status={L("Alınmadı", "Not bought")}
-      links={esimLinks(esimCountries[0])}
-      onSkip={() => onDismiss(suggestion)}
-      skipTitle={L("eSIM gerekmiyor", "No eSIM needed")}
-      need={esimCountries[0] ? { key: needKey("esim", esimCountries[0]), section: "other", kind: "esim", country: esimCountries[0], start, end } : null}
-    />
-  );
-}
-
-/**
- * Belgeler ve internet's insurance while there's none on a trip abroad (v11 phase 6, the rule's suggestion drawn as its
- * empty card, beside the eSIM's and as large): "Seyahat sağlık sigortası", the shield, "Alınmadı", a search to compare.
- */
-export function EmptyInsuranceCard({ suggestion, onAdd, onDismiss }: { suggestion: Suggestion; onAdd: (s: Suggestion) => void; onDismiss: (s: Suggestion) => void }) {
-  const { esimCountries, tripId } = useEmptyEnv();
-  const names = countryNames(esimCountries);
-  const start = isoDate(suggestion.payload?.start ?? null);
-  const end = isoDate(suggestion.payload?.end ?? null);
-  const title = L("Seyahat sağlık sigortası", "Travel health insurance");
-  return (
-    <EmptyShell
-      kind="insurance"
-      date={start ? formatDateRange(start, end) : null}
-      ariaLabel={title}
-      data={{ "data-suggestion": suggestion.key }}
-      fold={{ gone: () => onDismiss(suggestion), arranged: () => void arrangeSuggested(tripId, suggestion) }}
-      menu={[
-        { label: L("Plana koy", "Add to plan"), run: () => onAdd(suggestion) },
-        { label: L("Ben hallettim", "I've got it"), run: () => void arrangeSuggested(tripId, suggestion) },
-        { label: L("Gerek yok", "Not needed"), run: () => onDismiss(suggestion) },
-      ]}
-      body={<EmptyMedia kind="insurance" drawing="shield" title={title} sub={names.length ? L(`${names.join(", ")} · zorunlu değil ama önerilir`, `${names.join(", ")} · not required, advised`) : L("zorunlu değil ama önerilir", "not required, advised")} />}
-      status={L("Alınmadı", "Not bought")}
-      links={insuranceLinks(names[0])}
-      onSkip={() => onDismiss(suggestion)}
-      skipTitle={L("Sigorta gerekmiyor", "No insurance needed")}
-      need={null}
-    />
-  );
-}
-
-/** Etkinlikler's empty card for a city with nothing booked there yet: "Amsterdam'da tur ve bilet". */
-export function EmptyActivityCard({ gap }: { gap: ActivityGap }) {
-  const env = useCardEnv();
-  const title = L(`${locative(gap.city)} tur ve bilet`, `Tours and tickets in ${gap.city}`);
-  return (
-    <EmptyShell
-      kind="activity"
-      date={rangeText(gap.range)}
-      ariaLabel={title}
-      menu={[{ label: L("Etkinlik ekle", "Add an activity"), run: () => env.add({ city: gap.city, date: null }) }]}
-      body={<EmptyMedia kind="activity" drawing="ticket" title={title} sub={L("tur, müze, gösteri · bilet gereken her şey", "tours, museums, shows · anything with a ticket")} />}
-      status={L("Henüz yok", "None yet")}
-      links={activityLinks(gap.city)}
-      need={{ key: needKey("activity", gap.city, gap.range.start, gap.range.end), section: "activity", kind: "activity", city: gap.city, start: gap.range.start, end: gap.range.end }}
-    />
   );
 }

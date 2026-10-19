@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { loadDemoTrip } from "../lib/demo";
 import { L } from "../lib/i18n";
-import { buildSteps } from "../lib/decideSteps";
 import { planTarget } from "../lib/chatCards";
-import { buildPlan, groupKeyOf, liveGroups } from "../lib/plan";
+import { buildPlan, groupKeyOf } from "../lib/plan";
 import { purgeTrash, restoreTrash, trashTrip } from "../lib/trash";
 import { checkStraysOnce } from "../lib/strays";
 import { isDemoTrip } from "../lib/trips";
@@ -15,7 +14,6 @@ import { DropOverlay } from "./arrive/ArriveViews";
 import { useBoardIntake } from "./arrive/useBoardIntake";
 import { Chat } from "./Chat";
 import type { PlanLink } from "./chat/planLink";
-import { CompareView } from "./CompareView";
 import { ItemDrawer } from "./ItemDrawer";
 import { Settings } from "./Settings";
 import { ShareDialog, ShareProvider } from "./Share";
@@ -44,7 +42,6 @@ export function App() {
   const [openItemId, setOpenItemId] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(location.hash === "#settings");
   const [seenArrival, setSeenArrival] = useState<string | null>(null);
-  const [compareKey, setCompareKey] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [deleteAsk, setDeleteAsk] = useState(false);
@@ -116,8 +113,6 @@ export function App() {
     [...(decisions?.byGroup.values() ?? [])].find((d) => d.options.some((o) => o.item.id === item.id)) ??
     decisions?.byGroup.get(groupKeyOf(item));
   const plan = useMemo(() => (trip ? buildPlan(trip, board.items) : null), [trip, board.items]);
-  const compared = compareKey ? decisions?.byGroup.get(compareKey) : undefined;
-  const comparedTitle = compared && plan ? (liveGroups(plan).find((g) => g.key === compared.key)?.title ?? null) : null;
 
   // A capture landed in a different trip than the one on screen: say where, offer to go there.
   const arrival = board.arrivals[0];
@@ -184,7 +179,6 @@ export function App() {
               openCaptures={board.openCaptures}
               decisions={decisions}
               onOpenItem={(i: Item) => setOpenItemId(i.id)}
-              onCompare={setCompareKey}
               onShare={sharable ? () => setShareOpen(true) : undefined}
               onHistory={() => setHistoryOpen(true)}
               onSettings={() => setSettingsOpen(true)}
@@ -266,19 +260,7 @@ export function App() {
           }}
         />
       )}
-      {trip && compared && !openItem && (
-        <CompareView
-          trip={trip}
-          decision={compared}
-          card={decisions?.cards.get(compared.key)}
-          inferred={decisions?.ctx.inferred}
-          ctx={decisions?.ctx}
-          title={comparedTitle}
-          steps={plan && decisions ? buildSteps(liveGroups(plan), decisions.byGroup, decisions.cards) : undefined}
-          onClose={() => setCompareKey(null)}
-          onOpenItem={(i) => setOpenItemId(i.id)}
-        />
-      )}
+      {/* The old comparison window (CompareView, with its priorities) is not in this version (C11): the Pano compares. */}
       {/* "İnternet yok · N sn sonra tekrar deniyorum": a save that couldn't get out is tried again by itself (reconnect.ts). */}
       <OfflineNotice captures={board.openCaptures} />
       {settingsOpen && (

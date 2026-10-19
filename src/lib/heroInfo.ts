@@ -15,7 +15,7 @@ export interface HeroTally {
   experience: number;
 }
 
-/** The Plan's sections each cell of the hero's plan line counts, in the order a tap looks for one with something in it. */
+/** The Plan's sections each cell of the plan's tally counts. */
 export const TALLY_SECTIONS: Record<keyof HeroTally, readonly SectionId[]> = {
   flight: ["flight"],
   stay: ["stay"],
@@ -36,32 +36,6 @@ export function sectionTally(sections: Pick<CatSection, "id" | "entries">[]): He
     transport: count(TALLY_SECTIONS.transport),
     experience: count(TALLY_SECTIONS.experience),
   };
-}
-
-/** What a cell of the plan line holds, by name and where it stands (the hero's tip on hover): the Plan's rows as its sections draw them. */
-export interface TallyLine {
-  name: string;
-  status: string;
-}
-
-export const TALLY_LINES_MAX = 6;
-
-/** The names under each cell, in the order the Plan shows them, at most `max` (the rest is counted by the caller from the tally). Pure. */
-export function tallyLines(sections: Pick<CatSection, "id" | "entries">[], max = TALLY_LINES_MAX): Record<keyof HeroTally, TallyLine[]> {
-  const lines = (ids: readonly SectionId[]): TallyLine[] =>
-    sections
-      .filter((s) => ids.includes(s.id))
-      .flatMap((s) => s.entries)
-      .filter((e) => e.row.name)
-      .slice(0, max)
-      .map((e) => ({ name: e.row.name, status: e.row.status }));
-  return { flight: lines(TALLY_SECTIONS.flight), stay: lines(TALLY_SECTIONS.stay), transport: lines(TALLY_SECTIONS.transport), experience: lines(TALLY_SECTIONS.experience) };
-}
-
-/** The section a cell opens: the first of its sections with something in it, else its first ("deneyim": Etkinlikler). */
-export function tallySection(kind: keyof HeroTally, sections: Pick<CatSection, "id" | "entries">[]): SectionId {
-  const ids = TALLY_SECTIONS[kind];
-  return ids.find((id) => sections.some((s) => s.id === id && s.entries.length > 0)) ?? ids[0];
 }
 
 /** Country names in the order the cities come, each once ("Portekiz", "Portekiz, İspanya"). */

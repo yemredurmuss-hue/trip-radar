@@ -7,7 +7,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { currencyName, offsetText, plugFit, plugFitText, countryNames } from "../lib/heroInfo";
-import { creditLine } from "../lib/cityImages";
+import { creditLine, type HeroCity } from "../lib/cityImages";
 import { dayCards, dayLinesOf, type DayCard } from "../lib/dayCards";
 import { rowTitle, titleText, withLayovers, type Place } from "../lib/dayRowTitle";
 import { mainPlaceOf, type MainPlace } from "../lib/destinations";
@@ -25,7 +25,6 @@ import type { StyleChip } from "../lib/tripStyle";
 import type { Item, Listing, Trip } from "../lib/types";
 import { jpegPagesToPdf, pageBreaks, type PdfPage } from "../lib/pdfFile";
 import { printAccess } from "../lib/printBookings";
-import type { HeroCity } from "./TripHero";
 
 export interface PrintPlanProps {
   trip: Trip;

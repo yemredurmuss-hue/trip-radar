@@ -27,7 +27,6 @@ import type { Item } from "./types";
 
 /** The side menu's top entries: everything, what people saved, what the AI found, the inspiration, the trip's documents. */
 export type PanoView = "all" | "mine" | "ai" | "ilham" | "docs";
-export const PANO_VIEWS: readonly PanoView[] = ["all", "mine", "ai", "ilham", "docs"];
 
 /** Where the Pano opens, or stands: a top entry, one category of intents, one intent (its key, or the group key of one of its records). */
 export interface PanoAt {

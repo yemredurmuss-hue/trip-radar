@@ -7,7 +7,7 @@ import { db, listItems } from "../src/lib/db";
 import { loadDemoTrip } from "../src/lib/demo";
 import { loadDecisions } from "../src/lib/analysis";
 import { categorize, sectionProgress, type CatEntry, type CatSection } from "../src/lib/categories";
-import { countryNames, currencyName, flagEmoji, initials, offsetText, plugFit, sectionTally, tallyLines, tallySection, travellersTitle } from "../src/lib/heroInfo";
+import { countryNames, currencyName, flagEmoji, initials, offsetText, plugFit, sectionTally, travellersTitle } from "../src/lib/heroInfo";
 import { setLang } from "../src/lib/i18n";
 import { buildLegs } from "../src/lib/legs";
 import { buildPlan } from "../src/lib/plan";
@@ -42,18 +42,7 @@ describe("hero tally", () => {
       { id: "other", entries: entries(4) },
     ] as Pick<CatSection, "id" | "entries">[];
     expect(sectionTally(sections)).toEqual({ flight: 3, stay: 2, transport: 1, experience: 5 });
-    // A tap on "deneyim" opens the first of Etkinlikler, Yapılacak şeyler, Restoranlar with something in it.
-    expect(tallySection("experience", sections)).toBe("todo");
-    expect(tallySection("experience", sections.filter((s) => s.id !== "todo"))).toBe("food");
-    expect(tallySection("experience", [])).toBe("activity");
-    expect(tallySection("transport", sections)).toBe("transport");
     expect(sectionTally([])).toEqual({ flight: 0, stay: 0, transport: 0, experience: 0 });
-    // The tip over a cell names what is inside, in the Plan's order, at most six; "deneyim" takes its three sections together.
-    const named = (id: string, names: string[]) => ({ id, entries: names.map((name) => ({ row: { name, status: "Alındı" } })) }) as unknown as Pick<CatSection, "id" | "entries">;
-    const lines = tallyLines([named("flight", ["TK 1760", "TP 52"]), named("activity", ["Douro", "Lello"]), named("food", ["Cervejaria", "", "Time Out", "A", "B", "C", "D"]), named("stay", [])], 6);
-    expect(lines.flight).toEqual([{ name: "TK 1760", status: "Alındı" }, { name: "TP 52", status: "Alındı" }]);
-    expect(lines.experience.map((l) => l.name)).toEqual(["Douro", "Lello", "Cervejaria", "Time Out", "A", "B"]);
-    expect(lines.stay).toEqual([]);
   });
 });
 
