@@ -1,6 +1,6 @@
 // 0.38.4 (Y3): Emre's Sri Lanka trip, landing at Colombo (CMB) and staying in Ahangama. The road from the airport is one box
 // in Ulaşım named by its two cities (Kolombo → Ahangama, the airport's code small); the start's "Havalimanı transferi"
-// said at the airport's city is that road's, not a box of its own; Önerimiz offers the train, then a taxi or a private
+// said at the airport's city is that road's, not a box of its own; Önerimiz offers public transport (0.39.1; the train in 0.38.4), then a taxi or a private
 // transfer, each with a real search and no made-up length, hour or price; "Bunu seç" says the way as C15's tiles do.
 import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
@@ -83,13 +83,14 @@ describe("Kolombo → Ahangama in Ulaşım", () => {
     expect(transport.some((i) => i.head.name === "Havalimanı transferi")).toBe(false);
   });
 
-  it("offers Önerimiz: the train, then a taxi or a private transfer, with real searches and no length, hour or price", () => {
+  it("offers Önerimiz: public transport, then a taxi or a private transfer, with real searches and no length, hour or price", () => {
     const road = withStart().transport[0];
     expect(road.modes).toEqual(["train", "bus", "transfer", "taxi", "car"]);
     expect(road.wayPicks).toEqual(["train", "taxi"]);
     expect(road.estimate).toBeNull();
     const picks = withLang("tr", () => wayPicks(road, { countries: ["LK"] }));
-    expect(picks.map((p) => [p.mode, p.label])).toEqual([["train", "Tren"], ["taxi", "Taksi ya da özel transfer"]]);
+    // (0.39.1: no line is known in Sri Lanka, so the first is public transport on the map's directions, picked as a bus)
+    expect(picks.map((p) => [p.mode, p.label])).toEqual([["bus", "Toplu taşıma"], ["taxi", "Taksi ya da özel transfer"]]);
     const train = new URL(picks[0].site!.url);
     expect(train.origin + train.pathname).toBe("https://www.google.com/maps/dir/");
     expect(Object.fromEntries(train.searchParams)).toEqual({ api: "1", origin: "Kolombo Havalimanı", destination: "Ahangama", travelmode: "transit" });

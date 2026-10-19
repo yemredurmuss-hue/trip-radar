@@ -245,7 +245,9 @@ export function ticketViewOf(shown: readonly Item[], ctx: TicketCtx): TicketVM {
     // A transfer with nothing of its own says its ends as its card did (F5a): the airport and its code, the stay and its name.
     const end = (side: "from" | "to"): TicketEnd | null => {
       if (!ctx.leg || ctx.leg.kind === "move" || ctx.leg.kind === "change") return empty(ctx.route?.[side]);
-      const e = legEnd(ctx.leg, side);
+      const got = legEnd(ctx.leg, side);
+      // The way in leaves the airport when the flight lands (its hour is the leg's): "Denpasar (DPS) 14:20 → Canggu".
+      const e = !got.time && ctx.leg.kind === "arrival" && side === "from" && ctx.leg.after ? { ...got, time: ctx.leg.after } : got;
       // The road from an airport in another city (legs.farEnd): two cities, the airport's code small ("Kolombo" · "CMB"),
       // the stay's name small under its town.
       const far = farEnd(ctx.leg);

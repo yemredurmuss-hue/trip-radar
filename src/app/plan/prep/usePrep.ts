@@ -7,11 +7,14 @@ import { displayCurrency } from "../../../lib/displayCurrency";
 import { countryCodesOf, currencyName, plugFit } from "../../../lib/heroInfo";
 import { lang } from "../../../lib/i18n";
 import { tripDateRange } from "../../../lib/items";
+import { buildLegs } from "../../../lib/legs";
+import { buildPlan } from "../../../lib/plan";
 import { loadHome, loadPassport } from "../../../lib/passport";
 import { prepSummary, prepTasks, type PrepSummary, type PrepTask } from "../../../lib/prepDays";
 import { isPackLine, loadPackMine, savePackMine, type PackMine } from "../../../lib/prepPack";
 import { chromeKV } from "../../../lib/share/store";
 import { homeFromFlights } from "../../../lib/suggestions";
+import { rideApps } from "../../../lib/ticketFrame";
 import { homeCurrencyOf, tripFacts, type TripFacts } from "../../../lib/tripFacts";
 import type { Rates } from "../../../lib/currency";
 import type { Item, Trip } from "../../../lib/types";
@@ -116,10 +119,12 @@ export function usePrepWith(entries: CatEntry[], env: PrepEnv): PrepModel {
     const main = facts.country;
     return [...new Set(main ? [main, ...all] : all)];
   }, [items, env.esimCountries, facts.country]);
+  // The ride apps the plan's ways suggest (an airport taxi's Uber): one chore each to download it.
+  const rides = useMemo(() => rideApps(buildLegs(buildPlan(trip, items), trip), trip).join("|"), [trip, items]);
   const tasks = useMemo(
-    () => prepTasks({ chores, items, trip, range, passport, countries, today: env.today }),
+    () => prepTasks({ chores, items, trip, range, passport, countries, today: env.today, rides: rides ? rides.split("|") : [] }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the trip's fields it reads
-    [chores, items, trip.prepDone, trip.hidden, trip.visaDone, range?.start, range?.end, passport, countries, env.today],
+    [chores, items, trip.prepDone, trip.hidden, trip.visaDone, range?.start, range?.end, passport, countries, env.today, rides],
   );
   const local = facts.local;
   // (one object while the chores stand: the board's intents are worked out again only when it changes)

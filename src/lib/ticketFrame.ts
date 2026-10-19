@@ -16,7 +16,8 @@ import { pickProviders } from "./providers";
 import { BRANDS, transferLinks } from "./searchLinks";
 import { formatDateRange, isoDate } from "./items";
 import { bagChip, type TicketCarrier, type TicketChip, type TicketEnd, type TicketMode, type TicketVM } from "./ticketView";
-import type { Item, LegMode } from "./types";
+import { isHiddenLeg, type Leg } from "./legs";
+import type { Item, LegMode, Trip } from "./types";
 
 /** A carrier's mark as the frame draws it: its colour and one or two letters; an airline known by its code, its logo too. */
 export interface CarrierMark {
@@ -267,8 +268,9 @@ export function waySearches(vm: Pick<IntentVM, "kind" | "head" | "options" | "ch
   // A ticket of some of the trip's people (kişiye özel: Sabine's own flight) is looked for for them.
   const n = vm.people ?? item?.guests.adults ?? null;
   const at = n ? { ...given, adults: n } : given;
-  if (!vm.modes.length) return selfSearches(vm, at);
-  if (!vm.modes.includes("taxi")) return selfSearches({ ...vm, kind: "train" }, at);
+  // (a taxi or a transfer with its ends known is a ride too: its Uber and the directions)
+  if (!vm.modes.length && vm.kind !== "taxi") return selfSearches(vm, at);
+  if (vm.modes.length && !vm.modes.includes("taxi")) return selfSearches({ ...vm, kind: "train" }, at);
   const from = placeOf(vm.ticket?.from ?? null, vm.head.city);
   const to = placeOf(vm.ticket?.to ?? null, vm.head.city);
   return transferLinks({ from, to }).map((l) => ({ id: l.brand, name: BRANDS[l.brand].name, color: BRANDS[l.brand].color, letter: BRANDS[l.brand].letter, url: l.url }));
@@ -296,21 +298,25 @@ function transitSearch(from: string | null, to: string | null): SelfSearch | nul
 }
 
 /**
- * Önerimiz's rows for an intent (only one with `wayPicks`): the train with the trip's country's own rail site when the
- * register has one (JR in Japan), else the map's public transport directions; a taxi or a private transfer with Uber
- * (searchLinks.transferLinks), else the map's directions. No length, hour or price: none is known (C19).
+ * Önerimiz's rows for an intent (only one with `wayPicks`, in its order: intents.wayPickOrder): the train with the trip's
+ * country's own rail site when the register has one (JR in Japan), else public transport on the map's directions; a taxi
+ * or a private transfer with Uber (searchLinks.transferLinks), else the map's directions. No length, hour or price: none is
+ * known (C19).
  */
 export function wayPicks(vm: Pick<IntentVM, "wayPicks" | "ticket" | "head">, at: Pick<SelfSearchAt, "countries">): WayPick[] {
   if (!vm.wayPicks?.length) return [];
   const from = placeOf(vm.ticket?.from ?? null, vm.head.city);
   const to = placeOf(vm.ticket?.to ?? null, vm.head.city);
   const rail = pickProviders("train", { country: at.countries }).find((p) => p.countries !== "global") ?? null;
-  return vm.wayPicks.flatMap((mode): WayPick[] => {
-    const words = PICK_WORDS[mode];
+  return vm.wayPicks.flatMap((asked): WayPick[] => {
+    // Public transport is a train only where the country's rail is known (JP's JR); anywhere else no line is known (Bali has
+    // no train, 0.39.1): it is said as public transport, looked up on the map's directions, and picked as a bus.
+    const mode: LegMode = asked === "train" && !rail ? "bus" : asked;
+    const words = asked === "train" && !rail ? () => L("Toplu taşıma", "Public transport") : PICK_WORDS[mode];
     const way = wayChoices([mode])[0];
     if (!words || !way) return [];
     let site: SelfSearch | null = null;
-    if (mode === "train") {
+    if (asked === "train") {
       const url = rail?.search({ from, to }) ?? null;
       site = rail && url ? { id: rail.id, name: rail.name(), color: rail.logo.color, letter: rail.logo.letter, url } : transitSearch(from, to);
     } else {
@@ -319,6 +325,20 @@ export function wayPicks(vm: Pick<IntentVM, "wayPicks" | "ticket" | "head">, at:
     }
     return [{ mode, art: way.art, label: words(), site }];
   });
+}
+
+/**
+ * The ride apps the plan suggests (0.39.1, Emre: "Uber kullan dediği öneride Uber indirme önerisi verebilir"): Uber, once a way
+ * to or from the airport or the station is a taxi or a private transfer (Önerimiz's "Taksi ya da özel transfer" looks for it on
+ * Uber, wayPicks). Only the app the plan links to: no table of which country uses which app is kept.
+ */
+export function rideApps(legs: readonly Leg[], trip: Pick<Trip, "hidden">): string[] {
+  const ride = legs.some((l) => {
+    if ((l.kind !== "arrival" && l.kind !== "departure") || isHiddenLeg(l, trip.hidden)) return false;
+    const mode = l.choice?.mode ?? l.mode;
+    return mode === "taxi" || mode === "transfer";
+  });
+  return ride ? [BRANDS.uber.name] : [];
 }
 
 // --- an option row (Karar bekliyor on a flight, a train, a bus) -----------------------------------------------------
