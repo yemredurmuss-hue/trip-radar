@@ -321,7 +321,7 @@ export async function setHidden(tripId: string, key: string, hide: boolean, labe
 
 /** An offer from a connected data source under an empty card: "Seçeneklere ekle" saves it as one of the need's options. */
 export async function addOffer(tripId: string, offer: Offer, need: Need): Promise<Item> {
-  const item = offerItem(offer, need, tripId, newId(), Date.now());
+  const item: Item = { ...offerItem(offer, need, tripId, newId(), Date.now()), forNeed: need.key };
   await (await db()).put("items", item);
   await addEvent(tripId, L(`${item.name} seçeneklere eklendi`, `${item.name} added to the options`));
   notifyChanged();
@@ -333,7 +333,7 @@ export async function addOffer(tripId: string, offer: Offer, need: Need): Promis
  * becomes the offer in place, a saved option to choose next (0.38.5: the box changes, no second card beside it).
  */
 export async function fillOffer(placeholder: Item, offer: Offer, need: Need): Promise<Item> {
-  const item: Item = { ...offerItem(offer, need, placeholder.tripId, placeholder.id, Date.now()), createdAt: placeholder.createdAt };
+  const item: Item = { ...offerItem(offer, need, placeholder.tripId, placeholder.id, Date.now()), createdAt: placeholder.createdAt, forNeed: need.key };
   await (await db()).put("items", item);
   await addEvent(item.tripId, L(`${item.name} seçeneklere eklendi`, `${item.name} added to the options`));
   notifyChanged();

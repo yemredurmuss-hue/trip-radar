@@ -1136,7 +1136,7 @@ async function keepChatOffers(tripId: string, found: { need: Need; offers: Offer
   if (!add.length) return had.map((o) => o.id);
   const d = await db();
   for (const o of add) {
-    const item = offerItem(o, found.need, tripId, newId(), Date.now());
+    const item: Item = { ...offerItem(o, found.need, tripId, newId(), Date.now()), forNeed: found.need.key };
     await d.put("items", item);
     await addEvent(tripId, L(`${item.name} seçeneklere eklendi`, `${item.name} added to the options`));
   }

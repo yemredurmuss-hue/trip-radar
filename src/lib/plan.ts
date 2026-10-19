@@ -895,6 +895,12 @@ export function travelNeeds(key: string, list: Item[]): { key: string; items: It
 const endKey = (end: string) => cityKeyOf(airportCityOf(end) ?? end);
 const direction = (i: Item) => (i.flight?.from && i.flight.to ? `${endKey(i.flight.from)}>${endKey(i.flight.to)}` : "");
 
+/** The way of the flight need an offer was added for (its forNeed, emptyCards.needKey "flight:<from>:<to>:<day>"); "" for none. */
+function boundWay(i: Item): string {
+  const [kind, from, to] = i.forNeed?.split(":") ?? [];
+  return kind === "flight" && from && to ? `${endKey(from)}>${endKey(to)}` : "";
+}
+
 /** The same direction's options, by day: those a day apart are alternatives (the earlier rule for one need key). */
 function dayClusters(items: Item[]): Item[][] {
   const sorted = [...items].sort((a, b) => (departureDay(a) ?? "9").localeCompare(departureDay(b) ?? "9"));
@@ -932,13 +938,21 @@ const settledFlight = (i: Item) =>
  * kart ekliyor"): the way out and the way home each are one decision whatever key or day each option was saved with (the
  * start's Bodrum → Denpasar on 1 Aralık, the source's BJV → DPS on the 10th after the dates moved). Only flights settled on
  * for days apart are two needs the same way; every other option joins the nearest of them. An option without a route
- * goes with the only route its key has, else stays its key's own need (as travelNeeds).
+ * goes with the only route its key has, else stays its key's own need (as travelNeeds). An offer added for a need (its
+ * forNeed) goes that need's way when another flight goes it (0.38.8, Patagonya: "AEP → USH" from the box "Buenos Aires →
+ * Ushuaia" is that box's option, whatever its codes); a need said nowhere else (a region) leaves it its own ends.
  */
 export function flightNeeds(byNeed: ReadonlyMap<string, Item[]>): { key: string; items: Item[] }[] {
+  const all = [...byNeed.values()].flat();
+  const said = new Set(all.map(direction).filter(Boolean));
+  const own = (i: Item) => {
+    const bound = boundWay(i);
+    return bound && said.has(bound) ? bound : direction(i);
+  };
   const way = new Map<Item, string>();
   for (const [key, list] of byNeed) {
-    const routes = [...new Set(list.map(direction).filter(Boolean))];
-    for (const i of list) way.set(i, direction(i) || (routes.length === 1 ? routes[0] : `?${key}`));
+    const routes = [...new Set(list.map(own).filter(Boolean))];
+    for (const i of list) way.set(i, own(i) || (routes.length === 1 ? routes[0] : `?${key}`));
   }
   const byWay = new Map<string, Item[]>();
   for (const [i, w] of way) byWay.set(w, [...(byWay.get(w) ?? []), i]);

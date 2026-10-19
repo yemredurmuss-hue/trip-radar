@@ -250,7 +250,7 @@ export function FrameTicket({ vm, form, page, links, info, detail, quiet, on, on
         </button>
       ) : page ? (
         <a className="q-cta" href={page} target="_blank" rel="noreferrer" title={brand ? L(`${brand} sitesinde aç`, `Open on ${brand}`) : undefined}>
-          {face.mark && <Mark color={face.mark.color} letter={face.mark.letter} small />}
+          {face.mark && <CarrierLogo mark={face.mark} art={draw} small />}
           <span>{ticketBookWord(face.mode)}</span>
           <span className="q-ext">↗</span>
         </a>

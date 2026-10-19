@@ -697,6 +697,12 @@ export interface Item {
   bookingRef?: string;
   /** What kind of plan was said in the chat, or added from a template (a car rental or a transfer can carry any title). */
   plannedKind?: PlannedKind;
+  /**
+   * The need (offerSource.Need's key) an offer was added for: a box's "Ekle" or "Seç", the chat's find_offers. A flight
+   * joins that need's way (plan.flightNeeds) even when its airports' codes name no city we know (0.38.8, Patagonya:
+   * "AEP → USH" under the box "Buenos Aires → Ushuaia", not a third flight). Absent: grouped by its own ends.
+   */
+  forNeed?: string;
   /** eSIM: when the traveller said it's installed ("Kurdum"). */
   installedAt?: number;
   /** "Burada kalsın": its place is far from the trip's, and that's fine; never asked about again (strays.ts). */

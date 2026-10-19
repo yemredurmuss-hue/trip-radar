@@ -26,6 +26,8 @@ img.q-logo.q-air { display: block; object-fit: contain; background: #fff; box-sh
 .q-cta { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 16px 0 10px; border-radius: 12px; background: var(--q-acc); color: #fff !important; font-size: var(--q-fs-button); font-weight: 700; text-decoration: none; white-space: nowrap; box-shadow: 0 4px 12px rgba(91, 69, 224, .26); transition: background .15s, transform .15s; }
 .q-cta:hover { background: var(--q-acc-d); transform: translateY(-1px); }
 .q-cta .q-logo { box-shadow: 0 0 0 2px rgba(255, 255, 255, .85); }
+/* The airline's logo in "Bileti al" (0.38.8): the same white ring as the letters' mark. */
+.q-cta img.q-logo.q-air { box-shadow: 0 0 0 2px rgba(255, 255, 255, .85); }
 .q-cta .q-ext { opacity: .75; font-size: var(--q-fs-small); }
 .q-got { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-height: 44px; padding: 0 14px; border-radius: 12px; border: 1.5px solid var(--q-line); background: #fff; color: var(--q-ink); font: inherit; font-size: var(--q-fs-info); font-weight: 700; cursor: pointer; white-space: nowrap; }
 .q-got:hover { border-color: var(--q-ok); color: var(--q-ok); }
