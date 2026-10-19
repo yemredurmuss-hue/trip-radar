@@ -341,6 +341,12 @@ const HUB_WORDS = () =>
     ferry: [L("İskele", "Ferry port"), (c: string) => L(`${c} İskelesi`, `${c} Ferry Port`)],
   }) as Record<string, [string, (city: string) => string]>;
 
+/** A transfer's hub in one word ("Havalimanı", "Gar", "Otogar", "İskele"), by what it meets; null when it is no hub. */
+export function hubWord(leg: Leg, side: "from" | "to"): string | null {
+  const hub = (leg.kind === "arrival" && side === "from") || (leg.kind === "departure" && side === "to");
+  return hub && leg.via ? (HUB_WORDS()[leg.via]?.[0] ?? null) : null;
+}
+
 /**
  * One end of a transfer (spec 0.33 §4), short and big with the full name small under it: a stay by where
  * it was booked (Airbnb, Booking.com…) or what it is (Otel, Daire…), its name below; an airport as

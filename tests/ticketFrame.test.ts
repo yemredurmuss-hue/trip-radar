@@ -12,10 +12,10 @@ import { EMPTY_METRICS } from "../src/lib/items";
 import { buildLegs } from "../src/lib/legs";
 import { buildPlan } from "../src/lib/plan";
 import { isPlaceholder } from "../src/lib/startTrip";
-import { carrierMark, checkinUrl, rowFace, rowWho, ticketBookedWord, ticketBookWord, ticketCodeLabel, ticketDocWord, ticketFace, ticketMid, ticketPrice, wayChoices } from "../src/lib/ticketFrame";
+import { carrierMark, checkinUrl, rowFace, rowWho, ticketBookedWord, ticketBookWord, ticketCodeLabel, ticketDocWord, ticketFace, ticketMid, ticketPrice, wayChoices, waySearches } from "../src/lib/ticketFrame";
 import { ticketViewOf } from "../src/lib/ticketView";
 import { buildTimeline } from "../src/lib/timeline";
-import type { Item, Trip } from "../src/lib/types";
+import type { Item, LegMode, Trip } from "../src/lib/types";
 import { makeItem } from "./fixtures/makeItem";
 
 const TODAY = "2026-10-18";
@@ -154,8 +154,8 @@ describe("the ticket's words", () => {
     expect(checkinUrl(makeItem({ category: "flight" }))).toBeNull();
   });
 
-  it("C15: the ways in the design's order, each with its drawing", () => {
-    expect(wayChoices(["flight", "train", "car", "bus"]).map((w) => [w.mode, w.art, w.label])).toEqual([
+  it("C15: the ways in the order the intent gives them, each with its drawing", () => {
+    expect(wayChoices(["train", "bus", "car", "flight"]).map((w) => [w.mode, w.art, w.label])).toEqual([
       ["train", "tren", "Tren"],
       ["bus", "otobus", "Otobüs"],
       ["car", "arac-kiralama", "Araba"],
@@ -207,6 +207,20 @@ describe("what the frame says on the plan", () => {
     const box = board(japan, stays).intents.find((i) => i.section === "transport")!;
     expect(box.legKey).toEqual(expect.any(String));
     expect(box.modes).toEqual(["train", "bus", "car", "flight"]);
+  });
+
+  it("C15's searches: a change of city on the sites that compare every way; a transfer on Uber and the map's directions", () => {
+    const at = { countries: ["JP"], countryNames: ["Japonya"], adults: 2 };
+    const move = board(japan, stays).intents.find((i) => i.section === "transport")!;
+    const compare = waySearches(move, at).map((l) => l.id);
+    expect(compare.length).toBeGreaterThan(0);
+    expect(compare).not.toContain("uber");
+    // An airport transfer's ways have no plane across town; it is looked for where a ride is.
+    const transfer = { ...move, kind: "taxi" as const, modes: ["metro", "bus", "train", "taxi", "transfer"] as LegMode[] };
+    expect(wayChoices(transfer.modes).map((w) => w.label)).toEqual(["Metro", "Otobüs", "Tren", "Taksi", "Transfer"]);
+    const ride = waySearches(transfer, at);
+    expect(ride.map((l) => [l.id, l.name])).toEqual([["uber", "Uber"], ["maps", "Google Maps"]]);
+    expect(decodeURIComponent(ride[1].url)).toMatch(/^https:\/\/www\.google\.com\/maps\/dir\/\?api=1&origin=Tokyo&destination=Hakone/);
   });
 
   it("Dahil goes to its cover's box in its category ('Pass'i aç')", () => {

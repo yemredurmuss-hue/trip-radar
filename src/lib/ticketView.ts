@@ -10,7 +10,7 @@ import { cityOfAirport } from "./airports";
 import { durationText } from "./cardFacts";
 import type { CardKind } from "./cardKinds";
 import { rentalLine } from "./cardTicket";
-import { legEnd, transportFace } from "./cardView";
+import { hubWord, legEnd, transportFace } from "./cardView";
 import { isPass } from "./covers";
 import { delayOf, flightTiles, phaseOf, sourceText, stageOf, type FlightSeen, type FlightTile } from "./flightData";
 import { L } from "./i18n";
@@ -40,6 +40,8 @@ export interface TicketEnd {
   time: string | null;
   /** It lands this many days after it leaves ("+1"). */
   plus: number | null;
+  /** A transfer's hub by its full name, for a map ("Porto Havalimanı"), when the big word is only "Havalimanı". */
+  full?: string;
 }
 
 /** One stub (koçan) of the ticket: a connecting flight has one per leg. */
@@ -240,6 +242,9 @@ export function ticketViewOf(shown: readonly Item[], ctx: TicketCtx): TicketVM {
     const end = (side: "from" | "to"): TicketEnd | null => {
       if (!ctx.leg || ctx.leg.kind === "move" || ctx.leg.kind === "change") return empty(ctx.route?.[side]);
       const e = legEnd(ctx.leg, side);
+      // On the ticket the hub is its one word, big ("Havalimanı"), its code and city small ("OPO · Porto"), as the design's.
+      const hub = hubWord(ctx.leg, side);
+      if (hub && e.city) return { city: hub, place: [e.sub, ctx.leg[side].city].filter(Boolean).join(" · ") || null, time: e.time, plus: null, full: e.city };
       return e.city ? { city: e.city, place: e.sub, time: e.time, plus: null } : empty(ctx.route?.[side]);
     };
     return { mode, art, carrier: null, from: end("from"), to: end("to"), duration: null, stops: null, chips: [], legs: [], pass: null, rental: null, live: null };

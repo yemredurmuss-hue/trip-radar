@@ -202,7 +202,7 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
 
   // A leg with no record of its own (an empty transfer, a change of city): what's said is said on the leg.
   const leg = vm.legKey != null && vm.itemIds.length === 0 ? vm.legKey : null;
-  const onLeg = (patch: Partial<Omit<LegChoice, "updatedAt">>): Promise<void> => (leg ? updateTrip(env.tripId, (t) => withLegChoice(t, leg, patch)) : Promise.resolve());
+  const onLeg = (patch: Partial<Omit<LegChoice, "updatedAt">> | null): Promise<void> => (leg ? updateTrip(env.tripId, (t) => withLegChoice(t, leg, patch)) : Promise.resolve());
   const skipNow = () => (leg ? void setHidden(env.tripId, `leg:${leg}`, true, name) : a.skip());
   const skip = () => {
     if (askedHide) return askedHide();
@@ -235,7 +235,7 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
     ...(record && form !== "searching" ? [{ label: L("Ayrıntı", "Details"), run: () => setDetail(true) }] : []),
     ...(a.addSuggestion ? [{ label: L("Plana koy", "Add to plan"), run: a.addSuggestion }] : []),
     ...(vm.status === "arranged" && (record || leg)
-      ? [{ label: L("Ayarlandı: geri al", "Arranged: take back"), run: () => (record ? a.unarrange(record) : void onLeg({ booked: false })) }]
+      ? [{ label: L("Ayarlandı: geri al", "Arranged: take back"), run: () => (record ? a.unarrange(record) : void onLeg(null)) }]
       : vm.status !== "booked" && vm.status !== "included"
         ? [{ label: L("Ben hallettim", "I've got it"), run: leg ? () => void onLeg({ booked: true }) : a.arranged }]
         : []),
@@ -316,7 +316,8 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
         addDoc: pickDoc ?? (() => undefined),
         ask: a.ask,
         edit: () => record && env.edit(record),
-        unarrange: vm.status === "arranged" ? (record ? () => a.unarrange(record) : leg ? () => void onLeg({ booked: false }) : null) : null,
+        // A leg's own plan taken back: its ways again (whatever was said: "Ben hallettim", metro).
+        unarrange: vm.status === "arranged" ? (record ? () => a.unarrange(record) : leg ? () => void onLeg(null) : null) : null,
       },
     };
     const cover = vm.cover;
@@ -329,7 +330,7 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
           // By plane a change of city is a flight: it goes to Uçuş, and the plan follows it there with a flash.
           ways={leg && vm.modes.length ? { pick: (mode) => void onLeg({ mode }).then(() => mode === "flight" && v82.goTo("flight", vm.key)), own: () => void onLeg({ booked: true }) } : null}
           // A way said on a change of city (C15) goes back to the choice.
-          onReset={leg && (vm.status === "chosen" || vm.status === "booked") ? () => void updateTrip(env.tripId, (t) => withLegChoice(t, leg, null)) : null}
+          onReset={leg && (vm.status === "chosen" || vm.status === "booked") ? () => void onLeg(null) : null}
           onLegGot={leg && vm.status === "chosen" ? () => void onLeg({ booked: true }) : null}
         />
       ) : (

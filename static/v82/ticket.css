@@ -70,6 +70,8 @@
 .z-live .z-lsrc { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--q-fs-badge); color: #8d89a8; margin-left: 2px; }
 .z-lst { flex: none; margin-left: auto; display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 99px; background: var(--q-acc); color: #fff; font-size: var(--q-fs-small); font-weight: 800; }
 .z-lst.bad { background: var(--q-bad); }
+/* Tek odak (A4): while a window is open over the plan (the Pano, a dialog, a drawer), the dot behind it keeps still. */
+body:has(.q-sheetp:not(.leaving), .modal:not(.mv-leaving), .overlay:not(.mv-leaving), .drawer:not(.mv-leaving)) .z-live .z-ldot::before { animation-play-state: paused; }
 body.still .z-live .z-ldot::before { animation: none; }
 @media (prefers-reduced-motion: reduce) { .z-live .z-ldot::before { animation: none; } }
 

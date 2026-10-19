@@ -237,11 +237,17 @@ const WAYS: readonly { mode: LegMode; art: string; label: () => string }[] = [
 ];
 
 /** The ways an intent offers (IntentVM.modes), in the design's order; "Ben hallettim" is drawn after them. */
-export const wayChoices = (modes: readonly LegMode[]): WayChoice[] => WAYS.filter((w) => modes.includes(w.mode)).map((w) => ({ mode: w.mode, art: w.art, label: w.label() }));
+/** The ways drawn, in the order the intent gives them (a change of city's: Tren, Otobüs, Araba, Uçak; a transfer's: Metro, Otobüs, Tren, Taksi, Transfer). */
+export const wayChoices = (modes: readonly LegMode[]): WayChoice[] =>
+  modes.flatMap((mode) => {
+    const w = WAYS.find((x) => x.mode === mode);
+    return w ? [{ mode, art: w.art, label: w.label() }] : [];
+  });
 
 /** A transfer's end as a map would find it: the stay's name in its city, the airport by its words (never its bare code). */
 function placeOf(end: TicketEnd | null, city: string | null): string | null {
   if (!end) return null;
+  if (end.full) return end.full;
   const named = end.place && !/^[A-Z]{3}$/.test(end.place) ? end.place : null;
   const at = named ?? end.city;
   return named && city && !at.toLocaleLowerCase("tr").includes(city.toLocaleLowerCase("tr")) ? `${at}, ${city}` : at;

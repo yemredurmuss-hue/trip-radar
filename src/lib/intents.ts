@@ -698,10 +698,14 @@ function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
   const view = leg ? legCardView(leg) : null;
   const legArranged = Boolean(view && (view.arranged || view.badge === "arranged") && !live.some((i) => i.status === "booked"));
   const cover = coverOf(live, leg, env);
+  // A transfer or a change of city with its way said and nothing to book (metro, a taxi, the car): its plan is made.
+  const legSaid = b.stage == null && !live.length && legMode != null;
   const status: IntentStatus = cover
     ? "included"
     : b.stage == null
-      ? stagelessStatus(live, settled, options, draft, env)
+      ? legSaid
+        ? "arranged"
+        : stagelessStatus(live, settled, options, draft, env)
       : b.stage === "search" || b.stage === "cancelled"
         ? "searching"
         : b.stage === "options"
@@ -735,9 +739,11 @@ function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
             settled.arranged && settled.noBooking != null
             ? L("sen hallettin", "you sorted it")
             : footText(footOf(settled, kind).left)
-          : view
-            ? footText(view.foot.left)
-            : null
+          : legSaid
+            ? L("rezervasyon gerekmez", "no booking needed")
+            : view
+              ? footText(view.foot.left)
+              : null
         : null;
   const head = headOf(section, frame, b, lead, leg, kind, env);
   return {
