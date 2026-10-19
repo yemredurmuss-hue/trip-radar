@@ -13,6 +13,9 @@
 .q-rb.star { background: #fff; color: var(--q-ink); box-shadow: inset 0 0 0 1px var(--q-line); border-radius: 6px; }
 .q-logo { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: var(--bl); color: #fff; font-size: var(--q-fs-badge); font-weight: 800; flex: none; }
 .q-logo.sm { width: 20px; height: 20px; border-radius: 6px; }
+/* An airline's own logo in the mark's square (0.38.7). */
+img.ek-of-air.ek-of-logo { display: block; object-fit: contain; background: #fff; box-shadow: inset 0 0 0 1px var(--q-line); }
+img.q-logo.q-air { display: block; object-fit: contain; background: #fff; box-shadow: inset 0 0 0 1px var(--q-line); }
 .q-pr { display: grid; gap: 0; }
 .q-pr b { font-size: var(--q-fs-card); font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; color: var(--q-ink); }
 .q-pr small { font-size: var(--q-fs-small); color: var(--q-mut); }

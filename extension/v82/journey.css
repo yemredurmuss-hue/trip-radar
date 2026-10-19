@@ -188,3 +188,19 @@
   .q-scard, .xt-r, .xt-dot, .q-pastc { animation: none !important; transition: none !important; }
 }
 body.still .q-scard, body.still .xt-r, body.still .xt-dot, body.still .q-pastc { animation: none !important; transition: none !important; }
+
+/* Gün gün's "Tarihsiz" under a stop's days (0.38.7, days/DayCards UndatedList): plain lines, no date, in the days' column. */
+.dg-und { display: grid; gap: 6px; margin: 2px 0 6px 76px; padding: 10px 14px; border-radius: 14px; border: 1px dashed var(--v-line2); min-width: 0; }
+.dv > .dg-und { margin-left: 0; }
+.dg-und-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0; font-size: var(--q-fs-info); }
+.dg-und-h b { font-weight: 700; color: var(--v-ink); }
+.dg-und-h span { color: var(--v-muted); }
+.dg-und-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.dg-und-row { display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 26px; font-size: var(--q-fs-button); }
+.dg-und-name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0; border: 0; background: none; font: inherit; font-weight: 600; color: var(--v-ink); text-align: left; cursor: pointer; }
+.dg-und-name:hover { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--v-dash); }
+.dg-und-row .fk-daywrap { margin-left: auto; }
+@media (max-width: 560px) {
+  .dg-und { margin-left: 62px; }
+  .dv > .dg-und { margin-left: 0; }
+}

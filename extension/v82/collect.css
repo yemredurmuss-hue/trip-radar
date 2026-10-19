@@ -93,6 +93,18 @@
 
 .z-k > .pk-doc-error { position: absolute; left: 8px; right: 8px; bottom: 50px; z-index: 6; padding: 4px 8px; border-radius: 8px; background: #fdecea; color: var(--q-bad); font-size: var(--q-fs-small); }
 
+/* A suggested place to see or eat at (0.38.7, Emre: "başlık bölünüyor"): its word on the picture's foot, its name over two
+   lines in the first two lines' room (the card keeps its 224 px), wrapped between words, never cut in one; "Haritada aç" beside "+ Plana koy". */
+.z-kp > .z-ptag { position: absolute; left: 8px; bottom: 8px; z-index: 1; box-shadow: 0 1px 4px rgba(28, 26, 51, .18); background: #fff; }
+.z-k.z-kplace .z-kb { grid-template-rows: 44px 18px minmax(0, 1fr); }
+.z-k.z-kplace .z-kb > .z-l1 { display: none; }
+.z-k.z-kplace .z-kb > .z-t { overflow: hidden; white-space: normal; }
+.z-k.z-kplace .z-t .z-tn { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; white-space: normal; text-overflow: clip; overflow-wrap: normal; word-break: normal; hyphens: none; }
+.z-kf .q-act > .z-kmap { flex: 0 0 34px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 0; border: 1px solid var(--q-line); background: #fff; color: var(--q-mut); text-decoration: none; font-weight: 700; }
+.z-kf .q-act > .z-kmap:only-child { flex: 1 1 auto; padding: 0 10px; }
+.z-kf .q-act > .z-kmap:hover { color: var(--q-acc); border-color: var(--q-acc); }
+.z-kf .q-act > .z-kmap:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 2px; }
+
 /* Empty Planında: four slots of the card's size; beside cards they keep the cells' places, unseen. */
 .z-k0 { display: grid; grid-template-rows: none; border: 0; background: none; padding: 0; }
 .z-k0.off { visibility: hidden; }
