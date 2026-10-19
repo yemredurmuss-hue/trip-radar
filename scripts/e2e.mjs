@@ -881,7 +881,9 @@ try {
   // (by its key: its options' rows draw no carrier line)
   const outDraft = sec("flight").locator(`.q-ints > .q-int[data-intent="${outDraftKey}"]`);
   assert.equal(flat([await outDraft.locator(".q-st").innerText()])[0], "✨ Önerimiz · onayla");
-  assert.equal(flat([await outDraft.locator(".z-car").innerText()])[0], "PC Pegasus PC 1201 · 8 Ekim");
+  // 0.38.7: an airline known by its code wears its logo (the flight card's files), its letters only if it won't load.
+  assert.equal(flat([await outDraft.locator(".z-car").innerText()])[0], "Pegasus PC 1201 · 8 Ekim");
+  assert.match(await outDraft.locator(".z-car img.q-air").getAttribute("src"), /\/airlines\/64\/PC\.png$/, "the airline's logo by its code");
   assert.match(flat([await outDraft.locator(".z-route").innerText()])[0], /^İstanbul IST · 07:10 4 sa 55 dk direkt Porto OPO · 10:05$/);
   assert.equal(await outDraft.locator(".z-tm .z-l3 .z-chip").innerText(), "1 bagaj dahil");
   assert.match(flat([await outDraft.locator(".z-top .q-pr").innerText()])[0], /^€\d+ kişi başı · 2 kişi €\d+$/, "what one pays, how many go and the whole sum");

@@ -60,6 +60,29 @@ export function airportTown(text: string | null | undefined): string | null {
   return names ? L(names[0], names[1]) : null;
 }
 
+/** Other names an airport above goes by, where its town isn't its city ("Milas" for Bodrum's). */
+const ALSO: Record<string, readonly string[]> = { BJV: ["Milas"], DPS: ["Ngurah Rai"] };
+
+const plainName = (s: string) =>
+  s.toLocaleLowerCase("tr").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/ı/g, "i").replace(/[^a-z0-9]+/g, " ").trim();
+
+/** An airport's town, own name or other name (plain) → its code. */
+const BY_NAME = new Map<string, string>(
+  [TOWNS, NAMES, ALSO].flatMap((table) => Object.entries(table).flatMap(([code, names]) => names.map((n) => [plainName(n), code] as const))),
+);
+
+/**
+ * The city an airport is listed under, in English, for a flight's end said as its code ("DPS"), its town ("Denpasar"),
+ * its own name ("Milas-Bodrum") or another name ("Milas"): a flight's ends said differently are the same way (0.38.7:
+ * "BJV → DPS" and "Bodrum → Bali"). Null for any other text (a city is compared by its own name).
+ */
+export function airportCityOf(text: string | null | undefined): string | null {
+  const t = text?.trim();
+  if (!t) return null;
+  const code = isCode(t) ? t : BY_NAME.get(plainName(t));
+  return (code && AIRPORTS[code]?.[1]) || null;
+}
+
 /** The country of the airports above (ISO code), for how early to be there (inside Schengen or not). */
 const COUNTRY: Record<string, string> = {
   IST: "TR", SAW: "TR", ESB: "TR", ADB: "TR", AYT: "TR", DLM: "TR", BJV: "TR", TZX: "TR",

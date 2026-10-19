@@ -1,7 +1,7 @@
 // Trip skeleton: which nights are booked, planned or still open, and which saved options are still
 // live. Pure and derived from the saved items on every render, so it can never go stale: un-booking
 // a stay brings its alternatives straight back, and nothing is ever deleted to "close" a need.
-import { airportCities } from "./airports";
+import { airportCities, airportCityOf } from "./airports";
 import { isCampStay } from "./campStay";
 import { L } from "./i18n";
 import { nNights } from "./i18nText";
@@ -765,7 +765,8 @@ export function buildPlan(trip: Trip, items: Item[]): Plan {
   for (const category of COMPARABLE.filter((c) => c !== "stay")) {
     const byNeed = new Map<string, Item[]>();
     for (const i of live.filter((x) => x.category === category)) byNeed.set(i.needKey, [...(byNeed.get(i.needKey) ?? []), i]);
-    const needs = [...byNeed].flatMap(([key, list]) => (category === "esim" ? [{ key, items: list }] : travelNeeds(key, list)));
+    const needs =
+      category === "flight" ? flightNeeds(byNeed) : [...byNeed].flatMap(([key, list]) => (category === "esim" ? [{ key, items: list }] : travelNeeds(key, list)));
     // A trip said in the chat ("7 Ekim'de uçuyoruz", "Madeira'da araba kiralarız") and a page saved for it
     // (the same kind of trip, within a day, not known to go elsewhere) are the same need.
     if (category === "flight" || category === "transport") {
@@ -856,8 +857,8 @@ export function buildPlan(trip: Trip, items: Item[]): Plan {
 
 const tripKind = (i: Item) => (isRental(i) ? "rental" : isLocalTransfer(i) ? "local" : "trip");
 const tripEnds = (i: Item) => ({
-  from: tripKind(i) === "trip" ? placeKeyOf(i.flight?.from) : null,
-  to: placeKeyOf(tripKind(i) === "trip" ? (i.flight?.to ?? i.city) : i.city),
+  from: tripKind(i) === "trip" ? placeKeyOf(airportCityOf(i.flight?.from) ?? i.flight?.from) : null,
+  to: placeKeyOf(tripKind(i) === "trip" ? (airportCityOf(i.flight?.to) ?? i.flight?.to ?? i.city) : i.city),
 });
 const agree = (a: string | null, b: string | null) => !a || !b || a === b;
 
@@ -877,7 +878,6 @@ const daysApart = (a: string, b: string) => Math.abs(Math.round((Date.parse(`${a
  * key; a booked flight home must never settle, close or hide the flight out.
  */
 export function travelNeeds(key: string, list: Item[]): { key: string; items: Item[] }[] {
-  const direction = (i: Item) => (i.flight?.from && i.flight.to ? `${cityKeyOf(i.flight.from)}>${cityKeyOf(i.flight.to)}` : "");
   const byDirection = new Map<string, Item[]>();
   for (const i of list) byDirection.set(direction(i), [...(byDirection.get(direction(i)) ?? []), i]);
   // Options without a route go with the only route there is.
@@ -886,27 +886,80 @@ export function travelNeeds(key: string, list: Item[]): { key: string; items: It
     byDirection.set(routes[0], [...byDirection.get(routes[0])!, ...byDirection.get("")!]);
     byDirection.delete("");
   }
-  const needs: Item[][] = [];
-  for (const items of byDirection.values()) {
-    const sorted = [...items].sort((a, b) => (departureDay(a) ?? "9").localeCompare(departureDay(b) ?? "9"));
-    const clusters: Item[][] = [];
-    for (const i of sorted) {
-      const day = departureDay(i);
-      const last = clusters.at(-1);
-      const lastDay = last ? departureDay(last[0]) : null;
-      if (last && (!day || (lastDay && daysApart(day, lastDay) <= 1))) last.push(i);
-      else clusters.push([i]);
-    }
-    needs.push(...clusters);
-  }
+  const needs = [...byDirection.values()].flatMap(dayClusters);
   if (needs.length <= 1) return needs.map((items) => ({ key, items }));
+  return keyed(needs.map((items) => ({ key, items })));
+}
+
+/** A flight's or a trip's end as a city key; an airport said by its code, town or name is its city's ("DPS", "Denpasar": Bali). */
+const endKey = (end: string) => cityKeyOf(airportCityOf(end) ?? end);
+const direction = (i: Item) => (i.flight?.from && i.flight.to ? `${endKey(i.flight.from)}>${endKey(i.flight.to)}` : "");
+
+/** The same direction's options, by day: those a day apart are alternatives (the earlier rule for one need key). */
+function dayClusters(items: Item[]): Item[][] {
+  const sorted = [...items].sort((a, b) => (departureDay(a) ?? "9").localeCompare(departureDay(b) ?? "9"));
+  const clusters: Item[][] = [];
+  for (const i of sorted) {
+    const day = departureDay(i);
+    const last = clusters.at(-1);
+    const lastDay = last ? departureDay(last[0]) : null;
+    if (last && (!day || (lastDay && daysApart(day, lastDay) <= 1))) last.push(i);
+    else clusters.push([i]);
+  }
+  return clusters;
+}
+
+/** Needs sharing a key are told apart by their day ("flight:x@2026-12-10"), then their place. */
+function keyed(needs: { key: string; items: Item[] }[]): { key: string; items: Item[] }[] {
+  const count = new Map<string, number>();
+  for (const n of needs) count.set(n.key, (count.get(n.key) ?? 0) + 1);
   const seen = new Set<string>();
-  return needs.map((items, n) => {
+  return needs.map(({ key, items }, n) => {
+    if (count.get(key)! <= 1) return { key, items };
     let k = `${key}@${departureDay(items[0]) ?? "tarihsiz"}`;
     if (seen.has(k)) k = `${k}#${n}`;
     seen.add(k);
     return { key: k, items };
   });
+}
+
+/** A flight someone settled on for its day: booked, or chosen and naming a real flight (not the start's bare place). */
+const settledFlight = (i: Item) =>
+  i.status === "booked" || (i.status === "chosen" && (i.origin !== "chat" || Boolean(i.url || i.flight?.flightNumber || i.flight?.carrier)));
+
+/**
+ * The trip's flights, one need per direction (0.38.7, Emre: "Bodrum'dan Bali'ye bir uçuş olmalı; önerilere bastıkça yeni
+ * kart ekliyor"): the way out and the way home each are one decision whatever key or day each option was saved with (the
+ * start's Bodrum → Denpasar on 1 Aralık, the source's BJV → DPS on the 10th after the dates moved). Only flights settled on
+ * for days apart are two needs the same way; every other option joins the nearest of them. An option without a route
+ * goes with the only route its key has, else stays its key's own need (as travelNeeds).
+ */
+export function flightNeeds(byNeed: ReadonlyMap<string, Item[]>): { key: string; items: Item[] }[] {
+  const way = new Map<Item, string>();
+  for (const [key, list] of byNeed) {
+    const routes = [...new Set(list.map(direction).filter(Boolean))];
+    for (const i of list) way.set(i, direction(i) || (routes.length === 1 ? routes[0] : `?${key}`));
+  }
+  const byWay = new Map<string, Item[]>();
+  for (const [i, w] of way) byWay.set(w, [...(byWay.get(w) ?? []), i]);
+  const needs: { key: string; items: Item[] }[] = [];
+  for (const [w, items] of byWay) {
+    const clusters = dayClusters(items);
+    const anchors = w.startsWith("?") ? clusters : clusters.filter((c) => c.some(settledFlight));
+    const merged = anchors.length ? anchors.map((c) => [...c]) : [clusters.flat()];
+    for (const c of anchors.length ? clusters.filter((c) => !anchors.includes(c)) : []) {
+      const day = departureDay(c[0]);
+      const gap = (a: Item[]) => (day && departureDay(a[0]) ? daysApart(day, departureDay(a[0])!) : 0);
+      const near = anchors.reduce((best, a, n) => (gap(a) < gap(anchors[best]) ? n : best), 0);
+      merged[near].push(...c);
+    }
+    for (const list of merged) {
+      // The need keeps the key of what settles it, else of what was said in the chat, else of the first saved.
+      const lead = list.find(settledFlight) ?? list.find((i) => i.origin === "chat") ?? [...list].sort((a, b) => a.createdAt - b.createdAt)[0];
+      needs.push({ key: lead.needKey, items: list });
+    }
+  }
+  return keyed(needs);
 }
 
 /** Every group whose options are still being decided (what the decision engine ranks). */

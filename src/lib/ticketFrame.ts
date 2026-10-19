@@ -5,6 +5,7 @@
 // by the way of travel ("Bilet alındı", "PNR", "E-bilet aç"), the check-in page from 48 hours before (F2), an option row's
 // carrier, hours and bag (Skyscanner's row), and the ways a change of city nobody planned can go (C15). Nothing is guessed
 // (C19): a part with nothing known is null and isn't drawn. Pure; the frame (app/plan/v82/FrameTicket) only draws it.
+import { airlineCode, airlineColor } from "./airlines";
 import type { CardKind } from "./cardKinds";
 import { L } from "./i18n";
 import { lowerFirst, nDays } from "./i18nText";
@@ -17,10 +18,12 @@ import { formatDateRange, isoDate } from "./items";
 import { bagChip, type TicketCarrier, type TicketChip, type TicketEnd, type TicketMode, type TicketVM } from "./ticketView";
 import type { Item, LegMode } from "./types";
 
-/** A carrier's mark as the frame draws it (never fetched): its colour and one or two letters. */
+/** A carrier's mark as the frame draws it: its colour and one or two letters; an airline known by its code, its logo too. */
 export interface CarrierMark {
   color: string;
   letter: string;
+  /** The airline's IATA code (airlines.ts), when its flight number or its name says it: its logo is drawn, the letters if it won't load. */
+  code?: string;
 }
 
 /** The colours a carrier with none of its own gets, always the same one for the same name. */
@@ -29,16 +32,17 @@ const hash = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >
 
 /**
  * The carrier's mark: the brand's colour (else one picked by its name) and its letters: the airline's code in the flight
- * number ("TK 52" → "TK"), a short operator's name as it is ("JR", "CP"), else its initials ("Odakyu" → "O"). A way
- * with no operator known has none (the frame draws the kind's picture instead).
+ * number ("TK 52" → "TK") or by its name ("Turkish Airlines" → "TK", red), a short operator's name as it is ("JR", "CP"),
+ * else its initials ("Odakyu" → "O"). A way with no operator known has none (the frame draws the kind's picture instead).
  */
 export function carrierMark(carrier: Pick<TicketCarrier, "brand" | "name"> | null, item: Pick<Item, "flight"> | null = null): CarrierMark | null {
-  const code = item?.flight?.flightNumber?.trim().match(/^([A-Z0-9]{2})\s*\d/)?.[1] ?? null;
+  const label = (carrier?.brand?.label ?? carrier?.name ?? "").trim();
+  const code = airlineCode(carrier ? label || carrier.name : null, item?.flight?.flightNumber);
   if (!carrier || (!carrier.brand && !code)) return null;
-  const label = (carrier.brand?.label ?? carrier.name).trim();
   const words = label.split(/[\s·+/-]+/).filter(Boolean);
   const letters = code ?? (label.length <= 3 ? label : words.length > 1 && words[1].length > 2 ? `${words[0][0]}${words[1][0]}` : [...label][0] ?? "");
-  return { color: carrier.brand?.color ?? PALETTE[hash(label.toLocaleLowerCase("tr")) % PALETTE.length], letter: letters.toLocaleUpperCase("tr") };
+  const color = airlineColor(code) ?? carrier.brand?.color ?? PALETTE[hash(label.toLocaleLowerCase("tr")) % PALETTE.length];
+  return { color, letter: letters.toLocaleUpperCase("tr"), ...(code ? { code } : {}) };
 }
 
 /** The middle of the ticket: what's above the drawing, what's under it (its tone: no change green, a change amber). */

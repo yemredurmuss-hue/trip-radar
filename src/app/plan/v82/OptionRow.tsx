@@ -5,16 +5,26 @@
 // En ucuz), the price with the bag, who put it there (✨, a person's initial, the link) and "Seç". While changing, the one
 // chosen is marked ("Seçili") and "Vazgeç" turns the ticket back. Fewer than three: the rest of the frame asks for more.
 import type { ReactNode } from "react";
+import { airlineLogos } from "../../../lib/airlines";
 import { L } from "../../../lib/i18n";
 import { optionsHead, SHOWN_OPTIONS, type SelfSearch } from "../../../lib/intentFrame";
 import type { IntentVM, OptionVM } from "../../../lib/intents";
 import { rowFace, rowWho, type CarrierMark } from "../../../lib/ticketFrame";
 import { Editable, InlineEdit, useInlineEdit } from "../../cards/InlineEdit";
+import { FallbackImg } from "../../FallbackImg";
 import { Ic, Mark } from "./icons";
 import { SelfLinks } from "./OptionCompact";
 
-/** A carrier's mark, else the kind's drawing in the same square (a way with no operator known). */
+/**
+ * A carrier's mark: an airline known by its code its logo (the flight card's files, airlines.ts), its letters on its colour
+ * when the logo won't load; else the kind's drawing in the same square (a way with no operator known).
+ */
 export function CarrierLogo({ mark, art }: { mark: CarrierMark | null; art: string }) {
+  if (mark?.code) {
+    const [first, second] = airlineLogos(mark.code);
+    const letters = <Mark color={mark.color} letter={mark.letter} />;
+    return <FallbackImg className="q-logo q-air" src={first} fallback={<FallbackImg className="q-logo q-air" src={second} fallback={letters} />} />;
+  }
   if (mark) return <Mark color={mark.color} letter={mark.letter} />;
   return (
     <span className="z-lgi" aria-hidden>
