@@ -31,6 +31,12 @@
 .z-kb > * { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .z-kb .z-t { font-size: var(--q-fs-button); line-height: 22px; }
 .z-kb .z-t .z-tb, .z-kb .z-t .z-tn { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: inherit; text-decoration: none; }
+/* The name edits where it stands (C2): it is cut with "…", and a page's own value ("sayfadaki: …") shows under it, over the card. */
+.z-kb > .z-t { overflow: visible; }
+.z-kb .z-t .pk-ed-wrap { display: block; max-width: 100%; }
+.z-kb .z-t .pk-ed { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.z-kb .z-t .pk-ed-box { display: flex; max-width: 100%; }
+.z-kb .z-t .pk-ed-input { width: 100%; font-size: var(--q-fs-button); }
 .z-kb .z-l2 { display: block; font-size: var(--q-fs-small); color: var(--q-mut); line-height: 18px; }
 .z-kb .q-acc { display: flex; gap: 8px; margin: 0; padding: 0; background: none; border: 0; min-width: 0; }
 .z-kb .q-acc .q-aw { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--q-fs-small); color: var(--q-ink); text-decoration: none; }
@@ -82,6 +88,8 @@
 .z-k > .z-det .q-dfoot { flex-direction: column; align-items: stretch; }
 .z-k > .z-det .q-dfoot .q-sp { display: none; }
 
+.z-k > .pk-doc-error { position: absolute; left: 8px; right: 8px; bottom: 50px; z-index: 6; padding: 4px 8px; border-radius: 8px; background: #fdecea; color: var(--q-bad); font-size: var(--q-fs-small); }
+
 /* Empty Planında: four slots of the card's size; beside cards they keep the cells' places, unseen. */
 .z-k0 { display: grid; grid-template-rows: none; align-content: center; justify-items: center; gap: 4px; text-align: center; border: 1.5px dashed #e3e0ec; background: rgba(255, 255, 255, .5); padding: 16px; }
 .z-k0 b { font-size: var(--q-fs-button); color: var(--q-ink); }
@@ -126,8 +134,10 @@
 
 /* ---- a city with nothing yet (Etkinlik): one thin line at the rail's end, off its dots ---- */
 .q-gapl { position: relative; margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; min-height: 52px; padding: 8px 14px; box-sizing: border-box; border: 1px dashed var(--q-st-wait-line); border-radius: 14px; background: rgba(255, 255, 255, .6); font-size: var(--q-fs-info); color: var(--q-ink); }
-.q-gapl > .i { color: var(--k, #a8336f); }
-.q-gapl b { font-weight: 750; }
+.q-gapl > .i, .q-gaph > .i { color: var(--k, #a8336f); }
+.q-gapl.has-offers { display: grid; gap: 10px; padding: 10px 14px 14px; --kh: var(--q-card-w, 224px); }
+.q-gaph { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; min-height: 32px; }
+.q-gapl b, .q-gaph b { font-weight: 750; }
 .z-ask { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 12px; border-radius: 9px; background: var(--q-acc-s); color: var(--q-acc); font-size: var(--q-fs-small); font-weight: 700; }
 
 /* ---- motion: "+ Plana koy" flies the card to its slot (E6, putFly), the count jumps; "Plandan çıkar" fades (180 ms) ---- */
@@ -157,9 +167,12 @@ body.still .z-k.q-opt:hover { transform: none; }
   .z-kb { padding: 9px 10px 10px; }
   .z-kf .q-act .q-cta > span:not(.q-logo) { display: none; }
   .z-kf .q-act .q-got { padding: 0 6px; }
+  /* Narrow: × and ⋯ are there without a hover (the live cards' rule). */
+  .q-rm, .z-kmb { opacity: 1; }
   /* The sites keep their marks when their names step aside (intent.css hides the pill's spans). */
   .z-int.multi .q-oh .z-pl > .q-logo, .q-gapl .z-pl > .q-logo { display: grid; }
   .z-int.multi .q-oh .z-self, .q-gapl .z-self { flex: none; }
+  .q-gapl .z-self > small, .q-gapl .z-pl > span:not(.q-logo) { display: none; }
   /* A bought ticket's foot: its code and the clip (its words in its label). */
   .z-kf .q-act .q-open, .z-kf .q-act .q-doc.add { padding: 0 9px; }
   .z-kf .q-act .q-open > span, .z-kf .q-act .q-doc.add > span { display: none; }

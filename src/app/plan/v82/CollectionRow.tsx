@@ -6,7 +6,7 @@
 // "Kendin ara" on its right. "+ Plana koy" flies the card to its slot (E6, putFly). The box around it is CollectionBox.
 import { useEffect, useState, type ReactNode } from "react";
 import { citiesOfPlan, type SectionId } from "../../../lib/categories";
-import { askMore, collectionRow, filterWord, ideasCaption, inFilter, K_FILTERS, mapsSearch, ROW_CELLS, rowCells, type KCardVM, type KFilter } from "../../../lib/collectionCards";
+import { askMore, collectionRow, filterWord, ideasCaption, inFilter, K_FILTERS, mapsSearch, offerCard, ROW_CELLS, rowCells, type KCardVM, type KFilter } from "../../../lib/collectionCards";
 import { needKey, type ActivityGap } from "../../../lib/emptyCards";
 import { L } from "../../../lib/i18n";
 import { selfSearches, type SelfSearch } from "../../../lib/intentFrame";
@@ -26,8 +26,8 @@ import { useV82Env } from "./v82Env";
 
 export interface CollectionRowProps {
   vm: IntentVM;
-  /** The kind's drawing, for the box's head (a card with no photo has its family's own). */
-  art: string;
+  /** The kind's drawing (the box's head has it; a card with no photo has its family's own, KCard). */
+  art?: string;
   /** "+ Plana koy" and the card's ×. */
   onPut: (o: Pick<OptionVM, "item">) => void;
   onTakeOff: (o: Pick<OptionVM, "item">) => void;
@@ -60,12 +60,12 @@ function useRemembered(key: string, initial: boolean): [boolean, (v: boolean) =>
 }
 
 /**
- * The connected source's tours for an activity row's city (v11: real offers, never made up), the saved ones left out; a
- * record the chat made from its words gets the same tour's photo. Nothing while no source is connected.
+ * The connected source's tours for a city of Etkinlik (v11: real offers, never made up), the saved ones left out; a record
+ * the chat made from its words gets the same tour's photo. Nothing while no source is connected.
  */
-function useCityOffers(vm: IntentVM, plan: Pick<Plan, "stayBlocks"> | null, saved: Item[], tripId: string) {
+function useCityOffers(city: string | null, plan: Pick<Plan, "stayBlocks"> | null, saved: Item[], tripId: string) {
   const { offers: source, travellers } = useEmptyEnv();
-  const stop = vm.section === "activity" && vm.head.city && plan ? (citiesOfPlan(plan).find((c) => sameCity(c.city, vm.head.city!)) ?? null) : null;
+  const stop = city && plan ? (citiesOfPlan(plan).find((c) => sameCity(c.city, city)) ?? null) : null;
   const need: Need | null = stop ? { key: needKey("activity", stop.city, stop.start, stop.end), section: "activity", kind: "activity", city: stop.city, start: stop.start, end: stop.end, adults: travellers } : null;
   const [got, setGot] = useState<{ key: string; list: Offer[] } | null>(null);
   const [taken, setTaken] = useState<string[]>([]);
@@ -107,7 +107,7 @@ export function CollectionRow({ vm, onPut, onTakeOff }: CollectionRowProps) {
   const cx = useCollectEnv();
   const plan = cx?.plan ?? null;
   const records = vm.itemIds.map((id) => v82.byId.get(id)).filter((i): i is Item => i != null && i.status !== "dismissed");
-  const { offers, put } = useCityOffers(vm, plan, records, env.tripId);
+  const { offers, put } = useCityOffers(vm.section === "activity" ? vm.head.city : null, plan, records, env.tripId);
   const row = collectionRow(vm, v82.byId, { trip: env.trip, people: v82.selfAt.adults, ctx: env.decisions?.ctx, offers });
   const todo = vm.section === "todo";
   const [filter, setFilter] = useState<KFilter>("all");
@@ -188,33 +188,60 @@ export function CollectionRow({ vm, onPut, onTakeOff }: CollectionRowProps) {
 
 /**
  * Etkinlik ve turlar' cities with nothing yet (emptyCards.activityGaps; the live board's empty city row): one thin line each
- * at the rail's end, its days, "✨ AI'a arat" (the chat looks) and "Kendin ara". Not an intent: nothing waits on it.
+ * at the rail's end, its days, "✨ AI'a arat" (the chat looks) and "Kendin ara". Not an intent: nothing waits on it. When the
+ * connected source has tours for it, they are cards under the line (the live board's offers in an empty city's row), "+ Plana
+ * koy" puts one on the plan and the city gets its own box.
  */
 export function CityGaps({ gaps, section }: { gaps: ActivityGap[]; section: SectionId }) {
-  const env = useCardEnv();
-  const v82 = useV82Env();
   if (!gaps.length) return null;
   return (
     <>
-      {gaps.map((g) => {
-        const links = selfSearches({ kind: "activity", head: { name: g.city, route: null, parts: [], kindWord: null, word: null, wants: [], image: null, city: g.city, date: g.range.start, nights: 0 }, options: [], chosen: null }, v82.selfAt);
-        return (
-          <p key={g.city} className="q-gapl" data-city={g.city}>
-            <Ic name="pin" size={14} />
-            <b>{g.city}</b>
-            <span>{formatDateRange(g.range.start, g.range.end)}</span>
-            <span className="z-dim">· {L("henüz etkinlik yok", "no activities yet")}</span>
-            <span className="q-sp" />
-            {env.ask && (
-              <button type="button" className="z-ask" onClick={() => env.ask!(askMore(section, g.city))}>
-                <Ic name="spark" size={13} />
-                {L("AI'a arat", "Ask the AI")}
-              </button>
-            )}
-            <SelfLinks links={links} />
-          </p>
-        );
-      })}
+      {gaps.map((g) => (
+        <CityGap key={g.city} gap={g} section={section} />
+      ))}
     </>
+  );
+}
+
+function CityGap({ gap: g, section }: { gap: ActivityGap; section: SectionId }) {
+  const env = useCardEnv();
+  const v82 = useV82Env();
+  const cx = useCollectEnv();
+  const { offers, put } = useCityOffers(g.city, cx?.plan ?? null, [], env.tripId);
+  const links = selfSearches({ kind: "activity", head: { name: g.city, route: null, parts: [], kindWord: null, word: null, wants: [], image: null, city: g.city, date: g.range.start, nights: 0 }, options: [], chosen: null }, v82.selfAt);
+  const cards = offers.map((o) => offerCard(o, v82.selfAt.adults));
+  const o = rowCells(cards);
+  const line = (
+    <>
+      <Ic name="pin" size={14} />
+      <b>{g.city}</b>
+      <span>{formatDateRange(g.range.start, g.range.end)}</span>
+      <span className="z-dim">· {L("henüz etkinlik yok", "no activities yet")}</span>
+      <span className="q-sp" />
+      {env.ask && (
+        <button type="button" className="z-ask" onClick={() => env.ask!(askMore(section, g.city))}>
+          <Ic name="spark" size={13} />
+          {L("AI'a arat", "Ask the AI")}
+        </button>
+      )}
+      <SelfLinks links={links} />
+    </>
+  );
+  if (!cards.length) {
+    return (
+      <p className="q-gapl" data-city={g.city}>
+        {line}
+      </p>
+    );
+  }
+  return (
+    <div className="q-gapl has-offers" data-city={g.city}>
+      <p className="q-gaph">{line}</p>
+      <div className="q-cards z-ks" data-row="ideas">
+        {o.shown.map((c) => (
+          <OfferCard key={c.key} card={c} onPut={() => c.offer && void put(c.offer)} />
+        ))}
+      </div>
+    </div>
   );
 }

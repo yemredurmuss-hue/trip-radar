@@ -25,11 +25,9 @@ import type { Item } from "../../lib/types";
 import type { Visa } from "../../lib/visa";
 import { useEmptyEnv } from "../cards/emptyEnv";
 import { useCardEnv } from "../cards/PlanCard";
-import { IdeaTiles } from "../ideas/IdeaTiles";
 import { reducedMotion } from "../motion";
 import { show } from "../Progress";
 import type { BoardSuggestions } from "../useSuggestions";
-import { ActivityBoard } from "./ActivityBoard";
 import { Hidden } from "./HiddenList";
 import { PrepList } from "./PrepList";
 import { usePrepSummary } from "./prep/usePrep";
@@ -304,13 +302,6 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
                       {/* Hazırlık on every trip, a chore saved or not: the check-in and the visa worked out from the trip, Bilmen gerekenler, the Bavul. */}
                       {s.id === "prep" && <PrepList entries={s.prep} />}
                       {own && s.id !== "prep" && <SectionTimeline section={s} plan={plan} tripId={tripId} cities={cities} cards={cards} onAdd={(at) => onAdd(s.id, at)} onIdea={(item) => onOpen(planSectionOfItem(item), true)} today={today} items={items} journey={shape} />}
-                      {s.id === "activity" && !own ? (
-                        // v11: the tours and tickets come from the source as the shelf's tiles (plan/ActivityBoard), no empty card.
-                        <ActivityBoard section={s} plan={plan} fallback={() => null} onAdd={() => onAdd(s.id, null)} />
-                      ) : s.id === "todo" && !own ? (
-                        // Only suggestions so far: they're tiles under "Fikirler ve öneriler" all the same.
-                        <IdeaTiles section={s} fallback={() => null} journey={shape} />
-                      ) : null}
                     </SectionSuggestContext.Provider>
                   )}
                 </Section>

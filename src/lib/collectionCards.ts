@@ -8,7 +8,7 @@
 // Nothing is decided here: what's on the plan is intents.ts's, the facts cardFacts.ts's, the source's badge pano.ts's, the
 // reason for the trip reason.ts's, the days and the done line ideas.ts's. This file only puts them in the cards' shape. Pure.
 import { brandOf, type Brand } from "./brands";
-import { cardFacts } from "./cardFacts";
+import { cardFacts, durationText } from "./cardFacts";
 import { ticketPrices } from "./cardTicket";
 import { topDate } from "./cardView";
 import { refFromNote } from "./bookingRows";
@@ -17,7 +17,7 @@ import type { SectionId } from "./categories";
 import { L } from "./i18n";
 import { num } from "./i18nText";
 import { ideaKindOf, kindLabel } from "./ideaKinds";
-import { dayChip, ideaMapUrl, ideaThumb, mealLabel, shortDay } from "./ideas";
+import { dayChip, ideaMapUrl, ideaSource, ideaThumb, mealLabel, shortDay } from "./ideas";
 import { sourceBadge } from "./intentFrame";
 import type { IntentVM, OptionSource } from "./intents";
 import { formatPrice, isoDate, placeMapUrl } from "./items";
@@ -199,7 +199,8 @@ export function recordCard(item: Item, at: CardCtx & { planned: boolean; wanted:
     // A place's picture is its saved page's (a Maps pin's photo); a ticket's whatever its page gave.
     photo: event ? facts.image : ideaThumb(item),
     art: ART[family],
-    badge: sourceBadge({ ours: false, source: sourceOf(item) }),
+    // A pin saved from Google Maps says "Maps" (the live tile's badge); anything else who put it there.
+    badge: !event && ideaSource(item) === "Maps" ? { tone: "mine", text: "Maps", initial: null } : sourceBadge({ ours: false, source: sourceOf(item) }),
     brand: event ? brandOf(facts.source?.label, facts.source?.host) : null,
     tag: family === "food" ? L("Restoran", "Restaurant") : family === "note" ? L("Not", "Note") : event ? null : L("Gezilecek", "To see"),
     line: state === "done" ? doneLine(item) : event ? eventLine(item, facts, at.people) : family === "note" ? item.summary.trim() || null : placeLine(item),
@@ -241,7 +242,7 @@ export function suggestionCard(s: Suggestion, section: SectionId): KCardVM {
   };
 }
 
-/** A tour the connected source offers for the city (its page, its photo, its price a person). */
+/** A tour the connected source offers for the city (its page, its photo, how long, its price a person). */
 export function offerCard(o: Offer, people: number | null): KCardVM {
   const each = o.price != null && o.price > 0 ? (people && people > 1 ? o.price / people : o.price) : null;
   const price = each != null ? L(`${formatPrice(Math.round(each), o.currency ?? "EUR")} kişi başı`, `${formatPrice(Math.round(each), o.currency ?? "EUR")} per person`) : null;
@@ -258,7 +259,7 @@ export function offerCard(o: Offer, people: number | null): KCardVM {
     badge: { tone: "ai", text: `✨ ${L("AI önerisi", "AI pick")}`, initial: null },
     brand: brandOf(o.source, null),
     tag: null,
-    line: price,
+    line: [o.durationMinutes ? durationText(o.durationMinutes) : null, price].filter(Boolean).join(" · ") || null,
     reason: false,
     day: null,
     takesTable: false,

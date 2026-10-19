@@ -172,13 +172,9 @@ function RecordFace({ card, vm, plan, search, onPut, onTakeOff }: RecordCardProp
   };
   // A place on its day leaves its day too (as the live tile did): taken off the plan, it's an idea again.
   const takeOff = () => leave(() => (card.day && !event ? void setIdeaDay(item, null, null).then(() => onTakeOff(item)) : onTakeOff(item)));
-  const name = edit?.open === "name" ? (
-    <Editable field="name" />
-  ) : (
-    <button type="button" className="z-tb" onClick={() => env.onOpenItem(item)} aria-label={L(`${card.title}: tüm detaylar`, `${card.title}: all details`)}>
-      {card.title}
-    </button>
-  );
+  // C2: the name edits where it stands (a press on it, as the live card's did; a page's own value comes back from its hint);
+  // the record opens from ⋯ "Tüm detaylar".
+  const name = <Editable field="name">{card.title}</Editable>;
   const rename: MenuEntry = { label: L("Adını değiştir", "Rename"), run: () => edit?.go("name") };
   const details: MenuEntry = { label: L("Tüm detaylar", "All details"), run: () => env.onOpenItem(item) };
   const onMap: MenuEntry[] = card.map ? [{ label: L("Haritada aç", "Open on the map"), run: () => openUrl(card.map!) }] : [];
@@ -267,7 +263,7 @@ function RecordFace({ card, vm, plan, search, onPut, onTakeOff }: RecordCardProp
     );
 
   const docButton = docs.length ? (
-    <button type="button" className="q-open" onClick={() => void openDoc(docs[0].id)} aria-label={event ? (card.brand ? L(`${card.brand.label} biletini aç`, `Open the ${card.brand.label} ticket`) : L("Bileti aç", "Open the ticket")) : L(`${card.title}: belgeyi aç`, `${card.title}: open the document`)}>
+    <button type="button" className="q-open" onClick={() => void openDoc(docs[0].id)} title={docs[0].name} aria-label={event ? (card.brand ? L(`${card.brand.label} biletini aç`, `Open the ${card.brand.label} ticket`) : L("Bileti aç", "Open the ticket")) : L(`${card.title}: belgeyi aç`, `${card.title}: open the document`)}>
       <Ic name="clip" size={13} stroke={2.2} />
       <span>{event ? L("Bileti aç", "Open ticket") : L("Aç", "Open")}</span>
     </button>
@@ -313,7 +309,10 @@ function RecordFace({ card, vm, plan, search, onPut, onTakeOff }: RecordCardProp
         <button type="button" className="q-got sm" onClick={() => void setItemStatus(item, "booked")}>
           <Ic name="check" size={13} stroke={2.6} /> {L("Aldım", "Got it")}
         </button>
-        {card.page && (
+        {/* A file on it already (a ticket kept before it's marked bought): it opens here, where the site's link was. */}
+        {docs.length ? (
+          docButton
+        ) : card.page && (
           <a className="q-cta sm" href={card.page} target="_blank" rel="noopener noreferrer" title={card.brand ? L(`${card.brand.label} sitesinde aç`, `Open on ${card.brand.label}`) : undefined}>
             {card.brand && <Mark color={card.brand.color ?? "#6b6f80"} letter={[...card.brand.label][0] ?? ""} small />}
             <span>{L("Satın al", "Buy")}</span>
@@ -368,10 +367,14 @@ function RecordFace({ card, vm, plan, search, onPut, onTakeOff }: RecordCardProp
         title={name}
         l2={l2}
         foot={foot}
-        extra={detailNode}
+        extra={
+          <>
+            {detailNode}
+            {stage.field}
+            {doc.field}
+          </>
+        }
       />
-      {stage.field}
-      {doc.field}
     </>
   );
 }

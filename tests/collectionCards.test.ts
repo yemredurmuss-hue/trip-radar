@@ -106,11 +106,15 @@ describe("a card's lines", () => {
     expect(recordCard({ ...item, doneAt: done }, { section: "todo", people: 2, planned: true, wanted: false, reason: false }).line).toBe("Yapıldı · 3 Kas");
     expect(doneLine({ doneAt: done, category: "food" })).toBe("Gidildi · 3 Kas");
   });
+  it("a pin saved from Google Maps says Maps, its map is its own page", () => {
+    const pin = place("Jardins do Palácio de Cristal", { url: "https://maps.app.goo.gl/x" });
+    expect(recordCard(pin, { section: "todo", people: 2, planned: false, wanted: false, reason: false })).toMatchObject({ badge: { text: "Maps" }, map: "https://maps.app.goo.gl/x" });
+  });
   it("a suggestion and the source's tour", () => {
     const s: Suggestion = { key: "ai:ramen", section: "food", kind: "add", title: "Ichiran Ramen", why: "Gece de açık.", source: "ai", template: "food", createdAt: 1, state: "open" };
     expect(suggestionCard(s, "todo")).toMatchObject({ key: "s:ai:ramen", family: "food", tag: "Restoran", line: "Gece de açık.", canPut: true, item: null });
-    const o = offerCard({ id: "v1", kind: "activity", title: "Tsukiji lezzet turu", url: "https://viator.com/t", price: 136, currency: "EUR", why: "", source: "Viator", fetchedAt: 1 }, 2);
-    expect(o).toMatchObject({ key: "o:v1", line: "€68 kişi başı", page: "https://viator.com/t", canPut: true });
+    const o = offerCard({ id: "v1", kind: "activity", title: "Tsukiji lezzet turu", url: "https://viator.com/t", price: 136, currency: "EUR", why: "", source: "Viator", fetchedAt: 1, durationMinutes: 240 }, 2);
+    expect(o).toMatchObject({ key: "o:v1", line: "4 sa · €68 kişi başı", page: "https://viator.com/t", canPut: true });
     expect(o.brand?.label).toBe("Viator");
   });
 });

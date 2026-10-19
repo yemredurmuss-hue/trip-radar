@@ -1,6 +1,7 @@
 // A card's ⋯ and its small windows in a row of cards (plan v82 aşama 4, C20, C26): the menu opens over the page (a portal,
 // fixed by the button), so a 224 px card and the box's folding body never cut it. It opens and shuts at once (m-menu);
-// Escape and a press outside close it and the focus goes back to its button; a scroll or a new size closes it; one open
+// Escape and a press outside close it and the focus goes back to its button; it follows its button when the page scrolls
+// (a category still moving into place), and closes once the button is out of sight or the window changes size; one open
 // at a time (an intent's ⋯ too, through the same pointerdown).
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
@@ -22,8 +23,8 @@ function placeBy(button: HTMLElement, pop: HTMLElement): { top: number; left: nu
 }
 
 /**
- * A window by its button (the card's ⋯, "Gün ver ›"): placed when it opens, closed by Escape (the focus back on the button),
- * a press outside, a scroll or a new size.
+ * A window by its button (the card's ⋯, "Gün ver ›"): placed when it opens, kept by it while the page scrolls, closed by
+ * Escape (the focus back on the button), a press outside, its button scrolled out of sight or a new size.
  */
 export function usePopover(open: boolean, close: () => void, button: RefObject<HTMLElement | null>, pop: RefObject<HTMLElement | null>) {
   const [at, setAt] = useState<{ top: number; left: number } | null>(null);
@@ -46,8 +47,13 @@ export function usePopover(open: boolean, close: () => void, button: RefObject<H
       close();
       button.current?.focus();
     };
-    // A scroll of the page (not of the window itself) moves the button away from it.
-    const onScroll = (e: Event) => !(e.target instanceof Node && pop.current?.contains(e.target)) && close();
+    // A scroll of the page (not of the window itself) moves the button: the window goes with it while it's in sight.
+    const onScroll = (e: Event) => {
+      if (e.target instanceof Node && pop.current?.contains(e.target)) return;
+      const b = button.current?.getBoundingClientRect();
+      if (!b || !pop.current || b.bottom < 0 || b.top > window.innerHeight) return close();
+      setAt(placeBy(button.current!, pop.current));
+    };
     document.addEventListener("pointerdown", onDown, true);
     document.addEventListener("keydown", onKey, true);
     window.addEventListener("scroll", onScroll, true);
