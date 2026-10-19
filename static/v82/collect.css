@@ -1,25 +1,39 @@
-/* Plan v82, aşama 4: the collection family (Etkinlik, Yapılacaklar): the Planında and Öneriler rows of 224 px cards.
+/* Plan v82, aşama 4: the collection family (Etkinlik, Yapılacaklar, Yeme-içme): the Planında and Öneriler rows of cards.
    Rules are ported from the approved prototype (plan-v32-tasarim: docs/mockups/plan-v83-turler/kaynak/mk81.css, mk82.css
    "çoklu (etkinlik, yapılacak): sabit boy kart sırası", mk83.css) and keep its class names. */
 
-/* ---- the box: a city's two rows (the prototype's `.z-int.multi`), the card 224 px tall (--q-card-w is its token) ---- */
-.q-int.z-int.multi { --kh: var(--q-card-w, 224px); }
+/* ---- the box: a city's two rows (the prototype's `.z-int.multi`); a card's height follows its width (option A) ---- */
 .z-int.multi .q-opts { height: auto; grid-template-rows: 28px auto; }
 .z-int .q-planw { display: grid; grid-template-rows: 28px auto; gap: 8px; min-width: 0; }
 .z-int .q-planw > .q-prow:empty { display: none; }
 .q-oh .q-ppn { font-size: var(--q-fs-small); color: #8d89a8; font-variant-numeric: tabular-nums; }
 .z-ks { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; min-width: 0; }
 
-/* ---- the card: its picture (92 px) over four fixed lines ---- */
-.z-k { position: relative; box-sizing: border-box; height: var(--kh, 224px); display: grid; grid-template-rows: 92px minmax(0, 1fr); border-radius: 14px; background: #fff; border: 1px solid var(--q-line); margin: 0; padding: 0; min-width: 0; transition: transform var(--t-quick) var(--e-out), box-shadow var(--t-quick) var(--e-out); }
+/* ---- the card (0.38.8, Emre's option A): its picture 4:3 on top, about two thirds of it, over three fixed lines: the name
+   over two lines, whole (three on a narrow card), one grey line, one row of action. Every card of a row is one height
+   (one width, the same lines; the row's grid stretches the rest), a bought one's 2 px edge included. ---- */
+.z-k { position: relative; box-sizing: border-box; container: zk / inline-size; display: grid; grid-template-rows: auto minmax(0, 1fr); border-radius: 14px; background: #fff; border: 1px solid var(--q-line); margin: 0; padding: 0; min-width: 0; transition: transform var(--t-quick) var(--e-out), box-shadow var(--t-quick) var(--e-out); }
 .z-k.q-opt:hover { transform: translateY(-3px); box-shadow: 0 10px 24px -14px rgba(28, 26, 51, .4); }
-.z-kp { position: relative; background: #fff; border-radius: 13px 13px 0 0; overflow: hidden; min-height: 0; }
-.z-kp > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
-.z-kp > img.ph { object-fit: cover; background: var(--q-soft); }
-.z-kp > .q-src { position: absolute; left: 8px; top: 8px; z-index: 2; max-width: calc(100% - 52px); overflow: hidden; text-overflow: ellipsis; }
-.z-kp > .q-src.rsn { background: var(--k, #a8336f); color: #fff; box-shadow: none; gap: 4px; }
+.z-kp { position: relative; aspect-ratio: 4 / 3; background: var(--q-soft); border-radius: 13px 13px 0 0; overflow: hidden; min-height: 0; }
+.z-kp > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.z-kp > img.ph { background: var(--q-soft); }
+/* The picture's chips, top left (clear of its tools): the source ("V Viator · Ushuaia"), the site ("Viator"), "Gezinin
+   sebebi"; on its foot (.z-kd) "✓ Bilet alındı" and a place's word. */
+.z-kc { position: absolute; left: 8px; top: 8px; right: 8px; z-index: 2; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 4px; min-width: 0; pointer-events: none; }
+.z-kp:has(.z-kt > :only-child) .z-kc { right: 44px; }
+.z-kp:has(.z-kt > :nth-child(2)) .z-kc { right: 72px; }
+.z-kd { position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 1; display: flex; flex-wrap: wrap-reverse; align-items: flex-end; gap: 4px; min-width: 0; pointer-events: none; }
+.z-kc > *, .z-kd > * { box-sizing: border-box; display: inline-flex; align-items: center; height: 22px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: auto; }
+.z-kc > .q-src { gap: 5px; padding: 0 8px; background: rgba(255, 255, 255, .94); color: var(--q-ink); font-weight: 750; box-shadow: 0 1px 4px rgba(28, 26, 51, .18); }
+.z-kc > .q-src.ai { color: var(--q-acc); }
+.z-kc > .q-src.site { padding-left: 4px; }
+.z-kc > .q-src .q-logo.sm { width: 15px; height: 15px; border-radius: 4px; font-size: 10px; }
+.z-kc > .q-src.rsn { background: var(--k, #a8336f); color: #fff; box-shadow: none; gap: 4px; }
+.z-kc > .q-brand { border-radius: 99px; padding: 0 9px; line-height: 22px; }
+.z-kc > .q-brand.plain { background: rgba(255, 255, 255, .94); box-shadow: 0 1px 4px rgba(28, 26, 51, .18); }
+.z-kd > .z-tagc { height: 22px; border: 0; background: rgba(255, 255, 255, .94); color: var(--q-ink); box-shadow: 0 1px 4px rgba(28, 26, 51, .18); }
 /* Bought: a small green chip on the picture's foot (v80 "alındı dönüşüyor"; the card keeps its size, the photo stays whole). */
-.z-kp .q-vband { position: absolute; left: 8px; bottom: 8px; z-index: 1; display: inline-flex; align-items: center; gap: 4px; max-width: calc(100% - 16px); height: 22px; box-sizing: border-box; padding: 0 8px; border-radius: 99px; background: var(--q-ok); color: #fff; font-size: var(--q-fs-badge); font-weight: 800; white-space: nowrap; overflow: hidden; box-shadow: 0 1px 4px rgba(28, 26, 51, .2); }
+.z-kp .q-vband { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; height: 22px; box-sizing: border-box; padding: 0 8px; border-radius: 99px; background: var(--q-ok); color: #fff; font-size: var(--q-fs-badge); font-weight: 800; white-space: nowrap; overflow: hidden; box-shadow: 0 1px 4px rgba(28, 26, 51, .2); }
 /* The picture's top right: × Plandan çıkar and ⋯, faint until the card is pointed at or has the focus; ⓘ on a bought one. */
 .z-kt { position: absolute; right: 8px; top: 8px; z-index: 4; display: flex; gap: 6px; }
 .q-rm, .z-kmb { width: 26px; height: 26px; border-radius: 50%; border: 0; padding: 0; background: #fff; color: var(--q-mut); display: grid; place-items: center; cursor: pointer; box-shadow: 0 1px 4px rgba(28, 26, 51, .18); opacity: 0; transition: opacity var(--t-quick) var(--e-out); }
@@ -28,17 +42,18 @@
 .q-rm:focus-visible, .z-kmb:focus-visible { opacity: 1; outline: 3px solid #cfc7ff; outline-offset: 2px; }
 @media (hover: none) { .q-rm, .z-kmb { opacity: 1; } }
 .z-kt > .z-ib { position: static; }
-.z-kb { display: grid; grid-template-rows: 20px 22px 18px minmax(0, 1fr); grid-template-columns: minmax(0, 1fr); gap: 3px; padding: 10px 12px 12px; min-width: 0; }
+.z-kb { display: grid; grid-template-rows: 40px 16px 34px; grid-template-columns: minmax(0, 1fr); gap: 4px; align-content: start; padding: 10px 12px 12px; min-width: 0; }
 .z-kb > * { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.z-kb .z-t { font-size: var(--q-fs-button); line-height: 22px; }
-.z-kb .z-t .z-tb, .z-kb .z-t .z-tn { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: inherit; text-decoration: none; }
-/* The name edits where it stands (C2): it is cut with "…", and a page's own value ("sayfadaki: …") shows under it, over the card. */
+.z-kb > .z-kf { margin-top: 6px; }
+.z-kb .z-t { font-size: var(--q-fs-button); line-height: 20px; font-weight: 750; white-space: normal; }
+/* The name over two lines, wrapped between words, never cut in one (a word too long for the line is the only "…"). */
+.z-kb .z-t .z-tb, .z-kb .z-t .z-tn, .z-kb .z-t .pk-ed { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; max-width: 100%; overflow: hidden; white-space: normal; overflow-wrap: normal; word-break: normal; hyphens: none; color: inherit; text-decoration: none; }
+/* The name edits where it stands (C2), and a page's own value ("sayfadaki: …") shows under it, over the card. */
 .z-kb > .z-t { overflow: visible; }
 .z-kb .z-t .pk-ed-wrap { display: block; max-width: 100%; }
-.z-kb .z-t .pk-ed { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .z-kb .z-t .pk-ed-box { display: flex; max-width: 100%; }
 .z-kb .z-t .pk-ed-input { width: 100%; font-size: var(--q-fs-button); }
-.z-kb .z-l2 { display: block; font-size: var(--q-fs-small); color: var(--q-mut); line-height: 18px; }
+.z-kb .z-l2 { display: block; font-size: var(--q-fs-small); color: var(--q-mut); line-height: 16px; }
 .z-kb .q-acc { display: flex; gap: 8px; margin: 0; padding: 0; background: none; border: 0; min-width: 0; }
 .z-kb .q-acc .q-aw { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--q-fs-small); color: var(--q-ink); text-decoration: none; }
 .z-kb .q-acc .q-aw:last-child { flex: 1 1 0; }
@@ -48,7 +63,7 @@
 .z-okc { display: inline-flex; align-items: center; gap: 4px; font-size: var(--q-fs-small); font-weight: 800; color: var(--q-ok); white-space: nowrap; }
 
 /* The foot: "+ Plana koy" across; "✓ Aldım" and the site; the code and "Bileti aç"; "✓ Planda" and "Gün ver ›". */
-.z-kf { display: flex; align-items: end; gap: 6px; min-width: 0; overflow: visible; }
+.z-kf { display: flex; align-items: center; gap: 6px; min-width: 0; overflow: visible; }
 .q-pick.ghost { background: #fff; color: var(--q-acc); box-shadow: inset 0 0 0 1.5px var(--q-acc); }
 .q-pick.ghost:hover { background: var(--q-acc-s); }
 .z-kf > .q-pick { width: 100%; height: 34px; min-height: 34px; padding: 0 12px; }
@@ -71,6 +86,7 @@
 .z-kf .q-doc.add:hover { color: var(--q-acc); text-decoration: underline; }
 .z-kf .q-day { all: unset; box-sizing: border-box; cursor: pointer; margin-left: auto; font-size: var(--q-fs-info); font-weight: 700; color: var(--q-ok); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 70%; border-radius: 6px; }
 .z-kf .q-act .q-day { margin-left: 0; display: inline-flex; align-items: center; justify-content: center; max-width: none; border: 1px solid var(--q-line); background: #fff; }
+.z-kf > .q-day { display: inline-flex; align-items: center; height: 34px; padding: 0 12px; border: 1px solid var(--q-line); border-radius: 10px; background: #fff; }
 .z-kf .q-day:hover { text-decoration: underline; }
 .z-kf .q-day:focus-visible, .z-kf .q-pick:focus-visible, .z-kf .q-got:focus-visible, .z-kf .q-open:focus-visible, .z-kf .q-doc:focus-visible, .z-kf .q-cta:focus-visible, .z-kb .z-tb:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 2px; }
 
@@ -93,13 +109,7 @@
 
 .z-k > .pk-doc-error { position: absolute; left: 8px; right: 8px; bottom: 50px; z-index: 6; padding: 4px 8px; border-radius: 8px; background: #fdecea; color: var(--q-bad); font-size: var(--q-fs-small); }
 
-/* A suggested place to see or eat at (0.38.7, Emre: "başlık bölünüyor"): its word on the picture's foot, its name over two
-   lines in the first two lines' room (the card keeps its 224 px), wrapped between words, never cut in one; "Haritada aç" beside "+ Plana koy". */
-.z-kp > .z-ptag { position: absolute; left: 8px; bottom: 8px; z-index: 1; box-shadow: 0 1px 4px rgba(28, 26, 51, .18); background: #fff; }
-.z-k.z-kplace .z-kb { grid-template-rows: 44px 18px minmax(0, 1fr); }
-.z-k.z-kplace .z-kb > .z-l1 { display: none; }
-.z-k.z-kplace .z-kb > .z-t { overflow: hidden; white-space: normal; }
-.z-k.z-kplace .z-t .z-tn { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; white-space: normal; text-overflow: clip; overflow-wrap: normal; word-break: normal; hyphens: none; }
+/* A suggested place to see or eat at (0.38.7): its word on the picture, its name over two lines like every card's; "Haritada aç" beside "+ Plana koy". */
 .z-kf .q-act > .z-kmap { flex: 0 0 34px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 0; border: 1px solid var(--q-line); background: #fff; color: var(--q-mut); text-decoration: none; font-weight: 700; }
 .z-kf .q-act > .z-kmap:only-child { flex: 1 1 auto; padding: 0 10px; }
 .z-kf .q-act > .z-kmap:hover { color: var(--q-acc); border-color: var(--q-acc); }
@@ -111,7 +121,7 @@
 /* Planında with nothing on it: one line in its head instead of empty slots (Emre, 19 Ekim). */
 .q-oh .z-pe { min-width: 0; font-size: var(--q-fs-small); color: var(--q-mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* "+n Pano'da": the rest of a row, on the Pano. */
-.z-more { all: unset; box-sizing: border-box; cursor: pointer; height: var(--kh, 224px); border-radius: 14px; border: 1.5px dashed #d6d2e4; display: grid; align-content: center; justify-items: center; gap: 2px; color: var(--q-acc); min-width: 0; }
+.z-more { all: unset; box-sizing: border-box; cursor: pointer; align-self: stretch; min-height: 100%; border-radius: 14px; border: 1.5px dashed #d6d2e4; display: grid; align-content: center; justify-items: center; gap: 2px; color: var(--q-acc); min-width: 0; }
 .z-more b { font-size: 22px; font-weight: 800; }
 .z-more small { font-size: var(--q-fs-small); font-weight: 700; }
 .z-more:hover { border-color: var(--q-acc); background: #fbfaff; }
@@ -149,7 +159,7 @@
 /* ---- a city with nothing yet (Etkinlik): one thin line at the rail's end, off its dots ---- */
 .q-gapl { position: relative; margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; min-height: 52px; padding: 8px 14px; box-sizing: border-box; border: 1px dashed var(--q-st-wait-line); border-radius: 14px; background: rgba(255, 255, 255, .6); font-size: var(--q-fs-info); color: var(--q-ink); }
 .q-gapl > .i, .q-gaph > .i { color: var(--k, #a8336f); }
-.q-gapl.has-offers { display: grid; gap: 10px; padding: 10px 14px 14px; --kh: var(--q-card-w, 224px); }
+.q-gapl.has-offers { display: grid; gap: 10px; padding: 10px 14px 14px; }
 .q-gaph { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; min-height: 32px; }
 .q-gapl b, .q-gaph b { font-weight: 750; }
 .z-ask { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 12px; border-radius: 9px; background: var(--q-acc-s); color: var(--q-acc); font-size: var(--q-fs-small); font-weight: 700; }
@@ -172,13 +182,27 @@ body.still .z-k.q-opt:hover { transform: none; }
   .z-k.q-opt:hover { transform: none; }
 }
 
+/* ---- a narrow card (two across, 640 px and under, or a small column): the name over three lines, a lower foot ---- */
+@container zk (max-width: 220px) {
+  .z-kb { grid-template-rows: 57px 16px 32px; padding: 9px 10px 10px; }
+  .z-kb .z-t { font-size: 14px; line-height: 19px; }
+  .z-kb .z-t .z-tb, .z-kb .z-t .z-tn, .z-kb .z-t .pk-ed { -webkit-line-clamp: 3; line-clamp: 3; }
+  .z-kf > .q-pick, .z-kf .q-act > * { height: 32px; min-height: 32px; }
+  .z-kf .q-act > .z-kmap { flex-basis: 32px; }
+  .z-kf > .q-day { height: 32px; padding: 0 10px; }
+}
+/* The smallest card (two across on a phone): "✓ Planda" is its check beside "Gün ver ›" (its word stays for a reader). */
+@container zk (max-width: 160px) {
+  .z-kf > .z-okc { font-size: 0; gap: 0; }
+  .z-kf > .q-day { padding: 0 8px; }
+}
+
 /* ---- narrow: the cells two across (the prototype's 640 px), Planında's unseen cells out of the way ---- */
 @media (max-width: 640px) {
   .z-ks { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .z-k0.off { display: none; }
   .z-int .q-planw, .z-int.multi .q-opts { grid-template-rows: auto auto; }
   .z-fchips { flex-wrap: wrap; overflow: visible; }
-  .z-kb { padding: 9px 10px 10px; }
   .z-kf .q-act .q-cta > span:not(.q-logo) { display: none; }
   .z-kf .q-act .q-got { padding: 0 6px; }
   /* Narrow: × and ⋯ are there without a hover (the live cards' rule). */

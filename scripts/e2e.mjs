@@ -532,7 +532,7 @@ try {
   }
   assert.deepEqual(kinds, ["flight:flight", "flight:flight", "stay:stay", "stay:stay", "transport:train", "other:esim", "other:insurance"]);
   await openSec("activity");
-  // v82 aşama 4 (izlenebilirlik 119): Etkinlik ve turlar city by city, each city one box with two fixed rows of 224 px cards:
+  // v82 aşama 4 (izlenebilirlik 119): Etkinlik ve turlar city by city, each city one box with two rows of cards of one size:
   // what's on the plan in "Planında" (the boat tour), the ideas in "Öneriler" with "+ Plana koy".
   const cardNames = (loc) => loc.evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")));
   const portoAct = sec("activity").locator('.q-int.multi[data-intent="activity:Porto"]');
@@ -544,8 +544,12 @@ try {
   assert.equal((await portoAct.locator(".q-opts .q-oc").innerText()).trim(), "3");
   assert.equal(await portoAct.locator(".q-planw .q-ot").innerText(), "Planında", "H1: what's on the plan says so in words");
   assert.equal(await sec("activity").locator('.q-gapl[data-city="Lizbon"] .z-ask', { hasText: "AI'a arat" }).count(), 1, "an empty city: AI'a arat");
-  // The card is 224 px tall in every state, four cells a row (the plan's three unseen ones hold their places).
-  assert.deepEqual([...new Set(await portoAct.locator(".z-k").evaluateAll((els) => els.filter((e) => e.offsetParent).map((e) => Math.round(e.getBoundingClientRect().height))))], [224]);
+  // Every card is one height in every state (0.38.8, option A: the picture 4:3 on top, its height follows the width; it was
+  // 224 px), four cells a row (the plan's three unseen ones hold their places).
+  assert.equal(new Set(await portoAct.locator(".z-k").evaluateAll((els) => els.filter((e) => e.offsetParent).map((e) => Math.round(e.getBoundingClientRect().height)))).size, 1, "every card of the box is one height");
+  for (const [w, h] of await portoAct.locator(".z-k[data-item-id] .z-kp").evaluateAll((els) => els.map((e) => [e.getBoundingClientRect().width, e.getBoundingClientRect().height]))) {
+    assert.ok(Math.abs(h - (w * 3) / 4) <= 1, `the picture is 4:3 (${w}×${h})`);
+  }
   assert.equal(await portoAct.locator('[data-row="plan"] > *').count(), 4);
   // C26: the ideas fold away (remembered in this browser), and come back.
   await portoAct.locator(".z-fold").click();
@@ -580,7 +584,8 @@ try {
   await writeItem("book");
   const bought = portoAct.locator('[data-row="plan"] .z-k.done[aria-label="Tiyatro"]');
   await bought.waitFor();
-  assert.equal(Math.round((await bought.boundingBox()).height), 224, "a bought ticket doesn't grow");
+  // (its 2 px edge included: the height is the row's, as a ticket not bought yet)
+  assert.equal(Math.round((await bought.boundingBox()).height), Math.round((await portoAct.locator('[data-row="plan"] .z-k[aria-label="Douro tekne turu"]').boundingBox()).height), "a bought ticket doesn't grow");
   assert.match(await bought.locator(".q-vband").innerText(), /Bilet alındı/);
   assert.match(flat([await bought.locator(".q-acc").innerText()])[0], /^10 Eki 21:00 Teatro Nacional São João$/);
   assert.match(await bought.locator(".q-acc a.q-aw").getAttribute("href"), /^https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=/);
@@ -2076,10 +2081,12 @@ try {
   assert.ok(await pinPhoto.evaluate(async (img) => (await img.decode(), img.naturalWidth > 0)), "the pin's photo loads");
   // The picture is the same size on every tile, a photo or the kind's mark.
   const picH = async (name) => Math.round((await todoRow(name).locator(".z-kp").boundingBox()).height);
-  // (v82: every card of a row is 224 px with a 92 px picture, on the plan or not.)
-  assert.equal(await picH("Jardins do Palácio de Cristal"), 92, "a card's picture is the drawing's size, a photo or not");
-  assert.equal(await picH("Porto Belo Pazarı"), 92, "on the plan or not, every card is one size");
-  assert.equal(Math.round((await todoRow("Porto Belo Pazarı").boundingBox()).height), 224);
+  const cardH = async (name) => Math.round((await todoRow(name).boundingBox()).height);
+  // (0.38.8, option A: every card of a row is one size, its picture 4:3 on top, on the plan or not; it was 224 px with a 92 px picture.)
+  const pinBox = await todoRow("Jardins do Palácio de Cristal").locator(".z-kp").boundingBox();
+  assert.ok(Math.abs(pinBox.height - (pinBox.width * 3) / 4) <= 1, "a card's picture is 4:3, a photo or not");
+  assert.equal(await picH("Porto Belo Pazarı"), await picH("Jardins do Palácio de Cristal"), "on the plan or not, every card is one size");
+  assert.equal(await cardH("Porto Belo Pazarı"), await cardH("Jardins do Palácio de Cristal"));
   // Saved from Maps: "Maps" on its picture, its kind in the grey line, "Haritada aç" its own Maps page.
   assert.equal(await todoRow("Jardins do Palácio de Cristal").locator(".z-kp .q-src").innerText(), "Maps");
   assert.match(await todoRow("Jardins do Palácio de Cristal").locator(".z-l2").innerText(), /Doğa/);
@@ -3826,12 +3833,14 @@ try {
   const tourIn = (city) => ekSec("activity").locator(`.q-gapl[data-city="${city}"] .z-k[data-offer][aria-label="Uluwatu gün batımı ve kecak dansı"]`);
   const tourTile = tourIn("Uluwatu");
   await tourTile.waitFor({ timeout: 10000 });
-  assert.equal(await tourTile.locator(".q-brand").innerText(), "Viator");
-  assert.equal(await tourTile.locator(".q-src").innerText(), "Viator · Uluwatu");
+  // 0.38.8 (option A): the brand's label and where it was found are one chip on the picture, with the site's mark.
+  assert.equal(await tourTile.locator(".z-kp .q-src .q-logo").innerText(), "V");
+  assert.match(await tourTile.locator(".z-kp .q-src").innerText(), /^V\s*Viator · Uluwatu$/);
+  assert.equal(await tourTile.locator(".q-brand").count(), 0, "the source's chip names the site: no second label");
   assert.match(await tourTile.locator(".z-l2").innerText(), /^4 sa · €45\s+kişi başı$/);
   assert.equal(await ekSec("activity").locator('.q-gapl.has-offers[data-city="Uluwatu"]').locator(".z-k[data-offer]").count(), 1, "the tour is in its city's place");
   await tourIn("Canggu").waitFor({ timeout: 10000 });
-  assert.equal(await tourIn("Canggu").locator(".q-src").innerText(), "Viator · Uluwatu", "a nearby stop's row says where its tour is");
+  assert.match(await tourIn("Canggu").locator(".q-src").innerText(), /^V\s*Viator · Uluwatu$/, "a nearby stop's row says where its tour is");
   await tourTile.getByRole("button", { name: "+ Plana koy" }).click();
   await ekSec("activity").locator('[data-row="plan"] .z-k[aria-label="Uluwatu gün batımı ve kecak dansı"]').waitFor();
   await tourTile.waitFor({ state: "detached" });

@@ -1,7 +1,9 @@
-// One card of a city's rows (plan v82 "etkinlik ve yapılacaklar", the prototype's `kcard`, mk82.css `.z-k`): 224 px tall in
-// every state, the card's picture (92 px) over four fixed lines: the site's label or the place's word, the name (it edits
-// where it stands, C2; a press opens its record), one grey line, and the foot. A bought ticket keeps its size (v80): a
-// small green "✓ Bilet alındı" chip on the picture's foot (the photo stays whole), the day and the meeting place (to the map) for the grey line, the code
+// One card of a city's rows (plan v82 "etkinlik ve yapılacaklar", the prototype's `kcard`, mk82.css `.z-k`; 0.38.8 Emre's
+// option A): the picture on top at 4:3, about two thirds of the card, its badges small chips on it (the source or the site,
+// "Gezinin sebebi", a place's word top left; the tools top right), under it three fixed lines: the name over two lines,
+// whole (three when narrow; it edits where it stands, C2), one grey line, and the foot. Its height follows its width, the
+// same in every state. A bought ticket keeps its size (v80): a small green "✓ Bilet alındı" chip on the picture's foot (the
+// photo stays whole), the day and the meeting place (to the map) for the grey line, the code
 // to copy and "Bileti aç" for the foot, ⓘ opening Ayrıntı over the card (the files added there). What's on the plan has
 // × "Plandan çıkar" (E §2.6: it fades, 180 ms) and ⋯: ↻ another in its place for a ticket (C26), Yaptım, Haritada aç, taşı
 // and Daha fazla öner for a place (C20). An idea's foot is "+ Plana koy"; a place on the plan gets its day there ("Gün
@@ -9,7 +11,7 @@
 // it's empty: its head says so); more than the row holds: "+n Pano'da".
 import { useEffect, useState, type ReactNode } from "react";
 import { cardFacts } from "../../../lib/cardFacts";
-import { askLike, askOther, moreLabel, type KCardVM } from "../../../lib/collectionCards";
+import { askLike, askOther, moreLabel, pictureChips, type KCardVM } from "../../../lib/collectionCards";
 import { L } from "../../../lib/i18n";
 import type { AccessVM, IntentVM, OptionVM } from "../../../lib/intents";
 import { moveToBookings, setDone, setIdeaDay, setPrep } from "../../../lib/ideas";
@@ -33,14 +35,13 @@ import { BrandChip } from "./OptionCompact";
 /** E §2.6: "Plandan çıkar" is quiet, the card fades in 180 ms (and shrinks to 97%) before it goes back to the ideas. */
 export const LEAVE_MS = 180;
 
-/** The card's frame: its picture over its four lines, the same size whatever it holds. */
-export function KCard({ className, k, label, pic, l1, title, l2, foot, extra, attrs }: {
+/** The card's frame: its picture (its chips on it) over its three lines, the same size whatever it holds. */
+export function KCard({ className, k, label, pic, title, l2, foot, extra, attrs }: {
   className: string;
   /** Its key in the row (data-k): the flight to Planında (putFly) finds where it went by it. */
   k: string;
   label: string;
   pic: ReactNode;
-  l1: ReactNode;
   title: ReactNode;
   l2: ReactNode;
   foot: ReactNode;
@@ -52,7 +53,6 @@ export function KCard({ className, k, label, pic, l1, title, l2, foot, extra, at
     <article className={`z-k ${className}`} data-k={k} aria-label={label} data-new={L("Yeni", "New")} {...attrs}>
       <div className="z-kp">{pic}</div>
       <div className="z-kb">
-        <span className="z-l1">{l1}</span>
         <h3 className="z-t" title={label}>{title}</h3>
         <span className="z-l2">{l2}</span>
         <div className="z-kf">{foot}</div>
@@ -67,32 +67,41 @@ function Picture({ card }: { card: KCardVM }) {
   return <FallbackImg className="ph" src={card.photo} fallback={art} />;
 }
 
-/** Who put it there, the picture's top-left badge; the trip's own ticket says "Gezinin sebebi" instead. */
-function Corner({ card }: { card: KCardVM }) {
-  if (card.reason) {
-    return (
-      <span className="q-src rsn">
-        <Ic name="spark" size={11} stroke={2.4} />
-        {L("Gezinin sebebi", "The reason for the trip")}
-      </span>
-    );
-  }
-  const b = card.badge;
-  if (!b || card.state !== "idea") return null;
-  return (
-    <span className={`q-src ${b.tone}`}>
-      {b.initial && <i>{b.initial}</i>}
-      {b.text}
-    </span>
+/**
+ * The picture's chips (option A; collectionCards.pictureChips says which): who put it there, its site or "Gezinin sebebi"
+ * top left, clear of the tools; on its foot "✓ Bilet alındı" (`band`) and a place's word.
+ */
+function Chips({ card, band }: { card: KCardVM; band?: ReactNode }) {
+  const chips = pictureChips(card);
+  const top = chips.flatMap((c) =>
+    c.kind === "reason"
+      ? [
+          <span key="r" className="q-src rsn">
+            <Ic name="spark" size={11} stroke={2.4} />
+            {L("Gezinin sebebi", "The reason for the trip")}
+          </span>,
+        ]
+      : c.kind === "source"
+        ? [
+            <span key="s" className={`q-src ${c.tone}${c.mark ? " site" : ""}`}>
+              {c.mark ? <Mark color={c.mark.color} letter={c.mark.letter} small /> : c.initial && <i>{c.initial}</i>}
+              {c.text}
+            </span>,
+          ]
+        : c.kind === "site"
+          ? [<BrandChip key="b" brand={c.brand} />]
+          : [],
   );
-}
-
-/** The first line: a ticket's site in its colour, a place's word. */
-function First({ card, extra }: { card: KCardVM; extra?: ReactNode }) {
+  const tag = chips.find((c) => c.kind === "tag");
   return (
     <>
-      {card.family === "event" ? <BrandChip brand={card.brand} /> : card.tag && <span className="z-tagc">{card.tag}</span>}
-      {extra}
+      {top.length > 0 && <span className="z-kc">{top}</span>}
+      {(band || tag) && (
+        <span className="z-kd">
+          {band}
+          {tag && <span className="z-tagc">{tag.text}</span>}
+        </span>
+      )}
     </>
   );
 }
@@ -354,17 +363,20 @@ function RecordFace({ card, vm, plan, search, onPut, onTakeOff }: RecordCardProp
         pic={
           <>
             <Picture card={card} />
-            <Corner card={card} />
-            {card.state === "booked" && (
-              <span className="q-vband">
-                <Ic name="check" size={12} stroke={3} />
-                {event ? L("Bilet alındı", "Ticket bought") : L("Rezervasyon", "Booked")}
-              </span>
-            )}
+            <Chips
+              card={card}
+              band={
+                card.state === "booked" && (
+                  <span className="q-vband">
+                    <Ic name="check" size={12} stroke={3} />
+                    {event ? L("Bilet alındı", "Ticket bought") : L("Rezervasyon", "Booked")}
+                  </span>
+                )
+              }
+            />
             <span className="z-kt">{tools}</span>
           </>
         }
-        l1={<First card={card} />}
         title={name}
         l2={l2}
         foot={foot}
@@ -420,8 +432,7 @@ export function SuggestCard({ card, onPut, onDismiss }: { card: KCardVM; onPut: 
           ) : (
             <Picture card={shown} />
           )}
-          <Corner card={card} />
-          {place && card.tag && <span className="z-tagc z-ptag">{card.tag}</span>}
+          <Chips card={card} />
           <span className="z-kt">
             <button type="button" className="q-rm" aria-label={L(`${card.title}: gerek yok`, `${card.title}: not needed`)} title={L("Gerek yok", "Not needed")} onClick={onDismiss}>
               <Ic name="x" size={12} stroke={2.6} />
@@ -429,7 +440,6 @@ export function SuggestCard({ card, onPut, onDismiss }: { card: KCardVM; onPut: 
           </span>
         </>
       }
-      l1={place ? null : <First card={card} />}
       title={<span className="z-tn">{card.title}</span>}
       l2={card.line}
       foot={
@@ -460,10 +470,9 @@ export function OfferCard({ card, onPut }: { card: KCardVM; onPut: () => void })
       pic={
         <>
           <Picture card={card} />
-          <Corner card={card} />
+          <Chips card={card} />
         </>
       }
-      l1={<First card={card} />}
       title={
         card.page ? (
           <a className="z-tb" href={card.page} target="_blank" rel="noopener noreferrer">
