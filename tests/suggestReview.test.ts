@@ -117,4 +117,16 @@ describe("one review", () => {
     expect(s.get().suggestReview).toEqual({ key: "k1", at: 7, failed: true, state: "failed" });
     expect(s.get().suggestions).toBeUndefined();
   });
+
+  it("a request that never reached the model (a reload mid-way, offline): no day-long wait, no warning; asked next time", async () => {
+    const s = store();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    expect(await runReview({ key: "k1", prompt: "p", save: s.save, now: 7, provider: provider(async () => { throw new TypeError("Failed to fetch"); }) })).toBe("failed");
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+    info.mockRestore();
+    expect(s.get().suggestReview).toBeNull();
+    expect(reviewDue(s.get().suggestReview, "k1", 8)).toBe(true);
+  });
 });

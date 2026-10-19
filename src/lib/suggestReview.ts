@@ -157,8 +157,18 @@ export async function runReview(args: {
       await args.save((t) => ({ ...t, suggestReview: null })).catch(() => undefined);
       return "no-key";
     }
+    if (neverSent(error)) {
+      // The request never reached the model (the board reloaded for an update mid-way, the network dropped): nothing to
+      // remember a day long, the claim goes and the next opening asks again. Said quietly: it isn't the extension's error.
+      console.info("suggestion review: not sent, asked again next time", error);
+      await args.save((t) => ({ ...t, suggestReview: null })).catch(() => undefined);
+      return "failed";
+    }
     console.warn("suggestion review", error);
     await args.save((t) => ({ ...t, suggestReview: { key: args.key, at: now, failed: true, state: "failed" } })).catch(() => undefined);
     return "failed";
   }
 }
+
+/** fetch's own failure (no answer at all: offline, the page going away mid-request), not the model's or the server's. */
+const neverSent = (error: unknown): boolean => error instanceof TypeError && /failed to fetch|network|load failed/i.test(error.message);
