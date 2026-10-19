@@ -21,7 +21,7 @@ import { useCardEnv } from "./PlanCard";
 /** Bought, held or gone by: × asks before it takes it off the plan. */
 const BOOKED: readonly Stage[] = ["booked", "ready", "used"];
 
-interface Ask {
+export interface Ask {
   title: string;
   text: string;
   ok: string;
@@ -102,7 +102,7 @@ export function useStageMenu(item: Item): { menu: MenuEntry[]; remove: () => voi
 }
 
 /** The board's own question window (the share safety dialog's look): Vazgeç, and the one red answer. */
-function AskWindow({ ask, onClose }: { ask: Ask; onClose: () => void }) {
+export function AskWindow({ ask, onClose }: { ask: Ask; onClose: () => void }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && (e.stopPropagation(), onClose());
     document.addEventListener("keydown", onKey, true);
