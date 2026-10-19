@@ -395,3 +395,6 @@ body.still .q-ofold-chev { transition: none; }
 @media (prefers-reduced-motion: reduce) { .q-ofold-chev { transition: none; } }
 /* The source asked by itself and nothing came back: said plainly (OfferRow NoOffers). */
 .ek-none { margin: 8px 0 0; font-size: var(--q-fs-small); color: var(--q-mut); }
+
+/* 0.39.0: no price from the source at all: a small link to the site's page in the price's place. */
+.z-of .z-ppg { align-self: center; min-width: 0; }

@@ -86,10 +86,10 @@ describe("the box's option cards are the picks' cards", () => {
   const option = { id: item.id, item, title: item.name, brand: null, source: null, image: item.imageUrl, price: null, ticket: null, score: null, place: 1, rating: "★ 5 · 402 yorum", where: null, cancel: null, checks: [], badges: [], ours: false, leg: null, carrier: null } as unknown as OptionVM;
   const vm = { optionCount: 1, status: "deciding", chosen: null, options: [option] } as unknown as IntentVM;
   const env = { focus: null, setFocus: () => {} } as unknown as CardEnv;
-  const draw = (typical: ((o: OptionVM) => ReturnType<typeof typicalNight>) | null) =>
+  const draw = (typical: ((o: OptionVM) => ReturnType<typeof typicalNight>) | null, o: OptionVM = option) =>
     renderToStaticMarkup(
       <CardEnvContext.Provider value={env}>
-        <OptionList vm={vm} options={[option]} current={null} changing={false} art="illus/otel.png" links={[]} typical={typical} onPick={() => {}} onOpen={() => {}} onCancel={() => {}} onAsk={null} />
+        <OptionList vm={vm} options={[o]} current={null} changing={false} art="illus/otel.png" links={[]} typical={typical} onPick={() => {}} onOpen={() => {}} onCancel={() => {}} onAsk={null} />
       </CardEnvContext.Provider>,
     );
   it("the row carries the card class whose photo is 4:3 (square when narrow), the strip nowhere", () => {
@@ -103,7 +103,13 @@ describe("the box's option cards are the picks' cards", () => {
   it("no price: the source's usual range by the night, said as typical; none known: Fiyat ekle as before", () => {
     const html = draw(() => typicalNight({ min: 21, max: 64 }));
     expect(html).toContain('<span class="q-pr" title="tarihli fiyat yok"><b>tipik €21–64</b><small>/ gece</small></span>');
-    expect(draw(() => null)).not.toContain("tipik");
+    // 0.39.0: the range read when it was saved stays on the record, so it's said without asking the source again.
+    expect(item.typicalNight).toEqual({ min: 21, max: 64 });
+    expect(draw(null)).toContain('<span class="q-pr" title="tarihli fiyat yok"><b>tipik €21–64</b><small>/ gece</small></span>');
+    const { typicalNight: _none, ...bare } = item;
+    const unknown = { ...option, item: bare } as OptionVM;
+    expect(draw(() => null, unknown)).not.toContain("tipik");
+    expect(draw(() => null, unknown)).toContain('aria-label="Fiyat: düzenle"');
     expect(typicalNight(null)).toBeNull();
   });
 });

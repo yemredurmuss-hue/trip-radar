@@ -71,6 +71,8 @@ export interface Offer {
   // A stay's, an activity's, an eSIM's lines: the area ("Jordaan · Dam'a 10 dk"), one more line ("30 gün · 5G").
   area?: string | null;
   meta?: string | null;
+  /** A stay with no price for its dates: the source's usual range by the night (stayPicks.candidateOffer), kept on its record. */
+  typical?: { min: number; max: number } | null;
   /** One of a stay's three picks (stayPicks.ts): "Sana en uygun", "Daha ekonomik", "Daha konforlu". */
   pick?: "best" | "cheaper" | "comfier" | null;
   /** A city's tour: the place it was asked for (the town, a nearby city of the trip, the country), said on its card. */
@@ -260,9 +262,20 @@ export function offerItem(offer: Offer, need: Need, tripId: string, id: string, 
     guests: { ...base.guests, adults: need.adults ?? null },
     rating: { value: offer.rating ?? null, scale, count: offer.reviews ?? null, source: offer.rating == null ? "none" : "url" },
     price: { ...base.price, amount: offer.price ?? null, currency: offer.price == null ? null : (offer.currency ?? null), scope: offer.price == null ? "unknown" : "total", source: offer.price == null ? "none" : "url", observedAt: offer.fetchedAt || now },
+    // 0.39.0: a hotel with no price for these nights keeps its usual range ("tipik €21–64 / gece") on the plan too.
+    ...(offer.kind === "stay" && offer.price == null && usualRange(offer.typical) ? { typicalNight: usualRange(offer.typical)! } : {}),
     // A flight's or transfer's row as the source read it: the carrier, the hours on the need's day, the ends' codes.
     flight: offer.kind === "flight" || offer.kind === "transfer" ? offerFlight(offer, need, base.flight) : base.flight,
   };
+}
+
+/** A usual range by the night as the source gave it (a positive low, a high not under it); null otherwise. */
+export function usualRange(r: unknown): { min: number; max: number } | null {
+  const v = r as { min?: unknown; max?: unknown } | null | undefined;
+  const min = num(v?.min);
+  if (!min) return null;
+  const max = num(v?.max);
+  return { min, max: max != null && max >= min ? max : min };
 }
 
 function offerFlight(offer: Offer, need: Need, base: Item["flight"]): Item["flight"] {
