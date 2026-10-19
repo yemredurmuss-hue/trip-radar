@@ -5,8 +5,8 @@
 // to copy and "Bileti aç" for the foot, ⓘ opening Ayrıntı over the card (the files added there). What's on the plan has
 // × "Plandan çıkar" (E §2.6: it fades, 180 ms) and ⋯: ↻ another in its place for a ticket (C26), Yaptım, Haritada aç, taşı
 // and Daha fazla öner for a place (C20). An idea's foot is "+ Plana koy"; a place on the plan gets its day there ("Gün
-// ver ›"). "Gezinin sebebi" pins the trip's own ticket (C26). Empty Planında: four slots of the same size; more than the
-// row holds: "+n Pano'da".
+// ver ›"). "Gezinin sebebi" pins the trip's own ticket (C26). Planında's last row is filled with unseen cells (none while
+// it's empty: its head says so); more than the row holds: "+n Pano'da".
 import { useState, type ReactNode } from "react";
 import { cardFacts } from "../../../lib/cardFacts";
 import { askLike, askOther, moreLabel, type KCardVM } from "../../../lib/collectionCards";
@@ -437,24 +437,15 @@ export function OfferCard({ card, onPut }: { card: KCardVM; onPut: () => void })
 }
 
 /**
- * Planında's empty cells: with nothing on the plan the first says so ("Henüz plana koymadın") and the others wait with a
- * faint +; beside cards they hold the cells' places unseen (the flight to Planında lands on the first of them).
+ * Planında's last row filled to four with cells held unseen beside its cards. With nothing on the plan there are none: the
+ * head's line says so (Emre, 19 Ekim).
  */
-export function EmptySlots({ n, empty }: { n: number; empty: boolean }) {
+export function EmptySlots({ n }: { n: number }) {
   return (
     <>
-      {Array.from({ length: n }, (_, i) =>
-        empty && i === 0 ? (
-          <div key={i} className="z-k z-k0" data-slot="">
-            <b>{L("Henüz plana koymadın", "Nothing on your plan yet")}</b>
-            <small>{L("Önerilerden “+ Plana koy” ile ekle", "Add one from the suggestions with “+ Add to plan”")}</small>
-          </div>
-        ) : (
-          <div key={i} className={`z-k z-k0 sl${empty ? "" : " off"}`} data-slot="" aria-hidden>
-            {empty && <Ic name="plus" size={18} />}
-          </div>
-        ),
-      )}
+      {Array.from({ length: n }, (_, i) => (
+        <div key={i} className="z-k z-k0 off" data-slot="" aria-hidden />
+      ))}
     </>
   );
 }

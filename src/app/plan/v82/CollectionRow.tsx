@@ -1,19 +1,22 @@
 // The collection family (plan v82: things to book and do, by city; aşama 4): two rows of 224 px cards (KCard), four across.
-// Planında has every card on the plan, row after row (Emre, 19 Ekim: twelve activities on the plan are twelve on the plan;
-// four empty slots, "Henüz plana koymadın", while nothing is there); Öneriler stops at a row, the rest "+n Pano'da" (the Pano,
+// Planında has every card on the plan, row after row (Emre, 19 Ekim: twelve activities on the plan are twelve on the plan).
+// While nothing is there it has no empty slots, one line in its head, "Henüz plana koymadın · önerilerden + Plana koy", and
+// Öneriler stays open even when folded (Emre, 19 Ekim, again); Öneriler stops at a row, the rest "+n Pano'da" (the Pano,
 // where all of it gathers to sift and compare, opened on this city). Yapılacaklar' Planında head has its chips (Hepsi, Gezilecek, Restoranlar; C20), Etkinlik's
-// Öneriler folds away (C26, remembered in this browser as the live bar was). Öneriler holds the saved ideas, the suggestions
-// to add and the connected source's tours for the city (the live board's Viator cards, their photos kept on the records);
+// Öneriler folds away (C26, remembered in this browser as the live bar was). Öneriler holds the saved ideas, the connected
+// source's tours for the city (the live board's Viator cards, their photos kept on the records; a town it doesn't know is
+// searched in its country), then the suggestions to add (Emre, 19 Ekim);
 // "Kendin ara" on its right. "+ Plana koy" flies the card to its slot (E6, putFly). The box around it is CollectionBox.
 import { useEffect, useState, type ReactNode } from "react";
 import { citiesOfPlan, type SectionId } from "../../../lib/categories";
-import { askMore, collectionRow, filterWord, ideasCaption, inFilter, K_FILTERS, mapsSearch, offerCard, ROW_CELLS, rowCells, type KCardVM, type KFilter } from "../../../lib/collectionCards";
+import { askMore, collectionRow, filterWord, ideasCaption, inFilter, K_FILTERS, mapsSearch, offerCard, ROW_CELLS, rowCells, stopCountry, type KCardVM, type KFilter } from "../../../lib/collectionCards";
 import { needKey, type ActivityGap } from "../../../lib/emptyCards";
 import { L } from "../../../lib/i18n";
 import { selfSearches, type SelfSearch } from "../../../lib/intentFrame";
 import type { IntentVM, OptionVM } from "../../../lib/intents";
 import { formatDateRange } from "../../../lib/items";
 import { photoFromOffers, sameTour, type Need, type Offer } from "../../../lib/offerSource";
+import { cityTours } from "../../../lib/offerSources";
 import { sameCity, type Plan } from "../../../lib/plan";
 import type { Item } from "../../../lib/types";
 import { addOffer, chooseItem, setItemPhoto } from "../../actions";
@@ -68,21 +71,19 @@ function useCityOffers(city: string | null, plan: Pick<Plan, "stayBlocks"> | nul
   const { offers: source, travellers } = useEmptyEnv();
   const stop = city && plan ? (citiesOfPlan(plan).find((c) => sameCity(c.city, city)) ?? null) : null;
   const need: Need | null = stop ? { key: needKey("activity", stop.city, stop.start, stop.end), section: "activity", kind: "activity", city: stop.city, start: stop.start, end: stop.end, adults: travellers } : null;
+  const country = stop && plan ? stopCountry(plan, stop.city) : null;
   const [got, setGot] = useState<{ key: string; list: Offer[] } | null>(null);
   const [taken, setTaken] = useState<string[]>([]);
   const available = source.available();
   useEffect(() => {
     if (!need || !available) return;
     let live = true;
-    source.offers(need).then(
-      (list) => live && setGot({ key: need.key, list: list.filter((o) => o.kind === "activity") }),
-      () => live && setGot({ key: need.key, list: [] }),
-    );
+    void cityTours(source, need, country).then((list) => live && setGot({ key: need.key, list }));
     return () => {
       live = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- asked again only for another city or days
-  }, [need?.key, available, source]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- asked again only for another city, days or country
+  }, [need?.key, country, available, source]);
   const all = got && need && got.key === need.key ? got.list : [];
   const missing = saved.filter((i) => !i.imageUrl);
   useEffect(() => {
@@ -139,6 +140,11 @@ export function CollectionRow({ vm, onPut, onTakeOff }: CollectionRowProps) {
         <div className="q-oh">
           <b className="q-ot">{L("Planında", "On your plan")}</b>
           <small className="q-ppn">{plans.length || ""}</small>
+          {plans.length === 0 && (
+            <small className="z-pe">
+              {ideas.length > 0 ? L("Henüz plana koymadın · önerilerden “+ Plana koy”", "Nothing on your plan yet · “+ Add to plan” from the suggestions") : L("Henüz plana koymadın", "Nothing on your plan yet")}
+            </small>
+          )}
           {todo && row.counts.all > 0 && (
             <>
               <span className="q-sp" />
@@ -154,8 +160,8 @@ export function CollectionRow({ vm, onPut, onTakeOff }: CollectionRowProps) {
         </div>
         <div className="q-prow z-ks" data-row="plan">
           {plans.map(cardOf)}
-          {/* (the last row filled to four: the next "+ Plana koy" lands in a slot, E6) */}
-          <EmptySlots n={plans.length ? (ROW_CELLS - (plans.length % ROW_CELLS)) % ROW_CELLS : ROW_CELLS} empty={plans.length === 0} />
+          {/* (the last row filled to four with unseen cells; none while empty: putFly lands on the new card itself, E6) */}
+          <EmptySlots n={(ROW_CELLS - (plans.length % ROW_CELLS)) % ROW_CELLS} />
         </div>
       </div>
       {ideas.length > 0 && (
@@ -165,8 +171,8 @@ export function CollectionRow({ vm, onPut, onTakeOff }: CollectionRowProps) {
             <small className="q-oc">{ideasCaption(ideas.length, o.shown.length)}</small>
             <span className="q-sp" />
             <SelfLinks links={links} />
-            {/* C26: the ideas fold away (the live "Öneriler ve fikirler" bar), remembered in this browser. */}
-            {!todo && (
+            {/* C26: the ideas fold away (the live "Öneriler ve fikirler" bar), remembered in this browser; not while the plan is empty. */}
+            {!todo && plans.length > 0 && (
               <button type="button" className={`z-fold${open ? "" : " shut"}`} aria-expanded={open} onClick={() => setOpen(!open)}
                 aria-label={open ? L(`${city}: önerileri katla`, `${city}: fold the suggestions`) : L(`${city}: önerileri aç`, `${city}: show the suggestions`)}>
                 <Ic name="chev" size={13} stroke={2.4} />
@@ -174,7 +180,7 @@ export function CollectionRow({ vm, onPut, onTakeOff }: CollectionRowProps) {
               </button>
             )}
           </div>
-          {(todo || open) && (
+          {(todo || open || plans.length === 0) && (
             <div className="q-cards z-ks" data-row="ideas">
               {o.shown.map(cardOf)}
               {o.more > 0 && <MoreTile n={o.more} title={L(`${city}: öneriler`, `${city}: suggestions`)} onOpen={pano} />}

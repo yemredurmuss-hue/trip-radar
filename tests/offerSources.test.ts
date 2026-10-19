@@ -2,7 +2,7 @@
 // that a failure is simply no offers.
 import { describe, expect, it } from "vitest";
 import type { Need, Offer } from "../src/lib/offerSource";
-import { makeLiveSource, queryOf, type StayCandidate } from "../src/lib/offerSources";
+import { cityTours, countryNeed, makeLiveSource, queryOf, type StayCandidate } from "../src/lib/offerSources";
 import { memoryKV } from "../src/lib/share/store";
 
 const flight: Need = { key: "f", section: "flight", kind: "flight", from: "İstanbul", to: "Denpasar", start: "2026-11-10", adults: 2 };
@@ -117,5 +117,39 @@ describe("asking", () => {
     const idle = answer([offer("a")]);
     expect(await makeLiveSource({ kv: memoryKV(), fetcher: idle.fetcher }).offers({ ...stay, city: null })).toEqual([]);
     expect(idle.calls).toHaveLength(0);
+  });
+});
+
+describe("a town the source doesn't know (Emre's Ahangama, 19 Ekim)", () => {
+  const ahangama: Need = { key: "activity:ahangama", section: "activity", kind: "activity", city: "Ahangama", start: "2026-11-02", end: "2026-11-09", adults: 2 };
+  const tour = (id: string): Offer => ({ id, kind: "activity", title: "Sörf dersi", url: "https://www.viator.com/t", why: "", source: "Viator", fetchedAt: 1 });
+
+  it("asks again in the stay's country, by the town's name", () => {
+    const wider = countryNeed(ahangama, "LK");
+    expect(wider).toMatchObject({ city: "Sri Lanka", query: "Ahangama", country: null });
+    expect(wider?.key).not.toBe(ahangama.key);
+    expect(queryOf(wider!, "tr")).toBe("kind=activity&city=Sri+Lanka&adults=2&lang=tr&start=2026-11-02&end=2026-11-09&q=Ahangama");
+    expect(countryNeed(ahangama, null)).toBeNull();
+    expect(countryNeed({ ...ahangama, query: "Tekne turu" }, "LK")).toBeNull();
+    expect(countryNeed({ ...ahangama, city: "Singapore" }, "SG")).toBeNull();
+  });
+
+  it("an empty answer brings the second question; none without a country, none when the first has tours", async () => {
+    const asked: Need[] = [];
+    const empty = { offers: async (n: Need) => (asked.push(n), n.query ? [tour("v1")] : []) };
+    expect((await cityTours(empty, ahangama, "LK")).map((o) => o.id)).toEqual(["v1"]);
+    expect(asked.map((n) => [n.city, n.query ?? null])).toEqual([["Ahangama", null], ["Sri Lanka", "Ahangama"]]);
+
+    asked.length = 0;
+    expect(await cityTours(empty, ahangama, null)).toEqual([]);
+    expect(asked).toHaveLength(1);
+
+    asked.length = 0;
+    const full = { offers: async (n: Need) => (asked.push(n), [tour("v2"), { ...tour("h"), kind: "stay" as const }]) };
+    expect((await cityTours(full, ahangama, "LK")).map((o) => o.id)).toEqual(["v2"]);
+    expect(asked).toHaveLength(1);
+
+    const failing = { offers: async () => Promise.reject(new Error("down")) };
+    expect(await cityTours(failing, ahangama, "LK")).toEqual([]);
   });
 });

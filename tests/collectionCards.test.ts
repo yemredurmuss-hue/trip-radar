@@ -1,10 +1,10 @@
 // Plan v82's rows of cards (lib/collectionCards.ts, v82 geçişi aşama 4, izlenebilirlik 119-123): each 224 px card's family,
 // state and lines (a bought ticket's way in, a place done), the row's four cells ("+n Pano'da"), Planında and Öneriler from a
-// city's intent (the trip's reason first, the suggestions and the source's tours after the saved ideas), Yapılacaklar' chips
+// city's intent (the trip's reason first, the source's tours and then the suggestions after the saved ideas), Yapılacaklar' chips
 // and its "n yapıldı".
 import { describe, expect, it } from "vitest";
 import { categorize } from "../src/lib/categories";
-import { accessOf, askLike, askMore, collectionRow, doneCount, doneLine, familyOf, filterOf, ideasCaption, mapsSearch, offerCard, recordCard, rowCells, stateOf, suggestionCard } from "../src/lib/collectionCards";
+import { accessOf, askLike, askMore, collectionRow, doneCount, doneLine, familyOf, filterOf, ideasCaption, mapsSearch, offerCard, recordCard, rowCells, stateOf, stopCountry, suggestionCard } from "../src/lib/collectionCards";
 import { decideTrip, makeContext } from "../src/lib/decision";
 import { isEmptyRecord } from "../src/lib/emptyCards";
 import { collectionsOf, type IntentInput } from "../src/lib/intents";
@@ -116,6 +116,9 @@ describe("a card's lines", () => {
     const o = offerCard({ id: "v1", kind: "activity", title: "Tsukiji lezzet turu", url: "https://viator.com/t", price: 136, currency: "EUR", why: "", source: "Viator", fetchedAt: 1, durationMinutes: 240 }, 2);
     expect(o).toMatchObject({ key: "o:v1", line: "4 sa · €68 kişi başı", page: "https://viator.com/t", canPut: true });
     expect(o.brand?.label).toBe("Viator");
+    // The source's name, not "AI önerisi": a real tour it lists (Emre, 19 Ekim).
+    expect(o.badge).toMatchObject({ text: "Viator" });
+    expect(o.badge?.text).not.toContain("AI");
   });
 });
 
@@ -132,7 +135,7 @@ describe("a row's four cells", () => {
 });
 
 describe("a city's two rows from its intent", () => {
-  it("Planında: what intents.ts put on the plan (booked first); Öneriler: the rest, the suggestions, the source's new tours", () => {
+  it("Planında: what intents.ts put on the plan (booked first); Öneriler: the rest, the source's new tours, the suggestions", () => {
     const items = [...stays, act("Shibuya Sky", "booked"), act("teamLab", "chosen"), act("Sumo", "saved"), act("Tsukiji turu", "saved")];
     const b = rows(base, items, { suggestions: { activity: [{ key: "ai:ghibli", section: "activity", kind: "add", title: "Ghibli Müzesi", why: "", source: "ai", createdAt: 1, state: "open", payload: { city: "Tokyo" } }] } });
     const vm = b.of("activity", "Tokyo");
@@ -143,7 +146,8 @@ describe("a city's two rows from its intent", () => {
     const row = collectionRow(vm, b.byId, { trip: base, people: 2, offers });
     expect(row.plan.map((c) => [c.title, c.state])).toEqual([["Shibuya Sky", "booked"], ["teamLab", "planned"]]);
     // The saved tour of the same name isn't offered again.
-    expect(row.ideas.map((c) => c.title)).toEqual(["Sumo", "Tsukiji turu", "Ghibli Müzesi", "Asakusa yürüyüşü"]);
+    // The records, then the source's tours, then the AI's ideas (Emre, 19 Ekim).
+    expect(row.ideas.map((c) => c.title)).toEqual(["Sumo", "Tsukiji turu", "Asakusa yürüyüşü", "Ghibli Müzesi"]);
     expect(row.counts).toEqual({ all: 6, go: 6, food: 0 });
   });
   it("Gezinin sebebi: on a festival trip its ticket leads Planında", () => {
@@ -179,5 +183,15 @@ describe("the chat's lines and Kendin ara", () => {
   it("Google Haritalar for the city's places, by the chip", () => {
     expect(mapsSearch("Tokyo", "food")?.url).toBe("https://www.google.com/maps/search/?api=1&query=Tokyo%20restoran");
     expect(mapsSearch(null, "all")).toBeNull();
+  });
+});
+
+describe("a stop's country (the second question for a town the source doesn't know)", () => {
+  it("is the stay record's, by city", () => {
+    const items = [makeItem({ id: "lk", name: "Ahangama Konaklama", category: "stay", city: "Ahangama", countryCode: "LK", needKey: "stay:ahangama", dates: { start: "2026-11-02", end: "2026-11-09", source: "user" }, guests: two, status: "chosen" })];
+    const trip: Trip = { ...base, confirmedDates: { start: "2026-11-02", end: "2026-11-09" } };
+    const plan = buildPlan(trip, items);
+    expect(stopCountry(plan, "Ahangama")).toBe("LK");
+    expect(stopCountry(plan, "Kolombo")).toBeNull();
   });
 });
