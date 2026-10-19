@@ -95,16 +95,25 @@ const plainName = (s: string) =>
 const BY_NAME = new Map<string, string>(
   [TOWNS, NAMES, ALSO].flatMap((table) => Object.entries(table).flatMap(([code, names]) => names.map((n) => [plainName(n), code] as const))),
 );
+/** The city an airport is listed under, in either language (plain) → its first code ("şarm el şeyh" and "sharm el sheikh": SSH). */
+const BY_CITY = new Map<string, string>();
+for (const [code, names] of Object.entries(AIRPORTS)) for (const n of names) if (!BY_CITY.has(plainName(n))) BY_CITY.set(plainName(n), code);
+
+/** The code of an airport said by its code, its town, its own or other name, or the city it is listed under; else null. */
+function codeOf(text: string): string | null {
+  return isCode(text) ? (text in AIRPORTS ? text : null) : (BY_NAME.get(plainName(text)) ?? BY_CITY.get(plainName(text)) ?? null);
+}
 
 /**
  * The city an airport is listed under, in English, for a flight's end said as its code ("DPS"), its town ("Denpasar"),
- * its own name ("Milas-Bodrum") or another name ("Milas"): a flight's ends said differently are the same way (0.38.7:
- * "BJV → DPS" and "Bodrum → Bali"). Null for any other text (a city is compared by its own name).
+ * its own name ("Milas-Bodrum"), another name ("Milas") or its city in Turkish ("Şarm El-Şeyh"): a flight's ends said
+ * differently are the same way (0.38.7: "BJV → DPS" and "Bodrum → Bali"; 0.38.9: "SSH" and "Şarm El-Şeyh"). Null for
+ * any other text (a city is compared by its own name).
  */
 export function airportCityOf(text: string | null | undefined): string | null {
   const t = text?.trim();
   if (!t) return null;
-  const code = isCode(t) ? t : BY_NAME.get(plainName(t));
+  const code = codeOf(t);
   return (code && AIRPORTS[code]?.[1]) || null;
 }
 
@@ -134,6 +143,34 @@ const COUNTRY: Record<string, string> = {
   SYD: "AU", MEL: "AU", AKL: "NZ", ZQN: "NZ",
 };
 export const countryOfAirport = (code: string | null | undefined): string | null => (code ? (COUNTRY[code.toUpperCase()] ?? null) : null);
+
+/** The country (ISO code) of a place said as an airport or the city one is listed under ("SSH", "Şarm El-Şeyh": EG); else null. */
+export function countryOfCity(text: string | null | undefined): string | null {
+  const t = text?.trim();
+  const code = t ? codeOf(t) : null;
+  return code ? (COUNTRY[code] ?? null) : null;
+}
+
+let countryNames: Map<string, string> | null = null;
+/** A country said by its name in Turkish or English ("Mısır", "Egypt": EG); null for anything else (a city, a region). */
+export function countryCodeNamed(text: string | null | undefined): string | null {
+  if (!countryNames) {
+    countryNames = new Map();
+    for (const l of ["tr", "en"]) {
+      let names: Intl.DisplayNames;
+      try {
+        names = new Intl.DisplayNames([l], { type: "region" });
+      } catch {
+        continue;
+      }
+      for (const code of new Set(Object.values(COUNTRY))) {
+        const n = names.of(code);
+        if (n && n !== code) countryNames.set(plainName(n), code);
+      }
+    }
+  }
+  return text ? (countryNames.get(plainName(text)) ?? null) : null;
+}
 
 const isCode = (text: string) => /^[A-Z]{3}$/.test(text);
 

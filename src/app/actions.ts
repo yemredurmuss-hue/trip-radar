@@ -17,6 +17,7 @@ import { nightsKey } from "../lib/timeline";
 import { offerItem, type Need, type Offer } from "../lib/offerSource";
 import type { DateRange } from "../lib/plan";
 import { plannedItem, type PlannedInput } from "../lib/planned";
+import { narrowStart } from "../lib/startCreate";
 import { stayPlaceholdersTaken } from "../lib/intents";
 import type { Category, Item, ItemStatus, Suggestion, SuggestionState, Trip } from "../lib/types";
 import type { Undoable } from "../lib/undoables";
@@ -323,6 +324,8 @@ export async function setHidden(tripId: string, key: string, hide: boolean, labe
 export async function addOffer(tripId: string, offer: Offer, need: Need): Promise<Item> {
   const item: Item = { ...offerItem(offer, need, tripId, newId(), Date.now()), forNeed: need.key };
   await (await db()).put("items", item);
+  // An offer for one city of the country the start was made for (SSH for "Mısır"): the start's places take that city.
+  await narrowStart(tripId);
   await addEvent(tripId, L(`${item.name} seçeneklere eklendi`, `${item.name} added to the options`));
   notifyChanged();
   return item;
