@@ -112,7 +112,7 @@ describe("timeline", () => {
 
   it("searches flights in plain words, with home when the saved flights tell it", () => {
     expect(decodeURIComponent(flightSearchUrl("from", "Lizbon", "2026-10-14", "IST")!)).toBe(
-      "https://www.google.com/travel/flights?q=Flights from Lizbon to IST on 2026-10-14",
+      "https://www.google.com/travel/flights?q=Flights from LIS to IST on 2026-10-14",
     );
   });
 });

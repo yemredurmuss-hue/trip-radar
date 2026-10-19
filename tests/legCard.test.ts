@@ -27,7 +27,7 @@ describe("a transfer or a change of city as a card", () => {
     expect([v.kind, v.label, v.ring]).toEqual(["flight", "Uçuş", "half"]);
     expect(state(v)).toEqual(["wait", "Seçildi", "bilet alınmadı"]);
     expect(v.foot.action).toEqual({ label: "Bileti aldım", does: "book" });
-    expect(decodeURIComponent(v.searchUrl!)).toBe("https://www.google.com/travel/flights?q=Flights from Porto to Lizbon on 2026-10-11");
+    expect(decodeURIComponent(v.searchUrl!)).toBe("https://www.google.com/travel/flights?q=Flights from OPO to LIS on 2026-10-11");
     const done = legCardView(leg({ choice: choice("flight", true), status: "booked" }));
     expect([done.ring, done.searchUrl, done.badge]).toEqual(["done", null, "booked"]);
     // The word is the card's one badge: the foot doesn't say it again.

@@ -1301,7 +1301,7 @@ try {
   assert.equal(flat([await flown.locator(".q-st").innerText()])[0], "Seçildi");
   assert.equal(await flown.getAttribute("data-kind"), "flight");
   // Its way said, its ticket still to buy: the flight's sites under "Kendin ara", "✓ Aldım" and Değiştir (back to the ways).
-  assert.match(decodeURIComponent(await flown.locator('.z-pi[aria-label="Google Uçuşlar\'da ara"]').getAttribute("href")), /^https:\/\/www\.google\.com\/travel\/flights\?q=Flights from Porto to Lizbon on 2026-10-11/);
+  assert.match(decodeURIComponent(await flown.locator('.z-pi[aria-label="Google Uçuşlar\'da ara"]').getAttribute("href")), /^https:\/\/www\.google\.com\/travel\/flights\?q=Flights from OPO to LIS on 2026-10-11/);
   await flown.getByRole("button", { name: "Değiştir" }).waitFor();
   await flown.evaluate((el) => el.scrollIntoView({ block: "center" }));
   await app.screenshot({ path: `${out}/5d-move.png` });
@@ -3773,9 +3773,9 @@ try {
   const out1 = await pis(outFlight);
   assert.deepEqual(out1.map(([n, , t, r]) => [n, t, r]), [["Skyscanner'da ara", "_blank", "noopener noreferrer"], ["Google Uçuşlar'da ara", "_blank", "noopener noreferrer"]]);
   assert.equal(out1[0][1], "https://www.skyscanner.net/transport/flights/ist/dps/261210/?adultsv2=2&rtn=0");
-  assert.equal(new URL(out1[1][1]).searchParams.get("q"), "Flights from İstanbul to Denpasar on 2026-12-10 one way");
+  assert.equal(new URL(out1[1][1]).searchParams.get("q"), "Flights from IST to DPS on 2026-12-10 one way");
   const back1 = await pis(backFlight);
-  assert.equal(new URL(back1[1][1]).searchParams.get("q"), "Flights from Denpasar to İstanbul on 2027-01-10 one way");
+  assert.equal(new URL(back1[1][1]).searchParams.get("q"), "Flights from DPS to IST on 2027-01-10 one way");
   assert.equal(back1[0][1], "https://www.skyscanner.net/transport/flights/dps/ist/270110/?adultsv2=2&rtn=0");
   for (const f of [outFlight, backFlight]) assert.equal(Math.round((await f.boundingBox()).height), 288);
   await ekSec("flight").screenshot({ path: `${out}/20f-empty-flight.png` });
@@ -3871,7 +3871,7 @@ try {
   await board.locator('.pk-ed-input[aria-label="Tarih"]').waitFor({ state: "detached" });
   await back.locator(".z-h .q-ln", { hasText: "9 Oca" }).waitFor();
   assert.equal(await back.getAttribute("data-st"), "todo", "an edited placeholder is still to find");
-  assert.equal(new URL((await pis(back))[1][1]).searchParams.get("q"), "Flights from Denpasar to İstanbul on 2027-01-09 one way");
+  assert.equal(new URL((await pis(back))[1][1]).searchParams.get("q"), "Flights from DPS to IST on 2027-01-09 one way");
   console.log("✓ boş kartlar: a new trip's flights, stays, transfers, eSIM and activities are plain cards with Ara: and branded searches (cities, dates, 2 people), no AI row; none in Günlük akış; a placeholder's day edited stays empty");
 
 
@@ -3944,7 +3944,7 @@ try {
   assert.deepEqual(await badge.evaluate((el) => [getComputedStyle(el).backgroundColor, getComputedStyle(el).borderTopColor, getComputedStyle(el).color]), ["rgb(255, 255, 255)", "rgb(230, 225, 247)", "rgb(75, 63, 176)"]);
   assert.match(flat([await hers.locator(".z-h .q-ln").innerText()])[0], /1 kişi/, "her ticket is for one (the trip's two aren't)");
   const herLinks = await pis(hers);
-  assert.equal(new URL(herLinks[1][1]).searchParams.get("q"), "Flights from Alicante to Denpasar on 2026-12-10 one way");
+  assert.equal(new URL(herLinks[1][1]).searchParams.get("q"), "Flights from ALC to DPS on 2026-12-10 one way");
   assert.equal(herLinks[0][1], "https://www.skyscanner.net/transport/flights/alc/dps/261210/?adultsv2=1&rtn=0");
   // The trip's own flight there is the rest's now: "Emre'nin bileti", for one.
   const mainOut = flightTo("İstanbul → Denpasar");
