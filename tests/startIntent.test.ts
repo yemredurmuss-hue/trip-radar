@@ -109,7 +109,7 @@ describe("the owner's sentence (English, no model)", () => {
     expect(essentialsDone(s)).toBe(true);
     expect(nextQuestion(s)).toBeNull();
     const c = withLang("en", () => creationOf(s))!;
-    expect(c.title).toBe("AfrikaBurn 2027");
+    expect(c.title).toBe("11-Day AfrikaBurn Festival Experience");
     expect(c.dates).toEqual({ start: "2027-04-24", end: "2027-05-04" });
     expect(c.stays.map((x) => `${x.city} ${x.date}..${x.end_date}`)).toEqual(["Cape Town 2027-04-24..2027-04-26", "Tankwa Karoo 2027-04-26..2027-05-02", "Cape Town 2027-05-02..2027-05-04"]);
     expect(c.travel.map((x) => `${x.date} ${x.from}→${x.to}`)).toEqual(["2027-04-24 İstanbul→Cape Town", "2027-05-04 Cape Town→İstanbul"]);
@@ -147,7 +147,7 @@ describe("the owner's sentence (English, no model)", () => {
     const bali = applyAnswer(s, { q: "where", place: "Bali", country: "Endonezya", code: "ID" }, 4);
     expect(bali.intent).toBeNull();
     expect(bali.start).toBeNull();
-    expect(creationOf(bali)!.title).toBe("Bali Gezisi");
+    expect(creationOf(bali)!.title).toBe("9 Günlük Bali Arkadaş Gezisi");
   });
 });
 
@@ -183,7 +183,7 @@ describe("the events' table", () => {
     expect(d).toEqual({ start: "2027-09-18", end: "2027-09-22" });
     expect(d.start >= s.intent!.dates!.start && d.end <= s.intent!.dates!.end).toBe(true);
     expect(nextQuestion(s)).toBe("want");
-    expect(creationOf(s)!.title).toBe("Oktoberfest 2027");
+    expect(creationOf(s)!.title).toBe("5 Günlük Oktoberfest Gezisi");
     // A long event: a few of its days, or all of it.
     expect(questionOf({ ...s, duration: null }, "duration", ctx).chips.slice(0, 4).map((c) => c.label)).toEqual(["3 gün", "5 gün", "7 gün", "Tümü (16 gün)"]);
   });
@@ -239,12 +239,12 @@ describe("the events' table", () => {
     expect(s.route).toMatchObject({ source: "event", confirmed: false });
     expect(s.route!.stops.map((x) => x.city)).toEqual(["Tokyo", "Kyoto"]);
     expect(routeForGenerate(s)?.confirmed).toBe(true);
-    expect(creationOf(s)!.title).toBe("Kiraz Çiçekleri 2027");
+    expect(creationOf(s)!.title).toBe("10 Günlük Japonya Kiraz Çiçekleri Gezisi");
     s = typed(newStart("nl", "plan", 1, "tr"), "Kuzey ışıkları görmek istiyoruz");
     expect(s.intent).toMatchObject({ kind: "theme", place: "Tromsø", dates: null });
     expect(nextQuestion(s)).toBe("duration");
     expect(eventLine(s.intent!)).toBe("Kuzey Işıkları için en iyi dönem genelde Eylül sonu – Mart, karanlık gecelerde (resmî siteden kontrol et).");
-    expect(tripTitle(s)).toBe("Kuzey Işıkları Gezisi");
+    expect(tripTitle(s)).toBe("Tromsø Kuzey Işıkları Gezisi");
   });
 });
 
@@ -338,7 +338,7 @@ describe("making the trip by itself", () => {
 describe("the title from the intent", () => {
   it("the trip's and the start screen's", () => {
     const s = typed(newStart("ab", "plan", 1, "tr"), OWNER);
-    expect(tripTitle(s)).toBe("AfrikaBurn 2027");
+    expect(tripTitle(s)).toBe("7 Günlük AfrikaBurn Festival Deneyimi");
     expect(startName(s)).toBe("AfrikaBurn");
     const bali = typed(newStart("b", "plan", 1, "tr"), "Bali'ye gidelim");
     expect(tripTitle(bali)).toBe("Bali Gezisi");
@@ -400,7 +400,7 @@ describe("review 3 and 10: a month or dates said with the event", () => {
     expect(kept.intent).toBeNull();
     expect(kept.where?.place).toBe("London");
     expect(kept.start).toMatchObject({ approx: true });
-    expect(tripTitle(kept)).toBe("London Gezisi");
+    expect(tripTitle(kept)).toBe("5 Günlük London Gezisi");
     const fitted = applyAnswer(w, { q: "clash", keep: false }, 3);
     expect(tripDates(fitted)).toEqual({ start: "2027-06-28", end: "2027-07-02" });
     expect(nextQuestion(fitted)).toBe("want");
@@ -440,7 +440,7 @@ describe("review 4: a place of their own is kept", () => {
     const original = applyAnswer(s, { q: "venue", original: true }, 3);
     expect(original.where?.place).toBe("Münih");
     expect(original.intent?.dates?.start).toBe("2027-09-18");
-    expect(tripTitle(original)).toBe("Oktoberfest 2027");
+    expect(tripTitle(original)).toBe("16 Günlük Oktoberfest Gezisi");
   });
   it("its own place or country said again changes nothing (Holi in India, Wimbledon London, cherry blossom in Japan)", () => {
     expect(read("Holi in India").where?.place).toBe("Mathura");
@@ -483,10 +483,10 @@ describe("review 7: a year said with it", () => {
   it("AfrikaBurn 2028, Holi 2028: that year's dates and title", () => {
     const a = typed(newStart("a", "plan", 1, "tr"), "AfrikaBurn 2028'e gitmek istiyorum");
     expect(a.intent?.dates).toEqual({ start: "2028-04-24", end: "2028-04-30", approx: true });
-    expect(tripTitle(a)).toBe("AfrikaBurn 2028");
+    expect(tripTitle(a)).toBe("7 Günlük AfrikaBurn Festival Deneyimi");
     const h = typed(newStart("h", "plan", 1, "tr"), "Holi 2028");
     expect(h.intent?.dates?.start).toBe("2028-03-10");
-    expect(tripTitle(h)).toBe("Holi 2028");
+    expect(tripTitle(h)).toBe("2 Günlük Holi Gezisi");
   });
 });
 

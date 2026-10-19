@@ -467,6 +467,8 @@ export interface CustomCard {
 export interface CustomPlaybook {
   /** The kind in words ("Kızıldeniz liveaboard dalış gezisi"). */
   label: string;
+  /** The end of the trip's title in the traveller's words ("Dalış Gezisi", "Aile Kutlaması"), as the model gave it. */
+  titleTheme?: string | null;
   /** The nearest ready mix (its defaults, its tone when none is given). */
   base: ShapePreset;
   /**

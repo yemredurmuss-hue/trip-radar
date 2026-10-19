@@ -83,7 +83,7 @@ describe("the chat's language (item 1)", () => {
     // The English board's guess, said the Turkish way and only once.
     expect(from.chips.map((c) => c.label)).toEqual(["İstanbul", "Ankara", "İzmir", "Antalya"]);
     expect(withLang(s1.lang, () => checklist(s1, ctx).map((r) => r.label))).toEqual(["Nereye", "Nereden", "Kimle", "Ne zaman", "Ne istiyorsun", "Rota"]);
-    expect(withLang(s1.lang, () => creationOf(s1))!.title).toBe("Koh Phangan Gezisi");
+    expect(withLang(s1.lang, () => creationOf(s1))!.title).toBe("1 Aylık Koh Phangan Gezisi");
     // The board's own language is untouched.
     expect(lang()).toBe("en");
     // Once decided, a later line in another language doesn't switch it.
@@ -108,13 +108,13 @@ describe("the chat's language (item 1)", () => {
       if (step.id === "trip") s = { ...s, tripId };
     }
     const trip = (await (await db()).get("trips", s.tripId!))!;
-    expect(trip.title).toBe("Koh Phangan Gezisi");
+    expect(trip.title).toBe("1 Aylık Koh Phangan Gezisi");
     expect(trip.confirmedDates).toEqual({ start: "2027-01-10", end: "2027-02-10" });
     const items = await listItems(s.tripId!);
     expect(items.map((i) => i.name).sort()).toEqual(["Konaklama · Koh Phangan", "Uçuş · Koh Samui → İstanbul", "Uçuş · İstanbul → Koh Samui"]);
     expect(items.find((i) => i.category === "stay")?.countryCode).toBe("TH");
     const last = (await listMessages(s.tripId!)).at(-1)!;
-    expect(last.text).toMatch(/^Koh Phangan Gezisi hazır: 31 gece, 1 durak\./);
+    expect(last.text).toMatch(/^1 Aylık Koh Phangan Gezisi hazır: 31 gece, 1 durak\./);
     expect(last.text).toContain("Eksik kalanları buradan konuşalım: gezinin tarzı.");
     expect(lang()).toBe("en");
   });
@@ -143,7 +143,7 @@ describe("an answer fills the question it answers (item 2)", () => {
     const change = applyAnswer(s2, { q: "route", action: "change" }, 4);
     expect(withLang("tr", () => questionOf(change, "route", ctx)).chips.map((c) => c.label)).toEqual(["Tek durak: Koh Phangan"]);
     const c = withLang("tr", () => creationOf(s2))!;
-    expect(c.title).toBe("Koh Phangan Gezisi");
+    expect(c.title).toBe("1 Aylık Koh Phangan Gezisi");
     expect(c.stays.map((x) => [x.city, x.date, x.end_date])).toEqual([["Koh Phangan", "2027-01-10", "2027-02-10"]]);
     expect(c.travel.map((x) => `${x.from}→${x.to}`)).toEqual(["İstanbul→Koh Samui", "Koh Samui→İstanbul"]);
     expect(c.countries).toEqual({ [Object.keys(c.countries)[0]]: { code: "TH", name: "Tayland" } });
@@ -162,7 +162,7 @@ describe("an answer fills the question it answers (item 2)", () => {
     expect([s3.where?.place, s3.from]).toEqual(["Koh Phangan", "London"]);
     const reply = withLang("en", () => replyText(s1, s2, ctx));
     expect(reply).toMatch(/^Got it: from Istanbul\.|What would you most like to do in Koh Phangan\?/);
-    expect(withLang("en", () => creationOf(s2))!.title).toBe("Koh Phangan Trip");
+    expect(withLang("en", () => creationOf(s2))!.title).toBe("1-Month Koh Phangan Trip");
   });
 
   it("where changes only when the traveller says so; a place in the same country said more exactly refines it", () => {
@@ -317,7 +317,7 @@ describe("prepared while chatting (item 7)", () => {
     const s = typedFrom(opening("p5"), "İstanbul", null, 3);
     const before = (await (await db()).getAll("trips")).length;
     const made = wouldMake(s)!;
-    expect(made.trip.title).toBe("Koh Phangan Gezisi");
+    expect(made.trip.title).toBe("1 Aylık Koh Phangan Gezisi");
     expect(made.items.map((i) => i.name).sort()).toEqual(["Konaklama · Koh Phangan", "Uçuş · Koh Samui → İstanbul", "Uçuş · İstanbul → Koh Samui"]);
     expect((await (await db()).getAll("trips")).length).toBe(before);
   });
