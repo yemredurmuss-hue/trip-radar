@@ -9,7 +9,8 @@
 import { z } from "zod";
 import { L } from "./i18n";
 import { formatDateRange } from "./items";
-import { cityKeyOf } from "./plan";
+import { heroCoverImage, storedMainPlaces, tripCities } from "./destinations";
+import { buildPlan, cityKeyOf } from "./plan";
 import { normWords } from "./startEvents";
 import { bareName, countryCodeOfName, knownPlaceOf } from "./startTrip";
 import type { Item, Trip } from "./types";
@@ -33,39 +34,13 @@ export function tripPlaces(trip: Pick<Trip, "intent" | "title">, items: Item[]):
 }
 
 /**
- * The places a trip's card names ("Porto ve Lizbon"): where it stays (in order), then where it does things. A
- * flight's or train's city is where it lands, and the way back lands at home, so travel names a place only when
- * nothing on the ground does (then the first one out); an eSIM's or an insurance's is never one.
+ * The picture on a trip's card in the list (C36, row 163): the cover its board's hero shows, as stored (nothing fetched
+ * here): the trip's main places as its board settled them, the first with a photo, else the trip's one picture; null
+ * (the hero shows no photo either): the card's gradient.
  */
-export function tripCardPlaces(items: Item[], max = 3): string[] {
-  const live = items.filter((i) => i.status !== "dismissed" && i.city?.trim());
-  const ground = live.filter((i) => i.category === "activity" || i.category === "food");
-  const travel = live
-    .filter((i) => i.category === "flight" || i.category === "transport")
-    .sort((a, b) => (a.dates.start ?? "9999").localeCompare(b.dates.start ?? "9999"));
-  let all = [...stops(live), ...ground.map((i) => i.city!)];
-  if (!all.length && travel.length) all = [travel[0].city!];
-  return [...new Map(all.map((x) => [cityKeyOf(x), x])).values()].slice(0, max);
-}
-
-/**
- * The picture on a trip's card in the list: the photo its board's hero shows, as stored (nothing fetched here). A
- * place's city photo (the first of its places that has one), else the trip's one picture, else any city photo it
- * keeps (Madeira's, its places being Funchal...), else a save's own picture; null: the card's gradient.
- */
-export function tripCardPhoto(trip: Pick<Trip, "heroImage" | "cityImages">, items: Item[]): string | null {
-  const photos = trip.cityImages ?? {};
-  const of = (place: string) => {
-    const key = cityKeyOf(place);
-    return (key && photos[key]) || null;
-  };
-  return (
-    tripCardPlaces(items, Infinity).map(of).find(Boolean) ??
-    trip.heroImage ??
-    Object.values(photos).find(Boolean) ??
-    items.find((i) => i.status !== "dismissed" && i.imageUrl)?.imageUrl ??
-    null
-  );
+export function tripCardPhoto(trip: Trip, items: Item[]): string | null {
+  const cities = tripCities(buildPlan(trip, items), items);
+  return heroCoverImage(trip, storedMainPlaces(trip, cities, items));
 }
 
 /** "İstanbul → Lizbon → Porto · 1–8 Aralık · 2 kişi (Sabine) · Konsept: … · Şartlar: …", at most 400 characters. */

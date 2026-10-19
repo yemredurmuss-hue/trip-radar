@@ -160,7 +160,8 @@ try {
     };
   });
   await app.goto(`chrome-extension://${id}/app.html`);
-  await app.getByText("İlk seçeneğini kaydet").waitFor();
+  // (v82, row 163: the empty home's words follow the new start, a sentence or a link in the box)
+  await app.getByText("İlk gezini başlat").waitFor();
   await app.screenshot({ path: `${out}/1-empty.png` });
 
   // 3. Queue a capture without an API key: the worker must pick it up and report a readable error.
@@ -2750,7 +2751,7 @@ try {
     console.log("intercepted:", geminiBodies.length, "requests");
     throw e;
   });
-  await board.getByText("İlk seçeneğini kaydet").waitFor({ timeout: 10000 }); // modal closed by itself
+  await board.getByText("İlk gezini başlat").waitFor({ timeout: 10000 }); // modal closed by itself
   console.log("✓ flow: pasted key connects and saves (models listed via SDK)");
 
   const reader = (await build({ entryPoints: ["src/lib/pagecapture.ts"], bundle: true, write: false, format: "iife", globalName: "PC", target: "es2022" })).outputFiles[0].text;

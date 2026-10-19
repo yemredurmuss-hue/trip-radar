@@ -7,8 +7,8 @@
 // the trip as `placeParents`), validated here. Until it answers (no key, an error), a cheap guess: a stay whose
 // own address names another of the trip's places folds into it. Pure.
 import { L } from "./i18n";
-import { cityKeyOf, knownPlace } from "./plan";
-import type { Item } from "./types";
+import { cityKeyOf, knownPlace, type Plan } from "./plan";
+import type { Item, Trip } from "./types";
 
 /** A destination as the hero shows it, and the trip's places (the Plan's cities) inside it, in order. */
 export interface MainPlace {
@@ -471,6 +471,40 @@ export function resolveParents(cities: string[], items: Item[], known: Record<st
   for (const key of Object.keys(out)) out[key] = regionNameOf(out[key]);
   return out;
 }
+
+/** The trip's cities for the hero's photos: in the order the nights go, each once; else the saved stays' cities. */
+export function tripCities(plan: Pick<Plan, "stayBlocks">, items: Item[]): string[] {
+  const seen = new Map<string, string>();
+  const put = (city: string | null | undefined) => {
+    const key = cityKeyOf(city);
+    if (key && !seen.has(key)) seen.set(key, city!);
+  };
+  for (const b of plan.stayBlocks) put(b.city);
+  if (!seen.size) for (const i of items) if (i.status !== "dismissed" && i.category === "stay") put(i.city);
+  return [...seen.values()];
+}
+
+/** The trip's main places as its board last settled them: the model's stored answer for these cities, else the guess. */
+export function storedMainPlaces(trip: Pick<Trip, "placeParents">, cities: string[], items: Item[]): MainPlace[] {
+  const known = trip.placeParents?.key === placesKey(cities) ? trip.placeParents.parents : null;
+  return mainPlaces(cities, resolveParents(cities, items, known));
+}
+
+/**
+ * The hero's main places with their photos (v82 "Hero = mozaik"): a main place's own photo, else the first of its
+ * places that has one (Funchal's for Madeira); a trip from before the city photos lends its one picture to the first
+ * place, or it stands alone. Pure: the photos are what the trip keeps.
+ */
+export function heroCityPhotos(trip: Pick<Trip, "cityImages" | "heroImage">, mains: readonly MainPlace[]): { name: string; image: string | null }[] {
+  const photo = (key: string | null) => (key ? trip.cityImages?.[key] : null) || null;
+  const list = mains.map((m) => ({ name: m.name, image: photo(cityKeyOf(m.name)) ?? m.members.map((c) => photo(cityKeyOf(c))).find(Boolean) ?? null }));
+  if (!trip.heroImage || list.some((c) => c.image)) return list;
+  return list.length ? [{ ...list[0], image: trip.heroImage }, ...list.slice(1)] : [{ name: "", image: trip.heroImage }];
+}
+
+/** The hero's cover (lib/heroMosaic mosaicOf: its first place with a photo), and so the trip's card in Seyahatlerim (C36). */
+export const heroCoverImage = (trip: Pick<Trip, "cityImages" | "heroImage">, mains: readonly MainPlace[]): string | null =>
+  heroCityPhotos(trip, mains).find((c) => c.image)?.image ?? null;
 
 /** The model's instructions: which of the trip's places is a smaller locality inside a bigger destination. */
 export const placesSystemPrompt = (): string =>

@@ -8,7 +8,7 @@ import { demoShift, loadDemoTrip, shiftDates } from "../src/lib/demo";
 import { listingKeyOf } from "../src/lib/items";
 import { buildLegs, legTiming } from "../src/lib/legs";
 import { buildPlan } from "../src/lib/plan";
-import { tripCardPhoto, tripCardPlaces } from "../src/lib/tripBrief";
+import { tripCardPhoto } from "../src/lib/tripBrief";
 import { makeItem } from "./fixtures/makeItem";
 
 describe("demo trip", () => {
@@ -54,32 +54,23 @@ describe("demo trip", () => {
     expect(listing!.reviews.map((r) => r.date)).toEqual(["2026-10", "2026-10", "2026-09", "2026-09", "2026-08"]);
     expect(shiftDates("2026-10-05", 0)).toBe("2026-10-05");
   });
-
-  it("is listed with the places it goes to, not the home the flight back lands in", async () => {
-    const id = await loadDemoTrip({ today: "2026-10-05" });
-    expect(tripCardPlaces(await listItems(id))).toEqual(["Porto", "Lizbon"]);
-    // Only travel saved: the first one out names the place; the way back doesn't.
-    const out = makeItem({ category: "flight", city: "Porto", dates: { start: "2026-10-08", end: null, source: "page" } });
-    const back = makeItem({ category: "flight", city: "İstanbul", dates: { start: "2026-10-14", end: null, source: "page" } });
-    const esim = makeItem({ category: "esim", city: "Portekiz" });
-    expect(tripCardPlaces([back, out, esim])).toEqual(["Porto"]);
-    expect(tripCardPlaces([esim])).toEqual([]);
-  });
 });
 
 describe("a trip's card in the list", () => {
-  it("shows the photo its board's hero shows, as stored; the gradient (null) without one", async () => {
+  it("shows the cover its board's hero shows (row 163), as stored; the gradient (null) when the hero has none either", async () => {
     const id = await loadDemoTrip({ today: "2026-10-05" });
+    const trip = (await (await db()).get("trips", id))!;
     const items = await listItems(id);
-    expect(tripCardPhoto({ heroImage: null }, items)).toBe(items.find((i) => i.imageUrl)?.imageUrl ?? null);
+    // No city photo and no picture of its own: the hero shows none, and a save's photo isn't the trip's cover.
+    expect(tripCardPhoto({ ...trip, heroImage: null, cityImages: {} }, items)).toBeNull();
     const porto = "https://images.unsplash.com/photo-porto";
     const lisbon = "https://images.unsplash.com/photo-lisbon";
     // The first place's city photo, as the hero shows it first; the trip's one picture comes after.
-    expect(tripCardPhoto({ heroImage: "https://x/hero.jpg", cityImages: { lizbon: lisbon, porto } }, items)).toBe(porto);
-    expect(tripCardPhoto({ heroImage: "https://x/hero.jpg", cityImages: { porto: null } }, items)).toBe("https://x/hero.jpg");
-    // Madeira's photo, its places being Funchal: any city photo the trip keeps.
+    expect(tripCardPhoto({ ...trip, heroImage: "https://x/hero.jpg", cityImages: { lizbon: lisbon, porto } }, items)).toBe(porto);
+    expect(tripCardPhoto({ ...trip, heroImage: "https://x/hero.jpg", cityImages: { porto: null } }, items)).toBe("https://x/hero.jpg");
+    // Madeira's photo (kept under its main city's key), a stay in Funchal being Madeira's (the hero's main place).
     const funchal = makeItem({ category: "stay", city: "Funchal" });
-    expect(tripCardPhoto({ heroImage: null, cityImages: { madeira: "https://x/madeira.jpg" } }, [funchal])).toBe("https://x/madeira.jpg");
-    expect(tripCardPhoto({ heroImage: null }, [funchal])).toBeNull();
+    expect(tripCardPhoto({ ...trip, heroImage: null, cityImages: { funchal: "https://x/madeira.jpg" } }, [funchal])).toBe("https://x/madeira.jpg");
+    expect(tripCardPhoto({ ...trip, heroImage: null, cityImages: {} }, [funchal])).toBeNull();
   });
 });
