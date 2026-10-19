@@ -36,6 +36,9 @@ const BY_TEXT: [RegExp, TransportMode][] = [
   [LOCAL, "taxi"],
 ];
 
+/** The way of travel a text names ("Sahil ulaşımı için motosiklet kiralama" is a motorbike), else null. */
+export const modeOfText = (text: string): TransportMode | null => BY_TEXT.find(([re]) => re.test(text))?.[1] ?? null;
+
 export const legTransportMode = (mode: LegMode | null | undefined): TransportMode | null => (mode ? (FROM_LEG[mode] ?? null) : null);
 
 /**

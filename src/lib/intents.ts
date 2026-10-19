@@ -23,7 +23,7 @@ import { boardBadges, boardOptions } from "./board";
 import { brandOf, type Brand } from "./brands";
 import { isCampStay } from "./campStay";
 import { cardFacts, type CardFacts } from "./cardFacts";
-import { cardKind, cardKindLabel, legTransportMode, transportMode, type CardKind } from "./cardKinds";
+import { cardKind, cardKindLabel, legTransportMode, modeOfText, RENTAL_MODES, transportMode, type CardKind } from "./cardKinds";
 import { checkInTimeOf, daysToStart, startDay } from "./cardTime";
 import { flightLeg, flightWants, safeContactUrl, ticketPrices, type FlightLeg } from "./cardTicket";
 import { footOf, legCardView } from "./cardView";
@@ -815,11 +815,15 @@ function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
 
 /** What a category is told is missing (C16: a return ticket, an eSIM, insurance): an intent still to find, never booked. */
 function suggestedIntent(section: SectionId, s: Suggestion, env: Env): IntentVM {
-  const kind: CardKind = s.template === "esim" ? "esim" : s.template === "insurance" ? "insurance" : (DEFAULT_KIND[section] ?? "other");
+  // (a way of travel is named by its own words: the AI's "Sahil ulaşımı için motosiklet kiralama" is a motorbike, drawn as one)
+  const mode = section === "transport" ? modeOfText(`${s.title} ${s.why ?? ""}`) : null;
+  const kind: CardKind = s.template === "esim" ? "esim" : s.template === "insurance" ? "insurance" : (mode ?? DEFAULT_KIND[section] ?? "other");
+  // A rental says what it is ("Motosiklet kiralama"), the AI's longer line stays its note (Emre, 19 Ekim).
+  const name = mode && RENTAL_MODES.includes(mode) ? L(`${cardKindLabel(kind)} kiralama`, `${cardKindLabel(kind)} rental`) : s.title;
   const start = isoDate(s.payload?.start ?? null);
   const range = start ? { start, end: isoDate(s.payload?.end ?? null) } : env.input.plan.range;
   const frame = frameOf(section);
-  const head: IntentHead = { name: s.title, route: null, parts: range ? [formatDateRange(range.start, range.end)] : [], kindWord: MIXED.includes(section) ? cardKindLabel(kind) : null, word: null, wants: [], image: null, city: s.payload?.city ?? null, date: range?.start ?? null, nights: 0 };
+  const head: IntentHead = { name, route: null, parts: range ? [formatDateRange(range.start, range.end)] : [], kindWord: MIXED.includes(section) ? cardKindLabel(kind) : null, word: null, wants: [], image: null, city: s.payload?.city ?? null, date: range?.start ?? null, nights: 0 };
   return {
     key: `suggestion:${s.key}`,
     section,
