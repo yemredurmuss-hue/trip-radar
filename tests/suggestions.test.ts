@@ -330,6 +330,16 @@ describe("review fixes", () => {
     expect(homeFromFlights(ubud)).toBeNull();
   });
 
+  it("a flight the start chat wrote from a city (\"İstanbul\"): home is its airport's country, the eSIM rule comes (Emre, 19 Ekim)", () => {
+    const lk = makeItem({ category: "stay", name: "Ahangama Konaklama", city: "Ahangama", countryCode: "LK", needKey: "stay:ahangama", dates: { start: "2026-12-11", end: "2026-12-20", source: "user" }, status: "chosen" });
+    const out = flight("İstanbul", "Kolombo", "2026-12-10T08:00", "2026-12-10T22:00", { status: "saved" });
+    expect(homeFromFlights([out, lk])).toBe("TR");
+    const k = keys(rulesFor([out, lk], { home: null }));
+    expect(k).toContain("rule:esim");
+    expect(k).toContain("rule:insurance");
+    expect(homeFromFlights([{ ...out, flight: { ...out.flight!, from: "Bilinmeyenköy" } }])).toBeNull();
+  });
+
   it("a connection airport isn't a country visited", () => {
     const out = flight("IST", "DXB", "2026-12-10T02:00", "2026-12-10T08:00");
     const on = flight("DXB", "LIS", "2026-12-10T12:00", "2026-12-10T18:00");
