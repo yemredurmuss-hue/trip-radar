@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { addEvent, db, newId, notifyChanged } from "../lib/db";
 import { moveDocsToTrip } from "../lib/docs";
 import { LEVEL_LABELS, type GroupDecision } from "../lib/decision";
@@ -122,10 +123,31 @@ interface Props {
   decisions: Decisions | null;
   onClose: () => void;
   onMoved: (tripId: string) => void;
+  /** "Karşılaştır →": the Pano's comparison of its intent (B12). */
   onCompare: () => void;
 }
 
 export function ItemDrawer({ item, group, trips, decision, decisions, onClose, onMoved, onCompare }: Props) {
+  // A window: the focus goes into it (its ×), Escape shuts it, and the focus goes back where it was (ⓘ, a card) unless
+  // what opens next (the Pano) has taken it.
+  const panel = useRef<HTMLElement>(null);
+  const shut = useRef(onClose);
+  shut.current = onClose;
+  useEffect(() => {
+    const opener = document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null;
+    panel.current?.querySelector<HTMLElement>(".close")?.focus({ preventScroll: true });
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.stopPropagation();
+      shut.current();
+    };
+    document.addEventListener("keydown", onKey, true);
+    return () => {
+      document.removeEventListener("keydown", onKey, true);
+      const at = document.activeElement;
+      if (opener?.isConnected && (!at || at === document.body || !at.isConnected)) opener.focus({ preventScroll: true });
+    };
+  }, []);
   async function setStatus(status: ItemStatus, event: (name: string) => string) {
     const d = await db();
     // The stored record, not the board's corrected copy (its corrections stay beside the page's values).
@@ -186,7 +208,7 @@ export function ItemDrawer({ item, group, trips, decision, decisions, onClose, o
   return (
     <>
       <div className="overlay" onClick={onClose} />
-      <aside className="drawer" role="dialog" aria-label={item.name}>
+      <aside className="drawer" role="dialog" aria-modal="true" aria-label={item.name} ref={panel}>
         <button className="close" onClick={onClose} aria-label={L("Kapat", "Close")}>
           ×
         </button>

@@ -177,6 +177,8 @@
 .q-dl { font-size: var(--q-fs-info); font-weight: 650; color: var(--q-acc); text-decoration: none; }
 .q-dl:hover { text-decoration: underline; }
 .q-dfoot { grid-column: 1 / -1; display: flex; gap: 8px; flex-wrap: wrap; padding-top: 10px; border-top: 1px dashed var(--q-line); }
+/* Ayrıntı in its 288 px box: its ways on ("Tüm detaylar ›", Düzenle, Karşılaştır) stay at the bottom while the rest scrolls. */
+.z-det > .q-dfoot { position: sticky; bottom: 0; z-index: 1; margin: 0 -44px -14px -16px; padding: 10px 44px 12px 16px; background: #fff; }
 .q-dact { font: inherit; font-size: var(--q-fs-small); font-weight: 650; border: 1px solid var(--q-line); background: #fff; border-radius: 99px; padding: 5px 12px; cursor: pointer; color: var(--q-ink); text-decoration: none; }
 .q-dact:hover { border-color: var(--q-acc); color: var(--q-acc); }
 .q-dact.bad { color: var(--q-bad); }
@@ -306,6 +308,7 @@ body.still .z-int .q-bwrap, body.still .q-fold, body.still .q-fold-in > * { tran
   .q-oh .z-self > small, .z-pl > span { display: none; }
   .z-pl { padding: 0 4px; }
   .z-det { grid-template-columns: 1fr; }
+  .z-det > .q-dfoot .q-sp { display: none; }
 }
 
 /* ---- the details' and the options' own pieces ---- */

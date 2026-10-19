@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { loadDemoTrip } from "../lib/demo";
 import { L } from "../lib/i18n";
 import { buildSteps } from "../lib/decideSteps";
+import { planTarget } from "../lib/chatCards";
 import { buildPlan, groupKeyOf, liveGroups } from "../lib/plan";
 import { purgeTrash, restoreTrash, trashTrip } from "../lib/trash";
 import { checkStraysOnce } from "../lib/strays";
@@ -259,7 +260,9 @@ export function App() {
           onMoved={board.selectTrip}
           onCompare={() => {
             setOpenItemId(null);
-            setCompareKey(decisionOf(openItem)?.key ?? groupKeyOf(openItem));
+            // B12: the comparison is the Pano's (the old window is not in this version, C11): it opens at the record's intent, the record lit.
+            const at = planLink ? planTarget(openItem, planLink.collections) : null;
+            if (at) planLink?.show({ kind: "pano", section: at.section, intentKey: at.kind === "section" ? null : at.intentKey, itemId: openItem.id });
           }}
         />
       )}

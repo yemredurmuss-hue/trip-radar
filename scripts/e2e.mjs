@@ -73,6 +73,11 @@ const LANG_ARG = "--lang=tr-TR";
 // Mac scrollbars overlay the page (a classic one takes 15px the layout checks do not expect); a sandbox without a mouse reports (hover: none), which turns every hover tip into a tap tip: say a mouse is there.
 // The layout checks were tuned on a Mac's system font; Inter (the sandbox's) is a little wider: a few px of slack there.
 const FONT_SLACK = process.platform === "darwin" ? 0 : 20;
+// v82: the old comparison window (CompareView: its board, table and weights) is C11's karar yardımı, not reached from the Plan or
+// the Pano in this version (spec §1.1, row 199; bu sürümde arayüzden düştü). Its checks are kept behind this for its return.
+const CMP_SHOWN = false;
+// v82: the start card (C18) is not in this version (spec §1.1, row 200; bu sürümde arayüzden düştü).
+const START_CARD_SHOWN = false;
 const HEADLESS_ARGS = process.env.E2E_HEADED ? [] : ["--headless=new", "--hide-scrollbars", "--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4"];
 
 // The sample trip's dates are fixed (8–14 October 2026): the pages read the calendar as on 5 October, so the
@@ -1078,96 +1083,117 @@ try {
   assert.ok((await intent.locator(".x-ptag").count()) >= 1, "what was understood, in short tags");
   await app.screenshot({ path: `${out}/3b-card.png` });
 
-  // Comparison: numbers side by side, the weights the user controls, and why (the details' "Karşılaştır", C12).
+  // Comparison (the details' "Karşılaştır", C12). v82, B12: the comparison is the Pano's; the old window (its Kartlar, the table,
+  // the weights the traveller sets, "Neden?", Sırayla karar ver) is C11's karar yardımı, not in this version (spec §1.1, row 199:
+  // bu sürümde arayüzden düştü). "Karşılaştır" opens the Pano on the intent: its options side by side, best fit first, what was
+  // asked for ✓ / ✕, their pluses and minuses. The old window's checks below wait, as they were, for the version that brings it back.
   stayWin = await openStayChoice();
   await stayWin.getByRole("button", { name: "Karşılaştır", exact: true }).click();
-  const compare = app.getByRole("dialog", { name: "Karşılaştırma" });
-  // 0.37: stays open on the board (Kartlar): a card per option, its badge, score, price and biggest pros/cons.
-  await compare.locator(".cmp-views [role=tab].on", { hasText: "Kartlar" }).waitFor();
-  const boardCard = (name) => compare.locator(`.bd-card[aria-label="${name}"]`);
-  await boardCard("Jardim Stay").locator(".bd-badge", { hasText: "Önerim" }).waitFor();
-  assert.match(await boardCard("Jardim Stay").locator(".bd-score").innerText(), /^\d+\s*puan$/);
-  await boardCard("Jardim Stay").locator(".bd-needs .need.yes", { hasText: "Sessiz" }).waitFor(); // what they asked for, checked
-  // (what the old card's ✕ said on hover: the board says it on the option's own mark)
-  await boardCard("Ribeira Rooms").locator('.bd-needs .need.no[title^="Hafta sonu gece gürültüsü"]').waitFor();
-  assert.ok((await boardCard("Jardim Stay").locator(".bd-pc li").count()) >= 2, "its biggest pros and cons");
-  assert.ok((await compare.locator(".bd-card:not(.bd-add)").count()) >= 2, "every option a card");
+  const cmpPano = app.getByRole("dialog", { name: "Pano" });
+  const cmpCol = (name) => cmpPano.locator(`.q-cmp3 .q-col[aria-label="${name}"]`);
+  await cmpCol("Jardim Stay").waitFor();
+  assert.equal(await app.getByRole("dialog", { name: "Karşılaştırma" }).count(), 0, "row 199: the old comparison window is not opened");
+  assert.equal(await cmpPano.locator(".q-cmp3 .q-col").first().getAttribute("aria-label"), "Jardim Stay", "best fit first");
+  assert.match(await cmpCol("Jardim Stay").locator(".q-score").innerText(), /^\d+\s*\/100/);
+  await cmpCol("Jardim Stay").locator(".q-mc.y", { hasText: "Sessiz" }).waitFor(); // what they asked for, checked
+  await cmpCol("Ribeira Rooms").locator(".q-mc.n", { hasText: "Sessiz" }).waitFor();
+  assert.ok((await cmpCol("Jardim Stay").locator(".q-pl li").count()) >= 2, "its pros and cons");
+  assert.ok((await cmpPano.locator(".q-cmp3 .q-col").count()) >= 2, "every option a column");
   await app.setViewportSize({ width: 1440, height: 1100 });
   await app.screenshot({ path: `${out}/3c-board.png` });
   await app.setViewportSize({ width: 1440, height: 900 });
-  // Karar Panosu #10 "Sırayla karar ver": one open decision per screen ("1 / N"), the options side by side with one line of advice;
-  // "Sonra" passes one on, "Geri" comes back, the last screen says what is left; the cards and the table stay as they were.
-  // v82: C11 (karar yardımı) is out of this version's interface (spec §1.1, bu sürümde arayüzden düştü): the button is not offered,
-  // its code (board/StepDecide) stays. The walk below waits, as it was, for the version that brings it back.
-  const C11_SHOWN = false;
-  assert.equal(await compare.getByRole("button", { name: "Sırayla karar ver" }).count(), 0, "C11: Sırayla karar ver is not offered in this version");
-  if (C11_SHOWN) {
-    await compare.getByRole("button", { name: "Sırayla karar ver" }).click();
-    const stepHead = compare.locator(".sd-top h3");
-    assert.match(await stepHead.innerText(), /^1 \/ \d+ · Konaklama/, "the window's decision comes first");
-    await compare.locator(".sd-reco").waitFor();
-    assert.ok((await compare.locator(".sd-card").count()) >= 2, "its options side by side");
-    await compare.locator('.sd-card[aria-label="Jardim Stay"] .sd-price').waitFor(); // the price is never hidden
-    await app.screenshot({ path: `${out}/3c-step.png` });
-    await app.setViewportSize({ width: 390, height: 844 });
-    assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll in the one-by-one view at 390 px");
-    assert.ok(await compare.locator(".compare-card, .sd").first().evaluate((el) => el.scrollWidth <= el.clientWidth + 1), "the window doesn't spill at 390 px");
-    await app.screenshot({ path: `${out}/3c-step-390.png` });
-    await app.setViewportSize({ width: 1440, height: 900 });
-    await compare.getByRole("button", { name: "Sonra", exact: true }).click();
-    while (!(await compare.getByRole("heading", { name: "Bitti" }).count())) {
-      await compare.getByRole("button", { name: "Sonra", exact: true }).click();
-    }
-    await compare.getByText(/karar sonraya kaldı/).waitFor();
-    await compare.getByRole("button", { name: "← Geri" }).click();
-    assert.match(await stepHead.innerText(), /^\d+ \/ \d+ · /, "Geri comes back to the last decision");
-    await compare.getByRole("button", { name: "Sonra", exact: true }).click();
-    await compare.getByRole("button", { name: "Tamam" }).click();
+  await cmpPano.getByRole("button", { name: "Pano'yu kapat" }).click();
+  await cmpPano.waitFor({ state: "detached" });
+  if (CMP_SHOWN) {
+    const compare = app.getByRole("dialog", { name: "Karşılaştırma" });
+    // 0.37: stays open on the board (Kartlar): a card per option, its badge, score, price and biggest pros/cons.
     await compare.locator(".cmp-views [role=tab].on", { hasText: "Kartlar" }).waitFor();
+    const boardCard = (name) => compare.locator(`.bd-card[aria-label="${name}"]`);
+    await boardCard("Jardim Stay").locator(".bd-badge", { hasText: "Önerim" }).waitFor();
+    assert.match(await boardCard("Jardim Stay").locator(".bd-score").innerText(), /^\d+\s*puan$/);
+    await boardCard("Jardim Stay").locator(".bd-needs .need.yes", { hasText: "Sessiz" }).waitFor(); // what they asked for, checked
+    // (what the old card's ✕ said on hover: the board says it on the option's own mark)
+    await boardCard("Ribeira Rooms").locator('.bd-needs .need.no[title^="Hafta sonu gece gürültüsü"]').waitFor();
+    assert.ok((await boardCard("Jardim Stay").locator(".bd-pc li").count()) >= 2, "its biggest pros and cons");
+    assert.ok((await compare.locator(".bd-card:not(.bd-add)").count()) >= 2, "every option a card");
+    await app.setViewportSize({ width: 1440, height: 1100 });
+    await app.screenshot({ path: `${out}/3c-board.png` });
+    await app.setViewportSize({ width: 1440, height: 900 });
+    // Karar Panosu #10 "Sırayla karar ver": one open decision per screen ("1 / N"), the options side by side with one line of advice;
+    // "Sonra" passes one on, "Geri" comes back, the last screen says what is left; the cards and the table stay as they were.
+    // v82: C11 (karar yardımı) is out of this version's interface (spec §1.1, bu sürümde arayüzden düştü): the button is not offered,
+    // its code (board/StepDecide) stays. The walk below waits, as it was, for the version that brings it back.
+    const C11_SHOWN = false;
+    assert.equal(await compare.getByRole("button", { name: "Sırayla karar ver" }).count(), 0, "C11: Sırayla karar ver is not offered in this version");
+    if (C11_SHOWN) {
+      await compare.getByRole("button", { name: "Sırayla karar ver" }).click();
+      const stepHead = compare.locator(".sd-top h3");
+      assert.match(await stepHead.innerText(), /^1 \/ \d+ · Konaklama/, "the window's decision comes first");
+      await compare.locator(".sd-reco").waitFor();
+      assert.ok((await compare.locator(".sd-card").count()) >= 2, "its options side by side");
+      await compare.locator('.sd-card[aria-label="Jardim Stay"] .sd-price').waitFor(); // the price is never hidden
+      await app.screenshot({ path: `${out}/3c-step.png` });
+      await app.setViewportSize({ width: 390, height: 844 });
+      assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll in the one-by-one view at 390 px");
+      assert.ok(await compare.locator(".compare-card, .sd").first().evaluate((el) => el.scrollWidth <= el.clientWidth + 1), "the window doesn't spill at 390 px");
+      await app.screenshot({ path: `${out}/3c-step-390.png` });
+      await app.setViewportSize({ width: 1440, height: 900 });
+      await compare.getByRole("button", { name: "Sonra", exact: true }).click();
+      while (!(await compare.getByRole("heading", { name: "Bitti" }).count())) {
+        await compare.getByRole("button", { name: "Sonra", exact: true }).click();
+      }
+      await compare.getByText(/karar sonraya kaldı/).waitFor();
+      await compare.getByRole("button", { name: "← Geri" }).click();
+      assert.match(await stepHead.innerText(), /^\d+ \/ \d+ · /, "Geri comes back to the last decision");
+      await compare.getByRole("button", { name: "Sonra", exact: true }).click();
+      await compare.getByRole("button", { name: "Tamam" }).click();
+      await compare.locator(".cmp-views [role=tab].on", { hasText: "Kartlar" }).waitFor();
+    }
+    console.log("✓ compare: Sırayla karar ver is not offered (C11, bu sürümde arayüzden düştü); the one-by-one walk is kept for when it comes back");
+    // Two ticked → side by side in the table, just those; "Hepsini göster" brings the rest back.
+    await boardCard("Jardim Stay").locator(".bd-tick").click();
+    await boardCard("Casa Azul").locator(".bd-tick").click();
+    await compare.getByRole("button", { name: "Tabloda yan yana gör →" }).click();
+    assert.deepEqual(await compare.locator("thead .opt-name").allInnerTexts(), ["Jardim Stay", "Casa Azul"]);
+    await compare.getByRole("button", { name: "Hepsini göster" }).click();
+    const winner = compare.locator("thead th.win .opt-name");
+    assert.equal(await winner.innerText(), "Jardim Stay");
+    await compare.getByText("Neden Jardim Stay?").waitFor();
+    // Pros and cons per column, and the sample AI review kept (dated) now that the inputs changed.
+    await compare.locator(".pc-row .pc-col.pros", { hasText: "Sessiz odalar, iyi uyku" }).waitFor().catch(async (e) => {
+      console.log("pros/cons row:", await compare.locator(".pc-row").innerText());
+      throw e;
+    });
+    // Karar Panosu #2/#4 "★ öncelik": the quiet they asked for carries the star (its plus, its row); what nobody asked for doesn't.
+    await compare.locator('.pc-row .pc-line:has-text("Sessiz odalar, iyi uyku") .mine-star').first().waitFor();
+    assert.ok((await compare.locator(".pc-row .pc-line .mine-star").count()) < (await compare.locator(".pc-row .pc-line").count()), "only some of the lines are starred");
+    await compare.locator("tr:has(.crit-col > div:text-matches('^Sessizlik')) .crit-col .mine-star").waitFor();
+    assert.equal(await compare.locator(".mine-star").first().getAttribute("aria-label"), "Senin için önemli");
+    await compare.locator(".mine-legend").waitFor();
+    await app.setViewportSize({ width: 390, height: 844 });
+    assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll with the stars at 390 px");
+    await app.setViewportSize({ width: 1440, height: 900 });
+    // The verdict is one line; the rest under "Neden?".
+    assert.equal(await compare.locator(".cmp-verdict-detail").count(), 0, "the verdict starts as one line");
+    await compare.locator(".cmp-verdict-more").click();
+    await compare.getByText("güncellemek için Ayarlar'dan ücretsiz Gemini anahtarı ekle", { exact: false }).waitFor(); // no key yet
+    await app.screenshot({ path: `${out}/3c-compare.png`, fullPage: true });
+    // Quiet, which they asked for, is its own row now ("Sessizlik: Önemli" from their note). Location and quiet
+    // stop mattering and price matters most → the cheaper stay wins, and the view says what would flip it back.
+    const quietRow = compare.locator("tr:has(.crit-col > div:text-matches('^Sessizlik')) select");
+    await quietRow.waitFor();
+    assert.equal(await quietRow.inputValue(), "3");
+    await compare.locator("tr", { hasText: "Konum" }).locator("select").selectOption("0");
+    await quietRow.selectOption("0");
+    await compare.locator("tr", { hasText: "Fiyat" }).first().locator("select").selectOption("4");
+    await compare.locator("thead th.win .opt-name", { hasText: "Casa Azul" }).waitFor();
+    await compare.getByText("Konum çok önemli olursa").waitFor();
+    await app.screenshot({ path: `${out}/3d-compare-priority.png`, fullPage: true });
+    await compare.getByText("Önemleri varsayılana döndür").click();
+    await compare.locator("thead th.win .opt-name", { hasText: "Jardim Stay" }).waitFor();
+    await compare.getByRole("button", { name: "Kapat" }).click();
   }
-  console.log("✓ compare: Sırayla karar ver is not offered (C11, bu sürümde arayüzden düştü); the one-by-one walk is kept for when it comes back");
-  // Two ticked → side by side in the table, just those; "Hepsini göster" brings the rest back.
-  await boardCard("Jardim Stay").locator(".bd-tick").click();
-  await boardCard("Casa Azul").locator(".bd-tick").click();
-  await compare.getByRole("button", { name: "Tabloda yan yana gör →" }).click();
-  assert.deepEqual(await compare.locator("thead .opt-name").allInnerTexts(), ["Jardim Stay", "Casa Azul"]);
-  await compare.getByRole("button", { name: "Hepsini göster" }).click();
-  const winner = compare.locator("thead th.win .opt-name");
-  assert.equal(await winner.innerText(), "Jardim Stay");
-  await compare.getByText("Neden Jardim Stay?").waitFor();
-  // Pros and cons per column, and the sample AI review kept (dated) now that the inputs changed.
-  await compare.locator(".pc-row .pc-col.pros", { hasText: "Sessiz odalar, iyi uyku" }).waitFor().catch(async (e) => {
-    console.log("pros/cons row:", await compare.locator(".pc-row").innerText());
-    throw e;
-  });
-  // Karar Panosu #2/#4 "★ öncelik": the quiet they asked for carries the star (its plus, its row); what nobody asked for doesn't.
-  await compare.locator('.pc-row .pc-line:has-text("Sessiz odalar, iyi uyku") .mine-star').first().waitFor();
-  assert.ok((await compare.locator(".pc-row .pc-line .mine-star").count()) < (await compare.locator(".pc-row .pc-line").count()), "only some of the lines are starred");
-  await compare.locator("tr:has(.crit-col > div:text-matches('^Sessizlik')) .crit-col .mine-star").waitFor();
-  assert.equal(await compare.locator(".mine-star").first().getAttribute("aria-label"), "Senin için önemli");
-  await compare.locator(".mine-legend").waitFor();
-  await app.setViewportSize({ width: 390, height: 844 });
-  assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll with the stars at 390 px");
-  await app.setViewportSize({ width: 1440, height: 900 });
-  // The verdict is one line; the rest under "Neden?".
-  assert.equal(await compare.locator(".cmp-verdict-detail").count(), 0, "the verdict starts as one line");
-  await compare.locator(".cmp-verdict-more").click();
-  await compare.getByText("güncellemek için Ayarlar'dan ücretsiz Gemini anahtarı ekle", { exact: false }).waitFor(); // no key yet
-  await app.screenshot({ path: `${out}/3c-compare.png`, fullPage: true });
-  // Quiet, which they asked for, is its own row now ("Sessizlik: Önemli" from their note). Location and quiet
-  // stop mattering and price matters most → the cheaper stay wins, and the view says what would flip it back.
-  const quietRow = compare.locator("tr:has(.crit-col > div:text-matches('^Sessizlik')) select");
-  await quietRow.waitFor();
-  assert.equal(await quietRow.inputValue(), "3");
-  await compare.locator("tr", { hasText: "Konum" }).locator("select").selectOption("0");
-  await quietRow.selectOption("0");
-  await compare.locator("tr", { hasText: "Fiyat" }).first().locator("select").selectOption("4");
-  await compare.locator("thead th.win .opt-name", { hasText: "Casa Azul" }).waitFor();
-  await compare.getByText("Konum çok önemli olursa").waitFor();
-  await app.screenshot({ path: `${out}/3d-compare-priority.png`, fullPage: true });
-  await compare.getByText("Önemleri varsayılana döndür").click();
-  await compare.locator("thead th.win .opt-name", { hasText: "Jardim Stay" }).waitFor();
-  await compare.getByRole("button", { name: "Kapat" }).click();
+  console.log("✓ compare: Karşılaştır opens the Pano's comparison (B12); the old window's weights and table are not offered (C11, row 199, bu sürümde arayüzden düştü)");
 
   // A stay chosen from its record's drawer ("Plana al"): the details' "Tüm detaylar ›" opens it, with its breakdown.
   stayWin = await openStayChoice();
@@ -2865,17 +2891,37 @@ try {
   console.log("✓ flow: an undated Airbnb page joins the same nights' comparison, provisionally, with a link to add the dates");
 
   // Two stays → the engine ranks them and the worker asks Gemini for the written analysis (the details' "Karşılaştır", C12).
+  // v82 (B12): "Karşılaştır" is the Pano's comparison, the options ranked side by side; the analysis is counted in the score and
+  // shown, with the geocoded distance, in a record's breakdown ("Tüm detaylar"). The old window's table, its written verdict and
+  // the rating scale's note are C11's karar yardımı (spec §1.1, row 199: bu sürümde arayüzden düştü): kept below for its return.
   const cmpWin = await portoDetail(async (det) => (await det.getByRole("button", { name: "Karşılaştır", exact: true }).count()) > 0, 20000);
   await cmpWin.getByRole("button", { name: "Karşılaştır", exact: true }).click();
-  let compare = board.getByRole("dialog", { name: "Karşılaştırma" });
-  await compare.getByRole("tab", { name: /Tablo/ }).click();
-  await compare.getByText("Jardim Stay merkezde ve yorumları tutarlı", { exact: false }).waitFor({ timeout: 20000 });
-  await compare.locator("tr", { hasText: "AI değerlendirmesi" }).waitFor(); // fresh analysis → counts, labelled
-  await compare.locator(".cell-value", { hasText: "merkeze 5 dk yürüme" }).waitFor(); // geocoded, measured from the city centre
-  await compare.getByText("Airbnb ölçeği", { exact: false }).first().waitFor();
+  const cmpPano = board.getByRole("dialog", { name: "Pano" });
+  await cmpPano.locator(".q-cmp3 .q-col").nth(1).waitFor();
+  assert.equal((await cmpPano.locator(".q-cmp3 .q-col .q-score em").allInnerTexts())[0], "1. sırada", "ranked, best fit first");
+  assert.equal(await board.getByRole("dialog", { name: "Karşılaştırma" }).count(), 0, "row 199: not the old window");
+  await cmpPano.getByRole("button", { name: "Pano'yu kapat" }).click();
+  await cmpPano.waitFor({ state: "detached" });
+  const jardimBox = await portoB();
+  await jardimBox.getByRole("button", { name: "Değiştir" }).click();
+  await jardimBox.getByRole("button", { name: "Jardim Stay: tüm detaylar" }).click();
+  const jardimDrawer = board.getByRole("dialog");
+  await jardimDrawer.locator(".breakdown p", { hasText: /AI değerlendirmesi: \d+\/10 · test notu/ }).waitFor({ timeout: 20000 }); // fresh analysis → counts, labelled
+  await jardimDrawer.locator(".breakdown .part-value", { hasText: "merkeze 5 dk yürüme" }).waitFor(); // geocoded, measured from the city centre
   await board.screenshot({ path: `${out}/8b-flow-compare.png`, fullPage: true });
-  await compare.getByRole("button", { name: "Kapat" }).click();
-  console.log("✓ flow: two options → ranked with geocoded distance, AI analysis fetched, shown and counted");
+  await jardimDrawer.getByRole("button", { name: "Kapat" }).click();
+  await jardimDrawer.waitFor({ state: "detached" });
+  if (await jardimBox.getByRole("button", { name: "Vazgeç" }).count()) await jardimBox.getByRole("button", { name: "Vazgeç" }).click();
+  let compare = board.getByRole("dialog", { name: "Karşılaştırma" });
+  if (CMP_SHOWN) {
+    await compare.getByRole("tab", { name: /Tablo/ }).click();
+    await compare.getByText("Jardim Stay merkezde ve yorumları tutarlı", { exact: false }).waitFor({ timeout: 20000 });
+    await compare.locator("tr", { hasText: "AI değerlendirmesi" }).waitFor();
+    await compare.locator(".cell-value", { hasText: "merkeze 5 dk yürüme" }).waitFor();
+    await compare.getByText("Airbnb ölçeği", { exact: false }).first().waitFor();
+    await compare.getByRole("button", { name: "Kapat" }).click();
+  }
+  console.log("✓ flow: two options → ranked side by side in the Pano with geocoded distance, AI analysis fetched, shown and counted");
 
   await board.getByPlaceholder("Bir link bırak, görsel yapıştır veya yaz…").fill("Hangisi daha mantıklı?");
   await board.getByRole("button", { name: "Gönder" }).click();
@@ -2895,11 +2941,17 @@ try {
   // Remembered as something the traveller said: a tag of the hero's "Tercihler" (scope and level in its window, removable there).
   await board.locator('.x-hero .x-ptag.strong[title="Fiyat · Çok önemli"]').waitFor();
   await board.keyboard.press("Escape");
-  await (await portoDetail(async (det) => (await det.getByRole("button", { name: "Karşılaştır", exact: true }).count()) > 0, 20000)).getByRole("button", { name: "Karşılaştır", exact: true }).click();
-  compare = board.getByRole("dialog", { name: "Karşılaştırma" });
-  await compare.getByRole("tab", { name: /Tablo/ }).click();
-  assert.equal(await compare.locator("tr", { hasText: "Fiyat" }).locator("select").inputValue(), "4");
-  await compare.getByRole("button", { name: "Kapat" }).click();
+  // The weight the chat set, in the record's breakdown ("Fiyat · çok önemli"); the old table's select is C11's (row 199).
+  await (await portoDetail(async (det) => (await det.getByRole("button", { name: "Tüm detaylar ›" }).count()) > 0, 20000)).getByRole("button", { name: "Tüm detaylar ›" }).click();
+  await board.getByRole("dialog").locator(".breakdown .part-label", { hasText: "Fiyat · çok önemli" }).waitFor();
+  await board.getByRole("dialog").getByRole("button", { name: "Kapat" }).click();
+  if (CMP_SHOWN) {
+    await (await portoDetail(async (det) => (await det.getByRole("button", { name: "Karşılaştır", exact: true }).count()) > 0, 20000)).getByRole("button", { name: "Karşılaştır", exact: true }).click();
+    compare = board.getByRole("dialog", { name: "Karşılaştırma" });
+    await compare.getByRole("tab", { name: /Tablo/ }).click();
+    assert.equal(await compare.locator("tr", { hasText: "Fiyat" }).locator("select").inputValue(), "4");
+    await compare.getByRole("button", { name: "Kapat" }).click();
+  }
   const chatCalls = geminiBodies.filter((b) => !b.body.generationConfig?.responseJsonSchema);
   assert.equal(chatCalls.length, 2);
   const second = chatCalls[1].body.contents;
@@ -3044,8 +3096,12 @@ try {
   const lone = bsec("stay").locator(".q-ints > .q-int").first();
   await lone.locator(".z-ib").click();
   await lone.locator(".z-det").getByRole("button", { name: "Karşılaştır", exact: true }).click();
-  await board.getByRole("dialog", { name: "Karşılaştırma" }).getByText("Puan, karşılaştırınca çıkar").waitFor();
-  await board.getByRole("dialog", { name: "Karşılaştırma" }).getByRole("button", { name: "Kapat" }).click();
+  // v82 (B12): the Pano's comparison, its one column and the one for more; the old window's "Puan, karşılaştırınca çıkar" is C11's (row 199).
+  const lonePano = board.getByRole("dialog", { name: "Pano" });
+  await lonePano.locator(".q-cmp3 .q-colx", { hasText: "Daha fazla seçenek" }).waitFor();
+  assert.equal(await lonePano.locator(".q-cmp3 .q-col").count(), 1, "a lone option: its own column");
+  await lonePano.getByRole("button", { name: "Pano'yu kapat" }).click();
+  await lonePano.waitFor({ state: "detached" });
   await board.getByRole("button", { name: /Seyahatlerim/ }).click();
   await board.locator(".trip-card").nth(1).waitFor();
   assert.equal(await board.locator(".trip-card").count(), 2);

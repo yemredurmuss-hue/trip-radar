@@ -87,33 +87,43 @@ export function DetailLayer({ vm, option, booked, onClose, onAddDoc, footer }: {
   const env = useCardEnv();
   const box = useRef<HTMLDivElement>(null);
   const item = option.item;
+  /** Shut by its own ×, Escape or one of its ways on: the focus goes back to the frame's ⓘ (else what opened it). */
+  const opener = useRef<HTMLElement | null>(null);
+  const close = () => {
+    const back = box.current?.closest(".q-int")?.querySelector<HTMLElement>(".z-ib") ?? opener.current;
+    onClose();
+    if (back?.isConnected) back.focus({ preventScroll: true });
+  };
+  const closeRef = useRef(close);
+  closeRef.current = close;
   useEffect(() => {
+    opener.current = document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null;
     box.current?.querySelector<HTMLElement>(".z-dx")?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || !focusNear(box.current)) return;
       e.stopPropagation();
-      onClose();
+      closeRef.current();
     };
     document.addEventListener("keydown", onKey, true);
     return () => document.removeEventListener("keydown", onKey, true);
-  }, [onClose]);
+  }, []);
   const decision = decisionOf(env.decisions?.byGroup, item);
   const ctx = env.decisions?.ctx;
   const facts = cardFacts(item, decision, ctx);
   const docs = env.docsFor(item.id);
   const { url: dated } = datedLink(item, decision);
-  // C12: the options side by side (the comparison window); a lone option opens it too: no score yet, but what is
-  // measured is one tap away ("Puan, karşılaştırınca çıkar").
+  // C12, B12: the options side by side, in the Pano's comparison (the old comparison window is not in this version, C11);
+  // a lone option opens it too, with its column for more.
   const comparable = !booked && decision != null && decision.options.some((o) => !o.excluded);
   const more = (
     <>
       {comparable && (
-        <button type="button" className="q-dact" onClick={() => (onClose(), env.onCompare(groupKeyOf(item)))}>
+        <button type="button" className="q-dact" onClick={() => (close(), env.onPano(groupKeyOf(item)))}>
           {L("Karşılaştır", "Compare")}
         </button>
       )}
-      {/* The drawer and the comparison open in place of the layer (one window at a time). */}
-      <button type="button" className="q-dact" onClick={() => (onClose(), env.onOpenItem(item))}>
+      {/* The drawer and the Pano open in place of the layer (one window at a time). */}
+      <button type="button" className="q-dact" onClick={() => (close(), env.onOpenItem(item))}>
         {L("Tüm detaylar ›", "All details ›")}
       </button>
       {(dated ?? item.url) && (
@@ -245,7 +255,7 @@ export function DetailLayer({ vm, option, booked, onClose, onAddDoc, footer }: {
   }
   return (
     <div className="q-det z-det" ref={box} role="dialog" aria-label={L(`${option.title}: ayrıntı`, `${option.title}: details`)}>
-      <button type="button" className="z-dx" aria-label={L("Ayrıntıyı kapat", "Close the details")} onClick={onClose}>
+      <button type="button" className="z-dx" aria-label={L("Ayrıntıyı kapat", "Close the details")} onClick={close}>
         <Ic name="x" size={14} stroke={2.4} />
       </button>
       {cols}
