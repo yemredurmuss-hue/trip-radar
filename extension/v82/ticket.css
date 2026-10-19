@@ -42,7 +42,7 @@
 /* D7: a connecting flight's stubs, one per leg. */
 .z-stub { font-variant-numeric: tabular-nums; }
 /* The side column's word, its code with its label ("PNR K7T2QX"), the check-in, the new times on a late flight. */
-.z-tk .z-top > .z-ok, .z-tk .z-top > .z-inc, .z-tk .z-top > .z-gr { font-size: 16px; }
+.z-tk .z-top > .z-ok, .z-tk .z-top > .z-inc, .z-tk .z-top > .z-gr { font-size: var(--q-fs-card); }
 .z-top .q-code.st.tk { gap: 8px; }
 .q-code.st .z-cl { color: var(--q-mut); font-weight: 700; letter-spacing: 0; }
 .z-top .q-cv { display: inline-flex; align-items: center; gap: 6px; }
@@ -57,7 +57,7 @@
 
 /* ---- uçuş günü (C4): the chip line turns into the live strip; "Biniş başladı" on the carrier's line ---- */
 .z-tm > .z-live { gap: 6px; flex-wrap: nowrap; }
-.z-live > span { flex: none; display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 9px; border-radius: 8px; background: #f2f4f7; font-size: 12.5px; color: var(--q-mut); white-space: nowrap; box-sizing: border-box; }
+.z-live > span { flex: none; display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 9px; border-radius: 8px; background: #f2f4f7; font-size: var(--q-fs-small); color: var(--q-mut); white-space: nowrap; box-sizing: border-box; }
 .z-live b { color: var(--q-ink); font-weight: 800; }
 .z-live i { font-style: normal; }
 .z-live > span.bad { background: #fff4e5; }
@@ -159,7 +159,7 @@ body.still .q-row.z-r:hover { transform: none; }
   .q-row.z-r .q-bg { display: none; }
   .q-row.z-r .q-who { display: none; }
   .q-row.z-r .q-pick { padding: 0 12px; }
-  .q-tm.q-city b { font-size: 21px; }
+  .q-tm.q-city b { font-size: var(--q-fs-category); }
   .z-route { gap: 10px; grid-template-columns: minmax(0, 1fr) minmax(96px, 1fr) minmax(0, 1fr); }
   .z-skr > .z-sk { grid-template-columns: 136px minmax(0, 1fr); }
   .z-way { font-size: var(--q-fs-small); padding: 6px 4px; }
@@ -176,7 +176,7 @@ body.still .q-row.z-r:hover { transform: none; }
   /* Nothing of an end is cut on a phone: its code and hour go under one another when they don't fit. */
   .q-tm.q-city small { white-space: normal; font-size: var(--q-fs-small); }
   .z-cn { flex-wrap: wrap; }
-  .q-tm.q-city b { font-size: 18px; }
+  .q-tm.q-city b { font-size: var(--q-fs-intent); }
   .q-tm.q-city small strong { font-size: var(--q-fs-info); }
   .z-route { gap: 6px; grid-template-columns: minmax(0, 1fr) minmax(62px, .6fr) minmax(0, 1fr); }
   .q-mid.big i img { max-width: 44px; height: 28px; }
