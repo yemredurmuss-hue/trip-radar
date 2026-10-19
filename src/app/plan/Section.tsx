@@ -15,6 +15,16 @@ import { CategoryRow, type RowView } from "./v82/CategoryRow";
 
 /** The word of a category's own "+ … ekle" where it isn't its short name (as drawn: "+ Yer ekle", "+ Belge ekle"). */
 const ADD_WORD: Partial<Record<CatSection["id"], () => string>> = { todo: () => L("Yer", "Place"), other: () => L("Belge", "Document") };
+/** The category's own add in English, said as a phrase ("Add a stay", "Add transport"). */
+const ADD_EN: Partial<Record<CatSection["id"], string>> = {
+  flight: "Add a flight",
+  stay: "Add a stay",
+  transport: "Add transport",
+  activity: "Add an activity",
+  todo: "Add a place",
+  food: "Add a restaurant",
+  other: "Add a document",
+};
 
 export function Section({ section, row, v82, open, instant = false, onToggle, onAdd, onDecide, decideTip, allotNum = null, suggestions = 0, children }: {
   section: CatSection;
@@ -52,7 +62,7 @@ export function Section({ section, row, v82, open, instant = false, onToggle, on
               {meta.templates.length > 0 && (
                 <button type="button" className="q-add" onClick={onAdd} aria-label={L(`${label}: ekle`, `${label}: add`)}>
                   <UiIcon name="plus" size={13} />
-                  {L(`${(ADD_WORD[section.id] ?? meta.short)()} ekle`, `Add: ${(ADD_WORD[section.id] ?? meta.short)()}`)}
+                  {L(`${(ADD_WORD[section.id] ?? meta.short)()} ekle`, ADD_EN[section.id] ?? `Add ${meta.short().toLowerCase()}`)}
                 </button>
               )}
             </div>

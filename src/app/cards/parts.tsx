@@ -255,7 +255,7 @@ export function TradeLine({ ranked, currency, className }: { ranked: Ranked; cur
   if (!trade || !ranked.vsRank || !(trade.money || trade.gains.length || trade.losses.length)) return null;
   return (
     <p className={className} title={L(`${trade.vs} ile karşılaştırınca: ${tradeText(trade, currency)}`, `Compared with ${trade.vs}: ${tradeText(trade, currency)}`)}>
-      <span className="opt-vs">{L(`${ranked.vsRank}.'ye göre`, `vs #${ranked.vsRank}`)}</span>
+      <span className="opt-vs">{L(`${ranked.vsRank}.'ye göre`, `vs #${ranked.vsRank}`)}</span>{" "}
       {[
         trade.money && (
           <b key="m" className={trade.diff != null && trade.diff < 0 ? "cheaper" : ""}>

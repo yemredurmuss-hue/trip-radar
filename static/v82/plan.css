@@ -97,7 +97,8 @@
 .z-visa .q-sp { flex: 1; }
 .z-visa.need { background: #fff8eb; border-color: #fedf89; color: #7a4b00; gap: 10px; }
 .z-visa.need b { color: #7a4b00; }
-.z-vx { flex: none; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: #f79009; color: #fff; font-style: normal; font-weight: 900; font-size: 13px; }
+/* (.z-visa: over the old .need i, a 16 px dot at 10,5) */
+.z-visa .z-vx { flex: none; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: #f79009; color: #fff; font-style: normal; font-weight: 900; font-size: var(--q-fs-info); }
 .z-visa .q-got { min-height: 34px; margin-left: 4px; }
 
 /* A category's short note when the trip's form changed something there (spec §1.4): one line at its start, only when said. */
@@ -106,7 +107,7 @@
 
 /* ---- Gizlenenler · n (F3, C17): what was said not needed, under the category's last intent ---- */
 .q-hid { border-top: 1px dashed var(--q-line); padding-top: 8px; }
-.q-hid > summary { cursor: pointer; list-style: none; font-size: 13px; font-weight: 700; color: var(--q-mut); padding: 6px 2px; display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; }
+.q-hid > summary { cursor: pointer; list-style: none; font-size: var(--q-fs-info); font-weight: 700; color: var(--q-mut); padding: 6px 2px; display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; }
 .q-hid > summary::-webkit-details-marker { display: none; }
 .q-hid > summary::before { content: "›"; display: inline-block; transition: transform var(--t-quick) var(--e-out); }
 .q-hid[open] > summary::before { transform: rotate(90deg); }
@@ -114,6 +115,8 @@
 .q-hidb { display: grid; gap: 10px; padding-top: 8px; }
 .q-hid .q-int { opacity: .8; }
 .q-hid .cat-hidden-rows { margin: 0; }
+/* (the old list's rows, on the plan's scale: 13,5) */
+.q-hid .cat-hidden-row { font-size: var(--q-fs-info); }
 
 @media (max-width: 980px) {
   .q-row1 { grid-template-columns: 42px minmax(0, 1fr) 150px 92px 18px; grid-template-areas: "ic tt prog bud chev"; }

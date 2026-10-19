@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { locative } from "../src/lib/i18nText";
+import { locative, lowerFirst } from "../src/lib/i18nText";
 
 describe("locative", () => {
   it("picks the vowel and consonant form by spelling", () => {
@@ -17,5 +17,23 @@ describe("locative", () => {
   });
   it("leaves an empty name alone", () => {
     expect(locative("")).toBe("");
+  });
+});
+
+describe("a search's site, in the locative (the box's \"Kendin ara\")", () => {
+  it("Airbnb'de, Booking.com'da, Agoda'da", () => {
+    expect(locative("Airbnb")).toBe("Airbnb'de");
+    expect(locative("Booking.com")).toBe("Booking.com'da");
+    expect(locative("Agoda")).toBe("Agoda'da");
+  });
+});
+
+describe("lowerFirst", () => {
+  it("lowers a word's first letter inside a sentence; an abbreviation keeps it (\"TV yok\", not \"tV yok\")", () => {
+    expect(lowerFirst("Kahvaltı çok iyi")).toBe("kahvaltı çok iyi");
+    expect(lowerFirst("TV yok")).toBe("TV yok");
+    expect(lowerFirst("Wi-Fi zayıf")).toBe("Wi-Fi zayıf");
+    expect(lowerFirst("AC yok")).toBe("AC yok");
+    expect(lowerFirst("")).toBe("");
   });
 });
