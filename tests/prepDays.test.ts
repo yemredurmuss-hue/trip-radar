@@ -3,7 +3,7 @@
 // bought eSIM before leaving, the Schengen rule's 15 days, Japan's form before landing), and the closed row says the same.
 import { describe, expect, it } from "vitest";
 import { withLang } from "../src/lib/i18n";
-import { dative, isSoon, prepDayText, prepFromText, prepHiddenKey, prepSummary, prepTasks, storedTask, type PrepInput } from "../src/lib/prepDays";
+import { dative, prepDayText, prepDayTone, prepFromText, prepHiddenKey, prepSummary, prepTasks, storedTask, type PrepInput } from "../src/lib/prepDays";
 import type { Item } from "../src/lib/types";
 import { makeItem } from "./fixtures/makeItem";
 
@@ -127,13 +127,17 @@ describe("the words", () => {
     expect(withLang("en", () => prepFromText("flight"))).toBe("from the flight");
   });
 
-  it("near or gone by and open: orange; done or far: not", () => {
+  it("near and open: orange; gone by: past (never the orange of what is coming); done or far: plain", () => {
     const day = { date: "2026-10-13", time: null, rel: "on" as const };
-    expect(isSoon({ day, done: false }, "2026-10-01")).toBe(true);
-    expect(isSoon({ day, done: false }, "2026-10-20")).toBe(true);
-    expect(isSoon({ day, done: true }, "2026-10-01")).toBe(false);
-    expect(isSoon({ day, done: false }, "2026-09-01")).toBe(false);
-    expect(isSoon({ day: null, done: false }, "2026-10-01")).toBe(false);
+    expect(prepDayTone({ day, done: false }, "2026-10-01")).toBe("soon");
+    expect(prepDayTone({ day, done: false }, "2026-10-13")).toBe("soon");
+    expect(prepDayTone({ day, done: false }, "2026-10-20")).toBe("past");
+    // Row 144: "23 Eyl'e kadar" on 5 Ekim.
+    expect(prepDayTone({ day: { date: "2026-09-23", time: null, rel: "by" }, done: false }, "2026-10-05")).toBe("past");
+    expect(prepDayTone({ day, done: true }, "2026-10-20")).toBeNull();
+    expect(prepDayTone({ day, done: true }, "2026-10-01")).toBeNull();
+    expect(prepDayTone({ day, done: false }, "2026-09-01")).toBeNull();
+    expect(prepDayTone({ day: null, done: false }, "2026-10-01")).toBeNull();
   });
 
   it("the closed row: how many, and the first open one with a day as the next", () => {

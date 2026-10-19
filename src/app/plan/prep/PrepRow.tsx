@@ -1,9 +1,9 @@
 // One Hazırlık chore (v82 T3 a, the prototype's .q-pr1): the tick, the title with its note and where it came from
-// ("uçuş kartından"), its day on the right (orange when near), a shop or the official page, "Hazır" once done ("Yapıldı ·
+// ("uçuş kartından"), its day on the right (orange when near, "geçti" once gone by), a shop or the official page, "Hazır" once done ("Yapıldı ·
 // 12 Eki" on hover), and for a stored chore the row's ⋯ (C29: rename, move to Yapılacak şeyler); × takes it off with "Geri al".
 import { L } from "../../../lib/i18n";
 import { setDone, setPrep, shortDay } from "../../../lib/ideas";
-import { isSoon, prepDayText, prepFromText, prepHiddenKey, type PrepTask } from "../../../lib/prepDays";
+import { prepDayText, prepDayTone, prepFromText, prepHiddenKey, type PrepTask } from "../../../lib/prepDays";
 import { shopLabel, shopLinks, type Provider } from "../../../lib/providers";
 import type { Trip } from "../../../lib/types";
 import { setHidden, setInstalled, setVisaDone, updateTrip } from "../../actions";
@@ -62,6 +62,8 @@ function PrepRowFace({ task, trip, today, shopHome, domId }: { task: PrepTask; t
   // "Yapıldı · 12 Eki" on "Hazır" (the chore's own tick, a worked-out one's mark).
   const doneOn = task.doneAt != null ? shortDay(new Date(task.doneAt).toISOString().slice(0, 10)) : null;
   const doneTip = doneOn ? L(`Yapıldı · ${doneOn}`, `Done · ${doneOn}`) : null;
+  // Its day: orange when near, "geçti" once gone by (row 144).
+  const tone = prepDayTone(task, today);
   const menu: MenuEntry[] = item
     ? [
         { label: L("Adını değiştir", "Rename"), run: () => edit?.go("name") },
@@ -95,7 +97,12 @@ function PrepRowFace({ task, trip, today, shopHome, domId }: { task: PrepTask; t
           </small>
         )}
       </span>
-      {task.day && <span className={`q-pday${isSoon(task, today) ? " soon" : ""}`}>{prepDayText(task.day)}</span>}
+      {task.day && (
+        <span className={`q-pday${tone ? ` ${tone}` : ""}`}>
+          {prepDayText(task.day)}
+          {tone === "past" && ` · ${L("geçti", "passed")}`}
+        </span>
+      )}
       {shop ? (
         <ShopLink provider={shop.provider} url={shop.url} />
       ) : task.official && !done ? (

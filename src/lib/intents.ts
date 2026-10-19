@@ -1140,7 +1140,7 @@ function infoOf(section: CatSection, intents: IntentVM[], env: Env): CollectionS
 }
 
 /** Hazırlık's stored chores (the Bavul's lines apart), by day: its count where the worked-out ones aren't known. */
-function storedPrep(section: CatSection): PrepSummary {
+export function storedPrep(section: CatSection): PrepSummary {
   const chores = section.prep.map(recordOf).filter((i): i is Item => i != null && !isPackLine(i));
   return prepSummary(chores.map(storedTask).sort((a, b) => (a.day?.date ?? "9999").localeCompare(b.day?.date ?? "9999")));
 }

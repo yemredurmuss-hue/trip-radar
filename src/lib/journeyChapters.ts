@@ -17,7 +17,7 @@ import type { SectionId } from "./categories";
 import { L } from "./i18n";
 import { count, nNights, nOptions } from "./i18nText";
 import { shortDay } from "./ideas";
-import { collectionsOf, type Collection, type IntentInput, type IntentStatus, type IntentVM, type OptionVM } from "./intents";
+import { collectionsOf, storedPrep, type Collection, type IntentInput, type IntentStatus, type IntentVM, type OptionVM } from "./intents";
 import { formatDateRange, isoDate } from "./items";
 import { clockOf } from "./legs";
 import { addDays, cityKeyOf, sameCity, type DateRange } from "./plan";
@@ -354,13 +354,14 @@ function ideasStep(i: IntentVM): JourneyStep | null {
   };
 }
 
-/** Hazırlık in one line: "2/6 hazır · sıradaki 31 Mar: Yen bozdur". */
+/**
+ * Hazırlık in one line, counted as its closed row and its open list count it (IntentInput.prep: the stored chores and the ones
+ * worked out from the trip, a visa, a check-in; the Bavul apart): "2/6 hazır · sıradaki 1 Nis'ten önce: Yen bozdur".
+ */
 function prepStep(input: IntentInput): JourneyStep | null {
-  const prep = input.sections.find((s) => s.id === "prep");
-  if (!prep?.entries.length) return null;
-  const done = prep.entries.filter((e) => e.state === "done").length;
-  const next = prep.entries.filter((e) => e.state !== "done").sort((a, b) => (a.date ?? "9999").localeCompare(b.date ?? "9999"))[0];
-  const nextText = next ? (next.date ? L(`sıradaki ${shortDay(next.date)}: ${next.row.name}`, `next, ${shortDay(next.date)}: ${next.row.name}`) : L(`sıradaki: ${next.row.name}`, `next: ${next.row.name}`)) : null;
+  const section = input.sections.find((s) => s.id === "prep");
+  const prep = input.prep ?? (section ? storedPrep(section) : null);
+  if (!prep?.total) return null;
   return {
     key: "step:prep",
     kind: "prep",
@@ -374,7 +375,7 @@ function prepStep(input: IntentInput): JourneyStep | null {
     cardKind: null,
     statusText: "",
     title: L("Hazırlık", "Prep"),
-    sub: [L(`${done}/${prep.entries.length} hazır`, `${done}/${prep.entries.length} ready`), nextText].filter(Boolean).join(" · "),
+    sub: [L(`${prep.done}/${prep.total} hazır`, `${prep.done}/${prep.total} ready`), prep.nextText].filter(Boolean).join(" · "),
     image: null,
     code: null,
     docMissing: false,

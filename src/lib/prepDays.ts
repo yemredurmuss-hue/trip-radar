@@ -276,8 +276,15 @@ export function prepDayText(day: PrepDay): string {
   }
 }
 
-/** Its day is near (or gone by) and it's still open: the day is orange. */
-export const isSoon = (task: Pick<PrepTask, "day" | "done">, today: string): boolean => !task.done && task.day != null && daysUntil(task.day.date, today) <= PREP_SOON_DAYS;
+/**
+ * How a still open chore's day reads: "soon" (within PREP_SOON_DAYS: orange), "past" (gone by: said "geçti", grey, never the
+ * orange of what is coming), else plain. A done one is plain.
+ */
+export function prepDayTone(task: Pick<PrepTask, "day" | "done">, today: string): "soon" | "past" | null {
+  if (task.done || !task.day) return null;
+  const days = daysUntil(task.day.date, today);
+  return days < 0 ? "past" : days <= PREP_SOON_DAYS ? "soon" : null;
+}
 
 /** The small label of where it came from ("uçuş kartından", "sohbetten", "vize kuralından"). */
 export function prepFromText(from: PrepFrom): string {

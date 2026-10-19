@@ -3,7 +3,9 @@
 // (D14), a trip with no dates (D15), today's chapter and what was left open on a day gone by (D8, K17).
 import { beforeEach, describe, expect, it } from "vitest";
 import { setLang, withLang } from "../src/lib/i18n";
+import { collectionsOf } from "../src/lib/intents";
 import { journeyChapters, type JourneyChapter, type JourneyView } from "../src/lib/journeyChapters";
+import { prepSummary, type PrepTask } from "../src/lib/prepDays";
 import { nightsAboard } from "../src/lib/tripPhase";
 import type { DocMeta, Item, Trip } from "../src/lib/types";
 import { boardOf, flight, INSURANCE, JAPAN_TODAY, japan, ozora, stay } from "./fixtures/v82Trips";
@@ -79,10 +81,25 @@ describe("Japonya: seven chapters in the order the trip is lived", () => {
     expect(home).toMatchObject({ statusText: "Bilet alındı", title: "Osaka → İstanbul", code: { label: "PNR", value: "K7T2QX" }, action: { kind: "addDoc", label: "Bileti ekle" } });
     const before = chapter(v, "Yola çıkmadan").steps;
     expect(before.map((s) => [s.dateLabel, s.title, s.sub, s.action?.label])).toEqual([
-      ["", "Hazırlık", "1/3 hazır · sıradaki 31 Mar: Yen bozdur", "Listeyi aç"],
+      // Counted as Hazırlık's closed row counts it (the Bavul's lines apart): its stored chores here, no worked-out list given.
+      ["", "Hazırlık", "0/2 hazır · sıradaki 31 Mar: Yen bozdur", "Listeyi aç"],
       ["", "eSIM · Japonya", "Airalo Japonya 10 GB", "QR kodu ekle"],
       ["", "Seyahat sağlık sigortası", null, "Ara"],
     ]);
+  });
+
+  it("row 144: the Hazırlık step is the closed row's own count and next (IntentInput.prep: the worked-out chores too)", () => {
+    const task = (key: string, title: string, date: string | null, done = false): PrepTask => ({ key, title, sub: null, from: key === "visa" ? "visa" : null, day: date ? { date, time: null, rel: "by" } : null, done, doneAt: null, tick: "mark", item: null, of: null, official: null });
+    const prep = prepSummary([task("visa", "Vize randevusu", "2027-03-01"), task("yen", "Yen bozdur", "2027-03-31"), task("vjw", "Visit Japan Web", null, true)]);
+    const b = boardOf(trip, items, JAPAN_TODAY, { prep });
+    const w = journeyChapters({ input: b.input, timeline: b.timeline, collections: b.collections });
+    const step = chapter(w, "Yola çıkmadan").steps.find((s) => s.kind === "prep")!;
+    expect(step.sub).toBe("1/3 hazır · sıradaki 1 Mar'a kadar: Vize randevusu");
+    const row = collectionsOf(b.input).find((c) => c.section.id === "prep")!.summary;
+    expect(row.ready).toEqual({ done: 1, total: 3 });
+    // Nothing to do before the trip: no step.
+    const none = boardOf(trip, items.filter((i) => i.plannedKind !== "prep"), JAPAN_TODAY, { prep: prepSummary([]) });
+    expect(journeyChapters({ input: none.input, timeline: none.timeline, collections: none.collections }).chapters.flatMap((c) => c.steps).some((s) => s.kind === "prep")).toBe(false);
   });
 
   it("a booking with its file opens it: 'Onay e-postası aç', 'E-bilet aç', 'Bileti aç'", () => {

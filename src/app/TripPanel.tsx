@@ -94,6 +94,7 @@ import { DAY_MODES } from "../lib/dayView";
 import { setDayMode, useDayMode } from "./days/dayMode";
 import { TimelineView, type CardFor, type RenderGroup, type SettledFor, type TimelineMode } from "./Timeline";
 import { PanoDialog } from "./board/v82/PanoDialog";
+import { usePrepSummaryWith } from "./plan/prep/usePrep";
 import { NeedGroup } from "./cards/NeedCard";
 import { draftOf } from "../lib/draft";
 import { journeyOf } from "../lib/tripShape";
@@ -628,9 +629,12 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const mode = tripModeOf(range, today);
 
   // --- the v82 hero (aşama 1): the backbone's intents (lib/intents.ts) give its two shares (B9), its mosaic and "Sıradaki" ---
+  // Row 144: Hazırlık as its closed row counts it (the chores worked out from the trip too), for the journey's step.
+  const prepEntries = useMemo(() => sections.find((s) => s.id === "prep")?.prep ?? [], [sections]);
+  const prep = usePrepSummaryWith(prepEntries, { trip, items, today, rates: decisions?.ctx.rates ?? null, currency: decisions?.ctx.currency ?? "EUR", esimCountries });
   const intentInput = useMemo<IntentInput>(
-    () => ({ trip, plan, sections, items, today, decisions: decisions?.byGroup, ctx: decisions?.ctx, docsFor, people: who.count || null, suggestions: suggestions.bySection, now: at }),
-    [trip, plan, sections, items, today, decisions, docsFor, who.count, suggestions.bySection, at],
+    () => ({ trip, plan, sections, items, today, decisions: decisions?.byGroup, ctx: decisions?.ctx, docsFor, people: who.count || null, suggestions: suggestions.bySection, now: at, prep }),
+    [trip, plan, sections, items, today, decisions, docsFor, who.count, suggestions.bySection, at, prep],
   );
   const collections = useMemo(() => collectionsOf(intentInput), [intentInput]);
   const heroIntents = useMemo(() => collections.flatMap((c) => c.intents), [collections]);
