@@ -55,7 +55,7 @@ export function packInputOf(model: Pick<PrepModel, "trip" | "items" | "range" | 
 
 /**
  * The Bavul's list asked ahead (0.39.4, Emre: "kategoriye basmadan AI çalışsın"): drawn on the board whatever is open, it
- * asks the trip's list in the model's line behind everything else ("background"), so Hazırlık opens with it made; opened
+ * asks the trip's list in the model's line after the suggestions review and before the board's other AI jobs ("ahead"), so Hazırlık opens with it made; opened
  * first, Hazırlık's own ask pulls it to the front. Draws nothing.
  */
 export function PackPrefetch(): null {
@@ -65,7 +65,7 @@ export function PackPrefetch(): null {
   const cities = useMemo(() => stayCities(model.items), [model.items]);
   const weather = cities.map((c) => env.weather?.(c) ?? null).filter((w): w is CityWeather => w != null);
   const { input, ready } = packInputOf(model, weather, travellers);
-  usePackAi(model.trip, input, ready, "background");
+  usePackAi(model.trip, input, ready, "ahead");
   return null;
 }
 

@@ -1,6 +1,6 @@
 // 0.39.4 (Emre: "kategoriye basmadan AI çalışsın"; the board fired its model calls all at once, a free Gemini key's 429):
-// one line for every model call, at most two at a time, the most urgent first; the Bavul's list asked ahead behind the
-// rest and pulled to the front when Hazırlık opens. A 429's own retry waits inside its turn, as before.
+// one line for every model call, at most two at a time: what's waited on, then the suggestions review, then the Bavul's list
+// asked ahead, then the board's other AI jobs; the Bavul pulled to the front when Hazırlık opens. A 429's own retry waits inside its turn, as before.
 import { ApiError, type GenerateContentParameters, type GenerateContentResponse } from "@google/genai";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
@@ -16,32 +16,35 @@ function gate(order: string[], name: string) {
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
 describe("the model's line", () => {
-  it("runs at most two at a time, then the most urgent, then in the order asked", async () => {
+  it("runs at most two at a time; then what's waited on, the review, the Bavul made ahead, the rest, each in the order asked", async () => {
     const order: string[] = [];
-    const [a, b, bg, soon, now] = ["a", "b", "bg", "soon", "now"].map((n) => gate(order, n));
-    const runs = [queueAi(a.call), queueAi(b.call), queueAi(bg.call, { priority: "background" }), queueAi(soon.call), queueAi(now.call, { priority: "now" })];
+    const [a, b, soon, bg, review, now] = ["a", "b", "soon", "bg", "review", "now"].map((n) => gate(order, n));
+    const runs = [queueAi(a.call), queueAi(b.call), queueAi(soon.call), queueAi(bg.call, { priority: "ahead" }), queueAi(review.call, { priority: "review" }), queueAi(now.call, { priority: "now" })];
     await tick();
     expect(AI_PARALLEL).toBe(2);
     expect(order).toEqual(["a", "b"]);
-    expect(aiLine()).toMatchObject({ running: 2, waiting: 3 });
+    expect(aiLine()).toMatchObject({ running: 2, waiting: 4 });
     a.end();
     await tick();
     expect(order).toEqual(["a", "b", "now"]);
     b.end();
     await tick();
-    expect(order).toEqual(["a", "b", "now", "soon"]);
+    expect(order).toEqual(["a", "b", "now", "review"]);
     now.end();
-    soon.end();
     await tick();
-    expect(order.at(-1)).toBe("bg");
+    expect(order).toEqual(["a", "b", "now", "review", "bg"]);
+    review.end();
+    await tick();
+    expect(order.at(-1)).toBe("soon");
     bg.end();
-    expect(await Promise.all(runs)).toEqual(["a", "b", "bg", "soon", "now"]);
+    soon.end();
+    expect(await Promise.all(runs)).toEqual(["a", "b", "soon", "bg", "review", "now"]);
     expect(aiLine()).toMatchObject({ running: 0, waiting: 0 });
   });
   it("a call asked ahead goes first once its category opens", async () => {
     const order: string[] = [];
     const [a, b, other, pack] = ["a", "b", "other", "pack"].map((n) => gate(order, n));
-    const runs = [queueAi(a.call), queueAi(b.call), queueAi(pack.call, { priority: "background", key: "pack:t1:tr" }), queueAi(other.call)];
+    const runs = [queueAi(a.call), queueAi(b.call), queueAi(pack.call, { priority: "ahead", key: "pack:t1:tr" }), queueAi(other.call, { priority: "review" })];
     await tick();
     expect(aiLine().keys).toEqual([undefined, "pack:t1:tr"]);
     expect(promoteAi("pack:t1:tr")).toBe(true);
@@ -76,7 +79,7 @@ describe("the model's line", () => {
         }) as GeminiClient["models"]["generateContent"],
       },
     };
-    const llm = queuedProvider(geminiProvider(client, "gemini-test", 0), { priority: "background" });
+    const llm = queuedProvider(geminiProvider(client, "gemini-test", 0), { priority: "ahead" });
     expect(llm.id).toBe("gemini");
     expect(await llm.generateJson("s", "p", z.object({ ok: z.boolean() }))).toEqual({ ok: true });
     expect(calls).toHaveLength(2);

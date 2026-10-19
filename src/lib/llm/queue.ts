@@ -1,13 +1,15 @@
 // One line for the model's calls (0.39.4, Emre: "kategoriye basmadan AI çalışsın" — and the board fired its calls all at
 // once, which a free Gemini key answers with 429): every call of getProvider's provider waits here, at most AI_PARALLEL at a
-// time, the most urgent first. "now": what the traveller waits on (the chat, a category just opened); "soon": the board's
-// own (the default); "background": made ahead (the Bavul's list once the trip is there). A call made ahead is pulled to the
-// front when its category opens (promoteAi). A call's own retry after a 429 (gemini.ts withRetry) happens inside its turn,
-// so the line also waits it out. Only each single call is in the line, never a whole chat turn: nothing waits on itself.
+// time, the most urgent first, in this order (Emre, 2026-10-20: "sıralama doğru olsun"): "now", what the traveller waits
+// on (the chat, the start chat, a category just opened); "review", the trip's suggestions review once it is made; "ahead",
+// what is made ahead (the Bavul's list); "soon", every other AI job of the board (the default). A call made ahead is pulled
+// to the front when its category opens (promoteAi). Only model calls wait here: the searches with a daily quota (the hotels'
+// and activities' rows, SerpApi) are never asked ahead, they stay with the card that shows them. A call's own retry after
+// a 429 (gemini.ts withRetry) happens inside its turn, so the line also waits it out. Only each single call is in the line, never a whole chat turn: nothing waits on itself.
 import type { LlmProvider } from "./types";
 
-export type AiPriority = "now" | "soon" | "background";
-const RANK: Record<AiPriority, number> = { now: 0, soon: 1, background: 2 };
+export type AiPriority = "now" | "review" | "ahead" | "soon";
+const RANK: Record<AiPriority, number> = { now: 0, review: 1, ahead: 2, soon: 3 };
 /** How many model calls run at once (a free Gemini key's rate allows a couple; more only meets 429s). */
 export const AI_PARALLEL = 2;
 
