@@ -20,7 +20,9 @@ import type { IntentVM, OptionVM } from "../../../lib/intents";
 import { formatDateRange } from "../../../lib/items";
 import { withPlacePhoto } from "../../../lib/placeSuggest";
 import { photoFromOffers, sameTour, type Need, type Offer } from "../../../lib/offerSource";
-import { cityTours, tourWords } from "../../../lib/offerSources";
+import { cityEvents, cityTours, citySights, tourWords } from "../../../lib/offerSources";
+import { locative } from "../../../lib/i18nText";
+import { sightSuggestion, type Sight } from "../../../lib/citySights";
 import { sameCity, type Plan } from "../../../lib/plan";
 import type { Item } from "../../../lib/types";
 import { addOffer, chooseItem, setItemPhoto } from "../../actions";
@@ -115,13 +117,40 @@ function useCityOffers(city: string | null, plan: Pick<Plan, "stayBlocks"> | nul
   // A tour saved in another city of the trip (a nearby city's, put on the plan there) isn't offered here again.
   const elsewhere = new Set([...byId.values()].filter((i) => i.status !== "dismissed" && i.url).map((i) => i.url));
   const offers = all.filter((o) => !taken.includes(o.id) && !elsewhere.has(o.url) && !saved.some((i) => sameTour(i, o))).slice(0, PER_CITY);
+  // What's on in the city on the stay's days (spec 2026-10-19 SerpApi, item 8): Google's events, their own row.
+  const [evGot, setEvGot] = useState<{ key: string; list: Offer[] } | null>(null);
+  const evKey = stop ? `${stop.city}|${stop.start}|${stop.end}` : "";
+  useEffect(() => {
+    if (!stop?.start || !stop.end || !available) return;
+    let live = true;
+    void cityEvents(stop.city, stop.start, stop.end).then((list) => live && setEvGot({ key: evKey, list }));
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- asked again only for another city or days
+  }, [evKey, available]);
+  const events = (evGot?.key === evKey ? evGot.list : []).filter((o) => !taken.includes(o.id) && !elsewhere.has(o.url));
   const put = async (o: Offer) => {
     if (!need) return;
     setTaken((t) => [...t, o.id]);
     const item = await addOffer(tripId, o, need);
     await chooseItem(item, []);
   };
-  return { offers, put, looking };
+  return { offers, events, put, looking };
+}
+
+/** A city's sights from Google (spec 2026-10-19 SerpApi, item 3), asked once per city while its "Yapılacaklar" shows. */
+function useCitySights(city: string | null): Sight[] {
+  const [got, setGot] = useState<{ city: string; list: Sight[] } | null>(null);
+  useEffect(() => {
+    if (!city) return;
+    let live = true;
+    void citySights(city).then((list) => live && setGot({ city, list }));
+    return () => {
+      live = false;
+    };
+  }, [city]);
+  return got && got.city === city ? got.list : [];
 }
 
 /** "Viator'da turlar aranıyor…": where the city's tours will land while the source is asked. */
@@ -133,8 +162,13 @@ export function CollectionRow({ vm, onPut, onTakeOff }: CollectionRowProps) {
   const cx = useCollectEnv();
   const plan = cx?.plan ?? null;
   const records = vm.itemIds.map((id) => v82.byId.get(id)).filter((i): i is Item => i != null && i.status !== "dismissed");
-  const { offers, put, looking } = useCityOffers(vm.section === "activity" ? vm.head.city : null, plan, records, env.tripId);
-  const row = collectionRow(vm, v82.byId, { trip: env.trip, people: v82.selfAt.adults, ctx: env.decisions?.ctx, offers });
+  const { offers, events, put, looking } = useCityOffers(vm.section === "activity" ? vm.head.city : null, plan, records, env.tripId);
+  const sightCity = vm.section === "todo" ? vm.head.city : null;
+  const sightList = useCitySights(sightCity);
+  // A sight put on the plan or said "Gerek yok" to stays away (its key in the trip's suggestions, not open).
+  const gone = new Set((env.trip.suggestions ?? []).filter((s) => s.state !== "open").map((s) => s.key));
+  const sights = sightCity ? sightList.map((s) => sightSuggestion(sightCity, s, 0)).filter((s) => !gone.has(s.key)) : [];
+  const row = collectionRow(vm, v82.byId, { trip: env.trip, people: v82.selfAt.adults, ctx: env.decisions?.ctx, offers, sights });
   const todo = vm.section === "todo";
   const [filter, setFilter] = useState<KFilter>("all");
   const [open, setOpen] = useRemembered(`trip-radar:ideasOpen:${env.tripId}:${vm.section}`, true);
@@ -224,6 +258,22 @@ export function CollectionRow({ vm, onPut, onTakeOff }: CollectionRowProps) {
               {o.shown.map(cardOf)}
             </div>
           )}
+        </div>
+      )}
+      {events.length > 0 && (
+        <div className="q-opts z-evs" data-row="events">
+          <div className="q-oh">
+            <b className="q-ot">{L(`O tarihlerde ${locative(city)}`, `On those days in ${city}`)}</b>
+            <small className="q-oc">{events.length}</small>
+            <span className="q-sp" />
+            <small className="z-evsrc">{L("Kaynak: Google Etkinlikler", "Source: Google Events")}</small>
+          </div>
+          <div className="q-cards z-ks">
+            {events.map((e) => {
+              const c = offerCard(e, v82.selfAt.adults);
+              return <OfferCard key={c.key} card={c} onPut={() => void put(e)} />;
+            })}
+          </div>
         </div>
       )}
     </>

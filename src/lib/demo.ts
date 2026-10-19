@@ -159,6 +159,15 @@ export async function loadDemoTrip({ today = new Date().toISOString().slice(0, 1
       rating: { value: 8.9, scale: 10, count: 1204, source: "page" },
       highlights: [L("Merkezi konum", "Central location"), L("Sessiz odalar", "Quiet rooms"), L("Kahvaltı dahil", "Breakfast included")],
       concerns: [L("Odalar küçük", "Small rooms")],
+      nearby: [
+        { name: "Ribeira", mode: "walk", minutes: 8, airport: false },
+        { name: L("Porto Havalimanı", "Porto Airport"), mode: "transit", minutes: 35, airport: true },
+      ],
+      reviewTopics: [
+        { topic: L("Konum", "Location"), up: true },
+        { topic: L("Temizlik", "Cleanliness"), up: true },
+        { topic: L("Oda", "Room"), up: false },
+      ],
       reviewSummary: L(
         "Konum ve temizlik çok övülüyor; odalar küçük ama sessiz, personel yardımsever.",
         "Location and cleanliness get lots of praise; rooms are small but quiet, staff helpful.",

@@ -19,7 +19,8 @@ import {
 import { needsFor } from "./cardFacts";
 import { listDocMeta, moveDocs, needsDoc } from "./docs";
 import { choiceOf, tradeText } from "./choice";
-import { currencyCode, formatPrice, isoDate, listingKeyOf, metricsOf, tripDateRange } from "./items";
+import { currencyCode, formatPrice, isoDate, listingKeyOf, metricsOf, nightsBetween, tripDateRange } from "./items";
+import { wantsHome } from "./intentFrame";
 import { NEED_MARK } from "./needs";
 import { coverageText, searchText } from "./listing";
 import { prosConsFor } from "./proscons";
@@ -2310,7 +2311,10 @@ export function offersNeed(input: any, items: Item[], travellers: number | null)
     const city = tripPlaceOf(text(input?.city), items);
     const end = isoDate(text(input?.end));
     if (!city || !end || end <= start) return L("Konaklama için city, start ve start'tan sonra bir end gerekli. Hiçbir şey aranmadı.", "A stay needs city, start and an end after start. Nothing was searched.");
-    return { key: needKey("stay", city, start, end), section: "stay", kind: "stay", city, start, end, adults, country: countryOfPlace(city, items)?.code ?? null };
+    // A home wanted (spec 2026-10-19 SerpApi, item 7): a long stay, a big group, or a flat or house saved for the city.
+    const saved = items.filter((i) => i.category === "stay" && i.status !== "dismissed" && i.city != null && sameCity(i.city, city)).map((item) => ({ item }));
+    const home = wantsHome(nightsBetween(start, end), adults, saved);
+    return { key: needKey("stay", city, start, end), section: "stay", kind: "stay", city, start, end, adults, country: countryOfPlace(city, items)?.code ?? null, ...(home ? { home } : {}) };
   }
   const from = tripPlaceOf(text(input?.from), items);
   const to = tripPlaceOf(text(input?.to), items);

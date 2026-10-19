@@ -4,9 +4,14 @@ import { describe, expect, it } from "vitest";
 import {
   adultsOf, airportCodeOk, arrivalClock, askableDay, bookingSearch, cheapest, flightOffer, geoFromTypeahead, localClock, maxOf,
   aviasalesSearch, durationWords, pickActivities, viatorDestination, nightsBetween, pickCandidates, pickCheapFlights, pickCheapStays, pickFlights, pickLiveStays, pickStays, placeOk, preferOf, seenAt, serpFlights,
-  serpStays, stayCandidate, stayOffer, airaloPacks, airaloPlace, pickEsims, csvRows, omioPage, omioRoutes, pickTransfers, placeKey, omioName, ucusFlights, type OmioRoute, type AviaFlight, type EsimPack,
+  serpStays, serpMinutes, nearbyOf, topicsOf, candidateOffer, priceInsightOf, logInsight, topSights, nightStop, dayFares, airbnbOffer, airbnbCandidate, cityEvents, eventDay, stayCandidate, stayOffer, airaloPacks, airaloPlace, pickEsims, csvRows, omioPage, omioRoutes, pickTransfers, placeKey, omioName, ucusFlights, type OmioRoute, type AviaFlight, type EsimPack,
   type OfferOut, type XoHotel,
 } from "../supabase/functions/offers/shape";
+import serpHotels from "./fixtures/serp/google-hotels-2026-10-19.json";
+import serpFlight from "./fixtures/serp/google-flights-ist-opo-2026-10-19.json";
+import serpSights from "./fixtures/serp/google-top-sights-porto-2026-10-19.json";
+import serpAirbnb from "./fixtures/serp/airbnb-lisbon-2026-10-19.json";
+import serpEvents from "./fixtures/serp/google-events-porto-2026-10-19.json";
 
 const now = new Date("2026-10-06T18:00:00Z");
 const link = (d: string) => `/search/IST1911DPS1?t=TK&search_date=${d}&expected_price=521`;
@@ -419,5 +424,168 @@ describe("between cities (Omio's feed)", () => {
   it("one way that's both cheapest and quickest says so", () => {
     const got = pickTransfers({ ...route, ways: { train: [9, 100], bus: [12, 200] } }, 1, "en", 5);
     expect(got.map((o) => o.why)).toEqual(["The cheapest and quickest way · starting price", "Another way · starting price"]);
+  });
+});
+
+describe("Google Hotels: the nearest place, the airport and what reviews say (spec 2026-10-19 SerpApi)", () => {
+  // Trimmed from real answers: Porto and Ubud, 12–15 Nov 2026, gl=tr hl=tr.
+  const search = (n: string) => `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(n)}`;
+  it("reads Google's durations in Turkish and English", () => {
+    expect(serpMinutes("3 dk.")).toBe(3);
+    expect(serpMinutes("1 sa. 15 dk.")).toBe(75);
+    expect(serpMinutes("8 min")).toBe(8);
+    expect(serpMinutes("1 hr 22 min")).toBe(82);
+    expect(serpMinutes("2 sa.")).toBe(120);
+    expect(serpMinutes("yakında")).toBeNull();
+    expect(serpMinutes(undefined)).toBeNull();
+  });
+  it("keeps the nearest place on foot (else by taxi) and the airport, public transport first", () => {
+    const [palacio, central, acta] = serpHotels["otel-porto"].properties;
+    expect(nearbyOf(palacio.nearby_places)).toEqual([
+      { name: "San Remo Restaurante", mode: "walk", minutes: 5, airport: false },
+      { name: "Francisco de Sá Carneiro Havaalanı", mode: "transit", minutes: 32, airport: true },
+    ]);
+    expect(nearbyOf(central.nearby_places)[0]).toEqual({ name: "Mercado Ferreira Borges", mode: "walk", minutes: 1, airport: false });
+    expect(nearbyOf(acta.nearby_places).map((n) => [n.name, n.mode, n.minutes])).toEqual([["Moreda", "walk", 7], ["Francisco de Sá Carneiro Havaalanı", "transit", 36]]);
+    // Nothing near on foot, a short taxi instead; a place over 15 minutes isn't "near".
+    expect(nearbyOf([{ name: "Ubud Art Market", transportations: [{ type: "Taxi", duration: "8 dk." }] }, { name: "Tanah Lot", transportations: [{ type: "Walking", duration: "1 sa. 10 dk." }] }]))
+      .toEqual([{ name: "Ubud Art Market", mode: "taxi", minutes: 8, airport: false }]);
+    expect(nearbyOf(undefined)).toEqual([]);
+  });
+  it("names two praised topics and one faulted, the most talked about first, never 'Property'", () => {
+    const [palacio, central, acta] = serpHotels["otel-porto"].properties;
+    expect(topicsOf(palacio.reviews_breakdown)).toEqual([{ topic: "Hizmet", up: true }, { topic: "Bar", up: true }]);
+    expect(topicsOf(central.reviews_breakdown)).toEqual([{ topic: "Konum", up: true }, { topic: "Hizmet", up: true }, { topic: "Banyo", up: false }]);
+    expect(topicsOf(acta.reviews_breakdown)).toEqual([{ topic: "Hizmet", up: true }, { topic: "Konum", up: true }, { topic: "Klima", up: false }]);
+    expect(topicsOf([{ name: "Kahvaltı", description: "Breakfast", total_mentioned: 6, positive: 6, negative: 0 }])).toEqual([]);
+  });
+  it("carries them on the candidates and onto the offers", () => {
+    const list = serpStays(serpHotels["otel-porto"], { lang: "tr", nights: 3, now: 7, search });
+    expect(list[1]).toMatchObject({ name: "The Central House Porto Ribeira", photo: expect.stringMatching(/^https:/), topics: [{ topic: "Konum", up: true }, { topic: "Hizmet", up: true }, { topic: "Banyo", up: false }] });
+    expect(list.every((c) => c.nearby?.some((n) => n.airport))).toBe(true);
+    const offer = candidateOffer(list[1], "", "tr");
+    expect(offer.nearby).toHaveLength(2);
+    expect(offer.topics).toHaveLength(3);
+    const ubud = serpStays(serpHotels["otel-ubud"], { lang: "tr", nights: 3, now: 7, search });
+    expect(ubud[0].nearby?.find((n) => n.airport)).toMatchObject({ mode: "transit", minutes: 148 });
+  });
+});
+
+describe("a flight's fare judged: Google's price insights, else our own record (spec 2026-10-19 SerpApi, 2 and 4)", () => {
+  it("reads Google's usual range, today's lowest and its level, and a day-by-day history in ms", () => {
+    // Real: IST→OPO 12 Nov 2026, one person, asked 19 Oct.
+    const i = priceInsightOf(serpFlight)!;
+    expect(i).toMatchObject({ low: 110, high: 200, lowest: 202, level: "high", source: "google", currency: "EUR" });
+    expect(i.history).toHaveLength(62);
+    expect(i.history[0]).toEqual([1787086800000, 147]);
+    expect(i.history.at(-1)).toEqual([1792357200000, 202]);
+  });
+  it("keeps what's well-formed and gives up when there is nothing to judge with", () => {
+    expect(priceInsightOf({ price_insights: { typical_price_range: [200, 110], price_level: "LOW" } })).toMatchObject({ low: 110, high: 200, level: "low", history: [] });
+    expect(priceInsightOf({ price_insights: { price_history: [[1, 100]] } })).toBeNull();
+    expect(priceInsightOf({ price_insights: { price_history: [[1, 100], [2, 90], ["x", 3]] } })?.history).toEqual([[1000, 100], [2000, 90]]);
+    expect(priceInsightOf({})).toBeNull();
+    expect(priceInsightOf(null)).toBeNull();
+  });
+  it("makes our own record a history: a day's lowest, five days at least", () => {
+    const rows = ["2026-10-01T08:00:00Z", "2026-10-01T15:00:00Z", "2026-10-02T09:00:00Z", "2026-10-04T09:00:00Z", "2026-10-06T09:00:00Z", "2026-10-09T09:00:00Z"]
+      .map((seen_at, i) => ({ seen_at, price: [120, 110, 118, 105, 99, 101][i] }));
+    const i = logInsight(rows)!;
+    expect(i).toMatchObject({ low: null, high: null, level: null, source: "log" });
+    expect(i.history.map(([, p]) => p)).toEqual([110, 118, 105, 99, 101]);
+    expect(logInsight(rows.slice(0, 4))).toBeNull();
+  });
+});
+
+describe("a city's sights: Google's Top Sights (spec 2026-10-19 SerpApi, item 3)", () => {
+  it("keeps the name, the rating out of 5 and an https photo; not the broken review count", () => {
+    // Real: "Porto gezilecek yerler", hl=tr, 19 Oct 2026.
+    const list = topSights(serpSights);
+    expect(list).toHaveLength(8);
+    expect(list[0]).toEqual({ title: "Luís I Bridge", rating: 4.8, photo: expect.stringMatching(/^https:\/\/lh3\.googleusercontent\.com\//) });
+    expect(list.map((s) => s.title)).toContain("Clérigos Kilisesi");
+    expect(Object.keys(list[0])).not.toContain("reviews");
+  });
+  it("drops what has no name, a rating out of range and an http photo; each name once", () => {
+    expect(topSights({ top_sights: { sights: [{ title: "  " }, { title: "A", rating: 9, thumbnail: "http://x" }, { title: "a" }] } })).toEqual([{ title: "A", rating: null, photo: null }]);
+    expect(topSights({})).toEqual([]);
+    expect(topSights(null)).toEqual([]);
+  });
+});
+
+describe("a night change of plane (spec 2026-10-19 SerpApi, item 6)", () => {
+  it("is three hours or more on the ground with some of it between midnight and six there", () => {
+    expect(nightStop([{ at: "MAD", land: "2026-11-13T00:55", leave: "2026-11-13T07:55" }])).toEqual({ at: "MAD", minutes: 420, from: "00:55", to: "07:55" });
+    // Landing the evening before, leaving after midnight.
+    expect(nightStop([{ at: "DOH", land: "2026-11-12T22:40", leave: "2026-11-13T02:10" }])).toEqual({ at: "DOH", minutes: 210, from: "22:40", to: "02:10" });
+    // Long but in the day; at night but short; the first night one of two.
+    expect(nightStop([{ at: "AMS", land: "2026-11-12T09:00", leave: "2026-11-12T15:00" }])).toBeNull();
+    expect(nightStop([{ at: "AMS", land: "2026-11-12T01:00", leave: "2026-11-12T02:30" }])).toBeNull();
+    expect(nightStop([{ at: "CPH", land: "2026-11-12T10:00", leave: "2026-11-12T11:00" }, { at: "AMS", land: "2026-11-12T23:30", leave: "2026-11-13T06:30" }])?.at).toBe("AMS");
+    expect(nightStop([{ at: "X", land: "?", leave: "2026-11-12T03:00" }])).toBeNull();
+    expect(nightStop(undefined)).toBeNull();
+  });
+  it("reads the changes from the flight search's legs and Google's, and says it on the offer", () => {
+    const body = { results: [{ price: 300, currency: "EUR", source: "kiwi", link: "https://www.kiwi.com/x", outbound: {
+      from: "IST", to: "OPO", depart: "2026-11-12T21:40", arrive: "2026-11-13T10:05", stops: 1, duration_min: 805, carriers: [{ code: "PC" }],
+      segments: [{ flight: "PC1234", carrier: "PC", from: "IST", to: "MAD", depart: "2026-11-12T21:40", arrive: "2026-11-13T00:55" }, { flight: "IB111", carrier: "IB", from: "MAD", to: "OPO", depart: "2026-11-13T07:55", arrive: "2026-11-13T10:05" }],
+    } }] };
+    const [f] = ucusFlights(body, 1, "IST", "OPO", "2026-11-12", "tr");
+    expect(f.stopovers).toEqual([{ at: "MAD", land: "2026-11-13T00:55", leave: "2026-11-13T07:55" }]);
+    const offer = flightOffer({ f, why: "" }, { adults: 1, now: 1, airline: () => "Pegasus", zone: () => null });
+    expect(offer.nightStop).toEqual({ at: "MAD", minutes: 420, from: "00:55", to: "07:55" });
+    const g = serpFlights({ best_flights: [{ price: 250, total_duration: 800, flights: [
+      { departure_airport: { id: "IST", time: "2026-11-12 21:40" }, arrival_airport: { id: "MAD", time: "2026-11-13 00:55" }, flight_number: "PC 1234" },
+      { departure_airport: { id: "MAD", time: "2026-11-13 07:55" }, arrival_airport: { id: "OPO", time: "2026-11-13 10:05" }, flight_number: "IB 111" },
+    ] }] }, 1, "IST", "OPO", "2026-11-12");
+    expect(nightStop(g[0].stopovers)?.minutes).toBe(420);
+    expect(flightOffer({ f: { ...f, stopovers: undefined }, why: "" }, { adults: 1, now: 1, airline: () => null, zone: () => null })).not.toHaveProperty("nightStop");
+  });
+});
+
+describe("a route's fares by day: the flight search for the day ±3 (spec 2026-10-19 SerpApi, item 5)", () => {
+  it("keeps each day's cheapest in euros, in day order, inside the window", () => {
+    const r = (depart: string, price: number, currency = "EUR") => ({ price, currency, source: "kiwi", outbound: { depart } });
+    const body = { results: [r("2026-11-12T21:40", 120), r("2026-11-12T07:10", 98), r("2026-11-09T06:00", 140), r("2026-11-15T10:00", 87.6), r("2026-11-16T10:00", 50), r("2026-11-13T10:00", 70, "TRY"), { price: 1, currency: "EUR" }] };
+    expect(dayFares(body, "2026-11-12")).toEqual([{ day: "2026-11-09", price: 140 }, { day: "2026-11-12", price: 98 }, { day: "2026-11-15", price: 88 }]);
+    expect(dayFares(null, "2026-11-12")).toEqual([]);
+  });
+});
+
+describe("a home on Airbnb (spec 2026-10-19 SerpApi, item 7)", () => {
+  it("takes the best liked listing, a guest favourite first, its total for the nights and Airbnb's own page", () => {
+    // Real: Lisbon, 12–15 Nov 2026, two people.
+    const o = airbnbOffer(serpAirbnb, { lang: "tr", nights: 3, now: 7 })!;
+    expect(o).toMatchObject({ kind: "stay", source: "Airbnb", currency: "EUR", nights: 3, why: "Airbnb'de misafir favorisi", meta: expect.stringMatching(/^Misafir favorisi · .* yorum$/) });
+    expect(o.url).toMatch(/^https:\/\/www\.airbnb\.com\/rooms\//);
+    expect(o.rating).toBeGreaterThanOrEqual(4.7);
+    expect(o.price).toBeGreaterThan(100);
+    expect(o.area).not.toMatch(/ in /);
+    // The same listing among the stay's candidates, its night's price from the total.
+    expect(airbnbCandidate(o)).toMatchObject({ id: o.id, source: "Airbnb", total: o.price, nights: 3, nightly: Math.round(o.price! / 3), url: o.url });
+    expect(airbnbCandidate(o).labels).toContain("apartment");
+  });
+  it("gives nothing when no listing is liked enough", () => {
+    const l = { name: "X", link: "https://www.airbnb.com/rooms/1", rating: 4.5, reviews: 300, extracted_price: 200 };
+    expect(airbnbOffer({ organic_results: [l, { ...l, rating: 4.9, reviews: 5 }] }, { lang: "tr", nights: 3, now: 1 })).toBeNull();
+    expect(airbnbOffer({ organic_results: [{ ...l, rating: 4.8, link: "https://evil.example/rooms/1" }] }, { lang: "tr", nights: 3, now: 1 })).toBeNull();
+    expect(airbnbOffer(null, { lang: "tr", nights: 3, now: 1 })).toBeNull();
+  });
+});
+
+describe("what's on in a city on the trip's days (spec 2026-10-19 SerpApi, item 8)", () => {
+  it("reads Google's month and day as the next such day", () => {
+    expect(eventDay("Oct 23", "2026-10-19")).toBe("2026-10-23");
+    expect(eventDay("Jan 5", "2026-10-19")).toBe("2027-01-05");
+    expect(eventDay("Oct 19", "2026-10-19")).toBe("2026-10-19");
+    expect(eventDay("Free Entry", "2026-10-19")).toBeNull();
+  });
+  it("keeps the stay's days, leaves nights out out, the tickets' page and the hour", () => {
+    // Real: "Events in Porto", 19 Oct 2026: of eight, six are pub crawls, parties and Halloween nights.
+    const list = cityEvents(serpEvents, { start: "2026-10-20", end: "2026-10-31", today: "2026-10-19", lang: "tr", now: 1 });
+    expect(list.map((o) => o.title)).toEqual(["NOITE DE POESIA / POETRY NIGHT", "Lendas do Porto - Experiência imersiva e metaverso"]);
+    expect(list[0]).toMatchObject({ kind: "activity", price: null, why: "23 Eki · 19:30", meta: "Casa da Horta - Associação Cultural", source: "eventbrite.com", url: expect.stringMatching(/^https:\/\/www\.eventbrite\.com\//) });
+    expect(cityEvents(serpEvents, { start: "2026-11-01", end: "2026-11-05", today: "2026-10-19", lang: "tr", now: 1 })).toEqual([]);
+    expect(cityEvents(null, { start: "2026-10-20", end: "2026-10-31", today: "2026-10-19", lang: "tr", now: 1 })).toEqual([]);
   });
 });

@@ -17,6 +17,8 @@ import type { AccessVM, IntentVM, OptionVM } from "../../../lib/intents";
 import { moveToBookings, setDone, setIdeaDay, setPrep } from "../../../lib/ideas";
 import type { Plan } from "../../../lib/plan";
 import { findPlacePhoto, knownPlacePhoto, photoNames, type PlacePhoto } from "../../../lib/placeSuggest";
+import { matchSight, sightRating } from "../../../lib/citySights";
+import { citySights } from "../../../lib/offerSources";
 import type { Item, Suggestion } from "../../../lib/types";
 import { setItemStatus, setNotNeeded } from "../../actions";
 import type { MenuEntry } from "../../cards/CardShell";
@@ -392,22 +394,35 @@ function RecordFace({ card, vm, plan, search, onPut, onTakeOff }: RecordCardProp
   );
 }
 
-/** A place's photo from its own Wikipedia page (placeSuggest.ts), asked once a card shows; null while none is found. */
-function usePlacePhoto(s: Suggestion | null, on: boolean): PlacePhoto | null {
+type FoundPhoto = PlacePhoto & { rating?: number | null; from?: "google" | "wikipedia" };
+
+/**
+ * A place's photo: the place in its city's Google sights (photo and rating, spec 2026-10-19 SerpApi item 3), else its own
+ * Wikipedia page (placeSuggest.ts); asked once a card shows; null while none is found.
+ */
+function usePlacePhoto(s: Suggestion | null, on: boolean): FoundPhoto | null {
   const names = s && on ? photoNames(s) : [];
+  const city = (on && s?.payload?.city?.trim()) || null;
   const key = names.join("|");
-  const [found, setFound] = useState<{ key: string; photo: PlacePhoto | null } | null>(null);
+  const [found, setFound] = useState<{ key: string; photo: FoundPhoto | null } | null>(null);
   useEffect(() => {
-    if (!key || knownPlacePhoto(names) !== undefined) return;
+    if (!key) return;
     let live = true;
-    void findPlacePhoto(names).then((photo) => live && setFound({ key, photo }));
+    void (async () => {
+      const sight = city ? matchSight(names, await citySights(city)) : null;
+      if (sight?.photo) return { url: sight.photo, page: null, rating: sight.rating, from: "google" } as FoundPhoto;
+      const wiki = knownPlacePhoto(names) !== undefined ? (knownPlacePhoto(names) ?? null) : await findPlacePhoto(names);
+      return wiki ? { ...wiki, rating: sight?.rating ?? null, from: "wikipedia" as const } : null;
+    })().then((photo) => live && setFound({ key, photo }));
     return () => {
       live = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- the names, by their key
-  }, [key]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the names and the city, by their key
+  }, [key, city]);
   if (!key) return null;
-  return found?.key === key ? found.photo : (knownPlacePhoto(names) ?? null);
+  if (found?.key === key) return found.photo;
+  const wiki = knownPlacePhoto(names);
+  return wiki ? { ...wiki, from: "wikipedia" } : null;
 }
 
 /**
@@ -417,8 +432,11 @@ function usePlacePhoto(s: Suggestion | null, on: boolean): PlacePhoto | null {
  */
 export function SuggestCard({ card, onPut, onDismiss }: { card: KCardVM; onPut: (photo: string | null) => void; onDismiss: () => void }) {
   const place = card.family !== "event";
-  const photo = usePlacePhoto(card.suggestion, place);
+  // A sight from Google has its photo already; an AI idea looks for the place in its city's Google sights, then on Wikipedia.
+  const photo = usePlacePhoto(card.suggestion, place && !card.photo);
   const shown = photo ? { ...card, photo: photo.url } : card;
+  const rating = card.rating ?? (photo?.rating != null ? sightRating(photo.rating) : null);
+  const credit = photo ? (photo.from === "google" ? L("Fotoğraf: Google", "Photo: Google") : L("Fotoğraf: Wikipedia", "Photo: Wikipedia")) : card.photo ? L("Fotoğraf: Google", "Photo: Google") : undefined;
   return (
     <KCard
       className={`${card.family === "event" ? "q-card" : "q-tile"} q-opt sugg${place ? " z-kplace" : ""}`}
@@ -428,11 +446,16 @@ export function SuggestCard({ card, onPut, onDismiss }: { card: KCardVM; onPut: 
       pic={
         <>
           {place ? (
-            <FallbackImg className="ph" src={shown.photo} fallback={<img className="art" src={card.art} alt="" />} title={photo ? L("Fotoğraf: Wikipedia", "Photo: Wikipedia") : undefined} />
+            <FallbackImg className="ph" src={shown.photo} fallback={<img className="art" src={card.art} alt="" />} title={credit} />
           ) : (
             <Picture card={shown} />
           )}
           <Chips card={card} />
+          {place && rating && (
+            <span className="z-prate" title={L("Google puanı", "Google rating")}>
+              {rating}
+            </span>
+          )}
           <span className="z-kt">
             <button type="button" className="q-rm" aria-label={L(`${card.title}: gerek yok`, `${card.title}: not needed`)} title={L("Gerek yok", "Not needed")} onClick={onDismiss}>
               <Ic name="x" size={12} stroke={2.6} />
@@ -445,7 +468,7 @@ export function SuggestCard({ card, onPut, onDismiss }: { card: KCardVM; onPut: 
       foot={
         place && card.map ? (
           <span className="q-act">
-            {card.canPut && <PutButton title={card.title} onPut={() => onPut(photo?.url ?? null)} />}
+            {card.canPut && <PutButton title={card.title} onPut={() => onPut(photo?.url ?? card.photo ?? null)} />}
             <a className="z-kmap" href={card.map} target="_blank" rel="noopener noreferrer" data-map="" aria-label={L(`${card.title}: haritada aç`, `${card.title}: open on the map`)} title={L("Haritada aç", "Open on the map")}>
               <Ic name="pin" size={14} stroke={2.2} />
               {!card.canPut && <span>{L("Haritada aç", "Open on the map")}</span>}

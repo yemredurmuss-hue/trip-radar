@@ -132,6 +132,27 @@ export interface ItemMetrics {
 export const STAY_KINDS = ["hotel_room", "apartment", "house", "guesthouse", "hostel", "other", "boat", "camp", "vehicle"] as const;
 export type StayKind = (typeof STAY_KINDS)[number];
 
+export interface StayNearby {
+  name: string;
+  mode: "walk" | "taxi" | "transit";
+  minutes: number;
+  airport: boolean;
+}
+
+export interface NightStop {
+  /** The airport (IATA). */
+  at: string;
+  minutes: number;
+  /** Its own clock: landing and taking off ("00:55", "07:55"). */
+  from: string;
+  to: string;
+}
+
+export interface ReviewTopic {
+  topic: string;
+  up: boolean;
+}
+
 export interface Geo {
   lat: number;
   lng: number;
@@ -354,6 +375,9 @@ export interface Suggestion {
     place?: string | null;
     /** The place's photo its card found (placeSuggest.ts), handed to the record when it's put on the plan; not stored. */
     photo?: string | null;
+    /** A city's sight from Google (citySights.ts, spec 2026-10-19 SerpApi item 3): its rating out of 5, and that it is Google's. */
+    rating?: number | null;
+    from?: "google" | null;
   };
   createdAt: number;
   state: SuggestionState;
@@ -669,6 +693,12 @@ export interface Item {
   highlights: string[];
   concerns: string[];
   reviewSummary: string | null;
+  /** A stay's nearest place and its airport with the minutes to them, as Google Hotels said (offers, 2026-10-19). */
+  nearby?: StayNearby[];
+  /** What a stay's reviews praise (up) and fault, Google Hotels' own topic names ("Hizmet", "Banyo"). */
+  reviewTopics?: ReviewTopic[];
+  /** A flight's change of plane at night, as its source's legs say (offers, spec 2026-10-19 SerpApi item 6). */
+  nightStop?: NightStop;
   missing: string[];
   status: ItemStatus;
   statusNote: string | null;

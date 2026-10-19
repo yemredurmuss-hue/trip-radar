@@ -1,0 +1,115 @@
+{
+ "search_parameters": {
+  "engine": "airbnb",
+  "q": "Lisbon",
+  "airbnb_domain": "airbnb.com",
+  "currency": "EUR",
+  "check_in_date": "2026-11-12",
+  "check_out_date": "2026-11-15",
+  "adults": 2
+ },
+ "organic_results": [
+  {
+   "listing_id": "1427417218567220620",
+   "title": "Apartment in Santa Maria Maior",
+   "name": "The Scenic Perch",
+   "description": "Inside Castelo São Jorge, with skyline views, a patio, and a private entrance",
+   "link": "https://www.airbnb.com/rooms/1427417218567220620?check_in=2026-11-12&check_out=2026-11-15&adults=2",
+   "rating": 4.87,
+   "reviews": 92,
+   "badges": [
+    "Guest favorite"
+   ],
+   "price": "€347",
+   "extracted_price": 347,
+   "price_qualifier": "for 3 nights",
+   "bedrooms": 1,
+   "thumbnail": "https://a0.muscache.com/im/pictures/hosting/Hosting-1427417218567220620/original/d2757cb1-69dd-4a1c-961c-bc79b70b3314.png"
+  },
+  {
+   "listing_id": "563650864219417274",
+   "title": "Apartment in Santa Maria Maior",
+   "name": "Nosolomio Castle Apartment TopFloor 5",
+   "description": "Chic top-floor stay 100m from São Jorge Castle, with a private balcony",
+   "link": "https://www.airbnb.com/rooms/563650864219417274?check_in=2026-11-12&check_out=2026-11-15&adults=2",
+   "rating": 4.93,
+   "reviews": 285,
+   "badges": [
+    "Guest favorite"
+   ],
+   "price": "€428",
+   "extracted_price": 428,
+   "price_qualifier": "for 3 nights",
+   "bedrooms": 1,
+   "thumbnail": "https://a0.muscache.com/im/pictures/miso/Hosting-563650864219417274/original/71de508f-6f3a-41f7-8350-f35ec70af821.jpeg"
+  },
+  {
+   "listing_id": "1549906",
+   "title": "Apartment in Lisbon",
+   "name": "Lisbon frontal River View in historic Alfama",
+   "description": "Panoramic River Tagus views from Alfama, with the 28 tram 5 min away",
+   "link": "https://www.airbnb.com/rooms/1549906?check_in=2026-11-12&check_out=2026-11-15&adults=2",
+   "rating": 4.82,
+   "reviews": 668,
+   "badges": [
+    "Superhost"
+   ],
+   "price": "€325",
+   "extracted_price": 325,
+   "price_qualifier": "for 3 nights",
+   "bedrooms": 1,
+   "thumbnail": "https://a0.muscache.com/im/pictures/4257d9fa-00ff-4bfc-a759-30d8a653d8c4.jpg"
+  },
+  {
+   "listing_id": "7892815",
+   "title": "Apartment in São Paulo",
+   "name": "Stylish Apartment in Chiado | Prime Location",
+   "description": "Stylish Chiado retreat with an open-plan living area and a fully equipped kitchen",
+   "link": "https://www.airbnb.com/rooms/7892815?check_in=2026-11-12&check_out=2026-11-15&adults=2",
+   "rating": 4.86,
+   "reviews": 476,
+   "badges": [
+    "Superhost"
+   ],
+   "price": "€401",
+   "extracted_price": 401,
+   "price_qualifier": "for 3 nights",
+   "bedrooms": 2,
+   "thumbnail": "https://a0.muscache.com/im/pictures/edc551d5-a7e4-4f38-8e48-6d54fd06fc67.jpg"
+  },
+  {
+   "listing_id": "15144002",
+   "title": "Apartment in Santa Maria Maior",
+   "name": "Madalena St - a close walking distance to the major hotspots in Lisbon",
+   "description": "18th-century charm with contemporary design, a balcony, and A/C",
+   "link": "https://www.airbnb.com/rooms/15144002?check_in=2026-11-12&check_out=2026-11-15&adults=2",
+   "rating": 4.96,
+   "reviews": 492,
+   "badges": [
+    "Guest favorite"
+   ],
+   "price": "€490",
+   "extracted_price": 490,
+   "price_qualifier": "for 3 nights",
+   "bedrooms": 1,
+   "thumbnail": "https://a0.muscache.com/im/pictures/9cb3d6d4-263d-4590-afa9-f462c7fbccd2.jpg"
+  },
+  {
+   "listing_id": "27023726",
+   "title": "Apartment in São Paulo",
+   "name": "Apartment on the Wharf",
+   "description": "Historic Misericórdia stay near the Tagus, with a full kitchen and in-unit laundry",
+   "link": "https://www.airbnb.com/rooms/27023726?check_in=2026-11-12&check_out=2026-11-15&adults=2",
+   "rating": 4.91,
+   "reviews": 325,
+   "badges": [
+    "Guest favorite"
+   ],
+   "price": "€405",
+   "extracted_price": 405,
+   "price_qualifier": "for 3 nights",
+   "bedrooms": 2,
+   "thumbnail": "https://a0.muscache.com/im/pictures/airflow/Hosting-27023726/original/62944f4d-a02e-491d-98b0-6edffa0413e5.jpg"
+  }
+ ]
+}

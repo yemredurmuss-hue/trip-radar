@@ -62,7 +62,7 @@ export function AgreeRoute({ onAgree }: { onAgree: () => void }) {
   );
 }
 
-function Card({ cls = "", info, media, photo, l1, title, l2, l3, top, primary, row, detail }: {
+function Card({ cls = "", info, media, photo, l1, title, l2, more = null, l3, top, primary, row, detail }: {
   cls?: string;
   info: FrameCardProps["info"];
   media: ReactNode;
@@ -70,6 +70,8 @@ function Card({ cls = "", info, media, photo, l1, title, l2, l3, top, primary, r
   l1: ReactNode;
   title: string;
   l2: ReactNode;
+  /** Lines under l2 (a stay's nearby places and what its reviews say); none, nothing drawn. */
+  more?: ReactNode;
   l3: ReactNode;
   top: ReactNode;
   primary: ReactNode;
@@ -90,6 +92,7 @@ function Card({ cls = "", info, media, photo, l1, title, l2, l3, top, primary, r
           <Editable field="name">{title}</Editable>
         </h3>
         <span className="z-l2">{l2}</span>
+        {more}
         <span className="z-l3">{l3}</span>
       </div>
       <div className="z-s">
@@ -128,6 +131,26 @@ function optionLines(o: OptionVM) {
       </>
     ),
     l2: o.where,
+    more: o.near.length || o.topics.length ? (
+      <>
+        {o.near.length > 0 && (
+          <span className="z-near">
+            {o.near.map((t) => <span key={t}>{t}</span>)}
+          </span>
+        )}
+        {o.topics.length > 0 && (
+          <span className="z-tops">
+            {L("Yorumlarda:", "Reviews:")}{" "}
+            {o.topics.map((t, i) => (
+              <b key={t.label} className={t.up ? "up" : "dn"}>
+                {i > 0 && (o.topics[i - 1].up !== t.up ? " · " : " ")}
+                {t.label} {t.up ? "↑" : "↓"}
+              </b>
+            ))}
+          </span>
+        )}
+      </>
+    ) : null,
     l3: (
       <>
         {o.cancel && <span className={`z-chip ${cancelTone(o.cancel)}`}>{o.cancel}</span>}

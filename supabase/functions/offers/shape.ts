@@ -33,6 +33,23 @@ export interface OfferOut {
   stops?: number | null;
   area?: string | null;
   meta?: string | null;
+  /** A stay's: how far the nearest place and the airport are (Google Hotels). */
+  nearby?: StayNearby[];
+  /** A stay's: what its reviews praise (up) and fault, Google's topic names. */
+  topics?: StayTopic[];
+  /** A flight's: a change of plane at night (three hours or more, some of it 00:00–06:00 there). */
+  nightStop?: NightStop;
+}
+
+export interface StayNearby {
+  name: string;
+  mode: "walk" | "taxi" | "transit";
+  minutes: number;
+  airport: boolean;
+}
+export interface StayTopic {
+  topic: string;
+  up: boolean;
 }
 
 // --- what may be asked -------------------------------------------------------------------------------------
@@ -97,6 +114,48 @@ export interface AviaFlight {
   url?: string;
   /** One line under the price (the shared flight search's Google check: "Google'da da €456"). */
   note?: string;
+  /** Each change of plane: its airport and the local clocks of landing and taking off there (Kiwi's, Google's legs). */
+  stopovers?: Stopover[];
+}
+
+export interface Stopover {
+  at: string;
+  /** "2026-11-12T00:55": the airport's own clock. */
+  land: string;
+  leave: string;
+}
+
+/** A night change of plane (spec 2026-10-19 SerpApi, item 6): where, how long, from when to when ("00:55"–"07:55"). */
+export interface NightStop {
+  at: string;
+  minutes: number;
+  from: string;
+  to: string;
+}
+
+const LOCAL = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}):(\d{2})/;
+/** Minutes since 1970 of an airport's own clock ("2026-11-12T00:55", "2026-11-12 00:55"): only for differences there. */
+function localMinutes(t: string): number | null {
+  const m = LOCAL.exec(t);
+  if (!m) return null;
+  return Math.round(Date.parse(`${m[1]}T${m[2]}:${m[3]}:00Z`) / 6e4);
+}
+
+/**
+ * The first change of plane that is a night one: three hours or more on the ground, some of it between midnight and
+ * six in the morning at that airport. Clocks are the airport's own, so no time zone is needed. Null when none.
+ */
+export function nightStop(stops: readonly Stopover[] | undefined): NightStop | null {
+  for (const s of stops ?? []) {
+    const a = localMinutes(s.land), b = localMinutes(s.leave);
+    if (a == null || b == null || b - a < 180 || b - a > 24 * 60) continue;
+    // Any minute of the wait inside 00:00–06:00 of a day it spans.
+    const dayOf = (t: number) => Math.floor(t / 1440) * 1440;
+    let night = false;
+    for (let d = dayOf(a); d <= dayOf(b) && !night; d += 1440) night = Math.max(a, d) < Math.min(b, d + 360);
+    if (night) return { at: s.at, minutes: b - a, from: s.land.slice(11, 16), to: s.leave.slice(11, 16) };
+  }
+  return null;
 }
 
 /** "02:25" from "2026-11-19T02:25:00+03:00": the clock the airport shows. */
@@ -208,6 +267,7 @@ export function flightOffer({ f, why }: { f: AviaFlight; why: string }, ctx: Fli
     source: f.source ?? "Aviasales",
     fetchedAt: seenAt(f.link, ctx.now),
     ...(f.note ? { meta: f.note } : {}),
+    ...((n) => (n ? { nightStop: n } : {}))(nightStop(f.stopovers)),
   };
 }
 
@@ -379,6 +439,9 @@ export interface StayCandidate {
   source: string | null;
   currency: "EUR";
   fetchedAt: number;
+  /** Google Hotels only: the nearest place and the airport with their minutes; the reviews' praised and faulted topics. */
+  nearby?: StayNearby[];
+  topics?: StayTopic[];
 }
 
 /**
@@ -474,6 +537,7 @@ export function serpFlights(body: unknown, adults: number, from: string, to: str
       price: Math.round(t.price / Math.max(1, adults)),
       link: aviasalesSearch(from, to, day, adults),
       source: "Google Flights",
+      ...(legs.length > 1 ? { stopovers: stopoversOf(legs.map((l) => ({ to: l.arrival_airport?.id, arrive: l.arrival_airport?.time, depart: l.departure_airport?.time }))) } : {}),
     });
   }
   return out;
@@ -487,7 +551,17 @@ interface UcusLeg {
   duration_min?: number | null;
   stops?: number | null;
   carriers?: { code?: string | null }[];
-  segments?: { flight?: string | null; carrier?: string | null }[];
+  segments?: { flight?: string | null; carrier?: string | null; from?: string | null; to?: string | null; depart?: string | null; arrive?: string | null }[];
+}
+
+/** Changes of plane from consecutive legs: the airport landed at, landing and the next taking off, both its clock. */
+function stopoversOf(legs: { to?: string | null; arrive?: string | null; depart?: string | null }[]): Stopover[] {
+  const out: Stopover[] = [];
+  for (let i = 0; i + 1 < legs.length; i++) {
+    const at = legs[i].to, land = legs[i].arrive, leave = legs[i + 1].depart;
+    if (at && land && leave) out.push({ at, land, leave });
+  }
+  return out;
 }
 interface UcusResult {
   price?: number;
@@ -533,6 +607,7 @@ export function ucusFlights(body: unknown, adults: number, from: string, to: str
       ...(r.source === "kiwi" && r.link?.startsWith("https://") ? { url: r.link } : {}),
       source: r.source === "kiwi" ? "Kiwi.com" : "Google Flights",
       ...(note ? { note } : {}),
+      ...((o.segments?.length ?? 0) > 1 ? { stopovers: stopoversOf(o.segments!) } : {}),
     });
   }
   return out;
@@ -549,6 +624,58 @@ interface SerpHotel {
   total_rate?: { extracted_lowest?: number };
   hotel_class?: string;
   amenities?: string[];
+  nearby_places?: { name?: string; transportations?: { type?: string; duration?: string }[] }[];
+  /** `name` in the language asked ("Hizmet"), `description` always English ("Service"). */
+  reviews_breakdown?: { name?: string; description?: string; total_mentioned?: number; positive?: number; negative?: number }[];
+}
+
+/** "3 dk.", "1 sa. 15 dk.", "8 min", "1 hr 15 min" → minutes; null when it isn't a duration. */
+export function serpMinutes(text: string | null | undefined): number | null {
+  if (!text) return null;
+  const h = /(\d+)\s*(?:sa\b|sa\.|saat|hr|hrs|h\b|hour)/i.exec(text);
+  const m = /(\d+)\s*(?:dk|dakika|min)/i.exec(text);
+  if (!h && !m) return null;
+  return (h ? Number(h[1]) * 60 : 0) + (m ? Number(m[1]) : 0);
+}
+
+const AIRPORT = /airport|havaliman|havaalan|aeroporto|aeropuerto|aéroport|flughafen|bandara/i;
+const MODE: Record<string, StayNearby["mode"]> = { walking: "walk", taxi: "taxi", "public transport": "transit" };
+
+/**
+ * Two places near a stay and how long to them, as Google Hotels says: the nearest one on foot (15 minutes at most;
+ * else by taxi, 15 at most) and the airport (public transport first, else taxi). Nothing invented: a place without a
+ * time is left out.
+ */
+export function nearbyOf(places: SerpHotel["nearby_places"]): StayNearby[] {
+  const all = (places ?? []).flatMap((p) =>
+    (p.transportations ?? []).flatMap((t) => {
+      const mode = MODE[(t.type ?? "").toLowerCase()];
+      const minutes = serpMinutes(t.duration);
+      return p.name && mode && minutes != null ? [{ name: p.name.trim(), mode, minutes, airport: AIRPORT.test(p.name) }] : [];
+    }),
+  );
+  const near = (mode: StayNearby["mode"]) => all.filter((x) => !x.airport && x.mode === mode && x.minutes <= 15).sort((a, b) => a.minutes - b.minutes)[0];
+  const airport = all.filter((x) => x.airport).sort((a, b) => (a.mode === "transit" ? 0 : 1) - (b.mode === "transit" ? 0 : 1) || a.minutes - b.minutes)[0];
+  return [near("walk") ?? near("taxi"), airport].filter((x): x is StayNearby => !!x);
+}
+
+/** Topics that say nothing about a stay ("Property"). */
+const VAGUE_TOPIC = /^(property|atmosphere)$/i;
+
+/**
+ * What the reviews praise and fault, from Google Hotels' breakdown: of the topics talked about at least 10 times,
+ * the most talked about first, two praised (65 % or more good) and one faulted (45 % or less good). The topic's name
+ * is Google's own, in the language asked.
+ */
+export function topicsOf(breakdown: SerpHotel["reviews_breakdown"]): StayTopic[] {
+  const rows = (breakdown ?? [])
+    .filter((r) => (r.name ?? r.description) && !VAGUE_TOPIC.test(r.description ?? "") && (r.positive ?? 0) + (r.negative ?? 0) >= 10)
+    .sort((a, b) => (b.total_mentioned ?? 0) - (a.total_mentioned ?? 0));
+  const share = (r: (typeof rows)[number]) => (r.positive ?? 0) / Math.max(1, (r.positive ?? 0) + (r.negative ?? 0));
+  const label = (r: (typeof rows)[number]) => (r.name ?? r.description)!.trim();
+  const up = rows.filter((r) => share(r) >= 0.65).slice(0, 2).map((r) => ({ topic: label(r), up: true }));
+  const down = rows.filter((r) => share(r) <= 0.45).slice(0, 1).map((r) => ({ topic: label(r), up: false }));
+  return [...up, ...down];
 }
 
 /**
@@ -578,6 +705,8 @@ export function serpStays(body: unknown, ctx: { lang: Lang; nights: number; now:
       source: "Google Hotels",
       currency: "EUR",
       fetchedAt: ctx.now,
+      nearby: nearbyOf(p.nearby_places),
+      topics: topicsOf(p.reviews_breakdown),
     };
   });
 }
@@ -588,6 +717,8 @@ export function candidateOffer(c: StayCandidate, why: string, lang: Lang): Offer
     id: c.id, kind: "stay", title: c.name, photo: c.photo, rating: c.rating, price: c.total, currency: "EUR", nights: c.nights, url: c.url,
     why, source: c.source ?? "Google Hotels", fetchedAt: c.fetchedAt, area: c.area,
     meta: c.reviews ? T(lang, `${count(c.reviews, lang)} yorum`, `${count(c.reviews, lang)} reviews`) : null,
+    ...(c.nearby?.length ? { nearby: c.nearby } : {}),
+    ...(c.topics?.length ? { topics: c.topics } : {}),
   };
 }
 
@@ -936,4 +1067,226 @@ export function pickTransfers(r: OmioRoute, adults: number, lang: Lang, seen: nu
         via: word,
       };
     });
+}
+
+// --- a flight's price, judged (Google Flights' price insights; spec 2026-10-19 SerpApi, items 2 and 4) ------------
+// One person's fare on a route and day: Google's usual range for it, how today's lowest stands, and its last weeks
+// (one point a day). Without Google's (over the cap), the prices this function itself has seen for that route and day.
+
+export interface PriceInsightOut {
+  /** Google's usual range for one person on this route (null from our own record). */
+  low: number | null;
+  high: number | null;
+  /** Google's lowest today, and how it stands ("low", "typical", "high"). */
+  lowest: number | null;
+  level: "low" | "typical" | "high" | null;
+  /** [ms, euros] a day, oldest first. */
+  history: [number, number][];
+  source: "google" | "log";
+  currency: "EUR";
+}
+
+const LEVELS = new Set(["low", "typical", "high"]);
+const posNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v) && v > 0;
+
+/** SerpApi's `price_insights` as what the card judges with; null when it has neither a range nor a history. */
+export function priceInsightOf(body: unknown): PriceInsightOut | null {
+  const pi = (body as { price_insights?: { lowest_price?: unknown; price_level?: unknown; typical_price_range?: unknown; price_history?: unknown } } | null)?.price_insights;
+  if (!pi) return null;
+  const range = Array.isArray(pi.typical_price_range) && pi.typical_price_range.length === 2 && posNum(pi.typical_price_range[0]) && posNum(pi.typical_price_range[1])
+    ? [Math.min(pi.typical_price_range[0], pi.typical_price_range[1]), Math.max(pi.typical_price_range[0], pi.typical_price_range[1])]
+    : null;
+  const history = (Array.isArray(pi.price_history) ? pi.price_history : [])
+    .filter((r): r is [number, number] => Array.isArray(r) && posNum(r[0]) && posNum(r[1]))
+    .map(([t, p]): [number, number] => [t < 1e12 ? t * 1000 : t, Math.round(p)])
+    .sort((a, b) => a[0] - b[0]);
+  if (!range && history.length < 2) return null;
+  const level = typeof pi.price_level === "string" && LEVELS.has(pi.price_level.toLowerCase()) ? (pi.price_level.toLowerCase() as PriceInsightOut["level"]) : null;
+  return { low: range?.[0] ?? null, high: range?.[1] ?? null, lowest: posNum(pi.lowest_price) ? Math.round(pi.lowest_price) : null, level, history, source: "google", currency: "EUR" };
+}
+
+/** Our own record of a route and day's fares as a history: the lowest seen each day, oldest first; null under 5 days. */
+export function logInsight(rows: { seen_at: string; price: number }[]): PriceInsightOut | null {
+  const byDay = new Map<string, number>();
+  for (const r of rows) {
+    const t = Date.parse(r.seen_at);
+    if (!Number.isFinite(t) || !posNum(r.price)) continue;
+    const day = new Date(t).toISOString().slice(0, 10);
+    byDay.set(day, Math.min(byDay.get(day) ?? Infinity, Math.round(r.price)));
+  }
+  const history = [...byDay].map(([d, p]): [number, number] => [Date.parse(`${d}T12:00:00Z`), p]).sort((a, b) => a[0] - b[0]);
+  return history.length >= 5 ? { low: null, high: null, lowest: null, level: null, history, source: "log", currency: "EUR" } : null;
+}
+
+// --- a city's sights (Google's Top Sights; spec 2026-10-19 SerpApi, item 3) --------------------------------------
+// The places Google lists first for a city, with their rating and photo: the "Gezilecek" ideas' source. The review
+// count isn't kept (in Turkish it comes broken: 99 bin read as 99 billion), nor the description (it is a word: "Köprü").
+
+export interface SightOut {
+  title: string;
+  /** Out of 5 (Google). */
+  rating: number | null;
+  photo: string | null;
+}
+
+/** Google's Top Sights for a city: at most eight, each with a name; a photo only over https. */
+export function topSights(body: unknown): SightOut[] {
+  const list = (body as { top_sights?: { sights?: { title?: unknown; rating?: unknown; thumbnail?: unknown }[] } } | null)?.top_sights?.sights;
+  if (!Array.isArray(list)) return [];
+  const out: SightOut[] = [];
+  const seen = new Set<string>();
+  for (const s of list) {
+    const title = typeof s?.title === "string" ? s.title.trim().slice(0, 80) : "";
+    if (!title || seen.has(title.toLocaleLowerCase("tr"))) continue;
+    seen.add(title.toLocaleLowerCase("tr"));
+    const rating = typeof s.rating === "number" && s.rating > 0 && s.rating <= 5 ? Math.round(s.rating * 10) / 10 : null;
+    const photo = typeof s.thumbnail === "string" && /^https:\/\//.test(s.thumbnail) ? s.thumbnail : null;
+    out.push({ title, rating, photo });
+    if (out.length === 8) break;
+  }
+  return out;
+}
+
+// --- a flight's price by day (the shared flight search, ±3 days; spec 2026-10-19 SerpApi, item 5) -----------------
+
+export interface DayFare {
+  day: string;
+  /** One person's cheapest that day, euros. */
+  price: number;
+}
+
+/** The flight search's answer for a day ±3 as each day's cheapest (one person, euros), in day order. */
+export function dayFares(body: unknown, day: string): DayFare[] {
+  const center = Date.parse(`${day}T00:00:00Z`);
+  const best = new Map<string, number>();
+  for (const r of (body as { results?: UcusResult[] } | null)?.results ?? []) {
+    const d = r.outbound?.depart?.slice(0, 10);
+    if (r.currency !== "EUR" || typeof r.price !== "number" || r.price <= 0 || !d || !/^\d{4}-\d{2}-\d{2}$/.test(d)) continue;
+    if (Math.abs(Date.parse(`${d}T00:00:00Z`) - center) > 3 * 864e5) continue;
+    best.set(d, Math.min(best.get(d) ?? Infinity, Math.round(r.price)));
+  }
+  return [...best].map(([d, price]) => ({ day: d, price })).sort((a, b) => a.day.localeCompare(b.day));
+}
+
+// --- a home of one's own on Airbnb (spec 2026-10-19 SerpApi, item 7) ------------------------------------------------
+// Asked only for a stay where a home is wanted (a long stay, a big group, a flat already saved). One listing joins the
+// stay's offers: well liked (4.7 and up, 20 reviews and up), a guest favourite first. Its page is Airbnb's own: Airbnb
+// pays no partner, so this one earns nothing; it is there because the traveller wants a home.
+
+interface AirbnbListing {
+  listing_id?: string | number;
+  title?: string;
+  name?: string;
+  link?: string;
+  rating?: number;
+  reviews?: number;
+  badges?: string[];
+  extracted_price?: number;
+  thumbnail?: string;
+  bedrooms?: number;
+}
+
+const AIRBNB_BADGE: Record<string, [string, string]> = { "Guest favorite": ["Misafir favorisi", "Guest favourite"], Superhost: ["Süper ev sahibi", "Superhost"] };
+
+/** The best liked home of Airbnb's answer as an offer (its total for the nights); null when none is liked enough. */
+export function airbnbOffer(body: unknown, ctx: { lang: Lang; nights: number; now: number }): OfferOut | null {
+  const list = ((body as { organic_results?: AirbnbListing[] } | null)?.organic_results ?? []).filter(
+    (l) => (l.name || l.title) && typeof l.link === "string" && /^https:\/\/(www\.)?airbnb\./.test(l.link) && (l.rating ?? 0) >= 4.7 && (l.reviews ?? 0) >= 20 && (l.extracted_price ?? 0) > 0,
+  );
+  const score = (l: AirbnbListing) => (l.badges?.includes("Guest favorite") ? 1 : 0) * 10 + (l.rating ?? 0) * Math.log10((l.reviews ?? 0) + 1);
+  const best = [...list].sort((a, b) => score(b) - score(a))[0];
+  if (!best) return null;
+  const area = best.title?.match(/ in (.+)$/)?.[1]?.trim() ?? null;
+  const badge = best.badges?.map((b) => AIRBNB_BADGE[b]).find(Boolean);
+  const photo = typeof best.thumbnail === "string" && /^https:\/\//.test(best.thumbnail) ? best.thumbnail : null;
+  return {
+    id: `ab:${best.listing_id ?? best.link}`,
+    kind: "stay",
+    title: (best.name ?? best.title)!.trim().slice(0, 100),
+    photo,
+    rating: best.rating ?? null,
+    reviews: best.reviews ?? null,
+    price: Math.round(best.extracted_price!),
+    currency: "EUR",
+    nights: ctx.nights,
+    url: best.link!,
+    why: badge ? T(ctx.lang, `Airbnb'de ${badge[0].toLocaleLowerCase("tr")}`, `An Airbnb ${badge[1].toLowerCase()}`) : T(ctx.lang, "Airbnb'de en beğenilenlerden", "Among Airbnb's best liked"),
+    source: "Airbnb",
+    fetchedAt: ctx.now,
+    area,
+    meta: [badge ? T(ctx.lang, badge[0], badge[1]) : null, best.reviews ? T(ctx.lang, `${count(best.reviews, ctx.lang)} yorum`, `${count(best.reviews, ctx.lang)} reviews`) : null].filter(Boolean).join(" · ") || null,
+  };
+}
+
+/** The same listing as one of a stay's candidates (stayPicks' "Sana en uygun", "Daha ekonomik", "Daha konforlu"). */
+export function airbnbCandidate(o: OfferOut): StayCandidate {
+  const nights = Math.max(1, o.nights ?? 1);
+  return {
+    id: o.id, name: o.title, rating: o.rating ?? null, reviews: o.reviews ?? null, photo: o.photo ?? null, geo: null,
+    area: o.area ?? null, labels: ["apartment", ...(o.meta ? [o.meta.split(" · ")[0]] : [])], url: o.url,
+    nightly: o.price != null ? Math.round(o.price / nights) : null, total: o.price, nights, priceRange: null,
+    source: "Airbnb", currency: "EUR", fetchedAt: o.fetchedAt,
+  };
+}
+
+// --- what's on in a city on the trip's days (Google Events; spec 2026-10-19 SerpApi, item 8) -----------------------
+// "Events in {city}" (a Turkish or a typed query found nothing, 19 Oct 2026). Google gives a month and day, no year: the
+// next one on or after today. Kept only inside the stay's days; nights out (pub crawls, parties, clubs, Halloween) left
+// out, as they filled most of the list; three at most, each with an https page (its tickets first).
+
+interface GEvent {
+  title?: string;
+  date?: { start_date?: string; when?: string };
+  address?: string[];
+  link?: string | null;
+  ticket_info?: { source?: string; link?: string; link_type?: string }[];
+  venue?: { name?: string } | null;
+  thumbnail?: string | null;
+  image?: string | null;
+}
+
+const MONTHS: Record<string, number> = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
+const NIGHT_OUT = /pub ?crawl|party|parties|festa\b|club|clube|bar aberto|open bar|\bvip\b|nightlife|night ?out|halloween|free entry|entrada (livre|gr[aá]tis)|mega experience/i;
+
+/** "Oct 31" → the next 31 October on or after `today` ("2026-10-19"); null when it isn't a month and a day. */
+export function eventDay(startDate: string | undefined, today: string): string | null {
+  const m = /^([A-Za-z]{3})[a-z]*\.?\s+(\d{1,2})$/.exec(startDate?.trim() ?? "");
+  const month = m ? MONTHS[m[1].toLowerCase()] : undefined;
+  if (!m || !month) return null;
+  const year = Number(today.slice(0, 4));
+  const day = (y: number) => `${y}-${String(month).padStart(2, "0")}-${String(Number(m[2])).padStart(2, "0")}`;
+  return day(year) >= today ? day(year) : day(year + 1);
+}
+
+/** A city's events inside the stay's days (start–end), as activity offers: the day and hour, the place, the tickets' page. */
+export function cityEvents(body: unknown, at: { start: string; end: string; today: string; lang: Lang; now: number }): OfferOut[] {
+  const out: OfferOut[] = [];
+  for (const e of (body as { events_results?: GEvent[] } | null)?.events_results ?? []) {
+    const title = e.title?.trim();
+    if (!title || NIGHT_OUT.test(title)) continue;
+    const day = eventDay(e.date?.start_date, at.today);
+    if (!day || day < at.start || day > at.end) continue;
+    const ticket = e.ticket_info?.find((t) => typeof t.link === "string" && /^https:\/\//.test(t.link) && t.link_type !== "more info");
+    const url = ticket?.link ?? (typeof e.link === "string" && /^https:\/\//.test(e.link) ? e.link : null);
+    if (!url) continue;
+    const clock = e.date?.when?.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+    const hour = clock ? `${String((Number(clock[1]) % 12) + (clock[3].toUpperCase() === "PM" ? 12 : 0)).padStart(2, "0")}:${clock[2]}` : null;
+    const photo = [e.image, e.thumbnail].find((p): p is string => typeof p === "string" && /^https:\/\//.test(p)) ?? null;
+    const when = new Date(`${day}T12:00:00Z`).toLocaleDateString(at.lang === "en" ? "en-GB" : "tr-TR", { day: "numeric", month: "short", timeZone: "UTC" });
+    out.push({
+      id: `ev:${day}:${title.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").slice(0, 60)}`,
+      kind: "activity",
+      title: title.slice(0, 100),
+      photo,
+      price: null,
+      currency: "EUR",
+      url,
+      why: [when, hour].filter(Boolean).join(" · "),
+      source: ticket?.source?.replace(/^www\./, "") ?? "Google",
+      fetchedAt: at.now,
+      meta: e.venue?.name?.trim() || e.address?.[0]?.trim() || null,
+    });
+    if (out.length === 3) break;
+  }
+  return out;
 }

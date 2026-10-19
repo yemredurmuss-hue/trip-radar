@@ -1,0 +1,188 @@
+{
+ "search_parameters": {
+  "q": "Events in Porto",
+  "engine": "google_events"
+ },
+ "events_results": [
+  {
+   "title": "NOITE DE POESIA / POETRY NIGHT",
+   "date": {
+    "start_date": "Oct 23",
+    "when": "Oct 23, 7:30 PM"
+   },
+   "address": [
+    "Casa da Horta - Associação Cultural",
+    "Porto, Portugal"
+   ],
+   "link": null,
+   "ticket_info": [
+    {
+     "source": "eventbrite.com",
+     "link": "https://www.eventbrite.com/e/2003260123957?aff=ebdiglgoogleliveevents",
+     "link_type": "tickets"
+    }
+   ],
+   "venue": {
+    "name": "Casa da Horta - Associação Cultural"
+   },
+   "thumbnail": "https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcTA23M9lO3hfEWSR_i17waF9ibDyWf84JeI_huZOeSOd9IUuQ7qzyWAJ-iFkIKjvbUV9D4XuBir4r7mWCE",
+   "image": null
+  },
+  {
+   "title": "Pub Crawl noturno no Porto",
+   "date": {
+    "start_date": "Oct 24",
+    "when": "Oct 24, 11:00 PM"
+   },
+   "address": [
+    "Fonte dos Leões",
+    "Porto, Portugal"
+   ],
+   "link": null,
+   "ticket_info": [
+    {
+     "source": "somo.social",
+     "link": "https://somo.social/e/pub-crawl-noturno-no-porto-24-oktober-2026",
+     "link_type": "tickets"
+    }
+   ],
+   "venue": {
+    "name": "Fonte dos Leões"
+   },
+   "thumbnail": "https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcSuszbbgeOp5a_sW8ZwcAGuQ7ele8aFWRfMDikawFrJZ8S1MoQhGjDQCQREsd2LwkhzLtoXFhS0FkyLhmc",
+   "image": null
+  },
+  {
+   "title": "PORTO MEGA EXPERIENCE - 2 FLOORS | Free Entry until 1.30 AM",
+   "date": {
+    "start_date": "Oct 31",
+    "when": "Oct 31, 12:00 AM"
+   },
+   "address": [
+    "Lust Porto",
+    "Porto, Portugal"
+   ],
+   "link": null,
+   "ticket_info": [
+    {
+     "source": "fourvenues.com",
+     "link": "https://site.fourvenues.com/de/lust-porto/events/porto-mega-experience---2-floors--free-entry-until-130-am-30-10-2026-QVL0",
+     "link_type": "tickets"
+    }
+   ],
+   "venue": {
+    "name": "Lust Porto"
+   },
+   "thumbnail": "https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcTMvKVeaduhYc6Cu0ktB1fgVhQ10GAsUKQCDjnFbhlEuGnv2zRSwRSXrWJn6yeaFcevcSfEbhWtpKWwDYg",
+   "image": null
+  },
+  {
+   "title": "EXPERIENCE TRINDADE BY NIGHT - ESPECIAL HALLOWEEN",
+   "date": {
+    "start_date": "Oct 31",
+    "when": "Oct 31, 6:30 PM"
+   },
+   "address": [
+    "Praça da Trindade",
+    "Porto, Portugal"
+   ],
+   "link": null,
+   "ticket_info": [
+    {
+     "source": "meo.pt",
+     "link": "https://blueticket.meo.pt/en/event/16668/experience-trindade-by-night-especial-halloween",
+     "link_type": "tickets"
+    }
+   ],
+   "venue": {
+    "name": "Praça da Trindade"
+   },
+   "thumbnail": "https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcRq9PWqEHFy4ldQawooFEWe0aoLXnJ0rID6VAUUSjKG_AkHem1f9Kf5Op5Ys_kVJUWuWCJZgyySW53rgWU",
+   "image": null
+  },
+  {
+   "title": "AURA HALLOWEEN DINNER",
+   "date": {
+    "start_date": "Oct 31",
+    "when": "Oct 31, 8:00 PM"
+   },
+   "address": [
+    "NOLA 2.0",
+    "Porto, Portugal"
+   ],
+   "link": null,
+   "ticket_info": [
+    {
+     "source": "ma.to",
+     "link": "https://ma.to/venue/auraclubpt",
+     "link_type": "tickets"
+    }
+   ],
+   "venue": {
+    "name": "NOLA 2.0"
+   },
+   "thumbnail": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTkjPhR8f6wFN86tN6-Oo9pm11utWmPLAFhRl2H34JWk8PqGZ4RNbInKUAabARGizcnPxwWep7L1IFKXuc",
+   "image": null
+  },
+  {
+   "title": "PORTO HORROR HALLOWEEN 2026 💀 - BAR ABERTO NA ZONA VIP",
+   "date": {
+    "start_date": "Oct 31",
+    "when": "Oct 31, 11:45 PM"
+   },
+   "address": [
+    "Lust Porto",
+    "Porto, Portugal"
+   ],
+   "link": null,
+   "ticket_info": null,
+   "venue": {
+    "name": "Lust Porto"
+   },
+   "thumbnail": "https://serpapi.com/searches/6ad631910fa72ef974dcff64/images/t0pNJoB_1rR1qIQCqm3O9iZ7aLGQA-023WltPLyAOSY.jpeg",
+   "image": null
+  },
+  {
+   "title": "Lendas do Porto - Experiência imersiva e metaverso",
+   "date": {
+    "start_date": "Oct 25",
+    "when": "Oct 25"
+   },
+   "address": [
+    "Porto Historical Customs Building",
+    "Porto, Portugal"
+   ],
+   "link": null,
+   "ticket_info": [
+    {
+     "source": "portugalwithkids.pt",
+     "link": "https://portugalwithkids.pt/en/event/dino-experience-porto/2026-10-25",
+     "link_type": "tickets"
+    }
+   ],
+   "venue": {
+    "name": "Porto Historical Customs Building"
+   },
+   "thumbnail": "https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcTwmCTvq9JnNtKuxkeIZVaI_IW7uNuTPxO_JNhWM-OUS25aPkE3wPLUu7mL6iVbB9-VxDzFsEBEe7dGS_A",
+   "image": null
+  },
+  {
+   "title": "Porto Nightlife Pub Crawl | 4 Bars, 8 Drinks, Games & VIP Club Entry",
+   "date": {
+    "start_date": "Dec 4",
+    "when": "Dec 4, 10:00 PM"
+   },
+   "address": [
+    "Fonte dos Leões",
+    "Porto, Portugal"
+   ],
+   "link": null,
+   "ticket_info": null,
+   "venue": {
+    "name": "Fonte dos Leões"
+   },
+   "thumbnail": "https://serpapi.com/searches/6ad631910fa72ef974dcff64/images/Wx5u9EM4rsAy9uDUVklI1SKImkF9-wD85aA0KaUszmA.jpeg",
+   "image": null
+  }
+ ]
+}

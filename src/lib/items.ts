@@ -314,6 +314,9 @@ export function mergeItem(existing: Item, incoming: Item, placeOnly = false): It
     highlights: incoming.highlights.length ? incoming.highlights : existing.highlights,
     concerns: incoming.concerns.length ? incoming.concerns : existing.concerns,
     reviewSummary: pick(incoming.reviewSummary, existing.reviewSummary),
+    nearby: incoming.nearby?.length ? incoming.nearby : existing.nearby,
+    reviewTopics: incoming.reviewTopics?.length ? incoming.reviewTopics : existing.reviewTopics,
+    nightStop: incoming.nightStop ?? existing.nightStop,
     missing: incoming.missing,
     // Whether it needs booking: the traveller's move ("Etkinliklere taşı") or the first reading stands.
     // An older record already chosen or booked isn't sent to the ideas (Yapılacak şeyler) by a re-read.

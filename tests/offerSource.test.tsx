@@ -7,6 +7,7 @@ import { EmptyEnvContext } from "../src/app/cards/emptyEnv";
 import { OfferRow, OfferRowView, StayPicksView } from "../src/app/cards/OfferRow";
 import type { StayCandidate } from "../src/lib/offerSources";
 import { candidateOffer, pickCard, pickList, pickOnPlan, pickThree } from "../src/lib/stayPicks";
+import { nearTexts } from "../src/lib/intents";
 import {
   dealPrice,
   MAX_OFFERS,
@@ -16,6 +17,8 @@ import {
   readOffersOpen,
   shownOffers,
   toggled,
+  nearbyList,
+  topicList,
   validOffers,
   withOffers,
   without,
@@ -248,5 +251,32 @@ describe("Seçeneklere ekle", () => {
     const bare = offerItem(offer({ price: null, rating: null, photo: null }), need, "t1", "new2", 100);
     expect(bare.price).toMatchObject({ amount: null, currency: null, source: "none" });
     expect(bare.rating).toMatchObject({ value: null, source: "none" });
+  });
+});
+
+describe("a stay's nearby places and review topics (Google Hotels, spec 2026-10-19 SerpApi)", () => {
+  const nearby = [
+    { name: "Church of Saint Francis", mode: "walk", minutes: 3, airport: false },
+    { name: "Francisco de Sá Carneiro Havaalanı", mode: "transit", minutes: 43, airport: true },
+  ];
+  const topics = [{ topic: "Konum", up: true }, { topic: "Hizmet", up: true }, { topic: "Banyo", up: false }];
+  it("keeps two well-formed places and three topics, nothing made up", () => {
+    expect(nearbyList([...nearby, { name: "Üçüncü", mode: "walk", minutes: 9, airport: false }])).toEqual(nearby);
+    expect(nearbyList([{ name: "Uçak", mode: "plane", minutes: 3 }, { name: "", mode: "walk", minutes: 3 }, { name: "X", mode: "walk", minutes: -1 }])).toEqual([]);
+    expect(nearbyList("nope")).toEqual([]);
+    expect(topicList([...topics, { topic: "Uyku", up: true }])).toEqual(topics);
+    expect(topicList([{ topic: "Oda" }, { up: true }])).toEqual([]);
+  });
+  it("comes in with a stay's offer and onto the saved option", () => {
+    const [o] = validOffers([{ ...offer(), nearby, topics }], need);
+    expect(o).toMatchObject({ nearby, topics });
+    const item = offerItem(o, need, "t1", "n1", 1);
+    expect(item).toMatchObject({ nearby, reviewTopics: topics });
+    expect(offerItem(offer(), need, "t1", "n2", 1)).not.toHaveProperty("nearby");
+  });
+  it("says them on the card's lines: on foot, then the airport", () => {
+    expect(nearTexts({ nearby: nearby as never })).toEqual(["🚶 Church of Saint Francis · 3 dk yürüme", "✈ Havalimanı · 43 dk toplu taşıma"]);
+    expect(nearTexts({ nearby: [{ name: "Ubud Art Market", mode: "taxi", minutes: 8, airport: false }, { name: "Ngurah Rai", mode: "taxi", minutes: 82, airport: true }] })).toEqual(["🚕 Ubud Art Market · 8 dk taksi", "✈ Havalimanı · 1 sa 22 dk taksi"]);
+    expect(nearTexts({})).toEqual([]);
   });
 });
