@@ -11,6 +11,8 @@ import { lang } from "../i18n";
 import { airportCode } from "../searchLinks";
 import { chromeKV, DEFAULT_SERVER, type KV } from "../share/store";
 import type { Need, Offer, SuggestionSource } from "../offerSource";
+import { acceptStyle, type StyleId } from "../tripStyle";
+import type { Trip } from "../types";
 
 const STORE_KEY = "offersSeen";
 const KEEP_HOURS = 6;
@@ -77,31 +79,81 @@ export interface NearPlace {
 
 const fold = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLocaleLowerCase("en").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 
+/** Search words for the trip's kind ("Sörf tatili" → surf), tried in order on its label and name; the source's own words. */
+const KIND_WORDS: readonly [RegExp, string][] = [
+  [/kite/, "kitesurfing"],
+  [/windsurf/, "windsurfing"],
+  [/sorf|surf/, "surf"],
+  [/dalis|dive|diving|scuba/, "diving"],
+  [/snorkel/, "snorkeling"],
+  [/yoga/, "yoga"],
+  [/safari/, "safari"],
+  [/trek|hiking|yuruyus/, "hiking"],
+  [/tirmanis|climb/, "climbing"],
+  [/\bski/, "ski"],
+  [/gastronomi|culinary|yemek/, "cooking class"],
+];
+/** The style chips' words (Doğa: safari, hiking); a style with no tour of its own (Lüks, Şehir) says none. */
+const STYLE_WORDS: Partial<Record<StyleId, readonly string[]>> = {
+  nature: ["safari", "hiking"],
+  adventure: ["adventure"],
+  active: ["hiking"],
+  beach: ["snorkeling"],
+  culture: ["culture"],
+  food: ["cooking class"],
+  romantic: ["sunset"],
+};
+/** Words asked at most (each one more question to the source, kept for hours like the rest). */
+export const TASTE_MAX = 3;
+
 /**
- * A city's tours from a source, each with the place it was asked for: the city's own, else (none) its country's searched
- * by the town's name; while they are few (FEW_TOURS), the trip's cities in the same country (`near`: Kolombo for
- * Ahangama) and the country's popular ones (no words) after them. Joined without repeats; a failure is none.
+ * What the trip is for, as tour search words (Emre, 0.38.5: "etkinlikler bu turun niyetine göre zengin gelsin"): its
+ * kind's (a surf trip: surf) first, then its style chips' (Doğa: safari, hiking); none for a trip that says neither.
  */
-export async function cityTours(source: Pick<SuggestionSource, "offers">, need: Need, countryCode: string | null | undefined, near: readonly NearPlace[] = []): Promise<Offer[]> {
+export function tourWords(trip: Pick<Trip, "intent" | "style"> | null | undefined): string[] {
+  const said = fold(`${trip?.intent?.label ?? ""} ${trip?.intent?.name ?? ""} ${trip?.intent?.playbook === "ski" ? "ski" : ""} ${trip?.intent?.playbook === "wellness" ? "yoga" : ""}`).replace(/ı/g, "i");
+  const words = KIND_WORDS.filter(([re]) => re.test(said)).map(([, w]) => w);
+  for (const id of acceptStyle(trip?.style?.ids ?? [])) words.push(...(STYLE_WORDS[id] ?? []));
+  return [...new Set(words)].slice(0, TASTE_MAX);
+}
+
+/**
+ * A city's tours from a source, each with the place it was asked for: the trip's kind first when `words` say it (the
+ * town searched by "surf", or for a town it doesn't know its country by "surf Ahangama"), then the city's own, else
+ * (none) its country's searched by the town's name; while they are few (FEW_TOURS), the trip's cities in the same
+ * country (`near`: Kolombo for Ahangama) and the country's popular ones (no words) after them. Joined without repeats;
+ * a failure is none. Only the source's real tours, never a made-up card.
+ */
+export async function cityTours(source: Pick<SuggestionSource, "offers">, need: Need, countryCode: string | null | undefined, near: readonly NearPlace[] = [], words: readonly string[] = []): Promise<Offer[]> {
   const tours = (n: Need, place: string | null | undefined): Promise<Offer[]> =>
     source.offers(n).then(
       (list) => list.filter((o) => o.kind === "activity").map((o) => ({ ...o, place: place ?? null })),
       () => [] as Offer[],
     );
+  const join = (into: Offer[], more: readonly Offer[]) => {
+    for (const o of more) if (!into.some((x) => x.id === o.id || x.url === o.url || fold(x.title) === fold(o.title))) into.push(o);
+    return into;
+  };
   const town = need.city?.trim() ?? null;
   let list = await tours(need, town);
   const wider = list.length ? null : countryNeed(need, countryCode);
   if (wider) list = await tours(wider, town);
-  if (list.length >= FEW_TOURS || need.kind !== "activity" || need.query?.trim()) return list;
+  if (need.kind !== "activity" || need.query?.trim()) return list;
+  // The trip's kind: asked where the town's own were found (the town, or its country by the town's name).
+  const base = wider ?? (list.length ? need : null);
+  const tasted = base
+    ? (await Promise.all(words.slice(0, TASTE_MAX).map((w) => tours({ ...base, key: `${base.key}:taste:${fold(w)}`, query: wider ? `${w} ${town}` : w }, town)))).flat()
+    : [];
+  const own = list.length;
+  list = join(join([], tasted), list);
+  if (own >= FEW_TOURS) return list;
   const country = countryName(countryCode);
   const others = near.filter((p, i) => fold(p.city) !== fold(town ?? "") && near.findIndex((q) => fold(q.city) === fold(p.city)) === i);
   const asks = [
     ...others.map((p) => tours({ ...need, key: `${need.key}:near:${fold(p.city)}`, city: p.city, country: countryCode ?? need.country ?? null, query: null }, p.label)),
     ...(country && fold(country) !== fold(town ?? "") ? [tours({ ...need, key: `${need.key}:in:${countryCode!.toUpperCase()}:top`, city: country, country: null, query: null }, countryLabel(countryCode!))] : []),
   ];
-  for (const more of await Promise.all(asks)) {
-    for (const o of more) if (!list.some((x) => x.id === o.id || x.url === o.url || fold(x.title) === fold(o.title))) list.push(o);
-  }
+  for (const more of await Promise.all(asks)) join(list, more);
   return list;
 }
 

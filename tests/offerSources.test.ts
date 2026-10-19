@@ -2,7 +2,7 @@
 // that a failure is simply no offers.
 import { describe, expect, it } from "vitest";
 import type { Need, Offer } from "../src/lib/offerSource";
-import { cityTours, countryNeed, makeLiveSource, queryOf, type StayCandidate } from "../src/lib/offerSources";
+import { cityTours, countryNeed, makeLiveSource, queryOf, tourWords, type StayCandidate } from "../src/lib/offerSources";
 import { memoryKV } from "../src/lib/share/store";
 
 const flight: Need = { key: "f", section: "flight", kind: "flight", from: "İstanbul", to: "Denpasar", start: "2026-11-10", adults: 2 };
@@ -187,5 +187,35 @@ describe("a town the source doesn't know (Emre's Ahangama, 19 Ekim)", () => {
     asked.length = 0;
     await cityTours(source, ahangama, null, []);
     expect(asked.map((n) => n.city)).toEqual(["Ahangama"]);
+  });
+
+  it("the trip's kind and style ask the source by their words, its tours first (0.38.5: a surf trip gets surf lessons)", async () => {
+    expect(tourWords({ intent: { playbook: "custom", label: "Sörf tatili" }, style: { key: "k", ids: ["nature", "beach"] } })).toEqual(["surf", "safari", "hiking"]);
+    expect(tourWords({ intent: { playbook: "custom", label: "Dalış gezisi" }, style: null })).toEqual(["diving"]);
+    expect(tourWords({ intent: { playbook: "ski", label: null }, style: null })).toEqual(["ski"]);
+    expect(tourWords({ intent: null, style: { key: "k", ids: ["luxury", "city"] } })).toEqual([]);
+    expect(tourWords(null)).toEqual([]);
+
+    // A town the source knows: the town by "surf"; the trip's kind first, the town's own after, once each.
+    const asked: Need[] = [];
+    const weligama: Need = { ...ahangama, key: "activity:weligama", city: "Weligama" };
+    const by: Record<string, Offer[]> = {
+      "Weligama|": [1, 2, 3, 4].map((i) => ({ ...tour(`w${i}`), title: `Weligama turu ${i}`, url: `https://www.viator.com/w${i}` })),
+      "Weligama|surf": [{ ...tour("s1"), title: "Weligama sörf dersi", url: "https://www.viator.com/s1" }, { ...tour("w1"), title: "Weligama turu 1", url: "https://www.viator.com/w1" }],
+      "Weligama|safari": [{ ...tour("y1"), title: "Yala safari", url: "https://www.viator.com/y1" }],
+    };
+    const source = { offers: async (n: Need) => (asked.push(n), by[`${n.city}|${n.query ?? ""}`] ?? []) };
+    const list = await cityTours(source, weligama, "LK", [], ["surf", "safari"]);
+    expect(list.map((o) => o.id)).toEqual(["s1", "w1", "y1", "w2", "w3", "w4"]);
+    expect(asked.map((n) => [n.city, n.query ?? null])).toEqual([["Weligama", null], ["Weligama", "surf"], ["Weligama", "safari"]]);
+    expect(queryOf(asked[1], "tr")).toContain("&q=surf");
+
+    // A town it doesn't know (Ahangama): its country by the town's name and the word; only Viator's answers, none made up.
+    asked.length = 0;
+    const lk: Record<string, Offer[]> = { "Sri Lanka|surf Ahangama": [{ ...tour("s2"), title: "Ahangama surf camp", url: "https://www.viator.com/s2" }] };
+    const wide = { offers: async (n: Need) => (asked.push(n), lk[`${n.city}|${n.query ?? ""}`] ?? []) };
+    expect((await cityTours(wide, ahangama, "LK", [], ["surf"])).map((o) => [o.id, o.place])).toEqual([["s2", "Ahangama"]]);
+    expect(asked.map((n) => [n.city, n.query ?? null])).toEqual([["Ahangama", null], ["Sri Lanka", "Ahangama"], ["Sri Lanka", "surf Ahangama"], ["Sri Lanka", null]]);
+    expect(new Set(asked.map((n) => n.key)).size).toBe(asked.length);
   });
 });
