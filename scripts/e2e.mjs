@@ -359,7 +359,8 @@ try {
       const at = `${where} ${labels.join(" + ")}`;
       assert.equal(new Set(r.chips.map((c) => c.top)).size, 1, `${at}: the styles on one line (${JSON.stringify(r)})`);
       assert.ok(r.chips.every((c) => !c.cut && c.right <= r.right + 1), `${at}: no chip cut or out of the hero`);
-      assert.ok(r.chips.every((c) => c.font === "13px" && c.h === 30), `${at}: 13 px words, 30 px chips`);
+      // (13,5 px: the plan's 9-step scale, row 155)
+      assert.ok(r.chips.every((c) => c.font === "13.5px" && c.h === 30), `${at}: 13,5 px words, 30 px chips`);
     }
   };
   await checkStyles("1440");
@@ -6521,7 +6522,7 @@ try {
   await settingsTab.getByLabel("Hareketi duraklat", { exact: false }).uncheck();
   assert.equal(await settingsTab.evaluate(() => localStorage.getItem("trip-radar:still")), null);
   await settingsTab.close();
-  console.log("✓ motion: yükselme, nabız, mühür + parlama, düşüş, sayaç, Gerek yok katlanması (v82), geri alma bildirimi, sohbet mesajı, ⓘ balonu, yer tutucu cümleler, Pano (Yeni, kalp, pencerenin gelişi ve gidişi E8), each on its own and over within a moment");
+  console.log("✓ motion: yükselme, nabız, mühür + parlama, düşüş, sayaç, Gerek yok katlanması (v82), geri alma bildirimi, sohbet mesajı, ⓘ balonu, yer tutucu cümleler, Pano (Yeni, kalp, pencerenin gelişi ve gidişi E8, seçim sonrası kutunun parlaması §2.10), each on its own and over within a moment");
 
   console.log("✓ motion: yükselme, nabız, mühür + parlama, düşüş, sayaç, aşama geçişi (kalkış), rt-fly, Canlı noktası, each on its own and over within a moment");
 } finally {
