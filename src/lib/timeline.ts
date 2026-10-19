@@ -8,6 +8,7 @@ import { formatDateRange, isoDate, nightsBetween } from "./items";
 import { endsOf, farHub, isHiddenLeg, isHomeLeg, isRental, travelsOf, type Leg, type Travel } from "./legs";
 import { cityKeyOf, sameCity, type DateRange, type OptionGroup, type Plan, type StayBlock } from "./plan";
 import { isIdea, needsBooking } from "./booking";
+import { flightPlace } from "./searchLinks";
 import type { Category, Item, LegMode } from "./types";
 
 /** In, between cities, out; "other" is any other trip on its day (a day trip, a flight the plan can't pair). */
@@ -147,10 +148,11 @@ function homeOf(inbound: Travel | null, outbound: Travel | null): string | null 
   return back ?? out ?? null;
 }
 
-/** A flight search for the day (Google Flights reads plain words; without a home it uses the traveller's location). */
+/** A flight search for the day (Google Flights reads plain words, each end by its code where known: flightPlace; without a home it uses the traveller's location). */
 export function flightSearchUrl(direction: "to" | "from", city: string | null, date: string, home: string | null): string | null {
-  if (!city) return null;
-  const q = direction === "to" ? `Flights to ${city}${home ? ` from ${home}` : ""} on ${date}` : `Flights from ${city}${home ? ` to ${home}` : ""} on ${date}`;
+  const [place, base] = [flightPlace(city), flightPlace(home)];
+  if (!place) return null;
+  const q = direction === "to" ? `Flights to ${place}${base ? ` from ${base}` : ""} on ${date}` : `Flights from ${place}${base ? ` to ${base}` : ""} on ${date}`;
   return `https://www.google.com/travel/flights?q=${encodeURIComponent(q)}`;
 }
 

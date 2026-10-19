@@ -2,7 +2,7 @@
 // the place, the dates and how many go, and nothing else about the traveller. Only public URL formats that are
 // documented or have stood for years; every value is encoded; a brand that can't take what's known is left out
 // (Skyscanner and Kayak need airport codes) rather than opened half-filled.
-import { airportEntries, cityOfAirport } from "./airports";
+import { airportCodeOf, airportEntries, countryCodeNamed, mainAirportOf } from "./airports";
 import { L } from "./i18n";
 import { cityKeyOf } from "./plan";
 import type { Item } from "./types";
@@ -123,20 +123,50 @@ export interface FlightNeed {
   adults: number | null;
 }
 
+/** A word that stands for an end not known yet (legs.hubLabel: "Varış", "Dönüş"; a bare "Havalimanı"): no place to search. */
+const NO_PLACE = /^(var[ıi][şs]|arrival|d[öo]n[üu][şs]|return|havaliman[ıi]|airport|gar|station|otogar|bus station|iskele|ferry port)$/i;
+/** A hub's word after its place ("OPO havalimanı", "Kolombo Havalimanı", "Lisbon Airport"). */
+const HUB_WORD = /\s+(havaliman[ıi]|airport|aeroporto|aeropuerto|a[ée]roport|flughafen)$/i;
+
+/** The airport code for a flight's end when the tables know it: a code, "Denpasar (DPS)", a city or an airport's own name. */
+function flightCode(text: string): string | null {
+  const t = text.replace(HUB_WORD, "").trim();
+  if (/^[A-Z]{3}$/.test(t)) return t;
+  const said = t.match(/\(([A-Z]{3})\)/);
+  if (said) return said[1];
+  return airportCode(t) ?? airportCodeOf(t);
+}
+
 /**
- * A one-way flight search on Google Flights (plain words, the city as written: it reads both), Skyscanner
- * (`/transport/flights/ist/ams/261210/?adultsv2=2&rtn=0`) and Kayak (`/flights/IST-AMS/2026-12-10/2adults`).
+ * A flight's end as Google Flights reads it (0.39.4, Emre: the Sri Lanka → India link opened empty): its airport code
+ * when the tables know one ("Kolombo": CMB), a country's main airport ("Hindistan": DEL, never the Turkish word that sends
+ * it to Explore without the day), a place the tables don't know as it is said (Google finds a town's nearest airport:
+ * "Ahangama" → CMB), and nothing for a word that stands for no place yet ("Varış"), which left the search empty.
+ */
+export function flightPlace(text: string | null | undefined): string | null {
+  const t = text?.trim().replace(HUB_WORD, "").trim();
+  if (!t || NO_PLACE.test(t)) return null;
+  const code = flightCode(t);
+  if (code) return code;
+  const country = countryCodeNamed(t);
+  if (country) return mainAirportOf(country) ?? new Intl.DisplayNames(["en"], { type: "region" }).of(country) ?? t;
+  return t;
+}
+
+/**
+ * A one-way flight search on Google Flights (plain words; each end by its airport code where known: flightPlace),
+ * Skyscanner (`/transport/flights/ist/ams/261210/?adultsv2=2&rtn=0`) and Kayak (`/flights/IST-AMS/2026-12-10/2adults`).
  * Skyscanner and Kayak only with both airports known and a day; Google Flights needs one end (with no home
- * known, the way home is "Flights from Porto on …": it fills in where the traveller is).
+ * known, the way home is "Flights from OPO on …": it fills in where the traveller is).
  */
 export function flightLinks({ from, to, date, adults }: FlightNeed): SearchLink[] {
-  const [a, b] = [from?.trim() || null, to?.trim() || null];
+  const [a, b] = [flightPlace(from), flightPlace(to)];
   if (!a && !b) return [];
   const day = dayOf(date);
   const n = headCount(adults);
-  const words = ["Flights", a && `from ${cityOfAirport(a)}`, b && `to ${cityOfAirport(b)}`, day && `on ${day}`, "one way"].filter(Boolean).join(" ");
+  const words = ["Flights", a && `from ${a}`, b && `to ${b}`, day && `on ${day}`, "one way"].filter(Boolean).join(" ");
   const out = [link("gflights", `https://www.google.com/travel/flights?q=${enc(words)}`)];
-  const [ca, cb] = [airportCode(a), airportCode(b)];
+  const [ca, cb] = [from?.trim() ? flightCode(from.trim()) : null, to?.trim() ? flightCode(to.trim()) : null];
   if (ca && cb && ca !== cb && day) {
     const yymmdd = day.slice(2).replace(/-/g, "");
     out.push(link("skyscanner", `https://www.skyscanner.net/transport/flights/${enc(ca.toLowerCase())}/${enc(cb.toLowerCase())}/${yymmdd}/?${new URLSearchParams({ adultsv2: String(n ?? 1), rtn: "0" })}`));

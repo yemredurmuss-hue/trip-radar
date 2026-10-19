@@ -103,7 +103,7 @@ describe("how many a plan is for", () => {
   });
   it("the person's searches go from their place, for one", () => {
     const [google, sky] = flightLinks({ from: "Alicante", to: "Denpasar", date: "2026-12-10", adults: 1 });
-    expect(new URL(google.url).searchParams.get("q")).toBe("Flights from Alicante to Denpasar on 2026-12-10 one way");
+    expect(new URL(google.url).searchParams.get("q")).toBe("Flights from ALC to DPS on 2026-12-10 one way");
     expect(sky.url).toBe("https://www.skyscanner.net/transport/flights/alc/dps/261210/?adultsv2=1&rtn=0");
   });
 });

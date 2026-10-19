@@ -104,6 +104,9 @@ function codeOf(text: string): string | null {
   return isCode(text) ? (text in AIRPORTS ? text : null) : (BY_NAME.get(plainName(text)) ?? BY_CITY.get(plainName(text)) ?? null);
 }
 
+/** The code of an airport said by its code, town, own or other name, or the city it is listed under ("Kolombo": CMB); else null. */
+export const airportCodeOf = (text: string | null | undefined): string | null => (text?.trim() ? codeOf(text.trim()) : null);
+
 /**
  * The city an airport is listed under, in English, for a flight's end said as its code ("DPS"), its town ("Denpasar"),
  * its own name ("Milas-Bodrum"), another name ("Milas") or its city in Turkish ("Şarm El-Şeyh"): a flight's ends said
@@ -142,6 +145,11 @@ const COUNTRY: Record<string, string> = {
   PEK: "CN", PKX: "CN", PVG: "CN", SHA: "CN", TPE: "TW", KTM: "NP",
   SYD: "AU", MEL: "AU", AKL: "NZ", ZQN: "NZ",
 };
+/** The airport a flight to a country is searched by: the first one listed for it above (its main one: India DEL, Sri Lanka CMB). */
+export function mainAirportOf(country: string | null | undefined): string | null {
+  const c = country?.trim().toUpperCase();
+  return (c && Object.keys(COUNTRY).find((code) => COUNTRY[code] === c)) || null;
+}
 export const countryOfAirport = (code: string | null | undefined): string | null => (code ? (COUNTRY[code.toUpperCase()] ?? null) : null);
 
 /** The country (ISO code) of a place said as an airport or the city one is listed under ("SSH", "Şarm El-Şeyh": EG); else null. */

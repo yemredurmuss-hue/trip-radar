@@ -1,7 +1,7 @@
 // The branded searches (boş kartlar, "Kendin ara"); a booking with no file says "Belge eksik".
 import { describe, expect, it } from "vitest";
 import { needsDoc } from "../src/lib/docs";
-import { activityLinks, airportCode, BRANDS, esimLinks, flightLinks, headCount, stayLinks, transferLinks } from "../src/lib/searchLinks";
+import { activityLinks, airportCode, BRANDS, esimLinks, flightLinks, flightPlace, headCount, stayLinks, transferLinks } from "../src/lib/searchLinks";
 import type { Item } from "../src/lib/types";
 import { makeItem } from "./fixtures/makeItem";
 
@@ -26,7 +26,7 @@ describe("flight searches", () => {
     const links = flightLinks({ from: "IST", to: "AMS", date: "2026-12-10", adults: 2 });
     expect(links.map((l) => l.brand)).toEqual(["gflights", "skyscanner", "kayak"]);
     expect(links.map((l) => l.label)).toEqual(["Google Flights", "Skyscanner", "Kayak"]);
-    expect(decodeURIComponent(links[0].url)).toBe("https://www.google.com/travel/flights?q=Flights from İstanbul to Amsterdam on 2026-12-10 one way");
+    expect(decodeURIComponent(links[0].url)).toBe("https://www.google.com/travel/flights?q=Flights from IST to AMS on 2026-12-10 one way");
     expect(links[1].url).toBe("https://www.skyscanner.net/transport/flights/ist/ams/261210/?adultsv2=2&rtn=0");
     expect(links[2].url).toBe("https://www.kayak.com/flights/IST-AMS/2026-12-10/2adults");
   });
@@ -39,16 +39,30 @@ describe("flight searches", () => {
     expect(unknown.map((l) => l.brand)).toEqual(["gflights"]);
     expect(decodeURIComponent(unknown[0].url)).toContain("to Ouarzazate on 2026-12-10");
   });
+  it("Google Flights gets codes, a country's main airport, a town as said; a word for no place yet is left out (0.39.4)", () => {
+    const q = (from: string | null, to: string | null) => new URL(flightLinks({ from, to, date: "2026-12-10", adults: 2 })[0].url).searchParams.get("q");
+    // Sri Lanka → India: the Turkish names sent Google to Explore without the day.
+    expect(q("Kolombo", "Hindistan")).toBe("Flights from CMB to DEL on 2026-12-10 one way");
+    expect(q("Sri Lanka", "India")).toBe("Flights from CMB to DEL on 2026-12-10 one way");
+    expect(q("Kolombo Havalimanı", "OPO havalimanı")).toBe("Flights from CMB to OPO on 2026-12-10 one way");
+    expect(q("Denpasar (DPS)", "Sabiha Gökçen")).toBe("Flights from DPS to SAW on 2026-12-10 one way");
+    // A town with no airport: as said, Google finds its nearest ("Ahangama" → CMB); "Varış" is no place: that end is left out.
+    expect(q("Ahangama", "Varış")).toBe("Flights from Ahangama on 2026-12-10 one way");
+    expect(flightLinks({ from: "Dönüş", to: "Havalimanı", date: "2026-12-10", adults: 2 })).toEqual([]);
+    // A country the airport table has no airport for: its English name.
+    expect(q("IST", "Laos")).toBe("Flights from IST to Laos on 2026-12-10 one way");
+    expect(flightPlace("Kolombo")).toBe("CMB");
+  });
   it("one end known: Google Flights alone; neither: nothing", () => {
     expect(flightLinks({ from: "Porto", to: null, date: "2026-10-14", adults: 2 }).map((l) => decodeURIComponent(l.url))).toEqual([
-      "https://www.google.com/travel/flights?q=Flights from Porto on 2026-10-14 one way",
+      "https://www.google.com/travel/flights?q=Flights from OPO on 2026-10-14 one way",
     ]);
     expect(flightLinks({ from: " ", to: null, date: "2026-10-14", adults: 2 })).toEqual([]);
   });
   it("no day: only Google Flights, without one; no end: nothing", () => {
     const links = flightLinks({ from: "IST", to: "AMS", date: null, adults: 2 });
     expect(links.map((l) => l.brand)).toEqual(["gflights"]);
-    expect(decodeURIComponent(links[0].url)).toBe("https://www.google.com/travel/flights?q=Flights from İstanbul to Amsterdam one way");
+    expect(decodeURIComponent(links[0].url)).toBe("https://www.google.com/travel/flights?q=Flights from IST to AMS one way");
     expect(flightLinks({ from: "IST", to: "AMS", date: "2026-13-40", adults: 2 }).map((l) => l.brand)).toEqual(["gflights"]);
     expect(flightLinks({ from: null, to: null, date: "2026-12-10", adults: 2 })).toEqual([]);
     expect(flightLinks({ from: "", to: "  ", date: "2026-12-10", adults: 2 })).toEqual([]);
