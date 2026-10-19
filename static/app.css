@@ -4475,9 +4475,10 @@ body.still .work-line i { width: 100%; opacity: .5; }
   --q-st-booked-bg: #f4fbf6;
   /* Ayarlandı, Dahil, Gerek yok: grey. */
   --q-st-arranged-dot: #8e8aa6;
-  /* The fixed frame (v82): head 76, body 196, side column 232, main action 42, second row 32; a row's card 224, a Pano card 220, a comparison column 280. */
+  /* The fixed frame (v82): head 76, body 196, side column 232, main action 42, second row 32; a Pano card 220, a comparison column 280.
+     (A row's card has no fixed height since 0.38.8: its picture is 4:3 of its width, collect.css.) */
   --q-head-h: 76px; --q-body-h: 196px; --q-side-w: 232px; --q-act-h: 42px; --q-act2-h: 32px;
-  --q-card-w: 224px; --q-pano-w: 220px; --q-col-w: 280px;
+  --q-pano-w: 220px; --q-col-w: 280px;
 }
 :root[data-theme="dark"] {
   --q-ink: #ece9f8; --q-mut: #a9a5c4; --q-line: #34304a; --q-soft: #221e33;

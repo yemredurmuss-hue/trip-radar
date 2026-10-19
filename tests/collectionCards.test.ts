@@ -1,10 +1,10 @@
-// Plan v82's rows of cards (lib/collectionCards.ts, v82 geçişi aşama 4, izlenebilirlik 119-123): each 224 px card's family,
+// Plan v82's rows of cards (lib/collectionCards.ts, v82 geçişi aşama 4, izlenebilirlik 119-123): each card's family,
 // state and lines (a bought ticket's way in, a place done), the row's four cells ("+n Pano'da"), Planında and Öneriler from a
 // city's intent (the trip's reason first, the source's tours and then the suggestions after the saved ideas), Yapılacaklar' chips
 // and its "n yapıldı".
 import { describe, expect, it } from "vitest";
 import { categorize } from "../src/lib/categories";
-import { accessOf, askLike, askMore, collectionRow, doneCount, doneLine, familyOf, filterOf, ideasCaption, mapsSearch, nearPlaces, offerCard, recordCard, rowCells, stateOf, stopCountry, suggestionCard } from "../src/lib/collectionCards";
+import { accessOf, askLike, askMore, collectionRow, doneCount, doneLine, familyOf, filterOf, ideasCaption, mapsSearch, nearPlaces, offerCard, pictureChips, recordCard, rowCells, stateOf, stopCountry, suggestionCard } from "../src/lib/collectionCards";
 import { decideTrip, makeContext } from "../src/lib/decision";
 import { isEmptyRecord } from "../src/lib/emptyCards";
 import { collectionsOf, type IntentInput } from "../src/lib/intents";
@@ -120,6 +120,27 @@ describe("a card's lines", () => {
     // The source's name, not "AI önerisi": a real tour it lists (Emre, 19 Ekim).
     expect(o.badge).toMatchObject({ text: "Viator" });
     expect(o.badge?.text).not.toContain("AI");
+  });
+});
+
+describe("Emre's Ushuaia (0.38.8, option A): the badges are chips on the picture", () => {
+  const tour = { id: "v1", kind: "activity" as const, title: "Tierra del Fuego National Park Tour with Optional Train Ride", url: "https://www.viator.com/t", price: 334, currency: "EUR", why: "", source: "Viator", fetchedAt: 1, place: "Ushuaia" };
+  it("a source's tour is one chip with the site's mark, where it was a chip and a line", () => {
+    expect(pictureChips(offerCard(tour, 2))).toEqual([{ kind: "source", tone: "mine", text: "Viator · Ushuaia", initial: null, mark: { color: "#186b6d", letter: "V" } }]);
+  });
+  it("a ticket on the plan says its site; the trip's own ticket says Gezinin sebebi alone", () => {
+    const lakes = act("Lakes 4WD Off Road with Lunch", "chosen", { provider: "Viator", url: "https://www.viator.com/tours/lakes" });
+    const planned = recordCard(lakes, { section: "activity", people: 2, planned: true, wanted: false, reason: false });
+    expect(pictureChips(planned)).toEqual([{ kind: "site", brand: { label: "Viator", color: "#186b6d" } }]);
+    expect(pictureChips({ ...planned, state: "booked", reason: true })).toEqual([{ kind: "reason" }]);
+  });
+  it("an idea who put it there and its site when the chip doesn't name it; a place its word after its source", () => {
+    const item = act("teamLab Planets", "saved", { provider: "Klook", url: "https://www.klook.com/activity/1" });
+    expect(pictureChips(recordCard(item, { section: "activity", people: 2, planned: false, wanted: false, reason: false })).map((c) => c.kind)).toEqual(["source", "site"]);
+    const s: Suggestion = { key: "ai:faro", section: "todo", kind: "add", title: "Faro Les Eclaireurs", why: "", source: "ai", template: "todo", createdAt: 1, state: "open" };
+    expect(pictureChips(suggestionCard(s, "todo"))).toEqual([{ kind: "source", tone: "ai", text: "✨ Öneri", initial: null, mark: null }, { kind: "tag", text: "Gezilecek" }]);
+    const faro = place("Faro Les Eclaireurs");
+    expect(pictureChips(recordCard(faro, { section: "todo", people: 2, planned: true, wanted: false, reason: false }))).toEqual([{ kind: "tag", text: "Gezilecek" }]);
   });
 });
 

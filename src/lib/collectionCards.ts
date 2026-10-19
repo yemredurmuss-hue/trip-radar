@@ -317,6 +317,40 @@ export function offerCard(o: Offer, people: number | null): KCardVM {
   };
 }
 
+/** One chip on a card's picture, top left (option A, 0.38.8). */
+export type KChip =
+  | { kind: "reason" }
+  /** Who put an idea there; `mark` is the site's letter in its colour when the chip names it ("V Viator · Ushuaia"). */
+  | { kind: "source"; tone: string; text: string; initial: string | null; mark: { color: string; letter: string } | null }
+  /** A ticket's site as its label in its colour ("Viator"). */
+  | { kind: "site"; brand: Brand }
+  /** A place's word ("Gezilecek", "Restoran"). */
+  | { kind: "tag"; text: string };
+
+/**
+ * The chips on a card's picture (Emre's option A: the badges move off the lines onto the photo): the trip's own ticket says
+ * "Gezinin sebebi" (no other source); an idea who put it there, with the site's mark when it names the site, so a source's
+ * tour is one chip ("V Viator · Ushuaia") where it was two lines; a ticket's site unless that chip names it already; then
+ * a place's word (on the picture's foot, beside "✓ Rezervasyon", clear of the tools).
+ */
+export function pictureChips(card: Pick<KCardVM, "reason" | "badge" | "brand" | "state" | "family" | "tag">): KChip[] {
+  const out: KChip[] = [];
+  const event = card.family === "event";
+  const brand = card.brand;
+  if (card.reason) out.push({ kind: "reason" });
+  else {
+    const b = card.state === "idea" ? card.badge : null;
+    const named = !!b && !!brand && b.text.startsWith(brand.label);
+    if (b) {
+      const mark = named && brand?.color ? { color: brand.color, letter: [...brand.label][0] ?? "" } : null;
+      out.push({ kind: "source", tone: b.tone, text: b.text, initial: b.initial, mark });
+    }
+    if (event && brand && !named) out.push({ kind: "site", brand });
+  }
+  if (!event && card.tag) out.push({ kind: "tag", text: card.tag });
+  return out;
+}
+
 /**
  * A city's two rows from its intent (intents.ts collectionIntents) and the trip's records: what intents.ts put on the plan
  * and the places still to fill go to Planında (the trip's reason first), the rest to Öneriler, then the source's tours
