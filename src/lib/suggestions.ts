@@ -618,8 +618,9 @@ export function suggestedItem(s: Suggestion, tripId: string, id: string, now: nu
   // An eSIM's place is its country (the suggestion's city is the first one), like one said in the chat.
   const made = esimInCountry(plannedItem(inputOf(s, tpl), tripId, id, now));
   if (tpl.id !== "todo" && tpl.id !== "food") return made;
-  // A place to see or eat at: named as a place, found on Google Maps by its name and town, with the photo its card had.
-  const place = { ...made, name: cleanPlaceTitle(made.name), url: placeMapsUrl(s), imageUrl: s.payload?.photo?.trim() || null };
+  // A place to see or eat at: named as a place, its own Maps page when its card found it (else found on Google Maps by its
+  // name and town), with the photo its card had.
+  const place = { ...made, name: cleanPlaceTitle(made.name), url: s.payload?.map?.trim() || placeMapsUrl(s), imageUrl: s.payload?.photo?.trim() || null };
   return tpl.id === "todo" ? { ...place, booking: "none" } : place;
 }
 

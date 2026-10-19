@@ -608,6 +608,89 @@ export function pickLiveStays(list: StayCandidate[], lang: Lang): OfferOut[] {
   return out;
 }
 
+// --- places (SerpApi Google Maps, type=search) -------------------------------------------------------------
+// A place to see or eat at as Google Maps has it (?kind=place&q=Tanah Lot Temple, Tabanan, or a kind of place:
+// "romantic restaurants in Canggu"): its name, address, rating and reviews as Maps gives them, its photo, where it is
+// and its own Maps page. Nothing is added: what Maps doesn't say stays null.
+
+/** A place as the board's suggestion cards read it (src/lib/offerSources MapsPlace). */
+export interface PlaceOut {
+  /** Google's place id (the Maps page opens this place, not a search). */
+  id: string;
+  dataId: string | null;
+  name: string;
+  address: string | null;
+  rating: number | null;
+  reviews: number | null;
+  photo: string | null;
+  geo: { lat: number; lng: number } | null;
+  type: string | null;
+  url: string;
+  source: "Google Maps";
+  fetchedAt: number;
+}
+
+interface SerpMapsPlace {
+  title?: string;
+  place_id?: string;
+  data_id?: string;
+  address?: string;
+  rating?: number;
+  reviews?: number;
+  thumbnail?: string;
+  type?: string;
+  gps_coordinates?: { latitude?: number; longitude?: number };
+}
+
+/** Places given back at most (a kind of place's list; a name's search is its first). */
+export const PLACE_MAX = 6;
+
+/** What a place may be searched by: letters, digits, spaces and a few marks, up to 100. */
+export function placeSearchOk(raw: string | null): string | null {
+  const s = raw?.normalize("NFC").replace(/\s+/g, " ").trim();
+  return s && s.length <= 100 && /^[\p{L}\p{M}\p{N} .,'’&()-]+$/u.test(s) ? s : null;
+}
+
+/** Maps' photo at a card's size: Google's own photo addresses take their size at the end ("=w80-h106-k-no"). */
+export function mapsPhoto(url: string | undefined): string | null {
+  if (!url || !/^https:\/\//.test(url)) return null;
+  return /\.googleusercontent\.com\//.test(url) && /=w\d+-h\d+[^/]*$/.test(url) ? url.replace(/=w\d+-h\d+[^/]*$/, "=w480-h360-k-no") : url;
+}
+
+/** The place's own page on Google Maps (Maps URLs: the search finds the place by its id). */
+export const mapsPlaceUrl = (name: string, placeId: string): string =>
+  `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}&query_place_id=${encodeURIComponent(placeId)}`;
+
+/**
+ * Google Maps' answer as places: one place when the search found it by its name (`place_results`), else the list
+ * (`local_results`), in Maps' order. Kept only with a name and a place id; at most PLACE_MAX.
+ */
+export function serpPlaces(body: unknown, now: number): PlaceOut[] {
+  const b = body as { place_results?: SerpMapsPlace; local_results?: SerpMapsPlace[] } | null;
+  const found = b?.place_results ? [b.place_results] : Array.isArray(b?.local_results) ? b.local_results : [];
+  return found
+    .filter((p) => typeof p?.title === "string" && p.title.trim() && typeof p.place_id === "string" && p.place_id)
+    .slice(0, PLACE_MAX)
+    .map((p) => {
+      const lat = p.gps_coordinates?.latitude, lng = p.gps_coordinates?.longitude;
+      const name = p.title!.trim();
+      return {
+        id: p.place_id!,
+        dataId: p.data_id ?? null,
+        name,
+        address: p.address?.trim() || null,
+        rating: typeof p.rating === "number" && p.rating > 0 ? p.rating : null,
+        reviews: typeof p.reviews === "number" && p.reviews > 0 ? p.reviews : null,
+        photo: mapsPhoto(p.thumbnail),
+        geo: typeof lat === "number" && typeof lng === "number" ? { lat, lng } : null,
+        type: p.type?.trim() || null,
+        url: mapsPlaceUrl(name, p.place_id!),
+        source: "Google Maps" as const,
+        fetchedAt: now,
+      };
+    });
+}
+
 // --- activities (Viator Partner API, basic access) ---------------------------------------------------------
 // A city's tours, tickets and classes as Viator lists them for the dates; its own page carries the project's Viator
 // partner code (pid), so it isn't turned into another partner's link. Viator asks for a search's results to be kept

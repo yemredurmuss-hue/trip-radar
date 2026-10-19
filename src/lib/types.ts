@@ -354,6 +354,8 @@ export interface Suggestion {
     place?: string | null;
     /** The place's photo its card found (placeSuggest.ts), handed to the record when it's put on the plan; not stored. */
     photo?: string | null;
+    /** The place's own Google Maps page its card found (placeSuggest.ts findPlace), handed to the record like the photo; not stored. */
+    map?: string | null;
   };
   createdAt: number;
   state: SuggestionState;
