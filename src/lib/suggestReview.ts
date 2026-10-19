@@ -24,7 +24,7 @@ export const REVIEW_CHANGE_MS = 2 * 60 * 1000;
 
 export const ReviewSchema = z.object({
   suggestions: z.array(
-    z.object({ section: z.string(), kind: z.string(), title: z.string(), why: z.string(), template: z.string(), city: z.string(), start: z.string(), end: z.string() }),
+    z.object({ section: z.string(), kind: z.string(), title: z.string(), why: z.string(), template: z.string(), city: z.string(), start: z.string(), end: z.string(), place: z.string().optional() }),
   ),
 });
 export type ReviewAnswer = z.infer<typeof ReviewSchema>;
@@ -79,9 +79,10 @@ const reviewRules = (): string =>
 - section şunlardan biri: ${REVIEW_SECTIONS.join(", ")}. kind: "add" (plana eklenecek bir şey) ya da "warning" (kontrol edilecek bir şey; template "").
 - template bölümünün şablonlarından biri: ${REVIEW_SECTIONS.map((s) => `${s}: ${SECTION_TEMPLATES[s].join("/")}`).join("; ")}.
 - title kısa (en fazla 6 kelime), why TEK cümle ve yalnız plandaki olgulara dayanır. Fiyat, saat, yüzde ya da uydurma rakam yazma.
-- city, start, end (YYYY-MM-DD) plandan belliyse doldur, değilse "".
+- city, start, end (YYYY-MM-DD) plandan belliyse doldur, değilse "". place yalnız yapılacaklar ve yeme-içmede, öbürlerinde "".
 - Omurga (transport, stay): bu gezinin kendisine özel ulaşım öner: araç ya da motosiklet kiralama, havalimanından şehre tren, otobüs ya da transfer, duraklar arası yerel ulaşım, bölge bileti ya da kartı; planda olmayan bir gece ya da konaklama eksiği varsa onu.
 - Yapılacaklar (todo) ve yeme-içme (food): duraklara özel gezilecek yer, yapılacak şey ve yerel yemek ya da restoran öner; gezinin türüne ("kind") ve tarzına ("style") uysun (sörf gezisinde sörf noktaları, doğa gezisinde yürüyüş yolları).
+- Yapılacaklar ve yeme-içmede title gerçek bir yerin kendi adıdır, Google Haritalar'da aranınca bulunur ("Tanah Lot Tapınağı", "Warung Bu Mi"): cümle parçası, ekli hâl ("Tanah Lot Tapınağı'nın") ya da genel söz ("Yerel bir warung") değil. Ne yapılacağını why söyler. place: Haritalar'da aranacak tam ad ve kasaba ("Tanah Lot Temple, Tabanan"); adı olmayan bir şey önerme.
 - Önerileri bölümlere yay: omurgaya da, yapılacaklara da, yeme-içmeye de yaz.
 - Tur ya da biletli etkinlik önerme: onlar yalnız gerçek kaynaktan (Viator) ya da yolcunun kaydettiklerinden gelir.
 - Planda zaten olanı, "already_suggested" ya da "not_needed" listesindekini önerme. Önerecek bir şey yoksa boş liste döndür.
@@ -90,9 +91,10 @@ const reviewRules = (): string =>
 - section is one of: ${REVIEW_SECTIONS.join(", ")}. kind: "add" (something to put on the plan) or "warning" (something to check; template "").
 - template is one of the section's: ${REVIEW_SECTIONS.map((s) => `${s}: ${SECTION_TEMPLATES[s].join("/")}`).join("; ")}.
 - title short (at most 6 words), why ONE sentence resting only on facts in the plan. No prices, times, percentages or made-up numbers.
-- city, start, end (YYYY-MM-DD) when the plan makes them clear, else "".
+- city, start, end (YYYY-MM-DD) when the plan makes them clear, else "". place only in things to do and food, else "".
 - The backbone (transport, stay): ways of getting around this trip in particular: a car or motorbike rental, the train, bus or transfer from the airport into town, local transport between the stops, a regional pass or card; a night or stay missing from the plan.
 - Things to do (todo) and food (food): places to see, things to do and local food or restaurants at the stops; they fit the trip's kind ("kind") and style ("style") (surf spots on a surf trip, trails on a nature trip).
+- In things to do and food, title is a real place's own name that a Google Maps search finds ("Tanah Lot Temple", "Warung Bu Mi"): not a fragment of a sentence or a generic phrase ("A local warung"). The why says what to do there. place: the full name and town to search on Maps ("Tanah Lot Temple, Tabanan"); don't suggest something without a name.
 - Spread them over the sections: the backbone, things to do and food alike.
 - Don't suggest tours or ticketed activities: they come only from a real source (Viator) or what the traveller saved.
 - Don't suggest what's already on the plan, or anything in "already_suggested" or "not_needed". With nothing to suggest, return an empty list.

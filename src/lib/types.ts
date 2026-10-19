@@ -344,7 +344,17 @@ export interface Suggestion {
   /** The template "Plana ekle" adds with (templates.ts TemplateId); none for a warning. */
   template?: string;
   /** What the record is made with: its city, first and last day (YYYY-MM-DD), a time (rules only), a name. */
-  payload?: { city?: string | null; start?: string | null; end?: string | null; time?: string | null; title?: string | null };
+  payload?: {
+    city?: string | null;
+    start?: string | null;
+    end?: string | null;
+    time?: string | null;
+    title?: string | null;
+    /** A place to see or eat at: its full name and town as Google Maps finds it ("Tanah Lot Temple, Tabanan"). */
+    place?: string | null;
+    /** The place's photo its card found (placeSuggest.ts), handed to the record when it's put on the plan; not stored. */
+    photo?: string | null;
+  };
   createdAt: number;
   state: SuggestionState;
   stateAt?: number;
