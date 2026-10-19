@@ -7,7 +7,7 @@ import { db, listItems } from "../src/lib/db";
 import { loadDemoTrip } from "../src/lib/demo";
 import { loadDecisions } from "../src/lib/analysis";
 import { categorize, sectionProgress, type CatEntry, type CatSection } from "../src/lib/categories";
-import { countryNames, currencyName, flagEmoji, initials, offsetText, plugFit, sectionTally, travellersTitle } from "../src/lib/heroInfo";
+import { countryNames, currencyName, flagEmoji, initials, offsetText, plugFit, plugShape, sectionTally, travellersTitle } from "../src/lib/heroInfo";
 import { setLang } from "../src/lib/i18n";
 import { buildLegs } from "../src/lib/legs";
 import { buildPlan } from "../src/lib/plan";
@@ -66,6 +66,24 @@ describe("hero facts", () => {
     setLang("en");
     expect(offsetText(-2)).toBe("−2 h");
     expect(offsetText(0)).toBe("Same time");
+    expect(offsetText(1, true)).toBe("+1 h");
+    setLang("tr");
+    expect(offsetText(1, true)).toBe("+1 sa");
+    expect(offsetText(-2.5, true)).toBe("−2,5 sa");
+    expect(offsetText(0, true)).toBe("Aynı saat");
+  });
+  it("draws a plug type as its own socket (A · Kapak), the first type that has a drawing", () => {
+    expect(plugShape(["C", "F"])).toBe("C");
+    expect(plugShape(["F"])).toBe("C");
+    expect(plugShape(["G"])).toBe("G");
+    expect(plugShape(["A", "B"])).toBe("A");
+    expect(plugShape(["I"])).toBe("I");
+    expect(plugShape(["L", "F"])).toBe("L");
+    expect(plugShape(["M"])).toBe("D");
+    expect(plugShape(["j"])).toBe("J");
+    expect(plugShape(["X"])).toBeNull();
+    expect(plugShape([])).toBeNull();
+    expect(plugShape(null)).toBeNull();
   });
   it("draws a country's flag from its code", () => {
     expect(flagEmoji("PT")).toBe("🇵🇹");

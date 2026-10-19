@@ -22,6 +22,8 @@ import { countedIntents, localNow, tripModeOf } from "../lib/tripPhase";
 import { timedNext, timedNextLabel, todayStrip, type TimedNext, type TodayInput } from "../lib/tripToday";
 import type { PlanTarget } from "../lib/chatCards";
 import { linksOf, momentsOf, mosaicOf, offerTiles, placesOfIntents, tileSelectors, tourNeeds, type TileTarget } from "../lib/heroMosaic";
+import { heroRoute } from "../lib/heroRoute";
+import { cityOfAirport } from "../lib/airports";
 import { budgetView, datesTip, docsMissing, heroCounts, heroLine } from "../lib/heroStrip";
 import { allSet, nextLabel, nextShort, nextStep, type NextIntent, type NextStep } from "../lib/nextStep";
 import { nNights } from "../lib/i18nText";
@@ -78,7 +80,7 @@ import { reducedMotion } from "./motion";
 import { heroNumbers, openNeedsText, plannedBookedText } from "../lib/lifecycle";
 import { panoEntries } from "../lib/pano";
 import type { PanoAt, PanoView } from "../lib/panoBoard";
-import { countdown, countdownText } from "../lib/countdown";
+import { countdown } from "../lib/countdown";
 import { kindLabel, LegRow } from "./LegRow";
 import { HistoryDialog } from "./HistoryDialog";
 import { ChangeNotices } from "./ShareSafety";
@@ -655,12 +657,24 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   );
   const tours = useTourOffers(liveSource, tourAsks);
   const tourPlaces = useMemo(() => offerTiles(tours), [tours]);
+  // A · Kapak: the route on the photo, home through each main place (its nights, its stay booked or not) and home again,
+  // the flights' ends read as cities ("IST" → İstanbul).
+  const route = useMemo(() => {
+    const end = (t: string | null | undefined) => (t?.trim() ? cityOfAirport(t.trim()) : null);
+    const flights = items
+      .filter((i) => i.status !== "dismissed" && i.category === "flight" && (i.flight?.from || i.flight?.to))
+      .sort((a, b) => (a.flight?.departure ?? a.dates.start ?? "9").localeCompare(b.flight?.departure ?? b.dates.start ?? "9"))
+      .map((f) => ({ from: end(f.flight?.from), to: end(f.flight?.to) }));
+    return heroRoute({ places: mains, stays: plan.stayBlocks, legs, flights });
+  }, [mains, plan.stayBlocks, legs, items]);
   const mosaic = useMemo(
     () =>
       mosaicOf({
         cities: cities.map((c) => {
           const days = places.find((p) => p.city === c.name);
-          return { name: c.name, image: c.image, credit: c.credit ?? null, nights: days ? nNights(nightsBetween(days.start, days.end)) : null };
+          // Its tile's dot says what the route's does: its stay booked or not yet.
+          const stop = route?.stops.find((s) => s.name === c.name);
+          return { name: c.name, image: c.image, credit: c.credit ?? null, nights: days ? nNights(nightsBetween(days.start, days.end)) : null, state: stop ? (stop.booked ? "booked" : "planned") : null };
         }),
         places: placesOfIntents(heroIntents, (image) => creditOf(image, trip.photoCredits)),
         // Row 14: then what was saved for the trip, the cities, the trip's moments (the start's scenes), a drawing.
@@ -669,7 +683,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
         offers: tourPlaces,
         moments: momentsOf(trip.cityImages, momentPhotoKeys(), (image) => creditOf(image, trip.photoCredits)),
       }),
-    [cities, places, heroIntents, items, tourPlaces, trip.cityImages, trip.photoCredits],
+    [cities, places, route, heroIntents, items, tourPlaces, trip.cityImages, trip.photoCredits],
   );
   const estimated = !!range && !trip.confirmedDates && !plan.range;
   // D15: dates still the guess the start made from a month or a season say only the nights ("~ · 10 gece"); an event's
@@ -679,7 +693,9 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     const day = dayText(range!.start);
     return L(`Gece sayısı belli; başlangıç yaklaşık ${day}. Kesinleşince sohbette söylemen yeter.`, `The nights are known; the start, ${day}, is a rough guess. Say the dates in the chat once they're set.`);
   };
-  const heroDates = range ? { range, estimated, rough, countdown: rough ? null : countdownText(countdown(range, today)), tip: rough ? roughTip() : datesTip(places, estimated) } : null;
+  const heroDates = range
+    ? { range, estimated, rough, count: rough ? null : countdown(range, today), tip: rough ? roughTip() : datesTip(places, estimated) }
+    : null;
   const heroBudget = useMemo(() => {
     const view = budgetView(bar, who.count || facts.adults || 0);
     return bar && view ? { view, bar } : null;
@@ -935,6 +951,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           trip={trip}
           sectionRef={heroRef}
           cities={cities.map((c) => c.name).filter(Boolean)}
+          route={route}
           mood={mood}
           mosaic={mosaic}
           onTile={goTile}

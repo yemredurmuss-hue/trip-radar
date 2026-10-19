@@ -1,11 +1,13 @@
-// The trip's summary over the Plan (v82 "Hero = mozaik", v83): on its own light purple ground in a round box, 40 px
-// above the Plan. The mosaic (cover, tiles, the trip's ⋯ menu), the strip in four parts, the chips, the style words and
-// Tercihler, and "Özeti küçült", which folds it to one line (remembered per trip in this browser; E11: the grid folds
+// The trip's summary over the Plan (v82 "Hero = mozaik", v83; A · Kapak 2026-10-19), 40 px above the Plan: one round
+// block of the cover (the trip's ⋯ menu, the days to go, its places, its name and its route) with the tiles a row under
+// it, the summary card (when, who, the budget, ready, "Sıradaki") and one quiet row of the facts, the style words,
+// Tercihler and "Özeti küçült", which folds it to one line (remembered per trip in this browser; E11: the grid folds
 // and the cover glides into the small picture). Given a "Bugün" strip (gezi sırasında, D8), that stands in for the
 // mosaic, the strip and the chips under the one line, as the v83 drawing has it.
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { factChips, heroLine, weatherChip, type BudgetView, type HeroCounts } from "../../lib/heroStrip";
+import { factChips, heroLine, weatherChip, whereLine, type BudgetView, type HeroCounts } from "../../lib/heroStrip";
 import type { Mosaic, TileTarget } from "../../lib/heroMosaic";
+import type { HeroRoute } from "../../lib/heroRoute";
 import { L, locale } from "../../lib/i18n";
 import type { BudgetBar } from "../../lib/progress";
 import type { CountryFacts, TripFacts } from "../../lib/tripFacts";
@@ -50,6 +52,8 @@ export interface HeroProps {
   sectionRef: React.RefObject<HTMLElement | null>;
   /** The main places, in the order the nights go. */
   cities: string[];
+  /** Home, each main place with its nights and its stay's state, home again (lib/heroRoute.ts); null: none to draw. */
+  route?: HeroRoute | null;
   mood: string | null;
   mosaic: Mosaic;
   working: number;
@@ -96,7 +100,10 @@ export function Hero(props: HeroProps) {
   const weather = useWeather(props.places, props.countries.length === 1 ? props.countries[0] : null, props.now);
   const month = props.dates ? new Date(`${props.dates.range.start}T12:00:00Z`).toLocaleDateString(locale(), { month: "long", timeZone: "UTC" }) : "";
   const sky = weatherChip(weather, month);
-  const chips = factChips({ facts: props.facts, countries: props.countries, cities: props.cities, weather: sky, home: props.home, visaDone: visaDoneOf(trip), perCountry: props.perCountry });
+  // One country is said on the photo, over the trip's name; several keep "n ülke" and its table in the facts' row (D9).
+  const chips = factChips({ facts: props.facts, countries: props.countries, cities: props.cities, weather: sky, home: props.home, visaDone: visaDoneOf(trip), perCountry: props.perCountry }).filter(
+    (c) => c.key !== "country" || props.countries.length > 1,
+  );
 
   const toggle = (on: boolean) => {
     const el = box.current;
@@ -142,7 +149,18 @@ export function Hero(props: HeroProps) {
     >
       {!during && (
         <>
-          <HeroMosaic mosaic={props.mosaic} title={trip.title} cities={props.cities} mood={props.mood} working={props.working} menu={<TripMenu actions={props.menu} />} onTile={props.onTile} />
+          <HeroMosaic
+            mosaic={props.mosaic}
+            title={trip.title}
+            where={whereLine(props.cities, props.countries)}
+            mood={props.mood}
+            working={props.working}
+            menu={<TripMenu actions={props.menu} />}
+            onTile={props.onTile}
+            count={props.dates?.count ?? null}
+            estimated={!!props.dates?.estimated}
+            route={props.route ?? null}
+          />
           <HeroStrip
             dates={props.dates}
             trip={trip}
@@ -155,8 +173,10 @@ export function Hero(props: HeroProps) {
             budgetSet={props.budgetSet}
             next={props.next}
           />
-          <FactChips chips={chips} sky={sky?.sky ?? null} docs={props.docs} />
-          <PrefsRow trip={trip} decisions={props.decisions} styles={props.styles} folded={folded} onFold={() => toggle(true)} />
+          <div className="x-info">
+            <FactChips chips={chips} sky={sky?.sky ?? null} docs={props.docs} />
+            <PrefsRow trip={trip} decisions={props.decisions} styles={props.styles} folded={folded} onFold={() => toggle(true)} />
+          </div>
         </>
       )}
       <div className="x-slim" hidden={!slimOn}>

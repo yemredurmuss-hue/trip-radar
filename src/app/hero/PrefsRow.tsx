@@ -1,4 +1,4 @@
-// The row under the chips (v82, C23): the trip's style words first (the model's, and the budget's level), then
+// The right end of the facts' row (v82, C23; A · Kapak 2026-10-19: pushed right after the facts): the trip's style words first (the model's, and the budget's level), then
 // "Tercihler" with what was understood in a few words, "+N" and the waiting question's "1"; a tap opens "Seni böyle
 // anladım" (each entry with its scope and source, × to remove it, the question with Evet / Hayır). Nothing understood
 // yet and no question: no Tercihler (C19). "Özeti küçült" ends the row.

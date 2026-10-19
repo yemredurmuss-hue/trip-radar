@@ -9,7 +9,7 @@ import { countryInfo } from "./countries";
 import { countryNames, currencyName, nPeople, offsetText, plugFit, plugFitText } from "./heroInfo";
 import { formatDateRange, formatPrice, nightsBetween } from "./items";
 import { L, locale } from "./i18n";
-import { nNights } from "./i18nText";
+import { capitalize, nNights } from "./i18nText";
 import { bookedShare, DOC_SOON_DAYS, planShare, type IntentStatus, type Share } from "./intents";
 import { numberPossessive, percentPossessive } from "./lifecycle";
 import type { BudgetBar } from "./progress";
@@ -113,14 +113,17 @@ export function shortRange(start: string, end: string): string {
   return start.slice(0, 7) === end.slice(0, 7) ? `${day(start)}–${day(end)} ${mon(end)}` : `${day(start)} ${mon(start)} – ${day(end)} ${mon(end)}`;
 }
 
-/** The weather in one chip: the coolest night to the warmest day ("6–19°"), its sky, and each city in its tip. */
+/** A temperature with a real minus sign ("−12°"), the way the hero's info row writes it. */
+const degrees = (n: number) => `${n < 0 ? "−" : ""}${Math.abs(n)}°`;
+
+/** The weather in one chip: the coolest night to the warmest day ("6° / 19°", "−12° / −3°"), its sky, and each city in its tip. */
 export function weatherChip(list: readonly CityWeather[], month: string): { text: string; sky: Sky; tip: string } | null {
   if (!list.length) return null;
   const low = Math.min(...list.map((w) => w.low));
   const high = Math.max(...list.map((w) => w.high));
   const skies = list.map((w) => w.sky);
   const sky = (["sun", "partly", "cloud", "rain"] as const).reduce((best, s) => (skies.filter((x) => x === s).length > skies.filter((x) => x === best).length ? s : best), skies[0]);
-  return { text: low === high ? `${high}°` : `${low}–${high}°`, sky, tip: list.map((w) => weatherTitle(w, month)).join(" · ") };
+  return { text: low === high ? degrees(high) : `${degrees(low)} / ${degrees(high)}`, sky, tip: list.map((w) => weatherTitle(w, month)).join(" · ") };
 }
 
 export interface BudgetView {
@@ -202,6 +205,10 @@ export interface FactChip {
   tone?: "ok" | "warn";
   /** "n ülke" (D9): each country's own money, time, plug and visa under the tip, a row each. */
   rows?: CountryRow[];
+  /** The plug's types ("C", "F"): its socket is drawn (heroInfo plugShape). */
+  plugs?: string[];
+  /** The language's country (its code), for the small flag before it. */
+  flag?: string;
 }
 
 export interface CountryRow {
@@ -274,11 +281,11 @@ export function factChips(input: {
       const own = countryInfo(input.home)?.plugs;
       const homeName = countryNames([input.home])[0];
       const tip = fit ? [plugFitText(fit), own?.length && homeName ? L(`${homeName} ${own.join("/")} kullanıyor`, `${homeName} uses ${own.join("/")}`) : null].filter(Boolean).join(" · ") : null;
-      out.push({ key: "plug", text: L(`${local.info.plugs.join("/")} priz`, `${local.info.plugs.join("/")} plug`), tip });
+      out.push({ key: "plug", text: L(`${local.info.plugs.join("/")} priz`, `${local.info.plugs.join("/")} plug`), tip, plugs: [...local.info.plugs] });
     }
-    const offset = offsetText(local.hours);
+    const offset = offsetText(local.hours, true);
     if (offset) out.push({ key: "time", text: offset, tip: timeTip(local.hours) });
-    out.push({ key: "lang", text: L(local.info.language.tr, local.info.language.en), tip: null });
+    out.push({ key: "lang", text: L(local.info.language.tr, local.info.language.en), tip: null, ...(facts.country ? { flag: facts.country } : {}) });
   }
   const visa = facts.visa;
   if (visa?.kind === "visa")
@@ -319,4 +326,54 @@ export function heroLine({ range, estimated, rough = false, people, counts, budg
   const share = counts.total ? (counts.fresh ? freshWords(counts) : shareWords(counts).plan) : null;
   const money = budget ? `${budget.sign}${formatPrice(budget.likely, budget.currency)}${budget.total != null ? ` / ${formatPrice(budget.total, budget.currency)}` : ""}` : null;
   return [dates, who, share, money].filter(Boolean).join(" · ");
+}
+
+// --- the summary card under the photo (A · Kapak, 2026-10-19) --------------------------------------------------
+
+/**
+ * Who goes, under the faces: the count big ("2", none while no one is said: "Kimler gidiyor?"), and under it the names
+ * ("Sen ve Sabine", "Sen, Sabine ve Ali", "Sen, Sabine +2"), "Sadece sen" alone, "kişi" when no one is named.
+ */
+export function whoWords(who: { names: readonly string[]; count: number }): { count: string | null; line: string } {
+  const { count } = who;
+  if (count <= 0) return { count: null, line: L("Kimler gidiyor?", "Who's going?") };
+  if (count === 1) return { count: "1", line: L("Sadece sen", "Just you") };
+  const others = who.names.slice(1, count).map((n) => n.trim()).filter(Boolean);
+  if (!others.length) return { count: String(count), line: L("kişi", "people") };
+  const extra = count - 1 - others.length;
+  if (extra > 0) return { count: String(count), line: L(`Sen, ${others.join(", ")} +${extra}`, `You, ${others.join(", ")} +${extra}`) };
+  const list = (and: string) => (others.length === 1 ? others[0] : `${others.slice(0, -1).join(", ")} ${and} ${others.at(-1)}`);
+  return { count: String(count), line: others.length === 1 ? L(`Sen ve ${list("ve")}`, `You and ${list("and")}`) : L(`Sen, ${list("ve")}`, `You, ${list("and")}`) };
+}
+
+/** "Hazır": the planned share big ("%54"), and under the bar what's booked and what's still to book ("%40 alındı · 2 alınacak"). */
+export function readyWords(c: HeroCounts): { pct: string; line: string } {
+  const p = c.plan.pct ?? 0;
+  const b = c.booked.pct ?? 0;
+  const toBook = Math.max(0, c.plan.count - c.booked.count);
+  return {
+    pct: L(`%${p}`, `${p}%`),
+    line: [L(`%${b} alındı`, `${b}% booked`), toBook ? L(`${toBook} alınacak`, `${toBook} to book`) : null].filter(Boolean).join(" · "),
+  };
+}
+
+/** The budget's line under its amount: what's left of the budget or how much over it; "tahmini" with none set. */
+export function budgetWords(view: Pick<BudgetView, "currency" | "likely" | "total" | "over">): string {
+  const money = (n: number) => formatPrice(n, view.currency);
+  if (view.total == null) return L("tahmini", "estimated");
+  if (view.over > 0) return L(`${money(view.total)} bütçeyi ${money(view.over)} aşıyor`, `${money(view.over)} over ${money(view.total)}`);
+  return L(`${money(view.total)} bütçeden ${money(view.total - view.likely)} kaldı`, `${money(view.total - view.likely)} left of ${money(view.total)}`);
+}
+
+/** The Next button's two lines: "Sıradaki" small over the step ("Sıradaki: vize randevusu" → "Vize randevusu"). */
+export function nextParts(label: string): { head: string; text: string } {
+  const m = /^(Sıradaki|Next):\s*(.+)$/s.exec(label);
+  return m ? { head: m[1], text: capitalize(m[2]) } : { head: L("Sıradaki", "Next"), text: label };
+}
+
+/** The line over the trip's name on the photo: its main places, and its country when it is one ("Tromsø · Senja, Norveç"). */
+export function whereLine(cities: readonly string[], countries: readonly string[]): string {
+  const places = cities.filter(Boolean).join(" · ");
+  const country = countries.length === 1 ? countries[0] : null;
+  return [places, country].filter(Boolean).join(", ");
 }

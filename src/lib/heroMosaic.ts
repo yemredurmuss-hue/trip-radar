@@ -1,5 +1,5 @@
-// The hero's mosaic (v82 "Hero = mozaik", v81 "kareler plandan ve birikenden", v83 C7 and C19): a big cover on the left,
-// and on the right up to six tiles of what the trip will be like, taken in this order (row 14; 0.38.3): the places on the
+// The hero's mosaic (v82 "Hero = mozaik", v81 "kareler plandan ve birikenden", v83 C7 and C19; A · Kapak 2026-10-19: the
+// cover the full width, the tiles a row of six under it, each with a dot for where it stands): the cover, and up to six tiles of what the trip will be like, taken in this order (row 14; 0.38.3): the places on the
 // plan (an activity, a thing to do, a meal or a stay chosen or booked), then the photos of what was saved for the trip (the
 // Pano's links), then the trip's cities each with its nights, then the connected source's tours for its cities (Viator's
 // photos, the same answers the Etkinlik rows were given), then the trip's moments (a romantic evening, the food: the
@@ -43,7 +43,14 @@ export interface MosaicTile {
   name: string;
   /** The small one: the place's city, or the city's nights ("3 gece"). */
   sub: string | null;
+  /**
+   * Where it stands, for the dot on its corner (A · Kapak): a place on the plan booked or only planned, a city by its
+   * stay; null for what is only an idea or a picture (a saved link, the source's tour, a moment).
+   */
+  state: TileState;
 }
+
+export type TileState = "booked" | "planned" | null;
 
 export interface Mosaic {
   /** The cover's photo; null: the plain cover (no photo yet). */
@@ -59,6 +66,8 @@ export interface MosaicCity {
   credit: PhotoCredit | null;
   /** Its nights' words ("3 gece"), when it has nights. */
   nights: string | null;
+  /** Its stay booked or not yet (the route's dot); left out or null: no dot. */
+  state?: TileState;
 }
 
 export interface MosaicPlace {
@@ -148,17 +157,18 @@ export function mosaicOf({ cities, places, links = [], offers = [], moments = []
     sub: p.city,
     image: p.image,
     credit: p.credit,
+    state: from === "place" ? (p.booked ? "booked" : "planned") : null,
   });
   take(spread(places, places.length).map(placeTile("place")));
   take(spread(links, links.length).map(placeTile("link")));
-  take(cities.map((c) => ({ key: `city:${c.name}`, from: "city", target: null, name: c.name, sub: c.nights, image: c.image, credit: c.credit })));
+  take(cities.map((c) => ({ key: `city:${c.name}`, from: "city", target: null, name: c.name, sub: c.nights, image: c.image, credit: c.credit, state: c.state ?? null })));
   take(spread(offers, offers.length).map(placeTile("offer")));
-  take(moments.map((m) => ({ key: `moment:${m.name}`, from: "moment", target: null, name: m.name, sub: null, image: m.image, credit: m.credit })));
+  take(moments.map((m) => ({ key: `moment:${m.name}`, from: "moment", target: null, name: m.name, sub: null, image: m.image, credit: m.credit, state: null })));
   // Last, a city with no photo yet as a drawing (its name and nights on it), never the cover's own.
   if (first) seenName.add(nameKey(first.name));
   const art: MosaicTile[] = cities
     .filter((c) => !c.image && c.name.trim() && !seenName.has(nameKey(c.name)))
-    .map((c) => ({ key: `art:${c.name}`, from: "art", target: null, name: c.name, sub: c.nights, image: null, credit: null }));
+    .map((c) => ({ key: `art:${c.name}`, from: "art", target: null, name: c.name, sub: c.nights, image: null, credit: null, state: c.state ?? null }));
   const tiles = shownTiles([...photos, ...art.slice(0, Math.max(0, max - photos.length))]);
   const placed = tiles.filter((t) => t.from === "place" || t.from === "link" || t.from === "offer").length;
   return { cover, tiles, kind: !tiles.length ? null : placed * 2 >= tiles.length ? "place" : "city" };

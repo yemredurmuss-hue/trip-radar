@@ -19,6 +19,15 @@ describe("mosaicOf", () => {
     expect(m).toEqual({ cover: null, tiles: [], kind: null });
   });
 
+  it("A · Kapak: each tile says where it stands for its dot: a place booked or planned, a city by its stay, an idea none", () => {
+    const m = mosaicOf({
+      cities: [city("Tokyo", "t.jpg"), { ...city("Kyoto", "k.jpg"), state: "booked" }, { ...city("Osaka", "o.jpg"), state: "planned" }],
+      places: [place("Shibuya Sky", "Tokyo", "s.jpg", true), place("Gora Kadan", "Hakone", "g.jpg")],
+      links: [place("Casa", "Tokyo", "c.jpg")],
+    });
+    expect(m.tiles.map((t) => [t.name, t.state])).toEqual([["Shibuya Sky", "booked"], ["Gora Kadan", "planned"], ["Casa", null], ["Kyoto", "booked"], ["Osaka", "planned"]].slice(0, m.tiles.length));
+  });
+
   it("covers with the first city's photo, the places on the plan first, then the other cities", () => {
     const m = mosaicOf({ cities: [city("Tokyo", "t.jpg"), city("Kyoto", "k.jpg", "4 gece"), city("Hakone", "h.jpg"), city("Osaka", "o.jpg")], places: [place("Shibuya Sky", "Tokyo", "s.jpg")] });
     expect(m.cover).toEqual({ image: "t.jpg", credit: wiki });

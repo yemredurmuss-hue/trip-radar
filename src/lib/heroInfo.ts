@@ -75,12 +75,30 @@ export const plugFitText = (fit: PlugFit): string =>
     adapter: L("Adaptör gerekir", "Adapter needed"),
   })[fit];
 
-/** "−2 saat", "+5,5 saat" ("−2 h"); "Aynı saat" when the same time; null when it isn't known. */
-export function offsetText(hours: number | null): string | null {
+/**
+ * "−2 saat", "+5,5 saat" ("−2 h"); "+1 sa" short (the hero's info row, A · Kapak); "Aynı saat" when the same time; null
+ * when it isn't known.
+ */
+export function offsetText(hours: number | null, short = false): string | null {
   if (hours == null) return null;
   if (!hours) return L("Aynı saat", "Same time");
   const n = Math.abs(hours).toLocaleString(locale(), { maximumFractionDigits: 1 });
-  return `${hours > 0 ? "+" : "−"}${n} ${L("saat", "h")}`;
+  return `${hours > 0 ? "+" : "−"}${n} ${L(short ? "sa" : "saat", "h")}`;
+}
+
+/**
+ * The socket a plug type is drawn as in the hero's info row (A · Kapak): the type's own face where it has one (G three
+ * flat pins, I two angled and one, L three in a row...), E, F and K as C's round face with two round pins (a C plug goes
+ * in all of them), M as D's triangle. Of several types the first that has a drawing; null: the plain plug icon.
+ */
+export type PlugShape = "A" | "B" | "C" | "D" | "G" | "H" | "I" | "J" | "L" | "N";
+const PLUG_SHAPES: Record<string, PlugShape> = { A: "A", B: "B", C: "C", E: "C", F: "C", K: "C", D: "D", M: "D", G: "G", H: "H", I: "I", J: "J", L: "L", N: "N" };
+export function plugShape(plugs: readonly string[] | null | undefined): PlugShape | null {
+  for (const p of plugs ?? []) {
+    const shape = PLUG_SHAPES[p.trim().toUpperCase()];
+    if (shape) return shape;
+  }
+  return null;
 }
 
 /** "Euro", "İngiliz Sterlini": the money's name in the board's language. */

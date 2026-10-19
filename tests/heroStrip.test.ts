@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import type { CityWeather } from "../src/lib/climate";
 import { withLang } from "../src/lib/i18n";
 import type { IntentStatus } from "../src/lib/intents";
-import { budgetAmount, budgetView, countryRows, datesTip, datesWords, docsMissing, docsWords, factChips, freshWords, heroCounts, heroLine, numberLocative, shareSentence, shareWords, shortRange, weatherChip } from "../src/lib/heroStrip";
+import { budgetAmount, budgetView, budgetWords, countryRows, datesTip, datesWords, docsMissing, docsWords, factChips, freshWords, heroCounts, heroLine, nextParts, numberLocative, readyWords, shareSentence, shareWords, shortRange, weatherChip, whereLine, whoWords } from "../src/lib/heroStrip";
 import type { CountryFacts } from "../src/lib/tripFacts";
 import type { BudgetBar } from "../src/lib/progress";
 
@@ -59,10 +59,16 @@ describe("weatherChip", () => {
   const w = (city: string, low: number, high: number, sky: CityWeather["sky"]): CityWeather => ({ city, low, high, sky, rainy: 2, days: 4, source: "average" });
   it("spans the coolest night to the warmest day, the most common sky, each city in the tip", () => {
     const chip = weatherChip([w("Porto", 13, 21, "partly"), w("Lizbon", 15, 24, "sun"), w("Sintra", 12, 19, "sun")], "Ekim");
-    expect(chip?.text).toBe("12–24°");
+    expect(chip?.text).toBe("12° / 24°");
     expect(chip?.sky).toBe("sun");
     expect(chip?.tip).toMatch(/^Porto · Ekim ortalaması, son 5 yıl: gündüz 21°, gece 13° · yağışlı gün 2\/4 · Lizbon/);
     expect(weatherChip([], "Ekim")).toBeNull();
+  });
+
+  it("writes a frost with a real minus sign, one temperature once (A · Kapak)", () => {
+    expect(weatherChip([w("Tromsø", -12, -3, "cloud")], "Ocak")?.text).toBe("−12° / −3°");
+    expect(weatherChip([w("Senja", -5, 2, "cloud")], "Ocak")?.text).toBe("−5° / 2°");
+    expect(weatherChip([w("Porto", 18, 18, "sun")], "Ekim")?.text).toBe("18°");
   });
 });
 
@@ -110,7 +116,10 @@ describe("factChips", () => {
   });
   it("names the country, its money, plug, time and language, and the visa to get in amber", () => {
     const chips = factChips({ facts: facts(), countries: ["Portekiz"], cities: ["Porto", "Lizbon"], weather: { text: "13–24°", tip: "…" }, home: "TR", visaDone: false });
-    expect(chips.map((c) => c.text)).toEqual(["Portekiz", "13–24°", "Euro", "C/F priz", "−2 saat", "Portekizce", "Schengen vizesi gerekiyor"]);
+    expect(chips.map((c) => c.text)).toEqual(["Portekiz", "13–24°", "Euro", "C/F priz", "−2 sa", "Portekizce", "Schengen vizesi gerekiyor"]);
+    // A · Kapak: the plug's types for its socket, the language's country for its flag.
+    expect(chips[3].plugs).toEqual(["C", "F"]);
+    expect(chips[5].flag).toBe("PT");
     expect(chips[0].tip).toBe("Porto, Lizbon · 2 şehir");
     expect(chips[2].tip).toBe("€1 = ₺40,00");
     expect(chips[3].tip).toBe("Adaptör gerekmez · Türkiye C/F kullanıyor");
@@ -207,5 +216,46 @@ describe("D9: each country of a trip of several", () => {
     const chips = factChips({ facts, countries: ["Portekiz", "Fas"], cities: ["Lizbon", "Marakeş"], weather: null, home: "TR", visaDone: false, perCountry: [pt, ma] });
     expect(chips[0]).toMatchObject({ key: "country", text: "2 ülke" });
     expect(chips[0].rows?.map((r) => r.name)).toEqual(["Portekiz", "Fas"]);
+  });
+});
+
+// A · Kapak (2026-10-19): the summary card's words and the line over the trip's name.
+describe("the summary card under the photo", () => {
+  it("says who goes: the count big, the names under it, \"Sadece sen\" alone, \"kişi\" with no names", () => {
+    expect(whoWords({ names: [], count: 0 })).toEqual({ count: null, line: "Kimler gidiyor?" });
+    expect(whoWords({ names: ["Emre"], count: 1 })).toEqual({ count: "1", line: "Sadece sen" });
+    expect(whoWords({ names: ["Emre", "Sabine"], count: 2 })).toEqual({ count: "2", line: "Sen ve Sabine" });
+    expect(whoWords({ names: ["Emre", "Sabine", "Ali"], count: 3 })).toEqual({ count: "3", line: "Sen, Sabine ve Ali" });
+    expect(whoWords({ names: ["Emre", "Sabine"], count: 4 })).toEqual({ count: "4", line: "Sen, Sabine +2" });
+    expect(whoWords({ names: [], count: 2 })).toEqual({ count: "2", line: "kişi" });
+    expect(withLang("en", () => whoWords({ names: ["Emre", "Sabine"], count: 2 }).line)).toBe("You and Sabine");
+    expect(withLang("en", () => whoWords({ names: ["Emre"], count: 1 }).line)).toBe("Just you");
+  });
+
+  it("says ready: the planned share big, what's booked and still to book under the bar", () => {
+    const japan = heroCounts(of([["booked", 4], ["arranged", 1], ["chosen", 5], ["included", 1], ["suggested", 3], ["deciding", 3], ["searching", 1], ["skipped", 2]]));
+    expect(readyWords(japan)).toEqual({ pct: "%61", line: "%33 alındı · 5 alınacak" });
+    expect(withLang("en", () => readyWords(japan))).toEqual({ pct: "61%", line: "33% booked · 5 to book" });
+    expect(readyWords(heroCounts(of([["booked", 3]])))).toEqual({ pct: "%100", line: "%100 alındı" });
+  });
+
+  it("says what's left of the budget, how much over it, or that the total is an estimate", () => {
+    expect(budgetWords({ currency: "EUR", likely: 2980, total: 3500, over: 0 })).toBe("€3.500 bütçeden €520 kaldı");
+    expect(withLang("en", () => budgetWords({ currency: "EUR", likely: 2980, total: 3500, over: 0 }))).toBe("€520 left of €3,500");
+    expect(budgetWords({ currency: "EUR", likely: 1800, total: 1500, over: 300 })).toBe("€1.500 bütçeyi €300 aşıyor");
+    expect(budgetWords({ currency: "EUR", likely: 1003, total: null, over: 0 })).toBe("tahmini");
+  });
+
+  it("splits the next step into \"Sıradaki\" and the step itself, whole", () => {
+    expect(nextParts("Sıradaki: vize randevusu")).toEqual({ head: "Sıradaki", text: "Vize randevusu" });
+    expect(nextParts("Next: Book your stay in Ravello")).toEqual({ head: "Next", text: "Book your stay in Ravello" });
+    expect(nextParts("İlk kaydı ekle")).toEqual({ head: "Sıradaki", text: "İlk kaydı ekle" });
+  });
+
+  it("writes the places over the name, with the country when there is one", () => {
+    expect(whereLine(["Tromsø", "Senja"], ["Norveç"])).toBe("Tromsø · Senja, Norveç");
+    expect(whereLine(["Porto", "Madrid"], ["Portekiz", "İspanya"])).toBe("Porto · Madrid");
+    expect(whereLine([], ["Japonya"])).toBe("Japonya");
+    expect(whereLine([], [])).toBe("");
   });
 });

@@ -89,7 +89,7 @@ const frozen = (ctx) => ctx.clock.install({ time: new Date("2026-10-05T10:00:00"
 const context = await chromium.launchPersistentContext(mkdtempSync(path.join(tmpdir(), "trip-radar-")), {
   executablePath,
   headless: false,
-  // The owner's home time (the hero's "−2 saat" to Portugal): the same wherever the Mac is.
+  // The owner's home time (the hero's "−2 sa" to Portugal): the same wherever the Mac is.
   timezoneId: "Europe/Istanbul",
   viewport: { width: 1440, height: 900 },
   ...TURKISH,
@@ -203,9 +203,9 @@ try {
   // 4. Demo trip, a group expanded, and the detail drawer.
   await app.getByText("Örnek geziyi yükle →").click();
   await app.getByRole("heading", { name: "Portekiz (örnek)" }).waitFor();
-  // The hero (v82 aşama 1, docs/superpowers/specs/2026-10-18-v82-gecis/02-spec.md): on its own ground, the mosaic (the cover
-  // with the trip's name and cities; the cities' photos or the plan's places as tiles), the strip in four parts (the dates,
-  // who goes with the backbone's two shares, the budget, "Sıradaki"), the chips, the style words and Tercihler.
+  // The hero (v82 aşama 1, docs/superpowers/specs/2026-10-18-v82-gecis/02-spec.md; A · Kapak 2026-10-19): the cover the full
+  // width (the trip's name, its places and country, the days to go, the route), the tiles a row under it, the summary card
+  // (when, who, the budget, ready, "Sıradaki"), and the quiet row of the facts, the style words and Tercihler.
   const hero = app.locator(".x-hero");
   const flat = (texts) => texts.map((t) => t.replace(/\s+/g, " ").trim());
   // v82: the Plan's categories, one open at a time (B8); a category's name in its closed row is the button that opens it.
@@ -216,15 +216,16 @@ try {
     await s.locator(".q-fold.settled").waitFor();
     return s;
   };
-  // B9: the bar's sentence (its label, the tip) and "%X planda · %Y alındı" say the same numbers: every need, planned,
-  // booked, to decide. Read off the page and checked against each other (one screen once showed three different counts).
+  // B9: the bar's sentence (its label, the tip), "Hazır %X" and "%Y alındı · n alınacak" say the same numbers: every need,
+  // planned, booked, to decide. Read off the page and checked against each other (one screen once showed three different counts).
   const heroNumbersOnPage = async () => {
     const label = await app.locator(".x-hero .x-bar").getAttribute("aria-label");
     const m = label.match(/^Omurganın %(\d+)'\S* planda \((\d+) ihtiyaçtan (\d+)'\S*\), %(\d+)'\S* alındı \((\d+)\)\. (?:(\d+) karar bekliyor|Karar bekleyen yok)\.$/);
     assert.ok(m, `the bar says it in a sentence (${label})`);
     const [, planPct, total, planned, bookedPct, booked, open] = m;
     const words = flat([await app.locator(".x-hero .x-ps").innerText()])[0];
-    return { label, words, planPct: +planPct, total: +total, planned: +planned, bookedPct: +bookedPct, booked: +booked, open: +(open ?? 0), now: Number(await app.locator(".x-hero .x-bar").getAttribute("aria-valuenow")) };
+    const pct = flat([await app.locator(".x-hero .x-pct").innerText()])[0];
+    return { label, words, pct, planPct: +planPct, total: +total, planned: +planned, bookedPct: +bookedPct, booked: +booked, open: +(open ?? 0), now: Number(await app.locator(".x-hero .x-bar").getAttribute("aria-valuenow")) };
   };
   const heroAgrees = async (where) => {
     const s = await heroNumbersOnPage();
@@ -232,14 +233,28 @@ try {
     assert.equal(s.planPct, Math.round((s.planned / s.total) * 100), `${where}: "%planda" is what's planned of every need (${said})`);
     assert.equal(s.bookedPct, Math.round((s.booked / s.total) * 100), `${where}: "%alındı" is what's booked of every need (${said})`);
     assert.equal(s.now, s.planPct, `${where}: the bar's value (${said})`);
-    assert.equal(s.words, `%${s.planPct} planda · %${s.bookedPct} alındı`, `${where}: the strip's words (${said})`);
+    assert.equal(s.pct, `%${s.planPct}`, `${where}: "Hazır" is the planned share (${said})`);
+    assert.equal(s.words, [`%${s.bookedPct} alındı`, s.planned > s.booked ? `${s.planned - s.booked} alınacak` : null].filter(Boolean).join(" · "), `${where}: the card's words (${said})`);
     assert.ok(s.booked <= s.planned && s.planned + s.open === s.total, `${where}: booked is some of planned; planned and to decide are every need (${said})`);
     return s;
   };
   assert.equal(await hero.locator(".x-big h1").innerText(), "Portekiz (örnek)");
-  assert.equal(await hero.locator(".x-big figcaption span").innerText(), "Porto · Lizbon");
+  assert.equal(await hero.locator(".x-big .x-where").innerText(), "Porto · Lizbon, Portekiz");
   assert.equal(await hero.locator(".x-s1 b").innerText(), "8–14 Ekim");
-  assert.match(flat([await hero.locator(".x-s1 small").innerText()])[0], /^7 gün · (\d+ gün kaldı|Yarın|\d+\. gün \/ 7|Bitti)$/);
+  assert.equal(flat([await hero.locator(".x-s1 small").innerText()])[0], "7 gün");
+  // A · Kapak: the days to go big on the photo; the route from home through each place (its nights, its stay's dot: Lizbon's
+  // booked, Porto's not yet) and home again, a plane at the ends and the train between.
+  assert.equal(flat([await hero.locator(".x-big .x-count").innerText()])[0], "3 gün kaldı");
+  assert.deepEqual(
+    await hero.locator(".x-route").evaluate((el) => [
+      [...el.querySelectorAll(".x-rp")].map((p) => [p.lastChild.nodeValue, p.querySelector(".x-dot")?.className ?? null]),
+      [...el.querySelectorAll(".x-way")].map((w) => (w.querySelector("svg") ? w.querySelector(".sr-only").textContent.trim() : "→")),
+    ]),
+    [
+      [["İstanbul", null], ["Porto 3 gece", "x-dot plan"], ["Lizbon 3 gece", "x-dot ok"], ["İstanbul", null]],
+      ["Uçak", "Tren", "Uçak"],
+    ],
+  );
   // With no photo to be had (offline) the cover stands alone, plain, and no "i" says a credit there isn't (C19, C7).
   if (process.env.E2E_OFFLINE) {
     assert.equal(await hero.locator(".x-mos.solo .x-big.empty").count(), 1, "no photo: the cover alone");
@@ -261,19 +276,23 @@ try {
   const atStart = await heroAgrees("the sample");
   console.log(`  hero: ${atStart.words} · ${atStart.label}`);
   assert.deepEqual([atStart.total, atStart.planned, atStart.booked, atStart.open], [9, 3, 2, 6], JSON.stringify(atStart));
-  // The bar: two greens from the left, booked (dark) then planned (light), each as wide as its share.
+  // The bar: from the left booked (green) then planned (amber, A · Kapak), each as wide as its share.
   const fills = await hero.locator(".x-bar").evaluate((el) => [...el.children].map((i) => ({ cls: i.className, width: Math.round(parseFloat(i.style.width)), paint: getComputedStyle(i).backgroundColor })));
   assert.deepEqual(fills.map((f) => [f.cls, f.width]), [["bk", atStart.bookedPct], ["ch", atStart.planPct - atStart.bookedPct]], JSON.stringify(fills));
   assert.notEqual(fills[0].paint, fills[1].paint, "two tones");
   // F4: a visa to get comes before everything (a Turkish passport for Portugal: Schengen); C25: its chip is amber.
-  assert.equal(flat([await hero.locator(".x-next").innerText()])[0], "Sıradaki: vize randevusu");
-  // Who goes: two adults read from the saves (no names: two plain faces; the sample isn't shared, so no invite).
+  assert.equal(flat([await hero.locator(".x-next").innerText()])[0], "Sıradaki Vize randevusu");
+  // Who goes: two adults read from the saves (no names: two plain faces, the count big, "kişi" under it; the sample isn't
+  // shared, so no invite).
   assert.equal(await hero.locator(".x-s2 .x-face").count(), 2);
-  assert.equal(await hero.locator(".x-whob").innerText(), "2 kişi");
+  assert.equal(await hero.locator(".x-whob").innerText(), "2");
+  assert.equal(await hero.locator(".x-s2 .x-sl").innerText(), "kişi");
   // The style (C23, at the start of Tercihler's row): no model key here, so only the budget's word (€1.500 for 2 people, 7 days ≈ €107 a day each).
   assert.deepEqual(await hero.locator(".x-styles .x-style").allInnerTexts(), ["Orta bütçe"]);
-  // The chips: the country, the money, the plug, the time, the language and the visa (the weather too where the network has it).
-  assert.deepEqual(flat(await hero.locator(".x-chips .x-chip:not(.c-weather):not(.c-docs)").allInnerTexts()), ["Portekiz", "Euro", "C/F priz", "−2 saat", "Portekizce", "Schengen vizesi gerekiyor"]);
+  // The facts: the money, the plug (its socket drawn), the time, the language (its flag) and the visa (the weather too where the
+  // network has it); the one country is on the photo.
+  assert.deepEqual(flat(await hero.locator(".x-chips .x-chip:not(.c-weather):not(.c-docs)").allInnerTexts()), ["Euro", "C/F priz", "−2 sa", "🇵🇹 Portekizce", "Schengen vizesi gerekiyor"]);
+  assert.equal(await hero.locator(".x-chip.c-plug svg.x-plug").count(), 1, "the plug's own socket");
   assert.equal(await hero.locator(".x-chip.c-visa.warn").count(), 1, "the visa to get is amber");
   // B15: beside it, in the same amber, the bookings in their last two weeks still without their file (the Lizbon stay and
   // the way home); a tap goes to the first.
@@ -372,7 +391,7 @@ try {
   await app.setViewportSize({ width: 560, height: 1400 });
   await hero.scrollIntoViewIfNeeded();
   await app.screenshot({ path: `${out}/2d-hero-narrow.png` });
-  const heroLines = [".x-sv b", ".x-sv small", ".x-nl", ".x-chip", ".x-style", ".x-big h1", ".x-big figcaption span"].map((sel) => `.x-hero ${sel}`).concat(".card-alert").join(", ");
+  const heroLines = [".x-sv b", ".x-sv small", ".x-nl", ".x-chip", ".x-style", ".x-big h1", ".x-big .x-where", ".x-pct", ".x-sl"].map((sel) => `.x-hero ${sel}`).concat(".card-alert").join(", ");
   assert.deepEqual(await uncut(heroLines), [], "the hero's lines and a card's warning wrap, never cut");
   assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll on a narrow hero");
   // Nothing runs out of the hero: the chips with the longest real names (the UAE's money, Switzerland's languages) go to a row of their own.
@@ -399,26 +418,28 @@ try {
   await app.screenshot({ path: `${out}/2h-hero-1280.png` });
   assert.deepEqual(await spilled(), [], "1280 px: every chip stays inside the hero");
   await checkStyles("1280");
-  // The strip beside the chat (v83's narrow layout): the dates, who and the money in a row, "Sıradaki" whole under them; "2 kişi"
-  // and the bar share a line, the two shares one line under them.
+  // The summary card (A · Kapak): one row on a board over 900 px; beside the chat at 1280 two by two with "Sıradaki" the full
+  // width under them. "Hazır"'s bar is under its share, its words under the bar.
   const peopleRow = () =>
     app.evaluate(() => {
       const r = (sel) => document.querySelector(sel).getBoundingClientRect();
-      const [who, bar, ps, next, strip, s1] = [r(".x-whob"), r(".x-prog"), r(".x-ps"), r(".x-next"), r(".x-strip"), r(".x-s1")];
+      const [s1, s2, s3, s4, next, strip, bar, pct, ps] = [r(".x-s1"), r(".x-s2"), r(".x-s3"), r(".x-s4"), r(".x-next"), r(".x-strip"), r(".x-prog"), r(".x-pct"), r(".x-ps")];
+      const mid = (b) => b.top + b.height / 2;
       return {
-        barBeside: bar.left > who.right && Math.abs(bar.top + bar.height / 2 - (who.top + who.height / 2)) < 4,
-        sharesUnder: ps.top >= who.bottom - 1 && ps.height < 24,
-        nextUnder: next.top >= s1.bottom,
+        oneRow: [s1, s2, s3, s4, next].every((b) => Math.abs(mid(b) - mid(strip)) < 4),
+        twoByTwo: Math.abs(s1.top - s2.top) < 2 && Math.abs(s3.top - s4.top) < 2 && s3.top >= s1.bottom - 1 && s2.left >= s1.right - 1,
+        barUnder: bar.top >= pct.bottom - 1 && ps.top >= bar.bottom - 1,
+        nextUnder: next.top >= s3.bottom - 1,
         nextWhole: next.width >= strip.width - 40,
       };
     });
   const row1280 = await peopleRow();
-  assert.ok(Object.values(row1280).every(Boolean), `1280: ${JSON.stringify(row1280)}`);
+  assert.ok(row1280.twoByTwo && row1280.barUnder && row1280.nextUnder && row1280.nextWhole, `1280: ${JSON.stringify(row1280)}`);
   assert.deepEqual((await heroLayout()).problems, [], "1280 px: the hero's parts fit");
   await app.locator(".x-hero").screenshot({ path: `${out}/28a-hero-planned.png` });
   await app.setViewportSize({ width: 1440, height: 900 });
   const row1440 = await peopleRow();
-  assert.ok(row1440.barBeside && row1440.sharesUnder, `1440: ${JSON.stringify(row1440)}`);
+  assert.ok(row1440.oneRow && row1440.barUnder, `1440: ${JSON.stringify(row1440)}`);
   assert.deepEqual(await spilled(), [], "1440 px: every chip stays inside the hero");
   await putNote(null);
   await prefTags.filter({ hasText: "Odada mutlaka bir…" }).waitFor({ state: "detached" });
@@ -928,7 +949,8 @@ try {
   // And the money: what it will likely cost against the budget; a tap opens booked, planned and free a line each, each
   // person's share (T5), the split by kind and what the open decisions will likely add.
   const budget = app.locator(".x-hero .x-s3");
-  assert.match(flat([await budget.locator(".x-budb").innerText()])[0], /^~€[\d.]+ \/ €1\.500 bütçe$/);
+  assert.match(flat([await budget.locator(".x-budb").innerText()])[0], /^~€[\d.]+$/);
+  assert.match(flat([await budget.locator(".x-sl").innerText()])[0], /^€1\.500 bütçeden €[\d.]+ kaldı$/);
   await budget.locator(".x-budb").click();
   assert.match(await budget.locator(".x-bud-pop").innerText(), /Bütçe · €1\.500[\s\S]*Boşta\s*€923[\s\S]*Kişi başı\s*~€\d[\d.]* · 2 kişi[\s\S]*Konaklama[\s\S]*yaklaşık €442 daha eklenir/);
   await budget.locator(".x-budb").click();
@@ -2366,9 +2388,9 @@ try {
   await openSec("other");
   await sec("other").locator("[data-visa]").getByRole("button", { name: "Var", exact: true }).click();
   await app.locator(".x-hero .x-chip.c-visa.ok", { hasText: "Vize alındı" }).waitFor();
-  await app.waitForFunction(() => !/vize/.test(document.querySelector(".x-hero .x-next")?.textContent ?? "vize"));
+  await app.waitForFunction(() => !/vize/i.test(document.querySelector(".x-hero .x-next")?.textContent ?? "vize"));
   const nextNow = flat([await app.locator(".x-hero .x-next").innerText()])[0];
-  assert.match(nextNow, /^Sıradaki: \S/, `the next need named (${nextNow})`);
+  assert.match(nextNow, /^Sıradaki \S/, `the next need named (${nextNow})`);
   await app.locator(".x-hero").scrollIntoViewIfNeeded();
   await app.locator(".x-hero .x-next").click();
   const flashed = app.locator(".q-sec .flash, .q-sec.flash").first();
@@ -2407,14 +2429,14 @@ try {
   // no dates, no countdown, no cities, no shares, no money, no chips, no Tercihler.
   const bare = app.locator(".x-hero");
   await bare.locator(".x-mos.solo .x-big.empty h1", { hasText: "Yeni gezi" }).waitFor();
-  assert.equal(await bare.locator(".x-big figcaption span, .x-big .x-mood, .x-tiles").count(), 0, "no cities, no mood, no tiles");
+  assert.equal(await bare.locator(".x-big .x-where, .x-big .x-route, .x-big .x-count, .x-big .x-mood, .x-tiles").count(), 0, "no cities, no route, no days to go, no mood, no tiles");
   assert.equal(await bare.locator(".x-s1, .x-prog, .x-ps").count(), 0, "no dates, no countdown, no shares");
   // D16: no budget yet: the budget's place is the way to set one, an action, not a "bütçe yok" (C19).
   assert.equal(flat([await bare.locator(".x-s3 .x-budb.set").innerText()])[0], "Bütçe belirle");
   assert.equal(await bare.locator(".x-chips, .x-prefs, .x-styles").count(), 0, "no chips, no Tercihler, no style yet");
   assert.equal(await bare.locator(".x-whob").innerText(), "Kimler gidiyor?");
   assert.equal(await bare.locator(".x-face.none").count(), 1, "one dashed face to start from");
-  assert.equal(flat([await bare.locator(".x-next").innerText()])[0], "İlk kaydı ekle");
+  assert.equal(flat([await bare.locator(".x-next").innerText()])[0], "Sıradaki İlk kaydı ekle");
   assert.equal(await bare.getByText(/yok$/).count(), 0, "nothing said to be missing");
   await app.screenshot({ path: `${out}/2e-hero-empty.png` });
   await app.setViewportSize({ width: 560, height: 1400 });
@@ -2486,9 +2508,9 @@ try {
   await app.locator(".trip-switch").click();
   await app.locator(".trip-card", { hasText: "Porto ve Madeira Gezisi" }).click();
   await app.getByRole("heading", { name: "Porto ve Madeira Gezisi" }).waitFor();
-  const coverCities = app.locator(".x-hero .x-big figcaption span");
+  const coverCities = app.locator(".x-hero .x-big .x-where");
   await coverCities.filter({ hasText: "Madeira" }).waitFor();
-  assert.equal(await coverCities.innerText(), "Porto · Madeira", "Gaula is Madeira's on the hero, with no model");
+  assert.match(await coverCities.innerText(), /^Porto · Madeira(, Portekiz)?$/, "Gaula is Madeira's on the hero, with no model");
   await app.waitForTimeout(1200); // the island's photo, when the network has one
   await app.locator(".x-hero").screenshot({ path: `${out}/2i-hero-madeira.png` });
   await madeiraItems({ ...madeira, put: false });
@@ -2537,7 +2559,7 @@ try {
 const flow = await chromium.launchPersistentContext(mkdtempSync(path.join(tmpdir(), "trip-radar-flow-")), {
   executablePath,
   headless: false,
-  // The owner's home time (the hero's "−2 saat" to Portugal): the same wherever the Mac is.
+  // The owner's home time (the hero's "−2 sa" to Portugal): the same wherever the Mac is.
   timezoneId: "Europe/Istanbul",
   viewport: { width: 1440, height: 900 },
   ...TURKISH,
@@ -3149,14 +3171,14 @@ try {
   await board.getByRole("button", { name: "Gönder" }).click();
   await updated.nth(before).waitFor({ timeout: 20000 });
   await board.waitForFunction(
-    () => document.querySelector(".x-hero .x-big figcaption span")?.textContent === "Porto · Madeira",
+    () => /^Porto · Madeira(, \S+)?$/.test(document.querySelector(".x-hero .x-big .x-where")?.textContent ?? ""),
     null,
     { timeout: 15000 },
   );
   const stays = await bopen("stay");
   await stays.locator(".q-ints > .q-int", { hasText: "Gaula" }).first().waitFor();
   await stays.locator(".q-ints > .q-int", { hasText: "Funchal" }).first().waitFor();
-  assert.equal(await board.locator(".x-hero .x-big figcaption span", { hasText: "Gaula" }).count(), 0, "a town on Madeira isn't a destination of its own");
+  assert.equal(await board.locator(".x-hero .x-big .x-where", { hasText: "Gaula" }).count(), 0, "a town on Madeira isn't a destination of its own");
   assert.equal(new Set(placePrompts).size, placePrompts.length, "the main places are asked once per set of cities");
   assert.match(placePrompts.at(-1), /Porto[\s\S]*Funchal[\s\S]*Gaula/);
   const labels = await board.waitForFunction(async () => {
@@ -3711,7 +3733,7 @@ try {
   // the way out; the style words picked, who goes and the country are there at once.
   const hero = board.locator(".x-hero");
   await hero.locator(".x-ps", { hasText: /^\d+ ihtiyaç/ }).waitFor();
-  assert.match((await hero.locator(".x-next").innerText()).replace(/\s+/g, " ").trim(), /^Sıradaki: .*(uçuşu|konaklaması)$/);
+  assert.match((await hero.locator(".x-next").innerText()).replace(/\s+/g, " ").trim(), /^Sıradaki .*(uçuşu|konaklaması)$/);
   // The review ran once, in the generating step; the board, opening on the same main places and key, didn't ask again.
   await board.waitForTimeout(1500);
   assert.equal(reviewPrompts.filter((p) => p.includes("Uluwatu")).length, 1, "the start's review is the board's: asked once");
@@ -5055,7 +5077,7 @@ cpSync(extension, installDir, { recursive: true });
 const updating = await chromium.launchPersistentContext(mkdtempSync(path.join(tmpdir(), "trip-radar-upd-")), {
   executablePath,
   headless: false,
-  // The owner's home time (the hero's "−2 saat" to Portugal): the same wherever the Mac is.
+  // The owner's home time (the hero's "−2 sa" to Portugal): the same wherever the Mac is.
   timezoneId: "Europe/Istanbul",
   viewport: { width: 1200, height: 800 },
   ...TURKISH,
@@ -5122,7 +5144,7 @@ try {
 const safety = await chromium.launchPersistentContext(mkdtempSync(path.join(tmpdir(), "trip-radar-safe-")), {
   executablePath,
   headless: false,
-  // The owner's home time (the hero's "−2 saat" to Portugal): the same wherever the Mac is.
+  // The owner's home time (the hero's "−2 sa" to Portugal): the same wherever the Mac is.
   timezoneId: "Europe/Istanbul",
   viewport: { width: 1440, height: 900 },
   ...TURKISH,
@@ -5312,7 +5334,7 @@ try {
 const whoGoes = await chromium.launchPersistentContext(mkdtempSync(path.join(tmpdir(), "trip-radar-who-")), {
   executablePath,
   headless: false,
-  // The owner's home time (the hero's "−2 saat" to Portugal): the same wherever the Mac is.
+  // The owner's home time (the hero's "−2 sa" to Portugal): the same wherever the Mac is.
   timezoneId: "Europe/Istanbul",
   viewport: { width: 1440, height: 900 },
   ...TURKISH,
@@ -5335,10 +5357,10 @@ try {
   await app.evaluate(() => chrome.storage.local.set({ shareName: "Emre" }));
   await app.getByText("Örnek geziyi yükle →").click();
   await app.getByRole("heading", { name: "Portekiz (örnek)" }).waitFor();
-  // (v82: "2 kişi" by the faces, the names on the faces and in the box a tap opens)
+  // (A · Kapak: the count big by the faces and who under it, the names on the faces and in the box a tap opens)
   const side = app.locator(".x-hero .x-s2");
-  const whoText = async () => (await side.locator(".x-whob").innerText()).replace(/\s+/g, " ").trim();
-  assert.equal(await whoText(), "2 kişi");
+  const whoText = async () => `${await side.locator(".x-whob").innerText()} · ${await side.locator(".x-sl").innerText()}`.replace(/\s+/g, " ").trim();
+  assert.equal(await whoText(), "2 · kişi");
   await side.locator(".x-whob").click();
   const box = side.getByRole("dialog", { name: "Kimler gidiyor?" });
   await box.waitFor();
@@ -5354,7 +5376,7 @@ try {
   await nameBox.press("Enter");
   await box.locator(".hx-who-list li", { hasText: "Sabine" }).waitFor();
   await app.waitForFunction(() => [...document.querySelectorAll(".x-hero .x-s2 .x-face")].map((e) => e.textContent.trim()).join(",") === "E,S", null, { timeout: 10000 });
-  assert.equal(await whoText(), "2 kişi");
+  assert.equal(await whoText(), "2 · Sen ve Sabine");
   assert.deepEqual(await side.locator(".x-face").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))), ["Emre · Kimler gidiyor", "Sabine · Kimler gidiyor"]);
   assert.equal(await nameBox.inputValue(), "", "the box is ready for the next name");
   // 0.37: a photo for Sabine, from her line in the box: kept on this computer, shown in the hero's circles.
@@ -5384,7 +5406,7 @@ try {
   // × takes her off; the hero is back to the saves' two.
   await box.getByRole("button", { name: "Sabine çıkar" }).click();
   await app.waitForFunction(() => [...document.querySelectorAll(".x-hero .x-s2 .x-face")].map((e) => e.textContent.trim()).join(",") === ",", null, { timeout: 10000 });
-  assert.equal(await whoText(), "2 kişi");
+  assert.equal(await whoText(), "2 · kişi");
   assert.deepEqual((await box.locator(".hx-who-list li").allInnerTexts()).map((t) => t.replace(/\s+/g, " ").trim()), ["Ben (Emre)"]);
   await app.screenshot({ path: `${out}/18b-travellers-removed.png` });
   await app.keyboard.press("Escape");
@@ -5413,7 +5435,7 @@ try {
 const flightDay = await chromium.launchPersistentContext(mkdtempSync(path.join(tmpdir(), "trip-radar-live-")), {
   executablePath,
   headless: false,
-  // The owner's home time (the hero's "−2 saat" to Portugal): the same wherever the Mac is.
+  // The owner's home time (the hero's "−2 sa" to Portugal): the same wherever the Mac is.
   timezoneId: "Europe/Istanbul",
   viewport: { width: 1440, height: 900 },
   ...TURKISH,
@@ -6622,7 +6644,7 @@ try {
     return [...document.querySelectorAll(sel)].filter((e) => e.getBoundingClientRect().top < edge && e.getBoundingClientRect().height > 0 && Number(getComputedStyle(e).opacity) < 1).length;
   }, PIECES);
   assert.equal(inView, 0, "what is in view is in within about a second");
-  assert.match(await app.locator(".x-hero .x-ps b").innerText(), /^%\d+ planda$/, "the counters read as numbers again");
+  assert.match(await app.locator(".x-hero .x-pct").innerText(), /^%\d+$/, "the counters read as numbers again");
   await app.screenshot({ path: `${out}/39b-opening-done.png` });
   // What is below the fold waits, and comes in as it is scrolled into view.
   const waitingBelow = await faint();

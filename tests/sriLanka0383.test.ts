@@ -43,7 +43,7 @@ describe("the hero's chips on a Sri Lanka trip", () => {
       ["weather", "23–29°"],
       ["money", "Sri Lanka rupisi"],
       ["plug", "D/G priz"],
-      ["time", "+2,5 saat"],
+      ["time", "+2,5 sa"],
       ["lang", "Sinhalaca, Tamilce"],
       ["visa", "Sri Lanka ETA (elektronik vize) gerekiyor"],
     ]);
