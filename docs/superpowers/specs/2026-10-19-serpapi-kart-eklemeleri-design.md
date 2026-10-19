@@ -259,3 +259,13 @@ Günlük tavanlar (sürüm 21'den beri): `serp_otel` 5 (Airbnb de buradan), `ser
 - Gözlenen kalite sorunları (düzeltilmedi): Google Hotels listesine tur firması karışabiliyor ("Sinai Vibes Tours");
   Tromsø aramasında şehre 1 saatten uzak yerler (Sommarøy, Svensby) çıkıyor. Yakın yer süresi kartta görünüyor ama
   sıralama uzaklığa bakmıyor.
+
+## Xotelo yedeği Google bitince çalışmıyordu (2026-10-19 gece, sürüm 22)
+
+- Sorun: Google Hotels payı (günde 5) dolunca Xotelo'ya geçiliyordu, ama Xotelo şehrin Tripadvisor numarasını istiyor;
+  o numara RapidAPI "Tripadvisor COM" ile, günde 5 tavanla aranıyordu. İkisi aynı gün dolunca yeni bir şehir (Senja,
+  "Mısır") boş dönüyordu. Ay içinde 150 hakkın yalnız 36'sı kullanılmıştı: sorun bütçe değil, günlere bölünmesiydi.
+- Düzeltme (commit `4290f7af`): `tripadvisor` tavanı günde 20 (plan ayda 150, sert sınır: aşınca ücret yok, istek
+  reddedilir); bulunamayan şehir 30 gün sonra yeniden sorulur (önceden kalıcıydı: Khao Sok, Uluwatu); şehrin ülkesiz ya
+  da ülkeli kayıtlı numarası varsa hak harcanmaz. `offers` sürüm 22 yüklendi.
+- Canlı deneme: Senja (Google payı doluyken) Xotelo'dan 1 öneri + 6 aday, Booking linki Travelpayouts ortaklık linki.
