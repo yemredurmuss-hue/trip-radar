@@ -6390,15 +6390,38 @@ try {
   assert.deepEqual(rings.paused, ["paused", "paused"], "m-kurallar: a window open, the frames behind keep still");
   assert.deepEqual(rings.running, ["running", "running"], "m-kurallar: closed, they pulse again");
 
-  // Yer tutucu cümleler (#12): three hints turn over 9 s while the home box is empty and left alone; focus stops them and the first stays.
+  // Yer tutucu cümleler (#12, ana-sayfa-v1): one line at a time over the home box while it is empty and left alone, the next every 3.2 s
+  // with a soft fade; focus stops them and the first stays.
   await app.getByRole("button", { name: "Seyahatlerim" }).first().click();
   const homeBox = app.getByLabel("Gezi kutusu");
   await homeBox.waitFor();
-  assert.equal(await app.locator(".st-ph i").count(), 3, "three hints turn");
-  assert.deepEqual(await app.locator(".st-ph i").first().evaluate((el) => [getComputedStyle(el).animationName, getComputedStyle(el).animationDuration]), ["phc", "9s"], "the hints turn over 9 s");
+  assert.equal(await app.locator(".st-ph").count(), 1, "one hint line over the box");
+  const firstHint = await app.locator(".st-ph").textContent();
+  await app.waitForFunction((was) => (document.querySelector(".st-ph")?.textContent ?? was) !== was, firstHint, { timeout: 8000 });
+  assert.equal(await app.locator(".st-ph").evaluate((el) => getComputedStyle(el).transitionDuration.split(", ")[0]), "0.45s", "the line fades over .45 s");
   await homeBox.focus();
   assert.equal(await app.locator(".st-ph").count(), 0, "focus stops the turning");
-  assert.match(await homeBox.getAttribute("placeholder"), /^Bali'ye 3 hafta/, "…and the first hint stays");
+  assert.match(await homeBox.getAttribute("placeholder"), /^Şubat'ta Tromsø/, "…and the first hint stays");
+  await homeBox.blur();
+
+  // Fikir çipleri (ana-sayfa-v1): six ideas, Sürpriz bir yer and Başka fikirler under the box (no Yeni gezi planla, no Paylaşılan geziye
+  // katıl). An idea writes its sentence into the box, typed in, and leaves the caret at its end; the chat doesn't start. Başka fikirler
+  // brings the other six.
+  assert.equal(await app.locator(".hm-ideas .hm-idea:not(.hm-more)").count(), 7, "six ideas and Sürpriz bir yer");
+  assert.equal(await app.locator(".hm-ideas .hm-idea-th:not(.hm-idea-ic) svg").count(), 6, "each idea with its drawing");
+  assert.equal(await app.locator(".hm-ideas").getByText("Sürpriz bir yer").count(), 1, "Sürpriz bir yer");
+  await app.locator(".hm-idea", { hasText: "Lizbon" }).click();
+  const lisbon = "Bu cuma Lizbon'a 3 gecelik kaçamak: en uygun uçuş ve Alfama'da küçük bir otel.";
+  await app.waitForFunction((full) => {
+    const ta = document.querySelector(".st-ta textarea");
+    return ta?.value === full && document.activeElement === ta && ta.selectionStart === full.length;
+  }, lisbon, { timeout: 5000 });
+  assert.equal(await app.locator(".st-hello").count(), 1, "the chip only writes: the home stays");
+  const firstIdea = await app.locator(".hm-ideas .hm-idea").first().textContent();
+  await app.locator(".hm-more").click();
+  await app.locator(".hm-idea", { hasText: "İzlanda" }).waitFor();
+  assert.notEqual(await app.locator(".hm-ideas .hm-idea").first().textContent(), firstIdea, "Başka fikirler: the other six");
+  await homeBox.fill("");
   await homeBox.blur();
   await app.getByText("Portekiz (örnek)").first().click();
   await app.locator(".cat-plan").waitFor();
