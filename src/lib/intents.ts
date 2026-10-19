@@ -287,6 +287,9 @@ export interface IntentVM {
   head: IntentHead;
   /** The options to pick from, best fit first: three for one choice, four for a row of cards; the rest are on the Pano. */
   options: OptionVM[];
+  /** The options past those three, best fit first: under the box in "Diğer seçenekler (n)", so every one can be seen and
+   * opened in any state (Emre, 0.39.0). */
+  more?: OptionVM[];
   /** Every option the need holds ("Pano n"). */
   optionCount: number;
   /** The one chosen, booked or suggested. */
@@ -780,6 +783,7 @@ function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
   const draftRoute = status === "searching" && isRouteDraft(env.input.trip) && ROUTE_SECTIONS.includes(section) && (records.length ? records.every(env.placeholder) : leg != null);
   const badges = badgesOf(options, frame, env);
   const top = options.slice(0, 3).map((item, n) => optionVM(item, env, { place: n + 1, frame, kind, draft, badges: badges.get(item.id) }));
+  const rest = options.slice(3).map((item, n) => optionVM(item, env, { place: n + 4, frame, kind, draft, badges: badges.get(item.id) }));
   const shown = status === "suggested" ? draft : status === "chosen" || status === "booked" || status === "arranged" || status === "included" ? settled : null;
   const chosen = shown ? (top.find((o) => o.id === shown.id) ?? optionVM(shown, env, { place: options.indexOf(shown) + 1 || 1, frame, kind, draft, badges: badges.get(shown.id) })) : null;
   const booked = status === "booked" && settled?.status === "booked" ? settled : null;
@@ -821,6 +825,7 @@ function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
     word: statusWord(draftRoute ? "suggested" : status, kind),
     head,
     options: top,
+    more: rest,
     optionCount: options.length + (shown && shown !== draft ? 1 : 0),
     chosen,
     planned: [],
@@ -1223,10 +1228,9 @@ function withClosedOptions(built: Built[], env: Env): Built[] {
     for (const i of mine) taken.add(i.id);
     const shown = new Set([...vm.options.map((o) => o.id), ...(vm.chosen ? [vm.chosen.id] : [])]);
     const room = Math.max(0, 3 - vm.options.length);
-    const more = ordered(mine.filter((i) => !shown.has(i.id)), env)
-      .slice(0, room)
-      .map((item, n) => optionVM(item, env, { place: vm.options.length + n + 1, frame: vm.frame, kind: vm.kind, draft: null }));
-    return { ...vm, options: [...vm.options, ...more], optionCount: vm.optionCount + mine.length, itemIds: [...vm.itemIds, ...mine.map((i) => i.id)] };
+    const all = ordered(mine.filter((i) => !shown.has(i.id)), env).map((item, n) => optionVM(item, env, { place: vm.options.length + n + 1, frame: vm.frame, kind: vm.kind, draft: null }));
+    // Past the three, none is dropped: "Diğer seçenekler (n)" holds them (0.39.0).
+    return { ...vm, options: [...vm.options, ...all.slice(0, room)], more: [...(vm.more ?? []), ...all.slice(room)], optionCount: vm.optionCount + mine.length, itemIds: [...vm.itemIds, ...mine.map((i) => i.id)] };
   };
   return built.map((b) => ({ ...b, intents: b.intents.map(gather) }));
 }

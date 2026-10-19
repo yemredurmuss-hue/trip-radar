@@ -77,12 +77,13 @@ describe("Şarm El-Şeyh: a chosen stay's other options fold to one line", () =>
     expect(otherOptions(box)).toHaveLength(3);
   });
 
-  it("nothing chosen yet (our pick waits, Karar bekliyor): no folded line, the options in the frame as before", () => {
+  it("nothing chosen yet (our pick waits, Karar bekliyor): three in the frame as before, only a fourth under it", () => {
     const box = stayBox(four("saved"));
     expect(frameForm(box)).toBe("suggested");
     const two = stayBox([hotel("sb", "Sunrise Arabian", "saved", 900), hotel("jz", "Jaz Mirabel", "saved", 900)]);
     expect(otherOptions(two)).toEqual([]);
-    expect(otherOptions(box)).toEqual([]);
+    // 0.39.0 (Emre: every option seen in any state): past the frame's three, the fourth waits under it.
+    expect(otherOptions(box).map((o) => o.item.name)).toHaveLength(1);
     expect(othersOpen("any", false)).toBe(true);
   });
 

@@ -247,7 +247,8 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
   const searchingNow = form === "searching" && a.searching;
   const hints = useRegionHints(vm, form === "searching");
   // Chosen or booked, it stands big; the need's other options wait under it (0.38.5), not while it turns back to them.
-  const others = changing ? [] : otherOptions(vm);
+  // (Turning back to them, the box holds three; those past it stay under it, 0.39.0.)
+  const others = changing ? (vm.more ?? []).filter((o) => o.id !== vm.chosen?.id) : otherOptions(vm);
   // 0.38.9: folded to "Diğer seçenekler (n)" once something is chosen; a new pick (from here, the chat, the Pano) folds them.
   const foldKey = `${env.tripId}:${vm.key}`;
   const [othersShown, setOthersShown] = useState(() => othersOpen(foldKey, true));

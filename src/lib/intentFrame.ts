@@ -389,7 +389,11 @@ export function placeholderOf(records: readonly Item[], trip: Pick<Trip, "startG
 }
 
 /** The need's other options under a chosen or booked box (0.38.5): what was gathered for it beside the one taken. */
-export function otherOptions(vm: Pick<IntentVM, "status" | "frame" | "options" | "chosen">): OptionVM[] {
-  if (vm.frame === "collection" || (vm.status !== "chosen" && vm.status !== "booked")) return [];
-  return vm.options.filter((o) => o.id !== vm.chosen?.id);
+export function otherOptions(vm: Pick<IntentVM, "status" | "frame" | "options" | "chosen" | "more">): OptionVM[] {
+  if (vm.frame === "collection") return [];
+  const more = vm.more ?? [];
+  // Settled (chosen, booked, arranged, included): every other option; still open: those past the box's three, so each
+  // one can be seen and opened in any state (Emre, 0.39.0).
+  const settled = vm.status === "chosen" || vm.status === "booked" || vm.status === "arranged" || vm.status === "included";
+  return (settled ? [...vm.options, ...more] : more).filter((o) => o.id !== vm.chosen?.id);
 }
