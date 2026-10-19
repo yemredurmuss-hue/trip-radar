@@ -13,7 +13,7 @@
 // reply together) over the code's lines; photos, the route and the rules' suggestions are prepared in the draft
 // while chatting (state.prepared), so "Oluştur" mostly writes what is there.
 import { z } from "zod";
-import { L, lang, type Lang } from "./i18n";
+import { L, lang, withLang, type Lang } from "./i18n";
 import { formatDateRange, isoDate, nightsBetween } from "./items";
 import { placesKey } from "./destinations";
 import { addDays, cityKeyOf } from "./plan";
@@ -3053,6 +3053,18 @@ export function momentLabel(key: string): string | null {
   if (!key.startsWith(MOMENT)) return null;
   const m = MOMENTS[key.slice(MOMENT.length) as StyleId];
   return m ? m.label() : null;
+}
+
+/**
+ * The moments' photos as the board keeps them (Generating.keepPhotos: in `cityImages`, under the moment's words in the
+ * language the trip was started in): each key, with the words in the board's language (the hero's mosaic, row 14).
+ */
+export function momentPhotoKeys(): { key: string; name: string }[] {
+  return Object.values(MOMENTS).flatMap((m) => {
+    const name = m.label();
+    const keys = new Set([withLang("tr", m.label), withLang("en", m.label)].map((w) => cityKeyOf(w)!));
+    return [...keys].map((key) => ({ key, name }));
+  });
 }
 
 /** Everything to find a photo for: the places first, then the moments (seven at most). */

@@ -7,6 +7,8 @@
 // Which pieces: whatever the page marks, so a new design takes part by marking its own (no class names here).
 //   data-pit             this element comes in ("bar": its fills grow from the left; "line": it draws from the left)
 //   data-pit-children    each child comes in; a child that is a grid (a section's cards) brings its own children one by one
+//   data-pit-beat        (with data-pit-children) its children keep the full beat between them however much the rest is
+//                        squeezed: the hero's mosaic tiles, 80 ms apart (E10)
 //   data-pit-photo       the hero photo: left as it is when it was carried in from the trip's card (viewTransition.ts)
 //   data-count           the first number in its text counts up from 0 as its piece comes in
 // With no mark at all on the page, the panel's own blocks come in.
@@ -52,6 +54,25 @@ export function schedule(n: number, gap = GAP, max = MAX_START): number[] {
   const last = (n - 1) * gap;
   const k = last > max ? max / last : 1;
   return Array.from({ length: Math.max(0, n) }, (_, i) => Math.round(i * gap * k));
+}
+
+/**
+ * The start times as `schedule` gives them, except that the pieces of one beat group (E10: the mosaic's tiles; the same
+ * number in `groups`, null for none) keep the full `gap` between them from where the first of them starts. Pure.
+ */
+export function scheduleBeats(groups: readonly (number | null)[], gap = GAP, max = MAX_START): number[] {
+  const starts = schedule(groups.length, gap, max);
+  const firstOf = new Map<number, { at: number; n: number }>();
+  return starts.map((t, i) => {
+    const g = groups[i];
+    if (g == null) return t;
+    const first = firstOf.get(g);
+    if (!first) {
+      firstOf.set(g, { at: t, n: 1 });
+      return t;
+    }
+    return first.at + first.n++ * gap;
+  });
 }
 
 /** A counter's figure `k` of the way through (0..1): fast at first, settling on `to`. Pure. */
@@ -325,7 +346,16 @@ export function playOpening(doc: Document = document): Run | null {
   const bottom = (panel?.getBoundingClientRect().bottom ?? doc.defaultView?.innerHeight ?? 0) - 24;
   const inView = pieces.filter((p) => p.el.getBoundingClientRect().top < bottom);
   const below = pieces.filter((p) => p.el.getBoundingClientRect().top >= bottom);
-  const starts = schedule(inView.length);
+  // E10: the mosaic's tiles keep their 80 ms between them (data-pit-beat), whatever the rest is squeezed to.
+  const beats: HTMLElement[] = [];
+  const starts = scheduleBeats(
+    inView.map((p) => {
+      const parent = p.el.parentElement;
+      if (!parent?.hasAttribute("data-pit-beat")) return null;
+      if (!beats.includes(parent)) beats.push(parent);
+      return beats.indexOf(parent);
+    }),
+  );
   starts.forEach((t, i) => enter(inView[i], t));
   // (and the flourish over it: the orb, its sparks, a glint over the counters)
   const stopFlourish = flourish(doc, inView.flatMap((p, i) => countersOf(p.el).map((el) => ({ el, delay: starts[i] }))));
@@ -381,7 +411,7 @@ export function playOpening(doc: Document = document): Run | null {
     stopEvents.forEach((e) => doc.removeEventListener(e, finish, true));
   };
   // Over once what is in view is in and nothing waits below; whatever still waits comes in at a touch, or after half a minute.
-  const inViewEnds = MAX_START + Math.max(RISE_MS, COUNT_MS, BAR_MS) + 50;
+  const inViewEnds = Math.max(MAX_START, ...starts) + Math.max(RISE_MS, COUNT_MS, BAR_MS) + 50;
   const settle = () => {
     clearTimeout(guard);
     guard = setTimeout(finish, inViewEnds);

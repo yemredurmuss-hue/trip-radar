@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FLOURISH, FLOURISH_MS, GAP, MAX_START, OFF_KEY, RISE_MS, SPARKS, claimOpening, countAt, openedKey, schedule, sparkVectors } from "../src/app/opening";
+import { FLOURISH, FLOURISH_MS, GAP, MAX_START, OFF_KEY, RISE_MS, SPARKS, claimOpening, countAt, openedKey, schedule, scheduleBeats, sparkVectors } from "../src/app/opening";
 
 const memory = () => {
   const data = new Map<string, string>();
@@ -18,6 +18,20 @@ describe("pıt pıt: the beat (B · Ritim ve sayaçlar, 2026-10-10)", () => {
     expect(starts.at(-1)).toBe(MAX_START);
     expect(starts).toEqual([...starts].sort((a, b) => a - b));
     expect(starts[1]).toBeLessThan(GAP);
+  });
+});
+
+describe("E10: the mosaic's tiles keep 80 ms between them", () => {
+  it("whatever the rest of the page squeezes the beat to", () => {
+    // A cover, six tiles, then 30 more pieces: the whole is squeezed, the tiles are not.
+    const groups = [null, 0, 0, 0, 0, 0, 0, ...Array.from({ length: 30 }, () => null)];
+    const starts = scheduleBeats(groups);
+    const tiles = starts.slice(1, 7);
+    expect(tiles.slice(1).map((t, i) => t - tiles[i])).toEqual([GAP, GAP, GAP, GAP, GAP]);
+    expect(starts[0]).toBe(0);
+    expect(starts.at(-1)).toBe(MAX_START);
+    // With none in a group it is the plain schedule.
+    expect(scheduleBeats([null, null, null])).toEqual(schedule(3));
   });
 });
 

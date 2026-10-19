@@ -5,7 +5,7 @@
 // the trip's first opening (opening.ts: each tile 80 ms after the one before).
 import { useState, type ReactNode } from "react";
 import { creditLine, type CreditPart } from "../../lib/cityImages";
-import { fitTiles, type Mosaic } from "../../lib/heroMosaic";
+import { shownTiles, type Mosaic } from "../../lib/heroMosaic";
 import { L } from "../../lib/i18n";
 import type { PhotoCredit } from "../../lib/types";
 import { TipOn } from "../HoverTip";
@@ -63,8 +63,7 @@ export function HeroMosaic({ mosaic, title, cities, mood, working, menu }: {
   const [failed, setFailed] = useState<ReadonlySet<string>>(() => new Set());
   const fail = (src: string) => setFailed((s) => new Set(s).add(src));
   const cover = mosaic.cover && !failed.has(mosaic.cover.image) ? mosaic.cover : null;
-  const alive = mosaic.tiles.filter((t) => !failed.has(t.image));
-  const tiles = alive.slice(0, fitTiles(alive.length));
+  const tiles = shownTiles(mosaic.tiles, failed);
   const busy = L(`${working} kayıt işleniyor`, `Processing ${working}`);
   return (
     <div className={`x-mos${tiles.length ? "" : " solo"}`}>
@@ -96,10 +95,17 @@ export function HeroMosaic({ mosaic, title, cities, mood, working, menu }: {
         )}
       </figure>
       {tiles.length > 0 && (
-        <div className={`x-tiles ${mosaic.kind ?? "city"} n${tiles.length}`} data-pit-children>
+        <div className={`x-tiles ${mosaic.kind ?? "city"} n${tiles.length}`} data-pit-children data-pit-beat>
           {tiles.map((t) => (
-            <figure key={t.key} className="x-t">
-              <img src={t.image} alt="" loading="lazy" onError={() => fail(t.image)} />
+            <figure key={t.key} className={`x-t${t.image ? "" : " art"}`}>
+              {t.image ? (
+                <img src={t.image} alt="" loading="lazy" onError={() => fail(t.image!)} />
+              ) : (
+                // A city with no photo yet, drawn (the trip's own art, never a stock picture).
+                <span className="x-art" aria-hidden>
+                  <XIcon name="pin" size={26} stroke={1.6} />
+                </span>
+              )}
               <figcaption>
                 <b>{t.name}</b>
                 {t.sub && <small>{t.sub}</small>}
