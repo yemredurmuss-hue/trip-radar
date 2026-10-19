@@ -90,7 +90,7 @@ function bringUp(head: HTMLElement) {
   requestAnimationFrame(step);
 }
 
-export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onAdd, today, items, pending, suggestions, visa = null, visaDone = false, onVisaDone, order = null, info = {}, decide }: {
+export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onAdd, today, items, pending, suggestions, visa = null, visaDone = false, onVisaDone, order = null, info = {}, decide, tourPhotos = [] }: {
   plan: Plan;
   sections: CatSection[];
   /** Open now: the traveller's choice, remembered (sectionMeta.useSectionOpen), or held open while a link is read into it. */
@@ -116,6 +116,8 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
   allot?: { by: Record<BudgetSlice, number>; currency: string } | null;
   /** A category's short note when the trip's form changed something there (spec §1.4; its signals come with phase 3b). */
   info?: Partial<Record<SectionId, string>>;
+  /** 0.38.3: the connected source's tours for the Etkinlik cities with their photos: Etkinlik's small pictures after its own. */
+  tourPhotos?: readonly { image: string | null }[];
 }) {
   const env = useCardEnv();
   const empty = useEmptyEnv();
@@ -225,7 +227,7 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
       const line = s.ideas && (s.entries.length || s.hidden.length) ? ideaCount(s.id, s.ideas, s.entries, suggested(s).length) : "";
       return { id: s.id, name: meta.label(), line, thumbs: [], more: 0, bar: null, parts: [], spent: null, allot: null, settled };
     }
-    const { thumbs, more } = rowThumbs(c.intents);
+    const { thumbs, more } = rowThumbs(c.intents, { tours: s.id === "activity" ? tourPhotos : [] });
     const sum = c.summary;
     if (sum.closed) {
       return { id: s.id, name: sum.name, line: L(`Gerek yok · ${sum.closed}`, `Not needed · ${sum.closed}`), thumbs: [], more: 0, bar: null, parts: [], spent: null, allot: null, settled: null };

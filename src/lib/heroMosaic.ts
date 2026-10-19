@@ -1,12 +1,17 @@
 // The hero's mosaic (v82 "Hero = mozaik", v81 "kareler plandan ve birikenden", v83 C7 and C19): a big cover on the left,
-// and on the right up to six tiles of what the trip will be like, taken in this order (row 14): the places on the plan
-// (an activity, a thing to do, a meal or a stay chosen or booked), then the photos of what was saved for the trip (the
-// Pano's links), then the trip's cities each with its nights, then the trip's moments (a romantic evening, the food: the
+// and on the right up to six tiles of what the trip will be like, taken in this order (row 14; 0.38.3): the places on the
+// plan (an activity, a thing to do, a meal or a stay chosen or booked), then the photos of what was saved for the trip (the
+// Pano's links), then the trip's cities each with its nights, then the connected source's tours for its cities (Viator's
+// photos, the same answers the Etkinlik rows were given), then the trip's moments (a romantic evening, the food: the
 // start's scenes), and last a drawing for a city with no photo yet. A source with nothing is passed over. A photo that
 // isn't there is never drawn and a drawing never outnumbers the photos: no photo at all is one cover alone (C19). Each
 // photo carries its credit only when one is known (C7). Pure.
-import { cityKeyOf } from "./plan";
+import { stopCountry } from "./collectionCards";
+import { citiesOfPlan } from "./categories";
+import { needKey } from "./emptyCards";
+import { cityKeyOf, sameCity, type Plan } from "./plan";
 import type { IntentVM } from "./intents";
+import type { Need, Offer } from "./offerSource";
 import type { PhotoCredit } from "./types";
 
 export interface MosaicPhoto {
@@ -16,7 +21,7 @@ export interface MosaicPhoto {
 }
 
 /** Where a tile comes from, in the order they are taken. */
-export type TileSource = "place" | "link" | "city" | "moment" | "art";
+export type TileSource = "place" | "link" | "city" | "offer" | "moment" | "art";
 
 export interface MosaicTile {
   key: string;
@@ -34,7 +39,7 @@ export interface Mosaic {
   /** The cover's photo; null: the plain cover (no photo yet). */
   cover: MosaicPhoto | null;
   tiles: MosaicTile[];
-  /** What the tiles mostly are: places (on the plan or saved), the trip's cities, or none (the cover alone). */
+  /** What the tiles mostly are: places (on the plan, saved or the source's tours), the trip's cities, or none (the cover alone). */
   kind: "place" | "city" | null;
 }
 
@@ -100,11 +105,13 @@ export function shownTiles(tiles: readonly MosaicTile[], failed: ReadonlySet<str
   return all.slice(0, fitTiles(all.length));
 }
 
-export function mosaicOf({ cities, places, links = [], moments = [], max = MOSAIC_MAX }: {
+export function mosaicOf({ cities, places, links = [], offers = [], moments = [], max = MOSAIC_MAX }: {
   cities: readonly MosaicCity[];
   places: readonly MosaicPlace[];
   /** What was saved for the trip with a photo (the Pano's links), not on the plan. */
   links?: readonly MosaicPlace[];
+  /** The connected source's tours for the trip's cities, with their photos (offerTiles). */
+  offers?: readonly MosaicPlace[];
   moments?: readonly MosaicMoment[];
   max?: number;
 }): Mosaic {
@@ -123,10 +130,11 @@ export function mosaicOf({ cities, places, links = [], moments = [], max = MOSAI
       photos.push(t);
     }
   };
-  const placeTile = (from: "place" | "link") => (p: MosaicPlace): MosaicTile => ({ key: `${from}:${p.key}`, from, name: p.name, sub: p.city, image: p.image, credit: p.credit });
+  const placeTile = (from: "place" | "link" | "offer") => (p: MosaicPlace): MosaicTile => ({ key: `${from}:${p.key}`, from, name: p.name, sub: p.city, image: p.image, credit: p.credit });
   take(spread(places, places.length).map(placeTile("place")));
   take(spread(links, links.length).map(placeTile("link")));
   take(cities.map((c) => ({ key: `city:${c.name}`, from: "city", name: c.name, sub: c.nights, image: c.image, credit: c.credit })));
+  take(spread(offers, offers.length).map(placeTile("offer")));
   take(moments.map((m) => ({ key: `moment:${m.name}`, from: "moment", name: m.name, sub: null, image: m.image, credit: m.credit })));
   // Last, a city with no photo yet as a drawing (its name and nights on it), never the cover's own.
   if (first) seenName.add(nameKey(first.name));
@@ -134,7 +142,7 @@ export function mosaicOf({ cities, places, links = [], moments = [], max = MOSAI
     .filter((c) => !c.image && c.name.trim() && !seenName.has(nameKey(c.name)))
     .map((c) => ({ key: `art:${c.name}`, from: "art", name: c.name, sub: c.nights, image: null, credit: null }));
   const tiles = shownTiles([...photos, ...art.slice(0, Math.max(0, max - photos.length))]);
-  const placed = tiles.filter((t) => t.from === "place" || t.from === "link").length;
+  const placed = tiles.filter((t) => t.from === "place" || t.from === "link" || t.from === "offer").length;
   return { cover, tiles, kind: !tiles.length ? null : placed * 2 >= tiles.length ? "place" : "city" };
 }
 
@@ -171,4 +179,31 @@ export function placesOfIntents(intents: readonly Pick<IntentVM, "section" | "fr
       return [{ key: i.chosen.id, name: i.chosen.title, city: i.head.city, image: i.chosen.image, credit: creditOf(i.chosen.image), booked: i.status === "booked" }];
     return [];
   });
+}
+
+/**
+ * The questions the Etkinlik rows ask the connected source for their cities' tours (CollectionRow's useCityOffers, built
+ * the same way so the hero's ask is the same one and is answered from the source's store, never a second request): one
+ * for each city with an Etkinlik row, its stop's days, its country for a town the source doesn't know.
+ */
+export function tourNeeds(plan: Pick<Plan, "stayBlocks">, cities: readonly (string | null | undefined)[], adults: number | null): { need: Need; country: string | null }[] {
+  const stops = citiesOfPlan(plan);
+  const out: { need: Need; country: string | null }[] = [];
+  for (const city of cities) {
+    const stop = city ? stops.find((c) => sameCity(c.city, city)) : null;
+    if (!stop || out.some((x) => sameCity(x.need.city ?? null, stop.city))) continue;
+    out.push({
+      need: { key: needKey("activity", stop.city, stop.start, stop.end), section: "activity", kind: "activity", city: stop.city, start: stop.start, end: stop.end, adults },
+      country: stopCountry(plan, stop.city),
+    });
+  }
+  return out;
+}
+
+/** The source's tours with a photo as the mosaic's places (their credit isn't known: no "i"), a tour once. */
+export function offerTiles(byCity: readonly { city: string; offers: readonly Pick<Offer, "id" | "title" | "photo">[] }[]): MosaicPlace[] {
+  const out: MosaicPlace[] = [];
+  for (const { city, offers } of byCity)
+    for (const o of offers) if (o.photo && !out.some((p) => p.key === o.id)) out.push({ key: o.id, name: o.title, city, image: o.photo, credit: null, booked: false });
+  return out;
 }

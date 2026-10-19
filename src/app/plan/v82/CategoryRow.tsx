@@ -1,15 +1,14 @@
 // A category's closed row (K0, plan v82: 78 px, the same open or closed, E2): its icon on its tint, its name and one line
-// ("4 şehir · 14 gece · 10 fikir"), three small pictures, the bar in two greens and "1 alındı · 1 seçildi · 2 karar"
+// ("4 şehir · 14 gece · 10 fikir"), up to three small pictures (real photos only, none without), the bar in two greens and "1 alındı · 1 seçildi · 2 karar"
 // ("2 karar" says which on hover and goes to the first on a tap, F5), what's spent of its share ("€1.539 · €2.200 ayrıldı",
 // its money on hover, C28), the arrow. A tap anywhere opens or closes it; the name is its button.
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import type { SectionId } from "../../../lib/categories";
 import { L } from "../../../lib/i18n";
 import type { RowThumb } from "../../../lib/intentFrame";
 import { HoverTip, TipOn } from "../../HoverTip";
 import { KindIcon } from "../../cards/Silhouettes";
 import type { SectionMeta } from "../sectionMeta";
-import { artOf } from "./IntentBox";
 import { Ic } from "./icons";
 
 export interface RowView {
@@ -44,6 +43,7 @@ export function CategoryRow({ row, meta, open, onToggle, onDecide, decideTip, bu
   /** C28: its open suggestions ("1 öneri"), said in the tip too. */
   extraTip: string | null;
 }) {
+  const [failed, setFailed] = useState<ReadonlySet<string>>(() => new Set());
   return (
     <div className="q-row1" onClick={onToggle}>
       <span className="q-ic" aria-hidden>
@@ -57,9 +57,10 @@ export function CategoryRow({ row, meta, open, onToggle, onDecide, decideTip, bu
         </small>
       </button>
       <span className="q-ths" aria-hidden>
-        {row.thumbs.map((t, n) => (
-          <span key={`${t.item?.id ?? t.kind}:${n}`} className="q-th" style={{ "--bc": meta.color } as React.CSSProperties}>
-            <img className={t.src ? "ph" : undefined} src={t.src ?? artOf(t.kind, t.item)} alt="" />
+        {/* Only real photos (0.38.3): a photo that doesn't load goes, and no drawing stands in for one. */}
+        {row.thumbs.filter((t) => !failed.has(t.src)).map((t) => (
+          <span key={t.src} className="q-th" style={{ "--bc": meta.color } as React.CSSProperties}>
+            <img className="ph" src={t.src} alt="" onError={() => setFailed((f) => new Set(f).add(t.src))} />
           </span>
         ))}
         {row.more > 0 && <span className="q-thm">+{row.more}</span>}

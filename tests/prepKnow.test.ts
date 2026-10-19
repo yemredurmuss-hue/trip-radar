@@ -17,7 +17,7 @@ describe("the emergency numbers", () => {
   });
 
   it("a country the table doesn't know has none (nothing guessed)", () => {
-    expect(emergencyText("MA")).toBeNull();
+    expect(emergencyText("BO")).toBeNull();
     expect(emergencyText(null)).toBeNull();
     // Every EU country is in it.
     for (const c of ["PT", "ES", "FR", "IT", "NL", "GR", "HR", "CZ", "PL", "SE", "FI", "RO"]) expect(EMERGENCY[c]?.all).toContain("112");
@@ -42,7 +42,7 @@ describe("the card's rows", () => {
     expect(knowRows(input({ money: { name: "Euro", rate: null, own: true } })).some((r) => r.id === "money")).toBe(false);
     const home = knowRows(input({ countries: ["TR"], money: null, plug: "fits" }));
     expect(home.map((r) => r.id)).toEqual(["emergency"]);
-    expect(knowRows(input({ countries: ["MA"], money: null, plug: null })).map((r) => r.id)).toEqual(["embassy"]);
+    expect(knowRows(input({ countries: ["BO"], money: null, plug: null })).map((r) => r.id)).toEqual(["embassy"]);
     expect(knowRows(input({ countries: [], money: null, plug: null }))).toEqual([]);
   });
 

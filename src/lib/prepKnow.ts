@@ -29,6 +29,9 @@ export interface Emergency {
  *     https://www.gov.uk/foreign-travel-advice/<country>/getting-help (Japan, Thailand, United Arab Emirates, Egypt, South
  *     Korea, China, Singapore, Malaysia, South Africa, Brazil, Australia, New Zealand, Canada, Mexico, USA, Georgia, Turkey),
  *     and for the UK itself gov.uk "Call 999 or 112"; Türkiye 112 Acil Çağrı Merkezi (https://www.112.gov.tr/).
+ *   - Added in 0.38.3, from the same FCDO pages: Sri Lanka, the Maldives, Indonesia, Vietnam, Morocco, India, Qatar,
+ *     Jordan, Tunisia, Kenya, the Philippines, Cambodia, Azerbaijan and the Western Balkans (Serbia, Bosnia and Herzegovina,
+ *     North Macedonia, Albania, Montenegro). Only the numbers we are sure of: a service left out has no part.
  */
 const EU112 = ["AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SE", "IS", "LI"] as const;
 
@@ -57,6 +60,24 @@ export const EMERGENCY: Readonly<Record<string, Emergency>> = {
   BR: { police: "190", ambulance: "192", fire: "193" },
   AU: { all: ["000", "112"] },
   NZ: { all: ["111"] },
+  LK: { police: "119", ambulance: "1990", fire: "110" },
+  MV: { police: "119", ambulance: "102", fire: "118" },
+  ID: { all: ["112"], police: "110", fire: "113" },
+  VN: { police: "113", ambulance: "115", fire: "114" },
+  MA: { police: "19", ambulance: "15", fire: "15" },
+  IN: { all: ["112"] },
+  QA: { all: ["999"] },
+  JO: { all: ["911"] },
+  TN: { police: "197", ambulance: "190", fire: "198" },
+  KE: { all: ["999", "112"] },
+  PH: { all: ["911"] },
+  KH: { police: "117", ambulance: "119", fire: "118" },
+  AZ: { police: "102", ambulance: "103", fire: "101" },
+  RS: { police: "192", ambulance: "194", fire: "193" },
+  BA: { police: "122", ambulance: "124", fire: "123" },
+  MK: { police: "192", ambulance: "194", fire: "193" },
+  AL: { police: "129", ambulance: "127", fire: "128" },
+  ME: { all: ["112"], police: "122", ambulance: "124", fire: "123" },
 };
 
 /** "110 polis · 119 ambulans ve itfaiye", "112 (AB ortak numara)"; null for a country not in the table. */
