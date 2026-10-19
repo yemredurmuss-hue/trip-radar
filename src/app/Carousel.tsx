@@ -1,5 +1,6 @@
 import { Children, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { L } from "../lib/i18n";
+import { reducedMotion } from "./motion";
 
 /**
  * Cards side by side that swipe (touch, trackpad, or the ‹ › buttons and arrow keys). The next card
@@ -49,7 +50,7 @@ export function Carousel({ head, label, children }: { head?: ReactNode; label: s
     const cards = [...el.children] as HTMLElement[];
     const left = el.scrollLeft;
     const target = step > 0 ? cards.find((c) => c.offsetLeft > left + 10) : [...cards].reverse().find((c) => c.offsetLeft < left - 10);
-    el.scrollTo({ left: target ? Math.max(0, target.offsetLeft - 2) : step > 0 ? el.scrollWidth : 0, behavior: "smooth" });
+    el.scrollTo({ left: target ? Math.max(0, target.offsetLeft - 2) : step > 0 ? el.scrollWidth : 0, behavior: reducedMotion() ? "auto" : "smooth" });
   };
 
   return (

@@ -60,7 +60,7 @@ export function Section({ section, row, v82, open, instant = false, onToggle, on
               {children}
               {!v82 && section.hidden.length > 0 && <HiddenList things={section.hidden} />}
               {meta.templates.length > 0 && (
-                <button type="button" className="q-add" onClick={onAdd} aria-label={L(`${label}: ekle`, `${label}: add`)}>
+                <button type="button" className="q-add" onClick={onAdd} aria-label={L(`${label}: ekle`, `Add to ${label}`)}>
                   <UiIcon name="plus" size={13} />
                   {L(`${(ADD_WORD[section.id] ?? meta.short)()} ekle`, ADD_EN[section.id] ?? `Add ${meta.short().toLowerCase()}`)}
                 </button>

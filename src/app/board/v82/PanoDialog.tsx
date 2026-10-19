@@ -3,9 +3,10 @@
 // a phone), the plan darkened behind it; × , the scrim and Escape close it and the focus goes back where it was. A side menu (Tümü
 // · Biriktirdiklerim · AI önerileri · İlham · Belgeler, then the intents by category: PanoSidebar), and what it shows: the options
 // group by group (PanoGrid), one intent's options side by side (CompareColumns), the inspiration (IlhamGrid), the trip's files
-// (PanoDocs). Choosing here changes the plan at once (no toast, E16); "Kartı göster" closes the window and goes to the card.
+// (PanoDocs). Choosing here changes the plan at once (no toast, E16) while the plan behind keeps still; once the window has gone, the
+// box the choice changed glows where it stands (E report §2.10). "Kartı göster" closes the window and goes to the card.
 // Search, the state filter and the sort of the v11 Pano (board/Pano.tsx) are not drawn in this version (C32).
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import type { CatSection, SectionId } from "../../../lib/categories";
 import { L } from "../../../lib/i18n";
@@ -18,7 +19,7 @@ import type { Undoable } from "../../../lib/undoables";
 import { InfoButton } from "../../cards/InfoButton";
 import { UiIcon } from "../../cards/Silhouettes";
 import { Mascot } from "../../Mascot";
-import { reducedMotion } from "../../motion";
+import { GLOW_MS, reducedMotion } from "../../motion";
 import { show } from "../../Progress";
 import { useMyName } from "../../Profile";
 import { useShare } from "../../Share";
@@ -37,6 +38,22 @@ const seenOnDevice = (tripId: string): Set<string> => {
     return new Set();
   }
 };
+
+/**
+ * A choice made in the window, seen on the plan once the window has gone (E report §2.10, rule 2: where it came from isn't on
+ * screen, so where it lands glows): the intent box that holds the record, if it is on screen, glows once (pk-glow, 1.1 s). Nothing
+ * with reduced motion or "Hareketi duraklat".
+ */
+function glowOnPlan(itemId: string) {
+  if (reducedMotion()) return;
+  const box = document.querySelector<HTMLElement>(`.panel .q-int[data-option-ids~="${CSS.escape(itemId)}"]`);
+  const r = box?.getBoundingClientRect();
+  if (!box || !r || r.width === 0 || r.bottom <= 0 || r.top >= innerHeight) return;
+  box.classList.remove("pk-glow");
+  void box.offsetWidth; // restart the animation
+  box.classList.add("pk-glow");
+  setTimeout(() => box.classList.remove("pk-glow"), GLOW_MS + 100);
+}
 
 const placeOf = (at: PanoAt): PanoPlace => ({ view: at.view ?? "all", section: at.section ?? null, need: at.need ?? null });
 
@@ -114,6 +131,12 @@ export function PanoDialog({ at, trip, plan, sections, items, today, decisions, 
   const [opener] = useState(() => openerOf(document.activeElement));
   const [leaving, setLeaving] = useState(false);
   const going = useRef(false);
+  /** The last record chosen in the window ("Seç", "+ Plana koy"). */
+  const picked = useRef<string | null>(null);
+  const notePick = (e: ReactMouseEvent) => {
+    const id = (e.target as Element).closest("button.q-pick")?.closest("[data-item-id]")?.getAttribute("data-item-id");
+    if (id) picked.current = id;
+  };
   const close = useCallback(
     (then?: () => void) => {
       if (going.current) return;
@@ -121,7 +144,10 @@ export function PanoDialog({ at, trip, plan, sections, items, today, decisions, 
       const done = () => {
         if (opener?.isConnected) opener.focus({ preventScroll: true });
         onClose();
-        then?.();
+        // (going on somewhere else, "Kartı göster" or the chat: that place has its own light)
+        const chosen = picked.current;
+        if (then) then();
+        else if (chosen) setTimeout(() => glowOnPlan(chosen), 60);
       };
       if (reducedMotion()) return done();
       setLeaving(true);
@@ -194,7 +220,7 @@ export function PanoDialog({ at, trip, plan, sections, items, today, decisions, 
   return createPortal(
     <>
       <div className={`q-scrim${leaving ? " leaving" : ""}`} onClick={() => close()} aria-hidden />
-      <div className={`q-sheetp${leaving ? " leaving" : ""}`} role="dialog" aria-modal="true" aria-labelledby={titleId} ref={sheet} onKeyDown={trap}>
+      <div className={`q-sheetp${leaving ? " leaving" : ""}`} role="dialog" aria-modal="true" aria-labelledby={titleId} ref={sheet} onKeyDown={trap} onClickCapture={notePick}>
         <div className="q-sh">
           <div className="q-sht">
             <b id={titleId}>{L("Pano", "Board")}</b>

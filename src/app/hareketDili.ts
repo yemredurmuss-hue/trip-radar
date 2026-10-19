@@ -2,7 +2,8 @@
 // outside, so the cards' and views' own files stay as they are. Each reads the page the way putFly.ts and exitMotion.ts do:
 //   m-sekme   the segmented tabs (Plan | Pano, Kategoriye göre | Yolculuk | Gün gün): the chosen segment's highlight slides to the new one
 //             (260 ms), the old view fades in 120 ms (a copy of it) while the new one comes in 12 px from the side it was chosen on
-//             (app.css `mv-tab-in`)
+//             (app.css `mv-tab-in`). The Pano tab opens a window over the plan (aria-haspopup="dialog"): to it and back from it only
+//             the highlight slides, the plan stays where it is (no copy, nothing from the side; v82 E report §3.9)
 //   m-sert    a banner that goes (the chat's "Asistana bağlanamadım") is pulled up out of the page in 200 ms
 //   m-kurallar at most two pulsing rings on screen at once (the third and later keep still)
 // All of it is off for "azaltılmış hareket" and "Hareketi duraklat" (reducedMotion()); the indicator still moves to the chosen segment, at once.
@@ -102,7 +103,10 @@ function installTabSlide(doc: Document): () => void {
     const list = tab?.closest<HTMLElement>(TABLISTS);
     if (!tab || !list || tab.getAttribute("aria-selected") === "true" || reducedMotion()) return;
     const tabs = tabsOf(list);
-    const dir = slideDir(tabs.findIndex((t) => t.getAttribute("aria-selected") === "true"), tabs.indexOf(tab));
+    const from = tabs.findIndex((t) => t.getAttribute("aria-selected") === "true");
+    // A tab that opens a window over the view (the Pano), or shuts it: the view behind never changed.
+    if ([tab, tabs[from]].some((t) => t?.getAttribute("aria-haspopup") === "dialog")) return;
+    const dir = slideDir(from, tabs.indexOf(tab));
     doc.documentElement.style.setProperty("--tab-dir", String(dir));
     clearTimeout(clear);
     clear = setTimeout(() => doc.documentElement.style.removeProperty("--tab-dir"), DIR_MS);

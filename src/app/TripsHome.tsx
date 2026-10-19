@@ -25,6 +25,7 @@ import { useMyPhoto, usePeoplePhotos } from "./Profile";
 import { JoinShared } from "./Share";
 import { DraftCard, TripCard } from "./TripCard";
 import { joinTr } from "./TripPanel";
+import { reducedMotion } from "./motion";
 import { WorkPill } from "./WorkPill";
 
 /** What opens the start chat: a mode (the chips), what was typed, or a draft to go on with. */
@@ -339,7 +340,7 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
           model={settings && (settings.provider === "gemini" ? settings.geminiKey : settings.apiKey) ? modelName(settings) : null}
           hasDemo={trips.some(isDemoTrip)}
           onSettings={onSettings}
-          onTrips={() => document.querySelector(".hm-trips")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+          onTrips={() => document.querySelector(".hm-trips")?.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "start" })}
           onJoin={() => setJoining(true)}
           onDemo={onDemo}
           onTrash={onTrash}

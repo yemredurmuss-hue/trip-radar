@@ -6054,6 +6054,57 @@ try {
   assert.equal(await motionPano.locator(".q-new, .q-pg.ar-new").count(), 0, "Pano: seen once, no Yeni the next time");
   await app.keyboard.press("Escape");
   await motionPano.waitFor({ state: "detached" });
+  // E report §2.10: a choice made in the window shows on the plan once it has gone: while it is open the plan keeps still; then the box
+  // the choice changed glows where it stands (pk-glow, 1.1 s). (A stay box with two or more options, on screen; put back as it was after.)
+  await openCat("stay");
+  const manyStay = app.locator('.q-sec[data-section="stay"] .q-int[data-option-ids*=" "]').first();
+  await manyStay.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  const stayIds = (await manyStay.getAttribute("data-option-ids")).split(" ");
+  const stayCur = await manyStay.getAttribute("data-item-id");
+  const statusesOf = (ids) => app.evaluate(async (ids) => {
+    const request = indexedDB.open("trip-radar");
+    const database = await new Promise((resolve) => (request.onsuccess = () => resolve(request.result)));
+    const all = await new Promise((resolve) => (database.transaction("items").objectStore("items").getAll().onsuccess = (e) => resolve(e.target.result)));
+    return Object.fromEntries(all.filter((i) => ids.includes(i.id)).map((i) => [i.id, i.status]));
+  }, ids);
+  const stayWas = await statusesOf(stayIds);
+  await app.evaluate(() => {
+    window.__glow = null;
+    new MutationObserver(() => {
+      const box = document.querySelector(".panel .q-int.pk-glow");
+      if (box && !window.__glow) window.__glow = { ids: box.getAttribute("data-option-ids"), anim: `${getComputedStyle(box).animationName} ${getComputedStyle(box).animationDuration}` };
+    }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ["class"] });
+  });
+  await app.getByRole("tab", { name: /Pano/ }).click();
+  await motionPano.locator('.q-sgh[data-cat="stay"]').click();
+  await motionPano.locator(".q-pg").first().waitFor();
+  // (one of the box's options that can still be chosen here)
+  const pickId = await motionPano.evaluate((el, [ids, cur]) => ids.find((id) => id !== cur && el.querySelector(`[data-item-id="${CSS.escape(id)}"] button.q-pick`)) ?? null, [stayIds, stayCur]);
+  assert.ok(pickId, `a stay of that box to choose in the Pano (${stayIds})`);
+  await motionPano.locator(`[data-item-id="${pickId}"] button.q-pick`).first().click();
+  await motionPano.locator(`[data-item-id="${pickId}"] span.q-pick`).first().waitFor();
+  assert.equal(await app.evaluate(() => window.__glow), null, "§2.10: while the window is open the plan keeps still");
+  await app.keyboard.press("Escape");
+  await motionPano.waitFor({ state: "detached" });
+  await app.waitForFunction(() => window.__glow, null, { timeout: 3000 });
+  const glowed = await app.evaluate(() => window.__glow);
+  assert.ok(glowed.ids.split(" ").includes(pickId) && glowed.anim === "pk-glow 1.1s", `§2.10: once it has gone, the box it changed glows 1.1 s (${JSON.stringify(glowed)})`);
+  await app.waitForFunction(() => !document.querySelector(".panel .q-int.pk-glow"), null, { timeout: 3000 });
+  await app.evaluate(async (was) => {
+    const request = indexedDB.open("trip-radar");
+    const database = await new Promise((resolve) => (request.onsuccess = () => resolve(request.result)));
+    const tx = database.transaction("items", "readwrite");
+    const all = await new Promise((resolve) => (tx.objectStore("items").getAll().onsuccess = (e) => resolve(e.target.result)));
+    for (const it of all) if (it.id in was && it.status !== was[it.id]) tx.objectStore("items").put({ ...it, status: was[it.id], updatedAt: Date.now() });
+    await new Promise((resolve) => (tx.oncomplete = resolve));
+    new BroadcastChannel("trip-radar").postMessage("changed");
+  }, stayWas);
+  await app.waitForFunction(async ([ids, was]) => {
+    const request = indexedDB.open("trip-radar");
+    const database = await new Promise((resolve) => (request.onsuccess = () => resolve(request.result)));
+    const all = await new Promise((resolve) => (database.transaction("items").objectStore("items").getAll().onsuccess = (e) => resolve(e.target.result)));
+    return all.filter((i) => ids.includes(i.id)).every((i) => i.status === was[i.id]);
+  }, [stayIds, stayWas], { timeout: 3000 });
 
   // ---- F8b Hareket Dili (docs/mockups/artifact-arsivi/hareket-dili-P2qVN5; Emre's m-* decisions): one short claim for each movement ----
   const named = "(el) => el.getAnimations().map((a) => [a.animationName, a.effect.getComputedTiming().duration])"; // (run in the page)
@@ -6066,23 +6117,24 @@ try {
   assert.ok(await viewTabs.evaluate((el) => el.classList.contains("has-ind")), "m-sekme: the pair carries a sliding highlight");
   assert.deepEqual(await viewTabs.evaluate((el) => { const cs = getComputedStyle(el, "::before"); return [cs.transitionDuration.split(",")[0].trim(), cs.transitionTimingFunction.match(/cubic-bezier\([^)]*\)/)[0]]; }), ["0.26s", "cubic-bezier(0.16, 1, 0.3, 1)"], "m-sekme: the highlight slides 260 ms, --e-out");
   // v82 (E8): the Pano tab opens the Pano window over the plan: it grows from the middle (from 96%, 260 ms) as the plan darkens behind it;
-  // the plan stays where it is (no view comes in from the side for it, E report §3.9). The tabs' highlight still slides to Pano.
+  // the plan stays where it is (E report §3.9: no fading copy of it, nothing comes in from the side). The tabs' highlight still slides to Pano.
   const toPano = await app.evaluate(async () => {
     [...document.querySelectorAll(".view-tabs [role=tab]")].find((b) => /Pano/.test(b.textContent)).click();
+    const ghosts = document.querySelectorAll(".mv-ghost").length;
     for (let i = 0; i < 100 && !document.querySelector(".q-sheetp"); i++) await new Promise((r) => requestAnimationFrame(r));
     const anim = (sel) => [...document.querySelectorAll(sel)].flatMap((g) => g.getAnimations().map((a) => [a.animationName, a.effect.getComputedTiming().duration]));
-    return { sheet: anim(".q-sheetp"), scrim: anim(".q-scrim"), plan: document.querySelectorAll(".panel .cat-plan").length, dir: document.documentElement.style.getPropertyValue("--tab-dir") };
+    return { sheet: anim(".q-sheetp"), scrim: anim(".q-scrim"), plan: document.querySelectorAll(".panel .cat-plan").length, dir: document.documentElement.style.getPropertyValue("--tab-dir"), ghosts };
   });
   assert.deepEqual(toPano.sheet, [["q-sheet-in", 260]], `E8: the Pano window grows in over 260 ms (${JSON.stringify(toPano.sheet)})`);
   assert.deepEqual(toPano.scrim, [["q-fade-in", 260]], "E8: the plan darkens behind it over the same 260 ms");
   assert.equal(toPano.plan, 1, "the plan stays behind the window");
-  assert.equal(toPano.dir, "1", "m-sekme: Pano is the later segment: it comes from the right");
+  assert.deepEqual([toPano.ghosts, toPano.dir], [0, ""], "§3.9: no copy of the plan fades and nothing comes in from the side for the Pano");
   await app.waitForFunction(() => !document.querySelector(".mv-ghost"), null, { timeout: 2000 });
   await app.waitForFunction(() => { const el = document.querySelector(".view-tabs"); return Math.abs(new DOMMatrix(getComputedStyle(el, "::before").transform).m41 - el.querySelector('[aria-selected="true"]').offsetLeft) < 1.5; }, null, { timeout: 5000 });
   const slid = await viewTabs.evaluate((el) => [new DOMMatrix(getComputedStyle(el, "::before").transform).m41, el.querySelector('[aria-selected="true"]').offsetLeft, el.querySelector('[aria-selected="true"]').textContent]);
   assert.ok(Math.abs(slid[0] - slid[1]) < 1.5 && /Pano/.test(slid[2]), `m-sekme: the highlight has slid to the chosen segment (${slid})`);
-  const toPlan = await app.evaluate(() => { [...document.querySelectorAll(".view-tabs [role=tab]")].find((b) => /^Plan/.test(b.textContent)).click(); return document.documentElement.style.getPropertyValue("--tab-dir"); });
-  assert.equal(toPlan, "-1", "m-sekme: back to the earlier segment, from the left");
+  const toPlan = await app.evaluate(() => { [...document.querySelectorAll(".view-tabs [role=tab]")].find((b) => /^Plan/.test(b.textContent)).click(); return [document.querySelectorAll(".mv-ghost").length, document.documentElement.style.getPropertyValue("--tab-dir")]; });
+  assert.deepEqual(toPlan, [0, ""], "§3.9: …nor on the way back to the Plan (it was there all along)");
   await app.locator(".cat-plan").waitFor();
   assert.equal(await app.getByRole("dialog", { name: "Pano" }).count(), 0, "the Plan tab shuts the Pano window");
   // The copy of the view left and the new one from the side: a view's own change (Kategoriye göre → Yolculuk sırasıyla) still has both.

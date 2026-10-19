@@ -2530,6 +2530,8 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
   .vcard:hover .pic { transform: none; }
   .hm-plane { display: none; }
 }
+/* "Hareketi duraklat" too: the plane is SVG's own animation (animateMotion), which no CSS rule stops. */
+body.still .hm-plane { display: none; }
 
 /* Screen changes (viewTransition.ts): the home's box flows into the chat's first message; the plan side slides in
    from the right a beat later; everything else crossfades. Exits are quicker than entrances. */

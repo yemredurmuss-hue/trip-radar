@@ -56,6 +56,7 @@ import { KindIcon, UiIcon } from "../cards/Silhouettes";
 import { SavedFace, usePhotoOf, WhoAvatar } from "../cards/WhoseBadge";
 import { FallbackImg } from "../FallbackImg";
 import { Mascot } from "../Mascot";
+import { reducedMotion } from "../motion";
 import { useMyName } from "../Profile";
 import type { Decisions } from "../useDecisions";
 
@@ -115,7 +116,7 @@ export function Pano({ tripId, items, decisions, focus, onShow, onBack, onCompar
     if (!focused) return;
     setCat(focused.section);
     setState("all");
-    const t = setTimeout(() => document.getElementById(groupDomId(focused.group))?.scrollIntoView({ block: "start", behavior: "smooth" }), 60);
+    const t = setTimeout(() => document.getElementById(groupDomId(focused.group))?.scrollIntoView({ block: "start", behavior: reducedMotion() ? "auto" : "smooth" }), 60);
     return () => clearTimeout(t);
   }, [focus]);
   const counts = panoCounts(entries);

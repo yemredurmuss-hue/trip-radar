@@ -9,6 +9,7 @@ import { findInSections, planSectionOfItem, type CatSection, type SectionId } fr
 import type { Todo } from "../../lib/progress";
 import type { Capture, Item } from "../../lib/types";
 import { stampTick } from "../hareketDili";
+import { reducedMotion } from "../motion";
 import { findTarget } from "../Progress";
 import { ArriveToast, PendingCard, type Pending } from "./ArriveViews";
 import { captureById, endIntake, intakeNow, onRevealRequest, useIntake } from "./intake";
@@ -189,7 +190,7 @@ export function useArrivals({ tripId, items, sections, openCaptures, view, isOpe
       const el = key ? document.querySelector(`[data-arrive="${CSS.escape(key)}"]`) : null;
       if (!el) continue;
       followed.current.add(e.id);
-      if (!inView(el)) el.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
+      if (!inView(el)) el.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "center" });
     }
   });
 
