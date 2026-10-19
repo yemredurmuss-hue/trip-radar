@@ -50,9 +50,10 @@ import { coverWords, shapeOf, type SignalId, type TripShape } from "./playbooks/
 import { prepSummary, storedTask, type PrepSummary } from "./prepDays";
 import { isPackLine } from "./prepPack";
 import { lookWord } from "./stageWords";
-import { isPlaceholder } from "./startTrip";
+import { isPlaceholder, isRouteDraft } from "./startTrip";
 import { hoursTo, ticketCarrier, ticketViewOf, type TicketCarrier, type TicketVM } from "./ticketView";
 import { whoGoes } from "./tripSettings";
+import { headCountOf } from "./whose";
 import type { DocMeta, Item, LegMode, PartFrame, PartSection, Suggestion, Trip } from "./types";
 
 /**
@@ -241,6 +242,8 @@ export const CHECKIN_HOURS = 48;
 export interface CoverVM {
   /** The covering box's key ("Festival biletini aç" goes there); null when it isn't drawn on the plan. */
   key: string | null;
+  /** The category that box is in (the plan opens it to go there). */
+  section?: SectionId | null;
   itemId: string;
   /** "festival biletiyle", "Hakone Free Pass ile", "kiralık araçla", "tekne paketiyle". */
   by: string;
@@ -305,11 +308,26 @@ export interface IntentVM {
   cover: CoverVM | null;
   /** The ticket frame's view (a flight, a train, a transfer, a bus, a boat, a rental, a pass); null in the other frames. */
   ticket: TicketVM | null;
-  /** C15: a change of city nobody has planned: the ways to pick from (Tren, Otobüs, Araba, Uçak); "Ben hallettim" is the menu's. */
+  /**
+   * C15: a change of city nobody has planned: the ways to pick from (Tren, Otobüs, Araba, Uçak); a transfer to or from the
+   * airport its own (Metro, Otobüs, Tren, Taksi, Transfer). "Ben hallettim" is drawn after them.
+   */
   modes: LegMode[];
+  /**
+   * The change of city or the transfer it is for (legs.ts's key): with no record of its own, its "Gerek yok", "Ben
+   * hallettim" and C15's ways are said on it (Trip.hidden, Trip.legs). Null or missing for anything else.
+   */
+  legKey?: string | null;
+  /**
+   * D5: made from the AI's route that nobody agreed yet (startGuide.routeDraft): Önerimiz with nothing chosen, its frame
+   * the one to find in, "Rotayı onayla" its button. Missing for anything else.
+   */
+  routeDraft?: boolean;
   itemIds: string[];
   /** Its entries' DOM keys (categories.catDomKey): the Plan scrolls to these. */
   domKeys: string[];
+  /** How many it is for when that isn't the trip's count (someone's own ticket: 1): its searches look for that many. */
+  people?: number;
 }
 
 interface Env {
@@ -379,14 +397,20 @@ interface Bucket {
   stage: Stage | null;
 }
 
-/** A section's entries by the need they are part of, in the section's order (each person's group joins its need). */
+/**
+ * A section's entries by the need they are part of, in the section's order (each person's group joins its need). A stay
+ * is its stretch of nights (D6, H7): two hotels back to back in one city, or a booking and the nights it leaves, are two
+ * intents in their own states, never the old cards' one need (categories.joinStayNeeds).
+ */
 function bucketsOf(section: CatSection): Bucket[] {
   const needs = new Map(needsOf([section]).map((n) => [n.key, n] as const));
   const out = new Map<string, Bucket>();
   for (const e of section.entries) {
-    const known = out.get(e.need);
+    const nights = e.piece.kind === "entry" && e.piece.entry.kind === "stay";
+    const key = nights ? e.key : e.need;
+    const known = out.get(key);
     if (known) known.entries.push(e);
-    else out.set(e.need, { key: e.need, entries: [e], stage: needs.get(e.need)?.stage ?? null });
+    else out.set(key, { key, entries: [e], stage: nights ? e.stage : (needs.get(e.need)?.stage ?? null) });
   }
   return [...out.values()];
 }
@@ -499,15 +523,31 @@ function routeOf(b: Bucket, lead: Item | null, leg: Leg | null): IntentHead["rou
 }
 
 /**
- * The record's own head count, only where it isn't the trip's ("2 kişi" on every intent says nothing; D12): its adults,
- * its children, its rooms, each only when it says one the trip's Kimler gidiyor doesn't.
+ * How many one record is for when it isn't the trip's own count, else null: someone's own plan its owners (kişiye özel:
+ * "Sabine'in bileti", 1), the trip's way in or home without those who come their own way (whose.headCountOf), else what
+ * the record says.
+ */
+function partyOf(lead: Item | null, env: Env): number | null {
+  if (!lead || env.people == null) return null;
+  const counted = headCountOf(lead, env.input.trip, { total: env.people, items: env.input.items });
+  const n = counted != null && counted !== env.people ? counted : (lead.guests.adults ?? null);
+  return n != null && n !== env.people ? n : null;
+}
+
+/**
+ * The record's own head count, only where it isn't the trip's ("2 kişi" on every intent says nothing; D12). Someone's own
+ * plan counts its owners (kişiye özel: "Sabine'in bileti", 1) and the trip's way in or home leaves out those who come their
+ * own way (whose.headCountOf); else its adults, its children and its rooms, each only when it says one the trip's Kimler
+ * gidiyor doesn't.
  */
 function peoplePart(lead: Item | null, env: Env): string | null {
   if (!lead) return null;
   const { adults, children, rooms } = lead.guests;
   const kids = env.group.children;
   const parts: string[] = [];
-  if (adults != null && env.people != null && adults !== env.people - kids) parts.push(kids || children ? count(adults, "yetişkin", "adult") : count(adults, "kişi", "person", "people"));
+  const counted = env.people != null ? headCountOf(lead, env.input.trip, { total: env.people, items: env.input.items }) : null;
+  if (counted != null && counted !== env.people) parts.push(count(counted, "kişi", "person", "people"));
+  else if (adults != null && env.people != null && adults !== env.people - kids) parts.push(kids || children ? count(adults, "yetişkin", "adult") : count(adults, "kişi", "person", "people"));
   if (children != null && children > 0 && children !== kids) parts.push(count(children, "çocuk", "child", "children"));
   if (rooms != null && rooms > 0 && rooms !== (env.group.rooms ?? 1)) parts.push(count(rooms, "oda", "room"));
   return parts.length ? parts.join(" · ") : null;
@@ -660,8 +700,13 @@ function stagelessStatus(live: Item[], settled: Item | null, options: Item[], dr
 const endsOf = (leg: Leg | null): { from?: string | null; to?: string | null } =>
   !leg ? {} : leg.kind === "move" ? { from: leg.from.city, to: leg.to.city } : leg.kind === "arrival" ? { to: leg.to.city } : leg.kind === "departure" ? { from: leg.from.city } : {};
 
+/** D5: the categories an unagreed route's city order makes intents in. */
+const ROUTE_SECTIONS: readonly SectionId[] = ["flight", "stay", "transport"];
+
 /** C15: the ways to pick from for a change of city nobody has planned. */
 const MOVE_MODES: readonly LegMode[] = ["train", "bus", "car", "flight"];
+/** And for a transfer to or from the airport or the station nobody has planned (its old card's chips: no plane across town). */
+const TRANSFER_MODES: readonly LegMode[] = ["metro", "bus", "train", "taxi", "transfer"];
 
 function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
   const records = uniq(b.entries.flatMap((e) => e.itemIds))
@@ -684,10 +729,14 @@ function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
   const view = leg ? legCardView(leg) : null;
   const legArranged = Boolean(view && (view.arranged || view.badge === "arranged") && !live.some((i) => i.status === "booked"));
   const cover = coverOf(live, leg, env);
+  // A transfer or a change of city with its way said and nothing to book (metro, a taxi, the car): its plan is made.
+  const legSaid = b.stage == null && !live.length && legMode != null;
   const status: IntentStatus = cover
     ? "included"
     : b.stage == null
-      ? stagelessStatus(live, settled, options, draft, env)
+      ? legSaid
+        ? "arranged"
+        : stagelessStatus(live, settled, options, draft, env)
       : b.stage === "search" || b.stage === "cancelled"
         ? "searching"
         : b.stage === "options"
@@ -701,6 +750,9 @@ function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
               : legArranged
                 ? "arranged"
                 : "booked";
+  // D5: the AI's route nobody agreed: what the start made from its city order (the stays, the flights, the ways between
+  // and to them) is Önerimiz until it is; nothing of it is chosen, so it is still looked for the same way.
+  const draftRoute = status === "searching" && isRouteDraft(env.input.trip) && ROUTE_SECTIONS.includes(section) && (records.length ? records.every(env.placeholder) : leg != null);
   const badges = badgesOf(options, frame, env);
   const top = options.slice(0, 3).map((item, n) => optionVM(item, env, { place: n + 1, frame, kind, draft, badges: badges.get(item.id) }));
   const shown = status === "suggested" ? draft : status === "chosen" || status === "booked" || status === "arranged" || status === "included" ? settled : null;
@@ -718,18 +770,21 @@ function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
             settled.arranged && settled.noBooking != null
             ? L("sen hallettin", "you sorted it")
             : footText(footOf(settled, kind).left)
-          : view
-            ? footText(view.foot.left)
-            : null
+          : legSaid
+            ? L("rezervasyon gerekmez", "no booking needed")
+            : view
+              ? footText(view.foot.left)
+              : null
         : null;
   const head = headOf(section, frame, b, lead, leg, kind, env);
+  const party = partyOf(lead, env);
   return {
     key: b.key,
     section,
     frame,
     kind,
-    status,
-    word: statusWord(status, kind),
+    status: draftRoute ? "suggested" : status,
+    word: statusWord(draftRoute ? "suggested" : status, kind),
     head,
     options: top,
     optionCount: options.length + (shown && shown !== draft ? 1 : 0),
@@ -738,12 +793,16 @@ function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
     access: booked ? accessOf(booked, kind, env) : null,
     paid: paidText ? L(`${paidText} ödendi`, `${paidText} paid`) : null,
     estimate: est ? { label: rangeLabel(est), unit: est.unit, n: est.n } : null,
-    note,
+    note: draftRoute ? L("Rota AI'ın önerisi; onaylayınca kesinleşir", "The route is the AI's suggestion; agree to it to settle it") : note,
     suggestions: [],
     wanted: [],
     cover,
     ticket: frame === "ticket" ? ticketViewOf(shown ? [shown] : [], { kind, leg, route: head.route, ends: endsOf(leg), now: env.now }) : null,
-    modes: status === "searching" && leg?.kind === "move" && !legMode ? [...MOVE_MODES] : [],
+    // (and for one whose way was said with nothing to book: Değiştir draws them again in place)
+    modes: (status === "searching" && leg && !legMode) || legSaid ? (leg?.kind === "move" ? [...MOVE_MODES] : leg?.kind === "arrival" || leg?.kind === "departure" ? [...TRANSFER_MODES] : []) : [],
+    legKey: leg?.key ?? null,
+    ...(draftRoute ? { routeDraft: true } : {}),
+    ...(party != null ? { people: party } : {}),
     itemIds: records.map((i) => i.id),
     domKeys: b.entries.map(catDomKey),
   };
@@ -919,7 +978,7 @@ function joinConnections(list: IntentVM[], env: Env): IntentVM[] {
       // What both legs cost is said once, in the details: a box shows one price.
       paid: status === "booked" ? (paid ?? prev.paid) : null,
       access: status === "booked" ? prev.access : null,
-      ticket: ticketViewOf(shown, { kind: "flight", leg: null, route, now: env.now }),
+      ticket: ticketViewOf(shown, { kind: "flight", leg: null, route, ends: route ? { from: route.from, to: route.to } : {}, now: env.now }),
       itemIds: uniq([...prev.itemIds, ...cur.itemIds]),
       domKeys: uniq([...prev.domKeys, ...cur.domKeys]),
     };
@@ -986,12 +1045,15 @@ function sectionsWith(sections: CatSection[], env: Env): Built[] {
 /** What covers is drawn as its box's key, and a pass counts the ways on the plan it covers. */
 function linked(built: Built[], env: Env): Built[] {
   const all = built.flatMap((b) => b.intents);
-  const keyOf = (itemId: string) => all.find((i) => i.itemIds.includes(itemId) && i.status !== "skipped")?.key ?? null;
+  const ownerOf = (itemId: string) => all.find((i) => i.itemIds.includes(itemId) && i.status !== "skipped") ?? null;
   const covered = new Map<string, number>();
   for (const i of all) if (i.cover) covered.set(i.cover.itemId, (covered.get(i.cover.itemId) ?? 0) + 1);
   const fix = (i: IntentVM): IntentVM => {
     let out = i;
-    if (i.cover) out = { ...out, cover: { ...i.cover, key: keyOf(i.cover.itemId) } };
+    if (i.cover) {
+      const owner = ownerOf(i.cover.itemId);
+      out = { ...out, cover: { ...i.cover, key: owner?.key ?? null, section: owner?.section ?? null } };
+    }
     const pass = i.ticket?.pass && i.chosen ? (covered.get(i.chosen.id) ?? 0) : 0;
     if (pass && i.ticket && i.chosen) {
       const lead = env.byId.get(i.chosen.id);

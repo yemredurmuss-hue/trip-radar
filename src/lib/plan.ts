@@ -554,7 +554,7 @@ export function buildPlan(trip: Trip, items: Item[]): Plan {
   const stayBlocks: StayBlock[] = [];
   const looseStays: OptionGroup[] = [];
   if (range) {
-    type Run = { key: string; start: string; end: string; item: Item | null; booked: boolean; slot: Item | null; picks: (Item | null)[] };
+    type Run = { key: string; start: string; end: string; item: Item | null; booked: boolean; slot: Item | null; picks: (Item | null)[]; city?: string | null };
     const runs: Run[] = [];
     const covers = (a: DateRange, b: DateRange) => a.start <= b.start && a.end >= b.end;
     // The latest choice wins a night two choices share; a stay said in the chat keeps its nights to
@@ -577,6 +577,47 @@ export function buildPlan(trip: Trip, items: Item[]): Plan {
         last.picks.push(chosen ?? null);
       } else runs.push({ key, start: night, end: addDays(night, 1), item, booked: Boolean(booked), slot: item ? null : (slot ?? null), picks: [chosen ?? null] });
     }
+    // H7 (D6: a stay is a stretch of nights): open nights whose options are in different cities (Kyoto's for the 5th to
+    // the 9th, Osaka's for the 12th to the 16th) are two stays to find, never one; the nights between them that no option
+    // holds are a stay of their own. Nights whose options agree on no one city stay together, as before.
+    const options = openStays.filter((i) => i.status === "saved" && !isSlot(i) && stayRange(i) && i.city);
+    // A night two cities' options both hold (one ends as the other begins) goes with the city most of them are in.
+    const hintOf = (night: string): string | null => {
+      const counts = new Map<string, number>();
+      for (const i of options) {
+        const key = holds(stayRange(i)!, night) ? cityKeyOf(i.city) : null;
+        if (key) counts.set(key, (counts.get(key) ?? 0) + 1);
+      }
+      const [first, second] = [...counts].sort((a, b) => b[1] - a[1]);
+      return first && (!second || second[1] < first[1]) ? first[0] : null;
+    };
+    const cityNamed = (key: string | null) => (key ? mostCommon(options.filter((i) => cityKeyOf(i.city) === key).map((i) => i.city)) : null);
+    const split = runs.flatMap((run): Run[] => {
+      if (run.key !== "open" || !options.length) return [run];
+      const parts: { hint: string | null; start: string; end: string }[] = [];
+      for (let night = run.start; night < run.end; night = addDays(night, 1)) {
+        const hint = hintOf(night);
+        const last = parts.at(-1);
+        if (last && last.hint === hint) last.end = addDays(night, 1);
+        else parts.push({ hint, start: night, end: addDays(night, 1) });
+      }
+      // Nights no option holds go with the city on their side, or on both sides when it is the same one.
+      parts.forEach((part, n) => {
+        if (part.hint) return;
+        const before = parts.slice(0, n).reverse().find((x) => x.hint)?.hint ?? null;
+        const after = parts.slice(n + 1).find((x) => x.hint)?.hint ?? null;
+        if (!before || !after || before === after) part.hint = before ?? after;
+      });
+      const merged: typeof parts = [];
+      for (const part of parts) {
+        const last = merged.at(-1);
+        if (last && last.hint === part.hint) last.end = part.end;
+        else merged.push({ ...part });
+      }
+      if (merged.length < 2) return [run];
+      return merged.map((part) => ({ ...run, start: part.start, end: part.end, city: cityNamed(part.hint), picks: run.picks.slice(nightsBetween(run.start, part.start), nightsBetween(run.start, part.end)) }));
+    });
+    runs.splice(0, runs.length, ...split);
     for (const run of runs) {
       const r = { start: run.start, end: run.end };
       const nights = nightsBetween(r.start, r.end);
@@ -597,7 +638,7 @@ export function buildPlan(trip: Trip, items: Item[]): Plan {
         });
         stayBlocks.push({ kind: "chosen", range: r, nights, city: run.slot.city ?? main.city, item: main, groups: [], slot: run.slot, gap });
       } else if (run.slot) stayBlocks.push({ kind: "open", range: r, nights, city: run.slot.city, groups: [], searchUrl: "", slot: run.slot });
-      else stayBlocks.push({ kind: "open", range: r, nights, city: null, groups: [], searchUrl: "" });
+      else stayBlocks.push({ kind: "open", range: r, nights, city: run.city ?? null, groups: [], searchUrl: "" });
     }
     // A stay said in the chat whose nights were all taken (chosen pages for each of them): its job is done.
     for (const slot of slots) {

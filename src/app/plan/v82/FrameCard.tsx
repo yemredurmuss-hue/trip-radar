@@ -4,7 +4,8 @@
 //   Önerimiz   price · "Bunu seç" · Değiştir and the site ↗ (B11: the site only opens the page);
 //   Seçildi    price · "Rezerve et ↗" / "Satın al ↗" · "✓ Aldım" and Değiştir;
 //   Alındı     the code and copy, "€900 ödendi" (B10), the file or a dashed "Onayı ekle", check-in, check-out, the address;
-//   Ayarlandı  sorted out ("sen hallettin"), Dahil covered by another booking;
+//   Ayarlandı  sorted out ("sen hallettin"), Dahil covered by another booking (its words, and the button that goes to it:
+//              "Festival biletini aç");
 //   Aranıyor   an empty picture, the estimate, the areas, "Kendin ara" and "AI'dan öner" (and its thin line when nothing came).
 // A record's name and price edit where they stand (C2, inside the box's InlineEdit); elsewhere they're plain text.
 import type { ReactNode } from "react";
@@ -46,6 +47,19 @@ export interface FrameCardProps {
     edit: () => void;
     unarrange: (() => void) | null;
   };
+  /** Dahil: goes to what covers it ("Festival biletini aç"); null when it isn't on the plan. */
+  onCover?: (() => void) | null;
+  /** D5: the AI's route nobody agreed yet: "Rotayı onayla" is the frame's button (the search goes on as before). */
+  onAgree?: (() => void) | null;
+}
+
+/** D5: the main button of an intent made from the AI's route nobody agreed yet. */
+export function AgreeRoute({ onAgree }: { onAgree: () => void }) {
+  return (
+    <button type="button" className="q-pick q-take q-agree" onClick={onAgree}>
+      {L("Rotayı onayla", "Agree the route")}
+    </button>
+  );
 }
 
 function Card({ cls = "", info, media, photo, l1, title, l2, l3, top, primary, row, detail }: {
@@ -134,7 +148,7 @@ const Picture = ({ o, art, children }: { o: OptionVM | null; art: string; childr
   </>
 );
 
-export function FrameCard({ vm, form, art, page, links, hints, info, detail, quiet, on }: FrameCardProps) {
+export function FrameCard({ vm, form, art, page, links, hints, info, detail, quiet, on, onCover = null, onAgree = null }: FrameCardProps) {
   const o = vm.chosen;
   const edit = useInlineEdit();
   if ((form === "suggested" || form === "chosen") && o) {
@@ -244,6 +258,8 @@ export function FrameCard({ vm, form, art, page, links, hints, info, detail, qui
     const inc = form === "included";
     const word = inc ? L("Dahil", "Included") : L("Ayarlandı", "Arranged");
     const title = o?.title ?? headName(vm);
+    // Dahil says what covers it ("festival biletiyle"), else how it was arranged.
+    const why = inc ? (vm.cover?.by ?? vm.note) : vm.note;
     return (
       <Card
         cls={inc ? " inc" : " ar"}
@@ -253,7 +269,7 @@ export function FrameCard({ vm, form, art, page, links, hints, info, detail, qui
         l1={
           <>
             <span className={inc ? "z-inc" : "z-gr"}>{inc && <Ic name="check" size={13} stroke={3} />} {word}</span>
-            {vm.note && <span className="z-dim">· {vm.note}</span>}
+            {why && <span className="z-dim">· {why}</span>}
           </>
         }
         title={title}
@@ -261,8 +277,8 @@ export function FrameCard({ vm, form, art, page, links, hints, info, detail, qui
         l3={null}
         top={
           <>
-            <span className={inc ? "z-inc" : "z-gr"}>{word}</span>
-            {vm.note && <small className="z-note">{vm.note}</small>}
+            <span className={inc ? "z-inc" : "z-gr"}>{inc && <Ic name="check" size={13} stroke={3} />} {word}</span>
+            {why && <small className="z-note">{why}</small>}
             {(o?.price || edit?.open === "price") && (
               <span className="z-paid">
                 <Editable field="price">{o?.price?.text}</Editable>
@@ -271,7 +287,13 @@ export function FrameCard({ vm, form, art, page, links, hints, info, detail, qui
           </>
         }
         primary={
-          !inc && !o?.price && edit?.open !== "price" ? (
+          inc ? (
+            onCover && vm.cover ? (
+              <button type="button" className="q-doc add z-goinc" onClick={onCover}>
+                {vm.cover.open} ›
+              </button>
+            ) : null
+          ) : !o?.price && edit?.open !== "price" ? (
             <button type="button" className="q-doc add" onClick={() => (edit?.fields.includes("price") ? edit.go("price") : on.edit())}>
               {L("Fiyat ekle", "Add the price")}
             </button>
@@ -295,7 +317,7 @@ export function FrameCard({ vm, form, art, page, links, hints, info, detail, qui
         </span>
       }
       photo={false}
-      l1={<span className="z-dim">{L("Henüz seçenek yok", "No options yet")}</span>}
+      l1={<span className="z-dim">{(vm.routeDraft && vm.note) || L("Henüz seçenek yok", "No options yet")}</span>}
       title={emptyTitle(vm)}
       l2={line && <span className="q-est">{line}</span>}
       l3={hints.map((h) => (
@@ -319,21 +341,31 @@ export function FrameCard({ vm, form, art, page, links, hints, info, detail, qui
         )
       }
       primary={
-        on.ask && (
-          <button type="button" className="q-ai" onClick={on.ask}>
-            <Ic name="spark" size={15} /> {L("AI'dan öner", "Ask the AI")}
-          </button>
+        onAgree ? (
+          <AgreeRoute onAgree={onAgree} />
+        ) : (
+          on.ask && (
+            <button type="button" className="q-ai" onClick={on.ask}>
+              <Ic name="spark" size={15} /> {L("AI'dan öner", "Ask the AI")}
+            </button>
+          )
         )
       }
       row={
-        quiet &&
-        on.ask && (
+        quiet && on.ask ? (
           <small className="z-aierr">
             {L("Henüz sonuç gelmedi", "Nothing came back yet")} ·{" "}
             <button type="button" className="z-retry" onClick={on.ask}>
               {L("Tekrar dene", "Try again")}
             </button>
           </small>
+        ) : (
+          onAgree &&
+          on.ask && (
+            <button type="button" className="q-chg" onClick={on.ask}>
+              {L("AI'dan öner", "Ask the AI")}
+            </button>
+          )
         )
       }
       detail={null}

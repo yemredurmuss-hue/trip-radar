@@ -12,7 +12,7 @@ import { countryNames } from "../../lib/heroInfo";
 import { L } from "../../lib/i18n";
 import { doneCount } from "../../lib/collectionCards";
 import { countParts, decideCount, decisionNames, firstDecision, rowThumbs } from "../../lib/intentFrame";
-import { collectionsOf, type Collection, type IntentInput } from "../../lib/intents";
+import { collectionsOf, V82_ORDER, type Collection, type IntentInput } from "../../lib/intents";
 import { formatPrice } from "../../lib/items";
 import { nightsSummary } from "../../lib/lifecycle";
 import { sameCity, type Plan } from "../../lib/plan";
@@ -54,7 +54,7 @@ const TILED: SectionId[] = ["activity", "todo"];
  * A category joins once its boxes are built: 3a stay and other (the stay family's frame), 3b flight and transport (the
  * ticket), 4 activity and todo (the rows of cards).
  */
-export const V82_SECTIONS: ReadonlySet<SectionId> = new Set<SectionId>(["stay", "other", "activity", "todo"]);
+export const V82_SECTIONS: ReadonlySet<SectionId> = new Set<SectionId>(["flight", "stay", "transport", "activity", "todo", "other"]);
 
 const SLICE: Partial<Record<SectionId, BudgetSlice>> = { flight: "flight", stay: "stay", transport: "transport", activity: "activity", other: "other" };
 
@@ -152,10 +152,12 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
     allot,
     suggestions: suggestions?.bySection,
     prep,
+    // What goes by the hour: a flight's check-in from 48 hours before (F2), its live strip on its day (C4).
+    now: new Date(),
   };
   const collections = collectionsOf(input);
   const collectionOf = (id: SectionId): Collection | null => collections.find((c) => c.section.id === id) ?? null;
-  const shown = sections.filter(
+  const drawn = sections.filter(
     (s) =>
       s.id === "prep" ||
       s.entries.length ||
@@ -166,6 +168,10 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
       visaLine(s) ||
       (v82(s) && dismissed.some((d) => d.section === s.id && d.kind === "add")),
   );
+  // D4: a category the trip's shape closes (a day out: Konaklama; by bus: Uçuş) is drawn folded, "Gerek yok" and why.
+  const closedOnly = collections.filter((c) => c.summary.closed && v82(c.section) && !drawn.some((s) => s.id === c.section.id)).map((c) => c.section);
+  const rank = (id: SectionId) => (V82_ORDER.includes(id) ? V82_ORDER.indexOf(id) : V82_ORDER.length);
+  const shown = closedOnly.length ? [...drawn, ...closedOnly].sort((a, b) => rank(a.id) - rank(b.id)) : drawn;
 
   // --- one open at a time, brought up in one move (E1) ---
   const sheet = useRef<HTMLDivElement>(null);
@@ -231,6 +237,9 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
     }
     const { thumbs, more } = rowThumbs(c.intents);
     const sum = c.summary;
+    if (sum.closed) {
+      return { id: s.id, name: sum.name, line: L(`Gerek yok · ${sum.closed}`, `Not needed · ${sum.closed}`), thumbs: [], more: 0, bar: null, parts: [], spent: null, allot: null, settled: null };
+    }
     // Yapılacaklar' things done are said apart ("1 yapıldı"); a ticket is never "done" (H1: a ski pass isn't here).
     const done = s.id === "todo" ? doneCount(c.intents, v82Env.byId) : 0;
     return {
@@ -274,7 +283,8 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
                   allotNum={allotNum} suggestions={cardSuggestions(s).filter((x) => x.kind === "add").length}>
                   {v82(s) ? (
                     <TimelineRail
-                      info={info[s.id]}
+                      // Kısa bilgi satırı (spec §1.4): only where the trip's shape changed something in the category.
+                      info={c?.summary.info?.text ?? info[s.id]}
                       lead={
                         <>
                           {pending?.bySection[s.id]}

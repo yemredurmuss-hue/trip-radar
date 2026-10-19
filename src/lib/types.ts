@@ -502,6 +502,11 @@ export interface StartGuide {
   placeholders?: Record<string, string>;
   /** The start day was a guess from a month ("Ortası" → the 15th): the hero says "tarih yaklaşık" while the trip starts on it; null once confirmed. */
   approxStart?: string | null;
+  /**
+   * D5: "Oluştur" built the AI's (or the classic circuit's) route without the traveller agreeing it: what the start made
+   * from its city order is Önerimiz until they do ("Rotayı onayla" clears it).
+   */
+  routeDraft?: boolean;
 }
 
 /** How a transfer is made. Flights, trains, buses and ferries go from a station, so they bring their own transfers. */

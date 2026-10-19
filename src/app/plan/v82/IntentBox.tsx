@@ -1,20 +1,25 @@
 // One intent (plan v82 "niyet kutusu standardı"): its head (IntentHead) and one fixed frame under it, the same size in every
 // state, its ground and its dot on the category's rail the state's colour. The frame is the family's (FrameCard: a stay, an
-// eSIM, insurance; FrameTicket and CollectionRow come with phases 3b and 4); with options to pick from it is three cards
-// (OptionCompact), and "Değiştir" turns the chosen card back to them in place. Ayrıntı opens over the frame (DetailLayer);
+// eSIM, insurance; FrameTicket: a flight, a train, any way of travel; CollectionRow comes with phase 4); with options to
+// pick from it is three cards (OptionCompact) or, for a ticket, three rows (OptionRow), and "Değiştir" turns the chosen
+// one back to them in place. A change of city or a transfer with no record of its own says "Gerek yok", "Ben hallettim"
+// and its way (C15) on the leg itself (Trip.hidden, Trip.legs). Ayrıntı opens over the frame (DetailLayer);
 // "Gerek yok" folds the body (E7) and the box goes under the category's "Gizlenenler · n" (F3). A record's days, name and
 // price edit where they stand (C2); a thin "+ Buraya ekle" under a stay adds on its last night, in its city (C3).
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { isCampStay } from "../../../lib/campStay";
 import { L } from "../../../lib/i18n";
-import { areaSearch, changeList, currentOption, frameForm, headName, offerNeed, railState, selfSearches, SHOWN_OPTIONS, statusChip, unlessEmpty } from "../../../lib/intentFrame";
+import { areaSearch, changeList, currentOption, frameForm, headName, offerNeed, railState, SHOWN_OPTIONS, statusChip, unlessEmpty } from "../../../lib/intentFrame";
 import type { IntentStatus, IntentVM, OptionVM } from "../../../lib/intents";
 import { addDays } from "../../../lib/plan";
 import { regionHints, type RegionHint } from "../../../lib/regionHints";
+import { waySearches } from "../../../lib/ticketFrame";
 import type { InsertAt } from "../../../lib/templates";
-import type { Item } from "../../../lib/types";
+import type { Item, LegChoice } from "../../../lib/types";
 import { entryDomId } from "../../../lib/progress";
-import { setInstalled, setItemStatus, cancelBooking } from "../../actions";
+import { withLegChoice } from "../../../lib/legs";
+import { agreeRoute } from "../../../lib/startTrip";
+import { setHidden, setInstalled, setItemStatus, cancelBooking, updateTrip } from "../../actions";
 import type { MenuEntry } from "../../cards/CardShell";
 import { openDoc, useDocPick } from "../../cards/DocAccess";
 import { useEmptyEnv } from "../../cards/emptyEnv";
@@ -34,6 +39,7 @@ import { FrameTicket } from "./FrameTicket";
 import { IntentHead } from "./IntentHead";
 import { IntentMenu } from "./IntentMenu";
 import { OptionList } from "./OptionCompact";
+import { OptionRows } from "./OptionRow";
 import { useCrossfade, type Entry } from "./useCrossfade";
 import { useIntentActions } from "./useIntentActions";
 import { useV82Env } from "./v82Env";
@@ -44,21 +50,25 @@ export function artOf(kind: IntentVM["kind"], item: Item | null = null): string 
     const art = stayArtOf(item);
     return art === "tent" ? "illus/cadir.svg" : `illus/${art}.png`;
   }
+  // A flight's plane, a way of travel nobody named the taxi's (the ticket's own drawings, ticketView.ts).
+  if (kind === "flight") return "illus/ucus.png";
+  if (kind === "transport") return "illus/taksi-transfer.png";
   return `illus/${illusOf(kind) ?? "not"}.png`;
 }
 
 /** How far along a state is: the chip springs once on a step forward, never back (hareket dili, kural 4). */
+const TAKEOFF: readonly IntentStatus[] = ["chosen", "booked"];
 const STEP: Readonly<Record<IntentStatus, number>> = { skipped: -1, searching: 0, deciding: 1, suggested: 2, chosen: 3, arranged: 4, included: 4, booked: 5 };
 
-function useStepPop(status: IntentStatus): boolean {
+function useStepPop(status: IntentStatus, ms = 520, to?: readonly IntentStatus[]): boolean {
   const [pop, setPop] = useState(false);
   const was = useRef(status);
   useEffect(() => {
-    const forward = STEP[status] > STEP[was.current];
+    const forward = STEP[status] > STEP[was.current] && (!to || to.includes(status));
     was.current = status;
     if (!forward || reducedMotion()) return;
     setPop(true);
-    const t = setTimeout(() => setPop(false), 520);
+    const t = setTimeout(() => setPop(false), ms);
     return () => clearTimeout(t);
   }, [status]);
   return pop;
@@ -86,6 +96,8 @@ function useRegionHints(vm: IntentVM, ask: boolean): RegionHint[] {
 
 /** The fields a box draws (its head's days, its card's name and price): Tab never opens one that isn't there. */
 const DRAWN = ["name", "date", "end", "price"] as const;
+/** A ticket's: its ends and its hour where they stand, its day, its price (a rental's place and return day). */
+const TICKET_DRAWN = ["from", "to", "city", "date", "end", "time", "price"] as const;
 
 export function IntentBox({ vm: given, color, onHere = null }: {
   vm: IntentVM;
@@ -104,7 +116,7 @@ export function IntentBox({ vm: given, color, onHere = null }: {
   const own = record ?? held;
   if (own) {
     return (
-      <InlineEdit item={own} only={record ? [...DRAWN] : ["name"]}>
+      <InlineEdit item={own} only={vm.frame === "ticket" ? [...TICKET_DRAWN] : record ? [...DRAWN] : ["name"]}>
         <RecordBox vm={vm} color={color} record={own} onHere={onHere} />
       </InlineEdit>
     );
@@ -161,7 +173,8 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
   const [changing, setChanging] = useState(false);
   const [detail, setDetail] = useState(false);
   const [folding, setFolding] = useState(false);
-  const form = frameForm(vm);
+  // D5: an intent of the AI's route nobody agreed yet is Önerimiz with nothing chosen: it is looked for as before.
+  const form = vm.routeDraft ? "searching" : frameForm(vm);
   const showOptions = form === "options" || (changing && form != null);
   const chosenId = vm.chosen?.id ?? null;
   // A new pick, a booking, another state: the card is itself again (Değiştir and Ayrıntı close).
@@ -171,11 +184,15 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
   }, [vm.status, chosenId]);
   const boxRef = useRef<HTMLElement>(null);
   const pop = useStepPop(vm.status);
+  // K29 on a ticket (hareket dili §2.3, §2.5): a step forward to Seçildi or Alındı takes its plane off (1.1 s, after the
+  // frame's 120 ms crossfade); no glow.
+  const takeoff = useStepPop(vm.status, 1300, TAKEOFF);
   const chipId = useId();
   const name = headName(vm);
   const entry = useRef<Entry>("in");
   const art = artOf(vm.kind, vm.chosen?.item ?? vm.options[0]?.item ?? null);
-  const links = selfSearches(vm, v82.selfAt);
+  // C15: a way nobody planned is looked for on the sites that compare every way, a transfer on Uber and the map's directions.
+  const links = waySearches(vm, v82.selfAt, itemId ? (v82.byId.get(itemId) ?? null) : null);
   const searchingNow = form === "searching" && a.searching;
   const hints = useRegionHints(vm, form === "searching");
   const record = vm.chosen?.item ?? null;
@@ -183,11 +200,15 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
   const page = record ? (datedLink(record, decision).url ?? record.url) : null;
   const docs = record ? env.docsFor(record.id) : [];
 
+  // A leg with no record of its own (an empty transfer, a change of city): what's said is said on the leg.
+  const leg = vm.legKey != null && vm.itemIds.length === 0 ? vm.legKey : null;
+  const onLeg = (patch: Partial<Omit<LegChoice, "updatedAt">> | null): Promise<void> => (leg ? updateTrip(env.tripId, (t) => withLegChoice(t, leg, patch)) : Promise.resolve());
+  const skipNow = () => (leg ? void setHidden(env.tripId, `leg:${leg}`, true, name) : a.skip());
   const skip = () => {
     if (askedHide) return askedHide();
-    if (reducedMotion()) return a.skip();
+    if (reducedMotion()) return skipNow();
     setFolding(true);
-    setTimeout(() => a.skip(), FOLD_MS);
+    setTimeout(skipNow, FOLD_MS);
   };
   const pick = (o: OptionVM) => {
     entry.current = "morph";
@@ -213,7 +234,11 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
   const menu: MenuEntry[] = [
     ...(record && form !== "searching" ? [{ label: L("Ayrıntı", "Details"), run: () => setDetail(true) }] : []),
     ...(a.addSuggestion ? [{ label: L("Plana koy", "Add to plan"), run: a.addSuggestion }] : []),
-    ...(vm.status === "arranged" && record ? [{ label: L("Ayarlandı: geri al", "Arranged: take back"), run: () => a.unarrange(record) }] : vm.status !== "booked" && vm.status !== "included" ? [{ label: L("Ben hallettim", "I've got it"), run: a.arranged }] : []),
+    ...(vm.status === "arranged" && (record || leg)
+      ? [{ label: L("Ayarlandı: geri al", "Arranged: take back"), run: () => (record ? a.unarrange(record) : void onLeg(null)) }]
+      : vm.status !== "booked" && vm.status !== "included"
+        ? [{ label: L("Ben hallettim", "I've got it"), run: leg ? () => void onLeg({ booked: true }) : a.arranged }]
+        : []),
     { label: L("Gerek yok", "Not needed"), run: skip, danger: true },
     ...extra.map((m, i) => (i === 0 ? { ...m, sep: true } : m)),
   ];
@@ -249,16 +274,25 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
           <b className="q-ot">{L(`AI ${name} için arıyor`, `The AI is looking for ${name}`)}</b>
           <small className="q-oc">{L("seçenekler gelince burada", "options land here")}</small>
         </div>
-        <div className="z-ocs" aria-hidden>
-          {[0, 1, 2].map((n) => (
-            <div key={n} className="z-sk"><i /><span><i /><i /><i /></span></div>
-          ))}
-        </div>
+        {vm.frame === "ticket" ? (
+          <div className="z-rows z-skr" aria-hidden>
+            {[0, 1, 2].map((n) => (
+              <div key={n} className="z-sk"><i /><span><i /><i /><i /></span></div>
+            ))}
+          </div>
+        ) : (
+          <div className="z-ocs" aria-hidden>
+            {[0, 1, 2].map((n) => (
+              <div key={n} className="z-sk"><i /><span><i /><i /><i /></span></div>
+            ))}
+          </div>
+        )}
       </div>
     );
   } else if (showOptions) {
     const options = changing ? changeList(vm) : vm.options.slice(0, SHOWN_OPTIONS);
-    body = <OptionList vm={vm} options={options} current={changing ? currentOption(vm) : null} changing={changing} art={art} links={links} onPick={pick} onOpen={(o) => env.onOpenItem(o.item)} onCancel={cancelChange} onAsk={a.ask} />;
+    const list = { vm, options, current: changing ? currentOption(vm) : null, changing, art, links, onPick: pick, onOpen: (o: OptionVM) => env.onOpenItem(o.item), onCancel: cancelChange, onAsk: a.ask };
+    body = vm.frame === "ticket" ? <OptionRows {...list} /> : <OptionList {...list} />;
   } else if (form) {
     const props = {
       vm,
@@ -268,6 +302,7 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
       links,
       hints: hints.map((h) => ({ ...h, url: areaSearch(vm, v82.selfAt, h.area)?.url ?? links[0]?.url ?? null })),
       info: record && form !== "searching" ? { open: detail, toggle: () => setDetail(!detail) } : null,
+      onAgree: vm.routeDraft ? () => void updateTrip(env.tripId, agreeRoute) : null,
       detail: detailNode,
       quiet: form === "searching" && hasSearched(`intent:${vm.key}`) && !a.searching,
       on: {
@@ -281,10 +316,26 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
         addDoc: pickDoc ?? (() => undefined),
         ask: a.ask,
         edit: () => record && env.edit(record),
-        unarrange: vm.status === "arranged" && record ? () => a.unarrange(record) : null,
+        // A leg's own plan taken back: its ways again (whatever was said: "Ben hallettim", metro).
+        unarrange: vm.status === "arranged" ? (record ? () => a.unarrange(record) : leg ? () => void onLeg(null) : null) : null,
       },
     };
-    body = vm.frame === "ticket" ? <FrameTicket {...props} /> : <FrameCard {...props} />;
+    const cover = vm.cover;
+    const onCover = cover?.key && cover.section ? () => v82.goTo(cover.section!, cover.key) : null;
+    body =
+      vm.frame === "ticket" ? (
+        <FrameTicket
+          {...props}
+          onCover={onCover}
+          // By plane a change of city is a flight: it goes to Uçuş, and the plan follows it there with a flash.
+          ways={leg && vm.modes.length ? { pick: (mode) => void onLeg({ mode }).then(() => mode === "flight" && v82.goTo("flight", vm.key)), own: () => void onLeg({ booked: true }) } : null}
+          // A way said on a change of city (C15) goes back to the choice.
+          onReset={leg && (vm.status === "chosen" || vm.status === "booked") ? () => void onLeg(null) : null}
+          onLegGot={leg && vm.status === "chosen" ? () => void onLeg({ booked: true }) : null}
+        />
+      ) : (
+        <FrameCard {...props} onCover={onCover} />
+      );
   }
   if (vm.frame === "collection") body = <CollectionRow vm={vm} art={art} onPut={(o) => a.choose(o.item)} onTakeOff={(o) => void setItemStatus(o.item, "saved")} />;
   const key = searchingNow ? "skel" : showOptions ? `opts:${changing ? "chg" : ""}` : `${form}:${chosenId ?? ""}`;
@@ -302,7 +353,7 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
     <>
       <section
         ref={boxRef}
-        className={`q-int z-int${folding ? " folding" : ""}`}
+        className={`q-int z-int${folding ? " folding" : ""}${takeoff && vm.frame === "ticket" ? " z-go" : ""}`}
         id={vm.domKeys[0] ? entryDomId(vm.domKeys[0]) : undefined}
         data-intent={vm.key}
         data-st={railState(vm.status)}

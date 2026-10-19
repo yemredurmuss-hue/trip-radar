@@ -82,6 +82,8 @@ export interface StartRoute {
   confirmed: boolean;
   /** The model's proposal, the traveller's own, one stop, or the classic circuit for the country (rev 3: at once, no model). */
   source: "ai" | "user" | "single" | "circuit" | "event";
+  /** D5: built by "Oluştur" while it was only proposed (the model's or the classic circuit): its intents are Önerimiz until agreed. */
+  proposed?: boolean;
 }
 export interface StartMsg {
   role: "user" | "assistant";
@@ -2862,7 +2864,8 @@ export function circuitRoute(s: Pick<StartState, "where" | "duration" | "start" 
 
 /**
  * The route "Oluştur" builds (rev 3): the one agreed; else, unless the route was skipped, the proposal on screen (the
- * model's, kept or prepared), else the classic circuit, else one stop. Agreed by pressing it.
+ * model's, kept or prepared), else the classic circuit, else one stop. Built by pressing it; a proposal of more than one
+ * stop is still the AI's (D5: `proposed`, its intents Önerimiz until agreed on the board).
  */
 export function routeForGenerate(s: StartState): StartRoute | null {
   if (s.route?.confirmed) return s.route;
@@ -2873,7 +2876,9 @@ export function routeForGenerate(s: StartState): StartRoute | null {
   if (s.skipped.includes("route")) return single ? { ...single, confirmed: true } : null;
   const kept = preparedRoute(s);
   const best = (s.route && s.route.source !== "single" ? s.route : null) ?? (kept?.source === "ai" ? kept : null) ?? circuitRoute(s) ?? s.route ?? single;
-  return best ? { ...best, confirmed: true } : null;
+  if (!best) return null;
+  const proposed = (best.source === "ai" || best.source === "circuit") && best.stops.length > 1;
+  return { ...best, confirmed: true, ...(proposed ? { proposed: true } : {}) };
 }
 
 /** Short trips and single cities are one stop; the model is asked only for a longer trip to a country, an island or a region. */
@@ -3246,6 +3251,8 @@ export interface Creation {
   /** Gezi biçimi: the way there when it isn't a flight (no flight made: its ways by land, Uçuş closed), and a day out (no night). */
   way?: GroundWay | null;
   dayTrip?: boolean;
+  /** D5: the stays follow a route only proposed (the AI's, the classic circuit): the board asks for it to be agreed. */
+  routeDraft?: boolean;
   /**
    * The nights a model-made playbook spends on a boat, in a camp, in a ship's cabin or a camper van (a cruise's cabin, a
    * festival's camp too): the stays in `city` (all of them when null) are that kind of stay (Item.metrics.stayKind), never
@@ -3405,10 +3412,22 @@ export function creationOf(s: StartState): Creation | null {
     ...(stayAs ? { stayAs } : {}),
     ...(way ? { way } : {}),
     ...(dayTrip ? { dayTrip } : {}),
+    ...(s.route?.confirmed && s.route.proposed && shaped.length > 1 ? { routeDraft: true } : {}),
   };
 }
 
 // --- placeholders: what the start made, not what the traveller chose -------------------------------------------
+
+/** D5: the trip's route is still the AI's proposal ("Oluştur" built it, nobody agreed it yet). */
+export const isRouteDraft = (trip: Pick<Trip, "startGuide">): boolean => trip.startGuide?.routeDraft === true;
+
+/** D5: the traveller agrees the proposed route ("Rotayı onayla"): what the start made from it is theirs to fill. */
+export function agreeRoute<T extends Pick<Trip, "startGuide">>(trip: T): T {
+  if (!trip.startGuide?.routeDraft) return trip;
+  const guide = { ...trip.startGuide };
+  delete guide.routeDraft;
+  return { ...trip, startGuide: guide };
+}
 
 /** What a made record says that the traveller would change: its status, days, where from and to, its city, its name. */
 export const placeholderPrint = (i: Item): string =>

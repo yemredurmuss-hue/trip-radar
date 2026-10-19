@@ -77,7 +77,8 @@ describe("plan: nights, bookings and gaps", () => {
     const { faa, items } = example();
     const plan = buildPlan(trip(), items.map((i) => (i === faa ? { ...i, status: "saved" as const } : i)));
     expect(plan.closed).toEqual([]);
-    expect(plan.stayBlocks.map((b) => b.kind)).toEqual(["open"]);
+    // H7: Porto's open nights and Funchal's are two stays to find, never one (the 9th, held by both, goes with Porto's three).
+    expect(plan.stayBlocks.map((b) => [b.kind, b.city, b.range.start, b.range.end])).toEqual([["open", "Porto", "2026-10-07", "2026-10-10"], ["open", "Funchal", "2026-10-10", "2026-10-17"]]);
     // Clash Suites (Funchal 9–12) overlaps FAA (10–14) in the same city: they're one decision now.
     const funchal = liveGroups(plan).find((g) => g.items.some((i) => i.id === faa.id))!;
     expect([funchal.key, funchal.items.map((i) => i.name).sort()]).toEqual(["stay@2026-10-09_2026-10-14", ["Clash Suites", "FAA Rentals", "Other Funchal"]]);

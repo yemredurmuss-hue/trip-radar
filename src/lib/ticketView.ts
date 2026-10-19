@@ -10,7 +10,7 @@ import { cityOfAirport } from "./airports";
 import { durationText } from "./cardFacts";
 import type { CardKind } from "./cardKinds";
 import { rentalLine } from "./cardTicket";
-import { transportFace } from "./cardView";
+import { hubWord, legEnd, transportFace } from "./cardView";
 import { isPass } from "./covers";
 import { delayOf, flightTiles, phaseOf, sourceText, stageOf, type FlightSeen, type FlightTile } from "./flightData";
 import { L } from "./i18n";
@@ -18,7 +18,7 @@ import { nStops } from "./i18nText";
 import { formatDateRange, isoDate, metricsOf, nightsBetween } from "./items";
 import type { Leg } from "./legs";
 import { wayName } from "./tripShape";
-import type { Item } from "./types";
+import type { Item, LegMode } from "./types";
 
 /** The way's drawing family: also the static/illus picture in the middle of the ticket. */
 export type TicketMode = "flight" | "train" | "bus" | "ferry" | "car" | "transfer" | "pass";
@@ -40,6 +40,8 @@ export interface TicketEnd {
   time: string | null;
   /** It lands this many days after it leaves ("+1"). */
   plus: number | null;
+  /** A transfer's hub by its full name, for a map ("Porto Havalimanı"), when the big word is only "Havalimanı". */
+  full?: string;
 }
 
 /** One stub (koçan) of the ticket: a connecting flight has one per leg. */
@@ -98,6 +100,8 @@ export interface TicketVM {
   /** A rented car, a camper, a bike: "alış yeri · n gün · iade". */
   rental: { line: string | null; pick: string | null; days: number | null; back: string | null } | null;
   live: TicketLive | null;
+  /** A transfer or a change of city with no record of its own: the way said on it ("metro"), if any. */
+  wayMode?: LegMode | null;
 }
 
 const ART: Record<string, string> = {
@@ -182,7 +186,7 @@ function seatChips(item: Item): TicketChip[] {
 }
 
 /** The bag a flight comes with, when the page says it. */
-function bagChip(item: Item): TicketChip | null {
+export function bagChip(item: Item): TicketChip | null {
   const bag = metricsOf(item).checkedBagIncluded;
   return bag == null ? null : { kind: "bag", text: bag ? L("1 bagaj dahil", "1 checked bag") : L("Yalnız el bagajı", "Cabin bag only") };
 }
@@ -236,11 +240,19 @@ export function ticketViewOf(shown: readonly Item[], ctx: TicketCtx): TicketVM {
   const art = pass ? "tren" : (ART[ctx.kind] ?? "taksi-transfer");
   const empty = (city: string | null | undefined): TicketEnd | null => (city ? { city, place: null, time: null, plus: null } : null);
   if (!lead) {
-    return {
-      mode, art, carrier: null, from: empty(ctx.route?.from), to: empty(ctx.route?.to), duration: null, stops: null, chips: [], legs: [], pass: null, rental: null, live: null,
+    // A transfer with nothing of its own says its ends as its card did (F5a): the airport and its code, the stay and its name.
+    const end = (side: "from" | "to"): TicketEnd | null => {
+      if (!ctx.leg || ctx.leg.kind === "move" || ctx.leg.kind === "change") return empty(ctx.route?.[side]);
+      const e = legEnd(ctx.leg, side);
+      // On the ticket the hub is its one word, big ("Havalimanı"), its code and city small ("OPO · Porto"), as the design's.
+      const hub = hubWord(ctx.leg, side);
+      if (hub && e.city) return { city: hub, place: [e.sub, ctx.leg[side].city].filter(Boolean).join(" · ") || null, time: e.time, plus: null, full: e.city };
+      return e.city ? { city: e.city, place: e.sub, time: e.time, plus: null } : empty(ctx.route?.[side]);
     };
+    return { mode, art, carrier: null, from: end("from"), to: end("to"), duration: null, stops: null, chips: [], legs: [], pass: null, rental: null, live: null, wayMode: ctx.leg ? (ctx.leg.choice?.mode ?? ctx.leg.mode ?? null) : null };
   }
-  const legs = shown.map((item, n) => legOf(item, ctx.kind, n === 0 ? { from: ctx.ends?.from } : n === shown.length - 1 ? { to: ctx.ends?.to } : {}));
+  // The plan's cities name the first leg's way out and the last leg's way in (one leg: both its ends).
+  const legs = shown.map((item, n) => legOf(item, ctx.kind, { from: n === 0 ? ctx.ends?.from : null, to: n === shown.length - 1 ? ctx.ends?.to : null }));
   const many = legs.length > 1;
   const span = many ? spanMinutes(shown) : null;
   const stops = many ? { text: nStops(legs.length - 1), direct: false } : legs[0].stops;
