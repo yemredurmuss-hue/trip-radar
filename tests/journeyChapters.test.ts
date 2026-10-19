@@ -132,6 +132,36 @@ describe("Japonya: seven chapters in the order the trip is lived", () => {
   });
 });
 
+describe("F2 and the step's picture", () => {
+  const { trip, items, by } = japan();
+  const at = (now: string, docs: string[] = []) => {
+    const docsFor = (id: string): DocMeta[] => (docs.includes(id) ? [{ id: `d-${id}`, itemId: id, tripId: trip.id, name: "belge.pdf", type: "application/pdf", size: 1, addedAt: 1 }] : []);
+    const b = boardOf(trip, items, now.slice(0, 10), { docsFor, now: new Date(`${now}:00Z`) });
+    return journeyChapters({ input: b.input, timeline: b.timeline, collections: b.collections });
+  };
+  const home = (v: JourneyView) => chapter(v, "Osaka → İstanbul").steps[0];
+
+  it("47 hours before a booked flight its step leads with the check-in, the PNR beside it; 49 hours before, its file", () => {
+    expect(home(at("2027-04-14T12:00"))).toMatchObject({ code: { label: "PNR", value: "K7T2QX" }, action: { kind: "checkin", label: "Check-in", itemId: by.tk49.id } });
+    expect(home(at("2027-04-14T10:00", [by.tk49.id])).action).toMatchObject({ kind: "doc", label: "E-bilet aç" });
+    expect(withLang("en", () => at("2027-04-14T12:00").chapters.at(-1)!.steps[0].action?.label)).toBe("Check in");
+  });
+
+  it("two weeks before, a booking with no file says so (the amber Belge yok); with its file, or earlier, it doesn't", () => {
+    expect(home(at("2027-04-10T12:00")).docMissing).toBe(true);
+    expect(home(at("2027-04-10T12:00", [by.tk49.id])).docMissing).toBe(false);
+    expect(home(at("2027-03-01T12:00")).docMissing).toBe(false);
+  });
+
+  it("each box's and card's kind, for its drawing; none for Hazırlık, the ideas or the night", () => {
+    const v = at("2026-10-18T12:00");
+    const tokyo = chapter(v, "Tokyo").steps;
+    expect(tokyo.map((s) => s.cardKind)).toEqual(["taxi", "stay", "activity", "food", "activity", "activity", null]);
+    expect(chapter(v, "Yola çıkmadan").steps[0].cardKind).toBeNull();
+    expect(chapter(v, "İstanbul → Tokyo").steps.map((s) => s.cardKind)).toEqual(["flight", null]);
+  });
+});
+
 describe("nightsAboard (D14)", () => {
   it("a night between leaving and landing is the plane's: the flight taken, or every option agreeing", () => {
     const late = flight("IST", "HND", "2027-04-01T23:55", "2027-04-02T18:40", "saved");
