@@ -34,6 +34,7 @@ import { addDays, buildPlan, cityKeyOf, liveGroups, sameCity, stayRange, type Pl
 import { fromPage, saidEdits, withEdits, withoutEdits } from "./userEdits";
 import { L, lang, saveLang, setLang, withLang, type Lang } from "./i18n";
 import { datePlaceholders, isPlaceholder, regionName } from "./startTrip";
+import { shiftText, shiftTrip } from "./shiftTrip";
 import { announceHidden } from "./removal";
 import { getRates } from "./currency";
 import { makeContext } from "./decision";
@@ -535,7 +536,7 @@ function buildTools(en: boolean): ToolSpec[] {
     {
       name: "update_trip",
       description:
-        t("Gezinin adını, kesin tarihlerini ya da bütçesini günceller. budget_amount hedef (mümkünse harcamak istediği), budget_ceiling tavan (kesinlikle aşmayacağı; söylediyse). Değişmeyen alanlar için null ver.", "Updates the trip's name, confirmed dates or budget. budget_amount is the target (what they'd like to spend), budget_ceiling the ceiling (what they won't go over; if they said one). Give null for unchanged fields."),
+        t("Gezinin adını, kesin tarihlerini ya da bütçesini günceller. budget_amount hedef (mümkünse harcamak istediği), budget_ceiling tavan (kesinlikle aşmayacağı; söylediyse). Değişmeyen alanlar için null ver. Tarihler kayınca ('10 Aralık'tan 10 Ocak'a kaydır') start ve end ikisini de ver: tarihi gezinden gelen kayıtlar (yer tutucu uçuşlar, konaklama, transfer, araç) onunla kayar, alınmış kayıtlar ve kendi tarihi olanlar kaymaz. Cevabında sonucun shown'ını söyle; kaymayanı kaydı deme.", "Updates the trip's name, confirmed dates or budget. budget_amount is the target (what they'd like to spend), budget_ceiling the ceiling (what they won't go over; if they said one). Give null for unchanged fields. When the dates move ('move it to 10 December to 10 January'), give both start and end: the records whose days come from the trip (placeholder flights, the stay, transfers, a rental) move with it; booked ones and those with their own dates don't. Say the result's shown in your reply; never say something moved that didn't."),
       schema: {
         type: "object",
         properties: {
@@ -1799,10 +1800,20 @@ async function runTool(tripId: string, name: string, input: any, choices: string
       };
       const changes = (["title", "confirmedDates", "budget"] as const).filter((f) => stableJson(next[f]) !== stableJson(trip[f]));
       if (!changes.length && !onlyCurrency) return JSON.stringify({ unchanged: true, note: L("Hiçbir şey değişmedi.", "Nothing changed.") });
+      // Dates moved: the records whose days came from the trip's move with it (shiftTrip.ts); the booked ones don't,
+      // and the reply says so. The trip as it was decides which are the start's places to fill.
+      const shift = changes.includes("confirmedDates") && trip.confirmedDates && next.confirmedDates ? shiftTrip(trip, items, next.confirmedDates) : null;
+      let current = items;
+      if (shift) {
+        for (const item of shift.moved) await d.put("items", { ...item, updatedAt: Date.now() });
+        current = items.map((i) => shift.moved.find((m) => m.id === i.id) ?? i);
+        if (Object.keys(shift.prints).length && next.startGuide?.placeholders) next.startGuide = { ...next.startGuide, placeholders: { ...next.startGuide.placeholders, ...shift.prints } };
+        if (shift.suggestions) next.suggestions = shift.suggestions;
+      }
       // A trip started without dates: the undated stay and flights it made take the dates (no second set beside them).
       let dated = 0;
       if (changes.includes("confirmedDates") && next.confirmedDates && next.startGuide?.placeholders) {
-        const made = datePlaceholders(next, items, next.confirmedDates);
+        const made = datePlaceholders(next, current, next.confirmedDates);
         for (const item of made.items) await d.put("items", { ...item, updatedAt: Date.now() });
         dated = made.items.length;
         if (dated) next.startGuide = { ...next.startGuide, placeholders: { ...next.startGuide.placeholders, ...made.prints } };
@@ -1811,6 +1822,13 @@ async function runTool(tripId: string, name: string, input: any, choices: string
       const out: Record<string, unknown> = {
         changed: changes,
         ...(dated ? { dated_places: dated } : {}),
+        ...(shift ? {
+          moved: shift.moved.map((i) => ({ item_id: i.id, name: i.name, dates: i.dates })),
+          ...(shift.booked.length ? { booked_not_moved: shift.booked.map((i) => ({ item_id: i.id, name: i.name, dates: i.dates })) } : {}),
+          ...(shift.own.length ? { own_dates_kept: shift.own.map((i) => ({ item_id: i.id, name: i.name, dates: i.dates })) } : {}),
+          shown: shiftText(shift),
+          note: L("Cevabında yalnız shown'ı söyle: kaymayanı kaydı diye söyleme.", "Say only what shown says: never say something moved that didn't."),
+        } : {}),
         title: next.title,
         dates: next.confirmedDates,
         budget: next.budget ? { amount: next.budget.amount, currency: next.budget.currency, ceiling: next.budget.ceiling ?? null } : null,
