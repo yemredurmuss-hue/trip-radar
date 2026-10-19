@@ -1,13 +1,15 @@
 // The small pieces every Pano card and column shares (plan v81–v83 mk83.js srcB, visual, likes, act, score): where it's from, its
 // picture or its carrier's mark, the heart with who liked it, the fit score, and the one button (Seç, + Plana koy, or where it stands).
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 import { L } from "../../../lib/i18n";
 import type { PanoNeed, PanoOption, PanoSource } from "../../../lib/panoBoard";
 import type { SectionId } from "../../../lib/categories";
 import { cardKind } from "../../../lib/cardKinds";
 import { sameName } from "../../../lib/tripSettings";
 import { voteKeyOf } from "../../../lib/share/votes";
-import { chooseItem, toggleLike } from "../../actions";
+import { bookingReplaced, pickAria, pickWord, replaceAsk } from "../../../lib/replaceBooking";
+import { chooseItem, replaceBooking, toggleLike } from "../../actions";
+import { AskWindow, type Ask } from "../../cards/stageMenu";
 import { useShare } from "../../Share";
 import { useMyName } from "../../Profile";
 import { FallbackImg } from "../../FallbackImg";
@@ -69,6 +71,7 @@ export function Visual({ option }: { option: PanoOption }) {
 
 /** The state on the picture: "Alındı", "Planda", "Seçili" (`long`: the comparison's "Şu an seçili"). */
 export function StateChip({ option, multi, long = false }: { option: PanoOption; multi: boolean; long?: boolean }) {
+  if (option.cancelled) return <span className="q-stc">{L("İptal edildi", "Cancelled")}</span>;
   if (!option.current) return null;
   const word = option.current === "booked" ? L("Alındı", "Booked") : multi ? (long ? L("Şu an planda", "On the plan now") : L("Planda", "On the plan")) : long ? L("Şu an seçili", "Chosen now") : L("Seçili", "Chosen");
   return <span className="q-stc">{word}</span>;
@@ -133,10 +136,26 @@ export function PickButton({ option, need }: { option: PanoOption; need: PanoNee
     const word = option.current === "booked" ? `✓ ${L("Alındı", "Booked")}` : need.multi ? L("Planda", "On the plan") : L("Seçili", "Chosen");
     return <span className="q-pick">{word}</span>;
   }
+  return <Pick option={option} need={need} />;
+}
+
+/** "Seç", or with a booking in the need "Bununla değiştir", asked first as on the Plan (replaceBooking.ts). */
+function Pick({ option, need }: { option: PanoOption; need: PanoNeed }) {
+  const [ask, setAsk] = useState<Ask | null>(null);
   const siblings = need.options.filter((o) => o.group === option.group).map((o) => o.item);
+  const bookedId = bookingReplaced(need.options.map((o) => o.item), option.item, need.multi);
+  const booked = bookedId ? (need.options.find((o) => o.id === bookedId)?.item ?? null) : null;
+  const all = need.options.map((o) => o.item);
+  const choose = () => {
+    if (!booked) return void chooseItem(option.item, need.multi ? [] : siblings);
+    setAsk({ ...replaceAsk(booked, option.item), run: () => void replaceBooking(option.item, booked, all) });
+  };
   return (
-    <button type="button" className="q-pick" onClick={() => void chooseItem(option.item, need.multi ? [] : siblings)}>
-      {need.multi ? `+ ${L("Plana koy", "Add to plan")}` : L("Seç", "Choose")}
-    </button>
+    <>
+      <button type="button" className="q-pick" aria-label={booked ? pickAria(option.item.name, true) : undefined} onClick={choose}>
+        {need.multi ? `+ ${L("Plana koy", "Add to plan")}` : pickWord(booked != null)}
+      </button>
+      {ask && <AskWindow ask={ask} onClose={() => setAsk(null)} />}
+    </>
   );
 }

@@ -9,6 +9,7 @@ import { airlineLogos } from "../../../lib/airlines";
 import { L } from "../../../lib/i18n";
 import { optionsHead, SHOWN_OPTIONS, type SelfSearch } from "../../../lib/intentFrame";
 import type { IntentVM, OptionVM } from "../../../lib/intents";
+import { pickAria, pickWord } from "../../../lib/replaceBooking";
 import { rowFace, rowWho, type CarrierMark } from "../../../lib/ticketFrame";
 import { Editable, InlineEdit, useInlineEdit } from "../../cards/InlineEdit";
 import { FallbackImg } from "../../FallbackImg";
@@ -44,7 +45,7 @@ export function BagIcon({ size = 12 }: { size?: number }) {
   );
 }
 
-type RowProps = { o: OptionVM; vm: IntentVM; art: string; current: boolean; onPick: () => void; onOpen: () => void };
+type RowProps = { o: OptionVM; vm: IntentVM; art: string; current: boolean; replacing: boolean; onPick: () => void; onOpen: () => void };
 
 function OptionRow(props: RowProps) {
   return (
@@ -54,7 +55,7 @@ function OptionRow(props: RowProps) {
   );
 }
 
-function RowFace({ o, vm, art, current, onPick, onOpen }: RowProps) {
+function RowFace({ o, vm, art, current, replacing, onPick, onOpen }: RowProps) {
   const f = rowFace(o, vm.kind);
   const who = rowWho(o.source);
   const edit = useInlineEdit();
@@ -126,21 +127,23 @@ function RowFace({ o, vm, art, current, onPick, onOpen }: RowProps) {
             {who.tone === "link" ? <Ic name="link" size={12} stroke={2.2} /> : who.text}
           </span>
         )}
-        <button type="button" className="q-pick" aria-pressed={current || undefined} aria-label={current ? L(`${o.title}: seçili`, `${o.title}: chosen`) : L(`${o.title}: seç`, `${o.title}: choose`)}
+        <button type="button" className="q-pick" aria-pressed={current || undefined} aria-label={current ? L(`${o.title}: seçili`, `${o.title}: chosen`) : pickAria(o.title, replacing)}
           onClick={current ? undefined : onPick}>
-          {current ? L("Seçili", "Chosen") : L("Seç", "Choose")}
+          {current ? L("Seçili", "Chosen") : pickWord(replacing)}
         </button>
       </span>
     </div>
   );
 }
 
-export function OptionRows({ vm, options, current, changing, art, links, onPick, onOpen, onCancel, onAsk }: {
+export function OptionRows({ vm, options, current, changing, replacing = false, art, links, onPick, onOpen, onCancel, onAsk }: {
   vm: IntentVM;
   options: OptionVM[];
   /** The one chosen, marked while changing. */
   current: string | null;
   changing: boolean;
+  /** A booking holds the need: "Seç" is "Bununla değiştir" (replaceBooking.ts). */
+  replacing?: boolean;
   /** The kind's drawing for a carrier with no mark. */
   art: string;
   links: SelfSearch[];
@@ -167,7 +170,7 @@ export function OptionRows({ vm, options, current, changing, art, links, onPick,
       </div>
       <div className="q-rows z-rows">
         {options.map((o) => (
-          <OptionRow key={o.id} o={o} vm={vm} art={art} current={o.id === current} onPick={() => onPick(o)} onOpen={() => onOpen(o)} />
+          <OptionRow key={o.id} o={o} vm={vm} art={art} current={o.id === current} replacing={replacing} onPick={() => onPick(o)} onOpen={() => onOpen(o)} />
         ))}
         {left > 0 && (
           <div className="z-r0" style={{ "--span": left } as React.CSSProperties}>

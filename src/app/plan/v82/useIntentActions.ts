@@ -10,7 +10,7 @@ import { headName } from "../../../lib/intentFrame";
 import { needTitleOf } from "../../../lib/pano";
 import { addDays } from "../../../lib/plan";
 import type { Item } from "../../../lib/types";
-import { addArrangedLike, addArrangedPlanned, arrangeSuggested, chooseItem, dismissSuggestion, hideNights, setArranged, setItemStatus, setNeedNotNeeded } from "../../actions";
+import { addArrangedLike, addArrangedPlanned, arrangeSuggested, chooseItem, dismissSuggestion, hideNights, replaceBooking, setArranged, setItemStatus, setNeedNotNeeded } from "../../actions";
 import { useCardEnv } from "../../cards/PlanCard";
 import { useSearching } from "../../cards/searching";
 import { useV82Env } from "./v82Env";
@@ -65,6 +65,8 @@ export function useIntentActions(vm: IntentVM) {
     label,
     searching,
     choose: (item: Item) => void chooseItem(item, live),
+    /** "Bununla değiştir" said yes to: the booking counts as cancelled, `item` is chosen (actions.replaceBooking). */
+    replace: (item: Item, booked: Item) => void replaceBooking(item, booked, live),
     /** "Aldım": the chosen one is booked. */
     got: (item: Item) => void setItemStatus(item, "booked"),
     skip: (except?: readonly string[]) => void skip(except),

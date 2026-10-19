@@ -18,12 +18,12 @@ import { planSectionOfItem, type SectionId } from "./categories";
 import type { GroupDecision } from "./decision";
 import { L } from "./i18n";
 import { nNights, nReviews } from "./i18nText";
-import { collectionsOf, type IntentInput, type IntentStatus, type IntentVM } from "./intents";
+import { closedOptionsOf, closedWith, collectionsOf, type IntentInput, type IntentStatus, type IntentVM } from "./intents";
 import { INSPO_LABEL, inspoPlatform, type InspoPlatform } from "./inspo";
 import { cancellationText } from "./needs";
 import { ratingText } from "./offerSource";
 import { adderOf, likersOf, savedByMe } from "./pano";
-import { groupKeyOf } from "./plan";
+import { groupKeyOf, stayRange } from "./plan";
 import type { Item } from "./types";
 
 /** The side menu's top entries: everything, what people saved, what the AI found, the inspiration, the trip's documents. */
@@ -78,6 +78,8 @@ export interface PanoOption {
   likes: string[];
   /** On the plan: chosen ("Şu an seçili", "Planda") or bought ("Alındı"). Our pick is not on the plan until it is taken. */
   current: "chosen" | "booked" | null;
+  /** A booking said cancelled (İptal edildi; 0.39.0: switched for another page): still one of its need's options here. */
+  cancelled?: boolean;
   url: string | null;
 }
 
@@ -304,6 +306,7 @@ function optionOf(item: Item, need: IntentVM, ctx: Ctx, planned: ReadonlySet<str
     ai: adderOf(item) === "ai",
     likes: likersOf(item),
     current: currentOf(item, multi, planned),
+    ...(item.cancelledAt && item.status === "dismissed" ? { cancelled: true } : {}),
     url: item.url,
   };
 }
@@ -365,6 +368,12 @@ export function ideasOf(items: readonly Item[], me: string | null): PanoIdea[] {
     });
 }
 
+/** Two stays for some of the same nights: one decision (a booking switched for a page with a night less is still that stay's). */
+function sharesNights(a: Item, b: Item): boolean {
+  const [x, y] = [stayRange(a), stayRange(b)];
+  return a.category === "stay" && b.category === "stay" && x != null && y != null && x.start < y.end && y.start < x.end;
+}
+
 /** The Pano's whole content: the categories with their intents and options (only intents that have options), the inspiration, the numbers. */
 export function panoBoardOf(input: PanoInput): PanoBoard {
   const byItem = new Map<string, GroupDecision>();
@@ -382,9 +391,16 @@ export function panoBoardOf(input: PanoInput): PanoBoard {
   // one of its need's options here (what the trip gathered stays on the Pano).
   const placed = new Set(collections.flatMap((c) => c.intents.flatMap((x) => x.records.map((i) => i.id))));
   const singles = collections.flatMap((c) => c.intents).filter((x) => x.need.frame !== "collection" && x.records.length);
+  // The box's own rule (intents.closedOptionsOf): a page chosen under a booking, or saved for nights a booking holds, is here too.
+  for (const option of closedOptionsOf(input, placed)) {
+    if (!live(option.item)) continue;
+    const home = singles.find((x) => closedWith(option, x.records));
+    if (home) home.records.push(option.item);
+  }
+  // A booking said cancelled (0.39.0: "Bununla değiştir") waits under Gizlenenler, and stays with what its need gathered here.
   for (const item of input.items) {
-    if (!live(item) || placed.has(item.id) || item.status !== "saved") continue;
-    const home = singles.find((x) => x.records.some((r) => groupKeyOf(r) === groupKeyOf(item)));
+    if (item.status !== "dismissed" || !item.cancelledAt || placed.has(item.id)) continue;
+    const home = singles.find((x) => x.records.some((r) => r.status !== "dismissed" && (groupKeyOf(r) === groupKeyOf(item) || sharesNights(r, item))));
     if (home) home.records.push(item);
   }
   const cats: PanoCategory[] = collections.flatMap(({ section, intents }) => {

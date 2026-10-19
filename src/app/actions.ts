@@ -276,6 +276,22 @@ export async function chooseItem(item: Item, alternatives: Item[]): Promise<void
 }
 
 /**
+ * "Bununla değiştir" said yes to (replaceBooking.ts): the booking counts as cancelled, kept the way "İptal ettim" keeps it
+ * (ruled out with the day, under Gizlenenler, "Geri getir" books it again), and `next` is chosen in its place. One history
+ * line says both.
+ */
+export async function replaceBooking(next: Item, booked: Item, alternatives: Item[]): Promise<void> {
+  const d = await db();
+  const found = (await d.get("items", booked.id)) ?? booked;
+  if (found.status === "booked") {
+    const now = Date.now();
+    await d.put("items", { ...found, status: "dismissed", dismissedFrom: "booked", cancelledAt: now, refundNote: null, statusAt: now, updatedAt: now });
+    await addEvent(booked.tripId, L(`${booked.name} iptal edildi sayıldı, yerine ${next.name} seçildi`, `${booked.name} counted as cancelled, ${next.name} chosen instead`));
+  }
+  await chooseItem(next, alternatives.filter((i) => i.id !== booked.id));
+}
+
+/**
  * Deletes a record and its files from anywhere outside a plan card (the drawer, "Ayrı olmasın"), with the
  * same 8-second "Geri al" as a card's Sil: the board picks it up from announceRemoved. No confirm dialog.
  */

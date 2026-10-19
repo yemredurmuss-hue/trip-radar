@@ -9,6 +9,7 @@ import { L } from "../../../lib/i18n";
 import { locative } from "../../../lib/i18nText";
 import { badgeWord, optionPrice, optionsHead, ratingParts, SHOWN_OPTIONS, sourceBadge, type SelfSearch } from "../../../lib/intentFrame";
 import type { IntentVM, OptionVM } from "../../../lib/intents";
+import { pickAria, pickWord } from "../../../lib/replaceBooking";
 import { Editable, InlineEdit, useInlineEdit } from "../../cards/InlineEdit";
 import { Ic, Mark } from "./icons";
 
@@ -62,7 +63,7 @@ export function SourceBadge({ option }: { option: OptionVM }) {
 /** A stay's usual range by the night as its source gives it (stayPicks.typicalNight), for an option with no price. */
 export type Typical = (o: OptionVM) => { amount: string; unit: string; title: string } | null;
 
-type CardProps = { o: OptionVM; art: string; current: boolean; typical: Typical | null; onPick: () => void; onOpen: () => void };
+type CardProps = { o: OptionVM; art: string; current: boolean; replacing: boolean; typical: Typical | null; onPick: () => void; onOpen: () => void };
 
 function OptionCard(props: CardProps) {
   return (
@@ -72,7 +73,7 @@ function OptionCard(props: CardProps) {
   );
 }
 
-function OptionFace({ o, art, current, typical, onPick, onOpen }: CardProps) {
+function OptionFace({ o, art, current, replacing, typical, onPick, onOpen }: CardProps) {
   const price = optionPrice(o.price);
   const usual = price ? null : (typical?.(o) ?? null);
   const tag = o.badges[0];
@@ -120,9 +121,9 @@ function OptionFace({ o, art, current, typical, onPick, onOpen }: CardProps) {
               </span>
             )}
           </Editable>
-          <button type="button" className="q-pick" aria-pressed={current || undefined} aria-label={current ? L(`${o.title}: seçili`, `${o.title}: chosen`) : L(`${o.title}: seç`, `${o.title}: choose`)}
+          <button type="button" className="q-pick" aria-pressed={current || undefined} aria-label={current ? L(`${o.title}: seçili`, `${o.title}: chosen`) : pickAria(o.title, replacing)}
             onClick={current ? undefined : onPick}>
-            {current ? L("Seçili", "Chosen") : L("Seç", "Choose")}
+            {current ? L("Seçili", "Chosen") : pickWord(replacing)}
           </button>
         </div>
       </div>
@@ -130,12 +131,14 @@ function OptionFace({ o, art, current, typical, onPick, onOpen }: CardProps) {
   );
 }
 
-export function OptionList({ vm, options, current, changing, art, links, typical = null, onPick, onOpen, onCancel, onAsk }: {
+export function OptionList({ vm, options, current, changing, replacing = false, art, links, typical = null, onPick, onOpen, onCancel, onAsk }: {
   vm: IntentVM;
   options: OptionVM[];
   /** The one chosen, marked while changing. */
   current: string | null;
   changing: boolean;
+  /** A booking holds the need: "Seç" is "Bununla değiştir" (replaceBooking.ts). */
+  replacing?: boolean;
   /** The kind's drawing for an option with no photo. */
   art: string;
   links: SelfSearch[];
@@ -163,7 +166,7 @@ export function OptionList({ vm, options, current, changing, art, links, typical
       </div>
       <div className="q-cards z-ocs">
         {options.map((o) => (
-          <OptionCard key={o.id} o={o} art={art} current={o.id === current} typical={typical} onPick={() => onPick(o)} onOpen={() => onOpen(o)} />
+          <OptionCard key={o.id} o={o} art={art} current={o.id === current} replacing={replacing} typical={typical} onPick={() => onPick(o)} onOpen={() => onOpen(o)} />
         ))}
         {left > 0 && (
           <div className="z-oc0" style={{ "--span": left } as React.CSSProperties}>

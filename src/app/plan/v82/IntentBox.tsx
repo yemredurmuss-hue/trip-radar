@@ -16,6 +16,7 @@ import { queryOf, type StayCandidate } from "../../../lib/offerSources";
 import { typicalNight } from "../../../lib/stayPicks";
 import type { IntentStatus, IntentVM, OptionVM } from "../../../lib/intents";
 import { addDays } from "../../../lib/plan";
+import { bookingReplaced, replaceAsk } from "../../../lib/replaceBooking";
 import { regionHints, type RegionHint } from "../../../lib/regionHints";
 import { waySearches } from "../../../lib/ticketFrame";
 import type { InsertAt } from "../../../lib/templates";
@@ -33,7 +34,7 @@ import { InlineEdit } from "../../cards/InlineEdit";
 import { datedLink } from "../../cards/parts";
 import { useCardEnv } from "../../cards/PlanCard";
 import { hasSearched } from "../../cards/searching";
-import { useStageMenu } from "../../cards/stageMenu";
+import { AskWindow, useStageMenu, type Ask } from "../../cards/stageMenu";
 import { useWhoMenu } from "../../cards/whoMenu";
 import { FOLD_MS, reducedMotion } from "../../motion";
 import { CollectionRow } from "./CollectionRow";
@@ -276,9 +277,16 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
     setFolding(true);
     setTimeout(skipNow, FOLD_MS);
   };
-  const pick = (o: OptionVM) => {
+  // A booking in the box: another option is a switch, asked first (replaceBooking.ts); Vazgeç leaves everything as it was.
+  const booking = vm.frame !== "collection" && record?.status === "booked" ? record : null;
+  const [asking, setAsking] = useState<Ask | null>(null);
+  const pick = (o: OptionVM, then?: () => void) => {
     entry.current = "morph";
     if (o.id === chosenId) return setChanging(false);
+    if (booking && bookingReplaced([booking], o.item)) {
+      return setAsking({ ...replaceAsk(booking, o.item), run: () => (then?.(), a.replace(o.item, booking)) });
+    }
+    then?.();
     a.choose(o.item);
   };
   const change = () => {
@@ -357,7 +365,7 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
     );
   } else if (showOptions) {
     const options = changing ? changeList(vm) : vm.options.slice(0, SHOWN_OPTIONS);
-    const list = { vm, options, current: changing ? currentOption(vm) : null, changing, art, links, typical, onPick: pick, onOpen: (o: OptionVM) => env.onOpenItem(o.item), onCancel: cancelChange, onAsk: a.ask };
+    const list = { vm, options, current: changing ? currentOption(vm) : null, changing, replacing: booking != null, art, links, typical, onPick: (o: OptionVM) => pick(o), onOpen: (o: OptionVM) => env.onOpenItem(o.item), onCancel: cancelChange, onAsk: a.ask };
     body = vm.frame === "ticket" ? <OptionRows {...list} /> : <OptionList {...list} />;
   } else if (form) {
     const props = {
@@ -467,16 +475,14 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
       {others.length > 0 && (
         <OthersFold count={others.length} open={othersShown} onToggle={() => showOthers(!othersShown)}>
           {(() => {
-            // "Seç" folds them at once, before the pick is saved.
-            const onPick = (o: OptionVM) => {
-              showOthers(false);
-              pick(o);
-            };
-            const list = { vm: { ...vm, optionCount: others.length }, options: others, current: null, changing: false, art, links, typical, onPick, onOpen: (o: OptionVM) => env.onOpenItem(o.item), onCancel: cancelChange, onAsk: vm.status === "booked" ? null : a.ask };
+            // "Seç" folds them at once, before the pick is saved; a switch only once it is said yes to.
+            const onPick = (o: OptionVM) => pick(o, () => showOthers(false));
+            const list = { vm: { ...vm, optionCount: others.length }, options: others, current: null, changing: false, replacing: booking != null, art, links, typical, onPick, onOpen: (o: OptionVM) => env.onOpenItem(o.item), onCancel: cancelChange, onAsk: vm.status === "booked" ? null : a.ask };
             return vm.frame === "ticket" ? <OptionRows {...list} /> : <OptionList {...list} />;
           })()}
         </OthersFold>
       )}
+      {asking && <AskWindow ask={asking} onClose={() => setAsking(null)} />}
     </>
   );
 }

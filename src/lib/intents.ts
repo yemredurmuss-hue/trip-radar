@@ -1177,6 +1177,33 @@ function sectionsWith(sections: CatSection[], env: Env): Built[] {
   });
 }
 
+/** A record the plan closed that is still one of its need's options, and the record that closed it (plan.closed's `by`). */
+export interface ClosedOption {
+  item: Item;
+  by: string | null;
+}
+
+/**
+ * The records the plan closed that are still options (0.38.5), not drawn anywhere else: a saved one, and a page chosen while
+ * a booking held its nights (0.39.0, Emre: "Seç" under a booking made it vanish, from the Pano too). A plan said in the chat
+ * and the start's placeholders are not options (the plan sets them aside on purpose).
+ */
+export function closedOptionsOf(input: Pick<IntentInput, "items" | "plan" | "trip">, placed: ReadonlySet<string>): ClosedOption[] {
+  const by = new Map(input.plan.closed.map((c) => [c.item.id, c.by ?? null]));
+  return input.items
+    .filter((i) => !placed.has(i.id) && (i.status === "saved" || (i.status === "chosen" && i.origin !== "chat" && by.has(i.id) && !isPlaceholder(input.trip, i) && !bareChatPlan(i))))
+    .map((item) => ({ item, by: by.get(item.id) ?? null }));
+}
+
+/**
+ * Whether a closed option goes with these records: the same comparison (groupKeyOf), or, for a stay, the booking whose nights
+ * closed it (0.39.0: a page saved from the extension for 25 Kasım – 3 Aralık under a booking for 24 Kasım – 3 Aralık).
+ */
+export function closedWith(option: ClosedOption, records: readonly Item[]): boolean {
+  const key = groupKeyOf(option.item);
+  return records.some((r) => groupKeyOf(r) === key || (option.item.category === "stay" && r.id === option.by));
+}
+
 /**
  * A saved option a booking closed (plan.ts: "… rezervasyonu bu geceleri kapsıyor") leaves the plan's buckets, yet it is
  * still one of its need's options (0.38.5, Emre: the box shows the booking big and the others under it, the Pano and the
@@ -1185,18 +1212,13 @@ function sectionsWith(sections: CatSection[], env: Env): Built[] {
  */
 function withClosedOptions(built: Built[], env: Env): Built[] {
   const placed = new Set(built.flatMap((b) => b.intents.flatMap((i) => i.itemIds)));
-  const strays = env.input.items.filter((i) => i.status === "saved" && !placed.has(i.id));
+  const strays = closedOptionsOf(env.input, placed);
   if (!strays.length) return built;
   const taken = new Set<string>();
   const gather = (vm: IntentVM): IntentVM => {
     if (vm.frame === "collection" || !vm.itemIds.length) return vm;
-    const keys = new Set(
-      vm.itemIds
-        .map((id) => env.byId.get(id))
-        .filter((i): i is Item => i != null && i.status !== "dismissed" && !bareChatPlan(i))
-        .map(groupKeyOf),
-    );
-    const mine = strays.filter((i) => !taken.has(i.id) && keys.has(groupKeyOf(i)));
+    const records = vm.itemIds.map((id) => env.byId.get(id)).filter((i): i is Item => i != null && i.status !== "dismissed" && !bareChatPlan(i));
+    const mine = strays.filter((s) => !taken.has(s.item.id) && closedWith(s, records)).map((s) => s.item);
     if (!mine.length) return vm;
     for (const i of mine) taken.add(i.id);
     const shown = new Set([...vm.options.map((o) => o.id), ...(vm.chosen ? [vm.chosen.id] : [])]);
