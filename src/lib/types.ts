@@ -597,6 +597,8 @@ export interface Capture {
   itemId: string | null;
   /** Came from a shared trip: it goes into this trip, not wherever chooseTrip would put it. */
   forTripId?: string;
+  /** The traveller's own words the link was sent with in the chat ("Bu hosteli ekle …", 0.39.4): the card's note. */
+  note?: string;
   /**
    * Handed over in this trip's chat: routed as any capture, but checked against this trip's places, and the
    * trip says where it went (or asks) when it doesn't belong here (placeCheck.ts).

@@ -104,8 +104,14 @@ export async function saveSnapshot(snapshot: PageSnapshot, screenshot: string | 
  * place is far from that trip's (placeCheck.ts). `fromTripId`: sent in that trip's chat (routed as any capture,
  * checked against that trip).
  */
-export async function savePastedLink(url: string, forTripId?: string, fromTripId?: string): Promise<Capture> {
-  const capture: Capture = { ...baseCapture("paste-link"), url, ...(forTripId ? { forTripId } : {}), ...(fromTripId && !forTripId ? { fromTripId } : {}) };
+export async function savePastedLink(url: string, forTripId?: string, fromTripId?: string, note?: string | null): Promise<Capture> {
+  const capture: Capture = {
+    ...baseCapture("paste-link"),
+    url,
+    ...(forTripId ? { forTripId } : {}),
+    ...(fromTripId && !forTripId ? { fromTripId } : {}),
+    ...(note?.trim() ? { note: note.trim().slice(0, 300) } : {}),
+  };
   await (await db()).put("captures", capture);
   notifyChanged();
   return capture;

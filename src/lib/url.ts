@@ -153,6 +153,28 @@ export function looksLikeUrl(text: string): boolean {
 }
 
 /**
+ * The links inside a line written around them ("Bu hosteli ekle https://… kahvaltılı olan", 0.39.4) and the line without
+ * them (the traveller's note). A mark that closes the sentence after a link (".", ",", ")", "!") isn't the link's.
+ * No link: none.
+ */
+export function linksInText(text: string): { urls: string[]; note: string } {
+  const urls: string[] = [];
+  const note = text
+    .replace(/(\(?)(https?:\/\/[^\s<>"]+)/gi, (_all, open: string, raw: string) => {
+      let url = raw;
+      // A sentence's marks after the link, and the bracket it was written in, aren't the link's.
+      while (/[.,;:!?)\]}'"»]$/.test(url) && !(url.endsWith(")") && !open && url.includes("("))) url = url.slice(0, -1);
+      if (looksLikeUrl(url)) urls.push(url);
+      return " ";
+    })
+    .replace(/\s+/g, " ")
+    .replace(/\s+([.,;:!?])/g, "$1")
+    .replace(/^[\s,.;:]+|[\s,;:]+$/g, "")
+    .trim();
+  return { urls, note: /[\p{L}\p{N}]/u.test(note) ? note : "" };
+}
+
+/**
  * The same listing with the stay's dates (and guests) filled in, so saving it again brings the real
  * price for those nights. Only for sites whose date parameters are known; null otherwise.
  */

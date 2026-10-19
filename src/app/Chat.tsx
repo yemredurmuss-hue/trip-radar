@@ -16,7 +16,7 @@ import { DropOverlay } from "./arrive/ArriveViews";
 import { useChatArrivals } from "./arrive/ChatArrivals";
 import { requestReveal } from "./arrive/intake";
 import { droppedLinks, useDropZone } from "./arrive/useDropZone";
-import { addLinks, addTripFiles, isTripFile } from "./capture";
+import { addLinks, addLinksInLine, addTripFiles, isTripFile } from "./capture";
 import { UiIcon } from "./cards/Silhouettes";
 import { ChatCard } from "./chat/ChatCard";
 import type { PlanLink } from "./chat/planLink";
@@ -153,7 +153,10 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
     const input = value.trim();
     if (!input || busy) return;
     clearError();
-    if (await addLinks(input, { tripId: trip.id, source: "chat" })) {
+    // A link alone, or links inside a line ("Bu hosteli ekle https://…"): saved as candidates, the line their note; a
+    // line that also asks something ("… merkeze yakın mı?") goes on to the chat as well.
+    const links = await addLinksInLine(input, { tripId: trip.id, source: "chat" });
+    if (links === "links") {
       setText("");
       return;
     }

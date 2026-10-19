@@ -217,7 +217,8 @@ export function buildItem(
             "Onay gibi görünüyor ama rezervasyon numarası okunamadı; rezerve ettiysen işaretle",
             "Looks like a confirmation, but no booking number could be read; mark it if you booked it",
           )
-        : null,
+        : // The line the link was sent with in the chat ("Bu hosteli ekle, kahvaltılı olan": 0.39.4), as its note.
+          (capture.note?.trim() || null),
     createdAt: now,
     updatedAt: now,
   };

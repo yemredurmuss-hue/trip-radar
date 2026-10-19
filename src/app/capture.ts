@@ -11,7 +11,7 @@ import { describeError } from "../lib/llm";
 import type { Attachment } from "../lib/llm/types";
 import { saveImage, savePastedLink } from "../lib/process";
 import type { DocRecord } from "../lib/types";
-import { looksLikeUrl } from "../lib/url";
+import { linksInText, looksLikeUrl } from "../lib/url";
 import { sectionOfItem } from "../lib/categories";
 import { addIntake, intakeNow, updateIntake, type FileIntake, type IntakeSource, type LinkIntake } from "./arrive/intake";
 
@@ -43,6 +43,26 @@ export async function addLinks(text: string, from?: { tripId: string | null; sou
   }
   requestProcessing();
   return true;
+}
+
+/**
+ * A chat line with links written around them ("Bu hosteli ekle https://…", 0.39.4: only a line of bare links was taken):
+ * each link is saved as a candidate for this trip, the line without them its note. "links": nothing more to do; "ask":
+ * the line is a question too ("… merkeze yakın mı?"), so the chat answers it as well; false: no link in it.
+ */
+export async function addLinksInLine(text: string, from: { tripId: string | null; source: IntakeSource }): Promise<"links" | "ask" | false> {
+  if (await addLinks(text, from)) return "links";
+  const { urls, note } = linksInText(text);
+  if (!urls.length) return false;
+  const forTrip = from.source === "board" && from.tripId ? from.tripId : undefined;
+  const fromTrip = from.source === "chat" && from.tripId ? from.tripId : undefined;
+  for (const url of urls) {
+    const capture = await savePastedLink(url, forTrip, fromTrip, note || null);
+    addIntake<LinkIntake>({ kind: "link", tripId: from.tripId, source: from.source, url, captureId: capture.id });
+  }
+  requestProcessing();
+  // A question mark ending the line or its words (also one written right after the link) is a question for the chat.
+  return note && (/\?\s*$/.test(note) || /\?\s*$/.test(text.trim())) ? "ask" : "links";
 }
 
 /** A file this intake takes (a PDF or a picture; the rest is refused with a message). */
