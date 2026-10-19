@@ -14,7 +14,7 @@ import { buildPlan } from "../src/lib/plan";
 import { SIGNAL_IDS, signalsOf, shapeOf, startPlaybook, validModelPlaybook, planSchema, type RawPlan } from "../src/lib/playbooks";
 import { wouldMake } from "../src/lib/startCreate";
 import {
-  acceptExtraction, applyAnswer, applyText, creationOf, isPlaceholder, looksLikePlace, mergeExtracted, newStart, nextQuestion, parseStartText, placeholderPrint, turnSystem, withTypedLang,
+  acceptExtraction, agreeRoute, applyAnswer, applyText, creationOf, isPlaceholder, isRouteDraft, looksLikePlace, mergeExtracted, newStart, nextQuestion, parseStartText, placeholderPrint, routeForGenerate, turnSystem, withTypedLang,
   type RawExtraction, type StartState,
 } from "../src/lib/startTrip";
 import { ruleSuggestions } from "../src/lib/suggestions";
@@ -542,6 +542,105 @@ describe("H13 and H10: the way there, a day out, a long name", () => {
     expect(looksLikePlace(name)).toBe(true);
     const e = acceptExtraction(raw({ destination: name, destination_country: "Birleşik Krallık", destination_country_code: "GB" }), TODAY);
     expect(e.where?.place.toLocaleLowerCase("tr")).toBe(name.toLocaleLowerCase("tr"));
+  });
+});
+
+// --- D5: the AI's route nobody agreed ------------------------------------------------------------------------------
+
+describe("D5: a route only proposed is built as Önerimiz", () => {
+  const lanka = () => fromIst(typed(fresh(), "Sabine ile 20 Kasım'dan 2 hafta Sri Lanka"));
+  const generated = (s: StartState) => ({ ...s, route: routeForGenerate(s) });
+  const status = (b: ReturnType<typeof made>, section: string) => b.intents.filter((i) => i.section === section).map((i) => [i.head.name, i.status, i.routeDraft ?? false]);
+
+  it("Oluştur with the circuit on screen: its cities' stays, the flights and the ways between are Önerimiz with nothing chosen", () => {
+    const s = generated(lanka());
+    expect(s.route).toMatchObject({ source: "circuit", confirmed: true, proposed: true });
+    const b = made(s);
+    expect(isRouteDraft(b.trip)).toBe(true);
+    expect(status(b, "stay")).toEqual([
+      ["Sigiriya", "suggested", true],
+      ["Kandy", "suggested", true],
+      ["Ella", "suggested", true],
+      ["Mirissa", "suggested", true],
+    ]);
+    expect(status(b, "flight").map((r) => r.slice(1))).toEqual([["suggested", true], ["suggested", true]]);
+    const ways = b.intents.filter((i) => i.section === "transport");
+    expect(ways.length).toBeGreaterThan(0);
+    expect(ways.every((i) => i.status === "suggested" && i.routeDraft)).toBe(true);
+    for (const i of b.intents.filter((x) => x.routeDraft)) {
+      expect(i.chosen).toBeNull();
+      expect(i.word).toBe("Önerimiz");
+      expect(i.note).toBe("Rota AI'ın önerisi; onaylayınca kesinleşir");
+    }
+    // Still looked for the same way: a change of city keeps its ways to pick (C15).
+    expect(ways.some((i) => i.modes.length > 0)).toBe(true);
+    // The rest of the trip isn't the route's: the eSIM, the insurance… stay as they are.
+    expect(b.intents.filter((i) => !["flight", "stay", "transport"].includes(i.section)).some((i) => i.routeDraft)).toBe(false);
+  });
+
+  it("Rotayı onayla: the same boxes, to find", () => {
+    const b = made(generated(lanka()));
+    const agreed = agreeRoute(b.trip);
+    expect(isRouteDraft(agreed)).toBe(false);
+    expect(agreed.startGuide?.placeholders).toEqual(b.trip.startGuide?.placeholders);
+    const after = board(agreed, b.items);
+    expect(after.intents.filter((i) => i.section === "stay").map((i) => [i.head.name, i.status])).toEqual([
+      ["Sigiriya", "searching"],
+      ["Kandy", "searching"],
+      ["Ella", "searching"],
+      ["Mirissa", "searching"],
+    ]);
+    expect(after.intents.some((i) => i.routeDraft)).toBe(false);
+  });
+
+  it("a route the traveller agreed, one stop, or a stay with an option of its own is not a proposal", () => {
+    const s = lanka();
+    const agreed = withLang("tr", () => applyAnswer(s, { q: "route", action: "accept" }, 3));
+    expect(routeForGenerate(agreed)?.proposed).toBeUndefined();
+    expect(isRouteDraft(made(generated(agreed)).trip)).toBe(false);
+    const single = withLang("tr", () => applyAnswer(s, { q: "route", action: "single" }, 3));
+    expect(routeForGenerate(single)?.proposed).toBeUndefined();
+    const b = made(generated(s));
+    const kandy = b.items.find((i) => i.category === "stay" && i.city === "Kandy")!;
+    const hotel = makeItem({ id: "kandy-hotel", tripId: b.trip.id, category: "stay", name: "Kandy Hills", city: "Kandy", status: "saved", dates: { ...kandy.dates } });
+    const withHotel = board(b.trip, [...b.items, hotel]);
+    const box = withHotel.intents.find((i) => i.itemIds.includes("kandy-hotel"))!;
+    expect(box.status).toBe("deciding");
+    expect(box.routeDraft).toBeUndefined();
+  });
+});
+
+// --- H7 (D6): a stay is a stretch of nights ------------------------------------------------------------------------
+
+describe("H7: open nights in different cities never merge; two hotels in one city are two stays", () => {
+  const trip: Trip = { id: "h7", title: "Japonya", confirmedDates: { start: "2027-04-05", end: "2027-04-16" }, budget: null, heroImage: null, createdAt: 1, updatedAt: 1 };
+  const st = (id: string, name: string, city: string, start: string, end: string, status: Item["status"] = "saved") =>
+    makeItem({ id, tripId: "h7", name, category: "stay", city, needKey: `stay:${city.toLowerCase()}`, dates: { start, end, source: "page" }, status });
+  const stays = (b: ReturnType<typeof board>) => b.intents.filter((i) => i.section === "stay").map((i) => [i.head.name, i.status, i.head.nights]);
+
+  it("22b: Kyoto's option for the 5th to the 9th, Osaka's for the 12th to the 16th: Kyoto, the nights between, Osaka", () => {
+    const b = board(trip, [st("gion", "Gion", "Kyoto", "2027-04-05", "2027-04-09"), st("swiss", "Swiss", "Osaka", "2027-04-12", "2027-04-16")]);
+    expect(b.plan.stayBlocks.map((x) => [x.kind, x.city, x.range.start, x.range.end])).toEqual([
+      ["open", "Kyoto", "2027-04-05", "2027-04-09"],
+      ["open", null, "2027-04-09", "2027-04-12"],
+      ["open", "Osaka", "2027-04-12", "2027-04-16"],
+    ]);
+    const [kyoto, between, osaka] = b.intents.filter((i) => i.section === "stay");
+    expect([kyoto.status, kyoto.itemIds, kyoto.head.nights]).toEqual(["deciding", ["gion"], 4]);
+    expect([between.status, between.itemIds, between.head.nights]).toEqual(["searching", [], 3]);
+    expect([osaka.status, osaka.itemIds, osaka.head.nights]).toEqual(["deciding", ["swiss"], 4]);
+  });
+
+  it("the nights an option leaves in its own city stay with it; a choice's uncovered nights are a stay of their own", () => {
+    const one = board(trip, [st("gion", "Gion", "Kyoto", "2027-04-05", "2027-04-09")]);
+    expect(one.plan.stayBlocks.map((x) => [x.kind, x.range.start, x.range.end])).toEqual([["open", "2027-04-05", "2027-04-16"]]);
+    const chosen = board(trip, [st("gion", "Gion", "Kyoto", "2027-04-05", "2027-04-09", "chosen")]);
+    expect(stays(chosen).map((r) => r.slice(1))).toEqual([["chosen", 4], ["searching", 7]]);
+  });
+
+  it("two hotels in Kyoto, one after the other: two stays", () => {
+    const b = board(trip, [st("gion", "Gion", "Kyoto", "2027-04-05", "2027-04-09", "chosen"), st("ryokan", "Ryokan", "Kyoto", "2027-04-09", "2027-04-12", "chosen"), st("swiss", "Swiss", "Osaka", "2027-04-12", "2027-04-16")]);
+    expect(stays(b).map((r) => r.slice(1))).toEqual([["chosen", 4], ["chosen", 3], ["deciding", 4]]);
   });
 });
 

@@ -27,7 +27,7 @@ import { useCardEnv } from "../../cards/PlanCard";
 import { WhoseBadge } from "../../cards/WhoseBadge";
 import { flysIn } from "../../motion";
 import { CopyCode } from "./DetailLayer";
-import type { FrameCardProps } from "./FrameCard";
+import { AgreeRoute, type FrameCardProps } from "./FrameCard";
 import { Ic, Mark } from "./icons";
 import { ModePicker } from "./ModePicker";
 import { BagIcon, CarrierLogo } from "./OptionRow";
@@ -224,7 +224,7 @@ function SelfMarks({ links }: { links: SelfSearch[] }) {
   );
 }
 
-export function FrameTicket({ vm, form, page, links, info, detail, quiet, on, onCover, ways, onReset, onLegGot }: FrameTicketProps) {
+export function FrameTicket({ vm, form, page, links, info, detail, quiet, on, onCover, onAgree = null, ways, onReset, onLegGot }: FrameTicketProps) {
   const o = vm.chosen;
   const edit = useInlineEdit();
   const env = useCardEnv();
@@ -381,10 +381,14 @@ export function FrameTicket({ vm, form, page, links, info, detail, quiet, on, on
     <Side
       top={<SelfMarks links={links} />}
       primary={
-        on.ask && (
-          <button type="button" className="q-ai" onClick={on.ask}>
-            <Ic name="spark" size={15} /> {L("AI'dan öner", "Ask the AI")}
-          </button>
+        onAgree ? (
+          <AgreeRoute onAgree={onAgree} />
+        ) : (
+          on.ask && (
+            <button type="button" className="q-ai" onClick={on.ask}>
+              <Ic name="spark" size={15} /> {L("AI'dan öner", "Ask the AI")}
+            </button>
+          )
         )
       }
       row={
@@ -397,6 +401,11 @@ export function FrameTicket({ vm, form, page, links, info, detail, quiet, on, on
           </small>
         ) : (
           <>
+            {onAgree && on.ask && (
+              <button type="button" className="q-chg" onClick={on.ask}>
+                {L("AI'dan öner", "Ask the AI")}
+              </button>
+            )}
             {onLegGot && (
               <button type="button" className="q-got" onClick={onLegGot}>
                 <Ic name="check" size={13} stroke={2.6} /> {L("Aldım", "Got it")}

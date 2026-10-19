@@ -141,7 +141,7 @@ export async function runStep(id: StepId, s: StartState, env: StepEnv = {}): Pro
         // A budget a trip kind's answer set, when the trip has none yet (never over one said on the board).
         ...(c.budget && !existing.budget ? { budget: c.budget } : {}),
         confirmedDates: c.dates,
-        startGuide: { ...(existing.startGuide ?? { createdAt: now() }), road: c.road || undefined, approxStart: c.approxStart, way: c.way ?? undefined, dayTrip: c.dayTrip || undefined },
+        startGuide: { ...(existing.startGuide ?? { createdAt: now() }), road: c.road || undefined, approxStart: c.approxStart, way: c.way ?? undefined, dayTrip: c.dayTrip || undefined, routeDraft: c.routeDraft || undefined },
         lang: s.lang,
         ...(c.parents && !existing.placeParents ? { placeParents: c.parents } : {}),
         updatedAt: now(),
@@ -157,7 +157,7 @@ export async function runStep(id: StepId, s: StartState, env: StepEnv = {}): Pro
       confirmedDates: c.dates,
       budget: c.budget,
       heroImage: null,
-      startGuide: { createdAt: now(), ...(c.road ? { road: true } : {}), ...(c.approxStart ? { approxStart: c.approxStart } : {}), ...(c.way ? { way: c.way } : {}), ...(c.dayTrip ? { dayTrip: true } : {}) },
+      startGuide: { createdAt: now(), ...(c.road ? { road: true } : {}), ...(c.approxStart ? { approxStart: c.approxStart } : {}), ...(c.way ? { way: c.way } : {}), ...(c.dayTrip ? { dayTrip: true } : {}), ...(c.routeDraft ? { routeDraft: true } : {}) },
       // The conversation's language: the trip's chat and its suggestions go on in it.
       lang: s.lang,
       // Ubud, Canggu and Uluwatu are Bali's: the hero says Bali without asking the model.
@@ -386,7 +386,7 @@ export function wouldMake(s: StartState, now = Date.now()): { trip: Trip; items:
       confirmedDates: c.dates,
       budget: c.budget,
       heroImage: null,
-      startGuide: { createdAt: now, ...(c.road ? { road: true } : {}), ...(c.way ? { way: c.way } : {}), ...(c.dayTrip ? { dayTrip: true } : {}) },
+      startGuide: { createdAt: now, ...(c.road ? { road: true } : {}), ...(c.way ? { way: c.way } : {}), ...(c.dayTrip ? { dayTrip: true } : {}), ...(c.routeDraft ? { routeDraft: true } : {}) },
       ...(c.parents ? { placeParents: c.parents } : {}),
       ...(people && typeof people !== "string" ? { travellers: people.travellers } : {}),
       ...(intent ? { intent } : {}),

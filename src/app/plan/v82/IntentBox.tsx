@@ -18,6 +18,7 @@ import type { InsertAt } from "../../../lib/templates";
 import type { Item, LegChoice } from "../../../lib/types";
 import { entryDomId } from "../../../lib/progress";
 import { withLegChoice } from "../../../lib/legs";
+import { agreeRoute } from "../../../lib/startTrip";
 import { setHidden, setInstalled, setItemStatus, cancelBooking, updateTrip } from "../../actions";
 import type { MenuEntry } from "../../cards/CardShell";
 import { openDoc, useDocPick } from "../../cards/DocAccess";
@@ -172,7 +173,8 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
   const [changing, setChanging] = useState(false);
   const [detail, setDetail] = useState(false);
   const [folding, setFolding] = useState(false);
-  const form = frameForm(vm);
+  // D5: an intent of the AI's route nobody agreed yet is Önerimiz with nothing chosen: it is looked for as before.
+  const form = vm.routeDraft ? "searching" : frameForm(vm);
   const showOptions = form === "options" || (changing && form != null);
   const chosenId = vm.chosen?.id ?? null;
   // A new pick, a booking, another state: the card is itself again (Değiştir and Ayrıntı close).
@@ -300,6 +302,7 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
       links,
       hints: hints.map((h) => ({ ...h, url: areaSearch(vm, v82.selfAt, h.area)?.url ?? links[0]?.url ?? null })),
       info: record && form !== "searching" ? { open: detail, toggle: () => setDetail(!detail) } : null,
+      onAgree: vm.routeDraft ? () => void updateTrip(env.tripId, agreeRoute) : null,
       detail: detailNode,
       quiet: form === "searching" && hasSearched(`intent:${vm.key}`) && !a.searching,
       on: {

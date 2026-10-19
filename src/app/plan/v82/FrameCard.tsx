@@ -48,6 +48,17 @@ export interface FrameCardProps {
   };
   /** Dahil: goes to what covers it ("Festival biletini aç"); null when it isn't on the plan. */
   onCover?: (() => void) | null;
+  /** D5: the AI's route nobody agreed yet: "Rotayı onayla" is the frame's button (the search goes on as before). */
+  onAgree?: (() => void) | null;
+}
+
+/** D5: the main button of an intent made from the AI's route nobody agreed yet. */
+export function AgreeRoute({ onAgree }: { onAgree: () => void }) {
+  return (
+    <button type="button" className="q-pick q-take q-agree" onClick={onAgree}>
+      {L("Rotayı onayla", "Agree the route")}
+    </button>
+  );
 }
 
 function Card({ cls = "", info, media, photo, l1, title, l2, l3, top, primary, row, detail }: {
@@ -136,7 +147,7 @@ const Picture = ({ o, art, children }: { o: OptionVM | null; art: string; childr
   </>
 );
 
-export function FrameCard({ vm, form, art, page, links, hints, info, detail, quiet, on, onCover = null }: FrameCardProps) {
+export function FrameCard({ vm, form, art, page, links, hints, info, detail, quiet, on, onCover = null, onAgree = null }: FrameCardProps) {
   const o = vm.chosen;
   const edit = useInlineEdit();
   if ((form === "suggested" || form === "chosen") && o) {
@@ -305,7 +316,7 @@ export function FrameCard({ vm, form, art, page, links, hints, info, detail, qui
         </span>
       }
       photo={false}
-      l1={<span className="z-dim">{L("Henüz seçenek yok", "No options yet")}</span>}
+      l1={<span className="z-dim">{(vm.routeDraft && vm.note) || L("Henüz seçenek yok", "No options yet")}</span>}
       title={emptyTitle(vm)}
       l2={line && <span className="q-est">{line}</span>}
       l3={hints.map((h) => (
@@ -329,21 +340,31 @@ export function FrameCard({ vm, form, art, page, links, hints, info, detail, qui
         )
       }
       primary={
-        on.ask && (
-          <button type="button" className="q-ai" onClick={on.ask}>
-            <Ic name="spark" size={15} /> {L("AI'dan öner", "Ask the AI")}
-          </button>
+        onAgree ? (
+          <AgreeRoute onAgree={onAgree} />
+        ) : (
+          on.ask && (
+            <button type="button" className="q-ai" onClick={on.ask}>
+              <Ic name="spark" size={15} /> {L("AI'dan öner", "Ask the AI")}
+            </button>
+          )
         )
       }
       row={
-        quiet &&
-        on.ask && (
+        quiet && on.ask ? (
           <small className="z-aierr">
             {L("Henüz sonuç gelmedi", "Nothing came back yet")} ·{" "}
             <button type="button" className="z-retry" onClick={on.ask}>
               {L("Tekrar dene", "Try again")}
             </button>
           </small>
+        ) : (
+          onAgree &&
+          on.ask && (
+            <button type="button" className="q-chg" onClick={on.ask}>
+              {L("AI'dan öner", "Ask the AI")}
+            </button>
+          )
         )
       }
       detail={null}

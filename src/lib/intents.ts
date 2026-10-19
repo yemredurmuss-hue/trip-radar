@@ -50,7 +50,7 @@ import { coverWords, shapeOf, type SignalId, type TripShape } from "./playbooks/
 import { prepSummary, storedTask, type PrepSummary } from "./prepDays";
 import { isPackLine } from "./prepPack";
 import { lookWord } from "./stageWords";
-import { isPlaceholder } from "./startTrip";
+import { isPlaceholder, isRouteDraft } from "./startTrip";
 import { hoursTo, ticketCarrier, ticketViewOf, type TicketCarrier, type TicketVM } from "./ticketView";
 import { whoGoes } from "./tripSettings";
 import type { DocMeta, Item, LegMode, PartFrame, PartSection, Suggestion, Trip } from "./types";
@@ -317,6 +317,11 @@ export interface IntentVM {
    * hallettim" and C15's ways are said on it (Trip.hidden, Trip.legs). Null or missing for anything else.
    */
   legKey?: string | null;
+  /**
+   * D5: made from the AI's route that nobody agreed yet (startGuide.routeDraft): Önerimiz with nothing chosen, its frame
+   * the one to find in, "Rotayı onayla" its button. Missing for anything else.
+   */
+  routeDraft?: boolean;
   itemIds: string[];
   /** Its entries' DOM keys (categories.catDomKey): the Plan scrolls to these. */
   domKeys: string[];
@@ -386,14 +391,20 @@ interface Bucket {
   stage: Stage | null;
 }
 
-/** A section's entries by the need they are part of, in the section's order (each person's group joins its need). */
+/**
+ * A section's entries by the need they are part of, in the section's order (each person's group joins its need). A stay
+ * is its stretch of nights (D6, H7): two hotels back to back in one city, or a booking and the nights it leaves, are two
+ * intents in their own states, never the old cards' one need (categories.joinStayNeeds).
+ */
 function bucketsOf(section: CatSection): Bucket[] {
   const needs = new Map(needsOf([section]).map((n) => [n.key, n] as const));
   const out = new Map<string, Bucket>();
   for (const e of section.entries) {
-    const known = out.get(e.need);
+    const nights = e.piece.kind === "entry" && e.piece.entry.kind === "stay";
+    const key = nights ? e.key : e.need;
+    const known = out.get(key);
     if (known) known.entries.push(e);
-    else out.set(e.need, { key: e.need, entries: [e], stage: needs.get(e.need)?.stage ?? null });
+    else out.set(key, { key, entries: [e], stage: nights ? e.stage : (needs.get(e.need)?.stage ?? null) });
   }
   return [...out.values()];
 }
@@ -658,6 +669,9 @@ function stagelessStatus(live: Item[], settled: Item | null, options: Item[], dr
 const endsOf = (leg: Leg | null): { from?: string | null; to?: string | null } =>
   !leg ? {} : leg.kind === "move" ? { from: leg.from.city, to: leg.to.city } : leg.kind === "arrival" ? { to: leg.to.city } : leg.kind === "departure" ? { from: leg.from.city } : {};
 
+/** D5: the categories an unagreed route's city order makes intents in. */
+const ROUTE_SECTIONS: readonly SectionId[] = ["flight", "stay", "transport"];
+
 /** C15: the ways to pick from for a change of city nobody has planned. */
 const MOVE_MODES: readonly LegMode[] = ["train", "bus", "car", "flight"];
 /** And for a transfer to or from the airport or the station nobody has planned (its old card's chips: no plane across town). */
@@ -701,6 +715,9 @@ function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
               : legArranged
                 ? "arranged"
                 : "booked";
+  // D5: the AI's route nobody agreed: what the start made from its city order (the stays, the flights, the ways between
+  // and to them) is Önerimiz until it is; nothing of it is chosen, so it is still looked for the same way.
+  const draftRoute = status === "searching" && isRouteDraft(env.input.trip) && ROUTE_SECTIONS.includes(section) && (records.length ? records.every(env.placeholder) : leg != null);
   const badges = badgesOf(options, frame, env);
   const top = options.slice(0, 3).map((item, n) => optionVM(item, env, { place: n + 1, frame, kind, draft, badges: badges.get(item.id) }));
   const shown = status === "suggested" ? draft : status === "chosen" || status === "booked" || status === "arranged" || status === "included" ? settled : null;
@@ -728,8 +745,8 @@ function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
     section,
     frame,
     kind,
-    status,
-    word: statusWord(status, kind),
+    status: draftRoute ? "suggested" : status,
+    word: statusWord(draftRoute ? "suggested" : status, kind),
     head,
     options: top,
     optionCount: options.length + (shown && shown !== draft ? 1 : 0),
@@ -738,13 +755,14 @@ function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
     access: booked ? accessOf(booked, kind, env) : null,
     paid: paidText ? L(`${paidText} ödendi`, `${paidText} paid`) : null,
     estimate: est ? { label: rangeLabel(est), unit: est.unit, n: est.n } : null,
-    note,
+    note: draftRoute ? L("Rota AI'ın önerisi; onaylayınca kesinleşir", "The route is the AI's suggestion; agree to it to settle it") : note,
     suggestions: [],
     wanted: [],
     cover,
     ticket: frame === "ticket" ? ticketViewOf(shown ? [shown] : [], { kind, leg, route: head.route, ends: endsOf(leg), now: env.now }) : null,
     modes: status === "searching" && leg && !legMode ? (leg.kind === "move" ? [...MOVE_MODES] : leg.kind === "arrival" || leg.kind === "departure" ? [...TRANSFER_MODES] : []) : [],
     legKey: leg?.key ?? null,
+    ...(draftRoute ? { routeDraft: true } : {}),
     itemIds: records.map((i) => i.id),
     domKeys: b.entries.map(catDomKey),
   };
