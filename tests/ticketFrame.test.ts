@@ -223,6 +223,18 @@ describe("what the frame says on the plan", () => {
     expect(decodeURIComponent(ride[1].url)).toMatch(/^https:\/\/www\.google\.com\/maps\/dir\/\?api=1&origin=Tokyo&destination=Hakone/);
   });
 
+  it("kişiye özel: someone's own ticket says it is for one, and is looked for for one", () => {
+    const pair: Trip = { ...japan, travellers: { names: ["Sabine"], count: 2 } };
+    const hers = fly("hers", "ALC", "HND", "2027-04-01T06:00", "2027-04-01T20:00", "saved", { forWho: ["Sabine"], guests: { adults: null, children: null, rooms: null } });
+    const box = boxOf([...stays, hers], "hers", pair);
+    expect(box.people).toBe(1);
+    expect(box.head.parts).toContain("1 kişi");
+    const links = waySearches(box, { countries: ["JP"], countryNames: ["Japonya"], adults: 2 });
+    expect(links.find((l) => l.id === "skyscanner")?.url).toMatch(/adultsv2=1/);
+    // Everyone's ticket says no count of its own.
+    expect(boxOf([...stays, fly("ours", "IST", "HND", "2027-04-01T06:00", "2027-04-01T20:00", "saved")], "ours", pair).people).toBeUndefined();
+  });
+
   it("Dahil goes to its cover's box in its category ('Pass'i aç')", () => {
     const pass = ride("pass", "Hakone Free Pass", "train", "Odawara", "Hakone", "2027-04-04", "booked", { city: "Hakone", provider: "Odakyu", dates: { start: "2027-04-04", end: "2027-04-06", source: "page" }, price: eur(76) });
     const boat = ride("boat", "Ashi Gölü vapuru", "ferry", "Togendai", "Moto-Hakone", "2027-04-05", "chosen", { city: "Hakone", price: eur(null), origin: "chat" });

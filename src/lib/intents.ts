@@ -53,6 +53,7 @@ import { lookWord } from "./stageWords";
 import { isPlaceholder, isRouteDraft } from "./startTrip";
 import { hoursTo, ticketCarrier, ticketViewOf, type TicketCarrier, type TicketVM } from "./ticketView";
 import { whoGoes } from "./tripSettings";
+import { headCountOf } from "./whose";
 import type { DocMeta, Item, LegMode, PartFrame, PartSection, Suggestion, Trip } from "./types";
 
 /**
@@ -325,6 +326,8 @@ export interface IntentVM {
   itemIds: string[];
   /** Its entries' DOM keys (categories.catDomKey): the Plan scrolls to these. */
   domKeys: string[];
+  /** How many it is for when that isn't the trip's count (someone's own ticket: 1): its searches look for that many. */
+  people?: number;
 }
 
 interface Env {
@@ -517,9 +520,21 @@ function routeOf(b: Bucket, lead: Item | null, leg: Leg | null): IntentHead["rou
 }
 
 /** The record's own head count, only when it isn't the trip's ("2 kişi" on every intent says nothing). */
+/**
+ * How many one record is for when it isn't the trip's own count, else null: someone's own plan its owners (kişiye özel:
+ * "Sabine'in bileti", 1), the trip's way in or home without those who come their own way (whose.headCountOf), else what
+ * the record says.
+ */
+function partyOf(lead: Item | null, env: Env): number | null {
+  if (!lead || env.people == null) return null;
+  const counted = headCountOf(lead, env.input.trip, { total: env.people, items: env.input.items });
+  const n = counted != null && counted !== env.people ? counted : (lead.guests.adults ?? null);
+  return n != null && n !== env.people ? n : null;
+}
+
 function peoplePart(lead: Item | null, env: Env): string | null {
-  const n = lead?.guests.adults ?? null;
-  return n != null && env.people != null && n !== env.people ? count(n, "kişi", "person", "people") : null;
+  const n = partyOf(lead, env);
+  return n != null ? count(n, "kişi", "person", "people") : null;
 }
 
 function headOf(section: SectionId, frame: FrameFamily, b: Bucket, lead: Item | null, leg: Leg | null, kind: CardKind, env: Env): IntentHead {
@@ -746,6 +761,7 @@ function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
               : null
         : null;
   const head = headOf(section, frame, b, lead, leg, kind, env);
+  const party = partyOf(lead, env);
   return {
     key: b.key,
     section,
@@ -770,6 +786,7 @@ function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
     modes: (status === "searching" && leg && !legMode) || legSaid ? (leg?.kind === "move" ? [...MOVE_MODES] : leg?.kind === "arrival" || leg?.kind === "departure" ? [...TRANSFER_MODES] : []) : [],
     legKey: leg?.key ?? null,
     ...(draftRoute ? { routeDraft: true } : {}),
+    ...(party != null ? { people: party } : {}),
     itemIds: records.map((i) => i.id),
     domKeys: b.entries.map(catDomKey),
   };

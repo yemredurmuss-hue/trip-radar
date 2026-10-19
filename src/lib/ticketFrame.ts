@@ -258,9 +258,10 @@ function placeOf(end: TicketEnd | null, city: string | null): string | null {
  * a change of city nobody planned the sites that compare every way (Rome2rio, the country's rail), anything else its kind's
  * (intentFrame.selfSearches).
  */
-export function waySearches(vm: Pick<IntentVM, "kind" | "head" | "options" | "chosen" | "modes" | "ticket">, given: SelfSearchAt, item: Pick<Item, "guests"> | null = null): SelfSearch[] {
+export function waySearches(vm: Pick<IntentVM, "kind" | "head" | "options" | "chosen" | "modes" | "ticket" | "people">, given: SelfSearchAt, item: Pick<Item, "guests"> | null = null): SelfSearch[] {
   // A ticket of some of the trip's people (kişiye özel: Sabine's own flight) is looked for for them.
-  const at = item?.guests.adults ? { ...given, adults: item.guests.adults } : given;
+  const n = vm.people ?? item?.guests.adults ?? null;
+  const at = n ? { ...given, adults: n } : given;
   if (!vm.modes.length) return selfSearches(vm, at);
   if (!vm.modes.includes("taxi")) return selfSearches({ ...vm, kind: "train" }, at);
   const from = placeOf(vm.ticket?.from ?? null, vm.head.city);
