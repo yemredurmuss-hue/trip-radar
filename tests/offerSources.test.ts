@@ -100,6 +100,19 @@ describe("asking", () => {
     expect(calls).toHaveLength(1);
   });
 
+  it("answers asked at once are all kept: a board opened again asks none of them (no write overwrites another's)", async () => {
+    const kv = memoryKV();
+    const { calls, fetcher } = answer([offer("a")]);
+    const cities = ["Ubud", "Canggu", "Sidemen", "Amed"];
+    const first = makeLiveSource({ kv, fetcher, server: "https://srv" });
+    await Promise.all(cities.map((city) => first.offers({ ...stay, key: city, city })));
+    expect(calls).toHaveLength(4);
+    // The next page (a new source, the same storage): every answer read back, nothing asked again.
+    const again = makeLiveSource({ kv, fetcher, server: "https://srv" });
+    await Promise.all(cities.map((city) => again.offers({ ...stay, key: city, city })));
+    expect(calls).toHaveLength(4);
+  });
+
   it("two cards asking the same at once make one call", async () => {
     const { calls, fetcher } = answer([offer("a")]);
     const src = makeLiveSource({ kv: memoryKV(), fetcher, server: "https://srv" });

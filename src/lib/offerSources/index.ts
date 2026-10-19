@@ -234,6 +234,22 @@ export function makeLiveSource(opts: { kv?: KV; fetcher?: typeof fetch; now?: ()
   const now = opts.now ?? Date.now;
   const server = opts.server ?? DEFAULT_SERVER.url;
   const asking = new Map<string, Promise<Answer>>();
+  // Answers are written one after another, each onto the store as it is then: questions asked at once (a board's
+  // boxes, a city's tours and its neighbours') never overwrite each other's answer, which would be asked again next time.
+  let writing: Promise<void> = Promise.resolve();
+  const keep = (q: string, answer: Answer): Promise<void> =>
+    (writing = writing.then(async () => {
+      try {
+        const stored = (await kv.get<Seen>(STORE_KEY)) ?? {};
+        const kept = Object.entries({ ...stored, [q]: { at: now(), ...answer } })
+          .filter(([, v]) => now() - v.at < KEEP_HOURS * 36e5)
+          .sort((a, b) => b[1].at - a[1].at)
+          .slice(0, KEEP_MAX);
+        await kv.set(STORE_KEY, Object.fromEntries(kept));
+      } catch {
+        // not kept this time
+      }
+    }));
 
   async function ask(q: string): Promise<Answer> {
     let seen: Seen = {};
@@ -249,15 +265,7 @@ export function makeLiveSource(opts: { kv?: KV; fetcher?: typeof fetch; now?: ()
       if (!res.ok) return { offers: [] };
       const body = (await res.json()) as { offers?: Offer[]; candidates?: StayCandidate[] };
       const answer: Answer = { offers: Array.isArray(body.offers) ? body.offers : [], ...(Array.isArray(body.candidates) ? { candidates: body.candidates } : {}) };
-      const kept = Object.entries({ ...seen, [q]: { at: now(), ...answer } })
-        .filter(([, v]) => now() - v.at < KEEP_HOURS * 36e5)
-        .sort((a, b) => b[1].at - a[1].at)
-        .slice(0, KEEP_MAX);
-      try {
-        await kv.set(STORE_KEY, Object.fromEntries(kept));
-      } catch {
-        // not kept this time
-      }
+      await keep(q, answer);
       return answer;
     } catch {
       return { offers: [] };
