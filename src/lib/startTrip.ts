@@ -226,8 +226,26 @@ export function withTypedLang(s: StartState, text: string): StartState {
   if (s.langFixed) return s;
   const said = langSignal(text);
   if (!said) return s;
-  return { ...s, lang: said, langFixed: true };
+  // The lines said before the language was known (the home's chip, the first question) are said again in it, so the
+  // trip's chat never opens with "Nereye gidiyoruz?" above an English conversation (0.39.0).
+  const messages = said === s.lang ? s.messages : s.messages.map((m) => {
+    const pair = OPENERS.find((p) => p[s.lang === "tr" ? 0 : 1] === m.text.trim());
+    return pair ? { ...m, text: pair[said === "tr" ? 0 : 1] } : m;
+  });
+  return { ...s, lang: said, langFixed: true, messages };
 }
+
+/** The start's own first lines in both languages ([tr, en]): the home's chips (TripsHome MODES) and the first questions. */
+const OPENERS: readonly (readonly [string, string])[] = [
+  ["Yeni gezi planla", "Plan a new trip"],
+  ["Yeni gezi planla", "Create a new trip"],
+  ["Bana ilham ver", "Inspire me where to go"],
+  ["Yol gezisi", "Plan a road trip"],
+  ["Son dakika kaçamağı", "A last-minute escape"],
+  ["Nereye gidiyoruz?", "Where are we going?"],
+  ["Yol gezisi nerede olsun?", "Where should the road trip be?"],
+  ["Nereye kaçalım?", "Where shall we escape to?"],
+];
 
 /** What the screen knows besides the interview: the traveller's name, a guess of where they leave from, today. */
 export interface StartCtx {
@@ -2856,7 +2874,7 @@ export function tripTitle(s: Pick<StartState, "where" | "intent">): string {
   if (s.intent) return intentTitle(s.intent);
   // "Sri Lanka", then "Ahangama": the country's trip (its route, stays and flights keep the town).
   const place = s.where?.within || s.where?.place || "";
-  return L(`${place} Gezisi`, `${place} trip`);
+  return L(`${place} Gezisi`, `${place} Trip`);
 }
 
 /** What the start screen calls the trip while it's made: the event's name ("AfrikaBurn"), else the place's. */

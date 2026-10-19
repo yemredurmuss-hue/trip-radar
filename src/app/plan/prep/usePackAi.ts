@@ -4,6 +4,7 @@
 // asked, the Bavul says "Bavul listesi hazırlanıyor…" (lib/looking.ts packLooking; 0.38.8).
 import { useEffect } from "react";
 import type { CityWeather } from "../../../lib/climate";
+import { withLang } from "../../../lib/i18n";
 import { getProvider, MissingKeyError } from "../../../lib/llm";
 import { packLooking } from "../../../lib/looking";
 import { acceptPack, packPrompt, packSchema, packSystemPrompt, type PackPromptInput } from "../../../lib/prepPack";
@@ -21,7 +22,8 @@ export function usePackAi(trip: Trip, input: PackPromptInput & { weather: CityWe
     void packLooking.track(trip.id, (async () => {
       try {
         const llm = await getProvider();
-        const out = await llm.generateJson(packSystemPrompt(), packPrompt(input), packSchema);
+        // In the trip's own language (the one its start chat spoke), whatever the board's: the list is the trip's.
+        const out = await llm.generateJson(withLang(trip.lang, packSystemPrompt), packPrompt(input), packSchema);
         const list = acceptPack(out, Date.now(), input.never);
         if (!list) return;
         await updateTrip(trip.id, (t) => (t.packing?.list ? t : { ...t, packing: { ...t.packing, list } }), { touch: false });

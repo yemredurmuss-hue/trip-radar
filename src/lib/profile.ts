@@ -1,6 +1,7 @@
 // Your profile (0.36): the name the others see you by ("Emre"; the same as the sharing name) and, if you like,
 // a photo. No account: both stay on this computer, and the photo goes only to the shared trips you're on
 // (supabase/profiles.sql), as a 128 px JPEG of about 10 KB.
+import { L } from "./i18n";
 import { chromeKV, type KV } from "./share/store";
 
 const PHOTO_KEY = "sharePhoto";
@@ -18,7 +19,7 @@ export async function getPhoto(kv: KV = chromeKV): Promise<string | null> {
 export async function savePhoto(photo: string | null, kv: KV = chromeKV): Promise<void> {
   if (photo == null) await kv.remove(PHOTO_KEY);
   else if (isPhoto(photo)) await kv.set(PHOTO_KEY, photo);
-  else throw new Error("Bu fotoğraf kullanılamadı.");
+  else throw new Error(L("Bu fotoğraf kullanılamadı.", "This photo can't be used."));
 }
 
 /** The picked picture, cropped to a centred square and made 128 px JPEG (the board only: it needs a canvas). */
@@ -28,13 +29,13 @@ export async function photoFromFile(file: Blob): Promise<string> {
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = PHOTO_PX;
   const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Bu fotoğraf kullanılamadı.");
+  if (!ctx) throw new Error(L("Bu fotoğraf kullanılamadı.", "This photo can't be used."));
   ctx.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, PHOTO_PX, PHOTO_PX);
   for (const q of [0.85, 0.7, 0.5]) {
     const url = canvas.toDataURL("image/jpeg", q);
     if (isPhoto(url)) return url;
   }
-  throw new Error("Bu fotoğraf kullanılamadı.");
+  throw new Error(L("Bu fotoğraf kullanılamadı.", "This photo can't be used."));
 }
 
 // --- the photos of the people I travel with (0.37): set by me, kept only here --------------------------
@@ -55,7 +56,7 @@ export async function getPeoplePhotos(kv: KV = chromeKV): Promise<Record<string,
 /** Gives (or with null, takes away) a person's photo; their own profile photo, when they share one, still comes first. */
 export async function setPersonPhoto(name: string, photo: string | null, kv: KV = chromeKV): Promise<void> {
   if (!name.trim()) return;
-  if (photo != null && !isPhoto(photo)) throw new Error("Bu fotoğraf kullanılamadı.");
+  if (photo != null && !isPhoto(photo)) throw new Error(L("Bu fotoğraf kullanılamadı.", "This photo can't be used."));
   const all = { ...((await kv.get<Record<string, string>>(PEOPLE_KEY)) ?? {}) };
   if (photo == null) delete all[personKey(name)];
   else all[personKey(name)] = photo;

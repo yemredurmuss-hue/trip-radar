@@ -343,7 +343,7 @@ describe("the title from the intent", () => {
     const bali = typed(newStart("b", "plan", 1, "tr"), "Bali'ye gidelim");
     expect(tripTitle(bali)).toBe("Bali Gezisi");
     expect(startName(bali)).toBe("Bali");
-    expect(withLang("en", () => tripTitle(bali))).toBe("Bali trip");
+    expect(withLang("en", () => tripTitle(bali))).toBe("Bali Trip");
     expect(intentOf(EVENTS.find((e) => e.id === "f1-turkey")!, TODAY).dates).toBeNull();
   });
 });
