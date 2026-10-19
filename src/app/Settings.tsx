@@ -5,7 +5,6 @@ import { requestProcessing } from "../lib/browser";
 import { DEFAULT_GEMINI_MODEL, DEFAULT_MODEL, exportAll, exportDiagnostics, getSettings, saveSettings } from "../lib/db";
 import { L, lang, saveLang, type Lang } from "../lib/i18n";
 import { describeError } from "../lib/llm";
-import { loadPassport, savePassport } from "../lib/passport";
 import { listGeminiModels } from "../lib/llm/gemini";
 import { retryAllFailed } from "../lib/process";
 import type { Settings as SettingsShape } from "../lib/types";
@@ -57,12 +56,10 @@ export function Settings({ onClose }: { onClose: () => void }) {
   // How the key check ended: "bad" reddens the box and its line and shakes it once (hareket dili); "ok" greens the line.
   const [keyTone, setKeyTone] = useState<{ tone: "bad" | "ok"; n: number } | null>(null);
   const keyEnded = (tone: "bad" | "ok") => setKeyTone((prev) => ({ tone, n: (prev?.n ?? 0) + 1 }));
-  const [passport, setPassport] = useState("TR");
   const [still, setStillOn] = useState(stillChosen);
 
   useEffect(() => {
     void getSettings().then(setS);
-    void loadPassport().then(setPassport);
   }, []);
 
   if (!s) return null;
@@ -135,22 +132,6 @@ export function Settings({ onClose }: { onClose: () => void }) {
         <LanguagePicker />
         <h2>{L("Ayarlar", "Settings")}</h2>
         <ProfileSettings />
-        <label className="field">
-          {L("Pasaport", "Passport")}
-          <select
-            value={passport}
-            onChange={(e) => {
-              setPassport(e.target.value);
-              void savePassport(e.target.value);
-            }}
-          >
-            <option value="TR">{L("Türkiye", "Turkey")}</option>
-            <option value="DE">{L("Almanya", "Germany")}</option>
-            <option value="GB">{L("Birleşik Krallık", "United Kingdom")}</option>
-            <option value="US">{L("ABD", "USA")}</option>
-            <option value="XX">{L("Diğer", "Other")}</option>
-          </select>
-        </label>
 
         <div className="segmented" role="radiogroup" aria-label={L("AI sağlayıcı", "AI provider")}>
           <button role="radio" aria-checked={s.provider === "gemini"} className={s.provider === "gemini" ? "on" : ""} onClick={() => update({ provider: "gemini" })}>

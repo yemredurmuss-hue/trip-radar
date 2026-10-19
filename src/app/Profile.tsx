@@ -1,9 +1,10 @@
 // Profilim (0.36): your name (the one the others see you by, the sharing name) and a photo if you like; no
-// account. The photo is made small here (lib/profile) and goes only to the shared trips you're on.
+// account; the passport the visa rules use (PassportField). The photo is made small here (lib/profile) and goes only to the shared trips you're on.
 import { useEffect, useRef, useState } from "react";
 import { L } from "../lib/i18n";
 import { getPeoplePhotos, getPhoto, personKey, photoFromFile, savePhoto, setPersonPhoto } from "../lib/profile";
 import { getShareConfig, saveShareConfig } from "../lib/share/store";
+import { PassportField } from "./PassportField";
 
 /** My photo, kept fresh when it changes (the hero's first circle on a trip of my own). */
 export function useMyPhoto(): string | null {
@@ -75,6 +76,7 @@ export function ProfileSettings() {
         )}
       </p>
       {error && <p className="err small">{error}</p>}
+      <PassportField />
     </section>
   );
 }
