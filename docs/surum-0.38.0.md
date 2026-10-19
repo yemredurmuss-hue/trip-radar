@@ -145,7 +145,7 @@ Karar A1: tasarımı olmayan bu özellikler bu sürümde arayüzde yok. Kodları
 | C8 Yapılacaklar listesi ve ⏳ iptal süresi | Hero'daki ilerleme kutusuna basınca açılan, grup grup açık işler listesi (Karar bekliyor, Rezerve edilecek, Belge eksik, söylenmemiş transferler); "⏳ 2" düğmesi yalnız ücretsiz iptal süresi dolmak üzere olanları gösteriyordu. | `src/app/Progress.tsx` (`TodoList`, artık hiçbir yerden açılmıyor), `src/lib/planList.ts`, `src/lib/progress.ts` (`dateAlert`). "⏳" düğmesi eski hero'yla (`TripHero.tsx`) kalktı. İptal günü Ayrıntı'da durur. |
 | C11 Karar yardımı | Eski karşılaştırma penceresi: kriterlerin önem ayarı, "Sonucu ne değiştirir?", AI yorumu, Kartlar ve Tablo görünümü, "Sırayla karar ver". | `src/app/CompareView.tsx`, `src/app/ProsConsView.tsx`, `src/app/board/OptionBoard.tsx`, `src/app/board/StepDecide.tsx`, `src/lib/decideSteps.ts`, `src/lib/proscons.ts`. Karşılaştırma artık Pano'nun sütunları. |
 | C18 Başlangıç kartı | Sohbetle yeni kurulan gezide planın üstünde tek seferlik kart: üç adım ve "tarih yaklaşık · doğru mu?". | `src/app/start/StartGuideCard.tsx` (`START_CARD_SHOWN = false`); gezideki işareti (`trip.startGuide`) duruyor. |
-| C27 Yolculuk kartı ekleri | Eski Yolculuk görünümünün kartlarında ⏳ iptal uyarısı, "n gece için yer yok" ve tarihsiz etkinlikte "gün seç". | Mantık duruyor: `src/lib/progress.ts` (`dateAlert`), `src/lib/plan.ts` (seçilen yerin kapsamadığı geceler, `gap`). Eski kartın arayüz kodu (`src/app/plan/JourneyCards.tsx`) aşama 8 temizliğinde silindi (`eeeb144`); `git show 9f22bae:src/app/plan/JourneyCards.tsx` ile geri alınabilir. |
+| C27 Yolculuk kartı ekleri | Eski Yolculuk görünümünün kartlarında ⏳ iptal uyarısı, "n gece için yer yok" ve tarihsiz etkinlikte "gün seç". | Mantık duruyor: `src/lib/progress.ts` (`dateAlert`), `src/lib/plan.ts` (seçilen yerin kapsamadığı geceler, `gap`). Eski kartın arayüz kodu da depoda: `src/app/plan/JourneyCards.tsx` (temizlikte silinmişti, `06a93a6` ile geri geldi; hiçbir yerden çizilmiyor). |
 | C32 Pano ekleri | Eski Pano sayfasında arama, durum süzgeci (Hepsi, Karar bekleyen, Planda), sıralama ve "Plan'da gör". | `src/app/board/Pano.tsx` (çizilmiyor, olduğu gibi duruyor). |
 
 ## Etsy kararları: bu sürümde olan ve olmayan (satır 166)
@@ -175,7 +175,6 @@ Koddan doğrulandı (0ebcf64).
 - **Kapalı Hazırlık satırı ve Yolculuk'taki Hazırlık adımı**, son günü geçmiş maddeyi "sıradaki" diye yazıyor, "geçti"
   demiyor (`src/lib/prepDays.ts` `prepSummary`); açık listede "geçti" doğru.
 - **Gezi bitince** plan arşiv sayılır (karar yok, `src/lib/tripPhase.ts`), ama arşivin ayrı bir çizimi yok.
-- **C27'nin arayüz kodu silindi** (yukarıda): "kodları silinmez" kuralından tek sapma. Mantığı duruyor.
 - **`panelBus.ts` kullanılmıyor**: yeni gezi menüsü hero'nun içinde olduğu için Belgeler ve PDF'i doğrudan açıyor. Dosya
   satır 168 gereği duruyor.
 - **Mağaza görüntüleri fotoğrafsız**: bu makineden fotoğraf kaynaklarına ulaşılamadı; görüntüler `--offline` ile
@@ -209,7 +208,7 @@ hazırlandığı noktada (dal `v82-g2`, baş 0ebcf64); "G1'de" diyenler aynı an
 | 158 | Canlı hareket sözlüğü yeni bileşenlerde | Geçti | e2e "motion" iki kontrolü yeşil (mühür, parlama, düşüş, sayaç, aşama geçişi, Pano penceresi, seçim sonrası parlama). |
 | 159 | DESIGN.md | Geçti | `DESIGN.md`: "Renklerin tek anlamı" (kum = Seçildi), "Yazı ölçeği", "Niyet kutusu standardı", "Hero = mozaik", "Sağlayıcı kuralı" başlıkları; "Seçildi açık yeşil" ifadesi yok. |
 | 160 | Şema ve backend değişmez | Geçti | `src/lib/db.ts:23` `DB_VERSION = 5`; `git diff 9f22bae..0ebcf64 -- supabase/` boş; `npx vitest run` 186 dosya, 2318 test yeşil (`tests/dbUpgrade.test.ts` dahil). |
-| 161 | Arayüzden düşenler sürüm notunda, kodları depoda | Kısmen | Beş düşen özellik yukarıda yazılı. C8, C11, C18, C32 kodu depoda; C27'nin arayüz kodu `eeeb144`'te silindi, mantığı depoda. |
+| 161 | Arayüzden düşenler sürüm notunda, kodları depoda | Geçti | Beş düşen özellik yukarıda yazılı; beşinin de kodu depoda (C27'nin `JourneyCards.tsx`'i `06a93a6` ile geri geldi). |
 | 162 | Tek sürüm, denetimden sonra birlikte yayın | Bekliyor | Aşamalar mağazaya çıkmadı; `package.json` ve `static/manifest.json` 0.38.0. Yayın denetim raporundan sonra. |
 | 163 | Diğer yüzeyler yeni dile uyarlanır | Açık (G1'de) | PDF, bildirimler, ilk kurulum ve Ayarlar, popup, Seyahatlerim bu belgede doğrulanmadı. |
 | 164 | PRIVACY §8: fotoğraf kaynağı ve İlham'dan yer çıkarma | Geçti | `PRIVACY.md` §8 Türkçe ve İngilizce: "Gezi fotoğrafları" ve "İlham'dan yer çıkarma"; §5'te Bavul isteği, §11'de fotoğraf aramaları. Kaynak kod: `src/lib/cityImages.ts`, `supabase/functions/city-image/`, `src/lib/heroMosaic.ts`, `src/app/board/v82/PanoDialog.tsx` (`extract`), `src/app/plan/prep/usePackAi.ts`. |
