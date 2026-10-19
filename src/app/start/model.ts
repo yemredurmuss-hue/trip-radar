@@ -68,8 +68,9 @@ export interface ModelReply {
  * too slow (`ms`, the reading's budget) or `signal` aborted. The code's reading and lines stand then.
  */
 export async function readAndReply(
-  // pbPending / pbNext: a trip kind's question answered (with its options) and asked next, in its own words.
-  a: { text: string; today: string; pending: QuestionId | null; next: QuestionId | null; known: string; lang: Lang; pbPending?: string | null; pbNext?: string | null },
+  // pbPending / pbNext: a trip kind's question answered (with its options) and asked next, in its own words; open:
+  // what else is still missing after the next question (the model may ask one of them with it).
+  a: { text: string; today: string; pending: QuestionId | null; next: QuestionId | null; known: string; lang: Lang; pbPending?: string | null; pbNext?: string | null; open?: QuestionId[] },
   ms = READ_MS,
   signal?: AbortSignal,
 ): Promise<{ read: Extracted; reply: ModelReply | null } | null> {

@@ -30,7 +30,7 @@ import { applyLiveDates, checkingLine, datesWait, lookupFor, startLookup, type D
 import { rulesPreview } from "../../lib/startHooks";
 import {
   applyAnswer, applyExtracted, applyText, askAgain, budgetChips, budgetWord, canGenerate, checklist, autoPrint, drawingLine, isComplete, isGoCommand, knownLines, lineLink, mergeExtracted, startName,
-  missingForGenerate, modelReplyText, NOT_UNDERSTOOD, nextQuestion, onlyEmpty, parseRouteText, parseStartText, pbCurrent, pbPromptOf, photosToFind, preparedRoute, previewOf, skipPb,
+  missingForGenerate, modelReplyText, NOT_UNDERSTOOD, nextQuestion, assumeAnswered, stillOpen, onlyEmpty, parseRouteText, parseStartText, pbCurrent, pbPromptOf, photosToFind, preparedRoute, previewOf, skipPb,
   questionOf, readingLine, readingName, readingRows, replyText, restoreRoute, routeThinkingLine, shouldAutoStart, autoHeld, memoAfterGenerate, AUTO_SECONDS, autoSeconds, waitingInstead, routeForGenerate, routeKey, routeToPrepare, rulesKey, saysSomething, singleRoute, skip, totalNights, wantsRouteAdvice,
   tentativeWhere, whereKey, withGuessTaken, withoutOverruled, withPhotos, withPreparedRoute, withTypedLang,
   type Answer, type Extracted, type QuestionId, type SlotId, type StartCtx, type StartRoute, type StartState,
@@ -617,7 +617,7 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
       const pbNext = predicted === "pb" ? T(() => questionOf(first.state, "pb", ctx).text) : null;
       const controller = hasModel ? track() : null;
       const pending = controller
-        ? readAndReply({ text: line, today: today(), pending: q, next: predicted, known: T(() => knownLines(first.state, ctx)), lang: asked.lang, pbPending, pbNext }, READ_MS, controller.signal).finally(() => {
+        ? readAndReply({ text: line, today: today(), pending: q, next: predicted, known: T(() => knownLines(first.state, ctx)), lang: asked.lang, pbPending, pbNext, open: T(() => stillOpen(first.state)) }, READ_MS, controller.signal).finally(() => {
             inflight.current.delete(controller);
             readingDone(mine);
           })
@@ -659,7 +659,11 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
     setStage("thinking");
     setReading({ turn: mine, line: T(() => readingLine({ name: null, datesPending: false })), rows: T(() => readingRows(asked, q, !before.where && !before.guess, ctx)) });
     const controller = track();
-    const got = await readAndReply({ text: line, today: today(), pending: q, next: q, known: T(() => knownLines(asked, ctx)), lang: asked.lang, pbPending, pbNext: pbPending ? T(() => questionOf(asked, "pb", ctx).text) : null }, READ_MS, controller.signal);
+    // The model words the question after this one, as if the message answers it (0.38.4: it was told the question being
+    // answered as the next one, so its words were never used and the code's line always stood).
+    const ahead = T(() => assumeAnswered(asked, q));
+    const aheadQ = nextQuestion(ahead);
+    const got = await readAndReply({ text: line, today: today(), pending: q, next: aheadQ, known: T(() => knownLines(asked, ctx)), lang: asked.lang, pbPending, pbNext: aheadQ === "pb" ? T(() => questionOf(ahead, "pb", ctx).text) : null, open: T(() => stillOpen(ahead)) }, READ_MS, controller.signal);
     inflight.current.delete(controller);
     readingDone(mine);
     if (turn.current === mine) setStage(null);
@@ -667,7 +671,7 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
     const { state: after, understood } = T(() => applyText(live.current, line, mergeExtracted(code, got?.read ?? null), Date.now(), q, pk));
     if (!understood) return q === "pb" ? pbUnread(before, pk, counting) : commit(say(live.current, "assistant", T(NOT_UNDERSTOOD)));
     if (q === "pb" && counting) countAgain(true);
-    reply(before, after, (next, drawing) => modelReplyText(before, next, ctx, got?.reply ?? null, q, drawing));
+    reply(before, after, (next, drawing) => modelReplyText(before, next, ctx, got?.reply ?? null, aheadQ, drawing));
   }
 
   function ask(q: QuestionId) {

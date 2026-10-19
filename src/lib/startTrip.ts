@@ -1229,9 +1229,9 @@ export type RawTurn = z.infer<typeof turnSchema>;
 const replyRules = () =>
   L(
     `reply.text: sıcak, samimi, 1-3 kısa cümle; bir sohbet gibi, form gibi değil. Kullanıcı mesajında bir şey sorduysa ya da bir endişe söylediyse (hava, en iyi zaman, vize, güvenlik, "nereye gitsek"), önce ona kısa ve dürüst cevap ver; emin olmadığını "kesin bilmiyorum" diye söyle. Sonra söylenen yere özgü renk kat (ör. "Sabine ile Tayland kulağa harika geliyor: Bangkok'tan Chiang Mai'nin sisli dağlarına ve güneyin cennet koylarına."). En fazla 300 karakter. Fiyat yazma; uçuş, otel ya da rezervasyon hakkında olgu uydurma; text içinde soru sorma.
-reply.question: yalnız "Sıradaki soru" için tek, kısa, doğal bir soru, soru işaretiyle biter; gerekirse sonuna neyi açacağını tek kısa ifadeyle ekle (ör. "Hangi gün başlıyorsunuz? Uçuşlar ve oteller o güne yerleşsin."; soru işaretinden sonra en fazla bir kısa cümle). Sıradaki soru yoksa "".`,
+reply.question: "Sıradaki soru"yu tek, kısa, doğal bir cümleyle sor, soru işaretiyle bitsin. Bir arkadaş gibi konuş, form gibi değil: "Nereden?", "Kaç kişi?" gibi kalıp sorma; kişiye ve gezinin niyetine göre sor (kimle gittiği, nereye, hangi etkinlik için; birlikte gidiyorlarsa "siz" diye). Bilinenleri ya da bu mesajda söyleneni sorma; mesaj Sıradaki soruyu zaten cevaplıyorsa "". "Eksikler" listesinde ondan sonra gelen bir şeyi de aynı cümlede sorabilirsin (en fazla iki şey, ör. "Kasım'da kaç gün kalmayı düşünüyorsunuz?"). Gerekirse sonuna neyi açacağını tek kısa ifadeyle ekle (ör. "Hangi gün yola çıkıyorsunuz? Uçuşlar ve oteller o güne yerleşsin."; soru işaretinden sonra en fazla bir kısa cümle). Sıradaki soru yoksa "".`,
     `reply.text: warm, friendly, 1-3 short sentences; a conversation, not a form. If the user's message asked something or voiced a worry (weather, the best time, visas, safety, "where should we go"), answer that first, briefly and honestly; say "I'm not sure" when you aren't. Then colour specific to the place (e.g. "Thailand with Sabine sounds incredible: from Bangkok to the misty mountains of Chiang Mai and the idyllic beaches down south."). At most 300 characters. No prices; never invent facts about flights, hotels or bookings; no question in text.
-reply.question: one short, natural question for "Next question" only, ending with a question mark; if it helps, add after it one short phrase saying what it unlocks (e.g. "Which day do you start? Then the flights and stays get their dates."; at most one short sentence after the question mark). "" when there is no next question.`,
+reply.question: ask the "Next question" in one short, natural sentence ending with a question mark. Talk like a friend, not a form: never a bare "Where from?" or "How many?"; ask it for this person and what this trip is for (who they go with, where, which event). Never ask what is known or what this message says; "" when the message already answers the next question. You may ask one more thing from "Still missing" that comes after it in the same sentence (at most two things, e.g. "How long are you thinking of staying in November?"). If it helps, add after it one short phrase saying what it unlocks (e.g. "Which day do you set off? Then the flights and stays get their dates."; at most one short sentence after the question mark). "" when there is no next question.`,
   );
 
 // What a made playbook looks like (spec 2026-10-07-akilli-planlayici §A): two short examples, a kind with a playbook
@@ -1335,13 +1335,15 @@ export function knownLines(s: StartState, ctx: StartCtx): string {
  * A typed message for the model: today, what is known, the question it answers, the next question, the message. A
  * trip kind's question is given in its own words, the one answered with its options (the model picks one in `choice`).
  */
-export function turnPrompt(a: { text: string; today: string; pending: QuestionId | null; next: QuestionId | null; known: string; pbPending?: string | null; pbNext?: string | null }): string {
+export function turnPrompt(a: { text: string; today: string; pending: QuestionId | null; next: QuestionId | null; known: string; pbPending?: string | null; pbNext?: string | null; open?: QuestionId[] }): string {
   return [
     "<start_message>",
     `${L("Bugün", "Today")}: ${a.today}`,
     `${L("Bilinenler", "Known so far")}: ${a.known}`,
     a.pending ? `${L("Kullanıcının cevapladığı soru", "The user is answering")}: ${a.pending === "pb" && a.pbPending ? a.pbPending : slotWords(a.pending)}` : "",
     `${L("Sıradaki soru", "Next question")}: ${a.next === "pb" && a.pbNext ? a.pbNext : a.next ? slotWords(a.next) : L("yok", "none")}`,
+    // What else is still open, most important first: the model may ask one more of them with the next (at most two).
+    a.open?.length ? `${L("Eksikler (önem sırasıyla)", "Still missing (most important first)")}: ${a.open.map(slotWords).join("; ")}` : "",
     `${L("Mesaj", "Message")}: ${a.text}`,
     "</start_message>",
   ].filter(Boolean).join("\n");
@@ -1605,6 +1607,23 @@ export function nextQuestion(s: StartState): QuestionId | null {
   // (An older draft may still be asking for the names: not any more.)
   if (s.asking && s.asking !== "names") return s.asking;
   return ORDER[s.mode].find((q) => open(s, q)) ?? null;
+}
+
+/**
+ * The start as it would be once the message answers `q`: what the model words its next question for before its
+ * reading lands, when the code read nothing in the message (its reading may fill more; then the code's question stands).
+ */
+export function assumeAnswered(s: StartState, q: QuestionId | null): StartState {
+  if (!q) return s;
+  if (q === "pb") return skipPb(s, pbCurrent(s)?.key ?? null, s.updatedAt);
+  return { ...s, guess: q === "guess" ? null : s.guess, asking: null, skipped: [...s.skipped, q === "guess" ? "where" : q] };
+}
+
+/** What is still open after the next question, in order, that the model may ask along with it: at most 2. */
+export function stillOpen(s: StartState): QuestionId[] {
+  if (s.guess) return [];
+  const next = nextQuestion(s);
+  return ORDER[s.mode].filter((q) => q !== next && q !== "route" && q !== "pb" && open(s, q)).slice(0, 2);
 }
 
 /** A start that is a month only: its day is still to be said (or a part of the month picked). An event's isn't. */
@@ -2209,6 +2228,12 @@ function eventLengthQuestion(it: Intent, d: { start: string; end: string; approx
 /** The question on screen, its words and its quick answers. */
 export function questionOf(s: StartState, q: QuestionId, ctx: StartCtx): Question {
   const tr = lang() === "tr";
+  // Asked as one would ask a friend (0.38.4): "siz" once others come along, the trip's event or place named.
+  const we = Boolean(s.who && s.who.kind !== "solo");
+  const you = (one: string, many: string) => (we ? many : one);
+  const goal = s.intent?.kind === "event" ? s.intent.name : (s.where?.place ?? null);
+  // "Bali'ye", "Ozora Festivali için" (an event's name may end in a possessive: never a wrong ending).
+  const toGoal = goal ? (s.intent?.kind === "event" ? `${goal} için` : dative(goal)) : "";
   switch (q) {
     case "guess": {
       const g = s.guess;
@@ -2237,11 +2262,16 @@ export function questionOf(s: StartState, q: QuestionId, ctx: StartCtx): Questio
       // The guess in the chat's language ("Istanbul" from an English board is "İstanbul" in a Turkish chat), once.
       const guess = ctx.fromGuess ? placeOf(ctx.fromGuess).place : null;
       const list = [...new Map([guess, ...common].filter((c): c is string => !!c).map((c) => [squash(c), c])).values()].slice(0, 4);
-      return { id: q, text: L("Nereden yola çıkıyorsun?", "Where are you leaving from?"), chips: list.map((city) => ({ label: city, answer: { q: "from", city } })), other: true };
+      const text = s.mode === "road"
+        ? L("Yol gezisi nereden başlasın?", "Where should the road trip start from?")
+        : goal
+          ? L(`${toGoal} nereden yola çıkıyor${you("sun", "sunuz")}?`, `Where are you setting off for ${goal} from?`)
+          : L(`Nereden yola çıkıyor${you("sun", "sunuz")}?`, "Where are you setting off from?");
+      return { id: q, text, chips: list.map((city) => ({ label: city, answer: { q: "from", city } })), other: true };
     }
     case "who":
       return {
-        id: q, text: L("Kimle gidiyorsun?", "Who's coming?"),
+        id: q, text: goal ? L(`${toGoal} kimle gidiyorsun?`, `Who's coming with you to ${goal}?`) : L("Kimle gidiyorsun?", "Who's coming with you?"),
         chips: ([["solo", L("Yalnız", "Just me")], ["partner", L("Partnerimle", "With my partner")], ["friends", L("Arkadaşlarla", "With friends")], ["family", L("Ailemle", "With family")]] as const).map(
           ([kind, label]) => ({ label, answer: { q: "who" as const, kind } }),
         ),
@@ -2280,7 +2310,7 @@ export function questionOf(s: StartState, q: QuestionId, ctx: StartCtx): Questio
     case "count":
       return {
         id: q,
-        text: L("Kaç kişi gidiyorsunuz (sen dahil)?", "How many of you are going, you included?"),
+        text: s.who?.kind === "family" ? L("Ailece kaç kişisiniz, sen de dahil?", "How many of you in the family, you included?") : L("Kaç kişisiniz, sen de dahil?", "How many of you are going, you included?"),
         chips: [2, 3, 4, 5, 6, 8].map((n) => ({ label: String(n), answer: { q: "count" as const, n } })),
         other: true,
       };
@@ -2293,7 +2323,9 @@ export function questionOf(s: StartState, q: QuestionId, ctx: StartCtx): Questio
     case "duration": {
       if (s.intent?.dates) return eventLengthQuestion(s.intent, s.intent.dates);
       const where = s.where?.place;
-      const text = where ? L(`${where} için kaç gün?`, `How long for ${where}?`) : L("Kaç gün?", "How long?");
+      const text = where
+        ? L(`${where}${locative(where)} kaç gün kalmak ister${you("sin", "siniz")}?`, `How long would you like to stay in ${where}?`)
+        : L("Kaç gün sürsün?", "How long should it be?");
       const lengths: Duration[] = s.mode === "lastminute"
         ? [{ unit: "weekend", n: 1 }, { unit: "night", n: 3 }, { unit: "night", n: 4 }, { unit: "week", n: 1 }]
         : [{ unit: "weekend", n: 1 }, { unit: "week", n: 1 }, { unit: "day", n: 10 }, { unit: "week", n: 2 }, { unit: "week", n: 3 }, { unit: "month", n: 1 }];
@@ -2306,7 +2338,7 @@ export function questionOf(s: StartState, q: QuestionId, ctx: StartCtx): Questio
             { label: L("Gelecek hafta sonu", "Next weekend"), answer: { q: "start", date: weekendStart(ctx.today, true), approx: false } },
           ]
         : monthChips(ctx.today);
-      return { id: q, text: L("Ne zaman başlıyor?", "When does it start?"), hint: L("Bir ay seç ya da günü işaretle.", "Pick a month or mark the day."), chips, date: true };
+      return { id: q, text: L(`Ne zaman yola çıkmayı düşünüyor${you("sun", "sunuz")}?`, "When are you thinking of setting off?"), hint: L("Bir ay seç ya da günü işaretle.", "Pick a month or mark the day."), chips, date: true };
     }
     case "day": {
       const month = Number((s.start?.date ?? ctx.today).slice(5, 7));
@@ -2314,7 +2346,7 @@ export function questionOf(s: StartState, q: QuestionId, ctx: StartCtx): Questio
       const labels: Record<MonthPart, string> = { begin: L("Ayın başı", "Early in the month"), mid: L("Ortası", "Mid-month"), end: L("Sonu", "Late in the month") };
       return {
         id: q,
-        text: L(`${monthName(month)} ayının hangi günü başlıyor?`, `Which day in ${monthName(month)} does it start?`),
+        text: L(`${monthName(month)} ayının hangi günü yola çıkıyor${you("sun", "sunuz")}?`, `Which day in ${monthName(month)} are you setting off?`),
         hint: L("Günü seç; bilmiyorsan ayın başı, ortası ya da sonu.", "Pick the day; if you don't know yet, early, mid or late in the month."),
         chips: days.map(({ part, date }) => ({ label: labels[part], answer: { q: "day" as const, date, part } })),
         date: true,
@@ -2732,19 +2764,19 @@ export function checklist(s: StartState, ctx: StartCtx): ChecklistRow[] {
   const total = totalNights(s);
   const rows: ChecklistRow[] = [
     tentativeWhere(s)
-      ? { id: "where", label: L("NEREYE", "WHERE TO"), value: `${tentativeWhere(s)!.place}?`, done: false, tentative: true, ask: "guess", required: true, skipped: false }
-      : { id: "where", label: L("NEREYE", "WHERE TO"), value: s.where ? [...new Set([s.intent?.name, s.where.place, s.where.country])].filter(Boolean).join(" · ") : L("Nereye gidiyoruz?", "Where are we going?"), done: !!s.where, ask: "where", required: true, skipped: s.skipped.includes("where") },
-    { id: "from", label: L("NEREDEN", "WHERE FROM"), value: s.from ?? L("Nereden yola çıkıyorsun?", "Where are you leaving from?"), done: !!s.from, ask: "from", required: false, skipped: s.skipped.includes("from") },
-    { id: "who", label: L("KİMLE", "WHO'S COMING"), value: whoText(s.who, ctx.myName) || L("Kimle gidiyorsun?", "Who's coming?"), done: !!s.who && !open(s, "count"), ask: s.who && open(s, "count") ? "count" : "who", required: false, skipped: s.skipped.includes("who") },
+      ? { id: "where", label: L("Nereye", "Where to"), value: `${tentativeWhere(s)!.place}?`, done: false, tentative: true, ask: "guess", required: true, skipped: false }
+      : { id: "where", label: L("Nereye", "Where to"), value: s.where ? [...new Set([s.intent?.name, s.where.place, s.where.country])].filter(Boolean).join(" · ") : L("Nereye gidiyoruz?", "Where are we going?"), done: !!s.where, ask: "where", required: true, skipped: s.skipped.includes("where") },
+    { id: "from", label: L("Nereden", "Where from"), value: s.from ?? L("Nereden yola çıkıyorsun?", "Where are you leaving from?"), done: !!s.from, ask: "from", required: false, skipped: s.skipped.includes("from") },
+    { id: "who", label: L("Kimle", "Who's coming"), value: whoText(s.who, ctx.myName) || L("Kimle gidiyorsun?", "Who's coming?"), done: !!s.who && !open(s, "count"), ask: s.who && open(s, "count") ? "count" : "who", required: false, skipped: s.skipped.includes("who") },
     {
-      id: "when", label: L("NE ZAMAN", "WHEN"),
+      id: "when", label: L("Ne zaman", "When"),
       value: whenText(s) || (s.intent?.dates ? `${formatDateRange(s.intent.dates.start, s.intent.dates.end)}${s.intent.dates.approx ? (s.intent.checked ? L(" (teyitsiz)", " (unconfirmed)") : L(" (tahmini)", " (estimated)")) : ""} · ${L("toplam kaç gün?", "how many days in all?")}` : "") || L("Ne zaman, kaç gün?", "When, and for how long?"),
       done: !!tripDates(s),
       ask: !s.duration ? "duration" : "start", required: true, skipped: s.skipped.includes("duration") || s.skipped.includes("start"),
     },
-    { id: "want", label: L("NE İSTİYORSUN", "WHAT YOU'RE AFTER"), value: wantText(s) || L("Sence ne yapsın bu gezi?", "What should this trip be about?"), done: s.wantDone && Boolean(s.styles.length || s.budget), ask: "want", required: false, skipped: s.skipped.includes("want") },
+    { id: "want", label: L("Ne istiyorsun", "What you're after"), value: wantText(s) || L("Sence ne yapsın bu gezi?", "What should this trip be about?"), done: s.wantDone && Boolean(s.styles.length || s.budget), ask: "want", required: false, skipped: s.skipped.includes("want") },
     {
-      id: "route", label: L("ROTA", "ROUTE"),
+      id: "route", label: L("Rota", "Route"),
       value: s.route?.confirmed ? routeText(s.route) : s.route ? L(`Öneri: ${routeText(s.route)}`, `Suggested: ${routeText(s.route)}`) : s.where && total ? L("Sırası gelince önereceğim", "I'll suggest one when we get there") : L("Nereye ve süre belli olunca önereceğim", "I'll suggest one once where and how long are known"),
       done: !!s.route?.confirmed, ask: "route", required: false, skipped: s.skipped.includes("route"),
     },
