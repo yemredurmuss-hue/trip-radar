@@ -164,6 +164,8 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
     const el = headOf(id);
     opening.current = { id, top: el?.getBoundingClientRect().top ?? 0, goTo };
     setLastOpened(id);
+    // One open at a time (B8): one held open for a card being read lets go too (arrive/useArrivals).
+    for (const other of shown) if (other.id !== id && isOpen(other)) onOpen(other.id, false);
     onOpen(id, true);
   };
   const toggle = (s: CatSection) => (isOpen(s) ? onOpen(s.id, false) : open(s.id));

@@ -81,5 +81,3 @@ export function useIntentActions(vm: IntentVM) {
     addSuggestion: suggestion && v82.addSuggestion ? () => v82.addSuggestion!(suggestion) : null,
   };
 }
-
-export type IntentActions = ReturnType<typeof useIntentActions>;

@@ -1888,7 +1888,7 @@ try {
   await apart.getByRole("button", { name: "Fiyat: düzenle" }).click();
   await box("Fiyat").fill("95");
   await app.screenshot({ path: `${out}/4m-inline-edit.png` });
-  assert.equal((await apart.boundingBox()).height, 288, "editing, the box keeps its height");
+  assert.equal(await apart.evaluate((el) => el.offsetHeight), 288, "editing, the box keeps its height");
   await box("Fiyat").press("Enter");
   await apart.locator(".z-top .q-pr b", { hasText: "€95" }).waitFor();
   await apart.getByRole("button", { name: "Giriş: düzenle" }).click();
@@ -2538,6 +2538,7 @@ flow.pages().forEach(watchCsp);
 flow.on("page", watchCsp);
 // Not frozen: its worker writes analyses on the real clock, and the board judges their freshness by it.
 try {
+  const flat = (texts) => texts.map((t) => t.replace(/\s+/g, " ").trim());
   const geminiBodies = [];
   const extraction = {
     category: "stay", name: "Jardim Stay", provider: "Booking.com", summary: "Baixa, Ribeira'ya 8 dk",
@@ -2772,7 +2773,7 @@ try {
     const s = bsec(id);
     await s.waitFor({ timeout: 20000 });
     if (!(await s.evaluate((el) => el.classList.contains("open")))) await s.locator(".q-tt").click();
-    await s.locator(".q-fold.settled").waitFor();
+    await s.locator(".q-fold.on").waitFor(); // (a page behind another has its timers held back: the fold is open, "settled" may come late)
     return s;
   };
   const portoB = async () => {
@@ -3293,6 +3294,9 @@ try {
   // Aç goes to the Bali trip, where the tour is; back to Portugal for what follows.
   await moved.getByRole("button", { name: "Aç" }).click();
   await board.getByRole("heading", { name: "Bali" }).waitFor();
+  // (v82, B8: the trip's categories closed at first look; the tour is in Etkinlik ve turlar)
+  const baliActs = board.locator('.q-sec[data-section="activity"]');
+  if (!(await baliActs.evaluate((el) => el.classList.contains("open")))) await baliActs.locator(".q-tt").click();
   await board.locator(".panel", { hasText: "Nusa Penida" }).first().waitFor();
   await board.screenshot({ path: `${out}/24a-bali-trip.png` });
   await flow.unroute("https://generativelanguage.googleapis.com/**", routedModel);
@@ -3381,7 +3385,7 @@ try {
   const sgSec = (id) => board.locator(`.q-sec[data-section="${id}"]`);
   const openSec = async (id) => {
     if (!(await sgSec(id).evaluate((el) => el.classList.contains("open")))) await sgSec(id).locator(".q-tt").click();
-    await sgSec(id).locator(".q-fold.settled").waitFor();
+    await sgSec(id).locator(".q-fold.on").waitFor(); // (a page behind another has its timers held back: the fold is open, "settled" may come late)
   };
   await sgSec("transport").locator(".q-sgn", { hasText: "1 öneri" }).waitFor({ timeout: 10000 });
   // Only suggested: nothing of its own settled to count (no "x/y"); v82 (C16): what's missing is an intent, one to decide.
@@ -3614,7 +3618,7 @@ try {
   const openHere = async (id) => {
     const sec = panel.locator(`.q-sec[data-section="${id}"]`);
     if (!(await sec.evaluate((el) => el.classList.contains("open")))) await sec.locator(".q-tt").click();
-    await sec.locator(".q-fold.settled").waitFor();
+    await sec.locator(".q-fold.on").waitFor(); // (a page behind another has its timers held back: the fold is open, "settled" may come late)
   };
   await openHere("stay");
   for (const city of ["Ubud", "Canggu", "Uluwatu"]) await panel.locator("[data-section='stay']").getByText(city, { exact: false }).first().waitFor();
@@ -3637,7 +3641,7 @@ try {
   const ekSec = (id) => panel.locator(`.q-sec[data-section="${id}"]`);
   const ekOpen = async (id) => {
     if (!(await ekSec(id).evaluate((el) => el.classList.contains("open")))) await ekSec(id).locator(".q-tt").click();
-    await ekSec(id).locator(".q-fold.settled").waitFor();
+    await ekSec(id).locator(".q-fold.on").waitFor(); // (a page behind another has its timers held back: the fold is open, "settled" may come late)
   };
   const hrefs = (scope) => scope.locator(".ek-link").evaluateAll((els) => els.map((a) => [a.dataset.brand, a.getAttribute("href"), a.getAttribute("target"), a.getAttribute("rel")]));
   // Emre's rule: what the start made (startGuide.placeholders) is never a chosen "Seçildi · bilet alınmadı" card (v82: never
@@ -5506,19 +5510,25 @@ try {
   assert.equal(at0, "none");
   await app.mouse.move(2, 2);
 
-  // nabız: an empty card's ring pulses, slowly, forever (box-shadow only: nothing moves).
-  await openCat("transport");
-  const ring = app.locator(".ek-card .pk-ring.open, .ek-card.tk-search").first();
-  await ring.waitFor();
-  assert.equal(await ring.evaluate((el) => getComputedStyle(el).animationName), "pk-pulse", "nabız: an empty card's ring pulses");
-  assert.equal(await ring.evaluate((el) => getComputedStyle(el).animationDuration), "2.4s", "m-nabiz: slowly, 2.4 s a breath (the drawing's)");
-
-  // rt-fly: a ticket's plane glided to its card when it was first drawn (.9 s, from 18 px left); it is on the sample's flights.
+  // rt-fly: a ticket's plane glided to its card when it was first drawn (.9 s, from 18 px left); it is on the sample's flights
+  // (v82: read while the flights are open the first time; drawn again they don't fly again).
   const glide = await app.locator(".pk-card.tk .tk-plane.tk-fly").first().evaluate((el) => {
     const cs = getComputedStyle(el);
     return [cs.animationName, cs.animationDuration, cs.animationTimingFunction, el.getAnimations()[0]?.effect.getKeyframes()[0].marginLeft];
   });
   assert.deepEqual(glide, ["pk-fly", "0.9s", "cubic-bezier(0.16, 1, 0.3, 1)", "-18px"], "rt-fly: the plane glides to its card on the first draw");
+
+  // nabız: slowly, forever (box-shadow only: nothing moves). v82 (E §377): only while the AI really looks for an intent: the
+  // policy still to find, "AI'dan öner" pressed, pulses while it looks; an intent merely still to find doesn't.
+  await openCat("other");
+  const askedKey = await app.locator('.q-ints > .q-int[data-st="todo"]', { has: app.locator(".q-ai") }).first().getAttribute("data-intent");
+  const asked = app.locator(`.q-ints > .q-int[data-intent="${askedKey}"]`);
+  assert.equal(await asked.locator(".z-pulse").count(), 0, "nothing pulses before the AI looks");
+  await asked.locator(".q-ai").click();
+  const ring = asked.locator(".z-pulse");
+  await ring.waitFor();
+  assert.equal(await ring.evaluate((el) => getComputedStyle(el).animationName), "pk-pulse", "nabız: the box the AI looks for pulses");
+  assert.equal(await ring.evaluate((el) => getComputedStyle(el).animationDuration), "2.4s", "m-nabiz: slowly, 2.4 s a breath (the drawing's)");
 
   // düşüş: a card the chat just made drops in (an old one, from before, never does).
   // düşüş, v82: the box the chat just made comes in with the arrival's ring and "Yeni" (arrive/useArrivals); an old one never does.
@@ -5550,16 +5560,20 @@ try {
       window.__moment.frame ||= Boolean(box.querySelector(".z-xf.out, .z-xf.in"));
     }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ["class", "data-st"], childList: true });
   });
-  const h0 = (await esim.boundingBox()).height;
+  // (its layout height: a ring or a frame coming in scales what's drawn, not the box's place)
+  const h0 = await esim.evaluate((el) => el.offsetHeight);
   await idb("book", "e2e-motion-esim");
   await app.waitForFunction(() => window.__moment.booked && window.__moment.pop, null, { timeout: 5000 });
   const moment = await app.evaluate(() => window.__moment);
   assert.ok(moment.frame, "parlama: the new frame comes in (E3)");
   assert.ok(moment.pop, "mühür: its chip springs");
-  assert.equal((await esim.boundingBox()).height, h0, "the box keeps its height");
+  assert.equal(await esim.evaluate((el) => el.offsetHeight), h0, "the box keeps its height");
   await app.waitForTimeout(350);
   await app.screenshot({ path: `${out}/38a-motion-seal.png` });
-  await app.waitForFunction(() => !document.querySelector('.q-int[data-item-id="e2e-motion-esim"] :is(.q-st.pop, .z-xf.out, .z-xf.in)'), null, { timeout: 3000 });
+  await app.waitForFunction(() => {
+    const box = document.querySelector('.q-int[data-item-id="e2e-motion-esim"]');
+    return box && !box.querySelector(".q-st.pop") && !box.querySelector(".z-xf").getAnimations().some((a) => a.playState === "running");
+  }, null, { timeout: 3000 });
   assert.equal(await esim.locator(".q-st.pop").count(), 0, "…and it is over within a moment");
 
   // sayaç: the budget's figure counts to its new value (it passes through numbers between), then stands.
@@ -5580,17 +5594,20 @@ try {
   assert.ok(seen.size >= 3, `sayaç: the figure passed through numbers on its way (${[...seen].join(" → ")})`);
   void total;
 
-  // × katlama satırı (#7): the empty card folds into its row, which rises 6 px over 300 ms; "Geri al" puts the card back.
-  await openCat("transport");
-  const emptyCard = app.locator(".ek-card").first();
-  await emptyCard.evaluate((el) => el.scrollIntoView({ block: "center" }));
-  await emptyCard.hover();
-  await emptyCard.locator(".pk-x").click();
-  const foldRow = app.locator(".pk-fold").first();
-  await foldRow.waitFor();
-  assert.deepEqual(await foldRow.evaluate((el) => [getComputedStyle(el).animationName, getComputedStyle(el).animationDuration]), ["mv-rise-s", "0.3s"], "× satırı: rises in 300 ms");
-  await foldRow.getByRole("button", { name: "Geri al" }).click();
-  await foldRow.waitFor({ state: "detached" });
+  // × katlama (#7), v82 (E7, F3): "Gerek yok" folds the box's body (its rows to nothing, 260 ms), the box goes under Gizlenenler;
+  // "Geri al" puts it back.
+  await openCat("other");
+  const folding = app.locator('.q-ints > .q-int[data-st="todo"]').first();
+  const foldName = await folding.getAttribute("aria-label");
+  await folding.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  await folding.locator(".z-h .z-mb").click();
+  await folding.getByRole("menuitem", { name: "Gerek yok" }).click();
+  const folded = app.locator(".q-int.folding .q-bwrap").first();
+  await folded.waitFor({ state: "attached" });
+  assert.deepEqual(await folded.evaluate((el) => [getComputedStyle(el).transitionProperty.split(",")[0].trim(), getComputedStyle(el).transitionDuration.split(",")[0].trim()]), ["grid-template-rows", "0.26s"], "Gerek yok: the body folds in 260 ms");
+  await app.locator('.q-sec[data-section="other"] .q-hid > summary').waitFor();
+  await app.locator(".pk-undo").getByRole("button", { name: "Geri al" }).click();
+  await app.locator(`.q-ints > .q-int[aria-label="${foldName}"]`).waitFor();
 
   // Geri alma bildirimi (#15): comes up from 20 px in 300 ms (--e-out), the countdown ring is still 8 s; when it goes it fades with a still copy.
   await openCat("activity");
@@ -5996,7 +6013,7 @@ try {
   await settingsTab.getByLabel("Hareketi duraklat", { exact: false }).uncheck();
   assert.equal(await settingsTab.evaluate(() => localStorage.getItem("trip-radar:still")), null);
   await settingsTab.close();
-  console.log("✓ motion: yükselme, nabız, mühür + parlama, düşüş, sayaç, × satırı, geri alma bildirimi, sohbet mesajı, ⓘ balonu, yer tutucu cümleler, Pano (Yeni, Neden?, kalp), each on its own and over within a moment");
+  console.log("✓ motion: yükselme, nabız, mühür + parlama, düşüş, sayaç, Gerek yok katlanması (v82), geri alma bildirimi, sohbet mesajı, ⓘ balonu, yer tutucu cümleler, Pano (Yeni, Neden?, kalp), each on its own and over within a moment");
 
   console.log("✓ motion: yükselme, nabız, mühür + parlama, düşüş, sayaç, aşama geçişi (kalkış), rt-fly, Canlı noktası, each on its own and over within a moment");
 } finally {

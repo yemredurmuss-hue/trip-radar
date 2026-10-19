@@ -4,10 +4,10 @@
 // (OptionCompact), and "Değiştir" turns the chosen card back to them in place. Ayrıntı opens over the frame (DetailLayer);
 // "Gerek yok" folds the body (E7) and the box goes under the category's "Gizlenenler · n" (F3). A record's days, name and
 // price edit where they stand (C2); a thin "+ Buraya ekle" under a stay adds on its last night, in its city (C3).
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { isCampStay } from "../../../lib/campStay";
 import { L } from "../../../lib/i18n";
-import { areaSearch, changeList, currentOption, frameForm, headName, offerNeed, railState, selfSearches, statusChip, unlessEmpty } from "../../../lib/intentFrame";
+import { areaSearch, changeList, currentOption, frameForm, headName, offerNeed, railState, selfSearches, SHOWN_OPTIONS, statusChip, unlessEmpty } from "../../../lib/intentFrame";
 import type { IntentStatus, IntentVM, OptionVM } from "../../../lib/intents";
 import { addDays } from "../../../lib/plan";
 import { regionHints, type RegionHint } from "../../../lib/regionHints";
@@ -98,23 +98,18 @@ export function IntentBox({ vm: given, color, onHere = null }: {
   const records = given.itemIds.map((id) => byId.get(id)).filter((i): i is Item => i != null);
   const vm = unlessEmpty(given, env.trip, records, (id) => env.docsFor(id).length);
   const record = vm.chosen?.item ?? null;
-  // Still to find with a bare record in it (one tap's "Otel"): its name is the title's, to type where it stands.
-  const held = record ? null : (given.chosen?.item ?? null);
-  if (record) {
+  // Still to find with a bare record in it (one tap's "Otel", the chat's "eSIM de alalım"): its ⋯ is the record's, and its
+  // name the title's, to type where it stands.
+  const held = record ? null : (given.chosen?.item ?? records.find((i) => i.status === "chosen") ?? null);
+  const own = record ?? held;
+  if (own) {
     return (
-      <InlineEdit item={record} only={[...DRAWN]}>
-        <RecordBox vm={vm} color={color} record={record} onHere={onHere} />
+      <InlineEdit item={own} only={record ? [...DRAWN] : ["name"]}>
+        <RecordBox vm={vm} color={color} record={own} onHere={onHere} />
       </InlineEdit>
     );
   }
-  const box = <Box vm={vm} color={color} extra={[]} field={null} pickDoc={null} cancel={null} onHere={onHere} />;
-  return held ? (
-    <InlineEdit item={held} only={["name"]}>
-      {box}
-    </InlineEdit>
-  ) : (
-    box
-  );
+  return <Box vm={vm} color={color} extra={[]} field={null} pickDoc={null} cancel={null} onHere={onHere} itemId={null} />;
 }
 
 /** A stay's place for "+ Buraya ekle": its city and its last night (templates.insertAt); none without its days. */
@@ -142,11 +137,11 @@ function RecordBox({ vm, color, record, onHere }: { vm: IntentVM; color: string;
   ];
   const cancel = booked ? () => cancelBooking(record).then(env.offer) : null;
   return (
-    <Box vm={vm} color={color} extra={extra} field={<>{stage.field}{doc.field}</>} pickDoc={doc.pick} cancel={cancel} askedHide={booked ? stage.hide : null} onHere={onHere} />
+    <Box vm={vm} color={color} extra={extra} field={<>{stage.field}{doc.field}</>} pickDoc={doc.pick} cancel={cancel} askedHide={booked ? stage.hide : null} onHere={onHere} itemId={record.id} />
   );
 }
 
-function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHere }: {
+function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHere, itemId }: {
   vm: IntentVM;
   color: string;
   extra: MenuEntry[];
@@ -157,6 +152,8 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
   /** A booking's "Gerek yok" asks first whether it was cancelled (stageMenu.hide). */
   askedHide?: (() => void) | null;
   onHere: ((at: InsertAt) => void) | null;
+  /** The record the box stands for (the one shown, or the bare one still to find): to-dos and arrivals find it by it. */
+  itemId: string | null;
 }) {
   const env = useCardEnv();
   const v82 = useV82Env();
@@ -172,15 +169,9 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
     setChanging(false);
     setDetail(false);
   }, [vm.status, chosenId]);
-  // Escape turns a card back from its options (Vazgeç), as it did from the old card's back.
   const boxRef = useRef<HTMLElement>(null);
-  useEffect(() => {
-    if (!changing) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && focusNear(boxRef.current) && cancelChange();
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [changing]);
   const pop = useStepPop(vm.status);
+  const chipId = useId();
   const name = headName(vm);
   const entry = useRef<Entry>("in");
   const art = artOf(vm.kind, vm.chosen?.item ?? vm.options[0]?.item ?? null);
@@ -211,6 +202,13 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
     entry.current = "back";
     setChanging(false);
   };
+  // Escape turns a card back from its options (Vazgeç), as it did from the old card's back.
+  useEffect(() => {
+    if (!changing) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && focusNear(boxRef.current) && cancelChange();
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [changing]);
 
   const menu: MenuEntry[] = [
     ...(record && form !== "searching" ? [{ label: L("Ayrıntı", "Details"), run: () => setDetail(true) }] : []),
@@ -259,7 +257,7 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
       </div>
     );
   } else if (showOptions) {
-    const options = changing ? changeList(vm) : vm.options.slice(0, 3);
+    const options = changing ? changeList(vm) : vm.options.slice(0, SHOWN_OPTIONS);
     body = <OptionList vm={vm} options={options} current={changing ? currentOption(vm) : null} changing={changing} art={art} links={links} onPick={pick} onOpen={(o) => env.onOpenItem(o.item)} onCancel={cancelChange} onAsk={a.ask} />;
   } else if (form) {
     const props = {
@@ -309,14 +307,15 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
         data-intent={vm.key}
         data-st={railState(vm.status)}
         data-kind={vm.kind}
-        data-item-id={record?.id}
+        data-item-id={itemId ?? undefined}
         data-option-ids={vm.itemIds.join(" ") || undefined}
         style={{ "--k": color } as React.CSSProperties}
         aria-label={name}
+        aria-describedby={chipId}
         // What just arrived wears "Yeni" while it rings (arrive/useArrivals pulses .ar-new on it, C10/C35).
         data-new={L("Yeni", "New")}
       >
-        <IntentHead vm={vm} art={headArt} chip={chip} pop={pop} onPano={a.pano} menu={<IntentMenu entries={menu} name={name} />} />
+        <IntentHead vm={vm} art={headArt} chip={chip} chipId={chipId} pop={pop} onPano={a.pano} menu={<IntentMenu entries={menu} name={name} />} />
         <div className="q-bwrap">
           <div className="q-body">
             <div key={xf.key} className={xf.cls}>

@@ -249,7 +249,8 @@
 .z-sk > span > i:nth-child(1) { width: 70%; }
 .z-sk > span > i:nth-child(2) { width: 90%; }
 .z-sk > span > i:nth-child(3) { width: 45%; }
-.z-pulse { width: 10px; height: 10px; border-radius: 50%; background: #7b62f0; box-shadow: 0 0 0 0 rgba(123, 98, 240, .5); animation: z-pulse 1.6s infinite; flex: none; }
+/* m-nabiz (E §377): only while the AI really looks for this intent, the live pulse: 2.4 s a breath, 6 px (app.css pk-pulse). */
+.z-pulse { width: 10px; height: 10px; border-radius: 50%; background: #7b62f0; animation: pk-pulse 2.4s ease-in-out infinite; flex: none; }
 
 /* The offers' row under an empty stay, only while a data source has some (OfferRow): outside the fixed frame. */
 .q-ints > .q-offers { margin-top: -6px; }
@@ -261,7 +262,6 @@
 @keyframes z-flip { 0% { opacity: 0; rotate: x -8deg; } 100% { opacity: 1; rotate: x 0deg; } }
 @keyframes z-pop { from { opacity: 0; scale: .96; } to { opacity: 1; scale: 1; } }
 @keyframes z-bump { 0% { scale: 1; } 40% { scale: 1.12; } 100% { scale: 1; } }
-@keyframes z-pulse { 0% { box-shadow: 0 0 0 0 rgba(123, 98, 240, .45); } 70% { box-shadow: 0 0 0 8px rgba(123, 98, 240, 0); } 100% { box-shadow: 0 0 0 0 rgba(123, 98, 240, 0); } }
 @keyframes z-shim { from { background-position: 100% 0; } to { background-position: -200% 0; } }
 .z-xf.out { animation: z-out 120ms var(--e-in, cubic-bezier(.5, 0, .75, 0)) both; pointer-events: none; }
 .z-xf.in { animation: z-in var(--t-base) var(--e-out) both; }

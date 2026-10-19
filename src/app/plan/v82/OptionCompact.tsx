@@ -4,7 +4,7 @@
 // changing, the one chosen is marked ("Seçili") and "Vazgeç" turns the card back. Fewer than three: the rest asks for more.
 // Its name and price edit where they stand (C2): the price on a click, the name when the card was just added (or by Tab).
 import { L } from "../../../lib/i18n";
-import { badgeWord, optionPrice, optionsHead, ratingParts, sourceBadge, type SelfSearch } from "../../../lib/intentFrame";
+import { badgeWord, optionPrice, optionsHead, ratingParts, SHOWN_OPTIONS, sourceBadge, type SelfSearch } from "../../../lib/intentFrame";
 import type { IntentVM, OptionVM } from "../../../lib/intents";
 import { Editable, InlineEdit, useInlineEdit } from "../../cards/InlineEdit";
 import { Ic, Mark } from "./icons";
@@ -133,7 +133,7 @@ export function OptionList({ vm, options, current, changing, art, links, onPick,
   onAsk: (() => void) | null;
 }) {
   const head = optionsHead(vm, changing);
-  const left = 3 - options.length;
+  const left = SHOWN_OPTIONS - options.length;
   return (
     <div className="q-opts">
       <div className="q-oh">

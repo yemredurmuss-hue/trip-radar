@@ -16,8 +16,10 @@ const fieldOf = (part: string): FieldKey | null => {
   return icon === "cal" ? "date" : icon === "moon" ? "end" : null;
 };
 
-export function IntentHead({ vm, art, chip, pop, onPano, menu }: {
+export function IntentHead({ vm, art, chip, chipId, pop, onPano, menu }: {
   vm: IntentVM;
+  /** The chip's id: the box is described by its state in words, never by its colour alone. */
+  chipId: string;
   /** The picture: the intent's own photo, else its kind's drawing. */
   art: { src: string; photo: boolean };
   chip: StatusChip;
@@ -66,7 +68,7 @@ export function IntentHead({ vm, art, chip, pop, onPano, menu }: {
         </div>
       </div>
       <div className="q-hr">
-        <span className={`q-st ${chip.tone}${pop ? " pop" : ""}`}>
+        <span id={chipId} className={`q-st ${chip.tone}${pop ? " pop" : ""}`}>
           {chip.tick && <Ic name="check" size={12} stroke={3.2} />}
           {chip.text}
         </span>
