@@ -55,7 +55,7 @@ const cors = {
 const reply = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 
 const HOURS = { flight: 12, stay: 24, activity: 1, esim: 24, transfer: 24 };
-const CAPS: Record<string, number> = { aviasales: 400, xotelo: 400, tripadvisor: 5, links: 300, serpapi: 0, serp_otel: 5, serp_fiyat: 1, serp_yer: 1, serp_etkinlik: 1, viator: 300, airalo: 6, omio: 4, ucus: 450 };
+const CAPS: Record<string, number> = { aviasales: 400, xotelo: 400, tripadvisor: 20, links: 300, serpapi: 0, serp_otel: 5, serp_fiyat: 1, serp_yer: 1, serp_etkinlik: 1, viator: 300, airalo: 6, omio: 4, ucus: 450 };
 const cap = (source: string) => Number(Deno.env.get(`OFFERS_CAP_${source.toUpperCase()}`)) || CAPS[source];
 
 type Sb = ReturnType<typeof createClient>;
@@ -216,11 +216,19 @@ async function priceInsight(sb: Sb, from: string, to: string, day: string): Prom
   }
 }
 
+/**
+ * A city's Tripadvisor id, the key to Xotelo's list: kept for good once found, "none" kept 30 days; the city's id found
+ * without its country (or with) is used before a lookup is spent. RapidAPI's free plan is 150 a month with a hard
+ * limit (nothing billed past it), so the daily cap only spreads it: 20 new cities a day.
+ */
 async function geoOf(sb: Sb, rapidKey: string, city: string, country: string | null): Promise<string | null> {
   const query = country ? `${city} ${country}` : city;
   const key = `geo|${query.toLocaleLowerCase("en")}`;
   const had = await cached<{ geo: string | null }>(sb, key, null);
-  if (had) return had.geo;
+  if (had?.geo) return had.geo;
+  const other = country ? (await cached<{ geo: string | null }>(sb, `geo|${city.toLocaleLowerCase("en")}`, null))?.geo : null;
+  if (other) return other;
+  if (had && (await cached<{ geo: string | null }>(sb, key, 24 * 30))) return null;
   if (!rapidKey || !(await take(sb, "tripadvisor"))) return null;
   const host = "tripadvisor-com1.p.rapidapi.com";
   const res = await fetch(`https://${host}/auto-complete?query=${encodeURIComponent(query)}`, { headers: { "x-rapidapi-key": rapidKey, "x-rapidapi-host": host } });
