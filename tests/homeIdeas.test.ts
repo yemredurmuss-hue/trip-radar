@@ -1,6 +1,6 @@
 // The home's idea chips (ana-sayfa-v1, 2026-10-19): two sets of six fixed ideas, this month's first, each with both
 // languages, its mode and a drawing whose ids are its own.
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
 import { HINTS, IDEAS, ideaArtMarkup, ideasFor, ideaTip, inSeason, monthSpan } from "../src/app/homeIdeas";
 import { setLang } from "../src/lib/i18n";
@@ -60,11 +60,14 @@ describe("the home under the box", () => {
   it("Sürpriz bir yer starts the inspire mode", () => {
     expect(home).toContain('submit("inspire", L("Sürpriz bir yer", "Surprise me"))');
   });
-  it("the headings take the display face, no font fetched", () => {
+  it("the headings take the display face, bundled, never fetched", () => {
     const css = readFileSync("static/app.css", "utf8");
     expect(css).toMatch(/--hm-display: "Plus Jakarta Sans", -apple-system/);
     expect(css).toMatch(/\.st-hello \{[^}]*font-family: var\(--hm-display\)[^}]*letter-spacing: -\.025em; font-weight: 800;/);
     expect(css).toMatch(/\.st-section \{ font-family: var\(--hm-display\);[^}]*font-weight: 800;/);
-    expect(css).not.toMatch(/@font-face|fonts\.googleapis/);
+    // The face is the extension's own file (static/fonts), never a font host.
+    expect(css).toMatch(/@font-face \{ font-family: "Plus Jakarta Sans";[^}]*url\("fonts\/PlusJakartaSans-latin\.woff2"\)/);
+    expect(css).not.toMatch(/fonts\.googleapis|fonts\.gstatic|url\("https?:/);
+    expect(existsSync("static/fonts/PlusJakartaSans-latin.woff2") && existsSync("static/fonts/PlusJakartaSans-latin-ext.woff2")).toBe(true);
   });
 });

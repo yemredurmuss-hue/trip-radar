@@ -12,6 +12,9 @@ import { chromium } from "playwright-core";
 // (pieces fade in over about 2.5 s): it is switched off in every context but the one that checks it (Part 5, `openingOn`).
 let openingOn = false;
 const launchPersistent = chromium.launchPersistentContext.bind(chromium);
+// A trip's title as tripName.ts writes it (0.39.3): the length, the place, a theme word, the kind ("1 Aylık Bali Doğa
+// Tatili", "3-Week Papua New Guinea Friends Trip"). The scenarios check the place is in it, not the words around it.
+const titled = (place) => new RegExp(`^(\\d+ (Günlük|Haftalık|Aylık) |\\d+-(Day|Week|Month) )?${place}( \\S+)*$`);
 chromium.launchPersistentContext = async (...args) => {
   const ctx = await launchPersistent(...args);
   if (!openingOn) await ctx.addInitScript(() => { try { sessionStorage.setItem("trip-radar:opening-off", "1"); } catch {} });
@@ -3661,13 +3664,14 @@ try {
   await watchGen();
   await board.locator(".st-chat").getByLabel("Mesaj").fill("oluştur");
   await board.locator(".st-chat").getByLabel("Mesaj").press("Enter");
-  await board.locator(".st-gen", { hasText: "Bali Gezisi planlanıyor" }).waitFor();
+  await board.locator(".st-gen", { hasText: /Bali.* planlanıyor/ }).waitFor();
   await board.screenshot({ path: `${out}/20c-start-generating.png` });
   // The board: the trip, its nights by stop and its flights to plan, the start card, the same conversation.
-  await board.getByRole("heading", { name: "Bali Gezisi" }).waitFor({ timeout: 20000 });
+  await board.getByRole("heading", { name: titled("Bali") }).waitFor({ timeout: 20000 });
   const baliGen = await genSeen();
   assert.equal(baliGen.sub, "İstanbul → Ubud → Canggu → Uluwatu · 31 gece");
-  for (const step of ["Gezi açıldı: Bali Gezisi", "İstanbul ⇄ Denpasar uçuşları için yer açıldı", "Rota çizildi: Ubud 12 gece → Canggu 10 gece → Uluwatu 9 gece"]) assert.ok(baliGen.steps.includes(step), `step "${step}" (${baliGen.steps.join(" | ")})`);
+  assert.ok(baliGen.steps.some((x) => /^Gezi açıldı: .*Bali/.test(x)), "the trip opened");
+  for (const step of ["İstanbul ⇄ Denpasar uçuşları için yer açıldı", "Rota çizildi: Ubud 12 gece → Canggu 10 gece → Uluwatu 9 gece"]) assert.ok(baliGen.steps.includes(step), `step "${step}" (${baliGen.steps.join(" | ")})`);
   // The suggestions' review is started as the last step and not waited for (2026-10-09): the board opens and they keep
   // arriving there (the same review the board runs, claimed first, so it isn't asked again there).
   assert.ok(baliGen.steps.some((x) => /Öneriler hazırlanıyor; panoda gelmeye devam edecek/.test(x)), "the suggestions' step");
@@ -3680,7 +3684,7 @@ try {
   const made = await board.evaluate(async () => {
     const database = await new Promise((resolve) => { const q = indexedDB.open("trip-radar"); q.onsuccess = () => resolve(q.result); });
     const all = (store) => new Promise((resolve) => { const q = database.transaction(store).objectStore(store).getAll(); q.onsuccess = () => resolve(q.result); });
-    const trip = (await all("trips")).find((t) => t.title === "Bali Gezisi");
+    const trip = (await all("trips")).find((t) => /Bali/.test(t.title));
     const items = (await all("items")).filter((i) => i.tripId === trip.id);
     return {
       dates: trip.confirmedDates,
@@ -3731,7 +3735,7 @@ try {
   await board.locator(".chat .msg-user", { hasText: "Sabine'yle 10 Aralık'tan 1 ay Bali" }).waitFor();
   // "oluştur" typed is kept as said (not swapped for the button's words).
   await board.locator(".chat .msg-user", { hasText: /^oluştur$/ }).waitFor();
-  await board.locator(".chat .msg-assistant", { hasText: "Bali Gezisi hazır: 31 gece, 3 durak." }).waitFor();
+  await board.locator(".chat .msg-assistant", { hasText: /Bali.* hazır: 31 gece, 3 durak\./ }).waitFor();
   if (START_CARD_SHOWN) await guide.scrollIntoViewIfNeeded();
   await board.screenshot({ path: `${out}/20d-start-board.png` });
   if (START_CARD_SHOWN) {
@@ -3888,10 +3892,10 @@ try {
         request.onerror = () => reject(request.error);
       });
       const all = (store) => new Promise((resolve) => (database.transaction(store).objectStore(store).getAll().onsuccess = (e) => resolve(e.target.result)));
-      const trip = (await all("trips")).find((x) => x.title === t);
+      const trip = (await all("trips")).find((x) => x.title.includes(t));
       return { trip, items: (await all("items")).filter((i) => i.tripId === trip.id) };
     }, title);
-  const bali = await tripRecords("Bali Gezisi");
+  const bali = await tripRecords("Bali");
   const mainHome = bali.items.find((i) => i.category === "flight" && i.flight?.from === "Denpasar" && i.status !== "dismissed");
   assert.ok(mainHome, "the start's flight home is there");
   const perPersonPrompts = [];
@@ -3992,7 +3996,7 @@ try {
   assert.equal(await ekSec("stay").locator(".wh-badge").count(), 0, "the shared stays show nothing");
   await ekSec("flight").evaluate((el) => el.scrollIntoView({ block: "start" }));
   await board.screenshot({ path: `${out}/23c-per-person-owner.png` });
-  const after = await tripRecords("Bali Gezisi");
+  const after = await tripRecords("Bali");
   assert.deepEqual(after.trip.travellers.from, { Sabine: "Alicante" });
   assert.deepEqual(after.items.find((i) => i.id === mainHome.id).forWho, ["Sabine"]);
   await flow.unroute("https://generativelanguage.googleapis.com/**", perPerson);
@@ -4074,7 +4078,7 @@ try {
   let favoured = [];
   // (added first, then chosen: waited for until it is)
   for (let i = 0; i < 50 && !favoured.some((x) => x.status === "chosen"); i++) {
-    favoured = (await tripRecords("Bali Gezisi")).items.filter((x) => x.name === "Bucu View");
+    favoured = (await tripRecords("Bali")).items.filter((x) => x.name === "Bucu View");
     if (!favoured.some((x) => x.status === "chosen")) await board.waitForTimeout(100);
   }
   assert.deepEqual(
@@ -4594,10 +4598,10 @@ try {
   // three times side by side for the date line), never a map library on this screen.
   await watchGen();
   await genBtn.click();
-  await board.locator(".st-gen", { hasText: "Koh Phangan Gezisi planlanıyor" }).waitFor();
+  await board.locator(".st-gen", { hasText: /Koh Phangan.* planlanıyor/ }).waitFor();
   assert.equal(await board.locator(".st-gen-foot").innerText().then((t) => /%/.test(t)), false, "no percentages");
   await board.screenshot({ path: `${out}/21c-start-generating.png` });
-  await board.getByRole("heading", { name: "Koh Phangan Gezisi", exact: true }).waitFor({ timeout: 20000 });
+  await board.getByRole("heading", { name: titled("Koh Phangan") }).waitFor({ timeout: 20000 });
   const kpGen = await genSeen();
   // The map speaks the chat's language on the English board; the bundled world as SVG; no canvas (no MapLibre).
   assert.equal(kpGen.credit, "Harita: Natural Earth");
@@ -4606,12 +4610,13 @@ try {
   // The big steps: 28 px marks (their layout size: a tick popping in is scaled for a moment).
   assert.equal(kpGen.mark, 28, "28 px step icons");
   // Rev 3: "Oluştur" builds the proposal on screen (the model's, kept in the background) rather than one stop.
-  for (const step of ["Gezi açıldı: Koh Phangan Gezisi", "Rota çizildi: Koh Phangan 21 gece → Koh Samui 10 gece", "İstanbul ⇄ Koh Samui uçuşları için yer açıldı"]) assert.ok(kpGen.steps.includes(step), `step "${step}" (${kpGen.steps.join(" | ")})`);
+  assert.ok(kpGen.steps.some((x) => /^Gezi açıldı: .*Koh Phangan/.test(x)), "the trip opened");
+  for (const step of ["Rota çizildi: Koh Phangan 21 gece → Koh Samui 10 gece", "İstanbul ⇄ Koh Samui uçuşları için yer açıldı"]) assert.ok(kpGen.steps.includes(step), `step "${step}" (${kpGen.steps.join(" | ")})`);
   assert.ok(kpGen.steps.some((x) => x.startsWith("2 kişi")), "who goes");
   const kp = await board.evaluate(async () => {
     const database = await new Promise((resolve) => { const q = indexedDB.open("trip-radar"); q.onsuccess = () => resolve(q.result); });
     const all = (store) => new Promise((resolve) => { const q = database.transaction(store).objectStore(store).getAll(); q.onsuccess = () => resolve(q.result); });
-    const trip = (await all("trips")).find((t) => t.title === "Koh Phangan Gezisi");
+    const trip = (await all("trips")).find((t) => /Koh Phangan/.test(t.title));
     const items = (await all("items")).filter((i) => i.tripId === trip.id);
     return {
       dates: trip.confirmedDates,
@@ -4631,7 +4636,7 @@ try {
     istanbulTrips: 0,
   });
   await board.locator(".x-hero").getByText("Thailand", { exact: false }).first().waitFor();
-  await board.locator(".chat .msg-assistant", { hasText: "Koh Phangan Gezisi hazır: 31 gece, 2 durak." }).waitFor();
+  await board.locator(".chat .msg-assistant", { hasText: /Koh Phangan.* hazır: 31 gece, 2 durak\./ }).waitFor();
   await board.screenshot({ path: `${out}/21d-start-board.png` });
   await flow.unroute("https://generativelanguage.googleapis.com/**", revModel);
   await flow.unroute(/wikipedia\.org\/api\/rest_v1\//, wiki);
@@ -4707,11 +4712,11 @@ try {
   // Pressed while "Rotayı çiziyor…" shows: the circuit is built.
   await watchGen();
   await lkGen.click();
-  await board.locator(".st-gen", { hasText: "Sri Lanka Gezisi planlanıyor" }).waitFor();
+  await board.locator(".st-gen", { hasText: /Sri Lanka.* planlanıyor/ }).waitFor();
   // Pictures along the way (best effort: the board opens by itself a few seconds in).
   await board.locator(".st-gen .gm[data-phase=flying]").waitFor({ timeout: 6000 }).then(() => board.screenshot({ path: `${out}/23b-start-map-midflight.png` })).catch(() => undefined);
   await board.locator(".st-gen .gm[data-phase=landed]").waitFor({ timeout: 6000 }).then(() => board.screenshot({ path: `${out}/23c-start-map-landed.png` })).catch(() => undefined);
-  await board.getByRole("heading", { name: "Sri Lanka Gezisi", exact: true }).waitFor({ timeout: 20000 });
+  await board.getByRole("heading", { name: titled("Sri Lanka") }).waitFor({ timeout: 20000 });
   // v5: the light SVG map: home, the white plane flying the arc to Sri Lanka, a ring where it lands, then the stops
   // (never before it lands) and the photos inside the card; no canvas.
   const lkGenSeen = await genSeen();
@@ -4725,7 +4730,7 @@ try {
   const lkMade = await board.evaluate(async () => {
     const database = await new Promise((resolve) => { const q = indexedDB.open("trip-radar"); q.onsuccess = () => resolve(q.result); });
     const all = (store) => new Promise((resolve) => { const q = database.transaction(store).objectStore(store).getAll(); q.onsuccess = () => resolve(q.result); });
-    const trip = (await all("trips")).filter((t) => t.title === "Sri Lanka Gezisi").at(-1);
+    const trip = (await all("trips")).filter((t) => /Sri Lanka/.test(t.title)).at(-1);
     const items = (await all("items")).filter((i) => i.tripId === trip.id);
     return {
       dates: trip.confirmedDates,
@@ -4818,7 +4823,7 @@ try {
     assert.doesNotMatch(line, /Got it:/, `an echo: ${line}`);
   }
   await board.locator(".st-side .st-gen-btn").click();
-  await board.getByRole("heading", { name: "Papua New Guinea Trip", exact: true }).waitFor({ timeout: 20000 });
+  await board.getByRole("heading", { name: titled("Papua New Guinea") }).waitFor({ timeout: 20000 });
   await board.locator(".chat .msg-assistant", { hasText: "Tell me their names if you like." }).waitFor();
   console.log("✓ start rev 3, the second report (English): \"Papua New Gune\" asked back as Papua New Guinea, a friend, November · 3 weeks at once; then the day, what they want, where from last; no names before the trip; the board's chat asks them once");
 
@@ -4997,8 +5002,8 @@ try {
   await board.locator(".st-msg-bot", { hasText: "I'm ready and will build it in a few seconds. Write if you want to add anything." }).last().waitFor();
   // (the 3 s countdown may be over by the time we look: the generating screen is what counts)
   // (best effort: the generating screen may already be over; window.__gen keeps what it showed)
-  await board.locator(".st-gen h2", { hasText: /^Planning AfrikaBurn 20\d\d$/ }).waitFor({ timeout: 4000 }).then(() => board.screenshot({ path: `${out}/26c-intent-generating.png` })).catch(() => undefined);
-  await board.getByRole("heading", { name: /^AfrikaBurn 20\d\d$/ }).waitFor({ timeout: 20000 });
+  await board.locator(".st-gen h2", { hasText: /^Planning .*AfrikaBurn/ }).waitFor({ timeout: 4000 }).then(() => board.screenshot({ path: `${out}/26c-intent-generating.png` })).catch(() => undefined);
+  await board.getByRole("heading", { name: titled("AfrikaBurn") }).waitFor({ timeout: 20000 });
   const abGen = await genSeen();
   assert.equal(abGen.sub, "Istanbul → Cape Town → Tankwa Karoo 🎪 → Cape Town · 10 nights");
   assert.deepEqual(abGen.fest, ["Tankwa Karoo"], "the festival's stop is pink");
@@ -5007,7 +5012,7 @@ try {
   const ab = await board.evaluate(async () => {
     const database = await new Promise((resolve) => { const q = indexedDB.open("trip-radar"); q.onsuccess = () => resolve(q.result); });
     const all = (store) => new Promise((resolve) => { const q = database.transaction(store).objectStore(store).getAll(); q.onsuccess = () => resolve(q.result); });
-    const trip = (await all("trips")).find((t) => /^AfrikaBurn 20\d\d$/.test(t.title));
+    const trip = (await all("trips")).find((t) => /AfrikaBurn/.test(t.title));
     const items = (await all("items")).filter((i) => i.tripId === trip.id);
     return {
       nights: Math.round((Date.parse(trip.confirmedDates.end) - Date.parse(trip.confirmedDates.start)) / 86400000),
