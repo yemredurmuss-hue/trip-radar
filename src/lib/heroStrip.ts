@@ -98,6 +98,14 @@ export function datesWords(d: { range: { start: string; end: string }; estimated
   return `${d.estimated ? "~" : ""}${short ? shortRange(d.range.start, d.range.end) : formatDateRange(d.range.start, d.range.end)}`;
 }
 
+/**
+ * The dates as the hero's big value: the month written out within one month ("8–14 Ekim"), short across two
+ * ("24 Kas – 3 Ara") so the line fits its cell beside the people (0.39.5: "24 November – 3 December" ran over it).
+ */
+export function heroDatesWords(d: { range: { start: string; end: string }; estimated: boolean; rough?: boolean }): string {
+  return datesWords(d, d.range.start.slice(0, 7) !== d.range.end.slice(0, 7));
+}
+
 /** The dates' tip: each city's own days ("Porto 8–11 Ekim · Lizbon 11–14 Ekim"), and that they are a guess. */
 export function datesTip(places: readonly { city: string; start: string; end: string }[], estimated: boolean): string | null {
   const parts = places.map((p) => `${p.city} ${formatDateRange(p.start, p.end)}`);

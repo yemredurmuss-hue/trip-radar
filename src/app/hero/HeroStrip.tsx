@@ -11,7 +11,7 @@ import { BUDGET_SLICES, type BudgetBar, type BudgetSlice } from "../../lib/progr
 import { formatPrice, nightsBetween } from "../../lib/items";
 import type { Countdown } from "../../lib/countdown";
 import { initials, nPeople } from "../../lib/heroInfo";
-import { budgetAmount, budgetWords, datesWords, freshWords, nextParts, readyWords, shareSentence, whoWords, type BudgetView, type HeroCounts } from "../../lib/heroStrip";
+import { budgetAmount, budgetWords, freshWords, heroDatesWords, nextParts, readyWords, shareSentence, whoWords, type BudgetView, type HeroCounts } from "../../lib/heroStrip";
 import { L } from "../../lib/i18n";
 import { nDays } from "../../lib/i18nText";
 import type { Who } from "../../lib/tripSettings";
@@ -67,7 +67,7 @@ function Dates({ dates }: { dates: HeroDates }) {
         <div {...bind} className="x-seg x-s1" tabIndex={dates.tip ? 0 : undefined}>
           <span className="x-k">{L("Ne zaman", "When")}</span>
           <span className="x-sv">
-            <b>{datesWords(dates)}</b>
+            <b>{heroDatesWords(dates)}</b>
             {small && <small>{small}</small>}
           </span>
         </div>

@@ -110,6 +110,8 @@ body.still .x-t.go:hover img { transform: none; }
 .x-sv b, .x-pct { font-family: var(--x-display); font-size: var(--q-fs-price); font-weight: 800; line-height: 1.15; letter-spacing: -.02em; font-variant-numeric: tabular-nums; color: var(--q-ink); white-space: nowrap; }
 .x-sv small, .x-sl, .x-ps { font-size: 13px; line-height: 1.35; color: var(--q-mut); min-width: 0; max-width: 100%; }
 button.x-sv { cursor: pointer; border-radius: 8px; }
+/* The dates may still be long (an estimate's "~", a narrow board): they wrap in their cell, never over the next one. */
+.x-s1 .x-sv b { white-space: normal; overflow-wrap: break-word; text-wrap: balance; }
 button.x-sv:hover b { color: var(--q-acc); }
 button.x-sv:focus-visible { outline: 2px solid var(--q-acc); outline-offset: 3px; }
 .x-budb.over b, .x-sl.over { color: var(--q-bad); }
