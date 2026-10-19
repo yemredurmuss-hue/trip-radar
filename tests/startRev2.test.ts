@@ -179,6 +179,8 @@ describe("an answer fills the question it answers (item 2)", () => {
     expect(thailand.where?.place).toBe("Tayland");
     const refined = bindToQuestion(thailand, "Koh Phangan", { ...EMPTY_EXTRACTED, where: { place: "Koh Phangan", country: "Tayland", code: "TH" } }, "from");
     expect(refined.where?.place).toBe("Koh Phangan");
+    // The country said first stays the trip's title (0.38.2: "Sri Lanka", then "Ahangama" → "Sri Lanka Gezisi").
+    expect(refined.where?.within).toBe("Tayland");
     expect(saysWhereTo("İstanbul")).toBe(false);
     expect(saysWhereTo("let's go to Bali instead")).toBe(true);
   });

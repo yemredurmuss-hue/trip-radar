@@ -72,6 +72,8 @@ export interface Place {
   place: string;
   country: string | null;
   code?: string | null;
+  /** The country said first, when the place is a town in it said after ("Sri Lanka", then "Ahangama"): the trip's title. */
+  within?: string | null;
 }
 export interface StartRoute {
   stops: RouteStop[];
@@ -1965,10 +1967,13 @@ export function bindToQuestion(s: StartState, text: string, read: Extracted, q: 
   const e = read;
   // An event named is where they go, whatever was asked ("AfrikaBurn" to "Nereden?" is never where from).
   if (e.intent) return e;
-  if (!e.where || !s.where || samePlace(e.where.place, s.where.place)) return e;
-  // Koh Phangan after Thailand: the same country, said more exactly.
+  if (!e.where || !s.where) return e;
+  // The same place said again keeps the country it was said in.
+  if (samePlace(e.where.place, s.where.place)) return s.where.within && !e.where.within ? { ...e, where: { ...e.where, within: s.where.within } } : e;
+  // Koh Phangan after Thailand: the same country, said more exactly (the trip keeps the country's name as its title).
   const refines = Boolean(s.where.code && e.where.code === s.where.code && countryCodeOfName(s.where.place) === s.where.code);
-  if (q === "where" || refines) return e;
+  if (refines) return { ...e, where: { ...e.where, within: s.where.place } };
+  if (q === "where") return e;
   // A change of mind: where changes; where from stays as it was unless this line says it ("İstanbul'dan", "from").
   if (saysWhereTo(text)) return q === "from" && !/['’](d|t)[ae]n(?![\p{L}])|\bfrom\b/iu.test(text) ? { ...e, from: null } : e;
   if (q === "from" && !e.from) return { ...e, from: e.where.place, where: null };
@@ -2631,7 +2636,8 @@ export function lineLink(s: Pick<StartState, "intent">, line: string): string | 
 /** The trip's title (2026-10-06): the event or theme when there is one ("AfrikaBurn 2027"), else the place's. */
 export function tripTitle(s: Pick<StartState, "where" | "intent">): string {
   if (s.intent) return intentTitle(s.intent);
-  const place = s.where?.place ?? "";
+  // "Sri Lanka", then "Ahangama": the country's trip (its route, stays and flights keep the town).
+  const place = s.where?.within || s.where?.place || "";
   return L(`${place} Gezisi`, `${place} trip`);
 }
 
@@ -2940,11 +2946,15 @@ export function acceptRoute(raw: RawRoute, total: number, origin: string | null 
   return { stops, arrive: airport(raw.arrival_airport_city ?? ""), leave: airport(raw.departure_airport_city ?? ""), confirmed: false, source: "ai" };
 }
 
+/** Words typed before the place that aren't part of it: "rota yok sadece Ahangama 14", "only Ubud 12". */
+const ROUTE_FILLER = /^(?:(?:rota\s+yok|no\s+route|sadece|yaln[ıiIİ]zca|yaln[ıiIİ]z|only|just)[\s,.:;-]+)+/iu;
+
 /** "Ubud 12, Canggu 19" typed: the stops, or why it can't be one (the nights must add up). */
 export function parseRouteText(text: string, total: number): { route: StartRoute } | { error: string } {
   const parts = [...text.matchAll(/([\p{L}][\p{L} .'’-]*?)\s*[:\-–]?\s*(\d{1,3})(?:\s*(?:gece|gün|gun|nights?|days?))?/gu)];
-  const stops = parts.map((m) => ({ city: bareName(m[1].replace(/\b(ve|and|sonra|then)\b/gi, "").trim()), nights: Number(m[2]) })).filter((x) => x.city);
-  if (!stops.length) return { error: L("Şehirleri gece sayısıyla yaz, ör. \"Ubud 12, Canggu 19\".", "Type each place with its nights, e.g. \"Ubud 12, Canggu 19\".") };
+  const stops = parts.map((m) => ({ city: bareName(m[1].replace(/\b(ve|and|sonra|then)\b/gi, "").trim().replace(ROUTE_FILLER, "").trim()), nights: Number(m[2]) })).filter((x) => x.city);
+  // A sentence is no place ("rota yok sadece ahangama" read whole): a stop's name is at most three words.
+  if (!stops.length || stops.some((x) => x.city.split(/\s+/).length > 3)) return { error: L("Şehirleri gece sayısıyla yaz, ör. \"Ubud 12, Canggu 19\".", "Type each place with its nights, e.g. \"Ubud 12, Canggu 19\".") };
   if (stops.length > 4) return { error: L("En fazla 4 durak olabilir.", "At most 4 stops.") };
   const sum = stops.reduce((a, b) => a + b.nights, 0);
   if (sum !== total) return { error: L(`Geceler toplamı ${total} olmalı (yazdığın: ${sum}).`, `The nights must add up to ${total} (you wrote ${sum}).`) };
@@ -3301,7 +3311,11 @@ export function airportsOf(s: StartState, stops: RouteStop[] = stopsOf(s)): { ar
   const gateway = customOf(s)?.gateway ?? undefined;
   const isEnd = (city: string) => city === first || city === last;
   const airportOf = (city: string) =>
-    (isEnd(city) ? gateway : undefined) ?? airportName(knownPlaceOf(city)) ?? nearestAirport(city) ?? (isEnd(city) ? airportName(knownPlaceOf(where.place)) : undefined) ?? city;
+    (isEnd(city) ? gateway : undefined) ??
+    airportName(knownPlaceOf(city)) ??
+    nearestAirport(city) ??
+    (isEnd(city) ? (airportName(knownPlaceOf(where.place)) ?? airportName(knownPlaceOf(where.within)) ?? airportName(knownPlaceOf(where.country))) : undefined) ??
+    city;
   return { arrive: (s.route?.confirmed && s.route.arrive) || airportOf(first), leave: (s.route?.confirmed && s.route.leave) || airportOf(last) };
 }
 
