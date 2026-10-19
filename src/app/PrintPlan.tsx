@@ -15,7 +15,7 @@ import { cardKindLabel, cardKind } from "../lib/cardKinds";
 import type { HeroTally } from "../lib/heroInfo";
 import { L, locale } from "../lib/i18n";
 import { nDays } from "../lib/i18nText";
-import { formatDateRange, formatPrice, nightsBetween } from "../lib/items";
+import { formatDateRange, formatPrice, listingKeyOf, nightsBetween } from "../lib/items";
 import type { DayRow } from "../lib/journey";
 import type { BudgetBar } from "../lib/progress";
 import type { RentalEntry, Timeline } from "../lib/timeline";
@@ -24,6 +24,7 @@ import type { Who } from "../lib/tripSettings";
 import type { StyleChip } from "../lib/tripStyle";
 import type { Item, Listing, Trip } from "../lib/types";
 import { jpegPagesToPdf, pageBreaks, type PdfPage } from "../lib/pdfFile";
+import { printAccess } from "../lib/printBookings";
 import type { HeroCity } from "./TripHero";
 
 export interface PrintPlanProps {
@@ -295,19 +296,25 @@ export function PrintPlan(props: PrintPlanProps) {
           <h2>{L("Rezervasyonlar", "Bookings")}</h2>
           <table>
             <tbody>
-              {booked.map((i) => (
-                <tr key={i.id}>
-                  <td className="pp-kind">{cardKindLabel(cardKind(i))}</td>
-                  <td>
-                    <b>{i.name}</b>
-                    {[i.provider, i.statusNote].filter(Boolean).length > 0 && (
-                      <span className="pp-sub">{[i.provider, i.statusNote].filter(Boolean).join(" · ")}</span>
-                    )}
-                  </td>
-                  <td className="pp-date">{i.dates.start ? formatDateRange(i.flight?.departure?.slice(0, 10) ?? i.dates.start, i.dates.end) : ""}</td>
-                  <td className="pp-price">{i.price.amount != null ? formatPrice(i.price.amount, i.price.currency ?? "EUR") : ""}</td>
-                </tr>
-              ))}
+              {booked.map((i) => {
+                // Row 24: what the booked box has for the way (its code, its hours, its address), only what is known.
+                const access = printAccess(i, cardKind(i), props.listings?.get(listingKeyOf(i))?.house);
+                const said = [i.provider, i.statusNote].filter(Boolean).join(" · ");
+                const when = [access.code, access.hours].filter(Boolean).join(" · ");
+                return (
+                  <tr key={i.id}>
+                    <td className="pp-kind">{cardKindLabel(cardKind(i))}</td>
+                    <td>
+                      <b>{i.name}</b>
+                      {said && <span className="pp-sub">{said}</span>}
+                      {when && <span className="pp-sub">{when}</span>}
+                      {access.address && <span className="pp-sub">{access.address}</span>}
+                    </td>
+                    <td className="pp-date">{i.dates.start ? formatDateRange(i.flight?.departure?.slice(0, 10) ?? i.dates.start, i.dates.end) : ""}</td>
+                    <td className="pp-price">{i.price.amount != null ? formatPrice(i.price.amount, i.price.currency ?? "EUR") : ""}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </section>
@@ -356,10 +363,13 @@ function Country({ facts, home, countries }: { facts: Facts; home: string; count
         L(local.info.language.tr, local.info.language.en),
       ]
     : [];
+  // Nothing known of it yet but its name: the name alone, never a dash (C19).
+  const said = parts.filter(Boolean).join(" · ");
+  if (!said && !names.length) return null;
   return (
     <div>
       <dt>{names.length ? names.join(", ") : L("Ülke", "Country")}</dt>
-      <dd>{parts.filter(Boolean).join(" · ") || "—"}</dd>
+      <dd>{said}</dd>
     </div>
   );
 }

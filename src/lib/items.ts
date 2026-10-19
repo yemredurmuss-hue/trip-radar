@@ -446,8 +446,9 @@ export function formatDateRange(start: string, end: string | null): string {
   return sm === em ? `${sd}–${ed} ${month(sm)}` : `${sd} ${month(sm)} – ${ed} ${month(em)}`;
 }
 
+/** A price for display; no amount: nothing (C19: what isn't known isn't written, not even as a dash). */
 export function formatPrice(amount: number | null, currency: string | null): string {
-  if (amount == null) return "—";
+  if (amount == null) return "";
   try {
     return new Intl.NumberFormat(locale(), {
       style: "currency",

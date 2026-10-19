@@ -190,6 +190,7 @@ describe("English labels", () => {
     expect(rowLabel(cheap, [cheap, item({ id: "b", price: { ...cheap.price, amount: 300 } })]).text).toBe("Cheapest");
     expect(formatDateRange("2026-10-08", "2026-10-11")).toBe("8–11 October");
     expect(formatPrice(1285, "EUR")).toBe("€1,285");
+    expect(formatPrice(null, "EUR")).toBe(""); // C19: no amount, nothing written (not "—")
     expect(formatDistance(0.5)).toBe("8 min walk");
     expect(amenityLabel("mutfak")).toBe("kitchen");
     expect(uniqueTitle("Portugal", "2027-06-01", [{ title: "Portugal" } as Trip])).toBe("Portugal · June 2027");
