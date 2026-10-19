@@ -7,6 +7,9 @@ import type { Trip } from "../../lib/types";
 import { updateTrip } from "../actions";
 import { UiIcon } from "../cards/Silhouettes";
 
+/** C18: the start card is not in this version (spec §1.1, row 200): the board doesn't draw it; the card and the trip's mark stay. */
+export const START_CARD_SHOWN = false;
+
 interface Props extends GuideInput {
   trip: Trip;
   onGo: (step: GuideStep["id"]) => void;

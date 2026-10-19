@@ -3642,9 +3642,12 @@ try {
   // The suggestions' review is started as the last step and not waited for (2026-10-09): the board opens and they keep
   // arriving there (the same review the board runs, claimed first, so it isn't asked again there).
   assert.ok(baliGen.steps.some((x) => /Öneriler hazırlanıyor; panoda gelmeye devam edecek/.test(x)), "the suggestions' step");
+  // (C18: the start card, its "Uçuşları bul" and "Konaklamaları seç", is not drawn in this version: only that is checked, below.)
   const guide = board.locator(".st-guide");
-  await guide.getByText("Uçuşları bul").waitFor();
-  await guide.getByText("Konaklamaları seç").waitFor();
+  if (START_CARD_SHOWN) {
+    await guide.getByText("Uçuşları bul").waitFor();
+    await guide.getByText("Konaklamaları seç").waitFor();
+  }
   const made = await board.evaluate(async () => {
     const database = await new Promise((resolve) => { const q = indexedDB.open("trip-radar"); q.onsuccess = () => resolve(q.result); });
     const all = (store) => new Promise((resolve) => { const q = database.transaction(store).objectStore(store).getAll(); q.onsuccess = () => resolve(q.result); });
@@ -3700,12 +3703,14 @@ try {
   // "oluştur" typed is kept as said (not swapped for the button's words).
   await board.locator(".chat .msg-user", { hasText: /^oluştur$/ }).waitFor();
   await board.locator(".chat .msg-assistant", { hasText: "Bali Gezisi hazır: 31 gece, 3 durak." }).waitFor();
-  await guide.scrollIntoViewIfNeeded();
+  if (START_CARD_SHOWN) await guide.scrollIntoViewIfNeeded();
   await board.screenshot({ path: `${out}/20d-start-board.png` });
-  // × closes the start card for good.
-  await guide.getByRole("button", { name: "Başlangıç kartını kapat" }).click();
-  await guide.waitFor({ state: "detached" });
-  console.log("✓ start by chat: one line fills who/when/where, chips finish it, the route agreed → Bali Gezisi with Ubud 12 · Canggu 10 · Uluwatu 9 nights, İstanbul ⇄ Denpasar flights to fill (not chosen), Emre & Sabine, Doğa · Deniz, Indonesia, the suggestions' review, the start card and the same conversation");
+  if (START_CARD_SHOWN) {
+    // × closes the start card for good.
+    await guide.getByRole("button", { name: "Başlangıç kartını kapat" }).click();
+    await guide.waitFor({ state: "detached" });
+  } else assert.equal(await guide.count(), 0, "C18 (row 200): no start card above the plan in this version");
+  console.log("✓ start by chat: one line fills who/when/where, chips finish it, the route agreed → Bali Gezisi with Ubud 12 · Canggu 10 · Uluwatu 9 nights, İstanbul ⇄ Denpasar flights to fill (not chosen), Emre & Sabine, Doğa · Deniz, Indonesia, the suggestions' review, no start card (C18) and the same conversation");
 
   // 22. Boş kartlar (spec 2026-10-06-bos-kartlar-design.md): the new trip's needs with nothing booked or saved are
   // the approved cards made plain: dashed, white, one grey word, then "Ara:" and the brands' searches, prefilled with

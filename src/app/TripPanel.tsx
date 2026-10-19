@@ -106,7 +106,7 @@ import type { Decisions } from "./useDecisions";
 import { useWho } from "./Travellers";
 import { onTripChange } from "../lib/tripUndo";
 import { takeLangUndo } from "./langSwitch";
-import { StartGuideCard } from "./start/StartGuideCard";
+import { START_CARD_SHOWN, StartGuideCard } from "./start/StartGuideCard";
 import { WorkLine } from "./WorkPill";
 import { isPlaceholder } from "../lib/startTrip";
 
@@ -992,8 +992,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       )}
 
       <ChangeNotices tripId={trip.id} />
-      {/* A trip made by the start chat: its one-time start card above the plan (start/StartGuideCard.tsx). */}
-      {trip.startGuide && !trip.startGuide.closed && (
+      {/* A trip made by the start chat: its one-time start card above the plan (start/StartGuideCard.tsx); not in this version (C18). */}
+      {START_CARD_SHOWN && trip.startGuide && !trip.startGuide.closed && (
         <StartGuideCard
           trip={trip}
           items={items}
