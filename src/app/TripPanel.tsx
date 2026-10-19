@@ -11,7 +11,7 @@ import { budgetBar, sectionAllotments, decisionProgress, entryDomId, type Todo }
 import { cachedWeather } from "../lib/climate";
 import { addDays, cityKeyOf, sameCity, type OptionGroup, type Plan } from "../lib/plan";
 import { retryCapture } from "../lib/process";
-import { L, withLang } from "../lib/i18n";
+import { contentLang, contentTag, L, withLang } from "../lib/i18n";
 import { creditOf, findCityPhoto, imageProxy, keptCredits, nextCityImage, nextHeroImage, wantsCityImage, type HeroCity } from "../lib/cityImages";
 import { acceptMood, moodKey } from "../lib/heroText";
 import { getProvider, MissingKeyError } from "../lib/llm";
@@ -439,8 +439,9 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       }
     })();
   }, [trip.id, trip.cityImages, mainNames, placesSettled]);
-  // The mood sentence: written once per set of main places by the traveller's model; one with a number is dropped.
-  const moodFor = moodKey(mainNames);
+  // The mood sentence: written once per set of main places and language by the traveller's model; one with a number is dropped.
+  const moodLang = contentLang(trip.lang);
+  const moodFor = moodKey(mainNames, contentTag(trip.lang, moodLang));
   const askedMood = useRef<string | null>(null);
   useEffect(() => {
     if (!placesSettled || !mainNames.length || trip.mood?.key === moodFor || askedMood.current === `${trip.id}:${moodFor}`) return;
@@ -449,8 +450,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       try {
         const llm = await getProvider();
         const out = await llm.generateJson(
-          // The trip's own sentence: in its language (its start chat's), whatever the board's.
-          withLang(trip.lang, () => L(
+          // In the board's language (0.39.1): another one writes it again, once (the key's language part).
+          withLang(moodLang, () => L(
             "Gezinin ruhunu anlatan tek kısa cümle yaz. Rakam, tarih, fiyat yazma. En fazla 120 karakter.",
             "Write one short sentence capturing the trip's mood. No numbers, dates or prices. At most 120 characters.",
           )),
@@ -463,7 +464,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
         if (!(error instanceof MissingKeyError)) console.warn("mood sentence", error); // the status sentence stands alone
       }
     })();
-  }, [trip.id, trip.mood?.key, moodFor, mainNames, placesSettled]);
+  }, [trip.id, trip.mood?.key, moodFor, moodLang, mainNames, placesSettled]);
   // The style words: picked once per set of main places and what the traveller wrote about the trip (their
   // notes: "balayı", "macera istiyoruz"), only from the fixed list. Priorities, findings and guesses change
   // often and say nothing about the trip's character, so they don't ask again (asking again re-rolled the words).

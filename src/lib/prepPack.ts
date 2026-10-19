@@ -14,10 +14,11 @@
 import { z } from "zod";
 import type { CityWeather } from "./climate";
 import { countryInfo } from "./countries";
-import { L } from "./i18n";
+import { L, type Lang } from "./i18n";
 import { locative } from "./i18nText";
 import { metricsOf } from "./items";
 import { isPrep } from "./prep";
+import { langSignal } from "./startTrip";
 import { choreText, isRental } from "./travelKinds";
 import type { KV } from "./share/store";
 import type { Item, PackAsk, PackGroup, PackLine, PackList, PackTip, TripIntent, TripPacking } from "./types";
@@ -416,6 +417,27 @@ export function acceptPack(raw: PackAnswer, now: number, never: readonly string[
     .filter((t): t is PackTip => t.label != null && t.text != null)
     .slice(0, PACK_LIMITS.tips);
   return { at: now, groups, ask, tips };
+}
+
+/** The language a list was written in: as stored, else read from its words (older lists); null when they don't say. */
+export function packListLang(list: PackList): Lang | null {
+  return list.lang ?? langSignal(list.groups.flatMap((g) => [g.title, ...g.lines.map((l) => `${l.name} ${l.why ?? ""}`)]).join(". "));
+}
+
+/**
+ * Whether the AI's list is asked again, in `write` (the board's language, changed since it was made: 0.39.1): only one
+ * written in another language and not touched yet (no line of it ticked, no question of it answered). Asked once: the
+ * new list is in `write`, so this turns false.
+ */
+export function packRedo(packing: TripPacking | undefined, write: Lang): boolean {
+  const list = packing?.list;
+  if (!list) return false;
+  const was = packListLang(list);
+  if (was == null || was === write) return false;
+  const keys = new Set(list.groups.flatMap((g) => g.lines.map((l) => packKey(l.name))));
+  const ticked = (packing?.ready ?? []).some((k) => keys.has(k));
+  const answered = list.ask.some((a) => packing?.answers?.[a.id] != null);
+  return !ticked && !answered;
 }
 
 /** The Bavul group gear to rent or get goes in ("Ekipman"), found by its title when the list has one. */

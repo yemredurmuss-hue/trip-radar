@@ -255,14 +255,15 @@ async function undatedTrip(id: string): Promise<string> {
 }
 
 describe("the trip keeps the chat's language; an undated trip is dated in its chat", () => {
-  it("trip.lang is the conversation's: the board's chat answers in it on an English board", async () => {
+  it("trip.lang is the start chat's; the board's chat answers in the board's language (0.39.1), here English", async () => {
     const tripId = await undatedTrip("lang-1");
     const trip = (await (await db()).get("trips", tripId))!;
     expect(trip.lang).toBe("tr");
-    const { client, calls } = fakeClient([done("Tamam.")]);
+    const { client, calls } = fakeClient([done("Okay.")]);
     await sendMessage(tripId, "tarihleri sonra söylerim", anthropicProvider(client, "claude-opus-5"));
-    expect(String(calls[0].system)).toMatch(/[çğışü]/);
-    expect(JSON.stringify(calls[0].messages)).toContain('"conversation_language\\":\\"tr\\"');
+    expect(String(calls[0].system)).toMatch(/^You are the user's travel companion/);
+    expect(JSON.stringify(calls[0].messages)).toContain('"board_language\\":\\"en\\"');
+    expect(JSON.stringify(calls[0].messages)).not.toContain("conversation_language");
   });
 
   it("dates said later in the chat date the start's places (no second stay or flights), still places to fill", async () => {

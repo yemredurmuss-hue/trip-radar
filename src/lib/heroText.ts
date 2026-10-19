@@ -7,4 +7,5 @@ export function acceptMood(text: string): boolean {
   return t.length > 0 && t.length <= MOOD_MAX && !/\d/.test(t);
 }
 
-export const moodKey = (cities: string[]) => cities.map((c) => c.trim().toLowerCase()).join("|");
+/** The mood sentence's key: its cities, and its language when it isn't the one written before 0.39.1 (i18n.ts contentTag). */
+export const moodKey = (cities: string[], tag = "") => `${cities.map((c) => c.trim().toLowerCase()).join("|")}${tag ? `@${tag}` : ""}`;
