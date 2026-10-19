@@ -32,7 +32,7 @@ import {
   type OfferRowState,
 } from "../../lib/offerSource";
 import { BRANDS } from "../../lib/searchLinks";
-import { addOffer, setItemStatus } from "../actions";
+import { addOffer, fillOffer, setItemStatus } from "../actions";
 import { BrandChip, Rating } from "../plan/v82/OptionCompact";
 import { useEmptyEnv } from "./emptyEnv";
 import { KindIcon, UiIcon } from "./Silhouettes";
@@ -255,16 +255,18 @@ export function StayPicksView({ picks, open, chosen, onToggle, onPick }: {
 }
 
 /** A stay's row: the source's candidates narrowed to three for this trip (its plans there, its priorities). */
-function StayPicksRow({ need, onChoose }: { need: Need; onChoose: ((item: Item) => void) | null }) {
+function StayPicksRow({ need, onChoose, placeholder }: { need: Need; onChoose: ((item: Item) => void) | null; placeholder: Item | null }) {
   const { offers: source, tripId, trip, items } = useEmptyEnv();
   const available = source.available();
   const storeKey = offersOpenKey(tripId, need.section);
-  const [open, setOpen] = useState(() => readOffersOpen(storeKey));
-  const [cands, setCands] = useState<StayCandidate[]>([]);
+  // Open unless the traveller closed it: the picks are the box's options, under it at once (0.38.5).
+  const [open, setOpen] = useState(() => readOffersOpen(storeKey, undefined, true));
+  const [cands, setCands] = useState<StayCandidate[] | null>(null);
   const [tapped, setTapped] = useState<string[]>([]);
   useEffect(() => {
     if (!available || !source.candidates) return;
     let live = true;
+    // Asked by itself once the nights and the place are known; the source keeps the answer for hours (offerSources).
     source.candidates(need).then(
       (list) => live && setCands(Array.isArray(list) ? list : []),
       () => live && setCands([]),
@@ -274,12 +276,13 @@ function StayPicksRow({ need, onChoose }: { need: Need; onChoose: ((item: Item) 
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- asked again only for another need
   }, [available, source, need.key]);
-  const picks = useMemo(() => pickList(pickThree(cands, picksContext(need, trip, items ?? []))), [cands, need, trip, items]);
+  const picks = useMemo(() => pickList(pickThree(cands ?? [], picksContext(need, trip, items ?? []))), [cands, need, trip, items]);
   const recordOf = (c: StayCandidate): Item | undefined => pickOnPlan(c, items ?? []);
-  const onPlan = cands.filter((c) => ["chosen", "booked"].includes(recordOf(c)?.status ?? "")).map((c) => c.id);
+  const onPlan = (cands ?? []).filter((c) => ["chosen", "booked"].includes(recordOf(c)?.status ?? "")).map((c) => c.id);
   // The one tapped answers at once (the box then shows it chosen and this row goes); else what the records say.
   const chosen = tapped.length ? tapped : onPlan;
   if (!available) return null;
+  if (cands && !picks.length) return <NoOffers />;
   const toggle = () => {
     writeOffersOpen(storeKey, !open);
     setOpen(!open);
@@ -293,7 +296,9 @@ function StayPicksRow({ need, onChoose }: { need: Need; onChoose: ((item: Item) 
       onPick={(kind, { cand, why }) => {
         setTapped([cand.id]);
         const own = recordOf(cand);
-        const item = own ? Promise.resolve(own) : addOffer(tripId, candidateOffer(cand, kind, why), need);
+        const offer = candidateOffer(cand, kind, why);
+        // The start's place for these nights becomes the pick (no second card beside it).
+        const item = own ? Promise.resolve(own) : placeholder ? fillOffer(placeholder, offer, need) : addOffer(tripId, offer, need);
         void item.then((i) => (onChoose ? onChoose(i) : setItemStatus(i, "chosen"))).catch((e: Error) => console.warn("Seçilemedi", e.message));
       }}
     />
@@ -301,13 +306,20 @@ function StayPicksRow({ need, onChoose }: { need: Need; onChoose: ((item: Item) 
 }
 
 /** The row for one need: a stay's three picks when the source has candidates, else its offers as they come. */
-export function OfferRow({ need, onChoose = null }: {
+export function OfferRow({ need, onChoose = null, placeholder = null }: {
   need: Need;
   /** "Seç" on a stay's pick: the record it became (or was), chosen the way the box chooses (other picks set back). */
   onChoose?: ((item: Item) => void) | null;
+  /** The start's place to fill in the box (intentFrame.placeholderOf): a pick takes its record in place. */
+  placeholder?: Item | null;
 }) {
   const { offers: source } = useEmptyEnv();
-  return need.kind === "stay" && source.candidates ? <StayPicksRow need={need} onChoose={onChoose} /> : <PlainOfferRow need={need} />;
+  return need.kind === "stay" && source.candidates ? <StayPicksRow need={need} onChoose={onChoose} placeholder={placeholder} /> : <PlainOfferRow need={need} />;
+}
+
+/** The source asked and nothing came back: said plainly, nothing made up (0.38.5). */
+export function NoOffers() {
+  return <p className="ek-none">{L("Kaynaklarda bu tarihler için seçenek çıkmadı. Kendin ara ile bakabilirsin.", "The sources had nothing for these dates. Try Search yourself.")}</p>;
 }
 
 /** The plain row: asks the source once per need, nothing at all while no source is connected. */
@@ -315,13 +327,15 @@ function PlainOfferRow({ need }: { need: Need }) {
   const { offers: source, tripId } = useEmptyEnv();
   const available = source.available();
   const storeKey = offersOpenKey(tripId, need.section);
-  const [state, setState] = useState<OfferRowState>(() => ({ open: readOffersOpen(storeKey), offers: [], gone: [] }));
+  const [state, setState] = useState<OfferRowState>(() => ({ open: readOffersOpen(storeKey, undefined, true), offers: [], gone: [] }));
+  const [done, setDone] = useState(false);
   useEffect(() => {
     if (!available) return;
     let live = true;
+    // Asked by itself once the need is known (a flight's ends and day); the source keeps the answer for hours.
     source.offers(need).then(
-      (list) => live && setState((s) => withOffers(s, validOffers(list, need))),
-      () => live && setState((s) => withOffers(s, [])),
+      (list) => live && (setState((s) => withOffers(s, validOffers(list, need))), setDone(true)),
+      () => live && (setState((s) => withOffers(s, [])), setDone(true)),
     );
     return () => {
       live = false;
@@ -329,6 +343,8 @@ function PlainOfferRow({ need }: { need: Need }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- asked again only for another need
   }, [available, source, need.key]);
   if (!available) return null;
+  // (an eSIM's source may be away: nothing said there, as before)
+  if (done && !state.offers.length) return need.kind === "flight" ? <NoOffers /> : null;
   const toggle = () => {
     const open = !state.open;
     writeOffersOpen(storeKey, open);

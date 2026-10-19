@@ -80,7 +80,7 @@ import { loadHome } from "./passport";
 import { cantSearch, SEARCH_KINDS, searchKey, siteName, webSearch, type SearchKind, type SearchSource, type WebSearchResult } from "./webSearch";
 import { chatStatusOf, searchEnded, searchStarted, stepsCleared, stepsDone, stepStarted } from "./chatStatus";
 import { needKey } from "./emptyCards";
-import { dealPrice, validOffers, type Need, type Offer } from "./offerSource";
+import { chatOptions, dealPrice, offerItem, validOffers, type Need, type Offer } from "./offerSource";
 import { findOffers, stayCandidates } from "./offerSources";
 import { candidateOffer, pickLabel, pickList, picksContext, pickThree } from "./stayPicks";
 import { airportCode } from "./searchLinks";
@@ -1123,7 +1123,24 @@ interface Turn {
   /** Searches still running when the turn ends: kept on its reply, so they land even after the board is closed. */
   pendingSearches: PendingSearch[];
   /** find_offers: the offers the reply shows as cards, and the honest line when none was under the ceiling. */
-  offers?: { need: Need; offers: Offer[]; overMax: string | null } | null;
+  offers?: { need: Need; offers: Offer[]; overMax: string | null; added?: string[] } | null;
+}
+
+/**
+ * The stay's or flight's offers find_offers shows are saved as the need's options (offerSource.chatOptions), so the Pano
+ * and the box show them too; the reply's cards then say "Eklendi". Returns the offers on the trip now.
+ */
+async function keepChatOffers(tripId: string, found: { need: Need; offers: Offer[] }, items: Item[]): Promise<string[]> {
+  const { add, had } = chatOptions(found.offers, found.need, items);
+  if (!add.length) return had.map((o) => o.id);
+  const d = await db();
+  for (const o of add) {
+    const item = offerItem(o, found.need, tripId, newId(), Date.now());
+    await d.put("items", item);
+    await addEvent(tripId, L(`${item.name} seçeneklere eklendi`, `${item.name} added to the options`));
+  }
+  notifyChanged();
+  return [...had, ...add].map((o) => o.id);
 }
 const newTurn = (userText = "", previousReply: string | null = null, who: WhoCtx = null): Turn => ({
   userText, previousReply, removed: new Set(), removedVehicles: new Set(), touched: new Set(), done: 0, changed: 0, who,
@@ -2210,7 +2227,7 @@ async function runTool(tripId: string, name: string, input: any, choices: string
     }
     case "find_offers": {
       const found = await findOffersTool(tripId, input, items);
-      if (found.offers.length) turn.offers = found;
+      if (found.offers.length) turn.offers = { ...found, added: await keepChatOffers(tripId, found, items) };
       return JSON.stringify(offersToolResult(found));
     }
     case "offer_choices":
@@ -2906,7 +2923,7 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
       ...(last && turn.searchSources.length ? { webSources: turn.searchSources.map((s) => linkUrl(s.url)) } : {}),
       ...((last || finalStep) && turn.pendingSearches.length ? { pendingSearches: turn.pendingSearches } : {}),
       // find_offers: the real offers, as cards under this reply (each with "Ekle").
-      ...(last && turn.offers?.offers.length ? { offers: { need: turn.offers.need, offers: turn.offers.offers } } : {}),
+      ...(last && turn.offers?.offers.length ? { offers: { need: turn.offers.need, offers: turn.offers.offers, ...(turn.offers.added?.length ? { added: turn.offers.added } : {}) } } : {}),
     });
     if (last) return;
     await saveMessage({

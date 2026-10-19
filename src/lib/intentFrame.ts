@@ -15,7 +15,9 @@ import type { Need } from "./offerSource";
 import { addDays, stayRange } from "./plan";
 import { namesSomething } from "./planned";
 import { providerLinks, type ProviderKind } from "./providers";
-import { BRANDS, insuranceLinks } from "./searchLinks";
+import { airportCode, BRANDS, insuranceLinks } from "./searchLinks";
+import { bareChatPlan } from "./emptyCards";
+import { isPlaceholder } from "./startTrip";
 import type { Item, Trip } from "./types";
 
 /**
@@ -59,9 +61,14 @@ export interface StatusChip {
   tick: boolean;
 }
 
-export function statusChip(vm: Pick<IntentVM, "status" | "word">): StatusChip {
+/**
+ * The chip's word (0.38.5, Emre: "Aranıyor yazıyor ama bir şey aramıyor"): Aranıyor only while something looks or has
+ * looked (`looking`: a source can be asked for it, or the chat was); else it says plainly there's nothing yet.
+ */
+export function statusChip(vm: Pick<IntentVM, "status" | "word">, looking = true): StatusChip {
   switch (vm.status) {
     case "searching":
+      return { tone: "none", text: looking ? vm.word : L("Seçenek yok", "No options yet"), tick: false };
     case "skipped":
       return { tone: "none", text: vm.word, tick: false };
     case "deciding":
@@ -291,14 +298,25 @@ export function firstDecision(collections: readonly Pick<Collection, "section" |
 export const decisionNames = (intents: readonly IntentVM[]): string[] =>
   intents.filter((i) => i.status === "suggested" || i.status === "deciding" || i.status === "searching").map((i) => i.head.name);
 
+/** An airport's code as a ticket's end shows it small ("CMB"), else the city's main one; null when neither is known. */
+const codeOf = (city: string, end: { place: string | null } | null | undefined): string | null =>
+  end?.place && /^[A-Z]{3}$/.test(end.place) ? end.place : airportCode(city);
+
 /**
- * The offers' question for an intent still to choose (offerSource.Need, the empty cards' own): a stay's city and nights, an
- * eSIM's country; null for anything else or when it isn't known.
+ * The offers' question for an intent still to choose (offerSource.Need, the empty cards' own): a stay's city and nights, a
+ * flight's two ends and its day (0.38.5: looked for by itself once the route and the day are known), an eSIM's country;
+ * null for anything else or when it isn't known.
  */
-export function offerNeed(vm: Pick<IntentVM, "kind" | "head">, at: SelfSearchAt): Need | null {
+export function offerNeed(vm: Pick<IntentVM, "kind" | "head"> & { ticket?: IntentVM["ticket"] }, at: SelfSearchAt): Need | null {
   const { city, date: start, nights } = vm.head;
   const end = start && nights ? addDays(start, nights) : null;
   if (vm.kind === "stay" && city && start && end) return { key: needKey("stay", city, start, end), section: "stay", kind: "stay", city, start, end, adults: at.adults, country: at.countries[0] ?? null };
+  const route = vm.head.route;
+  if (vm.kind === "flight" && route?.from && route.to && start) {
+    const [fromCode, toCode] = [codeOf(route.from, vm.ticket?.from), codeOf(route.to, vm.ticket?.to)];
+    if (!fromCode || !toCode || fromCode === toCode) return null;
+    return { key: needKey("flight", route.from, route.to, start), section: "flight", kind: "flight", from: route.from, to: route.to, start, adults: at.adults, fromCode, toCode };
+  }
   const country = at.countries[0];
   if (vm.kind === "esim" && country) return { key: needKey("esim", country), section: "other", kind: "esim", country, start, end };
   return null;
@@ -360,4 +378,18 @@ export function unlessEmpty(vm: IntentVM, trip: Pick<Trip, "startGuide">, record
   if (!item || !isEmptyRecord(trip, item, files(item.id), records)) return vm;
   if (namesSomething(item)) return vm;
   return { ...vm, status: "searching", word: statusWord("searching", vm.kind), chosen: null, access: null, paid: null };
+}
+
+/**
+ * The start's place to fill in a box (startTrip.isPlaceholder, or a bare plan said in the chat: emptyCards.bareChatPlan): a
+ * pick chosen for the box takes its record in place (actions.fillOffer), never a second card beside it (0.38.5).
+ */
+export function placeholderOf(records: readonly Item[], trip: Pick<Trip, "startGuide">, category: Item["category"]): Item | null {
+  return records.find((i) => i.category === category && i.status === "chosen" && (isPlaceholder(trip, i) || bareChatPlan(i))) ?? null;
+}
+
+/** The need's other options under a chosen or booked box (0.38.5): what was gathered for it beside the one taken. */
+export function otherOptions(vm: Pick<IntentVM, "status" | "frame" | "options" | "chosen">): OptionVM[] {
+  if (vm.frame === "collection" || (vm.status !== "chosen" && vm.status !== "booked")) return [];
+  return vm.options.filter((o) => o.id !== vm.chosen?.id);
 }

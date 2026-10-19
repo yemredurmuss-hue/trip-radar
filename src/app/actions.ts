@@ -318,6 +318,18 @@ export async function addOffer(tripId: string, offer: Offer, need: Need): Promis
 }
 
 /**
+ * "Seç" on a pick for a box the start only made room for (its placeholder, intentFrame.placeholderOf): the placeholder
+ * becomes the offer in place, a saved option to choose next (0.38.5: the box changes, no second card beside it).
+ */
+export async function fillOffer(placeholder: Item, offer: Offer, need: Need): Promise<Item> {
+  const item: Item = { ...offerItem(offer, need, placeholder.tripId, placeholder.id, Date.now()), createdAt: placeholder.createdAt };
+  await (await db()).put("items", item);
+  await addEvent(item.tripId, L(`${item.name} seçeneklere eklendi`, `${item.name} added to the options`));
+  notifyChanged();
+  return item;
+}
+
+/**
  * "Ekle" on an offer the chat found (find_offers): the same option the row's "Ekle" saves, and the reply remembers
  * it ("Eklendi"), so a second tap or the chat opened again never adds it twice. Null when it was added already.
  */
