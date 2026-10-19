@@ -179,10 +179,16 @@ export interface StayNeed {
   checkin: string | null;
   checkout: string | null;
   adults: number | null;
+  /** D12: the children who go and the rooms said (none said: one room). */
+  children?: number | null;
+  rooms?: number | null;
 }
 
-/** Booking (`searchresults.html?ss&checkin&checkout&group_adults&no_rooms=1`) and Airbnb (`/s/{place}/homes?checkin&checkout&adults`). */
-export function stayLinks({ city, checkin, checkout, adults }: StayNeed): SearchLink[] {
+/**
+ * Booking (`searchresults.html?ss&checkin&checkout&group_adults&group_children&no_rooms`) and Airbnb
+ * (`/s/{place}/homes?checkin&checkout&adults&children`).
+ */
+export function stayLinks({ city, checkin, checkout, adults, children, rooms }: StayNeed): SearchLink[] {
   const where = city?.trim();
   if (!where) return [];
   let [inDay, outDay] = [dayOf(checkin), dayOf(checkout)];
@@ -194,13 +200,16 @@ export function stayLinks({ city, checkin, checkout, adults }: StayNeed): Search
     booking.set("checkout", outDay);
   }
   if (n) booking.set("group_adults", String(n));
-  booking.set("no_rooms", "1");
+  const kids = headCount(children);
+  if (kids) booking.set("group_children", String(kids));
+  booking.set("no_rooms", String(headCount(rooms) ?? 1));
   const airbnb = new URLSearchParams();
   if (inDay && outDay) {
     airbnb.set("checkin", inDay);
     airbnb.set("checkout", outDay);
   }
   if (n) airbnb.set("adults", String(n));
+  if (kids) airbnb.set("children", String(kids));
   const q = airbnb.toString();
   return [
     link("booking", `https://www.booking.com/searchresults.html?${booking}`),

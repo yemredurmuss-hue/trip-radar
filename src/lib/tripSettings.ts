@@ -120,6 +120,9 @@ export interface TravellersChange {
   remove?: unknown[];
   /** How many go; 0 or undefined leaves it, null clears it (as many as the names, or the saves). */
   count?: number | null;
+  /** D12: how many of them are children, how many rooms: undefined leaves it, null (or no children) clears it. */
+  children?: number | null;
+  rooms?: number | null;
   /**
    * Who comes from somewhere else (kişiye özel rezervasyon): the name and the place ("Sabine", "Alicante"); an
    * empty place takes it off (they leave from where the trip does). A name not on the trip is added, never me.
@@ -144,6 +147,9 @@ export function withTravellers(current: Travellers | undefined, change: Travelle
   const count = change.count;
   if (count != null && count !== 0 && (!Number.isInteger(count) || count < 1 || count > MAX_COUNT)) {
     return L(`Kişi sayısı 1 ile ${MAX_COUNT} arasında tam sayı olmalı: ${count}`, `The number of people must be a whole number from 1 to ${MAX_COUNT}: ${count}`);
+  }
+  for (const [n, min] of [[change.children, 0], [change.rooms, 1]] as const) {
+    if (n != null && (!Number.isInteger(n) || n < min || n > MAX_COUNT)) return L(`Sayı ${min} ile ${MAX_COUNT} arasında tam sayı olmalı: ${n}`, `The number must be a whole number from ${min} to ${MAX_COUNT}: ${n}`);
   }
   const remove = (change.remove ?? []).map(clean).filter(Boolean);
   const renames = (change.rename ?? []).map((r) => [clean(r?.from), clean(r?.to)] as const).filter(([a, b]) => a && b && a !== b);
@@ -173,7 +179,18 @@ export function withTravellers(current: Travellers | undefined, change: Travelle
     if (place) from[key] = place;
     else delete from[key];
   }
-  return { travellers: { names, ...(nextCount != null ? { count: nextCount } : {}), ...(Object.keys(from).length ? { from } : {}) }, missing };
+  const children = change.children === undefined ? (current?.children ?? null) : change.children || null;
+  const rooms = change.rooms === undefined ? (current?.rooms ?? null) : change.rooms;
+  return {
+    travellers: {
+      names,
+      ...(nextCount != null ? { count: nextCount } : {}),
+      ...(children ? { children } : {}),
+      ...(rooms ? { rooms } : {}),
+      ...(Object.keys(from).length ? { from } : {}),
+    },
+    missing,
+  };
 }
 
 /** Where this person comes from, when it isn't where the trip leaves from (null: with the trip). */
@@ -221,6 +238,10 @@ export interface Who {
   names: string[];
   /** How many go: never fewer than the names. */
   count: number;
+  /** D12: of those, the adults and the children (said in Kimler gidiyor; none said: all adults), and the rooms said. */
+  adults: number;
+  children: number;
+  rooms: number | null;
   /** My name as it shows ("Emre"), or null: "Ben". */
   me: string | null;
 }
@@ -235,5 +256,6 @@ export function whoGoes(opts: { travellers?: Travellers; me?: string | null; mem
   const named = opts.shared || said.length > 0;
   const names = named ? uniqueNames([opts.shared ? me : (me ?? L("Ben", "Me")), ...(opts.members ?? []), ...said]) : [];
   const count = Math.max(names.length, opts.travellers?.count ?? opts.adults ?? 0);
-  return { names, count, me };
+  const children = Math.min(count, Math.max(0, opts.travellers?.children ?? 0));
+  return { names, count, adults: count - children, children, rooms: opts.travellers?.rooms ?? null, me };
 }

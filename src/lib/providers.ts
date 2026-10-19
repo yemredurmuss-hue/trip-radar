@@ -50,6 +50,9 @@ export interface SearchQuery {
   start?: string | null;
   end?: string | null;
   adults?: number | null;
+  /** D12: the children who go and the rooms said (a stay's search; none said: one room). */
+  children?: number | null;
+  rooms?: number | null;
   /** The words to look for: a thing to buy ("priz adaptörü"), a tour's subject. */
   query?: string | null;
   /** The traveller's own country (ISO): a shop's site (amazon.de for Germany). */
@@ -84,7 +87,7 @@ const enc = encodeURIComponent;
 /** The link one of searchLinks' builders makes for a brand, or null when it leaves that brand out. */
 const urlOf = (links: SearchLink[], brand: MarkId): string | null => links.find((l) => l.brand === brand)?.url ?? null;
 
-const stay = (q: SearchQuery) => stayLinks({ city: q.city ?? null, checkin: q.start ?? null, checkout: q.end ?? null, adults: q.adults ?? null });
+const stay = (q: SearchQuery) => stayLinks({ city: q.city ?? null, checkin: q.start ?? null, checkout: q.end ?? null, adults: q.adults ?? null, children: q.children ?? null, rooms: q.rooms ?? null });
 const flight = (q: SearchQuery) => flightLinks({ from: q.from ?? null, to: q.to ?? null, date: q.start ?? null, adults: q.adults ?? null });
 const tours = (q: SearchQuery) => activityLinks(q.city, q.query ?? undefined);
 
@@ -96,7 +99,7 @@ function dayOf(value: string | null | undefined): string | null {
 }
 
 /**
- * Agoda's search by the city's name (`/search?textToSearch&checkIn&checkOut&adults&rooms=1`), the days only both and in
+ * Agoda's search by the city's name (`/search?textToSearch&checkIn&checkOut&adults&children&rooms`), the days only both and in
  * order. Not opened anywhere yet: phase 7 checks the format before a need shows it.
  */
 function agodaSearch(q: SearchQuery): string | null {
@@ -110,7 +113,9 @@ function agodaSearch(q: SearchQuery): string | null {
   }
   const n = headCount(q.adults);
   if (n) p.set("adults", String(n));
-  p.set("rooms", "1");
+  const kids = headCount(q.children);
+  if (kids) p.set("children", String(kids));
+  p.set("rooms", String(headCount(q.rooms) ?? 1));
   return `https://www.agoda.com/search?${p}`;
 }
 

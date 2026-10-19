@@ -207,7 +207,7 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
     byId: new Map(items.map((i) => [i.id, i])),
     addSuggestion: suggestions?.add ?? null,
     dismissSuggestion: suggestions?.dismiss ?? null,
-    selfAt: { countries: empty.esimCountries, countryNames: countryNames(empty.esimCountries), adults: empty.travellers },
+    selfAt: { countries: empty.esimCountries, countryNames: countryNames(empty.esimCountries), adults: empty.group?.adults ?? empty.travellers, children: empty.group?.children ?? null, rooms: empty.group?.rooms ?? null },
     goTo,
   };
   const first = firstDecision(collections);

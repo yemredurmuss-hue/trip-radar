@@ -154,6 +154,17 @@ describe("one choice: flights, stays, ways of travel, an eSIM", () => {
     expect(board(base, solo, { people: 1 }).of("Tokyo").head.parts).toEqual(["3 gece", "1–4 Kasım"]);
   });
 
+  it("D12: the trip's adults, children and rooms (Kimler gidiyor) are never written; a box's different ones are", () => {
+    const family = { ...base, travellers: { names: [], count: 8, children: 4, rooms: 2 } };
+    const same = [stay("Hyatt", "Tokyo", "2026-11-01", "2026-11-04", "chosen", { guests: { adults: 4, children: 4, rooms: 2 } })];
+    expect(board(family, same).of("Tokyo").head.parts).toEqual(["3 gece", "1–4 Kasım"]);
+    const other = [stay("Hyatt", "Tokyo", "2026-11-01", "2026-11-04", "chosen", { guests: { adults: 2, children: 1, rooms: 1 } })];
+    expect(board(family, other).of("Tokyo").head.parts).toEqual(["3 gece", "1–4 Kasım", "2 yetişkin · 1 çocuk · 1 oda"]);
+    // A page that doesn't say: nothing.
+    const silent = [stay("Hyatt", "Tokyo", "2026-11-01", "2026-11-04", "chosen", { guests: { adults: null, children: null, rooms: null } })];
+    expect(board(family, silent).of("Tokyo").head.parts).toEqual(["3 gece", "1–4 Kasım"]);
+  });
+
   it("the options: best fit first, the first three and how many, En ucuz and En hızlı", () => {
     const home = b.of("HND → İstanbul");
     expect(home.optionCount).toBe(2);
