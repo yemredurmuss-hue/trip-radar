@@ -16,7 +16,8 @@ import { mainPlaces, placesKey, resolveParents, type MainPlace } from "./destina
 import { countryCodesOf, countryNames } from "./heroInfo";
 import { L } from "./i18n";
 import { locative } from "./i18nText";
-import { formatDateRange, isoDate } from "./items";
+import { carOnDay } from "./covers";
+import { formatDateRange, isoDate, tripDateRange } from "./items";
 import { buildLegs, isHiddenLeg, type Leg } from "./legs";
 import { buildPlan, cityKeyOf, type Plan } from "./plan";
 import { ALL_PLANNED_KINDS, checkPlanned, plannedItem, type PlannedInput } from "./planned";
@@ -329,11 +330,37 @@ const sortSuggestions = (list: Suggestion[]): Suggestion[] =>
 /** The days a suggestion's record would cover (its payload), or null when it says none (it can't be ruled out). */
 const payloadPeriod = (s: Suggestion) => periodOf({ dates: { start: s.payload?.start ?? null, end: s.payload?.end ?? null, source: "none" } });
 
+/** A train or a bus (a minibus, a coach) suggested between places: by its template, or by its words when it has none. */
+const GROUND_WAY = /(?<!\p{L})(tren|train|rail|otobüs|otobus|bus|coach|minibüs|minibus|dolmuş)/iu;
+export const isGroundWaySuggestion = (s: Pick<Suggestion, "section" | "kind" | "template" | "title">): boolean =>
+  s.section === "transport" && s.kind === "add" && (s.template === "train" || s.template === "bus" || s.template === "minibus" || (!s.template && GROUND_WAY.test(s.title)));
+
+/**
+ * The rented car a train or bus suggestion's day falls in (0.39.4: "araba varsa tren önerme" was only the review prompt's
+ * words): those roads are driven, so the suggestion isn't shown, whoever made it. Its day is its payload's start (any
+ * day of its stretch with a car counts); a car with no last day runs to the trip's end (the plans' first and last day).
+ * Null when it isn't one, says no day, or no car covers it.
+ */
+export function drivenOver(s: Suggestion, items: readonly Item[]): Item | null {
+  if (!isGroundWaySuggestion(s)) return null;
+  const start = isoDate(s.payload?.start ?? null);
+  const end = isoDate(s.payload?.end ?? null);
+  const span = tripDateRange(items as Item[]);
+  for (const day of [start, end].filter((d): d is string => !!d)) {
+    const car = carOnDay(items, day, span);
+    if (car) return car;
+  }
+  return null;
+}
+
 /**
  * What's already on the plan for a suggestion's topic: a live vehicle for its days (a car, a scooter, a campervan:
  * vehicles.ts, the same guard the chat's plan_item has), a policy, an eSIM. Empty when none (or no topic).
  */
 export function coveringItems(s: Suggestion, items: readonly Item[]): Item[] {
+  // A train or a bus on a day a rented car is driven: the car covers it.
+  const car = drivenOver(s, items);
+  if (car) return [car];
   const topic = topicOf(s);
   if (topic === "vehicle") {
     const days = payloadPeriod(s);
@@ -384,6 +411,7 @@ export function shownSuggestions(
     seen.add(s.key);
     const topic = topicOf(s);
     if (arrangedTransfer(s, legs)) return false;
+    if (drivenOver(s, items)) return false;
     return !(topic && (ruleTopics.has(topic) || dismissedTopics.has(topic) || coveringItems(s, items).length));
   });
   return sortSuggestions([...fromRules, ...others]);
