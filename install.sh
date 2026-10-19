@@ -42,6 +42,7 @@ else
   echo "✓ Trip Radar kuruldu: $HOME/TripRadar (yeni sürümler 1-2 dakika içinde kendiliğinden gelir)"
   echo ""
   echo "Son adım (bir kez): Chrome → chrome://extensions → Paketlenmemiş öğe yükle → TripRadar klasörünü seç."
-  echo "Eski Trip Radar varsa önce onu kaldır."
+  echo "Trip Radar Chrome'da başka bir klasörden zaten yüklüyse kaldırma (kaldırmak gezileri siler): aynı uzantı olduğu için"
+  echo "TripRadar klasörünü seçmek eski kaynağın yerine geçer."
   open "$HOME/TripRadar" 2>/dev/null || true
 fi

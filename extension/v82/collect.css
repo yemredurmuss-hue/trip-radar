@@ -6,6 +6,7 @@
 .q-int.z-int.multi { --kh: var(--q-card-w, 224px); }
 .z-int.multi .q-opts { height: auto; grid-template-rows: 28px auto; }
 .z-int .q-planw { display: grid; grid-template-rows: 28px auto; gap: 8px; min-width: 0; }
+.z-int .q-planw > .q-prow:empty { display: none; }
 .q-oh .q-ppn { font-size: var(--q-fs-small); color: #8d89a8; font-variant-numeric: tabular-nums; }
 .z-ks { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; min-width: 0; }
 
@@ -91,11 +92,10 @@
 .z-k > .pk-doc-error { position: absolute; left: 8px; right: 8px; bottom: 50px; z-index: 6; padding: 4px 8px; border-radius: 8px; background: #fdecea; color: var(--q-bad); font-size: var(--q-fs-small); }
 
 /* Empty Planında: four slots of the card's size; beside cards they keep the cells' places, unseen. */
-.z-k0 { display: grid; grid-template-rows: none; align-content: center; justify-items: center; gap: 4px; text-align: center; border: 1.5px dashed #e3e0ec; background: rgba(255, 255, 255, .5); padding: 16px; }
-.z-k0 b { font-size: var(--q-fs-button); color: var(--q-ink); }
-.z-k0 small { font-size: var(--q-fs-small); color: var(--q-mut); line-height: 1.35; }
-.z-k0.sl { color: #c4bfd6; }
+.z-k0 { display: grid; grid-template-rows: none; border: 0; background: none; padding: 0; }
 .z-k0.off { visibility: hidden; }
+/* Planında with nothing on it: one line in its head instead of empty slots (Emre, 19 Ekim). */
+.q-oh .z-pe { min-width: 0; font-size: var(--q-fs-small); color: var(--q-mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* "+n Pano'da": the rest of a row, on the Pano. */
 .z-more { all: unset; box-sizing: border-box; cursor: pointer; height: var(--kh, 224px); border-radius: 14px; border: 1.5px dashed #d6d2e4; display: grid; align-content: center; justify-items: center; gap: 2px; color: var(--q-acc); min-width: 0; }
 .z-more b { font-size: 22px; font-weight: 800; }
