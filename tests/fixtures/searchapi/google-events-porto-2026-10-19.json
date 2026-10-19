@@ -1,0 +1,87 @@
+{
+ "search_parameters": {
+  "engine": "google_events",
+  "q": "Events in Porto"
+ },
+ "events": [
+  {
+   "position": 1,
+   "title": "NOITE DE POESIA / POETRY NIGHT",
+   "link": "https://www.eventbrite.com/e/noite-de-poesia-poetry-night-tickets-2003260123957?aff=ebdssbdestsearch",
+   "seller": "eventbrite.com",
+   "date": "Fri, Oct 23",
+   "start_time": "Oct 23, 7:30 PM",
+   "venue": "Casa da Horta - Associação Cultural",
+   "address": "Porto, Portugal",
+   "thumbnail": "https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcQ8IJEWi2FeI2GcueC8nmZx_Hjc8bMfIxHQaN6loJOjV39y0-fz8IB69MjDto8PjPsQKPQFvy26Ev8AMs4"
+  },
+  {
+   "position": 2,
+   "title": "Pub Crawl noturno no Porto",
+   "link": "https://somo.social/e/pub-crawl-noturno-no-porto-24-oktober-2026",
+   "seller": "somo.social",
+   "date": "Sat, Oct 24",
+   "start_time": "Oct 24, 11:00 PM",
+   "venue": "Fonte dos Leões",
+   "address": "Porto, Portugal",
+   "thumbnail": "https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcSuszbbgeOp5a_sW8ZwcAGuQ7ele8aFWRfMDikawFrJZ8S1MoQhGjDQCQREsd2LwkhzLtoXFhS0FkyLhmc"
+  },
+  {
+   "position": 3,
+   "title": "Porto: Fado na Baixa",
+   "link": "https://feverup.com/m/679696?utm_source=google&utm_medium=live_events-&utm_campaign=679696_opo&channel_id=FVR_MKT&session_id=521089359&date=2026-10-21&bf=itemised",
+   "seller": "feverup.com",
+   "price": "$18",
+   "extracted_price": 18,
+   "date": "Wed, Oct 21",
+   "start_time": "Oct 21, 7:30 PM",
+   "venue": "Fado na Baixa",
+   "address": "Porto, Portugal",
+   "thumbnail": "https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcTMscZh6HbfKFERT5ZErJRW-qQ14Mr8MFc0oEI714WyXHdeWJljD_Lo3FuWDK9-dFMXK6wHRWFt1bnQIOE"
+  },
+  {
+   "position": 4,
+   "title": "PORTO MEGA EXPERIENCE - 2 FLOORS | Free Entry until 1.30 AM",
+   "link": "https://site.fourvenues.com/de/lust-porto/events/porto-mega-experience---2-floors--free-entry-until-130-am-30-10-2026-QVL0",
+   "seller": "fourvenues.com",
+   "date": "Sat, Oct 31",
+   "start_time": "Oct 31, 12:00 AM",
+   "venue": "Lust Porto",
+   "address": "Porto, Portugal",
+   "thumbnail": "https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcTMvKVeaduhYc6Cu0ktB1fgVhQ10GAsUKQCDjnFbhlEuGnv2zRSwRSXrWJn6yeaFcevcSfEbhWtpKWwDYg"
+  },
+  {
+   "position": 5,
+   "title": "Porto: Espetáculo de Fado",
+   "link": "https://feverup.com/m/679692?utm_source=google&utm_medium=live_events-&utm_campaign=679692_opo&channel_id=FVR_MKT&session_id=543417787&date=2026-11-06&bf=itemised",
+   "seller": "feverup.com",
+   "price": "$29",
+   "extracted_price": 29,
+   "date": "Fri, Nov 6",
+   "start_time": "Nov 6, 6:30 PM",
+   "venue": "Mosteiro de São Bento da Vitória",
+   "address": "Porto, Portugal",
+   "thumbnail": "https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcRwSrEkLbV953RQsIusi22h11jqoLeaiIvCwh9nJI1OX5qwRdOcVkDPSQYNDKGXf9ND_dyyIi29DlcRW4I"
+  },
+  {
+   "position": 6,
+   "title": "Pub Crawl noturno no Porto",
+   "date": "Tue, Nov 10",
+   "start_time": "Nov 10, 10:00 PM",
+   "venue": "Fonte dos Leões",
+   "address": "Porto, Portugal",
+   "thumbnail": "data:image/jpeg;base64,/9j/4AAQSkZJRgAB…"
+  },
+  {
+   "position": 7,
+   "title": "Vinhos No Mercado - Especial De Natal",
+   "link": "https://shotgun.live/en/events/vinhos-no-mercado-especial-de-natal",
+   "seller": "shotgun.live",
+   "date": "Sat, Nov 28",
+   "start_time": "Nov 28, 2:00 PM",
+   "venue": "Hard Club",
+   "address": "Porto, Portugal",
+   "thumbnail": "https://encrypted-tbn3.gstatic.com/images?q=tbn:ANd9GcTXbRqkk2XKvXHKKi7I94wxdaTGcq_zq2bOe4g1Eop3FsJuzXCpM9Kvr49YVHYNq3IE33FfQ0AzfBXW8EE"
+  }
+ ]
+}

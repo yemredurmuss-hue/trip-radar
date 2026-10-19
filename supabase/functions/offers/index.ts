@@ -22,6 +22,8 @@
 // the hotels' `serp_otel` cap): its best liked listing takes the third place, its page Airbnb's own (no partner pays).
 // SerpApi's free 250 a month as daily caps: hotels 5, a fare judged 1, a city's sights 1, its events 1; a flight's
 // last resort none (the shared flight search covers it). An empty answer is never kept.
+// SearchApi.io (SEARCHAPI_KEY, `searchapi` cap, searchapi.ts) answers those same searches when SerpApi can't (no key,
+// its cap spent, or it failed): the same cache entries, its answers turned into SerpApi's shape.
 // A city's events on the stay's days (?kind=events&city=Porto&start=…&end=…): Google Events, "Events in {city}"
 // (SerpApi, `serp_etkinlik` cap, kept a day), nights out left out, three at most → { offers } (activities, no price).
 // A city's sights (?kind=sights&city=Porto[&country=Portugal]&lang=tr): Google's Top Sights, name, rating, photo
@@ -46,6 +48,7 @@ import {
   airaloPacks, airaloPlace, omioName, omioRoutes, pickActivities, pickEsims, pickTransfers, placeKey, serpFlights, serpStays, stayCandidate, stayOffer, ucusFlights, viatorDestination, type AviaFlight, type OfferOut, type StayCandidate,
   type EsimPack, type OmioRoute, type ViProduct, type XoHotel, type XoRate,
 } from "./shape.ts";
+import { searchapiFetch } from "./searchapi.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -55,7 +58,7 @@ const cors = {
 const reply = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 
 const HOURS = { flight: 12, stay: 24, activity: 1, esim: 24, transfer: 24 };
-const CAPS: Record<string, number> = { aviasales: 400, xotelo: 400, tripadvisor: 20, links: 300, serpapi: 0, serp_otel: 5, serp_fiyat: 1, serp_yer: 1, serp_etkinlik: 1, viator: 300, airalo: 6, omio: 4, ucus: 450 };
+const CAPS: Record<string, number> = { aviasales: 400, xotelo: 400, tripadvisor: 20, links: 300, serpapi: 0, serp_otel: 5, serp_fiyat: 1, serp_yer: 1, serp_etkinlik: 1, searchapi: 2, viator: 300, airalo: 6, omio: 4, ucus: 450 };
 const cap = (source: string) => Number(Deno.env.get(`OFFERS_CAP_${source.toUpperCase()}`)) || CAPS[source];
 
 type Sb = ReturnType<typeof createClient>;
@@ -93,22 +96,42 @@ async function loadNames() {
 
 type Ask = { adults: number; lang: "tr" | "en"; prefer: "cheap" | null; max: number | null; live: boolean };
 
-/** One SerpApi search, cached (its answers don't change in hours), under its own small daily cap. */
+/**
+ * One SerpApi search, cached (its answers don't change in hours), under its own small daily cap. When SerpApi can't
+ * answer (no SERPAPI_KEY, its cap for this kind spent, or it failed) and SEARCHAPI_KEY is set, SearchApi.io answers
+ * instead under its own cap (`searchapi`, 2 a day: its 100 free requests are for good, mostly kept for the tests'
+ * fixtures; with a plan bought only the key and OFFERS_CAP_SEARCHAPI change). The cache key is made from SerpApi's
+ * words before either is asked, so both providers fill and read the same cached answer (SearchApi's, turned into
+ * SerpApi's shape in searchapi.ts).
+ */
 async function serp(sb: Sb, params: Record<string, string>, hours: number, source = "serpapi"): Promise<unknown | null> {
   const key = (Deno.env.get("SERPAPI_KEY") ?? "").trim();
-  if (!key) return null;
+  const backup = (Deno.env.get("SEARCHAPI_KEY") ?? "").trim();
+  if (!key && !backup) return null;
   const q = new URLSearchParams(params);
   const cacheKey = `serp|${q}`;
   const had = await cached<unknown>(sb, cacheKey, hours);
   if (had) return had;
-  if (!(await take(sb, source))) return (await cached<unknown>(sb, cacheKey, null)) ?? null;
-  q.set("api_key", key);
-  const res = await fetch(`https://serpapi.com/search.json?${q}`);
-  if (!res.ok) return null;
-  const body = await res.json();
-  if ((body as { error?: unknown }).error) return null;
-  await store(sb, cacheKey, body);
-  return body;
+  let failed = false;
+  if (key && (await take(sb, source))) {
+    q.set("api_key", key);
+    const res = await fetch(`https://serpapi.com/search.json?${q}`);
+    const body = res.ok ? await res.json() : null;
+    if (body && !(body as { error?: unknown }).error) {
+      await store(sb, cacheKey, body);
+      return body;
+    }
+    failed = true;
+  }
+  if (backup && (await take(sb, "searchapi"))) {
+    const body = await searchapiFetch(params, backup);
+    if (body) {
+      await store(sb, cacheKey, body);
+      return body;
+    }
+    failed = true;
+  }
+  return failed ? null : ((await cached<unknown>(sb, cacheKey, null)) ?? null);
 }
 
 /**

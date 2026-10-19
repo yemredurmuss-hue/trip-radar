@@ -1,0 +1,131 @@
+{
+ "search_parameters": {
+  "engine": "google",
+  "q": "Porto Portugal gezilecek yerler",
+  "device": "desktop",
+  "hl": "tr",
+  "gl": "tr"
+ },
+ "things_to_do": [
+  {
+   "title": "Luís I Bridge",
+   "rating": 4.8,
+   "reviews": 99000,
+   "thumbnail": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA"
+  },
+  {
+   "title": "Porto Cathedral",
+   "rating": 4.6,
+   "reviews": 40000,
+   "thumbnail": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA"
+  },
+  {
+   "title": "Palácio da Bolsa",
+   "rating": 4.5,
+   "reviews": 15000,
+   "thumbnail": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA"
+  },
+  {
+   "title": "Bolhão Market",
+   "rating": 4.5,
+   "reviews": 37000,
+   "thumbnail": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA"
+  },
+  {
+   "title": "Chapel of Souls",
+   "rating": 4.6,
+   "reviews": 12000,
+   "thumbnail": "https://lh3.googleusercontent.com/grass-cs/AABkmLdT8SgiK8GpQnl89aaqk6EHvweaHT97hmWISP3aG9YNFDhDaNd0VMIa3Do98F-pjHGiRjgTNjl0htVlHESYanSz8-PDijqrqyp0ku66IMEMRaCUTN2VmlHxVsxZRsxdUmrHefjHa7ytA-NW=s148-w148-h148-n-k-no"
+  },
+  {
+   "title": "Clérigos Kilisesi",
+   "rating": 4.6,
+   "reviews": 14000,
+   "thumbnail": "https://lh3.googleusercontent.com/grass-cs/AABkmLdUmVeLLiC182gXhGzgtjmi5vpFkE5o9laiokgBjnsvXhvWoqv7yr8zPAReFGrsANEFQuw-J5N5UK0XCwuJdTvJgah2M2UVgBIYml4LDhVMtQALp9Sav8RQ2dZmXb777i3a7Hw=s148-w148-h148-n-k-no"
+  },
+  {
+   "title": "Porto São Bento",
+   "rating": 4.7,
+   "reviews": 6700,
+   "thumbnail": "https://lh3.googleusercontent.com/grass-cs/AABkmLfc6Bui6_ht-46Vt3fiNAgUrWoLcrBk1256S5Dzh-2_rBcEyv-3i2yD6fxBk_L2PJATgGBG_sU4JUHjLj4tS2kZrIi8cbEY6T4_irOPLSGVrOipdF42I9NyTaCVupOjcX_iil4Y=s148-w148-h148-n-k-no"
+  },
+  {
+   "title": "Jardins do Palácio de Cristal",
+   "rating": 4.6,
+   "reviews": 49000,
+   "thumbnail": "https://lh3.googleusercontent.com/grass-cs/AABkmLe3krBADaPO5H-4SVf2ZzqAuAYDuDpqv-Y9SlaZ9e749eLZlZKzYbVPoZLBqhbKN35vgywXpeXbRAaFIl9HIARrkRJnsyHDfemSnZ4uNnq5m8VAzRHcpFkogaTF_8M14xounzeSuA=s148-w148-h148-n-k-no"
+  },
+  {
+   "title": "Church of Saint Francis",
+   "rating": 4.4,
+   "reviews": 10000,
+   "thumbnail": "https://lh3.googleusercontent.com/grass-cs/AABkmLd-vx5CPqp2NU2InkgdhVtmADlA7gHAsB1j30fkVk3GT4BjQy-nLNwEZTpDS2759RaAuS3JFBhHarvlYAEohDKwuwkQ9eNtN2BpDkKsYsD98JbBh0OAU-oebR4vmVavRPobsYqN=s148-w148-h148-n-k-no"
+  },
+  {
+   "title": "Casa da Música",
+   "rating": 4.6,
+   "reviews": 22000,
+   "thumbnail": "https://lh3.googleusercontent.com/grass-cs/AABkmLdMpepWQYH8PfrllGnp5AP38nZO9qqJ0LoO7DtxZ-IXTRZZ2GGfhvuL2NzOP_jZ_hKW2uaEM46TNdGvFRO-WW9JYwDCFbKef9c77e4k_YzZFHNzLpzI-yFbsl6WZ_mIWgpFlqIiGg=s148-w148-h148-n-k-no"
+  },
+  {
+   "title": "Carmo ve Carmelitas Kilisesi",
+   "rating": 4.5,
+   "reviews": 5500,
+   "thumbnail": "https://lh3.googleusercontent.com/grass-cs/AABkmLc1ynpZjqxV5gE3lbz9fbF9EdNQNiExbHbtfAfOqZ52I3j5LZTCFMDxPcvf9B5DXXz-sj9IubXIHPVJrAxlzEF5bzTMXGjSxgffZdmEWnkCGjIoj7Te-sgyoBTI4UAiG6OUVKbd=s148-w148-h148-n-k-no"
+  },
+  {
+   "title": "Torre dos Clérigos",
+   "rating": 4.6,
+   "reviews": 23000,
+   "thumbnail": "https://lh3.googleusercontent.com/grass-cs/AABkmLeldv1uRM-T45L6mAa7LqaW5mUUDoLZDIVsyvJFIEqV4jBjW8nHkj7BZtIxlLvmyUFaQTN_9akGXT_bCJTfgS4RWd98LNqTpJ-82Aik--5HHoQE3on0ulf3O3IVBtvx4EefKtoRR7AO41n0=s148-w148-h148-n-k-no"
+  },
+  {
+   "title": "Parque de Serralves",
+   "rating": 4.7,
+   "reviews": 12000,
+   "thumbnail": "https://lh3.googleusercontent.com/grass-cs/AABkmLcB_HG9ao71jk9djVjU_9aFBMBikvACg0abJ8xQyNszmRwO-RHRsf8rSJ458DpXnjfCtR9jXcqcS5bQ31NCd5XBA8bkkQgMxTRhTrSih_-B5LzRn_7heJD6iwdixxvziC2QwDEINw=s148-w148-h148-n-k-no"
+  },
+  {
+   "title": "Church of Saint Ildefonso",
+   "rating": 4.5,
+   "reviews": 6300,
+   "thumbnail": "https://lh3.googleusercontent.com/grass-cs/AABkmLcVvLdCx3L4gW7w1GuqKten3HyHwkFVqFyn-UNa4vnsJtDa1cxOlwKyN47oejYaixWiZq8o3LZRzoHwcCIKreHljb25OGtOmoB8Krvu6-1I4Xd2r-s-DvzcqNWmtAsA19hD-UkLnWM2xaY=s148-w148-h148-n-k-no"
+  },
+  {
+   "title": "Mercado Bom Sucesso",
+   "rating": 4.5,
+   "reviews": 33000,
+   "thumbnail": "https://lh3.googleusercontent.com/grass-cs/AABkmLeL3DPZBboAnJ45au9UbdGyoAzWmwU6ZYpPpUkiuQnnLav6hIYl7k14fcX5rMbxelCYX0lnm8LuRTVemkc_4n1opDsKUoAbrJ7qLnTrrX_r29QTmfI5P-9mPYO01hmJEH8VjbXvKA=s148-w148-h148-n-k-no"
+  },
+  {
+   "title": "Dragão Stadyumu",
+   "rating": 4.7,
+   "reviews": 45000,
+   "thumbnail": "https://lh3.googleusercontent.com/grass-cs/AABkmLfmAD2rpZL18sYPxXeVGy_uFJiTCzezVROPVQffpQ9cI0pzU6Dof96ZXd0lacoHTuBh5AuIqH3qZEjv-3WYtlkXPt2KTtkNQ7BkRwVcQr9py6wb33PvjnQNFt-8iJk1guvf_sdA6g=s148-w148-h148-n-k-no"
+  },
+  {
+   "title": "Livraria Lello",
+   "rating": 4,
+   "reviews": 89000,
+   "thumbnail": "https://lh3.googleusercontent.com/grass-cs/AABkmLch579YXs3tRezSWmV9mlz0KcX66uCB6b1qVk_BJnuaucFx6o9YL6g-ac2ccH9T5g0BS8xJ6PZBzKc1aFTBxo6pDA3BgocVk6RF1tycIX62kK-84Ka7X1Cav8v4hroNY5xO90sOCA=s148-w148-h148-n-k-no"
+  },
+  {
+   "title": "Igreja de Santa Clara",
+   "rating": 4.7,
+   "reviews": 1900,
+   "thumbnail": "https://lh3.googleusercontent.com/grass-cs/AABkmLeQeCeGj0GLb0em_DGZryizPVxLQ1k2HVl9TmVWLtTssbcbhi0tNURzzj02Dxp1rsu0F27e65TDESfesmce5Z_idd5Uly9FObEcjGyZYGXcZ-XxoE4YFj48n9BCzfWdcxbCMFJU=s148-w148-h148-n-k-no"
+  },
+  {
+   "title": "FC Porto Museum",
+   "rating": 4.7,
+   "reviews": 7900,
+   "thumbnail": "https://lh3.googleusercontent.com/grass-cs/AABkmLdmifmcc7Rfxj0mqKRCJpEOpoa9atqgtuPLzVfWfnVl4eLe6u_oUHFPyhNwfACacbtjxNtebb4iWUP2jxFyDn3HJDQnELtCEqOHt2UC2oaubttm8s8CHw8gU05ZLh6NOFm9Zgiq=s148-w148-h148-n-k-no"
+  },
+  {
+   "title": "Parque da Cidade do Porto",
+   "rating": 4.7,
+   "reviews": 29000,
+   "thumbnail": "https://lh3.googleusercontent.com/grass-cs/AABkmLdKLG_o2w65ZOCLrMd50ereUYumJ0xA-lsJA1j8lpmcFtydNNlkzOE4q4Pj7njWBBSuOAdbknBkPZd1zmZieJD2l07kokddFpFbZJWoNftiz5dcnE1NGT3p7PNLJSwyH0WRcn4lbg=s148-w148-h148-n-k-no"
+  }
+ ]
+}
