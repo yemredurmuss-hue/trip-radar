@@ -17,6 +17,7 @@ import { nightsKey } from "../lib/timeline";
 import { offerItem, type Need, type Offer } from "../lib/offerSource";
 import type { DateRange } from "../lib/plan";
 import { plannedItem, type PlannedInput } from "../lib/planned";
+import { stayPlaceholdersTaken } from "../lib/intents";
 import type { Category, Item, ItemStatus, Suggestion, SuggestionState, Trip } from "../lib/types";
 import type { Undoable } from "../lib/undoables";
 
@@ -261,6 +262,16 @@ export async function chooseItem(item: Item, alternatives: Item[]): Promise<void
     }
   }
   await setItemStatus(item, "chosen");
+  // The start's place for most of these nights is taken (intents.stayPlaceholdersTaken): set aside under Gizlenenler,
+  // "Geri getir" brings it back; no second card beside the choice.
+  const trip = item.category === "stay" ? await d.get("trips", item.tripId) : undefined;
+  if (!trip) return;
+  for (const ph of stayPlaceholdersTaken(item, await listItems(item.tripId), trip)) {
+    const now = Date.now();
+    await d.put("items", { ...ph, status: "dismissed", dismissedFrom: ph.status, statusAt: now, updatedAt: now });
+    await addEvent(item.tripId, L(`${ph.name}: yerine ${item.name} geldi`, `${ph.name}: replaced by ${item.name}`));
+  }
+  notifyChanged();
 }
 
 /**

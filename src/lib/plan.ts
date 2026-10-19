@@ -1,6 +1,7 @@
 // Trip skeleton: which nights are booked, planned or still open, and which saved options are still
 // live. Pure and derived from the saved items on every render, so it can never go stale: un-booking
 // a stay brings its alternatives straight back, and nothing is ever deleted to "close" a need.
+import { airportCities } from "./airports";
 import { isCampStay } from "./campStay";
 import { L } from "./i18n";
 import { nNights } from "./i18nText";
@@ -414,7 +415,13 @@ export function cityKeyOf(city: string | null | undefined): string | null {
     .replace(/ı/g, "i")
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
-  return plain ? (CITY_ALIASES[plain] ?? plain) : null;
+  if (!plain) return null;
+  const alias = CITY_ALIASES[plain];
+  if (alias) return alias;
+  // An airport code the table above doesn't list is its city's ("BJV" is Bodrum): an offer saved with its codes and the
+  // start's plan named by its cities are one way (0.38.6).
+  const named = airportCities(city.trim())[1];
+  return named ? (cityKeyOf(named) ?? plain) : plain;
 }
 
 /**

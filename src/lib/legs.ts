@@ -4,7 +4,7 @@
 // what the traveller decides for a transfer (how they'll go, that it's arranged, a note) is stored,
 // on the trip, by leg key; the key names the day and the cities, not the hotels, so a plan survives
 // switching hotels.
-import { cityOfAirport, countryOfAirport, knownAirport } from "./airports";
+import { airportTown, cityOfAirport, countryOfAirport, knownAirport } from "./airports";
 import { L } from "./i18n";
 import { lookWord } from "./stageWords";
 import { SCHENGEN } from "./visa";
@@ -692,7 +692,9 @@ function farOf(kind: "arrival" | "departure", travel: Travel | null, stay: strin
   const code = codes.length === 1 ? codes[0] : null;
   if (!code || !stay || !knownAirport(code)) return null;
   const city = cityOfAirport(code);
-  return sameCity(city, stay) ? null : { city, code };
+  // An airport named by its island ("Bali") starts the road at its own town: "Denpasar (DPS) → Canggu".
+  const town = airportTown(code);
+  return sameCity(city, stay) || (town && sameCity(town, stay)) ? null : { city: town ?? city, code };
 }
 
 export function legShortTitle(leg: Leg): string {

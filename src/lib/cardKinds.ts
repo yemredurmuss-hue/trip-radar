@@ -26,7 +26,8 @@ const FROM_LEG: Partial<Record<LegMode, TransportMode>> = { flight: "flight", tr
 /** The words on a page or a plan, most specific first (a minibus isn't a bus, a scooter rental isn't a car). */
 const BY_TEXT: [RegExp, TransportMode][] = [
   [/karavan|kamp aracı|camper|motorhome|motor home/i, "rv"],
-  [/motosiklet|motorsiklet|scooter|moped|motorbike|motorcycle/i, "moto"],
+  // (Turkish says a motorbike "motor": "Uzun dönem motor kiralama"; a motorhome is caught above)
+  [/motosiklet|motorsiklet|scooter|moped|motorbike|motorcycle|(?<![\p{L}])motor(?:u|a|la|cu|cular)?(?![\p{L}])(?!\s*(?:boat|yacht|tekne|yat)\b)/iu, "moto"],
   [/bisiklet|bicycle|\be-?bike\b|\bbike\b/i, "bike"],
   [/minibüs|dolmuş|minibus/i, "minibus"],
   [/vapur|feribot|ferry|ferri/i, "ferry"],

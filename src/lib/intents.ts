@@ -844,11 +844,18 @@ function suggestedIntent(section: SectionId, s: Suggestion, env: Env): IntentVM 
   const mode = section === "transport" && s.source === "ai" ? modeOfText(`${s.title} ${s.why ?? ""}`) : null;
   const kind: CardKind = s.template === "esim" ? "esim" : s.template === "insurance" ? "insurance" : (mode ?? DEFAULT_KIND[section] ?? "other");
   // A rental says what it is ("Motosiklet kiralama"), the AI's longer line stays its note (Emre, 19 Ekim).
-  const name = mode && RENTAL_MODES.includes(mode) ? L(`${cardKindLabel(kind)} kiralama`, `${cardKindLabel(kind)} rental`) : s.title;
+  const rental = RENTAL_MODES.includes(kind as (typeof RENTAL_MODES)[number]);
+  const name = mode && rental ? L(`${cardKindLabel(kind)} kiralama`, `${cardKindLabel(kind)} rental`) : plainTitle(s.title);
   const start = isoDate(s.payload?.start ?? null);
-  const range = start ? { start, end: isoDate(s.payload?.end ?? null) } : env.input.plan.range;
+  const trip = env.input.plan.range;
+  // A rental said from the trip's first day with no last one ("Uzun dönem motor kiralama · 1 Ara") is for the stay: until
+  // the trip's end. Its place is the one the trip stays in when there is only one (Canggu).
+  const end = isoDate(s.payload?.end ?? null) ?? (rental && trip && (!start || start === trip.start) ? trip.end : null);
+  const range = start ? { start, end } : trip;
+  const cities = citiesOfPlan(env.input.plan);
+  const city = s.payload?.city ?? (cities.length === 1 ? cities[0].city : null);
   const frame = frameOf(section);
-  const head: IntentHead = { name, route: null, parts: range ? [formatDateRange(range.start, range.end)] : [], kindWord: MIXED.includes(section) ? cardKindLabel(kind) : null, word: null, wants: [], image: null, city: s.payload?.city ?? null, date: range?.start ?? null, nights: 0 };
+  const head: IntentHead = { name, route: null, parts: range ? [formatDateRange(range.start, range.end)] : [], kindWord: MIXED.includes(section) ? cardKindLabel(kind) : null, word: null, wants: [], image: null, city, date: range?.start ?? null, nights: 0 };
   return {
     key: `suggestion:${s.key}`,
     section,
@@ -868,11 +875,37 @@ function suggestedIntent(section: SectionId, s: Suggestion, env: Env): IntentVM 
     suggestions: [s],
     wanted: [],
     cover: null,
-    ticket: frame === "ticket" ? ticketViewOf([], { kind, leg: null, route: null, now: env.now }) : null,
+    ticket: frame === "ticket" ? ticketViewOf([], { kind, leg: null, route: null, now: env.now, span: rental ? { city, start: range?.start ?? null, end: range?.end ?? null } : null }) : null,
     modes: [],
     itemIds: [],
     domKeys: [],
   };
+}
+
+/** A Turkish request said as an order at its end ("Havalimanı transferi ayarlayın"): the box names the thing, not the order. */
+const ORDER_WORDS = /\s+(?:ayarlay[ıi]n|ayarla|planlay[ıi]n|planla|ay[ıi]rt[ıi]n|ay[ıi]rt|rezerve\s+edin|rezervasyon\s+yap[ıi]n|kiralay[ıi]n|kirala|bulun|al[ıi]n|yap[ıi]n|edinin|d[üu]ş[üu]n[üu]n)[.!]?$/iu;
+
+function plainTitle(title: string): string {
+  const bare = title.replace(ORDER_WORDS, "").trim();
+  return bare && bare !== title.trim() ? bare : title;
+}
+
+/**
+ * The start's place for some nights that a stay chosen now takes (0.38.6, Emre: "seçince omurga değişsin"): the same city,
+ * most of its nights. A choice for all of them closes it on the plan already (plan.ts); one for most leaves it standing
+ * with a night or two beside it, a second card, so it is set aside too. The nights the choice leaves stay to find.
+ */
+export function stayPlaceholdersTaken(choice: Item, items: readonly Item[], trip: Pick<Trip, "startGuide">): Item[] {
+  const own = choice.category === "stay" && choice.origin !== "chat" ? stayRange(choice) : null;
+  if (!own) return [];
+  return items.filter((i) => {
+    if (i.id === choice.id || i.category !== "stay" || !(isPlaceholder(trip, i) || bareChatPlan(i))) return false;
+    const r = stayRange(i);
+    if (!r || !sameCity(i.city, choice.city) || (own.start <= r.start && own.end >= r.end)) return false;
+    const start = own.start > r.start ? own.start : r.start;
+    const end = own.end < r.end ? own.end : r.end;
+    return start < end && nightsBetween(start, end) * 2 > nightsBetween(r.start, r.end);
+  });
 }
 
 /** Gerek yok (F3): a transfer or nights said not needed fold into the category's "Gizlenenler · n", one tap from coming back. */
