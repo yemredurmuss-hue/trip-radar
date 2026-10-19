@@ -1,9 +1,9 @@
 // The hero's strip in four parts (v82, v83 B9, F4, F5, C22, C30, Etsy T5): the dates (a "~" when guessed, the days and
 // how many are left; each city's days on hover; only "~ · 10 gece" while they are a guess from a month or a season, D15),
 // who goes (the faces, "Kimler gidiyor" in full on a tap) with the backbone's two shares and the bar in two greens (a tap
-// on the numbers goes to the first decision), the budget (its window:
-// booked, planned, free, each person's share, by kind, what's still to come; "Bütçe belirle" without one, D16) and
-// "Sıradaki", the one next step. A part with nothing to say isn't drawn (C19).
+// on the numbers goes to the first decision), the budget (its window: booked, planned, free, each person's share, by
+// kind, what's still to come; "Bütçe belirle" without one, D16) and "Sıradaki", the one next step. A part with nothing
+// to say isn't drawn (C19).
 import { useState, type ReactNode } from "react";
 import { BUDGET_SLICES, type BudgetBar, type BudgetSlice } from "../../lib/progress";
 import { formatPrice, nightsBetween } from "../../lib/items";
@@ -242,7 +242,7 @@ function Budget({ view, bar, set }: { view: BudgetView; bar: BudgetBar; set: Her
   const slices = BUDGET_SLICES.filter((s) => bar.byCategory[s] > 0);
   const said = [
     `${L("Bütçe", "Budget")}: ${view.sign}${money(view.likely)}`,
-    view.total != null ? L(`${money(view.total)} bütçe`, `${money(view.total)} budget`) : L("tahmini toplam", "likely total"),
+    view.total != null ? L(`${money(view.total)} bütçe`, `${money(view.total)} budget`) : set ? L("tahmini toplam, bütçe belirle", "likely total, set a budget") : L("tahmini toplam", "likely total"),
     view.over ? L(`bütçeyi ${money(view.over)} aşar`, `${money(view.over)} over`) : null,
   ]
     .filter(Boolean)
