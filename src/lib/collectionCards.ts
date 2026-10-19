@@ -27,6 +27,7 @@ import { clockOf } from "./legs";
 import type { Offer } from "./offerSource";
 import type { NearPlace } from "./offerSources";
 import { adderOf } from "./pano";
+import { cleanPlaceTitle, placeMapsUrl } from "./placeSuggest";
 import { sameCity, type Plan } from "./plan";
 import { reasonItemOf } from "./reason";
 import type { Item, Suggestion, Trip } from "./types";
@@ -228,6 +229,7 @@ export function recordCard(item: Item, at: CardCtx & { planned: boolean; wanted:
 export function suggestionCard(s: Suggestion, section: SectionId): KCardVM {
   const food = s.section === "food" || s.template === "food";
   const family: KFamily = section === "activity" ? "event" : food ? "food" : "place";
+  const place = family !== "event";
   return {
     key: `s:${s.key}`,
     item: null,
@@ -235,7 +237,8 @@ export function suggestionCard(s: Suggestion, section: SectionId): KCardVM {
     offer: null,
     family,
     state: "idea",
-    title: s.title,
+    // A place's name as a name (one stored cut in a sentence: "Tanah Lot Tapınağı'nın"); its photo comes from its page (KCard).
+    title: place ? cleanPlaceTitle(s.title) : s.title,
     photo: null,
     art: ART[family],
     badge: { tone: "ai", text: `✨ ${L("Öneri", "Suggestion")}`, initial: null },
@@ -247,7 +250,7 @@ export function suggestionCard(s: Suggestion, section: SectionId): KCardVM {
     takesTable: false,
     access: null,
     page: null,
-    map: null,
+    map: place ? placeMapsUrl(s) : null,
     canPut: s.kind === "add",
   };
 }

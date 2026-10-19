@@ -24,6 +24,7 @@ import { allowedSuggestions } from "./playbooks";
 import { TEMPLATES, type TemplateId } from "./templates";
 import { airportCode } from "./searchLinks";
 import { buildTimeline, nightsKey, type Timeline } from "./timeline";
+import { cleanPlaceTitle, placeMapsUrl } from "./placeSuggest";
 import { ESIM_WORDS, isInsurance } from "./travelKinds";
 import type { Item, Listing, Suggestion, SuggestionKind, SuggestionSection, SuggestionState, Trip } from "./types";
 import { overlaps, periodOf, vehicleOf } from "./vehicles";
@@ -439,6 +440,8 @@ export interface SuggestionInput {
   city: string;
   start: string;
   end: string;
+  /** A place to see or eat at (todo, food): the name Google Maps finds it by and its town; "" or left out otherwise. */
+  place?: string;
 }
 
 const CLOCK = /(?<!\d)\d{1,2}[:.]\d{2}(?!\d)/;
@@ -496,12 +499,15 @@ export function checkSuggestionInput(raw: Partial<Record<keyof SuggestionInput, 
       "No suggestion card goes in Activities and tours: only the source's real tours (Viator) and what the user saved go there. Search with find_offers kind activity; when it finds none, say \"I couldn't find tours for this area on Viator\".",
     );
   }
-  const title = str(raw.title);
+  // A place to see or eat at is named as a place ("Tanah Lot Tapınağı", not "Tanah Lot Tapınağı'nın"): placeSuggest.ts.
+  const named = section === "todo" || section === "food";
+  const title = named ? cleanPlaceTitle(str(raw.title)) : str(raw.title);
   const why = str(raw.why);
   if (!title || title.length > 80) return L("title kısa olmalı (1–80 karakter).", "title must be short (1–80 characters).");
   if (!why || why.length > 200) return L("why tek kısa cümle olmalı (1–200 karakter).", "why must be one short sentence (1–200 characters).");
   if (TWO_SENTENCES.test(why)) return L("why tek cümle olmalı.", "why must be a single sentence.");
-  const text = `${title} ${why}`;
+  const place = named ? str(raw.place).slice(0, 100) : "";
+  const text = `${title} ${why} ${place}`;
   if (CLOCK.test(text) || isMoney(text) || PERCENT.test(text)) {
     return L("Öneride fiyat, saat ya da yüzde olmaz (uydurma olabilir); yalnız olguları yaz.", "No prices, times or percentages in a suggestion (they could be made up); state facts only.");
   }
@@ -532,7 +538,7 @@ export function checkSuggestionInput(raw: Partial<Record<keyof SuggestionInput, 
     why,
     source,
     ...(template ? { template } : {}),
-    payload: { city: city || null, start: start || null, end: end || null, title },
+    payload: { city: city || null, start: start || null, end: end || null, title, ...(place ? { place } : {}) },
     createdAt: now,
     state: "open",
   };
@@ -572,7 +578,10 @@ export function suggestedItem(s: Suggestion, tripId: string, id: string, now: nu
   if (!tpl) return null;
   // An eSIM's place is its country (the suggestion's city is the first one), like one said in the chat.
   const made = esimInCountry(plannedItem(inputOf(s, tpl), tripId, id, now));
-  return tpl.id === "todo" ? { ...made, booking: "none" } : made;
+  if (tpl.id !== "todo" && tpl.id !== "food") return made;
+  // A place to see or eat at: named as a place, found on Google Maps by its name and town, with the photo its card had.
+  const place = { ...made, name: cleanPlaceTitle(made.name), url: placeMapsUrl(s), imageUrl: s.payload?.photo?.trim() || null };
+  return tpl.id === "todo" ? { ...place, booking: "none" } : place;
 }
 
 function inputOf(s: Suggestion, tpl: (typeof TEMPLATES)[number]): PlannedInput {

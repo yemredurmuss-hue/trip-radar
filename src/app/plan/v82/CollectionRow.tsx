@@ -16,6 +16,7 @@ import { L } from "../../../lib/i18n";
 import { selfSearches, type SelfSearch } from "../../../lib/intentFrame";
 import type { IntentVM, OptionVM } from "../../../lib/intents";
 import { formatDateRange } from "../../../lib/items";
+import { withPlacePhoto } from "../../../lib/placeSuggest";
 import { photoFromOffers, sameTour, type Need, type Offer } from "../../../lib/offerSource";
 import { cityTours, tourWords } from "../../../lib/offerSources";
 import { sameCity, type Plan } from "../../../lib/plan";
@@ -136,7 +137,7 @@ export function CollectionRow({ vm, onPut, onTakeOff }: CollectionRowProps) {
     if (c.item) return <RecordCard key={c.key} card={c} vm={vm} plan={plan} search={links[0] ?? null} onPut={(item) => onPut({ item })} onTakeOff={(item) => onTakeOff({ item })} />;
     if (c.suggestion) {
       const s = c.suggestion;
-      return <SuggestCard key={c.key} card={c} onPut={() => v82.addSuggestion?.(s)} onDismiss={() => v82.dismissSuggestion?.(s)} />;
+      return <SuggestCard key={c.key} card={c} onPut={(photo) => v82.addSuggestion?.(withPlacePhoto(s, photo))} onDismiss={() => v82.dismissSuggestion?.(s)} />;
     }
     if (c.offer) {
       const offer = c.offer;
