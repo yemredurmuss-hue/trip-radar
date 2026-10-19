@@ -12,6 +12,7 @@ import { airlineCode, airlineColor, airlineLogos } from "../../lib/airlines";
 import { durationText } from "../../lib/cardFacts";
 import { L } from "../../lib/i18n";
 import { nStops } from "../../lib/i18nText";
+import { offersLooking } from "../../lib/looking";
 import type { StayCandidate } from "../../lib/offerSources";
 import { candidateOffer, fitsTrip, pickCard, pickList, pickOnPlan, picksContext, pickThree, savedAlready, type PickKind, type StayPick } from "../../lib/stayPicks";
 import type { Item } from "../../lib/types";
@@ -283,7 +284,7 @@ function StayPicksRow({ need, onChoose, placeholder }: { need: Need; onChoose: (
     if (!available || !source.candidates) return;
     let live = true;
     // Asked by itself once the nights and the place are known; the source keeps the answer for hours (offerSources).
-    source.candidates(need).then(
+    offersLooking.track(need.key, source.candidates(need)).then(
       (list) => live && setCands(Array.isArray(list) ? list : []),
       () => live && setCands([]),
     );
@@ -362,7 +363,7 @@ function PlainOfferRow({ need }: { need: Need }) {
     if (!available) return;
     let live = true;
     // Asked by itself once the need is known (a flight's ends and day); the source keeps the answer for hours.
-    source.offers(need).then(
+    offersLooking.track(need.key, source.offers(need)).then(
       (list) => live && (setState((s) => withOffers(s, validOffers(list, need))), setDone(true)),
       () => live && (setState((s) => withOffers(s, [])), setDone(true)),
     );

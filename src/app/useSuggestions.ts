@@ -8,7 +8,7 @@ import type { HiddenInput } from "../lib/history";
 import type { Leg } from "../lib/legs";
 import { newId } from "../lib/db";
 import { cityKeyOf, type Plan } from "../lib/plan";
-import { reviewDue, reviewKey, reviewPrompt, reviewWait, runReview, tripTaste } from "../lib/suggestReview";
+import { reviewDue, reviewKey, reviewPrompt, reviewRunning, reviewWait, runReview, tripTaste } from "../lib/suggestReview";
 import { bySection, ruleSuggestions, shownSuggestions } from "../lib/suggestions";
 import type { Timeline } from "../lib/timeline";
 import type { InsertAt, TemplateId } from "../lib/templates";
@@ -24,6 +24,8 @@ export interface BoardSuggestions {
   dismiss: (s: Suggestion) => void;
   /** Said under a card when its "Plana ekle" was refused, by key. */
   notes: Record<string, string>;
+  /** The AI review is out now: the sections it writes in say "Öneriler aranıyor…" (0.38.8). */
+  reviewing: boolean;
 }
 
 export function useSuggestions(args: {
@@ -136,5 +138,7 @@ export function useSuggestions(args: {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- asked once per trip state (key)
   }, [trip.id, key, due]);
 
-  return { bySection: sections, dismissed, add, dismiss, notes };
+  // (a claim stuck past REVIEW_STALE_MS isn't counted: the next render says nothing; the tick above brings one when due)
+  const reviewing = reviewRunning(trip.suggestReview, Date.now());
+  return { bySection: sections, dismissed, add, dismiss, notes, reviewing };
 }

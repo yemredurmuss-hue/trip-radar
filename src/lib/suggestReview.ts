@@ -56,6 +56,9 @@ export function reviewDue(last: Trip["suggestReview"], key: string, now: number)
   return last.key !== key || Boolean(last.failed);
 }
 
+/** The review is out now (claimed by this tab or another and not back yet, nor stuck): the sections it writes in say so. */
+export const reviewRunning = (last: Trip["suggestReview"], now: number): boolean => last?.state === "running" && now - last.at <= REVIEW_STALE_MS;
+
 /** How long until reviewDue turns true by itself (a claim gone stale, the gap after other places or dates); null: not today. */
 export function reviewWait(last: Trip["suggestReview"], key: string, now: number): number | null {
   if (!last || reviewDue(last, key, now)) return 0;
@@ -71,7 +74,7 @@ export const reviewSystem = (playbook?: KindOrIntent): string => {
 };
 
 /** The sections the review may write in: not Etkinlik ve turlar, whose ideas come from a real source only (suggestions.ts sourcedOnly). */
-const REVIEW_SECTIONS = SUGGESTION_SECTIONS.filter((s) => s !== "activity");
+export const REVIEW_SECTIONS = SUGGESTION_SECTIONS.filter((s) => s !== "activity");
 
 const reviewRules = (): string =>
   L(

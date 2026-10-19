@@ -12,6 +12,7 @@ import type { Trip } from "../../../lib/types";
 import { updateTrip } from "../../actions";
 import { useCardEnv } from "../../cards/PlanCard";
 import type { PrepModel } from "./usePrep";
+import { Searching } from "../v82/Searching";
 import { PrepIcon } from "./PrepIcons";
 import { ShopLink } from "./PrepRow";
 
@@ -38,7 +39,14 @@ function setAnswer(trip: Trip, id: string, answer: string | null) {
   );
 }
 
-export function Bavul({ view, sub, bag, model }: { view: PackView; sub: string; bag: string | null; model: PrepModel }) {
+export function Bavul({ view, sub, bag, model, looking = false }: {
+  view: PackView;
+  sub: string;
+  bag: string | null;
+  model: PrepModel;
+  /** The AI's list is being asked (usePackAi): a small line under the head until it comes (0.38.8). */
+  looking?: boolean;
+}) {
   const env = useCardEnv();
   const { trip, mine, saveMine, shopHome } = model;
   const [open, setOpen] = useState(false);
@@ -76,6 +84,7 @@ export function Bavul({ view, sub, bag, model }: { view: PackView; sub: string; 
             <PrepIcon name="chev" size={16} stroke={2.2} />
           </span>
         </button>
+        {looking && <Searching text={L("Bavul listesi hazırlanıyor…", "Making your packing list…")} />}
         {open && (
           <div className="q-bvb" id={`bavul-${trip.id}`}>
             {(known.length > 0 || view.asks.length > 0) && (

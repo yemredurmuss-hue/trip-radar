@@ -8,6 +8,7 @@ import { catDomKey, recordOf, type CatEntry } from "../../lib/categories";
 import type { CityWeather } from "../../lib/climate";
 import { countryInfo } from "../../lib/countries";
 import { L } from "../../lib/i18n";
+import { packLooking } from "../../lib/looking";
 import { tripPlaybook } from "../../lib/playbooks";
 import { countryName, knowRows, knowSub } from "../../lib/prepKnow";
 import { bagFact, drivesOnTrip, kindWord, packSub, packView, planNames, rulesAsk, rulesPack, stayCities, stayLines, tripDays } from "../../lib/prepPack";
@@ -20,6 +21,7 @@ import { PrepIcon } from "./prep/PrepIcons";
 import { PrepRow } from "./prep/PrepRow";
 import { usePackAi } from "./prep/usePackAi";
 import { usePrep } from "./prep/usePrep";
+import { useLooking } from "./v82/Searching";
 
 export function PrepList({ entries }: { entries: CatEntry[] }) {
   const env = useCardEnv();
@@ -89,6 +91,7 @@ export function PrepList({ entries }: { entries: CatEntry[] }) {
     range != null && (cities.length > 0 || countries.length > 0),
   );
 
+  const packing = useLooking(packLooking, trip.id) && list == null;
   const know = knowRows({ countries, passport: model.passport, money: model.money, plug: model.plug, tips: list?.tips ?? [] });
   const shown = hideDone ? tasks.filter((t) => !t.done) : tasks;
   return (
@@ -114,7 +117,7 @@ export function PrepList({ entries }: { entries: CatEntry[] }) {
         {shown.map((t) => (
           <PrepRow key={t.key} task={t} trip={trip} today={model.today} shopHome={model.shopHome} domId={t.item ? domIds.get(t.item.id) : undefined} />
         ))}
-        <Bavul view={view} sub={sub} bag={bag} model={model} />
+        <Bavul view={view} sub={sub} bag={bag} model={model} looking={packing} />
       </ul>
     </div>
   );
