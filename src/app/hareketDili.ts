@@ -19,8 +19,8 @@ export const GHOST_MS = 120;
 const DIR_MS = 700;
 /** The rings that may pulse on screen at once. */
 export const MAX_PULSES = 2;
-/** What pulses (app.css `pk-pulse`): an empty card's ring, an empty ticket's frame. */
-export const PULSERS = ".ek-card .pk-ring.open, .ek-card .pk-ring.half, .pk-card.tk.tk-search";
+/** What pulses (app.css `pk-pulse`): an empty ticket's frame. */
+export const PULSERS = ".pk-card.tk.tk-search";
 /** The banner's way out: --t-base. */
 export const BANNER_OUT_MS = 200;
 export const BANNERS = ".chat-banner";

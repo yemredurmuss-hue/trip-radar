@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ClipboardEvent, type DragEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent } from "react";
 import { requestProcessing } from "../lib/browser";
 import { countdown, countdownText } from "../lib/countdown";
 import { initials } from "../lib/heroInfo";
@@ -8,7 +8,7 @@ import { retryCapture } from "../lib/process";
 import { listDrafts, onDraftsChanged, removeDraft, saveDraft } from "../lib/startDrafts";
 import { checklist, dative, detectLang, progressOf, splitLinks, tripNamedIn, type StartCtx, type StartMode, type StartState } from "../lib/startTrip";
 import { creditLine, creditOf } from "../lib/cityImages";
-import { tripCardPhoto, tripCardPlaces } from "../lib/tripBrief";
+import { tripCardPhoto } from "../lib/tripBrief";
 import { isDemoTrip } from "../lib/trips";
 import { getSettings, listMessages, onChanged } from "../lib/db";
 import { canPick, CURRENCIES, CURRENCY_SIGN, displayCurrency, saveCurrency, type DisplayCurrency } from "../lib/displayCurrency";
@@ -301,6 +301,8 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
   };
   const pastCount = ordered.filter(isPast).length;
   const shownTrips = ordered.filter((t) => (when === "past" ? isPast(t) : !isPast(t)));
+  // Each card's cover: its board's hero cover, worked out from the trip as stored (C36, row 163).
+  const covers = useMemo(() => new Map(trips.map((t) => [t.id, tripCardPhoto(t, items.filter((i) => i.tripId === t.id && i.status !== "dismissed"))])), [trips, items]);
 
   return (
     <div className="home st-home hm" onDragOver={(e) => (e.preventDefault(), setDragging(true))} onDragLeave={() => setDragging(false)} onDrop={onDrop}>
@@ -466,7 +468,7 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
       {trips.length === 0 && drafts.length === 0 ? (
         <div className="trips-empty">
           <Mascot size={56} className="empty-mascot" />
-          <h2>{L("İlk seçeneğini kaydet", "Save your first option")}</h2>
+          <h2>{L("İlk gezini başlat", "Start your first trip")}</h2>
           <ol>
             <li>
               <a href="#settings" onClick={onSettings}>
@@ -476,14 +478,14 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
             </li>
             <li>
               {L(
-                "Bir otel, uçuş, etkinlik ya da eSIM sayfasındayken araç çubuğundaki Trip Radar simgesine tıkla (veya Alt+Shift+S).",
-                "On a hotel, flight, activity or eSIM page, click the Trip Radar icon in the toolbar (or Alt+Shift+S).",
+                "Yukarıdaki kutuya nereye ve ne zaman gideceğini yaz ya da bir link bırak; birkaç soruyla gezinin omurgası kurulur.",
+                "Write where and when you're going in the box above, or drop a link: a few questions and the trip's backbone is laid out.",
               )}
             </li>
             <li>
               {L(
-                "Gezi kendiliğinden oluşur: aynı yer ve yakın tarihler aynı geziye, başka yer ya da uzak tarih yeni geziye.",
-                "Trips sort themselves: the same place and close dates join one trip, another place or far-off dates start a new one.",
+                "Bir otel, uçuş ya da etkinlik sayfasındayken araç çubuğundaki Trip Radar simgesine tıkla (veya Alt+Shift+S): kayıt planda yerine düşer, başka bir yer ya da uzak bir tarihse yeni gezi açılır.",
+                "On a hotel, flight or activity page, click the Trip Radar icon in the toolbar (or Alt+Shift+S): it lands in its place on the plan; another place or far-off dates start a new trip.",
               )}
             </li>
           </ol>
@@ -528,8 +530,8 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
             {shownTrips.map((trip) => {
               const own = items.filter((i) => i.tripId === trip.id && i.status !== "dismissed");
               const range = trip.confirmedDates ?? tripDateRange(own);
-              // The photo its board's hero shows, as stored (none fetched from the list); the gradient without one.
-              const image = tripCardPhoto(trip, own);
+              // The cover its board's hero shows, as stored (none fetched from the list); the gradient without one.
+              const image = covers.get(trip.id) ?? null;
               // Too small for the credit line: who took it on hover ("Fotoğraf: Ana Lima / Unsplash"); the board's hero links it.
               const credit = creditOf(image, trip.photoCredits);
               const line = credit ? creditLine(credit) : null;

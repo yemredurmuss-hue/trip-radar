@@ -1,38 +1,30 @@
 // A block of the plan's front as it was always drawn (spec 0.31–0.33): a flight or a change of city with its
 // options, a transfer's card, a stretch of nights (booked, chosen, options, a stay said apart, empty nights),
-// a rented car, a booking on its day. The Plan's sections (CategoryPlan) place these; their cards are the
-// approved ones, unchanged. On the Plan only (`plain`), what has nothing booked or saved yet is its empty card
-// (cards/EmptyCard.tsx); Günlük akış draws these blocks too and keeps them exactly as they were.
-import { countryOfPlace } from "../../lib/chatBooking";
-import { needKey } from "../../lib/emptyCards";
+// a rented car, a booking on its day. Gün gün (days/DayViews, days/JourneyDay) places these; their cards are the
+// approved ones, unchanged.
 import { L } from "../../lib/i18n";
 import { formatDateRange, formatPrice, nightsBetween } from "../../lib/items";
 import type { StayBlock } from "../../lib/plan";
 import type { TimelineEntry } from "../../lib/timeline";
 import type { Item } from "../../lib/types";
 import { DeleteX } from "../cards/CardShell";
-import { EmptyStayBlock, EmptyTravelCard } from "../cards/EmptyCard";
-import { useEmptyEnv } from "../cards/emptyEnv";
-import { OfferRow } from "../cards/OfferRow";
 import { Editable, InlineEdit } from "../cards/InlineEdit";
 import { useCardEnv } from "../cards/PlanCard";
 import { StayLine } from "../cards/StayLine";
 import { StatusBar } from "../Status";
 import type { LegCardFor, RenderGroup, SettledFor } from "../Timeline";
 
-export function PlanEntry({ entry, legCard, renderGroup, settled, plain = false }: {
+export function PlanEntry({ entry, legCard, renderGroup, settled }: {
   entry: TimelineEntry;
   legCard: LegCardFor;
   renderGroup: RenderGroup;
   settled: SettledFor;
-  /** The Plan's sections (boş kartlar): empty nights and a missing flight as their empty cards. Off elsewhere. */
-  plain?: boolean;
 }) {
   switch (entry.kind) {
     case "leg":
       return <>{legCard(entry.leg)}</>;
     case "stay":
-      return <Block block={entry.block} renderGroup={renderGroup} settled={settled} plain={plain} />;
+      return <Block block={entry.block} renderGroup={renderGroup} settled={settled} />;
     case "travel":
       if (entry.travel) {
         return (
@@ -45,9 +37,6 @@ export function PlanEntry({ entry, legCard, renderGroup, settled, plain = false 
         <div className={`tl-travel role-${entry.role}`}>
           {entry.role === "move" && entry.leg ? (
             legCard(entry.leg)
-          ) : plain && (entry.role === "arrival" || entry.role === "departure") && entry.city ? (
-            // Boş kartlar: the way in or home with no flight saved, the flight's empty card.
-            <EmptyTravelCard role={entry.role} date={entry.date} city={entry.city} home={entry.home ?? null} />
           ) : (
             <div className="empty-card">
               <span>
@@ -73,19 +62,6 @@ export function PlanEntry({ entry, legCard, renderGroup, settled, plain = false 
   }
 }
 
-/**
- * Nights with options and none chosen yet (Seçenekler): the same "✨ Senin için" row as the empty card's stays under
- * them, so a hotel favoured from it ("Favorile") doesn't take the other picks away. It goes once one is chosen
- * (Planlandı: the block is no longer open). The need is the empty card's for these nights (EmptyStayBlock).
- */
-function OptionsOffers({ block }: { block: Extract<StayBlock, { kind: "open" }> }) {
-  const { travellers: n, items } = useEmptyEnv();
-  const city = block.slot?.city ?? block.city;
-  if (!city) return null;
-  const { start, end } = block.range;
-  return <OfferRow key={needKey("stay", city, start, end)} need={{ key: needKey("stay", city, start, end), section: "stay", kind: "stay", city, start, end, adults: n, country: countryOfPlace(city, items)?.code ?? null }} />;
-}
-
 /** A stay said apart (in the chat, or added with "+") with options under it: the line saying so, and its × (spec 0.33 §1). */
 function SlotNote({ slot }: { slot: Item }) {
   const env = useCardEnv();
@@ -99,7 +75,7 @@ function SlotNote({ slot }: { slot: Item }) {
 
 const blockState = (block: StayBlock) => (block.kind === "open" && !block.groups.length ? "empty" : block.kind);
 
-function Block({ block, renderGroup, settled, plain }: { block: StayBlock; renderGroup: RenderGroup; settled: SettledFor; plain: boolean }) {
+function Block({ block, renderGroup, settled }: { block: StayBlock; renderGroup: RenderGroup; settled: SettledFor }) {
   const state = blockState(block);
   const label = `${block.city ?? L("Konaklama", "Stay")} ${formatDateRange(block.range.start, block.range.end)}`;
   return (
@@ -111,7 +87,6 @@ function Block({ block, renderGroup, settled, plain }: { block: StayBlock; rende
           renderGroup(g, null, g.range && g.range.start === block.range.start && g.range.end === block.range.end ? null : g.title, true),
         )}
       {block.kind === "open" && block.slot && block.groups.length > 0 && <SlotNote slot={block.slot} />}
-      {plain && block.kind === "open" && block.groups.length > 0 && <OptionsOffers block={block} />}
       {block.kind === "chosen" && block.gap && block.gap.length > 0 && (
         <p className="slot-note gap">
           {L(
@@ -125,7 +100,7 @@ function Block({ block, renderGroup, settled, plain }: { block: StayBlock; rende
           )}
         </p>
       )}
-      {block.kind === "open" && !block.groups.length && (plain ? <EmptyStayBlock block={block} label={label} /> : <OpenNights block={block} label={label} />)}
+      {block.kind === "open" && !block.groups.length && <OpenNights block={block} label={label} />}
     </div>
   );
 }

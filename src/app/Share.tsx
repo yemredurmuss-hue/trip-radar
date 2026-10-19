@@ -409,7 +409,7 @@ export function ShareSettings() {
         <input type="password" value={c.anonKey} placeholder={L("sb_publishable_… ya da eyJ…", "sb_publishable_… or eyJ…")} onChange={(e) => update({ anonKey: e.target.value })} />
       </label>
       <p className="muted small">
-        <button className="btn-link" style={{ fontSize: 13, padding: 0 }} disabled={!c.url || !c.anonKey} onClick={() => void test()}>
+        <button className="btn-link" style={{ fontSize: "var(--q-fs-info)", padding: 0 }} disabled={!c.url || !c.anonKey} onClick={() => void test()}>
           {L("Bağlantıyı dene", "Test connection")}
         </button>
         {status && ` · ${status}`}

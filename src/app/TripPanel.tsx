@@ -44,9 +44,8 @@ import { newId } from "../lib/db";
 import { AddButton, AddSheet } from "./cards/AddSheet";
 import { openDoc, useTripDocs } from "./cards/DocAccess";
 import { LegCard } from "./cards/LegCard";
-import { EmptyLegCard, EmptyRecordCard } from "./cards/EmptyCard";
 import { EmptyEnvContext, type EmptyEnv } from "./cards/emptyEnv";
-import { isEmptyLeg, isEmptyRecord } from "../lib/emptyCards";
+import { isEmptyRecord } from "../lib/emptyCards";
 import { liveSource } from "../lib/offerSources";
 import { foreignCountries, homeFromFlights } from "../lib/suggestions";
 import { CardEnvContext, NavGroup, PlanCard, type CardEnv } from "./cards/PlanCard";
@@ -55,7 +54,7 @@ import { UndoToast } from "./cards/UndoToast";
 import { isIdea } from "../lib/booking";
 import { findTarget, show, TodoList } from "./Progress";
 import { cityRanges, countryCodesOf, countryNames, sectionTally } from "../lib/heroInfo";
-import { answerParents, answersAny, mainPlaceOf, mainPlaces, placesKey, placesPrompt, placesSystemPrompt, resolveParents } from "../lib/destinations";
+import { answerParents, answersAny, heroCityPhotos, mainPlaceOf, mainPlaces, placesKey, placesPrompt, placesSystemPrompt, resolveParents, tripCities } from "../lib/destinations";
 import { acceptNoteLabel, type Pref } from "../lib/preferences";
 import { acceptStyle, budgetLevel, styleChips, styleKey, stylePrompt } from "../lib/tripStyle";
 import { intentEntries } from "./IntentCard";
@@ -95,7 +94,6 @@ import { PanoDialog } from "./board/v82/PanoDialog";
 import { usePrepSummaryWith } from "./plan/prep/usePrep";
 import { NeedGroup } from "./cards/NeedCard";
 import { draftOf } from "../lib/draft";
-import { journeyOf } from "../lib/tripShape";
 import { UndatedIdeas } from "./ideas/IdeaTiles";
 import { choiceOf, type Choice } from "../lib/choice";
 import { pivotalFindings } from "../lib/pivots";
@@ -167,8 +165,6 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const failed = openCaptures.filter((c) => c.status === "error");
   const listings = decisions?.ctx.listings;
   const legs = useMemo(() => buildLegs(plan, trip, listings), [plan, trip, listings]);
-  // The trip's shape under the Plan's head (v11): its stops and the way between them.
-  const shape = useMemo(() => journeyOf(plan, legs, items), [plan, legs, items]);
   const reading = listings
     ? new Set(items.filter((i) => needsReading(i, listings.get(listingKeyOf(i))) && !listings.get(listingKeyOf(i))?.error).map(listingKeyOf)).size
     : 0;
@@ -347,7 +343,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   // The Plan's cities (every place slept in), and the hero's: the main places they belong to (destinations.ts;
   // a stay in Gaula is Madeira's). The model says which place is inside which, once per set of cities; until it
   // answers (no key, an error), only a stay whose address names another of the trip's places is folded.
-  const cityNames = useMemo(() => citiesOf(plan, items), [plan, items]);
+  const cityNames = useMemo(() => tripCities(plan, items), [plan, items]);
   const placesFor = placesKey(cityNames);
   const here = `${trip.id}:${placesFor}`;
   // Which set of places is on screen now, for an answer that comes back after it changed.
@@ -396,16 +392,12 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   }, [trip.id, trip.placeParents?.key, placesFor, here, cityNames, items]);
   // What's asked of the model per place (photos, mood, style) waits for the main places, so Gaula isn't asked for.
   const placesSettled = cityNames.length < 2 || known !== null || unanswered.has(here);
-  const cities = useMemo<HeroCity[]>(() => {
-    // A main place's photo, else (none yet, or none found) the first of its places that has one: Funchal's for Madeira.
-    const photo = (key: string | null) => (key ? trip.cityImages?.[key] : null) || null;
-    const list = mains.map((m) => ({ name: m.name, image: photo(cityKeyOf(m.name)) ?? m.members.map((c) => photo(cityKeyOf(c))).find(Boolean) ?? null }));
-    // A trip from before the city photos: its one picture goes to the first city (or stands alone).
-    const shown =
-      trip.heroImage && !list.some((c) => c.image) ? (list.length ? [{ ...list[0], image: trip.heroImage }, ...list.slice(1)] : [{ name: "", image: trip.heroImage }]) : list;
-    // Who took each: as the proxy said, else what the address tells (Wikipedia, Pexels).
-    return shown.map((c) => ({ ...c, credit: creditOf(c.image, trip.photoCredits) }));
-  }, [mains, trip.cityImages, trip.heroImage, trip.photoCredits]);
+  // A main place's photo, else the first of its places that has one (Funchal's for Madeira); the trip card in
+  // Seyahatlerim shows the same cover (lib/destinations heroCoverImage). Who took each: as the proxy said, else the address.
+  const cities = useMemo<HeroCity[]>(
+    () => heroCityPhotos(trip, mains).map((c) => ({ ...c, credit: creditOf(c.image, trip.photoCredits) })),
+    [mains, trip.cityImages, trip.heroImage, trip.photoCredits],
+  );
   // A city's photo is looked up once (a miss is stored as null, so it isn't asked again). Once the
   // sharing server's photo proxy is set up, a stored miss or Wikipedia picture is asked for again, once
   // per trip and city in a session; a miss then keeps the old picture. The first city's new photo also
@@ -852,33 +844,6 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     />
   );
 
-  // Boş kartlar (spec 2026-10-06-bos-kartlar-design.md), on the Plan only: a need with nothing booked or saved yet
-  // (a flight or stay the start made room for, a flight said with nothing chosen, a transfer with no plan) is the
-  // approved card made plain. A need with another option, a file or a booking keeps today's full card.
-  // The card being filled in where it stands (a tile just added, a field opened) is the full card while it's edited:
-  // its hour and price are there to type; once left with nothing concrete on it, it's empty again.
-  const emptyRecord = (item: Item) => !(focus?.id === item.id && focus.field != null) && isEmptyRecord(trip, item, env.docsFor(item.id).length, items);
-  const planRenderGroup: RenderGroup = (group, heading, groupSubtitle, nested = false) => {
-    const lone = group.items.length === 1 ? group.items[0] : null;
-    if (!lone || !emptyRecord(lone)) return renderGroup(group, heading, groupSubtitle, nested);
-    return (
-      <div key={group.key} className={nested ? "group nested" : "section"} data-option-ids={lone.id}>
-        {(heading || groupSubtitle) && (
-          <div className={nested ? "group-head" : "section-head"}>
-            <span className="group-title">
-              {heading && <span>{heading}</span>}
-              {groupSubtitle && <span className="muted">{groupSubtitle}</span>}
-            </span>
-          </div>
-        )}
-        <EmptyRecordCard item={lone} />
-      </div>
-    );
-  };
-  // A decided record drawn alone (an activity on its day, a plan in its city): empty while it has no concrete option.
-  const planSettled: SettledFor = (item, decision, onChange, changing) =>
-    !onChange && item.category !== "stay" && emptyRecord(item) ? <EmptyRecordCard key={item.id} item={item} /> : settled(item, decision, onChange, changing);
-  const planLegCard = (l: Leg) => (isEmptyLeg(l) ? <EmptyLegCard key={l.key} leg={l} /> : legCard(l));
   const emptyEnv: EmptyEnv = {
     tripId: trip.id,
     travellers: who.count || null,
@@ -1110,16 +1075,12 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
             isOpen={arrivals.isOpen}
             onOpen={arrivals.onOpen}
             pending={arrivals.pending}
-            tripId={trip.id}
-            cities={cityNames}
-            cards={{ legCard: planLegCard, renderGroup: planRenderGroup, card, settled: planSettled }}
             onAdd={addIn}
             today={today}
             items={items}
             suggestions={suggestions}
             visa={facts.visa}
             visaDone={!!trip.visaDone}
-            shape={shape}
             decide={counts.open}
             order={<PlanOrder view="plan" onView={(v) => setView(v)} off={orderOff} />}
             onVisaDone={(done) => void setVisaDone(trip.id, done)}
@@ -1153,18 +1114,6 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       {arrivals.toast}
     </CardEnvContext.Provider>
   );
-}
-
-/** The trip's cities for the hero's photos: in the order the nights go, each once; else the saved stays' cities. */
-function citiesOf(plan: Plan, items: Item[]): string[] {
-  const seen = new Map<string, string>();
-  const add = (city: string | null | undefined) => {
-    const key = cityKeyOf(city);
-    if (key && !seen.has(key)) seen.set(key, city!);
-  };
-  for (const b of plan.stayBlocks) add(b.city);
-  if (!seen.size) for (const i of items) if (i.status !== "dismissed" && i.category === "stay") add(i.city);
-  return [...seen.values()];
 }
 
 function OptionGroupView({

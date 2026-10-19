@@ -1,7 +1,6 @@
 // Boş kartlar (spec 2026-10-06-bos-kartlar-design.md): which needs are drawn as the approved card made plain.
 import { describe, expect, it } from "vitest";
-import { activityGaps, bareChatFlight, isEmptyLeg, isEmptyRecord, needKey } from "../src/lib/emptyCards";
-import type { Leg } from "../src/lib/legs";
+import { activityGaps, bareChatFlight, isEmptyRecord, needKey } from "../src/lib/emptyCards";
 import { placeholderPrint } from "../src/lib/startTrip";
 import type { Item, Trip } from "../src/lib/types";
 import { makeItem } from "./fixtures/makeItem";
@@ -62,25 +61,6 @@ describe("records with nothing chosen yet", () => {
     const option = makeItem({ category: "flight", status: "saved", needKey: "flight:ist-dps" });
     expect(isEmptyRecord({ startGuide: null }, f, 0, [f, option])).toBe(false);
     expect(isEmptyRecord({ startGuide: null }, f, 0, [f, { ...option, status: "dismissed" }])).toBe(true);
-  });
-});
-
-const leg = (over: Partial<Leg> = {}): Leg => ({
-  key: "2026-12-10:arrival", kind: "arrival", date: "2026-12-10", slot: 0,
-  from: { label: "Denpasar havalimanı", city: "Denpasar", item: null }, to: { label: "Konaklama", city: "Ubud", item: null },
-  after: null, before: null, options: [], mode: null, via: "flight", travel: null, status: "empty", statusText: "", choice: null, notes: [],
-  ...over,
-});
-
-describe("transfers with no plan", () => {
-  it("nothing said, nothing saved: empty", () => expect(isEmptyLeg(leg())).toBe(true));
-  it("a way said, arranged, booked, options saved or a record of its own: the full card", () => {
-    expect(isEmptyLeg(leg({ choice: { mode: "metro", booked: false, note: null, updatedAt: 1 } }))).toBe(false);
-    expect(isEmptyLeg(leg({ mode: "taxi" }))).toBe(false);
-    expect(isEmptyLeg(leg({ status: "planned" }))).toBe(false);
-    expect(isEmptyLeg(leg({ status: "booked" }))).toBe(false);
-    expect(isEmptyLeg(leg({ status: "options", options: [makeItem()] }))).toBe(false);
-    expect(isEmptyLeg(leg({ options: [makeItem({ status: "booked" })] }))).toBe(false);
   });
 });
 

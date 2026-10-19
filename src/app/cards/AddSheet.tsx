@@ -26,17 +26,6 @@ export function AddButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-/** The "+" between two cards of the plan (and at the top of the plan and of each city): always there, faint until hovered. */
-export function InsertPoint({ at, onAdd }: { at: InsertAt; onAdd: (at: InsertAt) => void }) {
-  return (
-    <div className="pk-insert">
-      <button type="button" title={L("Buraya ekle", "Add here")} aria-label={L("Buraya ekle", "Add here")} onClick={() => onAdd(at)}>
-        +
-      </button>
-    </div>
-  );
-}
-
 export function AddSheet({ at, editing, only, currency, onClose, onPick }: {
   at: InsertAt | null;
   editing: Item | null;

@@ -1,7 +1,7 @@
 // The hero's main places (revizyon 1): a town inside a destination folds into it (Gaula → Madeira); the
 // Plan keeps every place. The model's answer is checked; before it, a guess from the stays' addresses.
 import { afterEach, describe, expect, it } from "vitest";
-import { acceptParents, answerParents, answersAny, fallbackParents, isMobileStay, mainPlaceOf, mainPlaces, placesKey, placesPrompt, placesSystemPrompt, resolveParents, tableParents } from "../src/lib/destinations";
+import { acceptParents, answerParents, answersAny, fallbackParents, heroCityPhotos, heroCoverImage, isMobileStay, mainPlaceOf, mainPlaces, placesKey, placesPrompt, placesSystemPrompt, resolveParents, storedMainPlaces, tableParents, tripCities } from "../src/lib/destinations";
 import { setLang } from "../src/lib/i18n";
 import type { Item } from "../src/lib/types";
 import { makeItem } from "./fixtures/makeItem";
@@ -231,5 +231,34 @@ describe("islands and regions the app knows (no model)", () => {
     expect(mainPlaces(["Elounda", "Malia"], resolveParents(["Elounda", "Malia"], inCountry("GR", "Malia"), { elounda: "Crete" })).map((p) => p.name)).toEqual(["Girit"]);
     // An empty answer list folds nothing and keeps nothing (it's cached as {}).
     expect(answerParents(["Porto", "Gaula"], [])).toEqual({});
+  });
+});
+
+describe("the hero's photos and its cover (and the trip card's, row 163)", () => {
+  // (made-up places: the app's own table folds real ones, Madeira's key being Funchal's)
+  const ada = { name: "Ada", members: ["Liman", "Köy"] };
+  const kent = { name: "Kent", members: ["Kent"] };
+  it("a main place's own photo, else the first of its places that has one", () => {
+    expect(heroCityPhotos({ heroImage: null, cityImages: { ada: "a.jpg", liman: "l.jpg" } }, [ada])).toEqual([{ name: "Ada", image: "a.jpg" }]);
+    expect(heroCityPhotos({ heroImage: null, cityImages: { koy: "k.jpg" } }, [ada, kent])).toEqual([{ name: "Ada", image: "k.jpg" }, { name: "Kent", image: null }]);
+  });
+  it("a trip from before the city photos lends its one picture to the first place, or it stands alone", () => {
+    expect(heroCityPhotos({ heroImage: "h.jpg", cityImages: { kent: null } }, [kent, ada])).toEqual([{ name: "Kent", image: "h.jpg" }, { name: "Ada", image: null }]);
+    expect(heroCityPhotos({ heroImage: "h.jpg" }, [])).toEqual([{ name: "", image: "h.jpg" }]);
+    expect(heroCityPhotos({ heroImage: "h.jpg", cityImages: { koy: "k.jpg" } }, [kent, ada])).toEqual([{ name: "Kent", image: null }, { name: "Ada", image: "k.jpg" }]);
+  });
+  it("the cover is the first place with a photo; none, none", () => {
+    expect(heroCoverImage({ heroImage: "h.jpg", cityImages: { koy: "k.jpg" } }, [kent, ada])).toBe("k.jpg");
+    expect(heroCoverImage({ heroImage: null, cityImages: {} }, [kent])).toBeNull();
+  });
+  it("the cities in the order the nights go, else the saved stays'; folded as the board stored the model's answer", () => {
+    const block = (city: string | null) => ({ city }) as never;
+    expect(tripCities({ stayBlocks: [block("Porto"), block("porto"), block(null), block("Lizbon")] }, [])).toEqual(["Porto", "Lizbon"]);
+    const stay = (city: string) => makeItem({ category: "stay", city });
+    expect(tripCities({ stayBlocks: [] }, [stay("Liman"), makeItem({ category: "activity", city: "Kent" })])).toEqual(["Liman"]);
+    const cities = ["Liman", "Köy"];
+    const stored = { placeParents: { key: placesKey(cities), parents: { liman: "Ada", koy: "Ada" } } };
+    expect(storedMainPlaces(stored, cities, []).map((m) => m.name)).toEqual(["Ada"]);
+    expect(storedMainPlaces({ placeParents: { key: "başka", parents: { liman: "Ada" } } }, cities, []).map((m) => m.name)).toEqual(["Liman", "Köy"]);
   });
 });

@@ -250,7 +250,7 @@ export function Settings({ onClose }: { onClose: () => void }) {
         </label>
         <ShareSettings />
         <p className="muted small">
-          <button className="btn-link" style={{ fontSize: 13, padding: 0 }} onClick={() => void download("diagnostics")}>
+          <button className="btn-link" style={{ fontSize: "var(--q-fs-info)", padding: 0 }} onClick={() => void download("diagnostics")}>
             {L("Tanı dosyası indir", "Download diagnostics file")}
           </button>{" "}
           {L(
@@ -259,7 +259,7 @@ export function Settings({ onClose }: { onClose: () => void }) {
           )}
         </p>
         <div className="modal-actions">
-          <button className="btn-link" style={{ fontSize: 14 }} onClick={() => void download("backup")}>
+          <button className="btn-link" style={{ fontSize: "var(--q-fs-info)" }} onClick={() => void download("backup")}>
             {L("Verileri dışa aktar (JSON)", "Export data (JSON)")}
           </button>
           <button className="btn-primary" onClick={() => void save()}>
