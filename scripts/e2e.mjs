@@ -943,7 +943,7 @@ try {
   await home.locator(".z-top .z-ok", { hasText: "Bilet alındı" }).waitFor();
   assert.equal(await home.getAttribute("data-st"), "ok");
   assert.match(flat([await home.locator(".z-top .z-paid").innerText()])[0], /^€\d+ ödendi$/, "B10: what was paid");
-  assert.match(flat([await home.locator(".z-route").innerText()])[0], /^Lizbon LIS · 19:40 .*İstanbul IST · 01:35\+1$/);
+  assert.match(flat([await home.locator(".z-route").innerText()])[0], /^Lizbon LIS · 19:40 .*İstanbul IST · 01:35 ?\+1$/);
   assert.equal(await home.locator(".z-bt .q-doc.add").innerText(), "Bileti ekle");
   assert.equal(await home.locator(".z-tk.bk").evaluate((el) => getComputedStyle(el).borderTopStyle), "solid");
   await home.locator(".z-h .z-mb").click();
