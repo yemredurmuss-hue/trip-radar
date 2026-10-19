@@ -28,6 +28,9 @@ describe("visa table (Turkish passport)", () => {
   it("Schengen needs a visa", () => {
     expect(visaFor("TR", "PT")).toMatchObject({ kind: "visa", label: "Schengen vizesi" });
   });
+  it("Sri Lanka needs its ETA, with its own official page", () => {
+    expect(visaFor("TR", "LK")).toMatchObject({ kind: "visa", label: "Sri Lanka ETA (elektronik vize)", link: "https://www.eta.gov.lk/" });
+  });
   it("visa-free where we know it", () => {
     expect(visaFor("TR", "JP")).toMatchObject({ kind: "free", days: 90 });
   });

@@ -25,6 +25,7 @@ import { formatPrice, isoDate, placeMapUrl } from "./items";
 import { clockOf } from "./legs";
 import type { Offer } from "./offerSource";
 import { adderOf } from "./pano";
+import { sameCity, type Plan } from "./plan";
 import { reasonItemOf } from "./reason";
 import type { Item, Suggestion, Trip } from "./types";
 
@@ -243,6 +244,16 @@ export function suggestionCard(s: Suggestion, section: SectionId): KCardVM {
   };
 }
 
+/** The country (ISO alpha-2) of the stay the plan has in a city: its record's, the first that says. */
+export function stopCountry(plan: Pick<Plan, "stayBlocks">, city: string): string | null {
+  for (const b of plan.stayBlocks) {
+    const item = b.kind === "open" ? b.slot : b.item;
+    if (!item?.countryCode || !sameCity(b.city ?? item.city, city)) continue;
+    return item.countryCode;
+  }
+  return null;
+}
+
 /** A tour the connected source offers for the city (its page, its photo, how long, its price a person). */
 export function offerCard(o: Offer, people: number | null): KCardVM {
   const each = o.price != null && o.price > 0 ? (people && people > 1 ? o.price / people : o.price) : null;
@@ -257,7 +268,8 @@ export function offerCard(o: Offer, people: number | null): KCardVM {
     title: o.title,
     photo: o.photo ?? null,
     art: ART.event,
-    badge: { tone: "ai", text: `✨ ${L("AI önerisi", "AI pick")}`, initial: null },
+    // The source's own name (a real tour it lists, not a model's idea; Emre, 19 Ekim).
+    badge: { tone: "mine", text: o.source, initial: null },
     brand: brandOf(o.source, null),
     tag: null,
     line: [o.durationMinutes ? durationText(o.durationMinutes) : null, price].filter(Boolean).join(" · ") || null,
@@ -273,8 +285,8 @@ export function offerCard(o: Offer, people: number | null): KCardVM {
 
 /**
  * A city's two rows from its intent (intents.ts collectionIntents) and the trip's records: what intents.ts put on the plan
- * and the places still to fill go to Planında (the trip's reason first), the rest and the suggestions to Öneriler, then the
- * source's tours that aren't saved yet.
+ * and the places still to fill go to Planında (the trip's reason first), the rest to Öneriler, then the source's tours
+ * that aren't saved yet, then the suggestions.
  */
 export function collectionRow(
   vm: Pick<IntentVM, "section" | "itemIds" | "planned" | "wanted" | "suggestions">,
@@ -292,7 +304,8 @@ export function collectionRow(
   const plan = [...onPlan.filter((i) => i.id === reason?.id), ...onPlan.filter((i) => i.id !== reason?.id && !wanted.has(i.id)), ...onPlan.filter((i) => i.id !== reason?.id && wanted.has(i.id))].map(card);
   const saved = live.filter((i) => !onPlan.includes(i));
   const offers = (at.offers ?? []).filter((o) => !live.some((i) => (i.url && i.url === o.url) || sameName(i.name, o.title)));
-  const ideas = [...saved.map(card), ...vm.suggestions.map((s) => suggestionCard(s, section)), ...offers.map((o) => offerCard(o, at.people))];
+  // The saved ones, then the source's real tours, then the model's ideas (Emre, 19 Ekim).
+  const ideas = [...saved.map(card), ...offers.map((o) => offerCard(o, at.people)), ...vm.suggestions.map((s) => suggestionCard(s, section))];
   const all = [...plan, ...ideas];
   return { plan, ideas, counts: { all: all.length, go: all.filter((c) => filterOf(c) === "go").length, food: all.filter((c) => filterOf(c) === "food").length } };
 }

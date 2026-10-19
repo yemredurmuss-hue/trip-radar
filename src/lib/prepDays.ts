@@ -5,7 +5,8 @@
 //     hotel, T4 b, rides on the same record: a chore with a date);
 //   - worked out from a record: an online check-in opens 24 hours before a booked flight leaves; a bought eSIM is put in
 //     before leaving; a Schengen visa is applied for at the latest 15 days before the trip (EU Visa Code, Regulation (EC)
-//     No 810/2009 art. 9(1)); Japan's Visit Japan Web and Thailand's Digital Arrival Card are filled in before landing
+//     No 810/2009 art. 9(1)); another visa the table knows (Sri Lanka's ETA, the UK's) before leaving, no lead time made
+//     up; Japan's Visit Japan Web and Thailand's Digital Arrival Card are filled in before landing
 //     (https://www.vjw.digital.go.jp/, https://tdac.immigration.go.th/).
 // The worked-out ones aren't stored: only what the traveller did with one is (ticked: trip.prepDone; taken off:
 // trip.hidden's `prep:<key>`). Pure.
@@ -164,6 +165,20 @@ function schengen(input: PrepInput): PrepTask | null {
   };
 }
 
+/**
+ * A visa outside Schengen the passport needs (the visa table: Sri Lanka's ETA, the UK's, the US's): applied for before
+ * leaving, from the visa rule, with its official page. No lead time is said where the rule gives none.
+ */
+function otherVisas(input: PrepInput): PrepTask[] {
+  const leave = leaveDay(input.items, input.range);
+  return input.countries.flatMap((code): PrepTask[] => {
+    if (SCHENGEN.includes(code)) return [];
+    const visa = visaFor(input.passport, code);
+    if (visa.kind !== "visa" || !visa.apply) return [];
+    return [{ key: `visa:${code}`, title: visa.apply, sub: null, day: leave ? { date: leave, time: null, rel: "before" } : null, from: "visa", done: false, doneAt: null, item: null, of: null, official: visa.link, tick: "mark" }];
+  });
+}
+
 /** The entry forms filled in online before landing, by country, with their official page. */
 const ENTRY_FORMS: Readonly<Record<string, { title: () => string; sub: () => string; url: string; said: RegExp }>> = {
   JP: {
@@ -219,7 +234,7 @@ export function storedTask(item: Item): PrepTask {
   };
 }
 
-const VISA_SAID = /(^|[^\p{L}])(vize\p{L}*|visas?|schengen)(?![\p{L}])/iu;
+const VISA_SAID = /(^|[^\p{L}])(vize\p{L}*|visas?|schengen|eta)(?![\p{L}])/iu;
 const CHECKIN_SAID = /check-?in/i;
 
 /**
@@ -233,6 +248,7 @@ export function prepTasks(input: PrepInput): PrepTask[] {
     ...(said(CHECKIN_SAID) ? [] : checkins(input.items, input.today)),
     ...esims(input.items, leaveDay(input.items, input.range)),
     ...(said(VISA_SAID) ? [] : [schengen(input)].filter((t): t is PrepTask => t != null)),
+    ...(said(VISA_SAID) ? [] : otherVisas(input)),
     ...entries(input),
   ]
     .filter((t) => !input.trip.hidden?.includes(prepHiddenKey(t.key)))

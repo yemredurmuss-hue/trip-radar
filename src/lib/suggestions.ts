@@ -22,6 +22,7 @@ import { buildPlan, cityKeyOf, type Plan } from "./plan";
 import { ALL_PLANNED_KINDS, checkPlanned, plannedItem, type PlannedInput } from "./planned";
 import { allowedSuggestions } from "./playbooks";
 import { TEMPLATES, type TemplateId } from "./templates";
+import { airportCode } from "./searchLinks";
 import { buildTimeline, nightsKey, type Timeline } from "./timeline";
 import { ESIM_WORDS, isInsurance } from "./travelKinds";
 import type { Item, Listing, Suggestion, SuggestionKind, SuggestionSection, SuggestionState, Trip } from "./types";
@@ -123,14 +124,16 @@ function isTransit(f: Item, flights: Item[]): boolean {
 }
 
 /**
- * Home when no passport was set: the country of the airport the trip's first flight leaves from (SAW, IST → TR).
+ * Home when no passport was set: the country of the airport the trip's first flight leaves from (SAW, IST, "İstanbul" → TR).
  * Null when there's no flight with a known airport: nothing is said about going abroad then.
  */
 export function homeFromFlights(items: Item[]): string | null {
   const first = items
     .filter((i) => live(i) && i.category === "flight" && i.flight?.from)
     .sort((a, b) => (a.flight?.departure ?? a.dates.start ?? "9").localeCompare(b.flight?.departure ?? b.dates.start ?? "9"))[0];
-  return countryOfAirport(first?.flight?.from) ?? null;
+  // A flight the start chat wrote leaves from a city ("İstanbul"): its main airport's country.
+  const from = first?.flight?.from;
+  return countryOfAirport(airportCode(from) ?? from) ?? null;
 }
 
 /** The trip's countries other than home: its places' (stays, plans) and where its flights land (connections aside). */

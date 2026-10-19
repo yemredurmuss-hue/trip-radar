@@ -53,6 +53,27 @@ const countryName = (code: string | null | undefined): string | null => {
   }
 };
 
+/**
+ * The second question for a town the source doesn't know as a destination (Ahangama: Viator has nothing under its name):
+ * the stay's country as the destination, searched by the town's name. Null when the country isn't known, the need already
+ * names its words, or the town is the country itself.
+ */
+export function countryNeed(need: Need, countryCode: string | null | undefined): Need | null {
+  if (need.kind !== "activity" || need.query?.trim()) return null;
+  const country = countryName(countryCode);
+  const town = need.city?.trim();
+  if (!country || !town || country.toLocaleLowerCase("en") === town.toLocaleLowerCase("en")) return null;
+  return { ...need, key: `${need.key}:in:${countryCode!.toUpperCase()}`, city: country, country: null, query: town };
+}
+
+/** A city's tours from a source: the city's own, else (none) its country's searched by the town's name; a failure is none. */
+export async function cityTours(source: Pick<SuggestionSource, "offers">, need: Need, countryCode: string | null | undefined): Promise<Offer[]> {
+  const tours = (n: Need) => source.offers(n).then((list) => list.filter((o) => o.kind === "activity"), () => [] as Offer[]);
+  const list = await tours(need);
+  const wider = list.length ? null : countryNeed(need, countryCode);
+  return wider ? tours(wider) : list;
+}
+
 /** How the chat may narrow it: the cheapest instead of the mixed three, a ceiling in euros (a stay's by the night, a flight's per person). */
 export interface Narrow {
   prefer?: "cheap" | null;

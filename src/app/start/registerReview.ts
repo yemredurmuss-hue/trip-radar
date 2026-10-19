@@ -10,7 +10,7 @@ import { loadHome } from "../../lib/passport";
 import { cityKeyOf } from "../../lib/plan";
 import { boardMains } from "../../lib/startBoard";
 import { setRulesPreview, setSuggestionsReview } from "../../lib/startHooks";
-import { reviewKey, reviewPrompt, runReview } from "../../lib/suggestReview";
+import { reviewKey, reviewPrompt, runReview, tripTaste } from "../../lib/suggestReview";
 import { boardRules, ruleSuggestions, shownSuggestions } from "../../lib/suggestions";
 import type { Item, Trip } from "../../lib/types";
 import { buildTimeline } from "../../lib/timeline";
@@ -31,7 +31,7 @@ export async function reviewNewTrip(tripId: string): Promise<number> {
     nights[cityKeyOf(m.name) ?? m.name] = plan.stayBlocks.filter((b) => b.city && keys.has(cityKeyOf(b.city))).reduce((n, b) => n + b.nights, 0);
   }
   const travellers = whoGoes({ travellers: trip.travellers, adults: null }).count || null;
-  const prompt = withLang(trip.lang, () => reviewPrompt({ mains, nights, range, items, sectionOf: sectionOfItem, suggestions: trip.suggestions ?? [], travellers }));
+  const prompt = withLang(trip.lang, () => reviewPrompt({ mains, nights, range, items, sectionOf: sectionOfItem, suggestions: trip.suggestions ?? [], travellers, ...tripTaste(trip) }));
   // Claims the review for this key first ({ key, at, state: "running" }), so the board opening meanwhile waits
   // instead of asking too; "skipped" when it was claimed already, "no-key" without a model: the rules still show.
   await runReview({ key, prompt, lang: trip.lang, playbook: trip.intent, save: (change) => updateTrip(tripId, change, { touch: false }) });

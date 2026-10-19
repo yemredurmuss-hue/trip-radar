@@ -601,11 +601,12 @@ try {
   await boughtDetail.waitFor({ state: "detached" });
   await writeItem("back");
   await portoAct.locator('[data-row="ideas"] .z-k[aria-label="Tiyatro"]').waitFor();
-  // The restaurant is a card of Yapılacaklar' ideas (0.35.3); nothing on its plan yet: four empty slots, "Henüz plana koymadın".
+  // The restaurant is a card of Yapılacaklar' ideas (0.35.3); nothing on its plan yet: no empty slots, one line in Planında's
+  // head, "Henüz plana koymadın · önerilerden + Plana koy" (0.38.2).
   await openSec("todo");
   assert.deepEqual(await cardNames(sec("todo").locator(".z-k[data-item-id]")), ["Majestic Café"]);
-  assert.equal(await sec("todo").locator('[data-row="plan"] > .z-k0').count(), 4);
-  assert.match(await sec("todo").locator('[data-row="plan"] > .z-k0').first().innerText(), /Henüz plana koymadın/);
+  assert.equal(await sec("todo").locator('[data-row="plan"] > .z-k0').count(), 0);
+  assert.match(await sec("todo").locator(".q-planw .q-oh .z-pe").first().innerText(), /Henüz plana koymadın · önerilerden “\+ Plana koy”/);
   // No days, no check-in lines, no transfers without a plan.
   assert.equal(await app.locator(".cat-plan .tl-day, .cat-plan .leg, .cat-plan .pk-leg").count(), 0);
   // Gün gün, the Plan's third view (plan v30): ONE COMPACT ROW A DAY: the date box, the day's lines (icon, NE · HANGİSİ,

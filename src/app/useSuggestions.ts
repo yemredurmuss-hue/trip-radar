@@ -8,7 +8,7 @@ import type { HiddenInput } from "../lib/history";
 import type { Leg } from "../lib/legs";
 import { newId } from "../lib/db";
 import { cityKeyOf, type Plan } from "../lib/plan";
-import { reviewDue, reviewKey, reviewPrompt, runReview } from "../lib/suggestReview";
+import { reviewDue, reviewKey, reviewPrompt, runReview, tripTaste } from "../lib/suggestReview";
 import { bySection, ruleSuggestions, shownSuggestions } from "../lib/suggestions";
 import type { Timeline } from "../lib/timeline";
 import type { InsertAt, TemplateId } from "../lib/templates";
@@ -119,7 +119,7 @@ export function useSuggestions(args: {
       nights[cityKeyOf(m.name) ?? m.name] = plan.stayBlocks.filter((b) => b.city && keys.has(cityKeyOf(b.city))).reduce((n, b) => n + b.nights, 0);
     }
     // In the trip's own language when it has one (started by chat in another language than the board's).
-    const prompt = withLang(trip.lang, () => reviewPrompt({ mains, nights, range, items, sectionOf: sectionOfItem, suggestions: trip.suggestions ?? [], travellers }));
+    const prompt = withLang(trip.lang, () => reviewPrompt({ mains, nights, range, items, sectionOf: sectionOfItem, suggestions: trip.suggestions ?? [], travellers, ...tripTaste(trip) }));
     void runReview({ key, prompt, lang: trip.lang, playbook: trip.intent, save: (change) => updateTrip(trip.id, change, { touch: false }) });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- asked once per trip state (key)
   }, [trip.id, key, due]);
