@@ -663,10 +663,9 @@ article.pk-card .ek-band img, article.pk-card .ek-band .ek-tent { display: block
 .nd-card .nd-pic { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 4px 14px; align-items: center; }
 .nd-card .nd-pic .nd-self { grid-column: 1 / -1; }
 /* eSIM and insurance: their drawing in place of the small tile, as large as the mockup's. */
-.ek-media.ek-pic { grid-template-columns: 72px minmax(0, 1fr); gap: 14px; }
 .ek-tile.ek-ill { width: 72px; height: 58px; border-radius: 12px; background: color-mix(in srgb, var(--mc) 8%, #fff); }
 .ek-tile.ek-ill img { width: 100%; height: 100%; padding: 4px; box-sizing: border-box; object-fit: contain; mix-blend-mode: multiply; }
-.ek-pic .ek-txt b, .nd-pic .ek-txt h3 { font-size: 17px; }
+.nd-pic .ek-txt h3 { font-size: 17px; }
 /* "N seçenek ⌄": a chip that opens downward; the estimate, or the real "from", at the right of the foot. */
 .nd-opts.nd-chip svg { transform: rotate(90deg); }
 .nd-foot .nd-est { margin-left: auto; display: inline-flex; align-items: baseline; gap: 4px; flex-wrap: wrap; justify-content: flex-end; font-size: 12.5px; color: var(--v-muted); }
@@ -869,22 +868,18 @@ article.pk-card.pk-arranged:hover { box-shadow: none; }
 
 /* the itinerary: day by day, a small block for each booking, a line for information */
 .itinerary { display: flex; flex-direction: column; gap: 12px; }
-.it-city { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
 .it-city-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 0 4px; }
 .it-city-head b { font-size: 21px; letter-spacing: -.01em; color: var(--ink); }
 .it-stay { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 1px solid #e7e1d7; border-radius: 999px; background: #fff; font-size: 13px; color: var(--text); }
 .it-stay.st-booked { border-color: #bfe3cc; }
 .it-stay.st-chosen { border-color: #f0a53a; }
 .it-stay.st-open { border-style: dashed; color: var(--muted); }
-.it-day { border-radius: 18px; background: #fff; box-shadow: 0 1px 2px rgba(40, 30, 20, .05), 0 4px 14px rgba(40, 30, 20, .05); }
 .it-day-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; width: 100%; padding: 12px 16px; border: 0; background: none; text-align: left; font: inherit; font-size: 14px; }
 .it-day-head b { font-size: 16px; color: var(--ink); }
 .it-day-head .day-chev { margin-left: auto; }
 .it-route { padding: 1px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 13px; font-weight: 700; }
-.it-day.empty { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding: 9px 16px; background: none; box-shadow: none; border: 1.5px dashed #e2dcd2; font-size: 14px; }
 .it-folded { margin: 0; padding: 0 16px 12px; font-size: 14px; color: var(--muted); }
 .it-rows { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0 16px 14px; list-style: none; }
-.it-row { display: grid; grid-template-columns: 52px 12px minmax(0, 1fr); gap: 10px; align-items: center; }
 .it-time { text-align: right; font-size: 14px; font-weight: 700; color: var(--ink); white-space: nowrap; }
 .it-dot { justify-self: center; width: 8px; height: 8px; border-radius: 50%; background: #c9c2b8; }
 .it-row.st-done .it-dot { background: #1f8f4e; }
@@ -905,9 +900,6 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .it-block.st-decide { border-color: #cddcff; }
 .it-block.st-open { border-style: dashed; }
 .it-ic { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: #fff; color: var(--ink); }
-.it-t { display: flex; flex-direction: column; min-width: 0; }
-.it-t b { font-size: 14.5px; color: var(--ink); }
-.it-t span { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
 .it-chip { padding: 2px 9px; border-radius: 999px; background: #f1efeb; color: #5f5a54; font-size: 12px; font-weight: 700; white-space: nowrap; }
 .it-chip.st-done { background: #e1f3e8; color: #16623a; }
 .it-chip.st-pending { background: #fff1d9; color: #8a5300; }
@@ -915,9 +907,7 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .it-more { margin-top: 8px; }
 .it-more .leg.embedded { padding: 0; box-shadow: none; background: none; }
 .it-more .leg.embedded .leg-body { padding: 0; }
-.it-note { margin: 0; padding: 8px 14px; border-radius: 14px; border: 1.5px dashed #e2dcd2; font-size: 13.5px; color: var(--muted); }
 @media (max-width: 600px) {
-  .it-row { grid-template-columns: 44px 10px minmax(0, 1fr); }
   .it-block { grid-template-columns: 26px minmax(0, 1fr); }
   .it-chip { grid-column: 2; justify-self: start; }
 }
@@ -1426,10 +1416,6 @@ button.dg-main:hover .dg-ttl { text-decoration: underline; text-underline-offset
 /* "Gezi planı · 6 gece …" on the left, "+ Ekle" at the right end. */
 .section-head:has(> .pk-add) { align-items: center; gap: 12px; }
 .section-head .pk-add { margin-left: auto; }
-.pk-insert { position: relative; height: 22px; display: flex; align-items: center; justify-content: center; }
-.pk-insert button { opacity: .35; width: 26px; height: 26px; border-radius: 50%; border: 1px solid #d2d2d7; background: #fff; color: #1d1d1f; font-size: 17px; line-height: 1; cursor: pointer; transition: opacity .15s; }
-.pk-insert::before { content: ""; position: absolute; left: 20px; right: 20px; top: 50%; border-top: 1px dashed #d2d2d7; opacity: .35; transition: opacity .15s; }
-.pk-insert:hover button, .pk-insert:hover::before, .pk-insert:focus-within button, .pk-insert:focus-within::before { opacity: 1; }
 .pk-sheet-back { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 16px; background: rgba(0, 0, 0, .25); }
 .pk-sheet { width: min(620px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; border-radius: 22px; border: 1px solid #e8e8ed; box-shadow: 0 20px 60px rgba(0, 0, 0, .12); padding: 20px; background: #fff; color: #1d1d1f; }
 .pk-sheet header { display: flex; align-items: baseline; gap: 12px; }
@@ -1541,10 +1527,6 @@ button.dg-main:hover .dg-ttl { text-decoration: underline; text-underline-offset
 .settled-card .st-tools { top: 6px; }
 
 /* ---------- 0.32: "+" everywhere (top of the plan, each city's head, each day of the itinerary) ---------- */
-@container panel (max-width: 620px) {
-  .pk-insert button, .pk-insert::before { opacity: 1; }
-}
-.it-day { position: relative; }
 .it-add { width: 26px; height: 26px; padding: 0; border-radius: 50%; border: 1px solid #d2d2d7; background: #fff; color: #1d1d1f; font-size: 17px; line-height: 1; cursor: pointer; opacity: .35; transition: opacity .15s; }
 .it-add:hover, .it-add:focus-visible, .it-day:hover .it-add { opacity: 1; }
 .it-day > .it-add { position: absolute; top: 10px; right: 12px; z-index: 1; }
@@ -1568,8 +1550,6 @@ button.dg-main:hover .dg-ttl { text-decoration: underline; text-underline-offset
 .fk-meals button { flex: 1; height: 28px; border-radius: 999px; border: 1px solid #d2d2d7; background: #fff; font: inherit; font-size: 13px; cursor: pointer; }
 .fk-meals button.on { background: var(--fk-ink); border-color: var(--fk-ink); color: #fff; }
 .fk-unday { width: 100%; margin-top: 6px; padding: 7px 10px; border: 0; border-top: 1px solid var(--fk-line); background: none; font: inherit; font-size: 14px; color: #c62828; text-align: left; cursor: pointer; }
-/* An idea put on a day: a thin line of the itinerary. */
-.it-row.idea .it-line b { font-weight: 500; }
 
 /* ---------- 0.33: a block of nights' × (a stay said apart, empty nights): top right of its card; with options under it, at the end of its line ---------- */
 .stay-x { position: absolute; top: 6px; right: 10px; z-index: 3; }
@@ -1661,10 +1641,6 @@ button.cat-hidden-name:hover { text-decoration: underline; }
 .cat-dot { position: relative; z-index: 1; justify-self: center; width: 12px; height: 12px; margin-top: 8px; border-radius: 50%; background: #fff; border: 2.5px solid var(--c); }
 .cat-day.undated .cat-dot { border-style: dashed; }
 .cat-cards { min-width: 0; }
-.cat-card { scroll-margin-top: 12px; }
-.cat-card .stay-block { margin: 0; padding: 0; border: 0; background: none; }
-.cat-card .group.nested { border: 0; }
-.cat-card .group-head { padding: 0 4px 6px; }
 /* 0.35.3 Yapılacak şeyler and Restoranlar: a list by city, not cards. Row: picture · name / grey line · chip, map, page, ✓ */
 .cat-ideas { flex: none; font-size: 13.5px; color: #6e6e73; white-space: nowrap; }
 .il-list { display: flex; flex-direction: column; gap: 14px; }
@@ -1754,85 +1730,13 @@ button.cat-hidden-name:hover { text-decoration: underline; }
 .ins-tile:hover .ins-x, .ins-tile:focus-within .ins-x { opacity: 1; }
 
 /* -- F6 etkinlik -- Etkinlik ve turlar city by city (plan/ActivityBoard): a row of cards for each city, one card for everything. */
-.ev-wrap { display: grid; gap: 12px; padding: 4px 0 6px; min-width: 0; }
-.ev-note, .ev-empty { margin: 0; font-size: 13px; color: var(--v-muted); }
-.ev-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 13.5px; color: var(--v-muted); }
-.ev-sp { flex: 1; }
-.ev-toggle { display: inline-flex; align-items: baseline; flex-wrap: wrap; gap: 6px 8px; border: 0; background: none; padding: 0; font: inherit; color: var(--v-muted); cursor: pointer; text-align: left; }
-.ev-toggle b { font-size: 15px; color: var(--v-ink); }
-.ev-toggle i { font-style: normal; font-weight: 600; }
-.ev-chev { display: inline-block; transition: transform .25s cubic-bezier(.16, 1, .3, 1); }
-.ev-bar:not(.open) .ev-chev { transform: rotate(-90deg); }
-.ev-key { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 0; font-size: 12.5px; color: var(--v-muted); }
-.ev-cities { display: grid; gap: 16px; min-width: 0; }
-.ev-city { display: grid; gap: 8px; min-width: 0; }
-.ev-city-h { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 13px; color: var(--v-muted); }
-.ev-city-h > svg { width: 14px; height: 14px; color: #c0256b; flex: none; }
-.ev-city-h b { font-size: 14.5px; font-weight: 750; color: var(--v-ink); overflow-wrap: anywhere; }
-.ev-city-h .ok { color: var(--okb); font-weight: 650; }
-.ev-after { padding: 1px 9px; border-radius: 999px; background: var(--v-lav); color: var(--v-accent-ink); font-size: 12px; font-weight: 650; }
-.ev-city.empty .ev-city-h { padding: 8px 12px; border: 1px solid var(--v-line2); border-radius: 12px; background: #fff; }
-.ev-ask { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border: 1px solid color-mix(in srgb, var(--hx-accent) 40%, var(--v-line2)); border-radius: 999px; background: #fff; color: var(--v-accent-ink); font: inherit; font-size: 12.5px; font-weight: 650; cursor: pointer; }
-.ev-row { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(184px, calc((100% - 36px) / 4)); gap: 12px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; padding: 2px 2px 6px; }
-.ev-slot { display: grid; min-width: 0; scroll-snap-align: start; }
 .ev-card { position: relative; display: grid; grid-template-rows: auto 1fr; min-width: 0; border-radius: 16px; background: #fff; border: 1.5px solid var(--v-line2); transition: box-shadow .2s; }
 .ev-card:hover { box-shadow: 0 6px 18px rgba(28, 26, 51, .08); }
 /* what opens from a card (the page's value under its name, the ••• menu) lies over the next card */
 .ev-card:hover, .ev-card:focus-within { z-index: 2; }
 .ev-card.chosen { border-color: var(--plan-line); }
 .ev-card.booked { background: var(--book-bg); border-color: var(--book-line); }
-.ev-hit { position: absolute; inset: 0; z-index: 0; padding: 0; border: 0; border-radius: 14px; background: none; }
-.ev-hit:focus-visible { outline: 2px solid var(--hx-accent); outline-offset: 2px; }
 .ev-card > :not(.ev-hit) { position: relative; z-index: 1; }
-.ev-img { position: relative; display: grid; place-items: center; aspect-ratio: 16 / 10; border-radius: 14px 14px 0 0; background: color-mix(in srgb, #c0256b 9%, #fff); }
-.ev-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
-.ev-art { width: 62%; height: 78%; object-fit: contain; mix-blend-mode: multiply; }
-.ev-who { position: absolute; top: 8px; left: 8px; z-index: 2; display: inline-grid; place-items: center; border-radius: 50%; box-shadow: 0 0 0 2px #fff; }
-.ev-who .wh-av { width: 22px; height: 22px; font-size: 10.5px; }
-.ev-who.ai { width: 22px; height: 22px; background: var(--v-lav); color: var(--v-accent-ink); font-size: 12px; }
-.ev-key .ev-who { position: static; width: 18px; height: 18px; box-shadow: none; }
-.ev-key .ev-who .wh-av { width: 18px; height: 18px; font-size: 9.5px; }
-.ev-img > .okt { position: absolute; top: 8px; left: 8px; z-index: 2; }
-.ev-pin { position: absolute; left: 8px; bottom: 8px; z-index: 2; display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; background: #c0256b; color: #fff; font-size: 11px; font-weight: 700; }
-.ev-tools { position: absolute; top: 6px; right: 6px; z-index: 3; display: flex; gap: 4px; opacity: 0; transition: opacity .18s; }
-.ev-card:hover .ev-tools, .ev-card:focus-within .ev-tools { opacity: 1; }
-@media (hover: none) { .ev-tools { opacity: 1; } }
-@container panel (max-width: 620px) { .ev-tools { opacity: 1; } }
-.ev-tool, .ev-tools .pk-x, .ev-tools .pk-ib { position: static; display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .94); color: var(--v-ink); font-size: 15px; line-height: 1; opacity: 1; box-shadow: 0 1px 4px rgba(28, 26, 51, .15); cursor: pointer; }
-.ev-tools .pk-menu-wrap { opacity: 1; }
-.ev-tool.got { color: var(--okb); }
-.ev-body { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 10px 12px 12px; }
-.ev-n { font-size: 14.5px; font-weight: 750; line-height: 1.25; letter-spacing: -.01em; overflow-wrap: anywhere; }
-.ev-link { color: inherit; text-decoration: none; }
-.ev-link:hover { text-decoration: underline; }
-.ev-s { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 12px; color: var(--v-muted); }
-.ev-why { font-size: 12.5px; line-height: 1.3; color: var(--v-muted); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
-.ev-why.note { color: var(--v-warn-ink); }
-.ev-f { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: auto; padding-top: 8px; }
-.ev-p { display: grid; font-size: 12px; line-height: 1.25; color: var(--v-muted); }
-.ev-p b { margin-right: 3px; font-size: 17px; font-weight: 800; color: var(--v-ink); font-variant-numeric: tabular-nums; }
-.ev-p small { font-size: 11.5px; }
-.ev-go { display: inline-flex; align-items: center; gap: 5px; padding: 5px 11px; border-radius: 999px; background: var(--v-ink); color: #fff; font-size: 13px; font-weight: 700; white-space: nowrap; }
-.ev-go:hover { background: #34304f; }
-.ev-go .sc-favicon { width: 14px; height: 14px; padding: 1px; border-radius: 4px; background: #fff; }
-.ev-put { display: inline-flex; align-items: center; gap: 4px; padding: 4px 11px; border: 1.5px dashed #9b8cf0; border-radius: 999px; background: #fff; color: #4b36c9; font: inherit; font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer; }
-.ev-put:hover { background: #efebff; }
-.ev-d { display: flex; align-items: center; gap: 6px; min-width: 0; margin-top: 2px; padding-top: 8px; border-top: 1px solid color-mix(in srgb, var(--book-line) 35%, transparent); font-size: 12px; }
-/* chosen, not bought: the file's clip or chip under the line */
-.ev-card.chosen .ev-d { border-top-color: var(--v-line2); }
-.ev-detail { padding: 0; border: 0; background: none; font: inherit; font-size: 12px; color: var(--v-muted); white-space: nowrap; cursor: pointer; }
-.ev-detail:hover { color: var(--v-ink); }
-.ev-self { display: grid; gap: 6px; }
-.ev-self-note { margin: 0; font-size: 13px; color: var(--v-muted); }
-.ev-self-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; font-size: 13px; }
-.ev-self-row .ek-find { margin: 0; justify-content: flex-start; }
-/* Yapılacaklar: the city header (days and nights), the picture's corner tag, the way to the next city */
-.it-city-h .it-city-d { font-size: 13px; color: var(--v-muted); font-weight: 500; }
-.it-city .it-tile .it-kindtag { position: absolute; left: 7px; top: 7px; z-index: 2; padding: 3px 9px; border-radius: 999px; background: #fff; color: var(--v-ink); font-size: 12px; font-weight: 700; box-shadow: 0 1px 4px rgba(28, 26, 51, .12); }
-.it-city .it-tile .it-who { left: 7px; top: auto; bottom: 7px; }
-.it-city .it-tile .it-maps { left: 38px; }
-.it-city .it-tile .it-put.corner { top: 7px; bottom: auto; }
-.it-city .it-tile .it-tools { top: auto; bottom: 7px; right: 7px; }
 /* 0.36 Profilim, and photos in the hero's circles */
 .profile-set { margin: 0 0 16px; padding-bottom: 14px; border-bottom: 1px solid #ece9e3; }
 .profile-set h3 { margin: 0 0 8px; font-size: 15px; }
@@ -1851,48 +1755,20 @@ button.cat-hidden-name:hover { text-decoration: underline; }
 .ai-tickets li { display: flex; gap: 10px; align-items: baseline; padding: 4px 0; border-top: 1px solid #f1efeb; }
 .ai-tickets li > span:first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ai-tickets li.off { opacity: .55; }
-/* 0.35.11 where to look next: "Dönüş bileti ara" under Uçuş, GetYourGuide per city under Etkinlikler */
-.cat-search { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 10px 0 0 104px; font-size: 13.5px; color: #8e8e93; }
-.cat-search-link { color: #1556d6; font-weight: 600; text-decoration: none; }
-.cat-search-link:hover { text-decoration: underline; }
-@container panel (max-width: 620px) { .cat-search { margin-left: 0; } }
 
 /* ---------- Boş kartlar (2026-10-06, docs/mockups/2026-10-06-bos-kartlar-v1.html): the approved card made plain ---------- */
-.ek-card { background: #fff; border: 1.5px dashed #ddd7cd; }
-.ek-card.ek-still { cursor: default; }
-.ek-card:hover { box-shadow: 0 4px 16px rgba(0, 0, 0, .04); }
-.ek-card .pk-ring.open { border: 1.5px dashed #c6bfb3; }
-.ek-card .pk-date { color: #8e8e93; }
-.ek-card .stay-x { position: static; }
-.ek-route { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 10px; margin: 6px 0 4px; }
-.ek-end { min-width: 0; }
-.ek-end b { display: block; font-size: 17px; line-height: 1.2; font-weight: 700; letter-spacing: -.01em; overflow-wrap: anywhere; }
-.ek-end b.ek-missing { font-weight: 500; color: #b9b4ab; }
-.ek-end small { display: block; margin-top: 1px; font-size: 12px; color: #8e8e93; overflow-wrap: anywhere; }
-.ek-end.r { text-align: right; }
-.ek-sil { width: 124px; height: 40px; color: var(--mc); opacity: .35; }
-.ek-sil .pk-art { position: static; transform: none; width: 100%; height: 100%; opacity: 1; }
-.ek-media { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 12px; align-items: center; margin: 6px 0 4px; }
 .ek-tile { width: 52px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: color-mix(in srgb, var(--mc) 8%, #fff); color: var(--mc); }
 .ek-tile svg { width: 34px; height: 28px; opacity: .55; }
 .ek-txt { min-width: 0; }
 .ek-txt b { display: block; font-size: 15.5px; line-height: 1.25; font-weight: 700; overflow-wrap: anywhere; }
 .ek-txt small { display: block; margin-top: 1px; font-size: 12.5px; color: #8e8e93; overflow-wrap: anywhere; }
-.ek-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 6px; padding-top: 8px; border-top: 1px dashed #eee9e1; }
-.ek-state { font-size: 12.5px; color: #8e8e93; }
-.ek-state.alert-amber { color: #9a6400; }
-.ek-state.alert-red { color: #b42318; }
 .ek-find { margin-left: auto; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 4px; }
 .ek-ara { margin-right: 2px; font-size: 12px; color: #8e8e93; }
 .ek-link { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 8px 0 5px; border-radius: 999px; border: 1px solid #ece8e1; background: #fff; color: #55526a; font-size: 12px; text-decoration: none; white-space: nowrap; }
 .ek-link:hover, .ek-link:focus-visible { border-color: #cfc9be; color: #1d1d1f; }
 .ek-lg { flex: none; width: 15px; height: 15px; border-radius: 4px; display: grid; place-items: center; font-size: 8.5px; font-weight: 800; line-height: 1; color: #fff; }
-.ek-skip { padding: 0; margin-left: 2px; border: 0; background: none; font: inherit; font-size: 12px; color: #8e8e93; cursor: pointer; }
-.ek-skip:hover { color: #3a3a3c; text-decoration: underline; }
 .ek-slot { scroll-margin-top: 12px; }
 @container panel (max-width: 620px) {
-  .ek-sil { width: 76px; height: 26px; }
-  .ek-end b { font-size: 15px; }
   .ek-find { margin-left: 0; justify-content: flex-start; width: 100%; }
 }
 /* the AI offers' row (revision 2; cards: docs/mockups/2026-10-06-ai-oneriler-turler-v3.html), only with a data source connected */
@@ -2991,37 +2867,7 @@ body.still .hm-plane { display: none; }
 }
 
 /* ===== cardsB (plan v30): flip chip, +1, ticket stub, ride/rental, stay band, equal heights, back-face ‹ › ===== */
-/* Equal heights: the cards of a row are one height; the bottom strip (price, button) sits at the bottom. */
-.cat-grid > .cat-card, .cat-grid > .ek-cell { display: flex; flex-direction: column; }
-.cat-grid > .cat-card > :not(.pk-insert), .cat-grid > .cat-card > :not(.pk-insert) > .group.nested, .cat-grid > .cat-card > :not(.pk-insert) > .section { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; }
-.cat-grid > .cat-card > :not(.pk-insert) > .group.nested > .group-head, .cat-grid > .cat-card > :not(.pk-insert) > .section > .section-head { flex: none; }
-.cat-grid .pk-card:not(.pk-fold) { display: flex; flex-direction: column; flex: 1 1 auto; }
-.cat-grid .pk-card > .pk-foot { margin-top: auto; }
-.cat-grid > .ek-cell > .ek-card { flex: 1 1 auto; }
-.cat-grid .pk-card > .pk-top, .cat-grid .pk-card > .pk-body { flex: none; }
-/* The top line is one line: the date gives way ("…"), the status and the buttons stay. */
-.cat-grid .pk-card > .pk-top { flex-wrap: nowrap; gap: 6px; }
-.cat-grid .pk-card > .pk-top .pk-kind { flex: none; }
-.cat-grid .pk-card > .pk-top .pk-date { white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; flex: 0 1 auto; }
-.cat-grid .pk-card > .pk-top .pk-end { flex: none; margin-left: auto; gap: 2px; }
-/* Narrow screens (E2): the top line may wrap, so the status, the clip and the ••• never run past the card; the date wraps instead of "1–…". */
-@media (max-width: 480px) {
-  .cat-grid .pk-card > .pk-top { flex-wrap: wrap; height: auto; min-height: 22px; row-gap: 2px; gap: 4px; }
-  .cat-grid .pk-card > .pk-top .pk-date { white-space: normal; overflow: visible; text-overflow: clip; flex: 1 1 auto; }
-  .cat-grid .pk-card > .pk-top .pk-end { gap: 0; max-width: 100%; }
-  .cat-grid .pk-card > .pk-top .pk-aldim { padding: 3px 7px; }
-  .cat-grid .pk-card > .pk-top .pk-ib { width: 26px; }
-  .cat-grid .pk-card > .pk-top .wh-badge { max-width: 100%; }
-}
-.cat-grid .pk-card > .pk-top .pk-aldim { margin-right: 2px; padding: 3px 9px; }
 /* A foot with a price and a button keeps them in one row (the left side gives way). */
-.cat-grid .pk-card > .pk-foot:has(> .pk-cta, > .pk-go) { flex-wrap: nowrap; gap: 6px; }
-@media (max-width: 520px) { .cat-grid .pk-card > .pk-foot:has(> .pk-cta, > .pk-go) { flex-wrap: wrap; } }
-.cat-grid .pk-card > .pk-foot:has(> .pk-cta, > .pk-go) > .pk-state { flex: none; white-space: nowrap; }
-.cat-grid .pk-card > .pk-foot > .pk-price, .cat-grid .pk-card > .pk-foot > .pk-cta, .cat-grid .pk-card > .pk-foot > .pk-go { flex: none; white-space: nowrap; }
-.cat-grid .pk-card > .pk-foot > .pk-alt { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cat-grid .pk-card > .pk-foot > .pk-cta, .cat-grid .pk-card > .pk-foot > .pk-go { padding: 7px 12px; }
-.cat-grid .pk-card > .pk-foot .pk-price2 b { font-size: 16px; }
 .pk-foot .pk-alt { display: inline-flex; align-items: center; gap: 3px; border-bottom: 0; padding: 3px 6px 3px 8px; font-size: 12px; border-radius: 999px; background: var(--v-lav, #f1eefc); color: var(--v-accent-ink, #4a35c8); font-weight: 650; }
 .pk-foot .pk-alt:hover { background: color-mix(in srgb, var(--hx-accent, #5b45e0) 16%, var(--v-lav, #f1eefc)); color: var(--v-accent-ink, #4a35c8); }
 .pk-noticket { margin-left: auto; font-size: 12.5px; color: var(--v-muted); white-space: nowrap; flex: none; }
@@ -3174,41 +3020,7 @@ a.pk-cta.pk-go { text-decoration: none; display: inline-flex; align-items: cente
 .ch-on { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; color: #9a6400; }
 
 /* v11 (phase 4): Yapılacak şeyler as tiles, like the activities' ideas; Gün gün's "Planda, günü yok". */
-.it-wrap { display: grid; gap: 12px; padding: 4px 20px 16px 60px; }
-@media (max-width: 760px) { .it-wrap { padding-left: 20px; } }
-.it-filters { display: flex; flex-wrap: wrap; gap: 6px; }
-.it-filters button { border: 1px solid var(--hx-line); background: #fff; color: var(--hx-muted); border-radius: 999px; padding: 5px 12px; font: inherit; font-size: 13.5px; cursor: pointer; }
-.it-filters button i { font-style: normal; margin-left: 3px; }
-.it-filters button[aria-pressed="true"] { background: var(--hx-ink); border-color: var(--hx-ink); color: #fff; }
-.it-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr)); gap: 12px; }
-.it-tile { position: relative; display: grid; align-content: start; gap: 4px; padding: 8px 8px 10px; border-radius: 16px; background: #fff; border: 1px solid var(--hx-line); transition: transform .25s cubic-bezier(.16, 1, .3, 1), box-shadow .25s; min-width: 0; }
-.it-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(28,26,51,.08); }
-.it-tile.planned { border-color: #9fd6b4; }
-.it-tile.done { opacity: .62; }
-.it-pic { position: relative; height: 104px; border-radius: 11px; display: grid; place-items: center; overflow: hidden; }
-.it-photo { width: 100%; height: 100%; object-fit: cover; display: block; }
 .it-glyph { display: grid; place-items: center; }
-.it-maps { position: absolute; left: 6px; bottom: 6px; padding: 2px 7px; border-radius: 999px; background: rgba(255,255,255,.94); color: #1e8e3e; font-size: 11px; font-weight: 700; }
-.it-who { position: absolute; left: 7px; top: 7px; }
-.it-who .wh-av { box-shadow: 0 0 0 2px #fff; }
-.it-ai { width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; background: #fff; font-size: 11px; }
-.it-tools { position: absolute; right: 6px; top: 6px; display: inline-flex; gap: 4px; align-items: center; }
-.it-tools .pk-ib { background: rgba(255,255,255,.94); border-radius: 50%; }
-.it-tools .pk-x { opacity: 0; transition: opacity .15s; }
-.it-tile:hover .it-tools .pk-x, .it-tile:focus-within .it-tools .pk-x { opacity: 1; }
-@media (hover: none) { .it-tools .pk-x { opacity: .7; } }
-.it-t { font-size: 14px; font-weight: 650; line-height: 1.3; margin-top: 4px; overflow-wrap: anywhere; }
-.it-t a { color: inherit; text-decoration: none; }
-.it-t a:hover { color: var(--hx-accent); }
-.it-m { font-size: 12.5px; color: var(--hx-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.it-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 4px; }
-.it-put { border: 1px solid #cfc6ff; background: #fff; color: var(--hx-accent); border-radius: 999px; padding: 4px 11px; font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; white-space: nowrap; }
-.it-put:hover { background: var(--hx-lav); }
-.it-put.on { border-color: #9fd6b4; background: #eef8f1; color: #1f7a45; }
-.it-day { font-size: 12px; font-weight: 650; color: #1f7a45; background: #eef8f1; border-radius: 999px; padding: 3px 8px; }
-.it-done { font-size: 13px; font-weight: 650; color: var(--hx-muted); }
-.it-note { margin: 2px 0 0; font-size: 12.5px; color: var(--hx-muted); }
-.it-other { margin-top: 4px; }
 .ud-strip { margin: 0 0 16px; padding: 12px 14px; border-radius: 16px; background: #fbf6ea; border: 1px solid #f3dfb4; }
 .ud-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; margin: 0 0 8px; font-size: 14px; }
 .ud-h i { font-style: normal; color: #9a6400; font-weight: 700; }
@@ -3249,26 +3061,17 @@ a.pk-cta.pk-go { text-decoration: none; display: inline-flex; align-items: cente
 .ch-prov { color: #9a6400 !important; font-weight: 650; }
 a.ch-why { text-decoration: none; }
 
-/* v11 the ideas' tiles (a suggestion in ideas/IdeaTiles) and the "Daha fazla" button. */
-.ac-t { font-size: 15px; font-weight: 650; min-width: 0; overflow-wrap: anywhere; }
-.ac-m { grid-column: 2; display: flex; align-items: center; flex-wrap: wrap; gap: 5px; font-size: 13px; color: var(--hx-muted, #6e6e78); font-variant-numeric: tabular-nums; }
-.ac-more { display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 13px; font-weight: 600; color: #4b36c9; background: #efebff; border: 0; border-radius: 999px; padding: 5px 12px; cursor: pointer; }
-.ac-more:hover { background: #e2dcff; }
-.ac-tile-pic { background: color-mix(in srgb, #c0256b 9%, #fff); }
-.ac-tile .ac-art { height: 80px; object-fit: contain; }
 /* v30 · zamana göre gösterme: iptal süresi renkleri (yeşil > amber 14 gün > turuncu-kırmızı 7 gün > kırmızı son gün), alınmamış bilet, rötar, otel giriş saati */
 .pk-cancel.soon { color: #a86400; }
 .pk-cancel.near { color: #c2550a; }
 .pk-cancel.red { color: #c62828; }
 .pk-state.alert-orange .pk-when, .pk-state.alert-orange.pk-says { color: #c2550a; }
 .pk-state.pk-says .pk-when { white-space: normal; margin-left: 0; }
-.card-alert.orange, .pk-alert.orange, .ek-state.alert-orange { color: #c2550a; }
+.card-alert.orange, .pk-alert.orange { color: #c2550a; }
 .pk-timed { min-width: 0; font-size: 12.5px; font-weight: 650; color: var(--v-book-ink, #1b7f45); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pk-stop .pk-was { margin-right: 6px; font-weight: 500; color: var(--v-muted, #6b6790); text-decoration: line-through; text-decoration-thickness: 1.5px; }
 .pk-card.pk-alert.pk-alert { background: #fff5f4; border-color: #c62828; box-shadow: inset 0 0 0 1px #c62828, 0 6px 18px -10px rgba(198, 40, 40, .45); }
 .pk-card.pk-alert.pk-alert .pk-live-note.bad { font-weight: 700; }
-/* The drawings' pictures have a white ground: laid on their tint, the white drops out. */
-.ac-tile .ac-art { mix-blend-mode: multiply; }
 
 /* v11 Hazırlık: why these, "Daha fazla öner", a line under each, "Hazır", Amazon for a thing to buy. */
 .prep-sub { font-size: 12.5px; color: #8e8e93; }
@@ -3280,10 +3083,8 @@ a.ch-why { text-decoration: none; }
 .pk-ask { flex: none; margin-left: auto; width: 30px; height: 30px; border-radius: 50%; border: 0; background: #efebff; font-size: 14px; line-height: 1; cursor: pointer; display: grid; place-items: center; }
 .pk-ask:hover { background: #e2dcff; }
 .pk-ask:focus-visible { outline: 2px solid #6a4fe0; outline-offset: 2px; }
-.ek-foot .pk-ask { margin-left: 6px; }
 .pk-alt { border: 0; background: none; padding: 0 2px; font: inherit; font-size: 12.5px; color: #6e6e78; border-bottom: 1px dotted #b8b8c4; cursor: pointer; white-space: nowrap; }
 .pk-alt:hover { color: #1c1a33; }
-.it-sp { flex: 1; }
 
 /* v11: the drawing in place of a photo, its white ground laid on the picture's tint. */
 .pk-illus { width: 78%; height: 86%; object-fit: contain; mix-blend-mode: multiply; }
@@ -3447,17 +3248,10 @@ a.ch-why { text-decoration: none; }
 .cat-n { font-style: normal; font-size: 14px; font-weight: 600; color: var(--v-muted); }
 .cat-body { padding: 4px 18px 18px; display: grid; gap: 14px; }
 
-/* The cards in a grid; transport three across. */
-.cat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr)); gap: 14px; align-items: start; }
-.cat-grid.cat-in-transport { grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 12px; }
-.cat-grid > .cat-card, .cat-grid > .ek-cell { min-width: 0; }
-.cat-grid .pk-card, .cat-grid .ek-card { margin: 0; }
-.cat-grid .stay-block { margin: 0; padding: 0; border: 0; background: none; }
-
 /* A card: the three stages' grounds. */
 .pk-card { border-radius: 18px; padding: 14px 16px; display: grid; gap: 10px; align-content: start; background: #fff; border: 1.5px dashed var(--v-dash); color: var(--v-ink); box-shadow: none; }
 .pk-card:hover { box-shadow: 0 1px 2px rgba(28, 26, 51, .06), 0 6px 18px -10px rgba(28, 26, 51, .25); }
-.pk-card.pk-r-open, .ek-card { background: #fff; border: 1.5px dashed var(--v-dash); }
+.pk-card.pk-r-open { background: #fff; border: 1.5px dashed var(--v-dash); }
 .pk-top { height: auto; min-height: 24px; gap: 8px; font-size: 13px; color: var(--v-muted); }
 .pk-kind { color: var(--v-ink); font-weight: 650; gap: 5px; }
 .pk-kind svg { color: var(--mc); }
@@ -3530,23 +3324,8 @@ a.ch-why { text-decoration: none; }
 /* v11 Hazırlık as drawn: three across, each a soft tile with a square tick; a ready one white with a green edge and
    "Hazır" (not struck through); a thing to buy has "Amazon ↗". */
 .prep { margin: 0; display: grid; gap: 10px; }
-.cat-grid + .prep { margin-top: 4px; padding-top: 0; border-top: 0; }
 .prep-sub { font-size: 12px; color: var(--v-muted); }
 
-/* v11 an empty card as drawn: "Kendin ara" on its own line, the foot over a hairline. */
-.ek-card { display: grid; gap: 10px; }
-.ek-self .ek-find { margin: 0; justify-content: flex-start; }
-.ek-foot { display: flex; align-items: center; gap: 8px; min-height: 34px; margin: 0; padding: 10px 0 0; border-top: 1px solid color-mix(in srgb, var(--v-dash) 40%, transparent); background: none; font-size: 13px; }
-.ek-foot .ek-state { color: var(--v-muted); font-weight: 500; }
-.ek-sp { flex: 1; }
-.ek-foot .pk-ask { margin-left: 0; }
-.ek-skip { font-size: 12.5px; }
-.ek-card .pk-top { min-height: 24px; }
-
-/* v11 Etkinlik ve turlar's tiles as drawn: a neutral ground, the picture, the brand's mark, the price a person. */
-.ac-tile-pic { background: var(--v-tile); }
-.ac-tile .it-pic { height: 92px; }
-.ac-tile .ac-art { height: 80px; }
 /* v11 the Pano's cards as drawn: the drawing when the page gave no photo, a flight's arc, the site's mark, "Neden?". */
 .pn-illus { background: var(--v-tile); }
 .pn-illus img { width: 70%; height: 82%; object-fit: contain; mix-blend-mode: multiply; }
@@ -3562,27 +3341,11 @@ a.ch-why { text-decoration: none; }
 
 /* v11 Yapılacak şeyler as drawn: flush with the section, five small tiles across, the drawing in place of a photo,
    "Daha fazla öner" filled lavender, the note plain. */
-.it-wrap { padding: 0; }
-.it-filters { align-items: center; }
-.it-filters .ac-more, .it-filters button.ac-more { border: 0; background: var(--v-lav); color: var(--v-accent-ink); font-weight: 600; font-size: 13px; padding: 5px 12px; }
-.it-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 160px), 1fr)); }
-.it-pic { height: 92px; }
-.it-illus { height: 80px; max-width: 90%; object-fit: contain; mix-blend-mode: multiply; }
-.it-note { padding: 0; border: 0; border-radius: 0; font-size: 12.5px; color: var(--v-muted); }
 .sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
-/* v11: the "+" by a card (add here: its day and city) is out of sight until the card is pointed at or focused. */
-.cat-grid > .cat-card { position: relative; }
-.cat-grid > .cat-card > .pk-insert { position: absolute; left: 50%; bottom: -13px; z-index: 2; transform: translateX(-50%); margin: 0; height: auto; opacity: 0; transition: opacity .15s; }
-.cat-grid > .cat-card > .pk-insert::before { display: none; }
-.cat-grid > .cat-card:hover > .pk-insert, .cat-grid > .cat-card:focus-within > .pk-insert { opacity: 1; }
-.cat-grid > .cat-card > .pk-insert button { width: 24px; height: 24px; border-radius: 50%; background: #fff; border: 1px solid var(--v-line2); box-shadow: 0 1px 3px rgba(28, 26, 51, .12); color: var(--v-muted); font-size: 15px; line-height: 1; }
-.cat-grid > .cat-card > .pk-insert button { opacity: 1; }
 /* A ticket's ends never broken inside a word ("Booking.co / m"): long ones a size smaller, wrapping at spaces. */
 .pk-stop b, .pk-stop b.long { overflow-wrap: normal; word-break: normal; }
 .pk-stop b.long { font-size: 17px; }
-.cat-in-transport .pk-stop b { font-size: 18px; }
-.cat-in-transport .pk-stop b.long { font-size: 15px; }
 .nd-body.nd-has-art > .nd-wants, .nd-body.nd-has-art > .nd-self { grid-column: 1 / -1; }
 /* One card (drawing v3, 2026-10-09): the photos on top of the checklist; the flights and the styles inside their rows. */
 .st-side .st-list .st-pv-photos { margin-bottom: 16px; }
@@ -3598,7 +3361,6 @@ a.ch-why { text-decoration: none; }
    a card never wider than its cell; long names wrap at words, their lines under them two at most; the live boxes as
    many across as fit; the top line wraps under itself; a booking's foot is its word, a red date if one runs out, its
    file and "Ayrıntı". */
-.cat-grid > .cat-card, .cat-grid > .ek-cell, .cat-card > .stay-block, .cat-card .group, .cat-card .section { min-width: 0; max-width: 100%; }
 .pk-card { min-width: 0; max-width: 100%; }
 .pk-top { flex-wrap: wrap; row-gap: 4px; }
 .pk-top .pk-date { white-space: normal; }
@@ -3623,30 +3385,9 @@ a.ch-why { text-decoration: none; }
 .pk-route .pk-art { position: static; transform: none; width: 100%; max-width: 120px; height: 40px; margin: 0 auto; opacity: .6; }
 .pk-r-done .pk-route .pk-art, .pk-r-half .pk-route .pk-art { opacity: .75; }
 
-/* v11 revision: the suggestions' tiles. */
-.ac-t { font-size: 16px; font-weight: 700; }
-.ac-m { font-size: 13px; }
-.ac-sugg .ac-why { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
-.ac-sugg .ac-note { color: #8a5a00; }
 /* v11 revision: Yapılacak şeyler — on the plan as rows (picture, name, its line, its day or "Günü yok", ✓ Planda), the
    ideas and suggestions as tiles under them. */
 .it-rows { display: grid; gap: 8px; }
-.it-tile.it-row { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; grid-template-rows: auto auto; align-items: center; gap: 1px 14px; padding: 8px 12px 8px 8px; border-radius: 14px; background: #fff; border: 1.5px solid var(--plan-line); }
-.it-tile.it-row.done { background: #fff; border-color: var(--v-line2); }
-.it-tile.it-row:hover { transform: none; }
-.it-row .it-pic { grid-row: 1 / span 2; width: 56px; height: 56px; border-radius: 11px; }
-.it-row .it-pic .it-maps, .it-row .it-pic .it-who { display: none; }
-.it-row .it-pic .it-illus { height: 46px; }
-.it-row .it-pic .it-tools { display: none; }
-.it-row .it-t { grid-column: 2; margin: 0; font-size: 15px; }
-.it-row .it-m { grid-column: 2; }
-.it-row .it-foot { grid-column: 3; grid-row: 1 / span 2; margin: 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
-.it-noday { font-size: 12.5px; color: var(--v-muted); white-space: nowrap; }
-
-.it-row .it-foot .it-tools { position: static; display: inline-flex; gap: 4px; opacity: 0; transition: opacity .15s; }
-.it-row:hover .it-foot .it-tools, .it-row:focus-within .it-foot .it-tools { opacity: 1; }
-@media (hover: none) { .it-row .it-foot .it-tools { opacity: 1; } }
-.cat-grid.cat-in-transport { grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
 
 /* The layered interface (docs/mockups/ux-katmanli-arayuz): tips, the folded change lines, the sticky bar. Additions only. */
 .tipx { position: relative; outline: none; }
@@ -3727,12 +3468,11 @@ a.ch-why { text-decoration: none; }
 .pk-seal .okt { animation: mv-stamp 420ms cubic-bezier(.2, .9, .3, 1.3) backwards; }
 .pk-glow { animation: pk-glow 1.1s ease-out; }
 .pk-drop { animation: pk-drop .55s cubic-bezier(.2, .9, .3, 1.2) backwards; }
-.ek-card .pk-ring.open, .ek-card .pk-ring.half { border-radius: 50%; animation: pk-pulse 2.4s ease-in-out infinite; }
 .pk-card { transition: transform .18s ease, box-shadow .2s ease; }
 @media (hover: hover) { .pk-card:not(.pk-open):not(.ek-still):hover { transform: translateY(-3px); box-shadow: 0 2px 4px rgba(28,26,51,.05), 0 12px 28px rgba(28,26,51,.09); } }
 .counting { font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: reduce) {
-  .pk-seal .okt, .pk-glow, .pk-drop, .ek-card .pk-ring.open, .ek-card .pk-ring.half { animation: none; }
+  .pk-seal .okt, .pk-glow, .pk-drop { animation: none; }
   .pk-card { transition: none; }
   .pk-card:not(.pk-open):not(.ek-still):hover { transform: none; }
 }
@@ -3952,36 +3692,6 @@ a.ch-why { text-decoration: none; }
 .ch-back .ch-pr { text-align: left; } .ch-back .ch-pr b { font-size: 16px; font-weight: 800; display: block; } .ch-back .ch-pr small { display: block; }
 .ch-back .ch-put { padding: 7px 16px; flex: none; }
 
-/* ===== v30 · Yapılacaklar and Etkinlik tiles: by city in trip order, one size, the corner ✓ / + ===== */
-.it-key { display: flex; gap: 8px; align-items: center; margin: 0; font-size: 12.5px; color: var(--v-muted); }
-.it-key-on, .it-key-add { width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 11px; font-weight: 800; }
-.it-key-on { background: var(--plan-bg); border: 1.5px solid var(--plan-line); color: var(--plan-ink); } .it-key-add { border: 1.5px dashed var(--v-dash); color: var(--v-accent-ink); margin-left: 8px; }
-.it-cities { position: relative; display: grid; gap: 6px; padding-left: 40px; margin-top: 4px; }
-.it-cities::before { content: ""; position: absolute; left: 14px; top: 16px; bottom: 16px; border-left: 2px dashed color-mix(in srgb, var(--v-book-ink) 40%, var(--v-dash)); }
-.it-city { position: relative; display: grid; gap: 10px; padding: 0 0 12px; }
-.it-city-h { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; min-height: 30px; }
-.it-city-n { position: absolute; left: -40px; top: 0; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: #fff; border: 2px solid var(--v-book-ink); color: var(--v-book-ink); font-size: 13px; font-weight: 800; }
-.it-city-h b { font-size: 18px; letter-spacing: -.015em; }
-.it-city-c { margin-left: auto; display: inline-flex; gap: 12px; font-size: 12.5px; }
-.it-city-c i { font-style: normal; font-weight: 650; color: var(--v-accent-ink); } .it-city-c i.ok { color: var(--v-book-ink); }
-.it-city .it-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 168px), 1fr)); align-items: stretch; }
-.it-city .it-tile { grid-template-rows: 100px auto auto 1fr; align-content: start; border-radius: 14px; box-shadow: var(--v30-shadow, none); border: 1px solid var(--v-line2); padding: 0 0 10px; overflow: hidden; }
-.it-city .it-tile:not(.planned) { box-shadow: none; border: 1.5px dashed var(--v-dash); background: transparent; }
-.it-city .it-tile .it-pic { height: 100px; border-radius: 0; }
-.it-city .it-tile .it-t, .it-city .it-tile .it-m, .it-city .it-tile .it-foot { padding: 0 10px; }
-.it-city .it-tile .it-t { margin-top: 8px; font-size: 13.5px; line-height: 1.3; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; min-height: calc(2 * 1.3em); }
-.it-city .it-tile .it-t a { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
-.it-city .it-tile:not(.planned) .it-pic { opacity: .82; }
-.it-tile:hover { transform: none; }
-/* The corner mark: ✓ on the plan, + to put it there. The words stay in the markup (readers, tests); the drawing is the circle. */
-.it-put.corner { position: absolute; right: 7px; bottom: 7px; width: 30px; height: 30px; padding: 0; border-radius: 50%; font-size: 0; line-height: 0; display: grid; place-items: center; background: #fff; border: 1.5px dashed var(--v-dash); color: var(--v-accent-ink); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
-.it-put.corner::before { content: "+"; font-size: 18px; line-height: 1; font-weight: 600; }
-.it-put.corner.on { background: var(--plan-bg); border: 1.5px solid var(--plan-line); color: var(--plan-ink); }
-.it-put.corner.on::before { content: "✓"; font-size: 15px; font-weight: 800; }
-.it-put.corner:hover { transform: scale(1.08); }
-.it-wrap .it-sp { flex: 1; }
-@media (max-width: 640px) { .it-cities { padding-left: 34px; } .it-city-n { left: -34px; width: 26px; height: 26px; } .it-city .it-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-
 /* ===== v30 · Pano: the menu on the left, a row per need, the cards scroll sideways ===== */
 .pn-body { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 24px; align-items: start; }
 .pn-main { min-width: 0; }
@@ -4001,15 +3711,8 @@ a.ch-why { text-decoration: none; }
 /* ===== v30 · a booking window's map and cancel line ===== */
 .bk-acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 20px 0; }
 .bk-acts .bk-btn { display: inline-flex; gap: 6px; align-items: center; text-decoration: none; }
-.it-hop { display: flex; gap: 8px; align-items: center; margin: 4px 0 -2px; font-size: 12.5px; color: var(--v-muted); }
-.it-hop-ic { position: absolute; left: -36px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--bg, #f7f5f1); color: #c27a1b; }
-.it-city { position: relative; }
 
 /* Plan v30: a stay not chosen yet: the drawing on a band across the card, the place large under it. */
-.ek-media.ek-stayband { display: block; margin: 6px 0 4px; }
-.ek-stayband .ek-band { display: block; height: 96px; border-radius: 12px; background: color-mix(in srgb, var(--mc) 7%, #fff); overflow: hidden; margin-bottom: 8px; }
-.ek-stayband .ek-band img { display: block; height: 92%; width: auto; max-width: 90%; margin: 4% auto 0; opacity: .5; }
-.ek-stayband .ek-txt b { font-size: 19px; }
 
 .view-tabs .tab-n { margin-left: 6px; padding: 1px 7px; border-radius: 99px; background: var(--v-soft); color: var(--v-muted); font-size: var(--q-fs-badge); font-weight: 700; }
 .view-tabs button.on .tab-n { background: var(--v-line2); color: var(--v-ink); }
@@ -4027,12 +3730,6 @@ a.ch-why { text-decoration: none; }
 .card-alert.plain, .pk-alert.plain { color: var(--v-muted); }
 
 /* An empty transfer between cities: the ways to go as drawn choices (plan v30). */
-.pk-ways { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin: 10px 0 2px; }
-.pk-way { display: grid; justify-items: center; align-content: center; gap: 4px; padding: 8px 4px 7px; min-height: 76px; border-radius: 14px; border: 1px dashed var(--v-line2); background: #fff; font: inherit; font-size: 12px; font-weight: 650; color: var(--v-ink); cursor: pointer; }
-.pk-way img { width: 44px; height: 32px; object-fit: contain; mix-blend-mode: multiply; }
-.pk-way.own { color: var(--v-muted); }
-.pk-way:hover { border-style: solid; background: var(--v-soft); }
-@media (max-width: 420px) { .pk-ways { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
 .ek-offers-est { margin-left: 8px; font-size: 12.5px; font-weight: 650; color: var(--v-muted); }
 
@@ -4072,9 +3769,7 @@ a.ch-why { text-decoration: none; }
 .okt.set { background: var(--okb-set); box-shadow: none; }
 .okt.sm { font-size: 11.5px; gap: 4px; padding: 2px 9px 2px 2px; box-shadow: none; }
 .okt.sm i { width: 16px; height: 16px; } .okt.sm i svg { width: 10px; height: 10px; }
-.bk-lab, .it-badge { display: inline-flex; }
-.it-badge { position: absolute; right: 7px; bottom: 7px; z-index: 2; }
-.it-city .it-tile .it-badge { top: 7px; bottom: auto; }
+.bk-lab { display: inline-flex; }
 /* The key: five sample boxes, flat lines (searching dashed, our pick purple-grey, chosen light green, booked the badge's green). */
 .plan-key .pk-sw { display: inline-grid; place-items: center; width: 26px; height: 16px; border-radius: 5px; background: #fff; border: 1.5px solid var(--v-line2); color: #fff; }
 .plan-key .pk-sw.search { border: 1.5px dashed var(--v-dash); }
@@ -4116,9 +3811,7 @@ a.ch-why { text-decoration: none; }
 .pn-act { flex-wrap: wrap; row-gap: 8px; }
 .pn-act .pn-put, .pn-act .pn-goplan { margin-left: auto; }
 .pn-whylist { padding: 12px 16px 14px; gap: 6px; }
-/* -- F8 hareket (plan-v45 §4): pulse spread (a board of many empty cards does not blink as one) and the reduced-motion / "Hareketi duraklat" blocks -- */
-.ek-card:nth-child(3n+2) .pk-ring.open, .ek-card:nth-child(3n+2) .pk-ring.half { animation-delay: -.8s; }
-.ek-card:nth-child(3n) .pk-ring.open, .ek-card:nth-child(3n) .pk-ring.half { animation-delay: -1.6s; }
+/* -- F8 hareket (plan-v45 §4): the reduced-motion / "Hareketi duraklat" blocks -- */
 /* The last small movements (plan-v45 §4(b) #7 #9 #12 #14 #15 #16): the "×" fold row and a chat message rise 6 px, the undo toast comes up
    from 20 px, the Pano's "Neden?" unfolds (the strip lets a card grow alone) and its arrow turns, the heart springs, the home box's hints rotate. */
 @keyframes mv-rise-s { from { opacity: 0; transform: translateY(6px); } }
@@ -4166,8 +3859,19 @@ a.ch-why { text-decoration: none; }
 /* Same rules twice: the system setting, and the person's own switch (Settings, body.still). The undo toast's countdown ring is a
    working clock, not decoration: it keeps running. */
 @media (prefers-reduced-motion: reduce) {
-  .dc-flash, .gm-ring.go, .pk-seal .okt, .pk-glow, .pk-drop, .ek-card .pk-ring.open, .ek-card .pk-ring.half,
-  .pk-stage, .pk-stage .tk-plane, .pk-stage .tk-logo, .pk-stage .tk-lab, .pk-stage .pk-state, .tk-fly, .lv-dot, .pk-landed { animation: none; }
+  .dc-flash,
+  .gm-ring.go,
+  .pk-seal .okt,
+  .pk-glow,
+  .pk-drop,
+  .pk-stage,
+  .pk-stage .tk-plane,
+  .pk-stage .tk-logo,
+  .pk-stage .tk-lab,
+  .pk-stage .pk-state,
+  .tk-fly,
+  .lv-dot,
+  .pk-landed { animation: none; }
   .ms-wrap[data-state="done"] .ms, .mv-tick, .mv-banner-out, .work-line.on i, .work-pill.done, .ar-skel::after, .ar-new, .panel .cat-plan, .panel .trip-plan, .panel .doc-tab, .panel .tm-tab, .panel .pn, .chat-banner { animation: none !important; }
   .pn-card, .pk-card, .cat-body, .view-tabs.has-ind::before, .plan-order.has-ind::before { transition: none; }
   .pk-fold, .msg-user, .msg-assistant, .pk-undo { animation: none; }
@@ -4179,8 +3883,19 @@ a.ch-why { text-decoration: none; }
   .pk-card.tk { transition: border-color .4s ease, background-color .4s ease !important; }
   .pk-card.tk .tk-stub, .pk-card.tk .tk-stub::before, .pk-card.tk .tk-stub::after { transition: border-color .4s ease !important; }
 }
-body.still .dc-flash, body.still .gm-ring.go, body.still .pk-seal .okt, body.still .pk-glow, body.still .pk-drop, body.still .ek-card .pk-ring.open, body.still .ek-card .pk-ring.half,
-body.still .pk-stage, body.still .pk-stage .tk-plane, body.still .pk-stage .tk-logo, body.still .pk-stage .tk-lab, body.still .pk-stage .pk-state, body.still .tk-fly, body.still .lv-dot, body.still .pk-landed { animation: none; }
+body.still .dc-flash,
+body.still .gm-ring.go,
+body.still .pk-seal .okt,
+body.still .pk-glow,
+body.still .pk-drop,
+body.still .pk-stage,
+body.still .pk-stage .tk-plane,
+body.still .pk-stage .tk-logo,
+body.still .pk-stage .tk-lab,
+body.still .pk-stage .pk-state,
+body.still .tk-fly,
+body.still .lv-dot,
+body.still .pk-landed { animation: none; }
 body.still .ms-wrap[data-state="done"] .ms, body.still .mv-tick, body.still .mv-banner-out, body.still .work-line.on i, body.still .work-pill.done, body.still .ar-skel::after, body.still .ar-new, body.still .panel .cat-plan, body.still .panel .trip-plan, body.still .panel .doc-tab, body.still .panel .tm-tab, body.still .panel .pn, body.still .chat-banner { animation: none !important; }
 body.still .pn-card, body.still .pk-card, body.still .cat-body, body.still .view-tabs.has-ind::before, body.still .plan-order.has-ind::before { transition: none; }
 body.still .pk-fold, body.still .msg-user, body.still .msg-assistant, body.still .pk-undo { animation: none; }
@@ -4242,12 +3957,6 @@ body.still .pk-card.tk .tk-stub, body.still .pk-card.tk .tk-stub::before, body.s
 .pk-rd-card.pk-r-done .pk-foot .pk-price { display: inline-block; margin-left: auto; }
 .pk-rd-card .pk-foot > .pk-docname, .pk-rd-card .pk-foot > .pk-docs, .pk-rd-card .pk-foot > .pk-docmiss { order: -1; }
 .pk-rd-card .pk-foot > .pk-price ~ .pk-more { margin-left: 0; }
-/* the empty way: the same left-to-right head, the day's capsule and the sentence beside it, the ways drawn dashed under */
-.ek-undec { display: grid; gap: 10px; min-width: 0; }
-.ek-undec-ttl { font-size: 19px; font-weight: 750; letter-spacing: -.015em; line-height: 1.2; overflow-wrap: anywhere; }
-.ek-undec-ttl .ek-arr { color: #b07a1f; font-weight: 600; }
-.ek-undec-w { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: 13px; color: var(--v-muted); }
-.ek-undec-how { font-weight: 500; color: var(--v-muted); }
 
 /* -- F2 bilet -- (plan v46, F2): a flight is a flat ticket: a notch and a dashed tear-off stub on its right, the head (logo,
    airline, day, ⓘ ••• ×), the route, the foot. The stub holds the stage's word (a big green tick only once it is bought, with the
@@ -4261,15 +3970,15 @@ body.still .pk-card.tk .tk-stub, body.still .pk-card.tk .tk-stub::before, body.s
 .pk-card.tk.tk-booked { --tk-edge: var(--book-line); --tk-bg: var(--book-bg); --tk-bw: 2px; }
 .pk-card.tk.tk-arranged { --tk-edge: var(--v-line2); }
 .pk-card.tk.pk-alert.pk-alert { --tk-edge: #c62828; --tk-bg: #fff5f4; --tk-bw: 1.5px; }
-.pk-card.tk:not(.pk-fold), .cat-grid .pk-card.tk:not(.pk-fold) { display: grid; grid-template-columns: minmax(0, 1fr) clamp(116px, 31%, 152px); grid-template-rows: repeat(5, auto); gap: 0; align-content: start; padding: 0; min-height: 172px; border-radius: 18px; border: var(--tk-bw) solid var(--tk-edge); background: var(--tk-bg); }
+.pk-card.tk:not(.pk-fold) { display: grid; grid-template-columns: minmax(0, 1fr) clamp(116px, 31%, 152px); grid-template-rows: repeat(5, auto); gap: 0; align-content: start; padding: 0; min-height: 172px; border-radius: 18px; border: var(--tk-bw) solid var(--tk-edge); background: var(--tk-bg); }
 .pk-card.tk > * { grid-column: 1; }
 .pk-card.tk > .tk-stub { grid-column: 2; grid-row: 1 / -1; }
 .pk-card.tk > .pk-detail { grid-column: 1 / -1; grid-row: 6; }
 .pk-card.tk > .pk-top { grid-row: 1; height: auto; min-height: 0; padding: 14px 14px 0 16px; align-items: flex-start; flex-wrap: nowrap; gap: 8px; }
 .pk-card.tk > .pk-body { grid-row: 2; padding: 12px 16px 0; container-type: inline-size; }
 .pk-card.tk > .pk-foot { margin: 12px 16px 14px; padding: 10px 0 0; border-top: 1px solid color-mix(in srgb, var(--tk-edge) 70%, transparent); min-height: 34px; }
-.pk-card.tk > .ek-self, .pk-card.tk > .nd-self { margin: 10px 16px 0; }
-.pk-card.tk > .ek-self .ek-find, .pk-card.tk > .nd-self .ek-find { justify-content: flex-start; margin: 0; }
+.pk-card.tk > .nd-self { margin: 10px 16px 0; }
+.pk-card.tk > .nd-self .ek-find { justify-content: flex-start; margin: 0; }
 .pk-card.tk > .tk-warn { margin: 8px 16px 0; }
 .pk-card.tk .pk-end { margin-left: auto; flex: none; }
 .pk-card.tk .pk-ring, .pk-card.tk .pk-kind { display: none; }
@@ -4331,7 +4040,6 @@ body.still .pk-card.tk .tk-stub, body.still .pk-card.tk .tk-stub::before, body.s
 .tk-bar i { position: absolute; inset: 0; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--hx-accent, #5b45e0) 45%, transparent), transparent); animation: tk-shimmer 1.4s linear infinite; }
 @keyframes tk-shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
 .pk-ask.lbl { width: auto; height: auto; padding: 6px 12px; border-radius: 999px; display: inline-flex; gap: 2px; font-size: 12.5px; font-weight: 650; color: var(--v-accent-ink); margin-left: auto; }
-.ek-foot .pk-ask.lbl { margin-left: auto; }
 /* × (S5): on a ticket it sits on the corner, shown on hover or focus and not at all on a touch screen (••• keeps "Gerek yok") */
 .pk-card.tk .pk-top .pk-x { position: absolute; top: -9px; right: -9px; z-index: 4; width: 22px; height: 22px; opacity: 0; background: #fff; box-shadow: 0 0 0 1px var(--tk-edge), 0 2px 6px -1px rgba(40, 28, 90, .25); }
 .pk-card.tk:hover .pk-top .pk-x, .pk-card.tk:focus-within .pk-top .pk-x { opacity: 1; }
@@ -4346,7 +4054,6 @@ body.still .pk-card.tk .tk-stub, body.still .pk-card.tk .tk-stub::before, body.s
 }
 /* ticket foot: the state on the left, no price (it is on the stub) */
 .pk-card.tk .pk-foot .pk-price { display: none; }
-.pk-card.tk.ek-card .ek-foot { margin-top: 12px; }
 @media (max-width: 420px) {
   .pk-card.tk { grid-template-columns: minmax(0, 1fr) 112px; }
   .pk-card.tk > .pk-top { padding: 12px 10px 0 12px; }
@@ -4405,8 +4112,6 @@ body.still .pk-card.tk .tk-stub, body.still .pk-card.tk .tk-stub::before, body.s
 .pn-flt.in-chosen { border-color: var(--plan-line); }
 /* nabız (the dictionary's pulse): an empty ticket has no ring, so its frame breathes; the pulse is spread over a row of them */
 .pk-card.tk.tk-search { animation: pk-pulse 2.4s ease-in-out infinite; }
-.cat-grid > :nth-child(3n+2) .pk-card.tk-search { animation-delay: -.8s; }
-.cat-grid > :nth-child(3n) .pk-card.tk-search { animation-delay: -1.6s; }
 @media (prefers-reduced-motion: reduce) { .tk-bar i, .pk-seal .tk-chk, .pk-card.tk.tk-search { animation: none; } }
 body.still .tk-bar i, body.still .pk-seal .tk-chk, body.still .pk-card.tk.tk-search { animation: none; }
 
@@ -4416,7 +4121,6 @@ body.still .tk-bar i, body.still .pk-seal .tk-chk, body.still .pk-card.tk.tk-sea
 .bk-front { display: contents; }
 .bk-front.off { visibility: hidden; }
 [data-bk="flow"] > .bk-front.off { display: none; }
-.cat-grid > .ek-cell { position: relative; }
 .ch-back { display: grid; gap: 14px; align-content: start; padding: 16px 18px 16px; border-radius: 18px; background: #fff; border: 1.5px solid var(--plan-line); box-shadow: 0 18px 40px -18px rgba(28, 26, 51, .38), 0 2px 8px rgba(28, 26, 51, .08); color: var(--v-ink); min-width: 0; outline: none; cursor: default; }
 [data-bk="over"] > .ch-back { position: absolute; z-index: 40; min-height: 100%; box-sizing: border-box; transform-origin: center top; }
 @media (prefers-reduced-motion: no-preference) {
@@ -4474,12 +4178,11 @@ body.still .tk-bar i, body.still .pk-seal .tk-chk, body.still .pk-card.tk.tk-sea
 /* -- F7 taslak -- (plan v46, F7): "Önerimiz", the best real option shown as the card while nothing is chosen. White, one flat
    purple-grey line (no dashes), ✨ and its word.
    Taken with "✓ Bunu seç" or "Rezerve et ↗". */
-.pk-card.pk-draft, .cat-grid .pk-card.pk-draft { background: #fff; border: 1.5px solid var(--draft-line); }
+.pk-card.pk-draft { background: #fff; border: 1.5px solid var(--draft-line); }
 .pk-lab.draft { display: inline-flex; align-items: center; gap: 4px; margin-right: 6px; color: var(--v-accent-ink); font-weight: 700; }
 .pk-aldim.pk-pick { border-color: var(--draft-line); color: var(--v-accent-ink); }
 .pk-aldim.pk-pick:hover { background: var(--v-lav, #f1eefc); }
 .pk-aldim.pk-pick:focus-visible { outline-color: var(--hx-accent, #5b45e0); }
-.cat-grid .pk-card.pk-draft > .pk-top .pk-lab.draft { margin-right: 2px; }
 .tk-stub .tk-pick { margin: 2px 0 0; padding: 2px 6px; border: 0; border-radius: 6px; background: none; color: var(--v-accent-ink); font: inherit; font-size: 12px; font-weight: 650; white-space: nowrap; cursor: pointer; }
 .tk-stub .tk-pick:hover { background: var(--v-lav, #f1eefc); }
 .tk-stub .tk-pick:focus-visible { outline: 2px solid var(--hx-accent, #5b45e0); outline-offset: 2px; }
@@ -4499,7 +4202,6 @@ body.still .tk-bar i, body.still .pk-seal .tk-chk, body.still .pk-card.tk.tk-sea
 /* -- Denetim düzeltmeleri (v46 bağımsız denetim H1-H4) -- */
 /* H1: "Seçildi" yazısı kartın üst satırında (durum asla yalnız renkle/halkayla değil; DOKUNULMAZ §2.3-7, S16). */
 .pk-lab.chosen { color: var(--v-ink2, var(--v-ink, #1c1a33)); font-weight: 650; margin-right: 4px; }
-.cat-grid .pk-card > .pk-top .pk-lab.chosen { margin-right: 2px; }
 /* H4: Rötar kutucuğu: etiket ve değer sarsın, hiçbir şey kesilmesin ("Yeni kalkış", "+25 dk"). */
 .pk-lv small { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
 .pk-lv b { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 6px; white-space: normal; }
@@ -4507,7 +4209,6 @@ body.still .tk-bar i, body.still .pk-seal .tk-chk, body.still .pk-card.tk.tk-sea
 /* H2: 390 px: bölüm başlığı sarsın, ilerleme çubuğu alt satıra insin; ızgara ve arka yüz tek sütun, taşmasız. */
 @media (max-width: 480px) {
   .cat-head { flex-wrap: wrap; row-gap: 8px; }
-  .cat-grid, .cat-grid.cat-in-transport { grid-template-columns: minmax(0, 1fr); }
   .ch-back { max-width: 100%; box-sizing: border-box; }
   .ch-back .ch-row.ch-tile, .ch-back .ch-main { min-width: 0; max-width: 100%; }
 }
@@ -4516,8 +4217,6 @@ body.still .tk-bar i, body.still .pk-seal .tk-chk, body.still .pk-card.tk.tk-sea
   .pk-card > .pk-top:has(.pk-lab.chosen) .pk-kind { font-size: 0; gap: 0; }
   .pk-card > .pk-top:has(.pk-lab.chosen) .pk-date { display: none; }
 }
-/* H1: etkinlik kartında Seçildi yazısı, resmin sol altında. */
-.ev-img > .ev-chosen { position: absolute; left: 8px; bottom: 8px; z-index: 2; padding: 2px 9px; border-radius: 999px; background: #fff; border: 1px solid var(--plan-line, #8fcfa6); color: var(--v-book-ink, #1d7442); font-size: 12px; font-weight: 650; line-height: 18px; white-space: nowrap; }
 
 /* -- Açılış orb ve mozaik -- */
 /* The opening's flourish (opening.ts): the mascot's orb, its sparks and stars, a glint over the counters. Drawn over the page for under a second. */
@@ -4660,7 +4359,7 @@ body.still .op-fx { display: none; }
    at most two pulsing rings on screen (hareketDili.ts marks the third and later) */
 .thinking { animation: mv-fade var(--t-quick) var(--e-out) 400ms backwards; }
 [data-np] { animation: none !important; }
-body:has(.modal:not(.mv-leaving), .overlay:not(.mv-leaving), .drawer:not(.mv-leaving), .compare-modal:not(.mv-leaving), .pk-sheet-back:not(.mv-leaving)) :is(.ek-card .pk-ring.open, .ek-card .pk-ring.half, .pk-card.tk.tk-search, .lv-dot, .tk-bar i) { animation-play-state: paused; }
+body:has(.modal:not(.mv-leaving), .overlay:not(.mv-leaving), .drawer:not(.mv-leaving), .compare-modal:not(.mv-leaving), .pk-sheet-back:not(.mv-leaving)) :is(.pk-card.tk.tk-search, .lv-dot, .tk-bar i) { animation-play-state: paused; }
 
 /* m-sert: the banner is pulled up out of the page when it is solved (hareketDili.ts keeps a copy for the 200 ms) */
 .mv-banner-out { pointer-events: none; animation: mv-banner-up 200ms var(--e-in) forwards; }
@@ -4669,14 +4368,7 @@ body:has(.modal:not(.mv-leaving), .overlay:not(.mv-leaving), .drawer:not(.mv-lea
 body.still .work-line i { width: 100%; opacity: .5; }
 
 /* -- fark-etkinlik -- (v46 Etkinlik ve turlar: the drawing's one toolbar line, a violet line for what we found and put on the plan) */
-.ev-top { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-.ev-top .ev-key { flex: 1 1 240px; min-width: 0; }
-.ev-ghost { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 9px; border: 1px solid var(--v-line2); background: #fff; color: var(--v-accent-ink); font: inherit; font-size: 13px; font-weight: 650; white-space: nowrap; cursor: pointer; }
-.ev-ghost:hover { background: var(--v-lav); }
-.ev-ghost:focus-visible { outline: 2px solid var(--hx-accent); outline-offset: 2px; }
-.ev-bar .ev-toggle b { font-size: 13.5px; }
 .ev-card.chosen.ai { border-color: color-mix(in srgb, var(--hx-accent) 38%, var(--v-line2)); }
-.ev-n-h { white-space: normal; }
 /* -- fark-konaklama -- a stay's three picks follow the width of the card they sit in (the plan column is narrow when the window is ~1000 px): the grid
    wraps by its own width, never three squeezed columns; the name takes two lines, the rating chip, reviews, area and price are shown whole, the
    buttons never overflow. Card layout as drawn in v46: photo band, source and rating chip, name, price, one action row. */
@@ -4699,10 +4391,6 @@ body.still .work-line i { width: 100%; opacity: .5; }
 /* when the record's airline is only its code ("TK"), the number alone is the name */
 .tk-hn > b > .tk-no:first-child { margin-left: 0; font-size: inherit; font-weight: inherit; color: inherit; }
 /* -- fark-listeler -- Yapılacaklar, Hazırlık, İlham as the v46 drawing has them */
-/* a place's name and its note are said whole (no "…", no clamp): the card grows */
-.it-city .it-tile .it-t { display: block; -webkit-line-clamp: unset; overflow: visible; min-height: 0; }
-.it-city .it-tile .it-t a { display: inline; -webkit-line-clamp: unset; overflow: visible; }
-.it-tile .it-m { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; line-height: 1.3; }
 /* İlham: compact cards, the play thumbnail at the left, the title a link, who saved it and where from under it */
 .ins-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 10px; }
 .ins-tile { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 2px 10px; align-items: center; align-content: center; padding: 8px; border-radius: 14px; background: var(--v-soft, #f7f5f1); }

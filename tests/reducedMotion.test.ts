@@ -20,7 +20,7 @@ describe("reduced motion and Hareketi duraklat", () => {
   });
   for (const [name, block, prefix] of [["system setting", reduced, ""], ["body.still", still, "body.still "]] as const) {
     it(`${name}: the animated gaps are stopped`, () => {
-      for (const sel of [".dc-flash", ".gm-ring.go", ".pk-glow", ".pk-drop", ".pk-seal .okt", ".ek-card .pk-ring.open", ".pk-stage .tk-plane", ".pk-stage .tk-logo", ".pk-stage .tk-lab", ".tk-fly", ".lv-dot", ".pk-landed"]) expect(block).toContain(`${prefix}${sel}`);
+      for (const sel of [".dc-flash", ".gm-ring.go", ".pk-glow", ".pk-drop", ".pk-seal .okt", ".pk-stage .tk-plane", ".pk-stage .tk-logo", ".pk-stage .tk-lab", ".tk-fly", ".lv-dot", ".pk-landed"]) expect(block).toContain(`${prefix}${sel}`);
       expect(block).toMatch(/animation: none/);
     });
     it(`${name}: bars and card hover stop moving`, () => {
@@ -62,7 +62,8 @@ describe("reduced motion and Hareketi duraklat", () => {
     // each class whose rule starts an animation in the dictionary block is named in the reduced block
     const dictionary = css.slice(css.indexOf("/* -- Hareket sözlüğü"), css.indexOf("/* -- The assistant's mascot"));
     const classes = [...dictionary.matchAll(/^(\.[\w.-]+)[^{]*\{[^}]*animation:/gm)].map((m) => m[1]);
-    expect(classes.length).toBeGreaterThan(3);
+    // the seal, the glow, the drop (v82: the empty cards' pulsing ring went with the cards)
+    expect(classes.length).toBeGreaterThanOrEqual(3);
     for (const c of classes) expect(reduced + dictionary.slice(dictionary.indexOf("@media (prefers-reduced-motion")), ).toContain(c.split(" ")[0]);
   });
 });

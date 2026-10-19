@@ -6317,18 +6317,18 @@ try {
   else if (!e6Was.length) await app.locator('.q-sec[data-section="activity"] .q-tt').click();
   await app.waitForTimeout(600); // E1: the category's one scroll into place (380 ms) is over before the next check scrolls
 
-  // m-kurallar: at most two pulsing rings on screen (the third and later keep still); a window open, the cards behind keep still (one focus).
+  // m-kurallar: at most two pulsing frames on screen (the third and later keep still); a window open, the cards behind keep still (one focus).
+  // (v82: the empty cards' rings went with the cards; what pulses is an empty ticket's frame, Gün gün's flight in its search look.)
   const rings = await app.evaluate(async () => {
     const panel = document.querySelector(".panel");
     panel.scrollTop = 0;
     const fakes = [];
     for (let i = 0; i < 4; i++) {
       const card = document.createElement("div");
-      card.className = "ek-card";
-      card.style.cssText = "position:absolute;left:" + (200 + i * 40) + "px;top:" + (120 + i * 24) + "px;width:30px;height:30px;z-index:5";
-      card.innerHTML = '<span class="pk-ring open" style="display:block;width:20px;height:20px"></span>';
+      card.className = "pk-card tk tk-search";
+      card.style.cssText = "position:absolute;left:" + (200 + i * 40) + "px;top:" + (120 + i * 24) + "px;width:30px;height:30px;min-height:0;z-index:5";
       panel.appendChild(card);
-      fakes.push(card.firstChild);
+      fakes.push(card);
     }
     for (let i = 0; i < 75 && fakes.filter((f) => f.hasAttribute("data-np")).length < 2; i++) await new Promise((r) => setTimeout(r, 40));
     const still = fakes.filter((f) => f.hasAttribute("data-np")).length;
@@ -6339,12 +6339,12 @@ try {
     const paused = fakes.slice(0, 2).map((f) => f.getAnimations()[0]?.playState ?? "none");
     modal.remove();
     const running = fakes.slice(0, 2).map((f) => f.getAnimations()[0]?.playState ?? "none");
-    fakes.forEach((f) => f.parentElement.remove());
+    fakes.forEach((f) => f.remove());
     return { still, names, paused, running };
   });
-  assert.equal(rings.still, 2, `m-kurallar: of four rings on screen two keep still (${JSON.stringify(rings)})`);
+  assert.equal(rings.still, 2, `m-kurallar: of four frames on screen two keep still (${JSON.stringify(rings)})`);
   assert.deepEqual(rings.names, ["pk-pulse", "pk-pulse", "none", "none"], "m-kurallar: the first two pulse, the third and fourth do not");
-  assert.deepEqual(rings.paused, ["paused", "paused"], "m-kurallar: a window open, the rings behind keep still");
+  assert.deepEqual(rings.paused, ["paused", "paused"], "m-kurallar: a window open, the frames behind keep still");
   assert.deepEqual(rings.running, ["running", "running"], "m-kurallar: closed, they pulse again");
 
   // Yer tutucu cümleler (#12): three hints turn over 9 s while the home box is empty and left alone; focus stops them and the first stays.

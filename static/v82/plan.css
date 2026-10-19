@@ -68,8 +68,6 @@
 .q-fold.on > .q-fold-in > * { opacity: 1; transition-delay: 80ms; }
 .q-foldb { display: grid; gap: 26px; padding: 6px 18px 20px; }
 /* The categories still drawn the old way keep their body's room and look (cat-body), inside the new card. */
-.q-sec .cat-grid { align-items: stretch; }
-.q-sec[data-section="activity"] .cat-search { margin-left: 0; padding-left: 0; }
 .q-sec .fk-quick { margin: 0 0 14px; background: #fff; }
 
 /* "+ Konaklama ekle" at a category's end; "+ Yeni ihtiyaç ekle" at the plan's (B6). */
@@ -132,8 +130,6 @@
   .q-ints::before { left: 9px; }
   .q-ints > .q-int::before, .q-ints > .z-visa::before { left: -21px; }
 }
-/* Etkinlik ve turlar's own board has its "+ Ekle" in its head line: the category's end needs none (as before). */
-.cat-body:has(> .ev-wrap) > .q-add { display: none; }
 /* The row's bar grows to its new share over .3 s; "azaltılmış hareket" and "Hareketi duraklat" put it there at once. */
 body.still .q-bar i { transition: none; }
 @media (prefers-reduced-motion: reduce) { .q-bar i { transition: none; } }
