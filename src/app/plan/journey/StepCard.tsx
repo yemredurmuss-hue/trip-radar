@@ -3,6 +3,7 @@
 // one thing to do with it now (Seçeneklere bak, Ara, Bunu seç, fiyat + Rezerve et, E-bilet aç, Bileti ekle, Check-in,
 // Listeyi aç, Önerilere bak). "›" goes to its box on the Plan. What a step says is lib/journeyChapters.ts's.
 import type { CSSProperties, ReactNode } from "react";
+import { airlineLogos } from "../../../lib/airlines";
 import { L } from "../../../lib/i18n";
 import type { JourneyStep, StepAction, StepTarget } from "../../../lib/journeyChapters";
 import { CopyText } from "../../CopyButton";
@@ -47,13 +48,16 @@ const TONE: Record<string, string> = { ai: "ai", sel: "sel", ok: "ok", inc: "ok"
 
 /** A site's small mark on its button ("B" in Booking.com's blue). */
 function Logo({ action }: { action: StepAction }) {
-  if (!action.brand) return null;
-  const style = action.brand.color ? ({ "--bl": action.brand.color } as CSSProperties) : undefined;
-  return (
+  const style = action.brand?.color ? ({ "--bl": action.brand.color } as CSSProperties) : undefined;
+  const chip = action.brand ? (
     <span className="q-logo" style={style} aria-hidden>
       {action.brand.label.slice(0, 1)}
     </span>
-  );
+  ) : null;
+  // A flight's airline known: its logo (0.38.8), the site's letter when it won't load.
+  if (!action.airline) return chip;
+  const [first, second] = airlineLogos(action.airline);
+  return <FallbackImg className="q-logo q-air" src={first} fallback={<FallbackImg className="q-logo q-air" src={second} fallback={chip} />} />;
 }
 
 function StepButton({ step, tripId, on }: { step: JourneyStep; tripId: string; on: StepHandlers }) {

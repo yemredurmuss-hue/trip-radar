@@ -9,6 +9,7 @@
 // night spent on the plane is no gap but an "Uçakta" line on the way. D15: with no dates there is no journey to tell
 // (the view switch shows it faded). D8: the chapter today is in says so, the view opens there. K17: what was left open on
 // a day gone by is "Kaçtı". Pure.
+import { airlineCode } from "./airlines";
 import { knownAirport } from "./airports";
 import { bookingCopies } from "./bookingRows";
 import type { Brand } from "./brands";
@@ -43,6 +44,8 @@ export interface StepAction {
   /** "Rezerve et" / "Satın al": the page to book it on, and its site's label. */
   url: string | null;
   brand: Brand | null;
+  /** A flight's airline (its IATA code, airlines.ts) when it is known: its logo is the button's mark, not the site's letter. */
+  airline?: string;
 }
 
 /** "›": the box the step is in the Plan (intents.ts key and DOM keys), and the record when it's one card of a row. */
@@ -189,6 +192,11 @@ export function docAddLabel(kind: CardKind): string {
 /** "Rezerve et" for a stay, a table or a car; "Satın al" for a ticket, an eSIM, a policy. */
 export const bookLabel = (kind: CardKind): string => (ticketed(kind) || kind === "esim" || kind === "insurance" ? L("Satın al", "Buy") : L("Rezerve et", "Book"));
 
+/** A flight's airline for its button's mark (0.38.8), when its carrier or its number says it. */
+function airlineOf(kind: CardKind, o: OptionVM): Pick<StepAction, "airline"> {
+  const code = kind === "flight" ? airlineCode(o.item.flight?.carrier, o.item.flight?.flightNumber) : null;
+  return code ? { airline: code } : {};
+}
 const action = (kind: StepActionKind, label: string, over: Partial<StepAction> = {}): StepAction => ({ kind, label, itemId: null, url: null, brand: null, ...over });
 
 /** An airport the table can't name ("HND") stands for the city it serves on the trip ("Tokyo"). */
@@ -253,7 +261,7 @@ function intentStep(i: IntentVM, env: Env, title: string): JourneyStep {
     if (i.status === "searching") act = action("search", L("Ara", "Search"));
     else if (i.status === "deciding") act = action("options", L("Seçeneklere bak", "See the options"));
     else if (i.status === "suggested" && o) act = action("take", L("Bunu seç", "Take it"), { itemId: o.id });
-    else if (i.status === "chosen" && o) act = action("book", bookLabel(i.kind), { itemId: o.id, url: o.item.url, brand: o.brand });
+    else if (i.status === "chosen" && o) act = action("book", bookLabel(i.kind), { itemId: o.id, url: o.item.url, brand: o.brand, ...airlineOf(i.kind, o) });
     // F2: a flight leaving within 48 hours leads with its check-in (its PNR is the step's code), as its box does.
     else if (i.status === "booked" && o && i.access?.primary === "checkin") act = action("checkin", L("Check-in", "Check in"), { itemId: o.id, url: o.item.url, brand: o.brand });
     else if (i.status === "booked" && o) act = (i.access?.doc.count ?? 0) > 0 ? action("doc", docOpenLabel(i.kind), { itemId: o.id }) : action("addDoc", docAddLabel(i.kind), { itemId: o.id });

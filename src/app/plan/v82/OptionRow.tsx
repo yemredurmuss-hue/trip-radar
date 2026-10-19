@@ -17,15 +17,17 @@ import { SelfLinks } from "./OptionCompact";
 
 /**
  * A carrier's mark: an airline known by its code its logo (the flight card's files, airlines.ts), its letters on its colour
- * when the logo won't load; else the kind's drawing in the same square (a way with no operator known).
+ * when the logo won't load; else the kind's drawing in the same square (a way with no operator known). Small: the round mark
+ * in "Bileti al" (0.38.8, Emre: "o yuvarlak şeyin logo olması lazım").
  */
-export function CarrierLogo({ mark, art }: { mark: CarrierMark | null; art: string }) {
+export function CarrierLogo({ mark, art, small = false }: { mark: CarrierMark | null; art: string; small?: boolean }) {
   if (mark?.code) {
     const [first, second] = airlineLogos(mark.code);
-    const letters = <Mark color={mark.color} letter={mark.letter} />;
-    return <FallbackImg className="q-logo q-air" src={first} fallback={<FallbackImg className="q-logo q-air" src={second} fallback={letters} />} />;
+    const letters = <Mark color={mark.color} letter={mark.letter} small={small} />;
+    const cls = small ? "q-logo sm q-air" : "q-logo q-air";
+    return <FallbackImg className={cls} src={first} fallback={<FallbackImg className={cls} src={second} fallback={letters} />} />;
   }
-  if (mark) return <Mark color={mark.color} letter={mark.letter} />;
+  if (mark) return <Mark color={mark.color} letter={mark.letter} small={small} />;
   return (
     <span className="z-lgi" aria-hidden>
       <img src={art} alt="" />

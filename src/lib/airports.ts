@@ -33,6 +33,28 @@ const AIRPORTS: Record<string, [tr: string, en: string]> = {
   EWR: ["New York", "New York"], LAX: ["Los Angeles", "Los Angeles"], SFO: ["San Francisco", "San Francisco"], MIA: ["Miami", "Miami"],
   ORD: ["Chicago", "Chicago"], YYZ: ["Toronto", "Toronto"], MEX: ["Meksiko", "Mexico City"], GRU: ["São Paulo", "São Paulo"],
   EZE: ["Buenos Aires", "Buenos Aires"],
+  // Argentina and Chile (0.38.8, Patagonya): the trip's flights inside them are said by these codes.
+  AEP: ["Buenos Aires", "Buenos Aires"], USH: ["Ushuaia", "Ushuaia"], FTE: ["El Calafate", "El Calafate"], BRC: ["Bariloche", "Bariloche"],
+  IGR: ["Iguazú", "Iguazú"], MDZ: ["Mendoza", "Mendoza"], COR: ["Córdoba", "Córdoba"], SLA: ["Salta", "Salta"], REL: ["Trelew", "Trelew"],
+  SCL: ["Santiago", "Santiago"], PUQ: ["Punta Arenas", "Punta Arenas"], PNT: ["Puerto Natales", "Puerto Natales"],
+  PMC: ["Puerto Montt", "Puerto Montt"], CJC: ["Calama", "Calama"], IPC: ["Paskalya Adası", "Easter Island"],
+  // Other places many trips fly to.
+  GIG: ["Rio de Janeiro", "Rio de Janeiro"], LIM: ["Lima", "Lima"], CUZ: ["Cusco", "Cusco"], BOG: ["Bogota", "Bogotá"],
+  CTG: ["Cartagena", "Cartagena"], MVD: ["Montevideo", "Montevideo"], UIO: ["Quito", "Quito"], PTY: ["Panama", "Panama City"],
+  CUN: ["Cancun", "Cancún"], HAV: ["Havana", "Havana"], PUJ: ["Punta Cana", "Punta Cana"],
+  LAS: ["Las Vegas", "Las Vegas"], MCO: ["Orlando", "Orlando"], BOS: ["Boston", "Boston"], SEA: ["Seattle", "Seattle"], HNL: ["Honolulu", "Honolulu"],
+  YVR: ["Vancouver", "Vancouver"], YUL: ["Montreal", "Montreal"],
+  KEF: ["Reykjavik", "Reykjavík"], TBS: ["Tiflis", "Tbilisi"], GYD: ["Bakü", "Baku"], EVN: ["Erivan", "Yerevan"], MLA: ["Malta", "Malta"],
+  SKG: ["Selanik", "Thessaloniki"], JTR: ["Santorini", "Santorini"], JMK: ["Mikonos", "Mykonos"], HER: ["Kandiye", "Heraklion"],
+  RHO: ["Rodos", "Rhodes"], CFU: ["Korfu", "Corfu"], TIA: ["Tiran", "Tirana"], ZAG: ["Zagreb", "Zagreb"], LJU: ["Ljubljana", "Ljubljana"],
+  RIX: ["Riga", "Riga"], TLL: ["Tallinn", "Tallinn"], VNO: ["Vilnius", "Vilnius"],
+  CMN: ["Kazablanka", "Casablanca"], TUN: ["Tunus", "Tunis"], ADD: ["Addis Ababa", "Addis Ababa"], ZNZ: ["Zanzibar", "Zanzibar"],
+  MRU: ["Mauritius", "Mauritius"], AMM: ["Amman", "Amman"], MCT: ["Maskat", "Muscat"],
+  DMK: ["Bangkok", "Bangkok"], CNX: ["Chiang Mai", "Chiang Mai"], KBV: ["Krabi", "Krabi"], USM: ["Koh Samui", "Koh Samui"],
+  SGN: ["Ho Chi Minh", "Ho Chi Minh City"], HAN: ["Hanoi", "Hanoi"], DAD: ["Da Nang", "Da Nang"], CGK: ["Cakarta", "Jakarta"],
+  MNL: ["Manila", "Manila"], PEK: ["Pekin", "Beijing"], PKX: ["Pekin", "Beijing"], PVG: ["Şanghay", "Shanghai"], SHA: ["Şanghay", "Shanghai"],
+  TPE: ["Taipei", "Taipei"], KTM: ["Katmandu", "Kathmandu"],
+  SYD: ["Sidney", "Sydney"], MEL: ["Melbourne", "Melbourne"], AKL: ["Auckland", "Auckland"], ZQN: ["Queenstown", "Queenstown"],
 };
 
 /** The airport's own name, where it isn't only its city's ("Sabiha Gökçen", "Kastrup"). */
@@ -48,6 +70,9 @@ const NAMES: Record<string, [tr: string, en: string]> = {
   WAW: ["Chopin", "Chopin"], JFK: ["JFK", "JFK"], DOH: ["Hamad", "Hamad"],
   HND: ["Haneda", "Haneda"], NRT: ["Narita", "Narita"], KIX: ["Kansai", "Kansai"], ITM: ["Itami", "Itami"], ICN: ["Incheon", "Incheon"],
   SIN: ["Changi", "Changi"], EWR: ["Newark", "Newark"],
+  EZE: ["Ezeiza", "Ezeiza"], AEP: ["Aeroparque", "Aeroparque"], SCL: ["Arturo Merino Benítez", "Arturo Merino Benítez"],
+  GIG: ["Galeão", "Galeão"], KEF: ["Keflavík", "Keflavík"], DMK: ["Don Mueang", "Don Mueang"], PKX: ["Daxing", "Daxing"],
+  PVG: ["Pudong", "Pudong"], SHA: ["Hongqiao", "Hongqiao"], CGK: ["Soekarno-Hatta", "Soekarno-Hatta"],
 };
 
 /**
@@ -97,6 +122,16 @@ const COUNTRY: Record<string, string> = {
   HND: "JP", NRT: "JP", KIX: "JP", ITM: "JP", NGO: "JP", FUK: "JP", CTS: "JP", ICN: "KR", HKG: "HK", SIN: "SG", KUL: "MY",
   CMB: "LK", MLE: "MV", DEL: "IN", BOM: "IN", AUH: "AE", HRG: "EG", SSH: "EG", NBO: "KE", JNB: "ZA", CPT: "ZA",
   EWR: "US", LAX: "US", SFO: "US", MIA: "US", ORD: "US", YYZ: "CA", MEX: "MX", GRU: "BR", EZE: "AR",
+  AEP: "AR", USH: "AR", FTE: "AR", BRC: "AR", IGR: "AR", MDZ: "AR", COR: "AR", SLA: "AR", REL: "AR",
+  SCL: "CL", PUQ: "CL", PNT: "CL", PMC: "CL", CJC: "CL", IPC: "CL",
+  GIG: "BR", LIM: "PE", CUZ: "PE", BOG: "CO", CTG: "CO", MVD: "UY", UIO: "EC", PTY: "PA", CUN: "MX", HAV: "CU", PUJ: "DO",
+  LAS: "US", MCO: "US", BOS: "US", SEA: "US", HNL: "US", YVR: "CA", YUL: "CA",
+  KEF: "IS", TBS: "GE", GYD: "AZ", EVN: "AM", MLA: "MT", SKG: "GR", JTR: "GR", JMK: "GR", HER: "GR", RHO: "GR", CFU: "GR",
+  TIA: "AL", ZAG: "HR", LJU: "SI", RIX: "LV", TLL: "EE", VNO: "LT",
+  CMN: "MA", TUN: "TN", ADD: "ET", ZNZ: "TZ", MRU: "MU", AMM: "JO", MCT: "OM",
+  DMK: "TH", CNX: "TH", KBV: "TH", USM: "TH", SGN: "VN", HAN: "VN", DAD: "VN", CGK: "ID", MNL: "PH",
+  PEK: "CN", PKX: "CN", PVG: "CN", SHA: "CN", TPE: "TW", KTM: "NP",
+  SYD: "AU", MEL: "AU", AKL: "NZ", ZQN: "NZ",
 };
 export const countryOfAirport = (code: string | null | undefined): string | null => (code ? (COUNTRY[code.toUpperCase()] ?? null) : null);
 
