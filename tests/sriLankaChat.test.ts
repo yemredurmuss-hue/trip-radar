@@ -194,7 +194,7 @@ describe("the route typed and the trip's name (items 3, 4)", () => {
     const s2 = typed(s1, "Ahangama", raw({ destination: "Ahangama", destination_country: "Sri Lanka", destination_country_code: "LK" }), 3);
     expect(s2.where).toMatchObject({ place: "Ahangama", code: "LK", within: "Sri Lanka" });
     expect(withLang("tr", () => tripTitle(s2))).toBe("Sri Lanka Gezisi");
-    expect(withLang("en", () => tripTitle(s2))).toBe("Sri Lanka trip");
+    expect(withLang("en", () => tripTitle(s2))).toBe("Sri Lanka Trip");
     // The same place said again keeps it.
     expect(typed(s2, "Ahangama", raw({ destination: "Ahangama", destination_country: "Sri Lanka", destination_country_code: "LK" }), 4).where?.within).toBe("Sri Lanka");
     const s3 = { ...s2, from: "Bodrum", start: { date: "2026-12-01", approx: false } };

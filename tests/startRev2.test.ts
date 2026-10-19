@@ -162,7 +162,7 @@ describe("an answer fills the question it answers (item 2)", () => {
     expect([s3.where?.place, s3.from]).toEqual(["Koh Phangan", "London"]);
     const reply = withLang("en", () => replyText(s1, s2, ctx));
     expect(reply).toMatch(/^Got it: from Istanbul\.|What would you most like to do in Koh Phangan\?/);
-    expect(withLang("en", () => creationOf(s2))!.title).toBe("Koh Phangan trip");
+    expect(withLang("en", () => creationOf(s2))!.title).toBe("Koh Phangan Trip");
   });
 
   it("where changes only when the traveller says so; a place in the same country said more exactly refines it", () => {

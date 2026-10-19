@@ -538,7 +538,7 @@ export function intentTitle(intent: Pick<Intent, "name" | "dates" | "kind"> & { 
   if (intent.kind === "place" && intent.place) return `${intent.name} ${intent.place}`;
   const year = intent.dates?.start.slice(0, 4) ?? (intent.year ? String(intent.year) : undefined);
   if (year && !/\b(19|20)\d{2}\b/.test(intent.name)) return `${intent.name} ${year}`;
-  if (intent.kind === "theme") return L(`${intent.name} Gezisi`, `${intent.name} trip`);
+  if (intent.kind === "theme") return L(`${intent.name} Gezisi`, `${intent.name} Trip`);
   return intent.name;
 }
 

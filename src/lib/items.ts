@@ -359,7 +359,7 @@ export function groupTitle(category: Category, items: Item[]): string | null {
   const city = mostCommon(items.map((i) => i.city).filter(Boolean) as string[]);
   if (category === "stay") {
     const nights = mostCommon(items.map((i) => nightsBetween(i.dates.start, i.dates.end)).filter((n) => n > 0));
-    return [city, nights ? `${nights} gece` : null].filter(Boolean).join(" · ") || null;
+    return [city, nights ? L(`${nights} gece`, `${nights} night${nights === 1 ? "" : "s"}`) : null].filter(Boolean).join(" · ") || null;
   }
   return category === "flight" ? null : city;
 }

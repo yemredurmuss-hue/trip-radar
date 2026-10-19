@@ -2,6 +2,7 @@
 // inviter's sharing server with the ticket that came in the invite, so they need no AI key of their own. The
 // inviter (who holds the gate's admin secret) makes one ticket per shared trip and it goes inside the share
 // code. Someone with their own key keeps using it: the gate is only the way when there's no key.
+import { L } from "../i18n";
 import { chromeKV, DEFAULT_SERVER, getShareConfig, type KV } from "./store";
 import { normalizeServerUrl } from "./code";
 
@@ -38,7 +39,7 @@ async function admin<T>(body: Record<string, unknown>, deps: { kv?: KV; fetch?: 
   const [secret, config] = await Promise.all([getAdminSecret(kv), getShareConfig(kv)]);
   if (secret.length < 24) return null;
   const res = await (deps.fetch ?? fetch)(`${serverOf(config.url)}/functions/v1/ai-admin`, { method: "POST", headers: { "Content-Type": "application/json", "x-admin-secret": secret }, body: JSON.stringify(body) });
-  if (!res.ok) throw new Error(res.status === 401 ? "AI kapısı: yönetici anahtarı tutmuyor." : `AI kapısı: ${res.status}`);
+  if (!res.ok) throw new Error(res.status === 401 ? L("AI kapısı: yönetici anahtarı tutmuyor.", "AI gate: the admin key doesn't match.") : L(`AI kapısı: ${res.status}`, `AI gate: ${res.status}`));
   return (await res.json()) as T;
 }
 

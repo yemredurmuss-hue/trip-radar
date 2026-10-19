@@ -11,7 +11,7 @@ import { budgetBar, sectionAllotments, decisionProgress, entryDomId, type Todo }
 import { cachedWeather } from "../lib/climate";
 import { addDays, cityKeyOf, sameCity, type OptionGroup, type Plan } from "../lib/plan";
 import { retryCapture } from "../lib/process";
-import { L } from "../lib/i18n";
+import { L, withLang } from "../lib/i18n";
 import { creditOf, findCityPhoto, imageProxy, keptCredits, nextCityImage, nextHeroImage, wantsCityImage, type HeroCity } from "../lib/cityImages";
 import { acceptMood, moodKey } from "../lib/heroText";
 import { getProvider, MissingKeyError } from "../lib/llm";
@@ -449,10 +449,11 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       try {
         const llm = await getProvider();
         const out = await llm.generateJson(
-          L(
+          // The trip's own sentence: in its language (its start chat's), whatever the board's.
+          withLang(trip.lang, () => L(
             "Gezinin ruhunu anlatan tek kısa cümle yaz. Rakam, tarih, fiyat yazma. En fazla 120 karakter.",
             "Write one short sentence capturing the trip's mood. No numbers, dates or prices. At most 120 characters.",
-          ),
+          )),
           mainNames.join(" → "),
           z.object({ text: z.string() }),
         );
