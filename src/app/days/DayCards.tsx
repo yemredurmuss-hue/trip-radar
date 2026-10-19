@@ -7,8 +7,8 @@
 // Insurance, the eSIM and a visa aren't part of a day: they stay in Plan → Diğer. This is Kompakt, the default;
 // Liste and Kartlar (the photo, the strip of days, the day's reservations) are DayViews.tsx.
 import { LegBody } from "../LegRow";
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
-import { dayCards, dayLinesOf, isAsideRow, isPlanRow, rowKind, stageOf, type DayCard } from "../../lib/dayCards";
+import { createContext, Fragment, useContext, useMemo, useState, type ReactNode } from "react";
+import { dayCards, dayLinesOf, isAsideRow, isPlanRow, rowKind, stageOf, undatedStops, type DayCard, type UndatedStop } from "../../lib/dayCards";
 import { cardKindColor } from "../../lib/cardKinds";
 import { rowIcon, rowItem, rowTitle, simpleName, titleText, withLayovers, withMeetings, type Place, type RowTitle } from "../../lib/dayRowTitle";
 import { BookedBadge } from "../cards/BookedBadge";
@@ -31,6 +31,8 @@ import { journeyDay } from "../../lib/dayView";
 import { JourneyDay } from "./JourneyDay";
 import type { LegCardFor, RenderGroup, SettledFor } from "../Timeline";
 import { liveLine } from "../../lib/flightData";
+import type { Plan } from "../../lib/plan";
+import { DayButton } from "../ideas/DayPicker";
 
 export interface DayCardsProps {
   sections: TimelineSection[];
@@ -53,6 +55,8 @@ export interface DayCardsProps {
   cards: DayPlanCards;
   /** The city's photo (the trip's), null when there is none yet: Liste and Kartlar' day photo. */
   cityImage?: (city: string | null) => string | null;
+  /** The trip's records and plan, for each stop's "Tarihsiz" (lib/dayCards undatedStops). */
+  undated?: { items: Item[]; plan: Pick<Plan, "range" | "stayBlocks" | "closed"> };
 }
 
 /** The Plan's own cards, so a day's journey and reservations show each thing as the Plan does. */
@@ -181,19 +185,54 @@ export function DayProviders({ mainPlaces, children }: { mainPlaces?: MainPlace[
 /** The stays by their nights' first day, for each day's "Gece:" line. */
 export const staysOf = (sections: TimelineSection[]) => new Map<string, StayEntry>(sections.flatMap((s) => (s.kind === "city" ? s.stays.map((st) => [st.key, st] as [string, StayEntry]) : [])));
 
-/** The days, a row each, in order (Kompakt). */
+/** The days, a row each, in order (Kompakt); under each stop's last day its "Tarihsiz". */
 export function CompactDays(props: DayCardsProps) {
   // Every free day is its own row (merge: false): the trip's days are the rows.
   const cards = dayCards(props.sections, { rentals: props.rentals, listings: props.listings, times: props.times, merge: false });
   const stays = staysOf(props.sections);
+  const undated = undatedOf(cards, props);
   return (
     <DayProviders mainPlaces={props.mainPlaces}>
       <div className="dg" aria-label={L("Gün gün", "Day by day")}>
         {cards.map((c) => (
-          <DayRowCard key={c.key} card={c} stays={stays} isToday={c.date === props.today} {...props} />
+          <Fragment key={c.key}>
+            <DayRowCard card={c} stays={stays} isToday={c.date === props.today} {...props} />
+            {undated.filter((u) => u.after === c.key).map((u) => <UndatedList key={u.key} stop={u} plan={props.undated!.plan} onShow={props.onShow} />)}
+          </Fragment>
         ))}
       </div>
     </DayProviders>
+  );
+}
+
+/** Each stop's "Tarihsiz" for these days. */
+export function undatedOf(cards: DayCard[], props: Pick<DayCardsProps, "undated">): UndatedStop[] {
+  return props.undated ? undatedStops(cards, props.undated.items, props.undated.plan) : [];
+}
+
+/**
+ * "Tarihsiz" under a stop's days (0.38.7): what is on its plan with no day of its own, a plain line each, no date given
+ * (its name shows its card on the Plan, "+ Gün" puts it on a day). Not a box above the days.
+ */
+export function UndatedList({ stop, plan, onShow }: { stop: UndatedStop; plan: Pick<Plan, "range" | "stayBlocks">; onShow: (key: string) => void }) {
+  return (
+    <section className="dg-und" aria-label={stop.city ? L(`${stop.city}: tarihsiz`, `${stop.city}: no date`) : L("Tarihsiz", "No date")}>
+      <p className="dg-und-h">
+        <b>{L("Tarihsiz", "No date")}</b>
+        {stop.city && <span>{stop.city}</span>}
+      </p>
+      <ul className="dg-und-list">
+        {stop.items.map((i) => (
+          <li key={i.id} className="dg-und-row" data-item-id={i.id}>
+            <button type="button" className="dg-und-name" onClick={() => onShow(`item:${i.id}`)}>
+              {i.name}
+            </button>
+            {i.status === "booked" && <BookedBadge look="booked" as={i.category === "activity" ? "ticket" : undefined} small />}
+            <DayButton item={i} plan={plan} pooled />
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

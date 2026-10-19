@@ -753,6 +753,8 @@ try {
   // (the day on a rail) | Harita; the choice is the traveller's own, kept on the device (localStorage, never the trip).
   const modes = app.locator(".days-mode");
   assert.deepEqual(await modes.getByRole("button").allInnerTexts(), ["Kompakt", "Liste", "Kartlar", "Harita"]);
+  // 0.38.7: no key of the looks above the days (Arıyoruz · Önerimiz · Seçildi · Rezerve · Ayarlandı), as in the other two views.
+  assert.equal(await app.locator(".plan-key").count(), 0, "Gün gün has no key of the colours on top");
   assert.equal(await modes.getByRole("button", { name: "Kompakt" }).getAttribute("aria-pressed"), "true", "Kompakt is the default");
   await modes.getByRole("button", { name: "Liste", exact: true }).click();
   await app.locator(".dv-day").first().waitFor();
@@ -1634,10 +1636,11 @@ try {
   // "+ Plana koy" ↔ "✓ Planda": it goes to Planında.
   await majestic.getByRole("button", { name: "+ Plana koy" }).click();
   await portoTodo.locator('[data-row="plan"] .z-k[aria-label="Majestic Café"] .z-okc', { hasText: "Planda" }).waitFor();
-  // Its day in Gün gün: "Planda, günü yok", a day and a meal, then it's on that day.
+  // Its day in Gün gün: under Porto's days, "Tarihsiz" (0.38.7: not a strip above the days), a day and a meal, then it's on that day.
   await tab("Gün gün").click();
-  const undated = app.locator(".ud-strip");
-  const majesticUndated = undated.locator('.ud-item', { hasText: "Majestic Café" });
+  const undated = app.locator(".dg-und", { hasText: "Tarihsiz" });
+  const majesticUndated = undated.locator(".dg-und-row", { hasText: "Majestic Café" });
+  assert.equal(await app.locator(".ud-strip").count(), 0, "no strip of the undated above the days");
   await majesticUndated.getByRole("button", { name: "+ Güne ekle" }).click();
   await majesticUndated.getByRole("radio", { name: "öğle" }).click();
   await majesticUndated.getByRole("dialog", { name: "Hangi gün?" }).getByRole("button", { name: /^9 Eki/ }).click();

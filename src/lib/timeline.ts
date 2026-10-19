@@ -162,6 +162,22 @@ export function hiddenNights(timeline: Timeline): { range: DateRange; city: stri
   return timeline.entries.filter((e): e is StayEntry => e.kind === "stay" && Boolean(e.skipped)).map((e) => ({ range: e.block.range, city: e.block.city }));
 }
 
+/**
+ * The day a thing to do or a meal is on: the one the traveller gave it, its ticket's or its page's. The stretch it was
+ * only looked for in is no day of its own (0.38.7, Emre: "tarihi seçilmemişse otomatik tarih ataması yapmasın"): a tour
+ * the source found for a stop is saved with the stop's days (offerSource.offerItem, need.start/end), so a range said by
+ * no one that covers a whole stop, or reaches outside the trip, is no day. Shown, never written: the record keeps it.
+ */
+export function ownDay(item: Item, plan: Pick<Plan, "range" | "stayBlocks">): string | null {
+  const start = isoDate(item.dates.start);
+  if (!start || (item.category !== "activity" && item.category !== "food") || isRental(item)) return start;
+  const end = isoDate(item.dates.end);
+  if (!end || end <= start || (item.dates.source !== "unverified" && item.dates.source !== "none")) return start;
+  const covers = (r: DateRange) => start <= r.start && end >= r.end;
+  const outside = Boolean(plan.range && (start < plan.range.start || end > plan.range.end));
+  return outside || (plan.range && covers(plan.range)) || plan.stayBlocks.some((b) => covers(b.range)) ? null : start;
+}
+
 export function buildTimeline(plan: Plan, allLegs: Leg[], items: Item[], hidden: Set<string> = new Set()): Timeline {
   // A transfer the traveller said isn't needed stays out (a change of city only while nothing is saved or said
   // for it: one with a flight is the way on, see canHideLeg).
@@ -260,7 +276,7 @@ export function buildTimeline(plan: Plan, allLegs: Leg[], items: Item[], hidden:
 
   const byDay = new Map<string, Item[]>();
   for (const i of dayItems) {
-    const d = isoDate(i.dates.start);
+    const d = ownDay(i, plan);
     if (!d || d < start || d > lastDay || inRental.has(i.id)) continue;
     byDay.set(d, [...(byDay.get(d) ?? []), i]);
   }
@@ -283,7 +299,7 @@ export function buildTimeline(plan: Plan, allLegs: Leg[], items: Item[], hidden:
   const cityPlans = blocks.map(() => [] as Item[]);
   for (const i of dayItems) {
     // An idea (no booking needed) is a row of Yapılacak şeyler or Restoranlar, never a block of the front.
-    if (placedDays.has(i.id) || !i.city || isoDate(i.dates.start) || isIdea(i) || (i.status === "saved" && !isRental(i))) continue;
+    if (placedDays.has(i.id) || !i.city || ownDay(i, plan) || isIdea(i) || (i.status === "saved" && !isRental(i))) continue;
     const index = blocks.findIndex((b) => sameCity(b.city, i.city));
     if (index < 0) continue;
     cityPlans[index].push(i);
