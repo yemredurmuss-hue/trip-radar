@@ -676,6 +676,9 @@ export interface Item {
   statusAt?: number;
   /** The status it had when the chat took it off the plan (dismissed): Gizlenenler's "Geri al" puts that back. */
   dismissedFrom?: ItemStatus;
+  /** The stay chosen in its place, when the start's place was set aside for it ("Yerine X geldi"): that choice undone,
+   * this one comes back (0.39.0, Emre). */
+  replacedBy?: string;
   /**
    * A booking the traveller cancelled ("X'i iptal ettim", lifecycle.ts İptal edildi): it leaves the plan as a
    * ruled-out record does (status "dismissed", dismissedFrom "booked"), so every reader, an older version too,

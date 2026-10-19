@@ -42,7 +42,20 @@ export async function setItemStatus(item: Item, status: ItemStatus): Promise<voi
   const { dismissedFrom: _from, cancelledAt: _cancelled, refundNote: _refund, ...fresh } = found;
   await d.put("items", { ...fresh, status: back, statusAt: Date.now(), updatedAt: Date.now() });
   await addEvent(item.tripId, statusEvent(item.name, back));
+  // A chosen stay given up (back to the options, ruled out): the start's place set aside for it comes back.
+  if (found.status === "chosen" && back !== "chosen" && back !== "booked") await restoreReplaced(item);
   notifyChanged();
+}
+
+/** The places set aside for `item` (chooseItem: "Yerine X geldi"), brought back as they were. */
+async function restoreReplaced(item: Item): Promise<void> {
+  const d = await db();
+  for (const ph of await listItems(item.tripId)) {
+    if (ph.replacedBy !== item.id || ph.status !== "dismissed") continue;
+    const { replacedBy: _by, dismissedFrom, ...rest } = ph;
+    await d.put("items", { ...rest, status: dismissedFrom ?? "chosen", statusAt: Date.now(), updatedAt: Date.now() });
+    await addEvent(item.tripId, L(`${ph.name} geri geldi`, `${ph.name} is back`));
+  }
 }
 
 /**
@@ -260,6 +273,8 @@ export async function chooseItem(item: Item, alternatives: Item[]): Promise<void
       const fresh = (await d.get("items", other.id)) ?? other;
       if (fresh.status !== "chosen") continue;
       await d.put("items", { ...fresh, status: "saved", statusAt: Date.now(), updatedAt: Date.now() });
+      // What was set aside for the one given up is set aside for this one now.
+      for (const ph of await listItems(item.tripId)) if (ph.replacedBy === other.id && ph.status === "dismissed") await d.put("items", { ...ph, replacedBy: item.id });
     }
   }
   await setItemStatus(item, "chosen");
@@ -269,7 +284,7 @@ export async function chooseItem(item: Item, alternatives: Item[]): Promise<void
   if (!trip) return;
   for (const ph of stayPlaceholdersTaken(item, await listItems(item.tripId), trip)) {
     const now = Date.now();
-    await d.put("items", { ...ph, status: "dismissed", dismissedFrom: ph.status, statusAt: now, updatedAt: now });
+    await d.put("items", { ...ph, status: "dismissed", dismissedFrom: ph.status, replacedBy: item.id, statusAt: now, updatedAt: now });
     await addEvent(item.tripId, L(`${ph.name}: yerine ${item.name} geldi`, `${ph.name}: replaced by ${item.name}`));
   }
   notifyChanged();

@@ -5,7 +5,7 @@
 // for most of the start's nights sets that place aside.
 import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
-import { addOffer, chooseItem } from "../src/app/actions";
+import { addOffer, chooseItem, setItemStatus } from "../src/app/actions";
 import { modeOfText } from "../src/lib/cardKinds";
 import { categorize } from "../src/lib/categories";
 import { db, listItems } from "../src/lib/db";
@@ -141,5 +141,25 @@ describe("Emre's Bali: picking changes the spine", () => {
     expect(after.find((i) => i.id === ph.id)).toMatchObject({ status: "dismissed", dismissedFrom: "chosen" });
     const stays = board(trip, after).of("stay");
     expect(stays.filter((i) => i.status === "chosen").map((i) => i.itemIds)).toEqual([[most.id]]);
+  });
+
+  it("that choice undone (back to the options): the place set aside comes back as it was (0.39.0, Emre: evet)", async () => {
+    const trip = await create();
+    const items = await listItems(trip.id);
+    const ph = items.find((i) => i.category === "stay")!;
+    const villa = (id: string): Item => ({
+      ...ph, id, name: `Villa ${id}`, origin: undefined, plannedKind: undefined, provider: "Airbnb", url: `https://www.airbnb.com/rooms/${id}`, status: "saved", dates: { start: "2026-12-02", end: "2027-01-01", source: "url" },
+    });
+    const a = villa("a");
+    const b = villa("b");
+    await (await db()).put("items", a);
+    await (await db()).put("items", b);
+    await chooseItem(a, [...items, a, b]);
+    // Another chosen instead: the place stays aside, now for that one.
+    await chooseItem(b, [...items, a, b]);
+    expect((await listItems(trip.id)).find((i) => i.id === ph.id)).toMatchObject({ status: "dismissed", replacedBy: "b" });
+    await setItemStatus((await listItems(trip.id)).find((i) => i.id === "b")!, "saved");
+    expect((await listItems(trip.id)).find((i) => i.id === ph.id)).toMatchObject({ status: "chosen" });
+    expect((await listItems(trip.id)).find((i) => i.id === ph.id)?.replacedBy).toBeUndefined();
   });
 });
