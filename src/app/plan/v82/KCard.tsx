@@ -11,7 +11,7 @@
 // it's empty: its head says so); more than the row holds: "+n Pano'da".
 import { useEffect, useState, type ReactNode } from "react";
 import { cardFacts } from "../../../lib/cardFacts";
-import { askLike, askOther, moreLabel, pictureChips, type KCardVM } from "../../../lib/collectionCards";
+import { askLike, askOther, pictureChips, type KCardVM } from "../../../lib/collectionCards";
 import { L } from "../../../lib/i18n";
 import type { AccessVM, IntentVM, OptionVM } from "../../../lib/intents";
 import { moveToBookings, setDone, setIdeaDay, setPrep } from "../../../lib/ideas";
@@ -502,12 +502,3 @@ export function EmptySlots({ n }: { n: number }) {
   );
 }
 
-/** "+n Pano'da": the rest of a row, the Pano opened on this city's intent. */
-export function MoreTile({ n, title, onOpen }: { n: number; title: string; onOpen: () => void }) {
-  return (
-    <button type="button" className="z-k z-more q-pano" aria-label={moreLabel(n, title)} onClick={onOpen}>
-      <b>+{n}</b>
-      <small>{L("Pano'da", "on the Board")}</small>
-    </button>
-  );
-}

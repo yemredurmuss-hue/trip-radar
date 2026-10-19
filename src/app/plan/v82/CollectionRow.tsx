@@ -2,7 +2,8 @@
 // Planında has every card on the plan, row after row (Emre, 19 Ekim: twelve activities on the plan are twelve on the plan).
 // While nothing is there it has no empty slots, one line in its head, "Henüz plana koymadın · önerilerden + Plana koy", and
 // Öneriler stays open even when folded (Emre, 19 Ekim, again); Öneriler stops at a row, the rest "+n Pano'da" (the Pano,
-// where all of it gathers to sift and compare, opened on this city). Yapılacaklar' Planında head has its chips (Hepsi, Gezilecek, Restoranlar; C20), Etkinlik's
+// where all of it gathers to sift and compare, opened on this city; 0.38.9: four cards at most, the next coming up as one goes
+// on the plan, the count in the head opening the Pano). Yapılacaklar' Planında head has its chips (Hepsi, Gezilecek, Restoranlar; C20), Etkinlik's
 // Öneriler folds away (C26, remembered in this browser as the live bar was). Öneriler holds the saved ideas, the connected
 // source's tours for the city (the live board's Viator cards, their photos kept on the records; a town it doesn't know is
 // searched in its country; a town with few has the trip's nearby cities' and the country's too, each card saying where),
@@ -11,7 +12,7 @@
 // While the source is asked, Öneriler's head says so ("Viator'da turlar aranıyor…", 0.38.8), drawn even with no idea yet.
 import { useEffect, useState, type ReactNode } from "react";
 import { citiesOfPlan, type SectionId } from "../../../lib/categories";
-import { askMore, collectionRow, filterWord, ideasCaption, inFilter, K_FILTERS, mapsSearch, nearPlaces, offerCard, ROW_CELLS, rowCells, stopCountry, type KCardVM, type KFilter } from "../../../lib/collectionCards";
+import { askMore, collectionRow, filterWord, ideasCaption, inFilter, K_FILTERS, mapsSearch, moreLabel, nearPlaces, offerCard, ROW_CELLS, rowCells, stopCountry, type KCardVM, type KFilter } from "../../../lib/collectionCards";
 import { needKey, type ActivityGap } from "../../../lib/emptyCards";
 import { L } from "../../../lib/i18n";
 import { selfSearches, type SelfSearch } from "../../../lib/intentFrame";
@@ -27,7 +28,7 @@ import { useEmptyEnv } from "../../cards/emptyEnv";
 import { useCardEnv } from "../../cards/PlanCard";
 import { useCollectEnv } from "./collectEnv";
 import { Ic } from "./icons";
-import { EmptySlots, MoreTile, OfferCard, RecordCard, SuggestCard } from "./KCard";
+import { EmptySlots, OfferCard, RecordCard, SuggestCard } from "./KCard";
 import { SelfLinks } from "./OptionCompact";
 import { Searching } from "./Searching";
 import { useV82Env } from "./v82Env";
@@ -199,7 +200,13 @@ export function CollectionRow({ vm, onPut, onTakeOff }: CollectionRowProps) {
         <div className="q-opts">
           <div className="q-oh">
             <b className="q-ot">{L("Öneriler", "Suggestions")}</b>
-            <small className="q-oc">{ideasCaption(ideas.length, o.shown.length)}</small>
+            {o.more > 0 ? (
+              <button type="button" className="q-oc z-ocb" aria-label={moreLabel(o.more, L(`${city}: öneriler`, `${city}: suggestions`))} onClick={pano}>
+                {ideasCaption(ideas.length, o.shown.length)}
+              </button>
+            ) : (
+              <small className="q-oc">{ideasCaption(ideas.length, o.shown.length)}</small>
+            )}
             {looking && <ToursLooking />}
             <span className="q-sp" />
             <SelfLinks links={links} />
@@ -215,7 +222,6 @@ export function CollectionRow({ vm, onPut, onTakeOff }: CollectionRowProps) {
           {(todo || open || plans.length === 0) && (
             <div className="q-cards z-ks" data-row="ideas">
               {o.shown.map(cardOf)}
-              {o.more > 0 && <MoreTile n={o.more} title={L(`${city}: öneriler`, `${city}: suggestions`)} onOpen={pano} />}
             </div>
           )}
         </div>

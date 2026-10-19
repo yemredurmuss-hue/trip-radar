@@ -1,5 +1,5 @@
 // Plan v82's rows of cards (lib/collectionCards.ts, v82 geçişi aşama 4, izlenebilirlik 119-123): each card's family,
-// state and lines (a bought ticket's way in, a place done), the row's four cells ("+n Pano'da"), Planında and Öneriler from a
+// state and lines (a bought ticket's way in, a place done), the row's four cells (four cards at most, the next coming up), Planında and Öneriler from a
 // city's intent (the trip's reason first, the source's tours and then the suggestions after the saved ideas), Yapılacaklar' chips
 // and its "n yapıldı".
 import { describe, expect, it } from "vitest";
@@ -145,14 +145,36 @@ describe("Emre's Ushuaia (0.38.8, option A): the badges are chips on the picture
 });
 
 describe("a row's four cells", () => {
-  it("every card while they fit, else three and +n Pano'da", () => {
+  it("four cards at most (0.38.9), the rest waiting in line", () => {
     expect(rowCells([1, 2, 3, 4])).toEqual({ shown: [1, 2, 3, 4], more: 0 });
-    expect(rowCells([1, 2, 3, 4, 5, 6])).toEqual({ shown: [1, 2, 3], more: 3 });
+    expect(rowCells([1, 2, 3, 4, 5, 6])).toEqual({ shown: [1, 2, 3, 4], more: 2 });
+    expect(rowCells([1, 2])).toEqual({ shown: [1, 2], more: 0 });
     expect(rowCells([])).toEqual({ shown: [], more: 0 });
   });
   it("Öneriler' caption: the count, or how many are shown and that the rest are on the Pano", () => {
     expect(ideasCaption(3, 3)).toBe("3");
-    expect(ideasCaption(7, 3)).toBe("7 · ilk 3, tümü Pano'da");
+    expect(ideasCaption(7, 4)).toBe("7 · ilk 4, tümü Pano'da");
+  });
+  it("Şarm El-Şeyh's Öneriler: saved ideas and Viator's tours counted together, four shown; one put on the plan, the next comes up", () => {
+    const sharm = makeItem({ id: next("s"), name: "Reef Oasis", category: "stay", city: "Şarm El-Şeyh", countryCode: "EG", needKey: "stay:sarm", dates: { start: "2026-11-01", end: "2026-11-07", source: "url" }, guests: two, price: eur(600), status: "booked" });
+    const ai = (name: string, status: Item["status"] = "saved") => act(name, status, { city: "Şarm El-Şeyh", countryCode: "EG", addedBy: "ai" });
+    const tour = (id: string, title: string) => ({ id, kind: "activity" as const, title, url: `https://viator.com/${id}`, why: "", source: "Viator", fetchedAt: 1 });
+    const offers = [tour("o1", "ATV turu"), tour("o2", "Ras Muhammed tekne turu"), tour("o3", "Tiran adası şnorkel"), tour("o4", "Çöl safarisi")];
+    const before = [sharm, ai("Naama Bay gece turu"), ai("Renkli Kanyon")];
+    const b0 = rows(base, before);
+    const r0 = collectionRow(b0.of("activity", "Şarm El-Şeyh"), b0.byId, { trip: base, people: 2, offers });
+    expect(r0.ideas).toHaveLength(6);
+    const o0 = rowCells(r0.ideas);
+    expect(o0.shown.map((c) => c.title)).toEqual(["Naama Bay gece turu", "Renkli Kanyon", "ATV turu", "Ras Muhammed tekne turu"]);
+    expect(o0.more).toBe(2);
+    // "+ Plana koy" on Renkli Kanyon: it goes to Planında, Tiran adası şnorkel comes up as the fourth.
+    const after = [sharm, before[1], { ...before[2], status: "chosen" as const }];
+    const b1 = rows(base, after);
+    const r1 = collectionRow(b1.of("activity", "Şarm El-Şeyh"), b1.byId, { trip: base, people: 2, offers });
+    expect(r1.plan.map((c) => c.title)).toEqual(["Renkli Kanyon"]);
+    const o1 = rowCells(r1.ideas);
+    expect(o1.shown.map((c) => c.title)).toEqual(["Naama Bay gece turu", "ATV turu", "Ras Muhammed tekne turu", "Tiran adası şnorkel"]);
+    expect(o1.more).toBe(1);
   });
 });
 
