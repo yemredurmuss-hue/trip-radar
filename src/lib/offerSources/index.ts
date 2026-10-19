@@ -281,6 +281,9 @@ export function queryOf(need: Need, language: "tr" | "en" = lang(), narrow: Narr
     const country = countryName(need.country);
     if (country) q.country = country;
     if (need.home) q.home = "1";
+    // The kind of place wanted (0.39.4): the server searches it in words; a server before it reads hotels, as always.
+    const stay = need.stay?.trim();
+    if (stay) q.stay = stay.slice(0, 60);
     return new URLSearchParams(narrowed(q, narrow)).toString();
   }
   if (need.kind === "transfer") {

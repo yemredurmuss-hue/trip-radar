@@ -53,7 +53,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { gunzipSync, strFromU8, unzipSync } from "npm:fflate@0.8.2";
 import {
   adultsOf, airportCodeOk, askableDay, bookingSearch, cheapest, flightOffer, geoFromTypeahead, langOf, maxOf, nightsBetween,
-  airbnbCandidate, airbnbOffer, candidateOffer, cityEvents, dayFares, logInsight, topSights, type DayFare, pickCandidates, priceInsightOf, type PriceInsightOut, pickCheapFlights, pickCheapStays, pickFlights, pickLiveStays, pickStays, placeOk, preferOf,
+  airbnbCandidate, airbnbOffer, candidateOffer, cityEvents, dayFares, logInsight, topSights, type DayFare, pickCandidates, priceInsightOf, type PriceInsightOut, pickCheapFlights, pickCheapStays, pickFlights, pickLiveStays, pickStays, placeOk, preferOf, stayQuery, stayWordsOk,
   airaloPacks, airaloPlace, omioName, omioRoutes, pickActivities, pickEsims, pickTransfers, placeKey, serpFlights, serpStays, stayCandidate, stayOffer, ucusFlights, viatorDestination, type AviaFlight, type OfferOut, type StayCandidate,
   placeSearchOk, serpPlaces, GOOGLE_PLACE_FIELDS, googlePhotoUri, googlePlaces, photoNameOk, type PlaceOut,
   type EsimPack, type OmioRoute, type ViProduct, type XoHotel, type XoRate,
@@ -110,7 +110,8 @@ async function loadNames() {
   }
 }
 
-type Ask = { adults: number; lang: "tr" | "en"; prefer: "cheap" | null; max: number | null; live: boolean };
+/** `stay`: a stay's kind of place in words ("hostels"; 0.39.4), else null: hotels. */
+type Ask = { adults: number; lang: "tr" | "en"; prefer: "cheap" | null; max: number | null; live: boolean; stay?: string | null };
 
 /**
   * One SerpApi search, cached (its answers don't change in hours), under its own small daily cap: `source`, the cap a
@@ -352,9 +353,9 @@ async function xotelo<T>(sb: Sb, path: string, hours: number): Promise<T | null>
 type Stays = { offers: OfferOut[]; candidates: StayCandidate[] };
 
 /** Google Hotels for these nights (live): its hotels with their prices; the row's three from them. */
-async function liveStays(sb: Sb, city: string, country: string | null, start: string, end: string, { adults, lang, prefer, max }: Ask): Promise<Stays> {
+async function liveStays(sb: Sb, city: string, country: string | null, start: string, end: string, { adults, lang, prefer, max, stay }: Ask): Promise<Stays> {
   const nights = nightsBetween(start, end);
-  const body = await serp(sb, { engine: "google_hotels", q: `${city}${country ? `, ${country}` : ""} hotels`, check_in_date: start, check_out_date: end, adults: String(adults), currency: "EUR", hl: lang === "en" ? "en" : "tr" }, 24, "serp_otel");
+  const body = await serp(sb, { engine: "google_hotels", q: stayQuery(city, country, stay ?? null), check_in_date: start, check_out_date: end, adults: String(adults), currency: "EUR", hl: lang === "en" ? "en" : "tr" }, 24, "serp_otel");
   const all = serpStays(body, { lang, nights, now: Date.now(), search: (name) => bookingSearch(name, city, start, end, adults) });
   const within = max != null ? all.filter((c) => (c.nightly ?? Infinity) <= max) : all;
   const offers = prefer === "cheap" || max != null ? cheapest(within.map((c) => candidateOffer(c, "", lang)), lang, max) : pickLiveStays(within, lang);
@@ -563,7 +564,10 @@ Deno.serve(async (req: Request) => {
       const city = placeOk(p("city")), country = placeOk(p("country")), start = askableDay(p("start"), now), end = askableDay(p("end"), now);
       if (!city || !start || !end || end <= start) return reply(400, { error: "ask" });
       const home = p("home") === "1";
-      const key = `out2|s|${city.toLocaleLowerCase("en")}|${country ?? ""}|${start}|${end}|${ask.adults}|${ask.lang}|${how}${home ? "|home" : ""}`;
+      // A kind of place wanted (0.39.4: "hostels"); a client before it sends none and gets hotels, under the same key as before.
+      const stay = stayWordsOk(p("stay"));
+      if (stay) ask.stay = stay;
+      const key = `out2|s|${city.toLocaleLowerCase("en")}|${country ?? ""}|${start}|${end}|${ask.adults}|${ask.lang}|${how}${home ? "|home" : ""}${stay ? `|k:${stay}` : ""}`;
       let found = await cached<Stays>(sb, key, HOURS.stay);
       if (!found) {
         const fresh = await stays(sb, (Deno.env.get("AERODATABOX_KEY") ?? "").trim(), city, country, start, end, ask);

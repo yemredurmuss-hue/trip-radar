@@ -5,6 +5,7 @@
 // the interview as the trip's chat. What it makes for the flights and stays are places to fill, never choices
 // (trip.startGuide.placeholders). Every step can run again: the trip made in step 1 is reused (the state keeps
 // its id) and a plan said again updates the one before (planToSave), so "Tekrar dene" never makes anything twice.
+import { mergeWants, wantsFromStart, type TripWants } from "./travelWants";
 import { db, getSettings, listItems, listMessages, listPreferences, newId, notifyChanged } from "./db";
 import { L, withLang } from "./i18n";
 import { EMPTY_METRICS, formatDateRange, nightsBetween } from "./items";
@@ -117,6 +118,9 @@ export interface StepEnv {
   provider?: "gemini" | "anthropic";
 }
 
+/** The start's intent on top of what the trip already had (null: nothing known). */
+const startWants = (s: StartState, had?: TripWants | null): TripWants | null => mergeWants(had, wantsFromStart(s));
+
 /** What a step did: the trip's id (step "trip" makes it), and its line when it has its own words ("3 öneri"). */
 export interface StepResult {
   tripId: string;
@@ -140,6 +144,8 @@ export async function runStep(id: StepId, s: StartState, env: StepEnv = {}): Pro
         ...(intent ? { intent } : {}),
         // A budget a trip kind's answer set, when the trip has none yet (never over one said on the board).
         ...(c.budget && !existing.budget ? { budget: c.budget } : {}),
+        // The intent said at the start (the money level, who goes, the kind of stay), over what the trip had.
+        ...(startWants(s, existing.wants) ? { wants: startWants(s, existing.wants) } : {}),
         confirmedDates: c.dates,
         startGuide: { ...(existing.startGuide ?? { createdAt: now() }), road: c.road || undefined, approxStart: c.approxStart, way: c.way ?? undefined, dayTrip: c.dayTrip || undefined, routeDraft: c.routeDraft || undefined },
         lang: s.lang,
@@ -156,6 +162,8 @@ export async function runStep(id: StepId, s: StartState, env: StepEnv = {}): Pro
       title: T(() => uniqueTitle(c.title, c.dates?.start ?? null, trips)),
       confirmedDates: c.dates,
       budget: c.budget,
+      // The intent said at the start: "Ekonomik", who goes, the kind of stay (travelWants.ts); every suggestion reads it.
+      ...(startWants(s) ? { wants: startWants(s) } : {}),
       heroImage: null,
       startGuide: { createdAt: now(), ...(c.road ? { road: true } : {}), ...(c.approxStart ? { approxStart: c.approxStart } : {}), ...(c.way ? { way: c.way } : {}), ...(c.dayTrip ? { dayTrip: true } : {}), ...(c.routeDraft ? { routeDraft: true } : {}) },
       // The conversation's language: the trip's chat and its suggestions go on in it.
@@ -400,6 +408,7 @@ export function wouldMake(s: StartState, now = Date.now()): { trip: Trip; items:
       title: c.title,
       confirmedDates: c.dates,
       budget: c.budget,
+      ...(startWants(s) ? { wants: startWants(s) } : {}),
       heroImage: null,
       startGuide: { createdAt: now, ...(c.road ? { road: true } : {}), ...(c.way ? { way: c.way } : {}), ...(c.dayTrip ? { dayTrip: true } : {}), ...(c.routeDraft ? { routeDraft: true } : {}) },
       ...(c.parents ? { placeParents: c.parents } : {}),

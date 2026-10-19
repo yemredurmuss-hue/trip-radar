@@ -1,6 +1,7 @@
 // Chat assistant. Every plan change goes through a tool, so the board always reflects what was said.
 // History is append-only: the trip state rides along in a user turn only when it changed, and a
 // long conversation starts a fresh context instead of rewriting old turns.
+import { mergeWants, stayQueryOf, wantsIn, type TripWants } from "./travelWants";
 import { loadDecisions, type TripDecisions } from "./analysis";
 import { acceptSynth, conceptState, groundQuery, synthPrompt, synthSchema, synthSystem, tripBrief } from "./tripBrief";
 import { addEvent, db, listItems, listMessages, listPreferences, newId, nextTime, notifyChanged } from "./db";
@@ -161,6 +162,7 @@ export const FIND_OFFERS_RULES_TR = `Fiyatlı öneriler (find_offers):
 - Sonuçtaki teklifler sohbette kart olarak (en fazla 3, "Ekle" butonuyla) gösterilir: yanıtında yalnız kısaca anlat (hangisi neden), fiyat, puan ya da ad uydurma, link yazma; sayıları sonuçtan al.
 - Sonuçta over_max varsa onun cümlesini aynen söyle (bu fiyata bulunamadı, en ucuzu ...).
 - Etkinlik, tur ya da ders istenince ("tur öner", "daha fazla öner", "sörf dersi var mı") ÖNCE find_offers kind activity (city o şehir, query türü, ör. "sörf dersi"; start/end o şehrin günleri ya da ""). Sonuç yoksa (found 0) suggest ile kart bırakma, uydurma tur yazma: "Viator'da bu bölge için tur bulamadım" de.
+- Kullanıcı bir konaklama türü ya da kısıt söylerse (hostel, villa, kamp, apart, pansiyon, ev; "ucuz", "şehir merkezinde", "denize yakın") find_offers'ı kind stay ve wish ile çağır (kısa İngilizce: "hostel", "villa with pool", "apartment city centre"). Gelen sonuçlar o türdür; "bulamadım" demeden önce sonucu oku. trip.wants gezginin kendi söylediği niyettir (bütçe seviyesi, kimle, istediği ve istemediği konaklama türü, yer): her önerin ona uysun; ekonomik bir gezide hostel ve pansiyonu da say, istemediği türü önerme.
 - Konaklama ya da uçuşta find_offers hiçbir şey döndürmediyse (found 0) genel bilginle öneri verebilirsin; o zaman bunu açıkça "kaynakta bulunamadı, tahmini" diye işaretle. Kendi uydurduğun yerleri asla gerçek teklif gibi sunma.`;
 export const FIND_OFFERS_RULES_EN = `Priced offers (find_offers):
 - For a stay or a flight, when the user asks for "cheaper", "cheaper options", "alternatives", "suggest", "any other hotel/flight", call find_offers FIRST (kind stay or flight; the city or from/to, and the dates from the plan; max_per_night when the user gave a ceiling: a night for a stay, per person for a flight, in €). When cheaper is asked for, prefer "cheap".
@@ -168,6 +170,7 @@ export const FIND_OFFERS_RULES_EN = `Priced offers (find_offers):
 - The offers in the result show in the chat as cards (at most 3, with an "Add" button): in your reply only say briefly which and why; never make up prices, ratings or names, write no links; take the numbers from the result.
 - If the result has over_max, say its sentence as it is (nothing at that price, the cheapest is ...).
 - When an activity, a tour or a class is asked for ("suggest tours", "suggest more", "any surf lessons"), call find_offers kind activity FIRST (city that city, query the kind, e.g. "surf lesson"; start/end the city's days or ""). When it finds nothing (found 0), leave no card with suggest and make up no tours: say "I couldn't find tours for this area on Viator".
+- When the user names a kind of place to stay or a constraint (a hostel, a villa, a campsite, an apartment, a guesthouse, a house; "cheap", "in the centre", "near the beach"), call find_offers kind stay with wish (short English: "hostel", "villa with pool", "apartment city centre"). What comes back is that kind; read it before saying none was found. trip.wants is the intent the traveller said themselves (the money level, who goes, the kinds of stay asked for or ruled out, where): keep every suggestion to it; on a budget trip count hostels and guesthouses in, and never suggest a kind they ruled out.
 - For a stay or a flight, only when find_offers returned nothing at all (found 0) may you suggest from general knowledge; then mark it plainly as "not found in the sources, estimated". Never present places you made up as real offers.`;
 
 const SYSTEM = `Sen kullanıcının seyahat arkadaşı ve karar asistanısın. Kullanıcı seçeneklerini (otel, uçuş, etkinlik, restoran, eSIM) kendisi kaydeder; sen seçenek aramazsın (daha ucuz ya da alternatif konaklama/uçuş ya da etkinlik/tur istenince find_offers hariç), kaydedilenler üzerinden karar vermesine yardım edersin. Son kararı her zaman kullanıcı verir.
@@ -759,12 +762,19 @@ function buildTools(en: boolean): ToolSpec[] {
           start: { type: "string", description: t("YYYY-MM-DD; etkinlikte bilinmiyorsa \"\"", "YYYY-MM-DD; \"\" for an activity when not known") },
           end: { type: "string", description: t("Konaklamada çıkış, etkinlikte o şehrin son günü (YYYY-MM-DD); uçuşta \"\"", "A stay's check-out, an activity's last day in that city (YYYY-MM-DD); \"\" for a flight") },
           query: { type: "string", description: t("Etkinlikte aranan tür, kısa (\"sörf dersi\", \"tekne turu\"); yoksa \"\"", "For an activity, the kind wanted, short (\"surf lesson\", \"boat tour\"); else \"\"") },
+          wish: {
+            type: "string",
+            description: t(
+              "Konaklamada kullanıcının istediği yer türü ve kısıtı, İngilizce kısa arama sözcükleriyle (\"hostel\", \"villa with pool\", \"apartment city centre\", \"cheap guesthouse near the beach\", \"campsite\"); kullanıcı söylemediyse \"\" (gezinin niyeti trip.wants'tan kendiliğinden eklenir)",
+              "For a stay, the kind of place and the constraint the user asked for, in short English search words (\"hostel\", \"villa with pool\", \"apartment city centre\", \"cheap guesthouse near the beach\", \"campsite\"); \"\" when they didn't say (the trip's intent, trip.wants, is added by itself)",
+            ),
+          },
           adults: { type: "number", description: t("Kişi sayısı; bilinmiyorsa 0 (gezininki)", "How many people; 0 when not said (the trip's)") },
           max_per_night: { type: "number", description: t("Tavan, €: konaklamada gecelik, uçuşta kişi başı; yoksa 0", "A ceiling in €: a night for a stay, per person for a flight; 0 for none") },
           prefer: { type: "string", enum: ["cheap", "best"] },
           live: { type: "boolean", description: t("Yalnız kullanıcı açıkça şu anki/canlı fiyatı isterse true (Google Flights/Hotels, küçük kota)", "True only when the user plainly asks for the live price now (Google Flights/Hotels, small quota)") },
         },
-        required: ["kind", "city", "from", "to", "start", "end", "query", "adults", "max_per_night", "prefer", "live"],
+        required: ["kind", "city", "from", "to", "start", "end", "query", "wish", "adults", "max_per_night", "prefer", "live"],
         additionalProperties: false,
       },
     },
@@ -965,6 +975,8 @@ export function tripState(
       title: trip.title,
       dates: trip.confirmedDates ?? (range ? { ...range, estimated: true } : null),
       budget: trip.budget,
+      // What the traveller said of how they travel (travelWants.ts): the money level, who goes, the stays asked for or not.
+      ...(trip.wants ? { wants: trip.wants } : {}),
       // The money every price and the budget show in (set_settings changes it), and the board's language.
       currency: reading?.ctx.currency ?? makeContext(trip, items).currency,
       board_language: lang(),
@@ -1226,6 +1238,28 @@ function describeCall(name: string, input: any, byId: Map<string, Item>): string
     default:
       return null;
   }
+}
+
+/**
+ * What the user's line says of the trip's intent (0.39.4): a kind of stay asked for or ruled out ("hostel bakalım",
+ * "villa olmasın") and where, kept on the trip so the stay picks, the hotels' search and the review read it next time.
+ * A plain "otel" and a passing "daha ucuz" aren't the trip's intent (the money level is update_trip's, said plainly).
+ */
+export function chatWants(text: string): TripWants | null {
+  const w = wantsIn(text);
+  const stays = (w.stays ?? []).filter((k) => k !== "hotel");
+  const said = stays.length || w.avoid?.length;
+  const out: TripWants = { ...(stays.length ? { stays } : {}), ...(w.avoid?.length ? { avoid: w.avoid } : {}), ...(said && w.near?.length ? { near: w.near } : {}) };
+  return Object.keys(out).length ? out : null;
+}
+
+async function keepWantsSaid(tripId: string, text: string): Promise<void> {
+  const said = chatWants(text);
+  if (!said) return;
+  await changeTrip(tripId, (t) => {
+    const next = mergeWants(t.wants, said);
+    return JSON.stringify(next) === JSON.stringify(t.wants ?? null) ? null : { ...t, wants: next };
+  });
 }
 
 /**
@@ -2292,7 +2326,7 @@ const positive = (v: unknown): number | null => {
  * find_offers' need, built as the empty cards build theirs (EmptyCard): a stay's city and its country, a flight's
  * ends and their airports; a place typed loosely is the trip's own. Refused when a search can't be made from it.
  */
-export function offersNeed(input: any, items: Item[], travellers: number | null): Need | string {
+export function offersNeed(input: any, items: Item[], travellers: number | null, wants: TripWants | null = null): Need | string {
   const kind = input?.kind === "flight" ? "flight" : input?.kind === "stay" ? "stay" : input?.kind === "activity" ? "activity" : null;
   if (!kind) return L("kind stay, flight ya da activity olmalı.", "kind must be stay, flight or activity.");
   const adults = Math.round(positive(input?.adults) ?? travellers ?? 0) || null;
@@ -2314,7 +2348,9 @@ export function offersNeed(input: any, items: Item[], travellers: number | null)
     // A home wanted (spec 2026-10-19 SerpApi, item 7): a long stay, a big group, or a flat or house saved for the city.
     const saved = items.filter((i) => i.category === "stay" && i.status !== "dismissed" && i.city != null && sameCity(i.city, city)).map((item) => ({ item }));
     const home = wantsHome(nightsBetween(start, end), adults, saved);
-    return { key: needKey("stay", city, start, end), section: "stay", kind: "stay", city, start, end, adults, country: countryOfPlace(city, items)?.code ?? null, ...(home ? { home } : {}) };
+    // The kind of place asked for now ("hostel bul": the model's wish), else the trip's intent (an "Ekonomik" trip's hostels).
+    const stay = stayQueryOf(wants, text(input?.wish));
+    return { key: needKey("stay", city, start, end), section: "stay", kind: "stay", city, start, end, adults, country: countryOfPlace(city, items)?.code ?? null, ...(home ? { home } : {}), ...(stay ? { stay } : {}) };
   }
   const from = tripPlaceOf(text(input?.from), items);
   const to = tripPlaceOf(text(input?.to), items);
@@ -2345,7 +2381,7 @@ function unitPrice(offer: Offer, need: Need): number | null {
  */
 export async function findOffersTool(tripId: string, input: any, items: Item[]): Promise<{ need: Need; offers: Offer[]; overMax: string | null }> {
   const trip = await (await db()).get("trips", tripId);
-  const need = offersNeed(input, items, trip?.travellers?.count ?? null);
+  const need = offersNeed(input, items, trip?.travellers?.count ?? null, trip?.wants ?? null);
   if (typeof need === "string") throw new ToolError(need);
   const max = positive(input?.max_per_night);
   const prefer = input?.prefer === "best" ? null : "cheap";
@@ -2360,7 +2396,8 @@ export async function findOffersTool(tripId: string, input: any, items: Item[]):
       if (picks.length) return { need, offers: picks.map(({ kind, pick }) => candidateOffer(pick.cand, kind, pick.why)), overMax: null };
     }
     if (need.kind === "activity") return { need, offers: await activityOffers(need), overMax: null };
-    // A stay's offers keep to the kinds of place the trip stays in (stayPicks.fitsTrip: no dorm bed for two on a romantic month).
+    // A stay's offers keep to the kinds of place the trip stays in (stayPicks.fitsTrip: no dorm bed for two on a romantic
+    // month); a kind the traveller asked for (need.stay, trip.wants) always passes.
     const fit = need.kind === "stay" ? stayFitOf(need, trip ?? null) : null;
     const fitting = (list: Offer[]) => (fit ? list.filter((o) => fitsTrip({ name: [o.title, o.meta].filter(Boolean).join(" · "), labels: [] }, fit)) : list);
     const first = fitting(validOffers(await findOffers(need, { prefer, max, ...(live ? { live } : {}) }), need));
@@ -2781,6 +2818,7 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
   const trip = await d.get("trips", tripId);
   if (!trip) throw new Error(L("Gezi bulunamadı.", "Trip not found."));
   const provider = llm ?? (await getProvider());
+  await keepWantsSaid(tripId, userText);
 
   let session = currentSession(await listMessages(tripId), provider.id);
   if (JSON.stringify(session.map((m) => m.content)).length > SESSION_CHAR_LIMIT) {
