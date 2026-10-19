@@ -6268,6 +6268,13 @@ openingOn = false;
 await opening.route("**/functions/v1/offers**", (route) => route.fulfill({ json: { offers: [] } }));
 await opening.route(/functions\/v1\/web-search/, (route) => route.fulfill({ json: { answer: null, reason: "not-configured" } }));
 await opening.route(/functions\/v1\/city-image/, (route) => route.fulfill({ json: { url: null, reason: "no-photo" } }));
+// (the rates come after the opening here, as they may: on this software-rendered machine the re-render they bring, landing just as
+// the opening ends, can hold the page's main thread for most of a second (a compositor commit wait; neither half of the v82 board
+// showed it alone), and the flourish's sparks are lost in it. Prices arriving when they arrive is the opening's own rule.)
+await opening.route(/frankfurter/, async (route) => {
+  await new Promise((r) => setTimeout(r, 1500));
+  await route.fulfill({ json: { date: "2026-09-28", rates: { TRY: 40, THB: 38, USD: 1.1 } } }).catch(() => undefined);
+});
 await frozen(opening);
 try {
   const worker = opening.serviceWorkers()[0] ?? (await opening.waitForEvent("serviceworker"));
