@@ -226,6 +226,7 @@ export function countryRows(list: readonly CountryFacts[], names: readonly strin
       if (c.local.info.plugs.length) parts.push(L(`${c.local.info.plugs.join("/")} priz`, `${c.local.info.plugs.join("/")} plug`));
     }
     if (c.visa?.kind === "visa") parts.push(visaDone ? L(`${c.visa.label} alındı`, `${c.visa.label} got`) : L(`${c.visa.label} gerekiyor`, `${c.visa.label} needed`));
+    else if (c.visa?.kind === "arrival") parts.push(visaDone ? L("Vize alındı", "Visa got") : c.visa.label);
     else if (c.visa?.kind === "free") parts.push(c.visa.label);
     else if (c.visa?.kind === "none") parts.push(L("Vize gerekmiyor", "No visa needed"));
     return parts.length ? [{ code: c.country, name: names[n] ?? c.country, parts }] : [];
@@ -285,6 +286,12 @@ export function factChips(input: {
       input.visaDone
         ? { key: "visa", text: L("Vize alındı", "Visa got"), tip: visa.label, tone: "ok" }
         : { key: "visa", text: L(`${visa.label} gerekiyor`, `${visa.label} needed`), tip: L(`Türk pasaportuyla ${visa.label} gerekir. Nereye başvurulacağı resmî kaynakta.`, `A Turkish passport needs a ${visa.label}. Where to apply is on the official source.`), tone: "warn" },
+    );
+  else if (visa?.kind === "arrival")
+    out.push(
+      input.visaDone
+        ? { key: "visa", text: L("Vize alındı", "Visa got"), tip: visa.label, tone: "ok" }
+        : { key: "visa", text: visa.label, tip: visa.days ? L(`${visa.days} güne kadar · ücretli`, `up to ${visa.days} days · a fee is paid`) : null, tone: "warn" },
     );
   else if (visa?.kind === "free")
     out.push({ key: "visa", text: L("Vize gerekmiyor", "No visa needed"), tip: visa.days ? L(`Türk pasaportuyla ${visa.days} güne kadar vizesiz`, `Visa-free for up to ${visa.days} days on a Turkish passport`) : null, tone: "ok" });

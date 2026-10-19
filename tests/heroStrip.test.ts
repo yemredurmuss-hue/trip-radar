@@ -123,6 +123,10 @@ describe("factChips", () => {
     expect(factChips({ facts: facts(), countries: ["Portekiz"], cities: [], weather: null, home: "TR", visaDone: true }).at(-1)).toMatchObject({ text: "Vize alındı", tone: "ok" });
     const free = factChips({ facts: facts({ visa: { kind: "free", label: "Vizesiz · 90 gün", days: 90, link: "x" } }), countries: ["Japonya"], cities: ["Tokyo"], weather: null, home: "TR", visaDone: false });
     expect(free.at(-1)).toMatchObject({ text: "Vize gerekmiyor", tip: "Türk pasaportuyla 90 güne kadar vizesiz", tone: "ok" });
+    // 0.39.1: Indonesia's visa on arrival, amber until marked.
+    const voa = { kind: "arrival" as const, label: "Varışta vize ya da e-VOA", days: 30, link: "x" };
+    expect(factChips({ facts: facts({ visa: voa }), countries: ["Endonezya"], cities: [], weather: null, home: "TR", visaDone: false }).at(-1)).toMatchObject({ text: "Varışta vize ya da e-VOA", tip: "30 güne kadar · ücretli", tone: "warn" });
+    expect(factChips({ facts: facts({ visa: voa }), countries: ["Endonezya"], cities: [], weather: null, home: "TR", visaDone: true }).at(-1)).toMatchObject({ text: "Vize alındı", tone: "ok" });
     const two = factChips({ facts: facts({ local: null, visa: null }), countries: ["Portekiz", "İspanya"], cities: ["Porto", "Madrid"], weather: null, home: "TR", visaDone: false });
     expect(two).toEqual([{ key: "country", text: "2 ülke", tip: "Portekiz, İspanya · Porto, Madrid · 2 şehir" }]);
     expect(factChips({ facts: facts({ local: null, visa: { kind: "unknown", label: "Resmi kaynağa bak", link: "x" } }), countries: [], cities: [], weather: null, home: "TR", visaDone: false })).toEqual([]);

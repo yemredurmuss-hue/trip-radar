@@ -14,6 +14,7 @@ import type { InsertAt, TemplateId } from "../lib/templates";
 import { withEdits } from "../lib/userEdits";
 import { checkVehicle, overlaps, periodOf, vehicleOf } from "../lib/vehicles";
 import { nightsKey } from "../lib/timeline";
+import { withVisaDone } from "../lib/visa";
 import { offerItem, type Need, type Offer } from "../lib/offerSource";
 import type { DateRange } from "../lib/plan";
 import { plannedItem, type PlannedInput } from "../lib/planned";
@@ -94,10 +95,10 @@ export async function setNeedNotNeeded(items: Item[]): Promise<Undoable> {
   return u.kind === "notNeeded" ? { ...u, others: rest } : u;
 }
 
-/** Belgeler ve internet's visa line (v11): the visa the trip needs, ticked as got, or not. */
-export async function setVisaDone(tripId: string, done: boolean): Promise<void> {
-  await updateTrip(tripId, (t) => ({ ...t, visaDone: done || undefined }));
-  await addEvent(tripId, done ? L("Vize alındı olarak işaretlendi", "Visa marked as got") : L("Vize alınmadı olarak geri alındı", "Visa marked as not got"));
+/** Belgeler ve internet's visa line (v11): the visa sorted ("Var") or not yet ("Yok"); Hazırlık's visa chore (`key`) is the same mark. */
+export async function setVisaDone(tripId: string, done: boolean, key?: string): Promise<void> {
+  await updateTrip(tripId, (t) => withVisaDone(t, done, key));
+  await addEvent(tripId, done ? L("Vize tamam olarak işaretlendi", "Visa marked as sorted") : L("Vize henüz yok olarak geri alındı", "Visa marked as not yet sorted"));
   notifyChanged();
 }
 

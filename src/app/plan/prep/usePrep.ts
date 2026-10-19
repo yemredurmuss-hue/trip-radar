@@ -116,10 +116,13 @@ export function usePrepWith(entries: CatEntry[], env: PrepEnv): PrepModel {
     const main = facts.country;
     return [...new Set(main ? [main, ...all] : all)];
   }, [items, env.esimCountries, facts.country]);
+  // The visa chores answer for the passport set, else home by the first flight; never a Turkish one taken for granted
+  // (the same as Belgeler's visa line, TripPanel).
+  const visaPassport = home ?? homeFromFlights(items);
   const tasks = useMemo(
-    () => prepTasks({ chores, items, trip, range, passport, countries, today: env.today }),
+    () => prepTasks({ chores, items, trip, range, passport: visaPassport, countries, today: env.today }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the trip's fields it reads
-    [chores, items, trip.prepDone, trip.hidden, trip.visaDone, range?.start, range?.end, passport, countries, env.today],
+    [chores, items, trip.prepDone, trip.hidden, trip.visaDone, range?.start, range?.end, visaPassport, countries, env.today],
   );
   const local = facts.local;
   // (one object while the chores stand: the board's intents are worked out again only when it changes)

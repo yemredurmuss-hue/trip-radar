@@ -42,6 +42,15 @@ describe("visa table (Turkish passport)", () => {
     expect(visaFor("DE", "PT")).toMatchObject({ kind: "unknown" });
     expect(visaFor("TR", "ZZ").link).toMatch(/^https:\/\//);
   });
+  it("Indonesia (Emre's Bali): a visa on arrival or an e-VOA, up to 30 days, its own official page", () => {
+    expect(visaFor("TR", "ID")).toMatchObject({ kind: "arrival", label: "Varışta vize ya da e-VOA", days: 30, link: "https://evisa.imigrasi.go.id/" });
+  });
+  it("no passport known: never taken as Turkish, the row asks", () => {
+    expect(visaFor(null, "ID")).toMatchObject({ kind: "unknown", ask: true });
+    expect(visaFor(null, "PT")).toMatchObject({ kind: "unknown", ask: true });
+    // Another passport at home needs nothing either.
+    expect(visaFor("DE", "DE")).toMatchObject({ kind: "none" });
+  });
   it("Montenegro is no longer listed (its rule changes in Nov 2026)", () => {
     expect(visaFor("TR", "ME")).toMatchObject({ kind: "unknown" });
   });

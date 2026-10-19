@@ -37,11 +37,12 @@ export function ShopLink({ provider, url }: { provider: Provider; url: string })
 export async function tickTask(trip: Trip, task: PrepTask, done: boolean): Promise<void> {
   if (task.tick === "record" && task.item) return void (await setDone(task.item, done));
   if (task.tick === "installed" && task.of) return setInstalled(task.of, done);
+  // The visa: one mark with Belgeler's "Var"/"Yok".
+  if (task.tick === "visa") return setVisaDone(trip.id, done, task.key);
   await updateTrip(trip.id, (t) => {
     const { [task.key]: _was, ...rest } = t.prepDone ?? {};
     return { ...t, prepDone: done ? { ...rest, [task.key]: Date.now() } : rest };
   });
-  if (task.tick === "visa" && !done && trip.visaDone) await setVisaDone(trip.id, false);
 }
 
 export function PrepRow({ task, trip, today, shopHome, domId }: { task: PrepTask; trip: Trip; today: string; shopHome: string | null; domId?: string }) {

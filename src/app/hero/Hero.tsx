@@ -20,6 +20,7 @@ import { HeroMosaic } from "./HeroMosaic";
 import { HeroStrip, type HeroBudgetSet, type HeroDates, type HeroDocs, type HeroNext } from "./HeroStrip";
 import { XIcon } from "./icons";
 import { PrefsRow } from "./PrefsRow";
+import { visaDoneOf } from "../../lib/visa";
 import { TripMenu, type TripMenuActions } from "./TripMenu";
 
 /** E11: how long folding and unfolding take (ms). */
@@ -95,7 +96,7 @@ export function Hero(props: HeroProps) {
   const weather = useWeather(props.places, props.countries.length === 1 ? props.countries[0] : null, props.now);
   const month = props.dates ? new Date(`${props.dates.range.start}T12:00:00Z`).toLocaleDateString(locale(), { month: "long", timeZone: "UTC" }) : "";
   const sky = weatherChip(weather, month);
-  const chips = factChips({ facts: props.facts, countries: props.countries, cities: props.cities, weather: sky, home: props.home, visaDone: !!trip.visaDone, perCountry: props.perCountry });
+  const chips = factChips({ facts: props.facts, countries: props.countries, cities: props.cities, weather: sky, home: props.home, visaDone: visaDoneOf(trip), perCountry: props.perCountry });
 
   const toggle = (on: boolean) => {
     const el = box.current;

@@ -98,6 +98,14 @@
 /* (.z-visa: over the old .need i, a 16 px dot at 10,5) */
 .z-visa .z-vx { flex: none; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: #f79009; color: #fff; font-style: normal; font-weight: 900; font-size: var(--q-fs-info); }
 .z-visa .q-got { min-height: 34px; margin-left: 4px; }
+/* 0.39.1: "Var" / "Yok" side by side, the one chosen filled; the official page small beside them. */
+.z-visa .z-vmark { display: inline-flex; gap: 4px; flex: none; }
+.z-visa .z-vmark .q-got { margin-left: 0; padding: 0 12px; }
+.z-visa .z-vmark .q-got.on { background: var(--q-ink); border-color: var(--q-ink); color: #fff; }
+.z-visa[data-done] .z-vmark .q-got.on { background: var(--q-ok); border-color: var(--q-ok); }
+.z-visa .z-vsrc { font-size: 12px; font-weight: 600; color: var(--q-mut); }
+.z-visa .z-vpass { min-height: 34px; border-radius: 10px; border: 1.5px solid var(--q-line); background: #fff; color: var(--q-ink); font: inherit; font-size: var(--q-fs-info); padding: 0 8px; }
+.z-visa .z-vpass:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 2px; }
 
 /* A category's short note when the trip's form changed something there (spec §1.4): one line at its start, only when said. */
 .q-tinfo { display: flex; align-items: flex-start; gap: 10px; margin: 0; padding: 10px 14px; border-radius: 14px; background: #f6f4fd; color: #3d3566; font-size: var(--q-fs-info); line-height: 1.45; }
