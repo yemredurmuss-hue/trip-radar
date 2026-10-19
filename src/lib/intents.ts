@@ -44,7 +44,8 @@ import { noCounts, type Stage } from "./lifecycle";
 import { cancellationText } from "./needs";
 import { ratingText } from "./offerSource";
 import { adderOf } from "./pano";
-import { sameCity, stayRange, type Plan } from "./plan";
+import { groupKeyOf, sameCity, stayRange, type Plan } from "./plan";
+import { bareChatPlan } from "./emptyCards";
 import type { BudgetSlice } from "./progress";
 import { coverWords, shapeOf, type SignalId, type TripShape } from "./playbooks/shape";
 import { prepSummary, storedTask, type PrepSummary } from "./prepDays";
@@ -1079,8 +1080,41 @@ function sectionsWith(sections: CatSection[], env: Env): Built[] {
   });
 }
 
+/**
+ * A saved option a booking closed (plan.ts: "… rezervasyonu bu geceleri kapsıyor") leaves the plan's buckets, yet it is
+ * still one of its need's options (0.38.5, Emre: the box shows the booking big and the others under it, the Pano and the
+ * plan the same count). It goes back to the first one-choice intent holding a record of its comparison (groupKeyOf), as
+ * the Pano gathers it (panoBoard.ts); the start's bare plans say nothing about the comparison.
+ */
+function withClosedOptions(built: Built[], env: Env): Built[] {
+  const placed = new Set(built.flatMap((b) => b.intents.flatMap((i) => i.itemIds)));
+  const strays = env.input.items.filter((i) => i.status === "saved" && !placed.has(i.id));
+  if (!strays.length) return built;
+  const taken = new Set<string>();
+  const gather = (vm: IntentVM): IntentVM => {
+    if (vm.frame === "collection" || !vm.itemIds.length) return vm;
+    const keys = new Set(
+      vm.itemIds
+        .map((id) => env.byId.get(id))
+        .filter((i): i is Item => i != null && i.status !== "dismissed" && !bareChatPlan(i))
+        .map(groupKeyOf),
+    );
+    const mine = strays.filter((i) => !taken.has(i.id) && keys.has(groupKeyOf(i)));
+    if (!mine.length) return vm;
+    for (const i of mine) taken.add(i.id);
+    const shown = new Set([...vm.options.map((o) => o.id), ...(vm.chosen ? [vm.chosen.id] : [])]);
+    const room = Math.max(0, 3 - vm.options.length);
+    const more = ordered(mine.filter((i) => !shown.has(i.id)), env)
+      .slice(0, room)
+      .map((item, n) => optionVM(item, env, { place: vm.options.length + n + 1, frame: vm.frame, kind: vm.kind, draft: null }));
+    return { ...vm, options: [...vm.options, ...more], optionCount: vm.optionCount + mine.length, itemIds: [...vm.itemIds, ...mine.map((i) => i.id)] };
+  };
+  return built.map((b) => ({ ...b, intents: b.intents.map(gather) }));
+}
+
 /** What covers is drawn as its box's key, and a pass counts the ways on the plan it covers. */
-function linked(built: Built[], env: Env): Built[] {
+function linked(given: Built[], env: Env): Built[] {
+  const built = withClosedOptions(given, env);
   const all = built.flatMap((b) => b.intents);
   const ownerOf = (itemId: string) => all.find((i) => i.itemIds.includes(itemId) && i.status !== "skipped") ?? null;
   const covered = new Map<string, number>();

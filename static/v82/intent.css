@@ -368,3 +368,15 @@ body.still .z-xf.in .z-ocs > * { animation: none !important; }
 .z-xf.back { animation: z-flip 180ms var(--e-out) both; transform-origin: top center; }
 body.still .z-xf.back { animation: none !important; }
 @media (prefers-reduced-motion: reduce) { .z-xf.back { animation: none !important; } }
+/* 0.38.5: a chosen or booked box's other options under it (OptionCompact, OptionRow), out of the fixed frame: the frame's
+   own small cards (the 60 px strip) at their own height; narrow, the box's row with its 96 px square. "Daha fazla
+   seçenek" only where it asks for more (not under a booking). */
+.q-others > .q-opts { display: grid; gap: 8px; margin-top: 8px; min-width: 0; }
+.q-others .z-ocs { height: auto; }
+.q-others .z-rows { height: auto; grid-auto-rows: 64px; }
+@media (min-width: 641px) {
+  .q-others .z-oc { height: auto; min-height: 168px; }
+}
+.q-others .z-oc0:not(:has(button)), .q-others .z-r0:not(:has(button)) { display: none; }
+/* The source asked by itself and nothing came back: said plainly (OfferRow NoOffers). */
+.ek-none { margin: 8px 0 0; font-size: var(--q-fs-small); color: var(--q-mut); }

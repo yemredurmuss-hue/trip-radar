@@ -9,7 +9,8 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { isCampStay } from "../../../lib/campStay";
 import { L } from "../../../lib/i18n";
-import { areaSearch, changeList, currentOption, frameForm, headName, offerNeed, railState, SHOWN_OPTIONS, statusChip, unlessEmpty } from "../../../lib/intentFrame";
+import { areaSearch, changeList, currentOption, frameForm, headName, offerNeed, otherOptions, placeholderOf, railState, SHOWN_OPTIONS, statusChip, unlessEmpty } from "../../../lib/intentFrame";
+import { queryOf } from "../../../lib/offerSources";
 import type { IntentStatus, IntentVM, OptionVM } from "../../../lib/intents";
 import { addDays } from "../../../lib/plan";
 import { regionHints, type RegionHint } from "../../../lib/regionHints";
@@ -169,6 +170,7 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
 }) {
   const env = useCardEnv();
   const v82 = useV82Env();
+  const { offers } = useEmptyEnv();
   const a = useIntentActions(vm);
   const [changing, setChanging] = useState(false);
   const [detail, setDetail] = useState(false);
@@ -345,7 +347,12 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
   }, [key]);
 
   const need = form === "searching" || form === "options" ? offerNeed(vm, v82.selfAt) : null;
-  const chip = statusChip(vm);
+  // "Aranıyor" only while something looks or has looked: the source asked by itself (OfferRow), or the chat (0.38.5).
+  const looking = a.searching || hasSearched(`intent:${vm.key}`) || (need != null && offers.available() && queryOf(need) != null);
+  const chip = statusChip(vm, looking);
+  // Chosen or booked, it stands big; the need's other options wait under it (0.38.5), not while it turns back to them.
+  const others = changing ? [] : otherOptions(vm);
+  const placeholder = need?.kind === "stay" ? placeholderOf(vm.itemIds.map((id) => v82.byId.get(id)).filter((i): i is Item => i != null), env.trip, "stay") : null;
   const headArt = vm.head.image ? { src: vm.head.image, photo: true } : { src: art, photo: false };
   const camp = record != null && vm.kind === "stay" && isCampStay(record);
   const here = onHere ? hereOf(vm) : null;
@@ -389,7 +396,15 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
       </section>
       {need && !camp && (
         <div className="q-offers">
-          <OfferRow key={need.key} need={need} onChoose={a.choose} />
+          <OfferRow key={need.key} need={need} onChoose={a.choose} placeholder={placeholder} />
+        </div>
+      )}
+      {others.length > 0 && (
+        <div className="q-offers q-others">
+          {(() => {
+            const list = { vm: { ...vm, optionCount: others.length }, options: others, current: null, changing: false, art, links, onPick: pick, onOpen: (o: OptionVM) => env.onOpenItem(o.item), onCancel: cancelChange, onAsk: vm.status === "booked" ? null : a.ask };
+            return vm.frame === "ticket" ? <OptionRows {...list} /> : <OptionList {...list} />;
+          })()}
         </div>
       )}
     </>

@@ -152,19 +152,19 @@ describe("find_offers", () => {
     }
   });
 
-  it("Ekle saves the offer as an option of the need, once; the reply remembers it", async () => {
+  it("the offers shown are saved as options of the need at once (0.38.5: on the Pano too), once; the reply remembers them", async () => {
     await put([stay()]);
     found.answer = () => three();
     const { llm } = fake([use("find_offers", ask()), say("Üç seçenek buldum.")]);
     await sendMessage(T, "alternatif otel öner", llm);
     const reply = await lastReply();
     const [first] = reply.offers!.offers;
-    const item = await addChatOffer(reply.id, first, reply.offers!.need);
+    const item = (await listItems(T)).find((i) => i.url === first.url) ?? null;
     expect(item).toMatchObject({ tripId: T, category: "stay", status: "saved", name: "Quinta Mãe dos Homens", provider: "Tripadvisor", url: first.url, city: "Funchal", rating: { value: 4.7, scale: 5 }, price: { amount: 270, currency: "EUR" } });
     expect(item!.dates).toMatchObject({ start: "2026-10-18", end: "2026-10-21" });
     expect(await addChatOffer(reply.id, first, reply.offers!.need)).toBeNull();
     expect((await listItems(T)).filter((i) => i.name === "Quinta Mãe dos Homens")).toHaveLength(1);
-    expect((await (await db()).get("messages", reply.id))!.offers!.added).toEqual(["o1"]);
+    expect((await (await db()).get("messages", reply.id))!.offers!.added).toEqual(reply.offers!.offers.slice(0, 3).map((o) => o.id));
   });
 });
 
@@ -204,8 +204,9 @@ describe("find_offers for a stay: the three picks", () => {
     expect(html).toContain('<span class="co-pick">Daha ekonomik</span>');
     expect(html).toContain('<span class="co-pick">Daha konforlu</span>');
     expect(html).toContain('class="chat-offer pick-best"');
-    // Ekle saves the pick as an option, its reviews with it.
-    const item = await addChatOffer(reply.id, reply.offers!.offers[1], reply.offers!.need);
+    // The picks are saved as options at once (0.38.5), their reviews with them; Ekle has nothing more to add.
+    const item = (await listItems(T)).find((i) => i.url === reply.offers!.offers[1].url) ?? null;
+    expect(await addChatOffer(reply.id, reply.offers!.offers[1], reply.offers!.need)).toBeNull();
     expect(item).toMatchObject({ name: "Hotel do Carmo", status: "saved", provider: "Booking", rating: { value: 4.2, scale: 5, count: 800 }, price: { amount: 330, currency: "EUR" } });
   });
 

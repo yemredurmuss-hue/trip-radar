@@ -3475,7 +3475,9 @@ try {
   await openSec("transport");
   const rentalCard = sgSec("transport").locator(".q-ints > .q-int", { has: board.locator(".q-nm", { hasText: "Aylık motor ya da araç kiralama" }) });
   await rentalCard.waitFor();
-  assert.equal(flat([await rentalCard.locator(".q-st").innerText()])[0], "Aranıyor");
+  // (0.38.5: no source looks for a rental, so its chip says so instead of "Aranıyor"; still a box to find, data-st todo)
+  assert.equal(flat([await rentalCard.locator(".q-st").innerText()])[0], "Seçenek yok");
+  assert.equal(await rentalCard.getAttribute("data-st"), "todo");
   // Ubud is Bali's (the hero's main place, from the table of regions): the nights are counted for Bali, said as why it's there.
   assert.match(await rentalCard.locator(".q-est").getAttribute("title"), /25 gece Bali'de kalıyorsun/);
   assert.doesNotMatch(await rentalCard.innerText(), /%/, "no invented percentage");
@@ -3496,7 +3498,8 @@ try {
   const insCard = sgSec("other").locator('.q-ints > .q-int[data-intent="suggestion:rule:insurance"]');
   await insCard.waitFor();
   assert.equal(await insCard.locator(".q-nm").innerText(), "Seyahat sağlık sigortası");
-  assert.equal(flat([await insCard.locator(".q-st").innerText()])[0], "Aranıyor");
+  // (0.38.5: nothing looks for insurance by itself: "Seçenek yok", not "Aranıyor"; the eSIM's source is asked: Aranıyor)
+  assert.equal(flat([await insCard.locator(".q-st").innerText()])[0], "Seçenek yok");
   assert.ok((await insCard.locator(".z-pi").evaluateAll((els) => els.map((a) => a.getAttribute("href")))).some((h) => /^https:\/\/www\.google\.com\/search\?q=seyahat%20sa%C4%9Fl%C4%B1k%20sigortas%C4%B1%20Endonezya$/.test(h)), "insurance's search to compare");
   assert.equal(await sgSec("other").locator(".sg-card", { hasText: "sigorta" }).count(), 0, "insurance is never a suggestion card too");
   const esimCard = sgSec("other").locator('.q-ints > .q-int[data-intent="suggestion:rule:esim"]');
@@ -4016,9 +4019,11 @@ try {
   const picksRow = ekSec("stay").locator('.q-ints > .q-int[aria-label="Ubud"] + .q-offers .ek-offers.ek-picks').first();
   await picksRow.waitFor({ timeout: 10000 });
   assert.ok(candidatesAsked.length >= 1 && candidatesAsked.every((u) => /start=2026-12-10/.test(u) && /end=2026-12-22/.test(u)), "Ubud's candidates asked for its nights");
-  // Closed at first: the count only.
+  // Open at first (0.38.5, Emre: the options right under the box), the count on its head; its head still closes it.
   assert.equal(await picksRow.locator(".ek-offers-head").innerText().then((t) => t.replace(/\s+/g, " ").trim()), "✨ Senin için 3 öneri ▾");
-  assert.equal(await picksRow.locator(".z-oc[data-pick]").count(), 0, "closed by default");
+  assert.equal(await picksRow.locator(".ek-offers-head").getAttribute("aria-expanded"), "true", "open by default");
+  await picksRow.locator(".ek-offers-head").click();
+  assert.equal(await picksRow.locator(".z-oc[data-pick]").count(), 0, "closed on its head");
   await picksRow.locator(".ek-offers-head").click();
   const pickCards = picksRow.locator(".z-oc[data-pick]");
   await pickCards.first().waitFor();
@@ -4066,7 +4071,7 @@ try {
   );
   await board.screenshot({ path: `${out}/29c-stay-picks-favoured.png` });
   await flow.unroute("**/functions/v1/offers**", candidatesFn);
-  console.log("✓ stay picks: Ubud's six candidates narrowed to 'Sana en uygun' Alaya Resort, 'Daha ekonomik' Bucu View (€40 / gece · 12 gece €480), 'Daha konforlu' Mandapa (€106 more, ★4,9); closed at first, the plan's option cards (4:3 photo), 3 columns wide, stacked narrow; Seç puts Bucu View on the plan as Ubud's and chooses it");
+  console.log("✓ stay picks: Ubud's six candidates narrowed to 'Sana en uygun' Alaya Resort, 'Daha ekonomik' Bucu View (€40 / gece · 12 gece €480), 'Daha konforlu' Mandapa (€106 more, ★4,9); open at first, the plan's option cards (4:3 photo), 3 columns wide, stacked narrow; Seç puts Bucu View on the plan as Ubud's and chooses it");
   // The profile name said here goes again: the later steps start as before (no name on this computer).
   await board.evaluate(() => chrome.storage.local.remove("shareName"));
   // A one-person trip: a plan written for someone (as a stale share could leave it) shows no badge anywhere.

@@ -173,6 +173,18 @@ export function validOffers(list: unknown, need: Pick<Need, "kind">): Offer[] {
   return out;
 }
 
+/**
+ * The chat's find_offers shown as cards are the need's options too (0.38.5, Emre: "Chat'e gelen seçenek Pano'ya da
+ * gelmeli"): a stay's or a flight's first three, saved (not chosen). `add`: those to save; `had`: those the trip already
+ * holds by their page (saved, chosen, or said not needed: never again).
+ */
+export function chatOptions(offers: readonly Offer[], need: Pick<Need, "kind">, items: readonly Pick<Item, "url">[]): { add: Offer[]; had: Offer[] } {
+  if (need.kind !== "stay" && need.kind !== "flight") return { add: [], had: [] };
+  const pages = new Set(items.map((i) => i.url).filter((u): u is string => Boolean(u)));
+  const shown = offers.slice(0, MAX_OFFERS);
+  return { add: shown.filter((o) => !pages.has(o.url)), had: shown.filter((o) => pages.has(o.url)) };
+}
+
 /** "✨ Senin için 2 öneri". */
 export const offerCount = (n: number): string => L(`Senin için ${n} öneri`, n === 1 ? "1 offer for you" : `${n} offers for you`);
 
@@ -190,11 +202,13 @@ const local = (): Store | null => {
 };
 
 /** Closed unless the traveller opened it here before (no storage: closed). */
-export function readOffersOpen(key: string, store: Store | null = local()): boolean {
+/** `fallback`: what a row never opened or closed is (the plan's boxes: open, 0.38.5, the options under the box at once). */
+export function readOffersOpen(key: string, store: Store | null = local(), fallback = false): boolean {
   try {
-    return store?.getItem(key) === "1";
+    const said = store?.getItem(key);
+    return said == null ? fallback : said === "1";
   } catch {
-    return false;
+    return fallback;
   }
 }
 

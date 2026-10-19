@@ -87,7 +87,8 @@ describe("the sample trip (Portekiz): each intent's state, its closed row, the h
     });
     const row = (id: string) => all.find((c) => c.section.id === id)!.summary;
     expect(row("flight")).toMatchObject({ name: "Uçuş", line: "2 uçuş · gidiş ve dönüş · 3 fikir", countsText: "1 alındı · 1 karar", bar: { booked: 50, chosen: 0 } });
-    expect(row("stay")).toMatchObject({ line: "2 şehir · 6 gece · 4 fikir", countsText: "1 alındı · 1 karar", spent: { amount: 390, currency: "EUR" } });
+    // (0.38.5: the option the Lisboa booking closed is still one of its need's, as on the Pano: 5)
+    expect(row("stay")).toMatchObject({ line: "2 şehir · 6 gece · 5 fikir", countsText: "1 alındı · 1 karar", spent: { amount: 390, currency: "EUR" } });
     expect(row("transport").line).toBe("1 yolculuk · tren · 1 fikir");
     expect(row("activity").countsText).toBe("1 planda");
     // The flight home is bought and has no file, three days before the trip: its box says so (B15), and what it cost (B10).
