@@ -143,6 +143,9 @@
 .q-sheetp .q-col > div.q-c1 { padding: 0; border-top: 0; position: relative; height: 150px; width: 100%; background: color-mix(in srgb, var(--k, #888) 9%, #fbfaf7); display: grid; place-items: center; overflow: hidden; }
 .q-sheetp .q-col > div.q-c1.lg { height: 112px; padding-top: 22px; }
 .q-sheetp .q-col .q-c1 img { max-width: 60%; max-height: 78%; mix-blend-mode: multiply; }
+/* A page's photo fills the picture across (the 60% above is the drawing's), the picture 16:10 whatever it holds. */
+.q-sheetp .q-col .q-c1 img.q-photo { max-width: none; max-height: none; mix-blend-mode: normal; }
+.q-sheetp .q-col > div.q-c1:not(.lg), .q-sheetp .q-pg .q-ph:not(.lg) { height: auto; aspect-ratio: 16 / 10; }
 .q-sheetp .q-col .q-c1 .q-bigl { width: 52px; height: 52px; border-radius: 15px; font-size: 15px; }
 .q-sheetp .q-col .q-c1 .q-src { position: absolute; left: 10px; top: 10px; }
 .q-sheetp .q-col .q-c1 .q-stc { position: absolute; right: 10px; top: 10px; font-size: 11px; font-weight: 800; border-radius: 99px; padding: 3px 9px; background: var(--q-ok); color: #fff; }
