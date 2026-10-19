@@ -114,7 +114,7 @@
 .q-sheetp .q-cmpb { font: inherit; font-size: 13.5px; font-weight: 700; color: var(--q-acc); background: var(--q-acc-s); border: 0; border-radius: 9px; padding: 6px 12px; cursor: pointer; flex: none; }
 .q-sheetp .q-pgrid { display: grid; grid-template-columns: repeat(auto-fill, 220px); gap: 12px; }
 .q-sheetp .q-pg { position: relative; display: flex; flex-direction: column; width: 220px; border: 1px solid var(--q-line); border-radius: 14px; overflow: hidden; background: #fff; transition: transform .18s, box-shadow .18s; }
-.q-sheetp .q-pg:hover { transform: translateY(-2px); box-shadow: 0 10px 24px -14px rgba(28, 26, 51, .4); }
+.q-sheetp .q-pg:hover { transform: translateY(-3px); box-shadow: 0 10px 24px -14px rgba(28, 26, 51, .4); }
 .q-sheetp .q-pg.cur { border-color: var(--q-ok); box-shadow: 0 0 0 1.5px var(--q-ok); }
 .q-sheetp .q-pg .q-ph { position: relative; height: 132px; background: color-mix(in srgb, var(--k, #888) 9%, #fbfaf7); display: grid; place-items: center; overflow: hidden; }
 .q-sheetp .q-pg .q-ph.lg { height: 84px; }
