@@ -2,7 +2,7 @@
 // the place, the dates and how many go, and nothing else about the traveller. Only public URL formats that are
 // documented or have stood for years; every value is encoded; a brand that can't take what's known is left out
 // (Skyscanner and Kayak need airport codes) rather than opened half-filled.
-import { cityOfAirport } from "./airports";
+import { airportEntries, cityOfAirport } from "./airports";
 import { L } from "./i18n";
 import { cityKeyOf } from "./plan";
 import type { Item } from "./types";
@@ -95,7 +95,24 @@ export function airportCode(placeText: string | null | undefined): string | null
   const text = placeText?.trim();
   if (!text) return null;
   if (/^[A-Z]{3}$/.test(text)) return text;
-  return CITY_AIRPORTS[cityKeyOf(text) ?? ""] ?? null;
+  const key = cityKeyOf(text) ?? "";
+  return CITY_AIRPORTS[key] ?? soleAirport().get(key) ?? null;
+}
+
+/**
+ * A city with only one airport in the airport table (0.38.8: Ushuaia USH, El Calafate FTE), searched by it; a city
+ * with two (Buenos Aires: EZE and AEP) has no sole one and stays unknown, so no search is made for the wrong one.
+ */
+let sole: Map<string, string> | null = null;
+function soleAirport(): Map<string, string> {
+  if (sole) return sole;
+  const codes = new Map<string, Set<string>>();
+  for (const [code, names] of airportEntries()) for (const n of names) {
+    const k = cityKeyOf(n);
+    if (k) (codes.get(k) ?? codes.set(k, new Set()).get(k)!).add(code);
+  }
+  sole = new Map([...codes].filter(([, c]) => c.size === 1).map(([k, c]) => [k, [...c][0]]));
+  return sole;
 }
 
 export interface FlightNeed {

@@ -147,6 +147,9 @@ export function cityOfAirport(text: string): string {
 export const airportCities = (text: string | null | undefined): readonly string[] => (text && isCode(text) ? (AIRPORTS[text] ?? []) : []);
 
 /** Whether the code is one we can name a city for (an unknown code stays a code). */
+/** Every airport the table knows with the city a traveller would say for it, in both languages (searchLinks' fallback). */
+export const airportEntries = (): [code: string, names: readonly string[]][] => Object.entries(AIRPORTS);
+
 export const knownAirport = (text: string | null | undefined): boolean => !!text && isCode(text) && text in AIRPORTS;
 
 /** The airport's name for a code ("Sabiha Gökçen", else its city: "Funchal"); any other text as it is. */
