@@ -4759,9 +4759,8 @@ body.still .work-line i { width: 100%; opacity: .5; }
 /* ============================================================================================================
    v82 tokens (aşama 0, docs/superpowers/specs/2026-10-18-v82-gecis/02-spec.md; values from the prototype's mk81/mk82.css):
    the plan's one type scale (nine sizes) and the intent boxes' colours, each state its own: the action and our pick purple,
-   Seçildi sand (B7), Alındı green, Ayarlandı grey, a decision dashed. Only defined: no rule reads them until the new boxes
-   come in (CategoryPlan's V82_SECTIONS), so nothing on screen changes. The app has no dark theme yet; the dark values wait
-   on an explicit [data-theme="dark"] like the rest.
+   Seçildi sand (B7), Alındı green, Ayarlandı grey, a decision dashed. The v82 surfaces (static/v82/*.css) read them; DESIGN.md
+   says what each one means. The app has no dark theme yet; the dark values wait on an explicit [data-theme="dark"] like the rest.
    =================================================================================================================== */
 :root {
   /* The type scale (v81): badge 11 · small 12 · info 13.5 · button and option 15 · card title 17 · intent 19 · category 22 · price 24 · page title 30. */

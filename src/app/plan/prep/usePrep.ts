@@ -123,7 +123,7 @@ export function usePrepWith(entries: CatEntry[], env: PrepEnv): PrepModel {
   );
   const local = facts.local;
   // (one object while the chores stand: the board's intents are worked out again only when it changes)
-  const summary = useMemo(() => prepSummary(tasks), [tasks]);
+  const summary = useMemo(() => prepSummary(tasks, env.today), [tasks, env.today]);
   return {
     trip,
     items,

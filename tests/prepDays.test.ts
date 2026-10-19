@@ -153,5 +153,9 @@ describe("the words", () => {
     // Nothing with a day: only how many; nothing at all: no line.
     expect(prepSummary(prepTasks(input({ chores: [chore("Biletleri telefona indir")] }))).line).toBe("Gezi öncesi 1 iş");
     expect(prepSummary([]).line).toBeNull();
+    // a day gone by says so on the closed row too (Emre, 19 Ekim: like its row, "geçti")
+    const late = [{ ...tasks.find((t) => !t.done && t.day)!, day: { date: "2026-09-23", time: null, rel: "by" as const } }];
+    expect(prepSummary(late, "2026-10-05").line).toMatch(/23 Eyl'e kadar · geçti$/);
+    expect(prepSummary(late, "2026-09-20").line).not.toMatch(/geçti/);
   });
 });

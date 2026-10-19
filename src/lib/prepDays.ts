@@ -277,7 +277,7 @@ export function prepDayText(day: PrepDay): string {
 }
 
 /**
- * How a still open chore's day reads: "soon" (within PREP_SOON_DAYS: orange), "past" (gone by: said "geçti", grey, never the
+ * How a still open chore's day reads: "soon" (within PREP_SOON_DAYS: orange), "past" (gone by: said "geçti", a soft red, never the
  * orange of what is coming), else plain. A done one is plain.
  */
 export function prepDayTone(task: Pick<PrepTask, "day" | "done">, today: string): "soon" | "past" | null {
@@ -312,10 +312,12 @@ export interface PrepSummary {
 }
 
 /** What the closed Hazırlık row and the journey's prep step say. */
-export function prepSummary(tasks: PrepTask[]): PrepSummary {
+export function prepSummary(tasks: PrepTask[], today?: string): PrepSummary {
   const done = tasks.filter((t) => t.done).length;
   const next = tasks.find((t) => !t.done && t.day) ?? null;
-  const when = next?.day ? prepDayText(next.day) : null;
+  // (a day gone by is said so here too, as on its row: "23 Eyl'e kadar · geçti")
+  const gone = next && today && prepDayTone(next, today) === "past" ? L(" · geçti", " · passed") : "";
+  const when = next?.day ? `${prepDayText(next.day)}${gone}` : null;
   const total = tasks.length;
   const head = L(`Gezi öncesi ${total} iş`, total === 1 ? "1 thing before the trip" : `${total} things before the trip`);
   return {
