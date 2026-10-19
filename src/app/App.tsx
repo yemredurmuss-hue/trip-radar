@@ -5,6 +5,7 @@ import { planTarget } from "../lib/chatCards";
 import { buildPlan, groupKeyOf } from "../lib/plan";
 import { purgeTrash, restoreTrash, trashTrip } from "../lib/trash";
 import { checkStraysOnce } from "../lib/strays";
+import { HOME_HASH, openingTrip } from "../lib/openingTrip";
 import { isDemoTrip } from "../lib/trips";
 import type { Item, TrashEntry } from "../lib/types";
 import { undoSlot } from "../lib/undo";
@@ -31,14 +32,15 @@ import { UpdateBanner } from "./UpdateBanner";
 import { readSelectedTrip, useBoard } from "./useBoard";
 import { useDecisions } from "./useDecisions";
 
-/** "#trip=<id>" (from the popup) opens that trip; otherwise the last trip viewed, or the overview. */
-function tripFromHash(): string | null {
-  const match = location.hash.match(/^#trip=([\w-]+)/);
-  return match ? match[1] : null;
-}
+/** "#trip=<id>" (from the popup) opens that trip. */
+const tripFromHash = (): string | null => openingTrip(location.hash, null);
 
 export function App() {
-  const board = useBoard(tripFromHash() ?? readSelectedTrip());
+  const board = useBoard(openingTrip(location.hash, readSelectedTrip()));
+  // "#home" (the home's own reload) has done its part once the home is open.
+  useEffect(() => {
+    if (location.hash === HOME_HASH) history.replaceState(null, "", location.pathname);
+  }, []);
   const [openItemId, setOpenItemId] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(location.hash === "#settings");
   const [seenArrival, setSeenArrival] = useState<string | null>(null);

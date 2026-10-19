@@ -233,6 +233,12 @@ button.x-chip:focus-visible { outline: 2px solid var(--q-acc); outline-offset: 2
 /* ---- the home's money picker (D17): a money with no exchange rate known can't be picked ---- */
 .hm-pop-sm button:disabled { opacity: .45; cursor: default; }
 .hm-pop-sm button:disabled:hover { background: none; }
+/* 0.39.1: the money and language lists open over the hero below the bar. ".hm-prefs" blurs what's behind it (its own
+   stacking context), so its list's z-index stayed inside it and the hero (positioned, later) lay over the list: a
+   click on "USD" or "Türkçe" landed on the hero and closed the list. The bar itself sits above the page. */
+.hm-bar { position: relative; z-index: 2; }
+/* The list is the popover itself here (TripsHome Picker), not a list inside it: no bullets, the popover's padding. */
+ul.hm-pop { list-style: none; margin: 0; padding: 6px; }
 
 /* ---- the thin bar while the hero is scrolled away (C24) ---- */
 .h-mini-slot { position: sticky; top: -8px; height: 0; z-index: 9; }
