@@ -29,11 +29,11 @@ describe("the code's own questions read like a person asking", () => {
     expect(ask(s, "duration")).toBe("Ahangama'da kaç gün kalmak istersin?");
     expect(ask(s, "who")).toBe("Ahangama'ya kimle gidiyorsun?");
     expect(ask(s, "from")).toBe("Ahangama'ya nereden yola çıkıyorsun?");
-    expect(ask(s, "start")).toBe("Ne zaman yola çıkmayı düşünüyorsun?");
+    expect(ask(s, "start")).toBe("Ahangama'ya ne zaman yola çıkmayı düşünüyorsun?");
     // Sabine comes too: "siz".
     expect(ask(withSabine(s), "from")).toBe("Ahangama'ya nereden yola çıkıyorsunuz?");
     expect(ask(withSabine(s), "duration")).toBe("Ahangama'da kaç gün kalmak istersiniz?");
-    expect(ask(withSabine(s), "start")).toBe("Ne zaman yola çıkmayı düşünüyorsunuz?");
+    expect(ask(withSabine(s), "start")).toBe("Ahangama'ya ne zaman yola çıkmayı düşünüyorsunuz?");
     // A group of friends or the family: how many, said as one would.
     expect(ask({ ...s, who: { kind: "friends", names: [] } }, "count")).toBe("Kaç kişisiniz, sen de dahil?");
     expect(ask({ ...s, who: { kind: "family", names: [] } }, "count")).toBe("Ailece kaç kişisiniz, sen de dahil?");
@@ -84,7 +84,7 @@ describe("the model's own question for what is missing next", () => {
     const reply = { text: "İki hafta Ahangama için tam kıvamında: sörf, palmiyeler ve sakin akşamlar.", question: "Kasım gibi mi düşünüyorsun, yoksa daha mı ileride?" };
     expect(tr(() => modelReplyText(before, after, ctx, reply, nextQuestion(ahead)))).toBe(`${reply.text}\n${reply.question}`);
     // (Before 0.38.4 it was told the question being answered, so the code's template always stood.)
-    expect(tr(() => modelReplyText(before, after, ctx, reply, "duration"))).toBe(`${reply.text}\nNe zaman yola çıkmayı düşünüyorsun?`);
+    expect(tr(() => modelReplyText(before, after, ctx, reply, "duration"))).toBe(`${reply.text}\nAhangama'ya ne zaman yola çıkmayı düşünüyorsun?`);
   });
   it("a reading that answers more than asked: the code's question, never one about something already known", () => {
     const before = ahangama();

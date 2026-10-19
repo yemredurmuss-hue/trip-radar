@@ -371,6 +371,15 @@ export function regionNameOf(name: string): string {
   return found?.as === "region" ? regionName(found.region) : name;
 }
 
+/** A town the table knows inside an island or region ("canggu" → Canggu, in Bali, ID), spelt as the table has it; else null. */
+export function regionTownOf(name: string): { town: string; region: string; country: string } | null {
+  const found = regionNamed(name);
+  if (!found || found.as === "region") return null;
+  const key = plain(name);
+  const town = [...(found.region.capital ?? []), ...found.region.members].find((m) => plain(m) === key) ?? name;
+  return { town, region: regionName(found.region), country: found.region.country };
+}
+
 /** A campervan, a motorhome: its "city" is only where it's picked up; the island or region it names is where it goes. */
 const MOBILE = /\b(camper ?vans?|campers?|motor ?homes?|karavan|kamp ?arac|rv|indie campers|van ?life|campervan rental)\b/i;
 export const isMobileStay = (item: Item): boolean =>

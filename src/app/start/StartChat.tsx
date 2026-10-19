@@ -30,7 +30,7 @@ import { applyLiveDates, checkingLine, datesWait, lookupFor, startLookup, type D
 import { rulesPreview } from "../../lib/startHooks";
 import {
   applyAnswer, applyExtracted, applyText, askAgain, budgetChips, budgetWord, canGenerate, checklist, autoPrint, drawingLine, isComplete, isGoCommand, knownLines, lineLink, mergeExtracted, startName,
-  missingForGenerate, modelReplyText, NOT_UNDERSTOOD, nextQuestion, assumeAnswered, stillOpen, onlyEmpty, parseRouteText, parseStartText, pbCurrent, pbPromptOf, photosToFind, preparedRoute, previewOf, skipPb,
+  missingForGenerate, modelReplyText, modelWordsQuestion, NOT_UNDERSTOOD, nextQuestion, assumeAnswered, stillOpen, onlyEmpty, parseRouteText, parseStartText, pbCurrent, pbPromptOf, photosToFind, preparedRoute, previewOf, skipPb,
   questionOf, readingLine, readingName, readingRows, replyText, restoreRoute, routeThinkingLine, shouldAutoStart, autoHeld, memoAfterGenerate, AUTO_SECONDS, autoSeconds, waitingInstead, routeForGenerate, routeKey, routeToPrepare, rulesKey, saysSomething, singleRoute, skip, totalNights, wantsRouteAdvice,
   tentativeWhere, whereKey, withGuessTaken, withoutOverruled, withPhotos, withPreparedRoute, withTypedLang,
   type Answer, type Extracted, type QuestionId, type SlotId, type StartCtx, type StartRoute, type StartState,
@@ -41,7 +41,7 @@ import { Checklist, ChecklistBar, GenerateCard } from "./Checklist";
 import { UiIcon } from "../cards/Silhouettes";
 import { loadWorld } from "./FlightMap";
 import { Generating } from "./Generating";
-import { findPhotos, modelAvailable, proposeRoute, READ_MS, readAndReply, REPLY_MS, within } from "./model";
+import { askNext, findPhotos, modelAvailable, proposeRoute, READ_MS, readAndReply, REPLY_MS, within, type ModelReply } from "./model";
 // The suggestions' review as the generating screen's last step, and the rules' preview (registered through startHooks).
 import "./registerReview";
 
@@ -321,7 +321,7 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
    * it came in time, its line said again with what it read. Something said since: only what's still empty is filled,
    * and when that changes the question, the chat says so.
    */
-  function lateReading(read: Extracted, code: Extracted, line: string, q: QuestionId | null, mine: number, before: StartState, at: number | null, pk: string | null = null) {
+  function lateReading(read: Extracted, code: Extracted, line: string, q: QuestionId | null, mine: number, before: StartState, at: number | null, pk: string | null = null, words0: ModelReply | null = null, askedFor: QuestionId | null = null) {
     if (stale()) return;
     const now = live.current;
     if (turn.current === mine && !busy.current) {
@@ -333,7 +333,8 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
       commit(more.state);
       const drawing = routeNow();
       const after = live.current;
-      const words = T(() => replyText(before, after, ctx, drawing));
+      // Its words too, when they hold (0.38.5: a slow reply's line was dropped and the code's always stood).
+      const words = T(() => (words0 ? modelReplyText(before, after, ctx, words0, askedFor, drawing) : replyText(before, after, ctx, drawing)));
       commit(isLast(after, at) ? replaceLine(after, at!, words) : say(after, "assistant", words));
       setPicking({ styles: after.styles, budget: after.budget });
       return;
@@ -533,9 +534,30 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
     void datesWait(job).then(() => datesWaitId.current === mine && setDatesHeld(false));
   }, [state, phase]);
 
+  /**
+   * A quick answer's reply (0.38.5): the code's line at once; with the model, the next question in its words (bound to
+   * what was said so far) takes the code's question's place when it comes in time and nothing was said since. The
+   * chips stay the code's.
+   */
+  function wordNext(at: number | null, mine: number, answered: QuestionId, label: string) {
+    const s = live.current;
+    const next = nextQuestion(s);
+    if (at == null || !modelOk.current || !modelWordsQuestion(next) || !isLast(s, at)) return;
+    const line = s.messages[at].text;
+    const code = T(() => questionOf(s, next, ctx).text);
+    if (!line.endsWith(code)) return;
+    const controller = track();
+    void askNext({ today: today(), known: T(() => knownLines(s, ctx)), answered, label, next, open: T(() => stillOpen(s)), lang: s.lang }, controller.signal).then((words) => {
+      inflight.current.delete(controller);
+      const now = live.current;
+      if (!words || stale() || turn.current !== mine || !isLast(now, at) || now.messages[at].text !== line) return;
+      commit(replaceLine(now, at, line.slice(0, line.length - code.length) + words));
+    });
+  }
+
   function answer(a: Answer, label: string) {
     if (busy.current || stale()) return;
-    nextTurn();
+    const mine = nextTurn();
     const before = live.current;
     const asked = say(before, "user", label);
     commit(asked);
@@ -544,17 +566,20 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
       commit(say(after, "assistant", T(() => questionOf(after, "route", ctx).text)));
       return;
     }
-    // A quick answer costs no model call: the code's line; the chip isn't said back (its bubble says it, rev 3).
-    reply(before, after, (next, drawing) => replyText(before, next, ctx, drawing, true));
+    // A quick answer: the code's line at once (the chip isn't said back: its bubble says it, rev 3), its question then
+    // in the model's words when there is one (0.38.5).
+    const at = reply(before, after, (next, drawing) => replyText(before, next, ctx, drawing, true));
+    if (a.q !== "event") wordNext(at, mine, a.q, label);
     if (a.q === "pb") countAgain();
   }
 
   function onSkip(q: QuestionId) {
     if (busy.current || stale()) return;
-    nextTurn();
+    const mine = nextTurn();
     const before = live.current;
     const asked = say(before, "user", T(() => L("Atla", "Skip")));
-    reply(before, skip(asked, q, Date.now()), (next, drawing) => replyText(before, next, ctx, drawing, true));
+    const at = reply(before, skip(asked, q, Date.now()), (next, drawing) => replyText(before, next, ctx, drawing, true));
+    wordNext(at, mine, q, T(() => L("Atla", "Skip")));
     if (q === "pb") countAgain();
   }
 
@@ -599,7 +624,8 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
     // (Typed over a proposal too; anything else typed then goes on as an ordinary message.)
     if (q === "route") {
       const parsed = T(() => parseRouteText(line, totalNights(before) ?? 0));
-      if (!("error" in parsed)) return void reply(before, { ...asked, route: parsed.route, editingRoute: false, asking: null });
+      // (The stops typed replace the one place said before, 0.38.5.)
+      if (!("error" in parsed)) return void reply(before, { ...asked, route: parsed.route, editingRoute: false, asking: null, base: null });
       if (before.editingRoute || !before.route) return commit(say(asked, "assistant", parsed.error));
     }
     // The code reads it at once, bound to the question it answers (item 2).
@@ -634,7 +660,7 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
       const got = await within(pending, REPLY_MS, LATE);
       if (turn.current === mine) setStage(null);
       if (got === LATE) {
-        void pending.then((late) => late && lateReading(late.read, code, line, q, mine, before, at, pk));
+        void pending.then((late) => late && lateReading(late.read, code, line, q, mine, before, at, pk, late.reply, predicted));
         return;
       }
       if (!got || stale()) return;
