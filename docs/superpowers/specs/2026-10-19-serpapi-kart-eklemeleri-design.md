@@ -269,3 +269,12 @@ Günlük tavanlar (sürüm 21'den beri): `serp_otel` 5 (Airbnb de buradan), `ser
   reddedilir); bulunamayan şehir 30 gün sonra yeniden sorulur (önceden kalıcıydı: Khao Sok, Uluwatu); şehrin ülkesiz ya
   da ülkeli kayıtlı numarası varsa hak harcanmaz. `offers` sürüm 22 yüklendi.
 - Canlı deneme: Senja (Google payı doluyken) Xotelo'dan 1 öneri + 6 aday, Booking linki Travelpayouts ortaklık linki.
+
+## SearchApi.io yedeği birleştirildi (2026-10-19 gece, sürüm 23)
+
+- Adaptör oturumunun işi (`searchapi.ts`, commit `be3e9326`) bu dala alındı; iki oturum ayrı ayrı yüklemesin diye o
+  oturum durduruldu. `serp()` SerpApi cevap veremezse (anahtar yok, o türün payı bitti ya da hata) SearchApi.io'ya sorar,
+  günde 2 (100 ücretsiz istek bir kerelik), önbellek ortak. `offers` sürüm 23 yüklendi; Senja, Tromsø, eSIM, Porto
+  yerleri canlıda denendi, çalışıyor.
+- Açık: `SEARCHAPI_KEY` Supabase gizli ayarı Emre ekleyince yedek devreye girer (eklenmeden kod v22 gibi davranır).
+  SearchApi'nin kullanım şartları (önbellek, ticari kullanım) okunmadı: `searchapi.ts` başındaki TODO.
