@@ -12,13 +12,13 @@
 //   Ayarlandı  sorted out ("sen hallettin"), "Fiyat ekle", Değiştir;
 //   Dahil      covered by a pass, a car or a package ("Hakone Free Pass ile") and the button that goes to it ("Pass'i aç");
 //   Aranıyor   the two ends, the estimate, "Kendin ara" and "AI'dan öner"; a change of city nobody planned draws its ways
-//              (C15, ModePicker) in the route's place.
+//              (C15, ModePicker) in the route's place, the road from an airport in another city Önerimiz's two (WayPicks).
 // Only what the record says is drawn (C19); the frame is as tall in every state, live or late (288 px with its head).
 import { useState, type ReactNode } from "react";
 import { L } from "../../../lib/i18n";
 import { codeLabel, emptyLine, type SelfSearch } from "../../../lib/intentFrame";
 import type { OptionVM } from "../../../lib/intents";
-import { checkinUrl, ownEnds, ticketBookedWord, ticketBookWord, ticketCodeLabel, ticketDocWord, ticketFace, ticketPrice, type TicketFace } from "../../../lib/ticketFrame";
+import { checkinUrl, ownEnds, ticketBookedWord, ticketBookWord, ticketCodeLabel, ticketDocWord, ticketFace, ticketPrice, wayPicks, type TicketFace } from "../../../lib/ticketFrame";
 import type { TicketChip, TicketEnd, TicketLive as Live, TicketMode } from "../../../lib/ticketView";
 import type { LegMode } from "../../../lib/types";
 import type { FieldKey } from "../../../lib/inlineEdit";
@@ -29,7 +29,8 @@ import { flysIn } from "../../motion";
 import { CopyCode } from "./DetailLayer";
 import { AgreeRoute, type FrameCardProps } from "./FrameCard";
 import { Ic, Mark } from "./icons";
-import { ModePicker } from "./ModePicker";
+import { ModePicker, WayPicks } from "./ModePicker";
+import { useV82Env } from "./v82Env";
 import { BagIcon, CarrierLogo } from "./OptionRow";
 import { LiveStage, TicketLive } from "./TicketLive";
 
@@ -228,6 +229,7 @@ export function FrameTicket({ vm, form, page, links, info, detail, quiet, on, on
   const o = vm.chosen;
   const edit = useInlineEdit();
   const env = useCardEnv();
+  const { selfAt } = useV82Env();
   const face = ticketFace(vm);
   // D9: a flight's plane glides to its route the first time this session draws it (once; a new frame of it doesn't again).
   const [fly] = useState(() => face?.mode === "flight" && flysIn(o?.item.id));
@@ -379,6 +381,8 @@ export function FrameTicket({ vm, form, page, links, info, detail, quiet, on, on
   const line = [emptyLine(vm), vm.note].filter(Boolean).join(" · ") || null;
   const day = vm.head.parts.find((p) => !/→/.test(p)) ?? null;
   const picking = ways != null && vm.modes.length > 0;
+  // The road from an airport in another city: Önerimiz's usual ways first, the tiles one tap away.
+  const picks = picking ? wayPicks(vm, selfAt) : [];
   const carrier = (
     <>
       <b className="z-dim">{picking ? L("Nasıl gideceğin belli değil", "How you'll go isn't decided") : L("Henüz seçenek yok", "No options yet")}</b>
@@ -430,7 +434,7 @@ export function FrameTicket({ vm, form, page, links, info, detail, quiet, on, on
       cls=" em"
       info={null}
       title={title}
-      main={<TicketMain face={empty} art={draw} dated={Boolean(vm.head.date)} badge={badge} live={null} carrier={carrier} route={picking && ways ? <ModePicker modes={vm.modes} onPick={ways.pick} onOwn={ways.own} /> : undefined} line={line && <span className="q-est" title={line}>{line}</span>} />}
+      main={<TicketMain face={empty} art={draw} dated={Boolean(vm.head.date)} badge={badge} live={null} carrier={carrier} route={picking && ways ? picks.length ? <WayPicks picks={picks} modes={vm.modes} onPick={ways.pick} onOwn={ways.own} /> : <ModePicker modes={vm.modes} onPick={ways.pick} onOwn={ways.own} /> : undefined} line={line && <span className="q-est" title={line}>{line}</span>} />}
       side={side}
       detail={null}
     />

@@ -362,7 +362,10 @@ export function buildLegs(plan: Plan, trip: Pick<Trip, "legs">, listings: Map<st
   ): Leg => {
     const city = kind === "departure" ? from.city : to.city;
     const key = legKey(keyDate, kind, from.city, to.city);
-    const options = locals.filter((i) => !takenLocals.has(i.id) && departureDay(i) === date && (!i.city || !city || sameCity(i.city, city)));
+    // A transfer said at the airport's city (the start's "Havalimanı transferi" in Kolombo, the stay in Ahangama) is this
+    // road's too (farHub), not a box of its own beside it.
+    const far = kind === "change" ? null : (farOf(kind, travel, city)?.city ?? null);
+    const options = locals.filter((i) => !takenLocals.has(i.id) && departureDay(i) === date && (!i.city || !city || sameCity(i.city, city) || (far != null && sameCity(i.city, far))));
     options.forEach((i) => takenLocals.add(i.id));
     const choice = choiceOf(key) ?? choiceOf(legacyKey(date, kind, from.city, to.city));
     const settled = settledOf(options);
@@ -673,15 +676,23 @@ const stayWord = (p: LegPoint) => stayWordOf(p.item);
  * airport the table can't name, a stay with no city) or both are the same.
  */
 export function farHub(leg: Leg): string | null {
+  return farEnd(leg)?.city ?? null;
+}
+
+/** farHub's city with its airport's code ("Kolombo", "CMB"): the code goes in the small line under the two cities. */
+export function farEnd(leg: Leg): { city: string; code: string } | null {
   if (leg.kind !== "arrival" && leg.kind !== "departure") return null;
-  const end = leg.kind === "arrival" ? "to" : "from";
-  const flights = (leg.travel?.settled ? [leg.travel.settled] : (leg.travel?.items ?? [])).filter((i) => i.category === "flight");
+  return farOf(leg.kind, leg.travel, (leg.kind === "arrival" ? leg.to : leg.from).city);
+}
+
+function farOf(kind: "arrival" | "departure", travel: Travel | null, stay: string | null): { city: string; code: string } | null {
+  const end = kind === "arrival" ? "to" : "from";
+  const flights = (travel?.settled ? [travel.settled] : (travel?.items ?? [])).filter((i) => i.category === "flight");
   const codes = [...new Set(flights.map((i) => i.flight?.[end] ?? null))];
   const code = codes.length === 1 ? codes[0] : null;
-  const stay = (leg.kind === "arrival" ? leg.to : leg.from).city;
   if (!code || !stay || !knownAirport(code)) return null;
   const city = cityOfAirport(code);
-  return sameCity(city, stay) ? null : city;
+  return sameCity(city, stay) ? null : { city, code };
 }
 
 export function legShortTitle(leg: Leg): string {

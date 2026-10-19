@@ -39,7 +39,7 @@ import { L } from "./i18n";
 import { count, joinAnd, locative, lowerFirst, nNights, nReviews } from "./i18nText";
 import { shortDay } from "./ideas";
 import { formatDateRange, isoDate, listingKeyOf, nightsBetween, placeMapUrl, rankItems } from "./items";
-import { clockOf, farHub, legShortTitle, type Leg } from "./legs";
+import { clockOf, farEnd, farHub, legShortTitle, type Leg } from "./legs";
 import { noCounts, type Stage } from "./lifecycle";
 import { cancellationText } from "./needs";
 import { ratingText } from "./offerSource";
@@ -269,6 +269,8 @@ export interface IntentHead {
   city: string | null;
   date: string | null;
   nights: number;
+  /** The road from an airport in another city (legs.farEnd): that airport's code ("CMB"), small under the two cities. */
+  hub?: string;
 }
 
 export interface IntentVM {
@@ -313,6 +315,12 @@ export interface IntentVM {
    * airport its own (Metro, Otobüs, Tren, Taksi, Transfer). "Ben hallettim" is drawn after them.
    */
   modes: LegMode[];
+  /**
+   * Önerimiz over C15's ways on the road from an airport in another city to the stay, or back (legs.farHub: Kolombo →
+   * Ahangama): the usual ways, in order (Tren, then a taxi or a private transfer), each with its search (ticketFrame.wayPicks).
+   * No length, hour or price is said (none is known). Missing for anything else.
+   */
+  wayPicks?: LegMode[];
   /**
    * The change of city or the transfer it is for (legs.ts's key): with no record of its own, its "Gerek yok", "Ben
    * hallettim" and C15's ways are said on it (Trip.hidden, Trip.legs). Null or missing for anything else.
@@ -712,6 +720,8 @@ const MOVE_MODES: readonly LegMode[] = ["train", "bus", "car", "flight"];
 const TRANSFER_MODES: readonly LegMode[] = ["metro", "bus", "train", "taxi", "transfer"];
 /** And for the road from an airport in another city to the stay (legs.farHub: Kolombo → Ahangama), or back. */
 const FAR_MODES: readonly LegMode[] = ["train", "bus", "transfer", "taxi", "car"];
+/** Önerimiz on that road: the train first, then a taxi or a private transfer (no line or length is known: only the ways). */
+const FAR_PICKS: readonly LegMode[] = ["train", "taxi"];
 
 function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
   const records = uniq(b.entries.flatMap((e) => e.itemIds))
@@ -721,25 +731,30 @@ function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
   // A part of the trip's shape says its frame (a ski pass a stay card in Etkinlik), else the category does.
   const part = live.find((i) => i.part)?.part ?? null;
   const frame: FrameFamily = (part?.frame as PartFrame | undefined) ?? (isCollection(section) ? "stay" : frameOf(section));
-  const settled = live.find((i) => i.status === "booked") ?? live.find((i) => i.status === "chosen") ?? null;
+  const leg = b.entries.map(legOfEntry).find(nonNull) ?? null;
+  // The road from an airport in another city with only what the start set aside on it (its "Havalimanı transferi"): no
+  // way is said yet, so its ways are offered as on an empty one; a way picked is said on the leg (C15).
+  const farOpen = leg != null && farHub(leg) != null && live.length > 0 && live.every(env.placeholder);
+  const settled = farOpen ? null : (live.find((i) => i.status === "booked") ?? live.find((i) => i.status === "chosen") ?? null);
   const options = ordered(
     live.filter((i) => i.status === "saved"),
     env,
   );
-  const leg = b.entries.map(legOfEntry).find(nonNull) ?? null;
-  const lead = settled ?? options[0] ?? live[0] ?? null;
-  const legMode = leg ? (leg.choice?.mode ?? leg.mode) : null;
+  const lead = farOpen ? null : (settled ?? options[0] ?? live[0] ?? null);
+  const legMode = leg ? (leg.choice?.mode ?? (farOpen ? null : leg.mode)) : null;
   const kind: CardKind = lead ? cardKind(lead, legMode) : (legTransportMode(legMode) ?? DEFAULT_KIND[section] ?? "other");
   const draft = b.stage === "options" && options.length ? draftOf(options, env.decisionOf(options[0]), suggestsFor) : null;
   const view = leg ? legCardView(leg) : null;
   const legArranged = Boolean(view && (view.arranged || view.badge === "arranged") && !live.some((i) => i.status === "booked"));
   const cover = coverOf(live, leg, env);
   // A transfer or a change of city with its way said and nothing to book (metro, a taxi, the car): its plan is made.
-  const legSaid = b.stage == null && !live.length && legMode != null;
+  const legSaid = (farOpen || (b.stage == null && !live.length)) && legMode != null;
+  // "Ben hallettim" on it (no way said): sorted out, as on an empty one.
+  const farOwn = farOpen && !legMode && Boolean(leg?.choice?.booked);
   const status: IntentStatus = cover
     ? "included"
-    : b.stage == null
-      ? legSaid
+    : b.stage == null || farOpen
+      ? legSaid || farOwn
         ? "arranged"
         : stagelessStatus(live, settled, options, draft, env)
       : b.stage === "search" || b.stage === "cancelled"
@@ -775,14 +790,21 @@ function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
             settled.arranged && settled.noBooking != null
             ? L("sen hallettin", "you sorted it")
             : footText(footOf(settled, kind).left)
-          : legSaid
-            ? L("rezervasyon gerekmez", "no booking needed")
-            : view
-              ? footText(view.foot.left)
-              : null
+          : farOwn
+            ? L("sen hallettin", "you sorted it")
+            : legSaid
+              ? L("rezervasyon gerekmez", "no booking needed")
+              : view
+                ? footText(view.foot.left)
+                : null
         : null;
   const head = headOf(section, frame, b, lead, leg, kind, env);
+  const far = leg ? farEnd(leg) : null;
+  if (far && frame === "ticket") head.hub = far.code;
+  // Nothing said on it but the start's placeholder: its kind is no way picked yet (as an empty road's "Transfer").
+  if (farOpen && !legMode && head.kindWord) head.kindWord = L("Transfer", "Transfer");
   const party = partyOf(lead, env);
+  const modes = (status === "searching" && leg && !legMode) || legSaid ? (leg?.kind === "move" ? [...MOVE_MODES] : far ? [...FAR_MODES] : leg?.kind === "arrival" || leg?.kind === "departure" ? [...TRANSFER_MODES] : []) : [];
   return {
     key: b.key,
     section,
@@ -804,7 +826,8 @@ function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
     cover,
     ticket: frame === "ticket" ? ticketViewOf(shown ? [shown] : [], { kind, leg, route: head.route, ends: endsOf(leg), now: env.now }) : null,
     // (and for one whose way was said with nothing to book: Değiştir draws them again in place)
-    modes: (status === "searching" && leg && !legMode) || legSaid ? (leg?.kind === "move" ? [...MOVE_MODES] : leg && farHub(leg) ? [...FAR_MODES] : leg?.kind === "arrival" || leg?.kind === "departure" ? [...TRANSFER_MODES] : []) : [],
+    modes,
+    ...(far && status === "searching" && modes.length ? { wayPicks: [...FAR_PICKS] } : {}),
     legKey: leg?.key ?? null,
     ...(draftRoute ? { routeDraft: true } : {}),
     ...(party != null ? { people: party } : {}),

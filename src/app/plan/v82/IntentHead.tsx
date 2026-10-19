@@ -46,6 +46,12 @@ export function IntentHead({ vm, art, chip, chipId, pop, onPano, menu }: {
         {name}
         <div className="q-ln">
           {h.kindWord && <span className="z-kind">{h.kindWord}</span>}
+          {h.hub && (
+            <span title={L(`${h.hub} havalimanı`, `${h.hub} airport`)}>
+              <Ic name="plane" size={14} />
+              {h.hub}
+            </span>
+          )}
           {h.parts.map((p) => {
             const field = fieldOf(p);
             return (
