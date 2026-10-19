@@ -4,8 +4,10 @@
 // → e2e-output/v82/<label>/<width>-{top,hero,sec-N-id}.png at 1440, 1280, 860 and 390 px, and heights.json (each intent box's
 // height by width). "en" draws the board in English (the browser's language, as the e2e's English parts do: lib/i18n browserLang).
 // A pointer that hovers, as in the e2e (what shows only on hover stays hidden).
+// V82_OFFERS=1: the offers' source answers every stay with three fixed hotels (a mockup's photo for each), and each open
+// row under a box is shot too (<width>-offers-N.png, its photo's size in heights.json): the cards' size and place, offline.
 import { chromium } from "playwright-core";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -25,6 +27,17 @@ const context = await chromium.launchPersistentContext(mkdtempSync(path.join(tmp
 await context.addInitScript(() => { try { sessionStorage.setItem("trip-radar:opening-off", "1"); } catch {} });
 await context.route(/^https?:\/\/(?!generativelanguage\.googleapis|api\.anthropic)/, (route) =>
   route.request().resourceType() === "image" ? route.fulfill({ status: 404, body: "" }) : route.fulfill({ status: 404, json: {} }));
+if (process.env.V82_OFFERS) {
+  const photo = readFileSync(path.resolve("docs/mockups/giris-akisi-v3/img/foto-ubud.jpg"));
+  const cand = (id, name, nightly, rating, reviews) => ({ id, name, rating, reviews, photo: `https://img.v82-shots.test/${id}.jpg`, geo: null, area: null, labels: [],
+    url: `https://www.booking.com/hotel/x/${id}.html`, nightly, total: nightly * 4, nights: 4, priceRange: null, source: "Booking", currency: "EUR", fetchedAt: Date.now() });
+  const hotels = [cand("s-a", "Shot Hotel A", 40, 4.3, 380), cand("s-b", "Shot Hotel B", 103, 4.5, 2100), cand("s-c", "Shot Hotel C", 209, 4.9, 640)];
+  await context.route("https://img.v82-shots.test/**", (route) => route.fulfill({ status: 200, contentType: "image/jpeg", body: photo }));
+  await context.route("**/functions/v1/offers**", (route) => {
+    const stay = new URL(route.request().url()).searchParams.get("kind") === "stay";
+    return route.fulfill({ headers: { "Access-Control-Allow-Origin": "*" }, json: stay ? { offers: [], candidates: hotels } : { offers: [] } });
+  });
+}
 await context.clock.install({ time: new Date("2026-10-05T10:00:00") });
 const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent("serviceworker"));
 const id = new URL(worker.url()).host;
@@ -37,6 +50,19 @@ await app.goto(`chrome-extension://${id}/app.html`);
 await app.getByText(/Örnek geziyi yükle →|Load the sample trip →/).click();
 await app.getByRole("heading", { name: /Portekiz \(örnek\)|\(sample\)/ }).waitFor();
 await app.waitForTimeout(1500);
+if (process.env.V82_OFFERS) {
+  // The sample's stays taken off (their records deleted): each night is still to find, with its offers' row under it.
+  await app.evaluate(async () => {
+    const req = indexedDB.open("trip-radar");
+    const d = await new Promise((ok, no) => { req.onsuccess = () => ok(req.result); req.onerror = () => no(req.error); });
+    const store = d.transaction("items", "readwrite").objectStore("items");
+    const all = await new Promise((ok) => (store.getAll().onsuccess = (e) => ok(e.target.result)));
+    await Promise.all(all.filter((i) => i.category === "stay").map((i) => new Promise((ok) => (store.delete(i.id).onsuccess = ok))));
+  });
+  await app.reload();
+  await app.getByRole("heading", { name: /Portekiz \(örnek\)|\(sample\)/ }).waitFor();
+  await app.waitForTimeout(1500);
+}
 const heights = {};
 for (const width of [1440, 1280, 860, 390]) {
   await app.setViewportSize({ width, height: 1000 });
@@ -59,6 +85,17 @@ for (const width of [1440, 1280, 860, 390]) {
     const sid = (await sec.getAttribute("data-section")) ?? (await sec.getAttribute("id")) ?? String(i);
     await sec.screenshot({ path: `${out}/${width}-sec-${i}-${sid}.png` }).catch(() => undefined);
     heights[width].push(...(await sec.locator(".q-int").evaluateAll((els) => els.map((e) => `${e.id || e.dataset.kind}:${e.dataset.st ?? ""}:${Math.round(e.getBoundingClientRect().height)}`))));
+    if (process.env.V82_OFFERS) {
+      const rows = sec.locator(".q-offers .ek-offers");
+      for (let j = 0; j < (await rows.count()); j++) {
+        const row = rows.nth(j);
+        if ((await row.getAttribute("class"))?.includes("open") !== true) await row.locator(".ek-offers-head").click();
+        await app.waitForTimeout(400);
+        await row.evaluate((el) => el.closest(".q-offers")?.previousElementSibling?.scrollIntoView({ block: "start" }));
+        await app.screenshot({ path: `${out}/${width}-offers-${sid}-${j}.png` });
+        heights[width].push(...(await row.locator(".z-op, .ek-of-ph").evaluateAll((els) => els.map((e) => `offers-${e.className}:${Math.round(e.getBoundingClientRect().width)}x${Math.round(e.getBoundingClientRect().height)}`))));
+      }
+    }
   }
   const overflow = await app.evaluate(() => document.documentElement.scrollWidth > innerWidth);
   heights[width].push(`overflow:${overflow}`);

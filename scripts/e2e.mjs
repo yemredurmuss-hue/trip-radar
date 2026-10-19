@@ -3972,8 +3972,8 @@ try {
   await flow.unroute("https://generativelanguage.googleapis.com/**", perPerson);
   // 23b. Üç akıllı konaklama önerisi (stayPicks.ts, owner-approved MVP): the source's candidates for Ubud (fixed here,
   // €40/47/103/155/173/209 by the night) narrowed to three labelled cards under its empty card, "Sana en uygun",
-  // "Daha ekonomik", "Daha konforlu", each with its price and scope and one line of why; Favorile saves one as an
-  // option of the need.
+  // "Daha ekonomik", "Daha konforlu", each with its price by the night (its nights in the tooltip) and its why as the
+  // card's tooltip; 0.38.4: the plan's option cards (OptionCompact), "Seç" puts one on the plan as Ubud's and chooses it.
   const pickCand = (id, name, nightly, rating, reviews) => ({
     id, name, rating, reviews, photo: null, geo: null, area: "Otel", labels: [], url: `https://www.booking.com/hotel/id/${id}.html`,
     nightly, total: nightly * 12, nights: 12, priceRange: null, source: "Booking", currency: "EUR", fetchedAt: Date.now(),
@@ -4007,23 +4007,30 @@ try {
   assert.ok(candidatesAsked.length >= 1 && candidatesAsked.every((u) => /start=2026-12-10/.test(u) && /end=2026-12-22/.test(u)), "Ubud's candidates asked for its nights");
   // Closed at first: the count only.
   assert.equal(await picksRow.locator(".ek-offers-head").innerText().then((t) => t.replace(/\s+/g, " ").trim()), "✨ Senin için 3 öneri ▾");
-  assert.equal(await picksRow.locator(".ek-pick").count(), 0, "closed by default");
+  assert.equal(await picksRow.locator(".z-oc[data-pick]").count(), 0, "closed by default");
   await picksRow.locator(".ek-offers-head").click();
-  const pickCards = picksRow.locator(".ek-pick");
+  const pickCards = picksRow.locator(".z-oc[data-pick]");
   await pickCards.first().waitFor();
   assert.equal(await pickCards.count(), 3, "three cards");
-  assert.deepEqual(await picksRow.locator(".ek-pick-label").allInnerTexts(), ["Sana en uygun", "Daha ekonomik", "Daha konforlu"]);
-  assert.deepEqual(await picksRow.locator(".ek-pick-name").allInnerTexts(), ["Alaya Resort", "Bucu View", "Mandapa"]);
-  assert.match(await pickCards.nth(1).innerText(), /★ 4,3[\s\S]*380 yorum[\s\S]*€40 \/ gece · 12 gece €480[\s\S]*Bulduklarımın en ucuzu, ★4,3/);
-  assert.match(await pickCards.nth(2).innerText(), /Gecelik €106 daha fazla ama ★4,9/);
-  assert.equal(await pickCards.nth(0).getByRole("link", { name: "İncele ↗" }).getAttribute("href"), "https://www.booking.com/hotel/id/e2e-alaya.html");
+  assert.deepEqual(await picksRow.locator(".z-op .q-src").allInnerTexts(), ["✨ Sana en uygun", "Daha ekonomik", "Daha konforlu"]);
+  assert.deepEqual(await picksRow.locator(".z-t").allInnerTexts(), ["Alaya Resort", "Bucu View", "Mandapa"]);
+  assert.match(await pickCards.nth(1).innerText(), /★ 4,3[\s\S]*380 yorum[\s\S]*Bucu View[\s\S]*€40[\s\S]*\/ gece[\s\S]*Seç/);
+  assert.equal(await pickCards.nth(1).locator(".q-pr").getAttribute("title"), "12 gece €480");
+  assert.equal(await pickCards.nth(1).getAttribute("title"), "Bulduklarımın en ucuzu, ★4,3");
+  assert.match(await pickCards.nth(2).getAttribute("title"), /Gecelik €106 daha fazla ama ★4,9/);
+  // The name is the hotel's page; no Favorile, no İncele (not in the design).
+  assert.equal(await pickCards.nth(0).getByRole("link", { name: "Alaya Resort" }).getAttribute("href"), "https://www.booking.com/hotel/id/e2e-alaya.html");
+  assert.equal(await picksRow.getByText(/Favori|İncele/).count(), 0, "only the option card's own buttons");
   // Wide: three side by side, the best one accented.
   const tops = await pickCards.evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().top)));
-  // The columns follow the card's own width (fark-konaklama): as many as fit at 210 px each, never more than three, and no card squeezed.
-  const pickCols = await picksRow.locator(".ek-pick-list").first().evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(" ").length);
+  // The frame's three columns (OptionCompact), and no card squeezed.
+  const pickCols = await picksRow.locator(".ek-pcs").first().evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(" ").length);
   assert.equal(new Set(tops).size, Math.ceil(3 / pickCols), "the cards fill the columns the card's width allows");
   assert.ok(await pickCards.evaluateAll((els) => els.every((el) => el.getBoundingClientRect().width >= 190)), "no pick card is squeezed");
-  assert.equal(await pickCards.nth(0).locator(".ek-pick-label").evaluate((el) => getComputedStyle(el).color), "rgb(255, 255, 255)");
+  assert.equal(await pickCards.nth(0).locator(".z-op .q-src").evaluate((el) => getComputedStyle(el).color), "rgb(255, 255, 255)");
+  // The photo near its own shape (4:3), not a strip.
+  const photoBox = await pickCards.nth(0).locator(".z-op").evaluate((el) => el.getBoundingClientRect().width / el.getBoundingClientRect().height);
+  assert.ok(photoBox > 1.25 && photoBox < 1.42, `the pick's photo is 4:3 (${photoBox.toFixed(2)})`);
   await ubudCard.evaluate((el) => el.scrollIntoView({ block: "center" }));
   await board.screenshot({ path: `${out}/29a-stay-picks.png` });
   // Narrow: stacked.
@@ -4034,20 +4041,21 @@ try {
   await ubudCard.evaluate((el) => el.scrollIntoView({ block: "start" }));
   await board.screenshot({ path: `${out}/29b-stay-picks-narrow.png` });
   await board.setViewportSize({ width: 1440, height: 900 });
-  // Favorile: "Daha ekonomik" saved as an option of Ubud's nights, its page, rating and reviews, price for the nights.
-  await pickCards.nth(1).getByRole("button", { name: "Bucu View: favorile" }).click();
+  // Seç: "Daha ekonomik" put on the plan as Ubud's nights and chosen, its page, rating and reviews, price for the nights.
+  await pickCards.nth(1).getByRole("button", { name: "Bucu View: seç" }).click();
   let favoured = [];
-  for (let i = 0; i < 50 && !favoured.length; i++) {
+  // (added first, then chosen: waited for until it is)
+  for (let i = 0; i < 50 && !favoured.some((x) => x.status === "chosen"); i++) {
     favoured = (await tripRecords("Bali Gezisi")).items.filter((x) => x.name === "Bucu View");
-    if (!favoured.length) await board.waitForTimeout(100);
+    if (!favoured.some((x) => x.status === "chosen")) await board.waitForTimeout(100);
   }
   assert.deepEqual(
     favoured.map((x) => [x.category, x.status, x.city, x.dates.start, x.dates.end, x.url, x.provider, x.rating.value, x.rating.count, x.price.amount]),
-    [["stay", "saved", "Ubud", "2026-12-10", "2026-12-22", "https://www.booking.com/hotel/id/e2e-bucu.html", "Booking", 4.3, 380, 480]],
+    [["stay", "chosen", "Ubud", "2026-12-10", "2026-12-22", "https://www.booking.com/hotel/id/e2e-bucu.html", "Booking", 4.3, 380, 480]],
   );
   await board.screenshot({ path: `${out}/29c-stay-picks-favoured.png` });
   await flow.unroute("**/functions/v1/offers**", candidatesFn);
-  console.log("✓ stay picks: Ubud's six candidates narrowed to 'Sana en uygun' Alaya Resort, 'Daha ekonomik' Bucu View (€40 / gece · 12 gece €480), 'Daha konforlu' Mandapa (€106 more, ★4,9); closed at first, 3 columns wide, stacked narrow; Favorile saves Bucu View as Ubud's option");
+  console.log("✓ stay picks: Ubud's six candidates narrowed to 'Sana en uygun' Alaya Resort, 'Daha ekonomik' Bucu View (€40 / gece · 12 gece €480), 'Daha konforlu' Mandapa (€106 more, ★4,9); closed at first, the plan's option cards (4:3 photo), 3 columns wide, stacked narrow; Seç puts Bucu View on the plan as Ubud's and chooses it");
   // The profile name said here goes again: the later steps start as before (no name on this computer).
   await board.evaluate(() => chrome.storage.local.remove("shareName"));
   // A one-person trip: a plan written for someone (as a stale share could leave it) shows no badge anywhere.
