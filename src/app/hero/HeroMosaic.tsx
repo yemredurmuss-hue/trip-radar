@@ -2,10 +2,11 @@
 // the mood in a line when the model wrote one, "N kayıt işleniyor" while saves are read) with the trip's ⋯ menu on its
 // top left, and the tiles on the right (lib/heroMosaic.ts). A photo with a known credit has a small "i" that says it on
 // hover or focus; one that fails to load is left out as if it never was (no tile, or the plain cover). The pieces join
-// the trip's first opening (opening.ts: each tile 80 ms after the one before).
+// the trip's first opening (opening.ts: each tile 80 ms after the one before). A tile of a thing on the plan is a button to
+// its card (0.38.9: the ATV tour's photo goes to the ATV tour in Etkinlik); a city's or a moment's is only a picture.
 import { useState, type ReactNode } from "react";
 import { creditLine, type CreditPart } from "../../lib/cityImages";
-import { shownTiles, type Mosaic } from "../../lib/heroMosaic";
+import { shownTiles, tileGoLabel, type Mosaic, type TileTarget } from "../../lib/heroMosaic";
 import { L } from "../../lib/i18n";
 import type { PhotoCredit } from "../../lib/types";
 import { TipOn } from "../HoverTip";
@@ -49,7 +50,7 @@ function Credit({ credit }: { credit: PhotoCredit }) {
   );
 }
 
-export function HeroMosaic({ mosaic, title, cities, mood, working, menu }: {
+export function HeroMosaic({ mosaic, title, cities, mood, working, menu, onTile }: {
   mosaic: Mosaic;
   title: string;
   cities: string[];
@@ -58,6 +59,8 @@ export function HeroMosaic({ mosaic, title, cities, mood, working, menu }: {
   /** Saves being read now. */
   working: number;
   menu: ReactNode;
+  /** A tap on a tile of a thing on the plan: the page goes to its card. */
+  onTile?: (target: TileTarget) => void;
 }) {
   // A photo that doesn't load is as good as none: its tile goes, the grid takes the rest (C19).
   const [failed, setFailed] = useState<ReadonlySet<string>>(() => new Set());
@@ -97,7 +100,7 @@ export function HeroMosaic({ mosaic, title, cities, mood, working, menu }: {
       {tiles.length > 0 && (
         <div className={`x-tiles ${mosaic.kind ?? "city"} n${tiles.length}`} data-pit-children data-pit-beat>
           {tiles.map((t) => (
-            <figure key={t.key} className={`x-t${t.image ? "" : " art"}`}>
+            <figure key={t.key} className={`x-t${t.image ? "" : " art"}${t.target && onTile ? " go" : ""}`}>
               {t.image ? (
                 <img src={t.image} alt="" loading="lazy" onError={() => fail(t.image!)} />
               ) : (
@@ -110,6 +113,7 @@ export function HeroMosaic({ mosaic, title, cities, mood, working, menu }: {
                 <b>{t.name}</b>
                 {t.sub && <small>{t.sub}</small>}
               </figcaption>
+              {t.target && onTile && <button type="button" className="x-tgo" aria-label={tileGoLabel(t)} onClick={() => onTile(t.target!)} />}
               {t.credit && <Credit credit={t.credit} />}
             </figure>
           ))}

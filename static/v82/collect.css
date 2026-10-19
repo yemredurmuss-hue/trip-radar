@@ -126,6 +126,12 @@
 .z-more small { font-size: var(--q-fs-small); font-weight: 700; }
 .z-more:hover { border-color: var(--q-acc); background: #fbfaff; }
 .z-more:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 2px; }
+/* A card the hero's mosaic (or a to-do) went to keeps its own corners while it flashes. */
+.z-k.flash { border-radius: 14px; }
+/* Öneriler's count when more wait in line (0.38.9: four cards at most): it opens them on the Pano. */
+.q-oh .z-ocb { all: unset; cursor: pointer; font-size: var(--q-fs-small); color: #8d89a8; white-space: nowrap; border-radius: 6px; }
+.q-oh .z-ocb:hover { color: var(--q-acc); text-decoration: underline; }
+.q-oh .z-ocb:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 2px; }
 
 /* What just arrived (C10, C35): "Yeni" while it rings (arrive/useArrivals pulses .ar-new on the card). */
 .z-k.ar-new::after { content: attr(data-new); position: absolute; top: 8px; right: 8px; z-index: 3; padding: 3px 8px; border-radius: 99px; background: #7b62f0; color: #fff; font-size: var(--q-fs-badge); font-weight: 800; line-height: 1.2; pointer-events: none; }

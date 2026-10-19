@@ -3,7 +3,7 @@
 // (intents.ts collectionIntents): what's on the plan in "Planında", the rest in "Öneriler". Each card is one of four
 // families (a ticket or a tour, a place to see, a restaurant, a note) in one of five states (an idea, on the plan, bought or
 // a table booked, done, or a place the start opened that nobody has filled). Öneriler is one row of four cells: up to four
-// cards, else three and "+n Pano'da"; Planında has every card on the plan, four across (Emre, 19 Ekim), and an empty
+// cards, the rest in line on the Pano (0.38.9); Planında has every card on the plan, four across (Emre, 19 Ekim), and an empty
 // Planında is four empty slots.
 //
 // Nothing is decided here: what's on the plan is intents.ts's, the facts cardFacts.ts's, the source's badge pano.ts's, the
@@ -32,7 +32,7 @@ import { sameCity, type Plan } from "./plan";
 import { reasonItemOf } from "./reason";
 import type { Item, Suggestion, Trip } from "./types";
 
-/** A row's cells (v82: four across), the last one "+n Pano'da" when there are more. */
+/** A row's cells (v82: four across); Öneriler's four cards at most (0.38.9). */
 export const ROW_CELLS = 4;
 
 /** What a card is: a ticket or a tour (Etkinlik), a place to see, a restaurant, a note (Yapılacaklar). */
@@ -381,10 +381,12 @@ export function collectionRow(
 const fold = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLocaleLowerCase("tr").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 const sameName = (a: string, b: string) => fold(a) === fold(b);
 
-/** Öneriler's four cells: every card while they fit, else three and "+n Pano'da" (n: the rest). */
+/**
+ * Öneriler shows four cards at most (Emre, 0.38.9: the saved ones, the source's tours and the model's ideas counted
+ * together); the rest wait in line, the next one coming up as one goes on the plan. `more`: how many wait (on the Pano).
+ */
 export function rowCells<T>(cards: readonly T[], cells = ROW_CELLS): { shown: T[]; more: number } {
-  if (cards.length <= cells) return { shown: [...cards], more: 0 };
-  return { shown: cards.slice(0, cells - 1), more: cards.length - (cells - 1) };
+  return { shown: cards.slice(0, cells), more: Math.max(0, cards.length - cells) };
 }
 
 /** Öneriler's caption: "3", or "7 · ilk 3, tümü Pano'da" when the rest wait on the Pano. */

@@ -21,7 +21,7 @@ import { journeyChapters, type StepTarget } from "../lib/journeyChapters";
 import { countedIntents, localNow, tripModeOf } from "../lib/tripPhase";
 import { timedNext, timedNextLabel, todayStrip, type TimedNext, type TodayInput } from "../lib/tripToday";
 import type { PlanTarget } from "../lib/chatCards";
-import { linksOf, momentsOf, mosaicOf, offerTiles, placesOfIntents, tourNeeds } from "../lib/heroMosaic";
+import { linksOf, momentsOf, mosaicOf, offerTiles, placesOfIntents, tileSelectors, tourNeeds, type TileTarget } from "../lib/heroMosaic";
 import { budgetView, datesTip, docsMissing, heroCounts, heroLine } from "../lib/heroStrip";
 import { allSet, nextLabel, nextShort, nextStep, type NextIntent, type NextStep } from "../lib/nextStep";
 import { nNights } from "../lib/i18nText";
@@ -761,6 +761,16 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       show((card ? (record ?? box) : (box ?? record)) ?? entry ?? document.querySelector(`[data-section="${t.section}"]`));
     }, 60);
   };
+  /**
+   * A mosaic tile of a thing on the plan (0.38.9): a record's card as a to-do finds it (its category opened); the source's
+   * tour in its city's Öneriler, else the city's box. Each comes into view with a flash.
+   */
+  const goTile = (t: TileTarget) => {
+    if ("item" in t) return reveal({ item: t.item });
+    setView("plan");
+    setOpened("activity", true);
+    setTimeout(() => show(tileSelectors(t).map((q) => document.querySelector(q)).find(Boolean) ?? null), 60);
+  };
   /** "Bunu seç" / "Plana koy": the record taken in its box (one chosen before it for the same need goes back to the options). */
   const take = (itemId: string) => {
     const item = items.find((i) => i.id === itemId);
@@ -914,6 +924,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           cities={cities.map((c) => c.name).filter(Boolean)}
           mood={mood}
           mosaic={mosaic}
+          onTile={goTile}
           working={working.length + reading}
           menu={tripMenu}
           dates={heroDates}

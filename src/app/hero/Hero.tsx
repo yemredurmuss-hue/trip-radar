@@ -5,7 +5,7 @@
 // mosaic, the strip and the chips under the one line, as the v83 drawing has it.
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { factChips, heroLine, weatherChip, type BudgetView, type HeroCounts } from "../../lib/heroStrip";
-import type { Mosaic } from "../../lib/heroMosaic";
+import type { Mosaic, TileTarget } from "../../lib/heroMosaic";
 import { L, locale } from "../../lib/i18n";
 import type { BudgetBar } from "../../lib/progress";
 import type { CountryFacts, TripFacts } from "../../lib/tripFacts";
@@ -78,6 +78,8 @@ export interface HeroProps {
   now: string;
   styles: StyleChip[];
   decisions: Decisions | null;
+  /** A tap on a mosaic tile of a thing on the plan (0.38.9): the page goes to its card. */
+  onTile?: (target: TileTarget) => void;
   /** Gezi sırasında: the "Bugün" strip, in place of the mosaic, the strip and the chips (phase 5 fills it). */
   today?: ReactNode;
 }
@@ -139,7 +141,7 @@ export function Hero(props: HeroProps) {
     >
       {!during && (
         <>
-          <HeroMosaic mosaic={props.mosaic} title={trip.title} cities={props.cities} mood={props.mood} working={props.working} menu={<TripMenu actions={props.menu} />} />
+          <HeroMosaic mosaic={props.mosaic} title={trip.title} cities={props.cities} mood={props.mood} working={props.working} menu={<TripMenu actions={props.menu} />} onTile={props.onTile} />
           <HeroStrip
             dates={props.dates}
             trip={trip}
