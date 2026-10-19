@@ -686,13 +686,16 @@ function coverOf(live: Item[], leg: Leg | null, env: Env): CoverVM | null {
   const part = live.map((i) => partCoverOf(i, trip, items)[0]).find(nonNull) ?? null;
   // A festival's camp made before the parts were kept: its ticket, said as the festival's ticket.
   const camp = part ? null : (live.map((i) => campCoverOf(i, trip, items)[0]).find(nonNull) ?? null);
-  const by = part ?? camp ?? live.map((i) => rideCoverOf(i, items)).find(nonNull) ?? (!live.length && leg ? wayCoverOf(leg, items) : null);
+  const by = part ?? camp ?? live.map((i) => rideCoverOf(i, items)).find(nonNull) ?? (!live.length && leg ? wayCoverOf(leg, items, env.input.plan.range, farHub(leg)) : null);
   if (!by) return null;
   const words = camp
     ? coverWords({ part: { ref: "ticket" }, name: camp.name })
     : coverWords(by, { sleep: by.category === "stay" ? sleepOf(by) : "hotel", pass: isPass(by), rental: by.category === "transport" && coversWays(by) && !isPass(by) });
   return { key: null, itemId: by.id, by: words.by, open: words.open, status: recordStatus(by, env) };
 }
+
+/** A rented car (not a pass) that covers the ways over its days. */
+const isCarCover = (item: Item | undefined): boolean => Boolean(item && item.category === "transport" && coversWays(item) && !isPass(item));
 
 /** A box with nothing of its own decided (D3): the start or the trip's shape opened it, or nothing is there yet. */
 function stagelessStatus(live: Item[], settled: Item | null, options: Item[], draft: Item | null, env: Env): IntentStatus {
@@ -805,7 +808,9 @@ function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
   // Nothing said on it but the start's placeholder: its kind is no way picked yet (as an empty road's "Transfer").
   if (farOpen && !legMode && head.kindWord) head.kindWord = L("Transfer", "Transfer");
   const party = partyOf(lead, env);
-  const modes = (status === "searching" && leg && !legMode) || legSaid ? (leg?.kind === "move" ? [...MOVE_MODES] : far ? [...FAR_MODES] : leg?.kind === "arrival" || leg?.kind === "departure" ? [...TRANSFER_MODES] : []) : [];
+  // A way a rented car covers (D10): driven, with Değiştir drawing the other ways in place (0.38.8, Emre: "ben oradan değiştirebilirim").
+  const byCar = cover != null && leg != null && !live.length && isCarCover(env.byId.get(cover.itemId));
+  const modes = (status === "searching" && leg && !legMode) || legSaid || byCar ? (leg?.kind === "move" ? [...MOVE_MODES] : far ? [...FAR_MODES] : leg?.kind === "arrival" || leg?.kind === "departure" ? [...TRANSFER_MODES] : []) : [];
   return {
     key: b.key,
     section,
