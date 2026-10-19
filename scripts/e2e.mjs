@@ -1994,7 +1994,10 @@ try {
   const checkin = sec("prep").locator('.q-pr1[data-task^="checkin:"]');
   await checkin.waitFor();
   assert.match((await checkin.innerText()).replace(/\s+/g, " "), /Online check-in · TP 1760 .*kalkıştan 24 saat önce açılır uçuş kartından 13 Eki 19:40/);
-  assert.match((await sec("prep").locator('.q-pr1[data-task="visa:schengen"]').innerText()).replace(/\s+/g, " "), /Schengen vizesine başvur .*vize kuralından 23 Eyl'e kadar Resmî site/);
+  // Row 144: a day gone by is said "geçti" (grey), never the orange of a near one.
+  assert.match((await sec("prep").locator('.q-pr1[data-task="visa:schengen"]').innerText()).replace(/\s+/g, " "), /Schengen vizesine başvur .*vize kuralından 23 Eyl'e kadar · geçti Resmî site/);
+  assert.equal(await sec("prep").locator('.q-pr1[data-task="visa:schengen"] .q-pday').getAttribute("class"), "q-pday past");
+  assert.equal(await checkin.locator(".q-pday").getAttribute("class"), "q-pday soon");
   const days = await prepRows.evaluateAll((els) => els.map((e) => e.getAttribute("data-day")));
   assert.deepEqual(days, [...days].sort((a, b) => (a == null) - (b == null)), "the chores with a day first, the rest after");
   assert.equal(days.at(-1), null, "the chore said without a day is last");
@@ -3092,16 +3095,24 @@ try {
   assert.equal(await board.getByText("Jardim Stay").count(), 0, "Portugal items must not show in the Thailand trip");
   // A lone option has nothing to be compared with: no score, but its measured criteria are one click away (v11: its
   // need's card (F7: with a real price, its draft "Önerimiz": the card itself turns), then the window's "Karşılaştır").
+  // v82 (B12): the comparison is the Pano's, and with one option there is none: its details offer no "Karşılaştır";
+  // "Tüm detaylar ›" has what is measured. (The old window's "Puan, karşılaştırınca çıkar" is C11's, row 199.)
   await bopen("stay");
   const lone = bsec("stay").locator(".q-ints > .q-int").first();
   await lone.locator(".z-ib").click();
-  await lone.locator(".z-det").getByRole("button", { name: "Karşılaştır", exact: true }).click();
-  // v82 (B12): the Pano's comparison, its one column and the one for more; the old window's "Puan, karşılaştırınca çıkar" is C11's (row 199).
-  const lonePano = board.getByRole("dialog", { name: "Pano" });
-  await lonePano.locator(".q-cmp3 .q-colx", { hasText: "Daha fazla seçenek" }).waitFor();
-  assert.equal(await lonePano.locator(".q-cmp3 .q-col").count(), 1, "a lone option: its own column");
-  await lonePano.getByRole("button", { name: "Pano'yu kapat" }).click();
-  await lonePano.waitFor({ state: "detached" });
+  assert.equal(await lone.locator(".z-det").getByRole("button", { name: "Karşılaştır", exact: true }).count(), 0, "a lone option: nothing to compare");
+  await lone.locator(".z-det").getByRole("button", { name: "Tüm detaylar ›" }).click();
+  const loneDrawer = board.getByRole("dialog");
+  await loneDrawer.getByText("Tek seçenek · bir tane daha kaydedince puanlanır").waitFor();
+  assert.equal(await loneDrawer.getByRole("button", { name: "Karşılaştır →" }).count(), 0, "nor in its drawer");
+  await loneDrawer.getByRole("button", { name: "Kapat" }).click();
+  await loneDrawer.waitFor({ state: "detached" });
+  if (CMP_SHOWN) {
+    await lone.locator(".z-ib").click();
+    await lone.locator(".z-det").getByRole("button", { name: "Karşılaştır", exact: true }).click();
+    await board.getByRole("dialog", { name: "Karşılaştırma" }).getByText("Puan, karşılaştırınca çıkar").waitFor();
+    await board.getByRole("dialog", { name: "Karşılaştırma" }).getByRole("button", { name: "Kapat" }).click();
+  }
   await board.getByRole("button", { name: /Seyahatlerim/ }).click();
   await board.locator(".trip-card").nth(1).waitFor();
   assert.equal(await board.locator(".trip-card").count(), 2);

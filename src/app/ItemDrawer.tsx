@@ -77,9 +77,12 @@ function DecisionBreakdown({ item, decision, onCompare }: { item: Item; decision
             </span>
           )}
         </span>
-        <button className="link-btn" onClick={onCompare}>
-          {L("Karşılaştır →", "Compare →")}
-        </button>
+        {/* The Pano's comparison (B12): only with another option to weigh it against. */}
+        {!single && (
+          <button className="link-btn" onClick={onCompare}>
+            {L("Karşılaştır →", "Compare →")}
+          </button>
+        )}
       </div>
       {option.parts.length > 0 && (
         <div className="parts">

@@ -98,6 +98,7 @@ export function DetailLayer({ vm, option, booked, onClose, onAddDoc, footer }: {
   closeRef.current = close;
   useEffect(() => {
     opener.current = document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null;
+    const info = box.current?.closest(".q-int")?.querySelector<HTMLElement>(".z-ib") ?? null;
     box.current?.querySelector<HTMLElement>(".z-dx")?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || !focusNear(box.current)) return;
@@ -105,16 +106,21 @@ export function DetailLayer({ vm, option, booked, onClose, onAddDoc, footer }: {
       closeRef.current();
     };
     document.addEventListener("keydown", onKey, true);
-    return () => document.removeEventListener("keydown", onKey, true);
+    return () => {
+      document.removeEventListener("keydown", onKey, true);
+      // Gone by what one of its buttons did (İptal ettim, a new state): the focus it held is not lost to the page.
+      const at = document.activeElement;
+      if (info?.isConnected && (!at || at === document.body)) info.focus({ preventScroll: true });
+    };
   }, []);
   const decision = decisionOf(env.decisions?.byGroup, item);
   const ctx = env.decisions?.ctx;
   const facts = cardFacts(item, decision, ctx);
   const docs = env.docsFor(item.id);
   const { url: dated } = datedLink(item, decision);
-  // C12, B12: the options side by side, in the Pano's comparison (the old comparison window is not in this version, C11);
-  // a lone option opens it too, with its column for more.
-  const comparable = !booked && decision != null && decision.options.some((o) => !o.excluded);
+  // B12: the options side by side are the Pano's comparison (the old comparison window is not in this version, C11); a lone
+  // option has nothing to be weighed against (its measured criteria are in "Tüm detaylar ›").
+  const comparable = !booked && decision != null && decision.options.filter((o) => !o.excluded).length > 1;
   const more = (
     <>
       {comparable && (
