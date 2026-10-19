@@ -30,7 +30,7 @@ export function useWho(trip: Trip, adults: number | null): Who {
 }
 
 /** Each person's latest action on a shared trip (lib/share/activity.ts): what the votes, the saved pages and the settings changes record. Nothing on a trip that isn't shared. */
-function useLatest(items: Item[]): (name: string | null | undefined) => Action | null {
+export function useLatest(items: Item[]): (name: string | null | undefined) => Action | null {
   const share = useShare();
   return (name) => (share && name ? latestOf(name, { me: share.me, votes: share.votes, notices: share.notices, items }) : null);
 }
@@ -144,7 +144,7 @@ export function Travellers({ trip, who, onShare, items = [] }: { trip: Trip; who
 }
 
 /** Over a face: who it is and what they did last, when something is recorded; the same line is in the box a tap opens. */
-function FaceTip({ name, action, me, children }: { name: string | undefined; action: Action | null; me: boolean; children: Parameters<typeof TipOn>[0]["children"] }) {
+export function FaceTip({ name, action, me, children }: { name: string | undefined; action: Action | null; me: boolean; children: Parameters<typeof TipOn>[0]["children"] }) {
   const tip = name && action ? (
     <>
       <b className="tipx-h">{me ? L(`${name} (sen)`, `${name} (you)`) : name}</b>
@@ -167,7 +167,7 @@ function Latest({ action }: { action: Action | null }) {
   );
 }
 
-function WhoPopover({ trip, who, latest, isShared, shared, ownPhotos, onInvite }: { trip: Trip; who: Who; latest: (name: string | null | undefined) => Action | null; isShared: boolean; shared: string[]; ownPhotos: Record<string, string>; onInvite?: () => void }) {
+export function WhoPopover({ trip, who, latest, isShared, shared, ownPhotos, onInvite }: { trip: Trip; who: Who; latest: (name: string | null | undefined) => Action | null; isShared: boolean; shared: string[]; ownPhotos: Record<string, string>; onInvite?: () => void }) {
   const myPhoto = useMyPhoto();
   const peoplePhoto = usePeoplePhotos();
   const [name, setName] = useState("");

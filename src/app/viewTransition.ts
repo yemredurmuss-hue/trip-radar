@@ -45,7 +45,7 @@ let carrying = false;
 export const photoCarried = () => carrying;
 
 const cardPhoto = (tripId: string) => document.querySelector<HTMLElement>(`[data-trip-card="${CSS.escape(tripId)}"] .pic`);
-const heroPhoto = () => document.querySelector<HTMLElement>(".hx .hx-photo");
+const heroPhoto = () => document.querySelector<HTMLElement>(".x-hero .x-big");
 
 /** `open`: from the trip's card on the home to its board; else from the board back to the home, landing on the card. */
 export function withTripPhoto(update: () => void, tripId: string, open: boolean): void {

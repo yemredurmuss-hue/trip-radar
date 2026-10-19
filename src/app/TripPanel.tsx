@@ -2,23 +2,28 @@ import { useCallback, useEffect, useMemo, useRef, useState, useLayoutEffect } fr
 import { z } from "zod";
 import { requestProcessing } from "../lib/browser";
 import type { GroupDecision } from "../lib/decision";
-import { formatDateRange, formatPrice, listingKeyOf, nightsBetween, rankItems, tripDateRange } from "../lib/items";
+import { formatDateRange, listingKeyOf, nightsBetween, rankItems, routeUrl, tripDateRange } from "../lib/items";
 import { buildLegs, staleHiddenMoves, type Leg } from "../lib/legs";
 import { buildTimeline } from "../lib/timeline";
 import { needsReading } from "../lib/listing";
 import { cardFacts } from "../lib/cardFacts";
-import { budgetBar, sectionAllotments, decisionProgress, entryDomId, nextStepText, nextStepShort, type DecisionProgress, type Todo } from "../lib/progress";
+import { budgetBar, sectionAllotments, decisionProgress, entryDomId, type Todo } from "../lib/progress";
 import { cachedWeather } from "../lib/climate";
 import { cityKeyOf, groupKeyOf, sameCity, type OptionGroup, type Plan } from "../lib/plan";
 import { retryCapture } from "../lib/process";
 import { L } from "../lib/i18n";
 import { creditOf, findCityPhoto, imageProxy, keptCredits, nextCityImage, nextHeroImage, wantsCityImage } from "../lib/cityImages";
-import { acceptMood, moodKey, statusSentence } from "../lib/heroText";
+import { acceptMood, moodKey } from "../lib/heroText";
 import { getProvider, MissingKeyError } from "../lib/llm";
+import { resetConversation } from "../lib/assistant";
+import { collectionsOf } from "../lib/intents";
+import { mosaicOf, placesOfIntents } from "../lib/heroMosaic";
+import { budgetView, datesTip, heroCounts, heroLine } from "../lib/heroStrip";
+import { nextLabel, nextShort, nextStep, type NextIntent, type NextStep } from "../lib/nextStep";
+import { nNights } from "../lib/i18nText";
 import { loadHome, loadPassport } from "../lib/passport";
 import { displayCurrency } from "../lib/displayCurrency";
 import { homeCurrencyOf, tripFacts } from "../lib/tripFacts";
-import type { Timeline } from "../lib/timeline";
 
 import type { Capture, Item, Suggestion, Trip } from "../lib/types";
 import { chooseItem, hideNights, markSuggestionAdded, setVisaDone, undo as takeBack, updateTrip } from "./actions";
@@ -29,7 +34,7 @@ import { undoSlot } from "../lib/undo";
 import { undoTrip, type Undoable } from "../lib/undoables";
 import { addQuick, templateLabel, TEMPLATES, type InsertAt, type Template, type TemplateId } from "../lib/templates";
 import { categorize, catDomKey, findInSections, planProgress, sectionOfItem, SECTION_ORDER, type SectionId } from "../lib/categories";
-import { listTodos, planList } from "../lib/planList";
+import { planList } from "../lib/planList";
 import { firstField, keepDraftFor, type CardFocus } from "../lib/inlineEdit";
 import { newId } from "../lib/db";
 import { AddButton, AddSheet } from "./cards/AddSheet";
@@ -45,16 +50,17 @@ import { SilhouetteDefs } from "./cards/Silhouettes";
 import { UndoToast } from "./cards/UndoToast";
 import { isIdea } from "../lib/booking";
 import { findTarget, show, TodoList } from "./Progress";
-import { TripFacts } from "./TripFacts";
-import { cityRanges, countryCodesOf, countryNames, sectionTally, tallyLines, tallySection } from "../lib/heroInfo";
+import { cityRanges, countryCodesOf, countryNames, sectionTally } from "../lib/heroInfo";
 import { answerParents, answersAny, mainPlaceOf, mainPlaces, placesKey, placesPrompt, placesSystemPrompt, resolveParents } from "../lib/destinations";
 import { acceptNoteLabel, type Pref } from "../lib/preferences";
 import { acceptStyle, budgetLevel, styleChips, styleKey, stylePrompt } from "../lib/tripStyle";
 import { intentEntries } from "./IntentCard";
-import { TripHero, type HeroAction, type HeroCity } from "./TripHero";
+import type { HeroCity } from "./TripHero";
+import { Hero } from "./hero/Hero";
+import { HeroMini } from "./hero/HeroMini";
+import type { HeroNext } from "./hero/HeroStrip";
+import type { TripMenuActions } from "./hero/TripMenu";
 import { PrintPlan } from "./PrintPlan";
-import { StickyBar } from "./StickyBar";
-import { onPanel } from "./panelBus";
 import { PlanKey, PlanOrder } from "./plan/PlanOrder";
 import type { GoTarget } from "./plan/JourneyCards";
 import { StoryView } from "./plan/StoryView";
@@ -93,7 +99,7 @@ import { onTripChange } from "../lib/tripUndo";
 import { takeLangUndo } from "./langSwitch";
 import { StartGuideCard } from "./start/StartGuideCard";
 import { WorkLine } from "./WorkPill";
-import { isPlaceholder, startLead } from "../lib/startTrip";
+import { isPlaceholder } from "../lib/startTrip";
 
 interface Props {
   trip: Trip;
@@ -103,7 +109,6 @@ interface Props {
   decisions: Decisions | null;
   onOpenItem: (item: Item) => void;
   onCompare: (groupKey: string) => void;
-  menu: React.ReactNode;
   /** Opens the share dialog (absent where the trip can't be shared). */
   onShare?: () => void;
   /** Geçmiş ve çöp kutusu is open (the ••• menu, 0.37); closing it. */
@@ -111,9 +116,13 @@ interface Props {
   onHistoryClose?: () => void;
   /** v11: a line for the trip's chat ("Daha fazla fikir", a card's ✨), sent there as if typed. */
   onAsk?: (text: string) => void;
+  /** The trip's ⋯ menu on the hero (v83 C1): what the board itself opens (Geçmiş ve çöp kutusu, Ayarlar, deleting the trip). */
+  onHistory?: () => void;
+  onSettings?: () => void;
+  onDeleteTrip?: () => void;
 }
 
-export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenItem, onCompare, menu, onShare, historyOpen = false, onHistoryClose, onAsk }: Props) {
+export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenItem, onCompare, onShare, historyOpen = false, onHistoryClose, onAsk, onHistory, onSettings, onDeleteTrip }: Props) {
   // The plan's dates: the ones set, widened by any stay booked or chosen outside them.
   const range = plan.range ?? trip.confirmedDates ?? tripDateRange(items);
   const today = decisions?.ctx.today ?? new Date().toISOString().slice(0, 10);
@@ -526,8 +535,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const [todoOpen, setTodoOpen] = useState<"all" | "deadline" | null>(null);
   // The plan as a PDF (PrintPlan.tsx): drawn while the print window is open.
   const [printing, setPrinting] = useState(false);
-  // The trip's ••• menu (App.tsx): "Belgeler" opens the documents, "Planı PDF olarak indir" the PDF.
-  useEffect(() => onPanel((c) => (c === "docs" ? openPano("docs") : setPrinting(true))), [openPano]);
+  // Belgeler from the hero's ⋯ menu: the Pano window on its Belgeler view (C5).
+  const openDocs = () => openPano("docs");
   const heroRef = useRef<HTMLElement>(null);
   // Another trip's to-do list isn't the one that was open.
   useEffect(() => {
@@ -549,7 +558,6 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       }),
     [items, passport, decisions?.ctx.currency, decisions?.ctx.rates, range?.start],
   );
-  const settledItem = (i: Item) => i.status === "chosen" || i.status === "booked";
   const who = useWho(trip, facts.adults);
   // The countries abroad an eSIM is for (the eSIM's empty card): home as Settings has it, else where the first flight leaves.
   const esimCountries = useMemo(() => {
@@ -570,7 +578,6 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   });
   // The plan line: what the Plan's sections hold (each header's "y"), so both always say the same thing.
   const tally = useMemo(() => sectionTally(sections), [sections]);
-  const tallyNames = useMemo(() => tallyLines(sections), [sections]);
   const chips = styleChips(
     // The last words stay on screen while new ones are asked for (no empty flash, no flicker).
     acceptStyle(trip.style?.ids ?? []),
@@ -582,28 +589,12 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     (city ? (trip.cityImages?.[cityKeyOf(city)!] ?? trip.cityImages?.[cityKeyOf(mainPlaceOf(mains, city))!]) : null) ?? trip.heroImage ?? null;
   const countries = useMemo(() => countryCodesOf(items), [items]);
   const places = useMemo(() => cityRanges(plan, mains, range), [plan, mains, range]);
-  const flightGroups = plan.groups.filter((g) => g.category === "flight");
-  // A flight the start chat only made room for isn't one chosen (startTrip.ts isPlaceholder).
-  const flightsDone = flightGroups.length > 0 && flightGroups.every((g) => g.items.some((i) => settledItem(i) && !isPlaceholder(trip, i)));
   const mood = trip.mood?.key === moodFor && trip.mood.text ? trip.mood.text : null;
-  // A trip the start chat made, while its places are still to fill: "2 uçuş ve 31 gece seni bekliyor."
-  const startWaiting = trip.startGuide ? startLead(trip, items, plan.nights.open, new Set(plan.closed.map((c) => c.item.id))) : null;
   // The sections' "3/4"s added up: whether anything is saved yet, and (with nothing left to do) all set.
   const done = useMemo(() => planProgress(sections), [sections]);
   // The hero's "Planlama %75" and the list it opens, from the same needs: booked / planned / waiting for a
   // decision. A flight or a stay the start chat only made room for waits for a decision (startTrip.ts isPlaceholder).
   const todo = planList(sections, progress.todos, today);
-  // One sentence: the mood, else what's waiting. Once the progress box counts the stages, the counts are its
-  // own, never a second set of numbers here.
-  const lead =
-    startWaiting ??
-    mood ??
-    // No dates yet: the hero's date line says so already ("Tarihler kaydettikçe netleşir"), never twice.
-    (!range
-      ? ""
-      : done.total > 0
-        ? ""
-        : statusSentence(progress.count, { flightsDone, waitingCity: mainPlaceOf(mains, waitingCityOf(progress, timeline, items)) }));
   /** A section of the Plan (a cell of the hero's plan line): opened and scrolled to (else its "Ekle" chip). */
   const openSection = (id: SectionId) => {
     const drawn = sections.some((s) => s.id === id && (s.entries.length || s.hidden.length));
@@ -615,46 +606,77 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       else show(document.querySelector(`[data-section-chip="${id}"]`));
     }, 60);
   };
-  const first = listTodos(todo)[0];
-  // All set only when every section is settled and nothing is left to do (a cancellation running out is).
-  const allDone = done.complete && !first;
-  const unsettled = sections.find((s) => s.entries.length && s.settled < s.entries.length);
   const endPrint = useCallback(() => setPrinting(false), []);
-  // Everything planned is booked (the hero's %100, lifecycle.heroNumbers): the plan as a PDF is the main button
-  // (0.36.51, Emre); before that it's there too, beside "Planı tamamla", never the main one.
+  // What the PDF's own summary says when the hero can't be copied (lifecycle.heroNumbers).
   const numbers = heroNumbers(todo.counts);
-  const pdf: HeroAction = {
-    label: printing ? L("PDF hazırlanıyor…", "Making the PDF…") : L("Planı PDF olarak indir", "Download the plan as PDF"),
-    title: L("Gezinin özeti ve gün gün akışı, bir PDF dosyası olarak", "The trip's summary and its days, as a PDF file"),
-    run: () => setPrinting(true),
+
+  // --- the v82 hero (aşama 1): the backbone's intents (lib/intents.ts) give its two shares (B9), its mosaic and "Sıradaki" ---
+  const heroIntents = useMemo(
+    () =>
+      collectionsOf({ trip, plan, sections, items, today, decisions: decisions?.byGroup, ctx: decisions?.ctx, docsFor, people: who.count || null, suggestions: suggestions.bySection }).flatMap(
+        (c) => c.intents,
+      ),
+    [trip, plan, sections, items, today, decisions, docsFor, who.count, suggestions.bySection],
+  );
+  const counts = useMemo(() => heroCounts(heroIntents), [heroIntents]);
+  const mosaic = useMemo(
+    () =>
+      mosaicOf({
+        cities: cities.map((c) => {
+          const days = places.find((p) => p.city === c.name);
+          return { name: c.name, image: c.image, credit: c.credit ?? null, nights: days ? nNights(nightsBetween(days.start, days.end)) : null };
+        }),
+        places: placesOfIntents(heroIntents, (image) => creditOf(image, trip.photoCredits)),
+      }),
+    [cities, places, heroIntents, trip.photoCredits],
+  );
+  const estimated = !!range && !trip.confirmedDates && !plan.range;
+  const heroDates = range ? { range, estimated, countdown: countdownText(countdown(range, today)), tip: datesTip(places, estimated) } : null;
+  const heroBudget = useMemo(() => {
+    const view = budgetView(bar, who.count || facts.adults || 0);
+    return bar && view ? { view, bar } : null;
+  }, [bar, who.count, facts.adults]);
+  const visaToGet = facts.visa?.kind === "visa" && !trip.visaDone;
+  /** An intent of the Plan: its category opens, the page goes to it with a flash. */
+  const goIntent = (intent: NextIntent) => {
+    setView("plan");
+    setOpened(intent.section, true);
+    setTimeout(() => show(intent.domKeys.map((k) => document.getElementById(entryDomId(k))).find(Boolean) ?? document.querySelector(`[data-section="${intent.section}"]`)), 60);
   };
-  const action: HeroAction | null =
-    done.total === 0
-      ? { label: L("İlk kaydı ekle", "Add the first one"), run: () => addIn(null, null) }
-      : numbers.pct === 100
-        ? pdf
-        : allDone
-        ? onShare
-          ? { label: L("Paylaş", "Share"), title: L("Bu geziyi paylaş", "Share this trip"), run: onShare }
-          : null
-        : first
-          ? { label: L("Planı tamamla", "Finish the plan"), title: nextStepText(first), short: nextStepShort(first), run: () => reveal(first.target) }
-          : unsettled
-            ? { label: L("Planı tamamla", "Finish the plan"), run: () => openSection(unsettled.id) }
-            : null;
-  // Beside the main button: the PDF while the plan isn't all booked; once it is, sharing (when the trip can be).
-  const secondary: HeroAction | null =
-    done.total === 0
-      ? null
-      : numbers.pct !== 100
-        ? { ...pdf, label: printing ? L("PDF hazırlanıyor…", "Making the PDF…") : L("PDF indir", "Download PDF") }
-        : allDone && onShare
-          ? { label: L("Paylaş", "Share"), title: L("Bu geziyi paylaş", "Share this trip"), run: onShare }
-          : null;
-  // The sticky bar's money: what the plan will likely cost, against the budget (the hero's own sums).
-  const stickyBudget = bar
-    ? { expected: bar.booked + bar.chosen + bar.open, total: bar.total, currency: bar.currency, expectedText: formatPrice(bar.booked + bar.chosen + bar.open, bar.currency), totalText: bar.total != null ? formatPrice(bar.total, bar.currency) : null }
-    : null;
+  const goVisa = () => {
+    setView("plan");
+    setOpened("other", true);
+    setTimeout(() => show(document.querySelector("[data-visa]")), 60);
+  };
+  // F4: "Sıradaki" updates itself; C30: "İlk kaydı ekle" with nothing saved, the PDF once all is bought, sharing when nothing is left.
+  const step: NextStep = nextStep({ intents: heroIntents, saved: done.total > 0, visa: visaToGet, sharable: !!onShare });
+  const runStep: Record<NextStep["kind"], (() => void) | null> = {
+    first: () => addIn(null, null),
+    visa: goVisa,
+    intent: step.kind === "intent" ? () => goIntent(step.intent) : null,
+    pdf: () => setPrinting(true),
+    share: onShare ?? null,
+    ready: null,
+  };
+  const heroNext: HeroNext = {
+    label: step.kind === "pdf" && printing ? L("PDF hazırlanıyor…", "Making the PDF…") : nextLabel(step),
+    title: step.kind === "pdf" ? L("Gezinin özeti ve gün gün akışı, bir PDF dosyası olarak", "The trip's summary and its days, as a PDF file") : undefined,
+    run: runStep[step.kind],
+  };
+  // F5: a tap on "%61 planda" goes to the first decision (a visa to get first, as "Sıradaki" does).
+  const firstOpen = heroIntents.find((i) => i.status === "suggested" || i.status === "deciding" || i.status === "searching");
+  const onFirstDecision = visaToGet ? goVisa : firstOpen ? () => goIntent(firstOpen) : null;
+  const tripMenu: TripMenuActions = {
+    onDocs: openDocs,
+    onShare,
+    onPdf: () => setPrinting(true),
+    mapUrl: routeUrl(items),
+    onHistory,
+    onNewChat: () => void resetConversation(trip.id),
+    onLink: () => document.querySelector<HTMLInputElement>('.composer input[type="text"]')?.focus(),
+    onSettings,
+    onDelete: onDeleteTrip,
+  };
   const decisionOf = (item: Item) => decisionByItem.get(item.id);
   /** A stay keeps its decision card; everything else is a plan card (cards/PlanCard.tsx). */
   const card: CardFor = (item, group, decision, ranked, onCompareGroup) =>
@@ -750,61 +772,47 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       )}
       {/* (hareket dili, m-isik) a thin light along the top while captures are read or prices looked up */}
       <WorkLine on={working.length + reading > 0} />
-      <StickyBar
+      {/* v82: the thin bar while the hero is scrolled away (the hero's own numbers, its "Sıradaki"). */}
+      <HeroMini
         hero={heroRef}
         active={view !== "board"}
         title={trip.title}
-        dates={range ? formatDateRange(range.start, range.end) : null}
-        daysLeft={countdownText(countdown(range, today))}
-        cover={trip.heroImage ?? null}
-        pct={done.total ? numbers.pct : null}
-        counts={done.total ? { done: numbers.done, chosen: numbers.planned, open: numbers.open } : null}
-        ready={done.total > 0 && !first && !unsettled && numbers.open === 0}
-        budget={stickyBudget}
+        cover={mosaic.cover?.image ?? trip.heroImage ?? null}
+        line={heroLine({ range, estimated, people: who.count, counts, budget: null, short: true })}
+        counts={counts}
+        budget={heroBudget?.view ?? null}
         view="plan"
         onView={(v) => (v === "board" ? (setPanoFocus(null), setView("board")) : setView("plan"))}
-        action={action}
+        next={heroNext}
+        nextShort={nextShort(step)}
       />
       {/* The Pano is a work table of its own: no hero over it (v11). */}
       {view !== "board" && (
-      <section className="hx" ref={heroRef}>
-        <TripHero
+        <Hero
           key={trip.id}
           trip={trip}
-          cities={cities}
-          range={range}
-          estimated={!!range && !trip.confirmedDates && !plan.range}
-          today={today}
-          lead={lead}
-          tally={tally}
-          tallyLines={tallyNames}
-          onTally={(kind) => openSection(tallySection(kind, sections))}
-          done={{ ...done, complete: allDone }}
-          todo={todo}
-          list={todoOpen}
-          onList={setTodoOpen}
-          action={action}
-          secondary={secondary}
+          sectionRef={heroRef}
+          cities={cities.map((c) => c.name).filter(Boolean)}
+          mood={mood}
+          mosaic={mosaic}
           working={working.length + reading}
-          menu={menu}
-        />
-        <TripFacts
-          key={`facts:${trip.id}`}
-          trip={trip}
-          decisions={decisions}
-          range={range}
-          facts={facts}
-          home={passport}
-          countries={countries}
-          places={places}
-          today={today}
-          chips={chips}
-          bar={bar}
+          menu={tripMenu}
+          dates={heroDates}
           who={who}
           items={items}
           onShare={onShare}
+          counts={counts}
+          onFirstDecision={onFirstDecision}
+          budget={heroBudget}
+          next={heroNext}
+          facts={facts}
+          countries={countryNames(countries)}
+          places={places}
+          home={passport}
+          now={today}
+          styles={chips}
+          decisions={decisions}
         />
-      </section>
       )}
       {todoOpen && view !== "board" && <TodoList list={todo} open={todoOpen} onGo={reveal} />}
       {printing && (
@@ -1000,16 +1008,6 @@ function citiesOf(plan: Plan, items: Item[]): string[] {
   for (const b of plan.stayBlocks) add(b.city);
   if (!seen.size) for (const i of items) if (i.status !== "dismissed" && i.category === "stay") add(i.city);
   return [...seen.values()];
-}
-
-/** Where the first open decision is (a stay's city, a city's plans, an item's city), for "Madeira'da bir karar bekliyor". */
-function waitingCityOf(progress: DecisionProgress, timeline: Timeline, items: Item[]): string | null {
-  const todo = progress.todos.find((t) => t.kind === "decide");
-  if (!todo) return null;
-  const entry = todo.target.entry ? timeline.entries.find((e) => e.key === todo.target.entry) : undefined;
-  if (entry?.kind === "stay") return entry.block.city ?? null;
-  if (entry?.kind === "plan") return entry.city;
-  return (todo.target.item && items.find((i) => i.id === todo.target.item)?.city) || null;
 }
 
 function OptionGroupView({

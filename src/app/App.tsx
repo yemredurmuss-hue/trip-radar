@@ -1,9 +1,6 @@
-import { sendPanel } from "./panelBus";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { resetConversation } from "../lib/assistant";
 import { loadDemoTrip } from "../lib/demo";
 import { L } from "../lib/i18n";
-import { routeUrl } from "../lib/items";
 import { buildSteps } from "../lib/decideSteps";
 import { buildPlan, groupKeyOf, liveGroups } from "../lib/plan";
 import { purgeTrash, restoreTrash, trashTrip } from "../lib/trash";
@@ -17,7 +14,6 @@ import { DropOverlay } from "./arrive/ArriveViews";
 import { useBoardIntake } from "./arrive/useBoardIntake";
 import { Chat } from "./Chat";
 import { CompareView } from "./CompareView";
-import { HeroIcon, MenuIcon } from "./Icons";
 import { ItemDrawer } from "./ItemDrawer";
 import { Settings } from "./Settings";
 import { ShareDialog, ShareProvider } from "./Share";
@@ -45,7 +41,6 @@ export function App() {
   const board = useBoard(tripFromHash() ?? readSelectedTrip());
   const [openItemId, setOpenItemId] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(location.hash === "#settings");
-  const [menuOpen, setMenuOpen] = useState(false);
   const [seenArrival, setSeenArrival] = useState<string | null>(null);
   const [compareKey, setCompareKey] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
@@ -110,14 +105,6 @@ export function App() {
     return () => window.removeEventListener("hashchange", onHash);
   }, [board.selectTrip]);
 
-  // The menu closes on a click anywhere else.
-  useEffect(() => {
-    if (!menuOpen) return;
-    const close = () => setMenuOpen(false);
-    document.addEventListener("click", close);
-    return () => document.removeEventListener("click", close);
-  }, [menuOpen]);
-
   const trip = board.trip;
   const openItem = board.items.find((i) => i.id === openItemId) ?? null;
   /** The comparison an item is in (a stay saved without dates can be in its city's group). */
@@ -165,62 +152,8 @@ export function App() {
     }
   }
 
-  const mapUrl = trip ? routeUrl(board.items) : null;
+  // The trip's ⋯ menu is the hero's own (v83 C1, hero/TripMenu.tsx); what only the board opens is handed down to it.
   const sharable = trip && !isDemoTrip(trip);
-  const menu = (
-    <>
-      <button
-        className="menu-btn"
-        onClick={(e) => {
-          e.stopPropagation();
-          setMenuOpen(!menuOpen);
-        }}
-        aria-label={L("Gezi menüsü", "Trip menu")}
-        aria-expanded={menuOpen}
-      >
-        <HeroIcon name="dots" size={20} />
-      </button>
-      {menuOpen && (
-        <div className="menu" onClick={() => setMenuOpen(false)}>
-          {trip && (
-            <>
-              <button onClick={() => document.querySelector<HTMLInputElement>('.composer input[type="text"]')?.focus()}>
-                <MenuIcon name="link" />
-                <span>{L("Link ya da ekran görüntüsü ekle", "Add a link or screenshot")}</span>
-              </button>
-              <button onClick={() => sendPanel("docs")}><MenuIcon name="clip" /><span>{L("Belgeler", "Documents")}</span><small aria-hidden>{L("bütün belgeler tek listede", "every document in one list")}</small></button>
-              {sharable && <button onClick={() => setShareOpen(true)}><MenuIcon name="users" /><span>{trip.shareId ? L("Paylaşım kodu", "Share code") : L("Bu geziyi paylaş", "Share this trip")}</span><small aria-hidden>{L("gezi arkadaşlarınla birlikte", "with your travel companions")}</small></button>}
-              <button onClick={() => sendPanel("pdf")}><MenuIcon name="out" /><span>{L("Planı PDF olarak indir", "Download the plan as PDF")}</span><small aria-hidden>{L("özet ve gün gün akış, tek dosya", "summary and days, one file")}</small></button>
-              {mapUrl && (
-                <a href={mapUrl} target="_blank" rel="noreferrer">
-                  <MenuIcon name="map" />
-                  <span>{L("Rotayı haritada gör", "See the route on a map")}</span>
-                </a>
-              )}
-              <hr />
-              <button onClick={() => void resetConversation(trip.id)}><MenuIcon name="chat" /><span>{L("Bu gezide yeni sohbet başlat", "Start a new chat for this trip")}</span></button>
-              <button onClick={() => setHistoryOpen(true)}><MenuIcon name="clock" /><span>{L("Geçmiş ve çöp kutusu", "History and trash")}</span><small aria-hidden>{L("kim neyi değiştirdi, silinenler", "who changed what, deleted items")}</small></button>
-            </>
-          )}
-          {!trip && <button onClick={() => setHistoryOpen(true)}><MenuIcon name="trash" /><span>{L("Çöp kutusu", "Trash")}</span></button>}
-          <button onClick={() => setSettingsOpen(true)}><MenuIcon name="gear" /><span>{L("Ayarlar", "Settings")}</span></button>
-          {!board.trips.some((t) => t.demo) && (
-            <button onClick={() => void loadDemoTrip().then(board.selectTrip)}><MenuIcon name="demo" /><span>{L("Örnek geziyi yükle", "Load the sample trip")}</span></button>
-          )}
-          {trip && (
-            <>
-              <hr />
-              <button className="danger" onClick={() => void deleteTrip()}>
-                <MenuIcon name="trash" />
-                <span>{L("Bu geziyi sil", "Delete this trip")}</span>
-              </button>
-            </>
-          )}
-        </div>
-      )}
-    </>
-  );
-
   return (
     <ShareProvider trip={trip}>
       <UpdateBanner />
@@ -247,8 +180,10 @@ export function App() {
               decisions={decisions}
               onOpenItem={(i: Item) => setOpenItemId(i.id)}
               onCompare={setCompareKey}
-              menu={menu}
               onShare={sharable ? () => setShareOpen(true) : undefined}
+              onHistory={() => setHistoryOpen(true)}
+              onSettings={() => setSettingsOpen(true)}
+              onDeleteTrip={() => void deleteTrip()}
               historyOpen={historyOpen}
               onHistoryClose={() => setHistoryOpen(false)}
               onAsk={(text) => addToTrip(trip.id, text)}
