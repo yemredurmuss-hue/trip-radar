@@ -38,7 +38,7 @@ import { estimatedRange, rangeLabel, type EstRange } from "./estRange";
 import { L } from "./i18n";
 import { count, joinAnd, locative, lowerFirst, nNights, nReviews } from "./i18nText";
 import { shortDay } from "./ideas";
-import { formatDateRange, formatPrice, isoDate, listingKeyOf, nightsBetween, placeMapUrl, rankItems } from "./items";
+import { formatDateRange, isoDate, listingKeyOf, nightsBetween, placeMapUrl, rankItems } from "./items";
 import { clockOf, legShortTitle, type Leg } from "./legs";
 import { noCounts, type Stage } from "./lifecycle";
 import { cancellationText } from "./needs";
