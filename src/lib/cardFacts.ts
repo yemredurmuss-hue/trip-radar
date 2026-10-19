@@ -20,7 +20,17 @@ export interface CardFacts {
   title: string;
   subtitle: string | null;
   /** The total (for a stay: its own nights) and, for stays, the price per night. */
-  price: { text: string; label: string | null; perNight: string | null; provisional: boolean; note?: string; /** A flight for several: what one person pays (the total is `text`). */ each?: string | null } | null;
+  price: {
+    text: string;
+    label: string | null;
+    perNight: string | null;
+    provisional: boolean;
+    note?: string;
+    /** A flight for several: what one person pays (the total is `text`). */
+    each?: string | null;
+    /** D17: converted from the page's own money (the amounts above then begin with "≈"): the price as the page gave it. */
+    source?: string | null;
+  } | null;
   score: number | null;
   best: boolean;
   /** Where it stands ("En uygun · konum", "Elendi", "Seçildi"); null when the pros and cons say it. */
@@ -137,6 +147,10 @@ function priceOf(item: Item, decision: GroupDecision | undefined, currency: stri
   const option = decision?.options.find((o) => o.item.id === item.id);
   const provisional = Boolean(option?.limited.length);
   const compared = option?.parts.find((p) => p.criterion === "price")?.value;
+  // D17: the engine's price is in the trip's money; one converted from the page's own is said with "≈", the page's beside it.
+  const converted = compared != null && item.price.amount != null && !!item.price.currency && item.price.currency !== currency;
+  const sign = converted ? "≈" : "";
+  const source = converted ? { source: formatPrice(item.price.amount, item.price.currency) } : {};
   if (item.category === "stay") {
     const own = stayRange(item);
     const group = decision ? rangeOfGroupKey(decision.key) : null;
@@ -155,11 +169,13 @@ function priceOf(item: Item, decision: GroupDecision | undefined, currency: stri
     }
     if (perNight == null) return null;
     const nights = ownNights || groupNights;
+    const was = money === currency ? sign : "";
     return {
-      text: formatPrice(perNight * (nights || 1), money),
+      text: `${was}${formatPrice(perNight * (nights || 1), money)}`,
       label: nights ? L(`${nights} gece toplam`, `${nNights(nights)} total`) : L("gecelik", "per night"),
-      perNight: nights ? `${formatPrice(perNight, money)} / ${L("gece", "night")}` : null,
+      perNight: nights ? `${was}${formatPrice(perNight, money)} / ${L("gece", "night")}` : null,
       provisional,
+      ...(was ? source : {}),
     };
   }
   if (compared != null) {
@@ -169,8 +185,8 @@ function priceOf(item: Item, decision: GroupDecision | undefined, currency: stri
       label = n === 1 ? SCOPE_LABELS.per_person : L(`${n} kişi toplam`, `${n} people total`);
     }
     const going = item.guests.adults ?? people ?? 0;
-    const each = item.category === "flight" && going > 1 ? formatPrice(compared / going, currency) : null;
-    return { text: formatPrice(compared, currency), label, perNight: null, provisional, ...(each ? { each } : {}) };
+    const each = item.category === "flight" && going > 1 ? `${sign}${formatPrice(compared / going, currency)}` : null;
+    return { text: `${sign}${formatPrice(compared, currency)}`, label, perNight: null, provisional, ...(each ? { each } : {}), ...source };
   }
   if (item.price.amount == null) return null;
   return { text: formatPrice(item.price.amount, item.price.currency), label: scopeLabel(item.price.scope), perNight: null, provisional };

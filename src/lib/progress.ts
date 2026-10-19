@@ -330,6 +330,8 @@ export interface BudgetBar {
   open: number;
   /** Prices that couldn't be counted (missing, or no exchange rate yet). */
   uncounted: number;
+  /** D17: some of the sums were converted from another money (the board says them with "≈"). */
+  converted?: boolean;
   /** Booked + chosen, by kind (what the hero's bar shows). */
   byCategory: Record<BudgetSlice, number>;
   /** Booked + chosen + each open decision's leading option, by kind: what each part is likely to cost. */
@@ -356,6 +358,7 @@ export function budgetBar(plan: Plan, items: Item[], ctx: DecisionContext, decis
   let chosen = 0;
   let open = 0;
   let uncounted = 0;
+  let converted = false;
   const byCategory: Record<BudgetSlice, number> = { flight: 0, stay: 0, transport: 0, activity: 0, other: 0 };
   const expected: Record<BudgetSlice, number> = { flight: 0, stay: 0, transport: 0, activity: 0, other: 0 };
   const add = (item: Item, to: "booked" | "chosen" | "open") => {
@@ -364,6 +367,7 @@ export function budgetBar(plan: Plan, items: Item[], ctx: DecisionContext, decis
       uncounted++;
       return;
     }
+    if (item.price.currency && item.price.currency !== ctx.currency) converted = true;
     if (to !== "open") byCategory[sliceOf(item.category)] += price;
     expected[sliceOf(item.category)] += price;
     if (to === "booked") booked += price;
@@ -381,5 +385,5 @@ export function budgetBar(plan: Plan, items: Item[], ctx: DecisionContext, decis
     if (lead) add(lead, "open");
   }
   const budget = ctx.trip.budget;
-  return { currency: ctx.currency, total: budget && budget.currency === ctx.currency ? budget.amount : null, booked, chosen, open, uncounted, byCategory, expected };
+  return { currency: ctx.currency, total: budget && budget.currency === ctx.currency ? budget.amount : null, booked, chosen, open, uncounted, converted, byCategory, expected };
 }
