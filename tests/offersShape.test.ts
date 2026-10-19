@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   adultsOf, airportCodeOk, arrivalClock, askableDay, bookingSearch, cheapest, flightOffer, geoFromTypeahead, localClock, maxOf,
   aviasalesSearch, durationWords, pickActivities, viatorDestination, nightsBetween, pickCandidates, pickCheapFlights, pickCheapStays, pickFlights, pickLiveStays, pickStays, placeOk, preferOf, seenAt, serpFlights,
-  serpStays, stayCandidate, stayOffer, airaloPacks, airaloPlace, pickEsims, csvRows, omioPage, omioRoutes, pickTransfers, placeKey, omioName, type OmioRoute, type AviaFlight, type EsimPack,
+  serpStays, stayCandidate, stayOffer, airaloPacks, airaloPlace, pickEsims, csvRows, omioPage, omioRoutes, pickTransfers, placeKey, omioName, ucusFlights, type OmioRoute, type AviaFlight, type EsimPack,
   type OfferOut, type XoHotel,
 } from "../supabase/functions/offers/shape";
 
@@ -224,6 +224,38 @@ describe("live (SerpApi)", () => {
     expect(offer.url).toBe("https://www.aviasales.com/search/FNC2110IST2");
     expect(aviasalesSearch("IST", "DPS", "2026-11-10", 1)).toBe("/search/IST1011DPS1");
     expect(serpFlights(null, 1, "A", "B", "2026-01-01")).toEqual([]);
+  });
+
+  it("reads the shared flight search: Kiwi's keep their page, Google's go to Aviasales, the Google check under the price", () => {
+    // Trimmed from a real answer (Hetzner /ucus/ara): Sabiha Gökçen → Kuala Lumpur, 6 Dec 2026, two people, euros.
+    const body = {
+      results: [
+        { price: 520, currency: "EUR", source: "kiwi", link: "https://kiwi.com/u/abc", google_check: { status: "same_ticket", price: 580 },
+          outbound: { from: "SAW", to: "KUL", depart: "2026-12-06T17:20", arrive: "2026-12-07T08:45", duration_min: 625, stops: 0,
+            carriers: [{ code: "D7" }], segments: [{ flight: "D7605", carrier: "D7" }] } },
+        { price: 700, currency: "EUR", source: "kiwi", link: "https://kiwi.com/u/def", google_check: { status: "not_single_ticket" },
+          outbound: { from: "SAW", to: "KUL", depart: "2026-12-06T06:30", arrive: "2026-12-07T06:00", duration_min: 1290, stops: 1,
+            carriers: [{ code: "PC" }, { code: "MH" }], segments: [{ flight: "PC1", carrier: "PC" }, { flight: "MH2", carrier: "MH" }] } },
+        { price: 760, currency: "EUR", source: "google", link: "https://www.google.com/travel/flights/booking?tfs=x", google_check: null,
+          outbound: { from: "SAW", to: "KUL", depart: "2026-12-06T23:10", arrive: "2026-12-07T19:55", duration_min: 1065, stops: 1,
+            carriers: [{ code: "G9" }], segments: [{ flight: "G91", carrier: "G9" }] } },
+        { price: 9, currency: "TRY", source: "kiwi", outbound: { depart: "2026-12-06T00:00", carriers: [{ code: "XX" }] } },
+        { price: 0, currency: "EUR", source: "kiwi", outbound: { depart: "2026-12-06T00:00", carriers: [{ code: "XX" }] } },
+      ],
+    };
+    const list = ucusFlights(body, 2, "SAW", "KUL", "2026-12-06", "tr");
+    expect(list).toHaveLength(3);
+    expect(list[0]).toMatchObject({ airline: "D7", flight_number: "605", departure_at: "2026-12-06T17:20", arrive_local: "08:45", transfers: 0, duration_to: 625, price: 260, source: "Kiwi.com", url: "https://kiwi.com/u/abc", note: "Google'da da €580", link: "/search/SAW0612KUL2" });
+    expect(list[1].note).toBe("Ayrı biletler");
+    expect(list[2]).toMatchObject({ source: "Google Flights", price: 380 });
+    expect(list[2].url).toBeUndefined();
+    expect(ucusFlights(body, 1, "SAW", "KUL", "2026-12-06", "en")[1].note).toBe("Separate tickets");
+    const kiwi = flightOffer({ f: list[0], why: "x" }, { adults: 2, now: 1, airline: () => "AirAsia X", zone: () => null });
+    expect(kiwi).toMatchObject({ url: "https://kiwi.com/u/abc", meta: "Google'da da €580", price: 520, source: "Kiwi.com", arrive: "08:45", stops: 0 });
+    const google = flightOffer({ f: list[2], why: "x" }, { adults: 2, now: 1, airline: () => null, zone: () => null });
+    expect(google.url).toBe("https://www.aviasales.com/search/SAW0612KUL2");
+    expect(google).not.toHaveProperty("meta");
+    expect(ucusFlights(null, 1, "A", "B", "2026-01-01", "tr")).toEqual([]);
   });
 
   it("reads Google Hotels as priced hotels and picks three, each for its own reason", () => {

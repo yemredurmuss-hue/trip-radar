@@ -11,8 +11,9 @@
 // `prefer=cheap` (the chat's "daha ucuz") gives the three cheapest instead of the mixed three, and `max` a ceiling
 // in euros (a stay's by the night, a flight's per person). A stay's `candidates=1` adds up to six hotels from the
 // same list, each priced for the dates (one Xotelo call each, cached a day; one it can't price keeps its usual range).
-// Live prices (SerpApi: Google Flights, Google Hotels; SERPAPI_KEY, a small free quota) only when those have
-// nothing, or on `live=1` (the chat's live look); the page opened stays a partner's.
+// Live flights from the shared flight search on Hetzner (UCUS_SERVIS_URL, UCUS_SERVIS_ANAHTAR: Kiwi finds, Google
+// Flights checks) and live prices from SerpApi (Google Flights, Google Hotels; SERPAPI_KEY, a small free quota) only
+// when those have nothing, or on `live=1` (the chat's live look); the page opened stays a partner's where it can be.
 // Activities (?kind=activity&city=Ubud&start=…&end=…&adults=2[&q=cooking class]) from Viator's Partner API (VIATOR_KEY):
 // its pages carry the project's Viator partner code already, so they aren't turned; kept an hour, as Viator asks.
 // eSIMs (?kind=esim&country=PT&start=…&end=…) from Airalo's public product feed, three packages that last the trip,
@@ -28,7 +29,7 @@ import { gunzipSync, strFromU8, unzipSync } from "npm:fflate@0.8.2";
 import {
   adultsOf, airportCodeOk, askableDay, bookingSearch, cheapest, flightOffer, geoFromTypeahead, langOf, maxOf, nightsBetween,
   candidateOffer, pickCandidates, pickCheapFlights, pickCheapStays, pickFlights, pickLiveStays, pickStays, placeOk, preferOf,
-  airaloPacks, airaloPlace, omioName, omioRoutes, pickActivities, pickEsims, pickTransfers, placeKey, serpFlights, serpStays, stayCandidate, stayOffer, viatorDestination, type AviaFlight, type OfferOut, type StayCandidate,
+  airaloPacks, airaloPlace, omioName, omioRoutes, pickActivities, pickEsims, pickTransfers, placeKey, serpFlights, serpStays, stayCandidate, stayOffer, ucusFlights, viatorDestination, type AviaFlight, type OfferOut, type StayCandidate,
   type EsimPack, type OmioRoute, type ViProduct, type XoHotel, type XoRate,
 } from "./shape.ts";
 
@@ -40,7 +41,7 @@ const cors = {
 const reply = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 
 const HOURS = { flight: 12, stay: 24, activity: 1, esim: 24, transfer: 24 };
-const CAPS: Record<string, number> = { aviasales: 400, xotelo: 400, tripadvisor: 5, links: 300, serpapi: 8, viator: 300, airalo: 6, omio: 4 };
+const CAPS: Record<string, number> = { aviasales: 400, xotelo: 400, tripadvisor: 5, links: 300, serpapi: 8, viator: 300, airalo: 6, omio: 4, ucus: 450 };
 const cap = (source: string) => Number(Deno.env.get(`OFFERS_CAP_${source.toUpperCase()}`)) || CAPS[source];
 
 type Sb = ReturnType<typeof createClient>;
@@ -96,6 +97,28 @@ async function serp(sb: Sb, params: Record<string, string>, hours: number): Prom
   return body;
 }
 
+/**
+ * One day's flights from the shared flight search on Hetzner (UCUS_SERVIS_URL + UCUS_SERVIS_ANAHTAR; Kiwi finds,
+ * Google Flights checks), in euros, under its own daily cap; null when it isn't set up, is over its cap or fails,
+ * so the caller falls back to SerpApi.
+ */
+async function ucus(sb: Sb, from: string, to: string, day: string, adults: number): Promise<unknown | null> {
+  const base = (Deno.env.get("UCUS_SERVIS_URL") ?? "").trim().replace(/\/+$/, "");
+  const key = (Deno.env.get("UCUS_SERVIS_ANAHTAR") ?? "").trim();
+  if (!base || !key || !(await take(sb, "ucus"))) return null;
+  try {
+    const res = await fetch(`${base}/ucus/ara`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", "X-Butce-Ms": "9000" },
+      body: JSON.stringify({ origins: [from], destinations: [{ name: to, type: "airport" }], depart: { on: day }, adults, currency: "EUR", limit: 20 }),
+      signal: AbortSignal.timeout(12_000),
+    });
+    return res.ok ? await res.json() : null;
+  } catch {
+    return null;
+  }
+}
+
 async function flights(sb: Sb, token: string, from: string, to: string, day: string, { adults, lang, prefer, max, live }: Ask): Promise<OfferOut[]> {
   const ask = async (direct: boolean): Promise<AviaFlight[]> => {
     const key = `avia|${from}|${to}|${day}|${direct ? "d" : "a"}`;
@@ -112,7 +135,12 @@ async function flights(sb: Sb, token: string, from: string, to: string, day: str
   const pick = (all: AviaFlight[], direct: AviaFlight[]) =>
     prefer === "cheap" || max != null ? pickCheapFlights([...all, ...direct], lang, adults, max) : pickFlights(all, direct, lang, adults);
   let picked = live ? [] : pick(...(await Promise.all([ask(false), ask(true)])));
-  // Live from Google Flights: asked for (the chat), or the cache has nothing for this day.
+  // Live from the shared flight search (Kiwi + Google Flights): asked for (the chat), or the cache has nothing for
+  // this day; SerpApi only when that isn't set up or found nothing.
+  if (!picked.length) {
+    const found = ucusFlights(await ucus(sb, from, to, day, adults), adults, from, to, day, lang);
+    picked = pick(found, found.filter((f) => f.transfers === 0));
+  }
   if (!picked.length) {
     const body = await serp(sb, { engine: "google_flights", departure_id: from, arrival_id: to, outbound_date: day, type: "2", currency: "EUR", hl: "en", adults: String(adults) }, 6);
     picked = pick(serpFlights(body, adults, from, to, day), []);

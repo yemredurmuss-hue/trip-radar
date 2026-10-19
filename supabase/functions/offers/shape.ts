@@ -93,6 +93,10 @@ export interface AviaFlight {
   /** Read elsewhere than Aviasales' cache (Google Flights, live): its name, and the landing as the airport shows it. */
   source?: string;
   arrive_local?: string;
+  /** The page itself when it isn't Aviasales' (a Kiwi.com itinerary: separate tickets Aviasales wouldn't sell as one). */
+  url?: string;
+  /** One line under the price (the shared flight search's Google check: "Google'da da €456"). */
+  note?: string;
 }
 
 /** "02:25" from "2026-11-19T02:25:00+03:00": the clock the airport shows. */
@@ -199,10 +203,11 @@ export function flightOffer({ f, why }: { f: AviaFlight; why: string }, ctx: Fli
     stops: f.transfers ?? null,
     price: Math.round(f.price! * ctx.adults),
     currency: "EUR",
-    url: `https://www.aviasales.com${f.link}`,
+    url: f.url ?? `https://www.aviasales.com${f.link}`,
     why,
     source: f.source ?? "Aviasales",
     fetchedAt: seenAt(f.link, ctx.now),
+    ...(f.note ? { meta: f.note } : {}),
   };
 }
 
@@ -469,6 +474,65 @@ export function serpFlights(body: unknown, adults: number, from: string, to: str
       price: Math.round(t.price / Math.max(1, adults)),
       link: aviasalesSearch(from, to, day, adults),
       source: "Google Flights",
+    });
+  }
+  return out;
+}
+
+interface UcusLeg {
+  from?: string;
+  to?: string;
+  depart?: string | null;
+  arrive?: string | null;
+  duration_min?: number | null;
+  stops?: number | null;
+  carriers?: { code?: string | null }[];
+  segments?: { flight?: string | null; carrier?: string | null }[];
+}
+interface UcusResult {
+  price?: number;
+  currency?: string;
+  source?: "kiwi" | "google";
+  google_check?: { status?: string; price?: number } | null;
+  outbound?: UcusLeg;
+  link?: string | null;
+}
+
+/**
+ * The shared flight search's answer (Hetzner /ucus/ara, asked in euros for one day) as flights: Kiwi's keep their
+ * own page (separate tickets Aviasales wouldn't sell as one), Google's go to Aviasales' search like SerpApi's; the
+ * Google check rides under the price. Totals are for everyone asked, so a person's share is divided out.
+ */
+export function ucusFlights(body: unknown, adults: number, from: string, to: string, day: string, lang: Lang): AviaFlight[] {
+  const results = ((body as { results?: UcusResult[] })?.results ?? []).filter((r) => r.currency === "EUR");
+  const share = (n: number) => Math.round(n / Math.max(1, adults));
+  const out: AviaFlight[] = [];
+  for (const r of results) {
+    const o = r.outbound;
+    const code = o?.carriers?.[0]?.code ?? o?.segments?.[0]?.carrier;
+    if (!o?.depart || !code || typeof r.price !== "number" || r.price <= 0) continue;
+    const first = o.segments?.[0]?.flight ?? "";
+    // the card's price is for everyone going, so Google's is said the same way
+    const g = r.google_check;
+    const note =
+      g?.status === "same_ticket" && g.price ? T(lang, `Google'da da ${euros(g.price)}`, `Also ${euros(g.price)} on Google`)
+      : g?.status === "cheaper_on_google" && g.price ? T(lang, `Google'da ${euros(g.price)}`, `${euros(g.price)} on Google`)
+      : g?.status === "not_single_ticket" ? T(lang, "Ayrı biletler", "Separate tickets")
+      : undefined;
+    out.push({
+      origin_airport: o.from ?? from,
+      destination_airport: o.to ?? to,
+      airline: code,
+      flight_number: first.startsWith(code) ? first.slice(code.length) : first,
+      departure_at: o.depart,
+      arrive_local: localClock(o.arrive ?? undefined) ?? undefined,
+      transfers: o.stops ?? undefined,
+      duration_to: o.duration_min ?? undefined,
+      price: share(r.price),
+      link: aviasalesSearch(from, to, day, adults),
+      ...(r.source === "kiwi" && r.link?.startsWith("https://") ? { url: r.link } : {}),
+      source: r.source === "kiwi" ? "Kiwi.com" : "Google Flights",
+      ...(note ? { note } : {}),
     });
   }
   return out;
