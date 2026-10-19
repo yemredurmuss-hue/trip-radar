@@ -52,6 +52,8 @@ export interface TodayRow {
   itemId: string | null;
   /** The day's flight leaving now-ish: late, so its row says so in red. */
   alert: boolean;
+  /** The way home landing after midnight: its hour is the next day's ("01:35 +1"), the day's last line. */
+  nextDay?: boolean;
 }
 
 /** The day's flight as its live data says it (C4 on the strip): its new times, gate and stage, the plan moved with it. */
@@ -311,8 +313,11 @@ function stayDoorRows(plan: Plan, date: string, rows: readonly TodayRow[], env: 
   return out;
 }
 
-/** The way home lands today: its arrival is a row of its own ("18:05 Varış · İstanbul"), the new time when it's late. */
-function landingRow(journey: JourneySection | undefined, rows: DayRow[]): TodayRow | null {
+/**
+ * The way home lands today: its arrival is a row of its own ("18:05 Varış · İstanbul"), the new time when it's late; a night
+ * flight's landing is the next day's hour, the day's last line ("01:35 +1").
+ */
+function landingRow(journey: JourneySection | undefined, rows: DayRow[], date: string): TodayRow | null {
   if (journey?.journey.role !== "departure") return null;
   const flight = rows.map(travelItem).filter((i): i is Item => i?.category === "flight").at(-1);
   if (!flight?.flight?.to) return null;
@@ -329,6 +334,7 @@ function landingRow(journey: JourneySection | undefined, rows: DayRow[]): TodayR
     action: null,
     itemId: flight.id,
     alert: false,
+    ...((flight.flight.arrival?.slice(0, 10) ?? date) > date ? { nextDay: true } : {}),
   };
 }
 
@@ -373,17 +379,20 @@ function rowsOfDay(date: string, env: Env): TodayRow[] {
     const at = r.time ? rows.findIndex((x) => x.time != null && minutesOf(x.time) > minutesOf(r.time!)) : -1;
     rows.splice(at < 0 ? rows.length : at, 0, r);
   }
-  const landing = landingRow(journey, raw);
+  const landing = landingRow(journey, raw, date);
   if (landing) rows.push(landing);
   return byClock(afterLanding(checkoutFirst(rows)));
 }
+
+/** A row's place in the day: its hour, a landing after midnight after every hour of the day. */
+const clockMinutes = (r: TodayRow): number => minutesOf(r.time!) + (r.nextDay ? 24 * 60 : 0);
 
 /** By the clock, a line with no hour kept right after the one before it (dayCards.orderRows on the strip's lines). */
 function byClock(rows: TodayRow[]): TodayRow[] {
   const out = rows
     .map((r, n) => ({ r, n }))
     .filter((x) => x.r.time)
-    .sort((a, b) => minutesOf(a.r.time!) - minutesOf(b.r.time!) || a.n - b.n)
+    .sort((a, b) => clockMinutes(a.r) - clockMinutes(b.r) || a.n - b.n)
     .map((x) => x.r);
   rows.forEach((r, i) => {
     if (!r.time) out.splice(i > 0 ? out.indexOf(rows[i - 1]) + 1 : 0, 0, r);
@@ -406,7 +415,7 @@ function checkoutFirst(rows: TodayRow[]): TodayRow[] {
 
 /** A landing today: no check-in before getting out of the airport and there (dayTimes' own minutes), worked out, "~". */
 function afterLanding(rows: TodayRow[]): TodayRow[] {
-  const landed = rows.find((r) => r.kind === "arrival" && r.time);
+  const landed = rows.find((r) => r.kind === "arrival" && r.time && !r.nextDay);
   if (!landed?.time) return rows;
   const ready = addMinutes(landed.time, LANDING_EXIT_MINUTES + TRANSFER_MINUTES);
   return rows.map((r) => (isCheckIn(r) && (!r.time || (r.estimated && minutesOf(r.time) < minutesOf(ready))) ? { ...r, time: ready, estimated: true } : r));
@@ -417,7 +426,7 @@ function withPhases(rows: TodayRow[], time: string): TodayRow[] {
   const at = minutesOf(time);
   let now = -1;
   rows.forEach((r, n) => {
-    if (r.time && minutesOf(r.time) <= at) now = n;
+    if (r.time && clockMinutes(r) <= at) now = n;
   });
   const next = rows.findIndex((r, n) => n > now && r.time != null);
   return rows.map((r, n) => ({ ...r, phase: n === now ? "now" : n === next ? "next" : r.time && n < now ? "past" : "later" }));

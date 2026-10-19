@@ -13,6 +13,7 @@ import { DeleteSharedTripDialog } from "./ShareSafety";
 import { DropOverlay } from "./arrive/ArriveViews";
 import { useBoardIntake } from "./arrive/useBoardIntake";
 import { Chat } from "./Chat";
+import type { PlanLink } from "./chat/planLink";
 import { CompareView } from "./CompareView";
 import { ItemDrawer } from "./ItemDrawer";
 import { Settings } from "./Settings";
@@ -52,6 +53,8 @@ export function App() {
   /** A word about deleting or bringing back a trip (a failure, a copy apart from the sharing), until closed. */
   const [safetyNote, setSafetyNote] = useState<string | null>(null);
   const decisions = useDecisions(board.trip, board.items);
+  // C34: the Plan's boxes and its "Planda göster" / "Bunu seç", handed up by the Plan for the chat beside it.
+  const [planLink, setPlanLink] = useState<PlanLink | null>(null);
   const intake = useBoardIntake(board.trip?.id ?? null);
   // The start chat (spec 2026-10-06 §2), over the overview while it's open; `key` starts a fresh one each time.
   const [start, setStart] = useState<(StartLaunch & { key: string }) | null>(null);
@@ -168,6 +171,7 @@ export function App() {
             openCaptures={board.openCaptures}
             pending={pendingChat?.tripId === trip.id ? pendingChat : null}
             onPendingTaken={(id) => setPendingChat((p) => (p?.id === id ? null : p))}
+            plan={planLink}
           />
           {/* Files and links dropped (or pasted) on the board: read and put in their place (arrive/useBoardIntake). */}
           <main className="panel" {...intake.handlers}>
@@ -187,6 +191,7 @@ export function App() {
               historyOpen={historyOpen}
               onHistoryClose={() => setHistoryOpen(false)}
               onAsk={(text) => addToTrip(trip.id, text)}
+              onPlanLink={setPlanLink}
             />
           </main>
         </div>

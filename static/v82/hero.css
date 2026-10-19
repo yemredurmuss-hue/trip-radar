@@ -67,6 +67,11 @@
 .x-seg.x-s1:focus-visible { outline: 2px solid var(--q-acc); outline-offset: 4px; border-radius: 10px; }
 .x-s1, .x-s3 { flex: 0 0 auto; }
 .x-s2 { flex: 1 1 0; min-width: 0; }
+/* The strip on one row beside the 300-400 px chat (v80; aşama D): the prototype's tighter gaps up to 1560 px (mk83.css), and who
+   goes never narrower than its own words and bar ("Sıradaki" gives way, its words cut with "…"). */
+@media (max-width: 1560px) { .x-strip { gap: 14px; } .x-seg { gap: 10px; } }
+.x-strip .x-s2, .x-strip .x-s2b { min-width: min-content; }
+.x-s2b .x-whob { min-width: max-content; }
 .x-dv { align-self: stretch; width: 1px; background: var(--q-line); margin: 2px 0; flex: none; }
 .x-ico { flex: none; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; color: var(--q-acc); background: var(--q-acc-s); }
 .x-sv { all: unset; display: grid; gap: 2px; cursor: default; min-width: 0; }

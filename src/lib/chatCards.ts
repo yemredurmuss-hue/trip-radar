@@ -128,6 +128,11 @@ export interface ChatCardInput {
   messages: readonly ChatMessage[];
   items: readonly Item[];
   collections: readonly Collection[];
+  /**
+   * The cards drawn before, by message (its record's id): a card stays on its reply once the record moves on. "Bunu seç"
+   * on a record the turn only changed moves its change past the turn; its card says "Seçildi", it doesn't go.
+   */
+  kept?: ReadonlyMap<string, string>;
 }
 
 const said = (m: ChatMessage) => m.text.trim() !== "";
@@ -138,7 +143,7 @@ const live = (i: Item, tripId: string) => i.tripId === tripId && i.status !== "d
  * changed (made then, or its state changed then), the one the reply names first when it names one; on a line about
  * a saved link ("✓ Hyatt Centric Ginza kaydedildi → Konaklama"), that record. A turn that touched nothing has none.
  */
-export function chatCards({ trip, messages, items, collections }: ChatCardInput): Map<string, ChatCardVM> {
+export function chatCards({ trip, messages, items, collections, kept }: ChatCardInput): Map<string, ChatCardVM> {
   const out = new Map<string, ChatCardVM>();
   const mine = items.filter((i) => live(i, trip.id));
   // A turn: from what the traveller said to the next thing they say; its card is on its last reply.
@@ -165,6 +170,11 @@ export function chatCards({ trip, messages, items, collections }: ChatCardInput)
     }
   }
   close();
+  for (const [messageId, itemId] of kept ?? []) {
+    if (out.has(messageId) || !messages.some((m) => m.id === messageId)) continue;
+    const item = mine.find((i) => i.id === itemId);
+    if (item) out.set(messageId, chatCard(messageId, item, collections));
+  }
   return out;
 }
 

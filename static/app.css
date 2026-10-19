@@ -33,6 +33,8 @@ a { color: var(--accent); text-decoration: none; }
 .panel { overflow-y: auto; padding: 16px 40px 40px; min-width: 0; background: #f8f7f4; container: panel / inline-size; }
 @media (max-width: 860px) {
   .board { grid-template-columns: 1fr; height: auto; }
+  /* v82 (A7): the chat on top at 70vh gives way to the drawer from the bottom in v82/chat.css (its 860 px rule). Kept for
+     the clean-up of aşama 8. */
   .chat { height: 70vh; border-right: 0; border-bottom: 1px solid var(--line); }
   .panel { padding: 16px; }
 }

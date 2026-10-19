@@ -31,9 +31,9 @@ export type StepKind = "prep" | "intent" | "item" | "ideas" | "onboard";
 
 /**
  * The step's one button: open Hazırlık, see the options, look for some, take our pick, book what's chosen (on its site),
- * open or add the booking's file, see a city's ideas.
+ * open or add the booking's file, see a city's ideas; a booked flight in its last 48 hours, its check-in (F2).
  */
-export type StepActionKind = "list" | "options" | "search" | "take" | "book" | "doc" | "addDoc" | "ideas";
+export type StepActionKind = "list" | "options" | "search" | "take" | "book" | "doc" | "addDoc" | "ideas" | "checkin";
 
 export interface StepAction {
   kind: StepActionKind;
@@ -68,12 +68,16 @@ export interface JourneyStep {
   ready: boolean;
   /** "Konaklama", "Tren", "Etkinlik", "Yer". */
   kindWord: string;
+  /** What it is, for its picture when it has none (a stay's, a train's drawing); null for Hazırlık, the ideas, the night. */
+  cardKind: CardKind | null;
   /** "Rezerve edildi", "Önerimiz, onayla", "Planda", "Kaçtı". */
   statusText: string;
   title: string;
   sub: string | null;
   image: string | null;
   code: { label: string; value: string } | null;
+  /** Booked with no file, in the last two weeks (F2, B15): the amber "Belge yok". */
+  docMissing: boolean;
   /** What our pick or the choice costs, short ("€213", "€104"); its unit is in `sub`. */
   price: string | null;
   action: StepAction | null;
@@ -250,6 +254,8 @@ function intentStep(i: IntentVM, env: Env, title: string): JourneyStep {
     else if (i.status === "deciding") act = action("options", L("Seçeneklere bak", "See the options"));
     else if (i.status === "suggested" && o) act = action("take", L("Bunu seç", "Take it"), { itemId: o.id });
     else if (i.status === "chosen" && o) act = action("book", bookLabel(i.kind), { itemId: o.id, url: o.item.url, brand: o.brand });
+    // F2: a flight leaving within 48 hours leads with its check-in (its PNR is the step's code), as its box does.
+    else if (i.status === "booked" && o && i.access?.primary === "checkin") act = action("checkin", L("Check-in", "Check in"), { itemId: o.id, url: o.item.url, brand: o.brand });
     else if (i.status === "booked" && o) act = (i.access?.doc.count ?? 0) > 0 ? action("doc", docOpenLabel(i.kind), { itemId: o.id }) : action("addDoc", docAddLabel(i.kind), { itemId: o.id });
   }
   return {
@@ -262,12 +268,14 @@ function intentStep(i: IntentVM, env: Env, title: string): JourneyStep {
     missed,
     ready: i.status === "booked" || i.status === "arranged" || i.status === "included",
     kindWord,
+    cardKind: i.kind,
     statusText: missed ? L("Kaçtı", "Missed") : stepStatusText(i.status, i.kind),
     // A stay is its city's (the chapter says the city): the place chosen, else the city.
     title: i.section === "stay" ? (o?.title ?? title) : title,
     sub: sub.filter(Boolean).join(" · ") || null,
     image: o?.image ?? i.options[0]?.image ?? i.head.image,
     code: i.status === "booked" ? (i.access?.code ?? null) : null,
+    docMissing: i.status === "booked" && Boolean(i.access?.docMissing),
     price: i.status === "suggested" || i.status === "chosen" ? (price?.amount ?? null) : null,
     action: act,
     target: { intentKey: i.key, section: i.section, domKeys: i.domKeys, itemId: null },
@@ -304,11 +312,13 @@ function itemStep(i: IntentVM, o: OptionVM, env: Env): JourneyStep {
     missed: false,
     ready: booked,
     kindWord: activity ? cardKindLabel("activity") : L("Yer", "Place"),
+    cardKind: kind,
     statusText: booked ? bookedWord(activity ? "activity" : kind) : L("Planda", "On the plan"),
     title: o.title,
     sub: sub.filter(Boolean).join(" · ") || null,
     image: o.image,
     code: ref && codeLabel ? { label: codeLabel, value: ref } : null,
+    docMissing: false,
     price: !booked && activity ? (price?.amount ?? null) : null,
     action: act,
     target: { intentKey: i.key, section: i.section, domKeys: i.domKeys, itemId: item.id },
@@ -331,11 +341,13 @@ function ideasStep(i: IntentVM): JourneyStep | null {
     missed: false,
     ready: false,
     kindWord: cardKindLabel("activity"),
+    cardKind: null,
     statusText: "",
     title: L(`${city} için ${n} etkinlik önerisi`, `${count(n, "etkinlik önerisi", "activity idea")} for ${city}`),
     sub: names.slice(0, 2).join(" · ") + (n > 2 ? " …" : "") || null,
     image: null,
     code: null,
+    docMissing: false,
     price: null,
     action: action("ideas", L("Önerilere bak", "See the ideas")),
     target: { intentKey: i.key, section: i.section, domKeys: i.domKeys, itemId: null },
@@ -359,11 +371,13 @@ function prepStep(input: IntentInput): JourneyStep | null {
     missed: false,
     ready: false,
     kindWord: "",
+    cardKind: null,
     statusText: "",
     title: L("Hazırlık", "Prep"),
     sub: [L(`${done}/${prep.entries.length} hazır`, `${done}/${prep.entries.length} ready`), nextText].filter(Boolean).join(" · "),
     image: null,
     code: null,
+    docMissing: false,
     price: null,
     action: action("list", L("Listeyi aç", "Open the list")),
     target: { intentKey: "prep", section: "prep", domKeys: [], itemId: null },
@@ -385,11 +399,13 @@ function onboardStep(night: string, flights: readonly Item[]): JourneyStep {
     missed: false,
     ready: false,
     kindWord: L("Gece", "Night"),
+    cardKind: null,
     statusText: L("uçakta", "on the plane"),
     title: L("Uçakta", "On the plane"),
     sub: flight ? [flight.name, times].filter(Boolean).join(" · ") || null : null,
     image: null,
     code: null,
+    docMissing: false,
     price: null,
     action: null,
     target: null,

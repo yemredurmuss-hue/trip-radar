@@ -72,6 +72,24 @@ describe("C34: the record a turn put on the board, as the Plan's compact card", 
     expect(chatCards({ trip, messages: said, items: chosen, collections: after.collections }).get("a")).toMatchObject({ itemId: o.motonago.id, state: "chosen", done: "Seçildi" });
   });
 
+  it("a card stays on its reply once its record moves on: taken later, it says Seçildi", () => {
+    const t = japan();
+    when(t.by.hatanaka, 50, 205);
+    const messages = [msg("u", "user", "Kyoto'da daha sakin bir yer?", 200), msg("a", "assistant", "Gion Hatanaka daha sakin.", 220)];
+    const first = chatCards({ trip: t.trip, messages, items: t.items, collections: boardOf(t.trip, t.items, JAPAN_TODAY).collections });
+    expect(first.get("a")).toMatchObject({ itemId: t.by.hatanaka.id, done: null, pick: { label: "Bunu seç" } });
+    // Chosen from the card a minute later: its change is no longer the turn's.
+    const items = t.items.map((i) => (i.id === t.by.hatanaka.id ? { ...i, status: "chosen" as const, statusAt: 900 } : i));
+    const collections = boardOf(t.trip, items, JAPAN_TODAY).collections;
+    expect(chatCards({ trip: t.trip, messages, items, collections }).has("a")).toBe(false);
+    const kept = new Map([...first].map(([id, c]) => [id, c.itemId]));
+    expect(chatCards({ trip: t.trip, messages, items, collections, kept }).get("a")).toMatchObject({ itemId: t.by.hatanaka.id, done: "Seçildi", pick: null });
+    // A record gone (ruled out), or a reply no longer there: no card.
+    const gone = items.map((i) => (i.id === t.by.hatanaka.id ? { ...i, status: "dismissed" as const } : i));
+    expect(chatCards({ trip: t.trip, messages, items: gone, collections, kept }).has("a")).toBe(false);
+    expect(chatCards({ trip: t.trip, messages: messages.slice(0, 1), items, collections, kept }).size).toBe(0);
+  });
+
   it("a turn that touched nothing has no card", () => {
     const { trip, items } = japan();
     const board = boardOf(trip, items, JAPAN_TODAY);

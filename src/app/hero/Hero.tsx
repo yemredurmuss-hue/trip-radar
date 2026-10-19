@@ -153,7 +153,10 @@ export function Hero(props: HeroProps) {
         <span className="x-thumb" ref={thumb} aria-hidden>
           {cover ? <img src={cover} alt="" /> : <XIcon name="image" size={20} stroke={1.6} />}
         </span>
-        <b>{trip.title}</b>
+        {/* On the trip the mosaic and its heading give way to the Bugün strip: the trip's name is the heading here. */}
+        <b role={during ? "heading" : undefined} aria-level={during ? 1 : undefined}>
+          {trip.title}
+        </b>
         <small>{line}</small>
         <span className="h-sp" />
         {!during && (

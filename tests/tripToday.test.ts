@@ -128,6 +128,22 @@ describe("the flight day: 16 Nisan, TK49 late", () => {
   });
 });
 
+describe("the way home overnight: it lands the next day", () => {
+  it("its landing is the day's last line, at its own hour with +1, never gone by in the morning", () => {
+    const { trip, items: raw, by } = japan({ during: true });
+    const late = (i: Item): Item => (i.id === by.tk49.id ? { ...i, flight: { ...i.flight!, departure: "2027-04-16T20:40", arrival: "2027-04-17T01:35" } } : i);
+    const items = raw.map(late);
+    const b = boardOf(trip, items, "2027-04-16");
+    const t: TodayInput = { trip, plan: b.plan, timeline: b.timeline, items, today: "2027-04-16", time: "09:20", at: new Date(Date.UTC(2027, 3, 16, 0, 20)) };
+    const vm = todayStrip(t)!;
+    const landing = vm.rows.at(-1)!;
+    expect(landing).toMatchObject({ kind: "arrival", time: "01:35", nextDay: true, phase: "later", title: "İstanbul" });
+    expect(vm.rows.slice(0, -1).every((r) => !r.nextDay)).toBe(true);
+    expect(vm.rows.find((r) => r.kind === "travel")).toMatchObject({ time: "20:40" });
+    expect(vm.nowKey).not.toBe(landing.key);
+  });
+});
+
 describe("D14 on the strip: the night flight out", () => {
   it("leaves on its own day; the next day it lands, and the check-in waits for the way from the airport", () => {
     const first = stripOn("2027-04-01", "20:00").vm!;

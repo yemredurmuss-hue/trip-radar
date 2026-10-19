@@ -93,7 +93,7 @@ function bringUp(head: HTMLElement) {
   requestAnimationFrame(step);
 }
 
-export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tripId, cities, cards, onAdd, today, items, pending, suggestions, visa = null, visaDone = false, onVisaDone, shape = null, order = null, info = {} }: {
+export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tripId, cities, cards, onAdd, today, items, pending, suggestions, visa = null, visaDone = false, onVisaDone, shape = null, order = null, info = {}, decide }: {
   plan: Plan;
   sections: CatSection[];
   /** Open now: the traveller's choice, remembered (sectionMeta.useSectionOpen), or held open while a link is read into it. */
@@ -115,6 +115,8 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
   visaDone?: boolean;
   onVisaDone?: (done: boolean) => void;
   /** The trip's stops and the ways between them: Yapılacaklar draws the way between one city's row and the next. */
+  /** "n karar bekliyor" as the hero counts it (tripPhase.countedIntents, row 127): on the trip a need whose day went by is none. */
+  decide?: number;
   shape?: { stops: JourneyStop[]; hops: JourneyHop[] } | null;
   /** The three ways to read the plan (PlanOrder), drawn in the plan's head. */
   order?: ReactNode;
@@ -243,7 +245,7 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
   return (
     <V82EnvContext.Provider value={v82Env}>
       <div className="section trip-plan cat-plan q-plan" data-pit-children>
-        <PlanHeader decide={decideCount(collections)} onDecide={() => first && goTo(first.section, first.intent.key)} order={order} title={n.total > 0 ? nightsSummary(n) : undefined} />
+        <PlanHeader decide={decide ?? decideCount(collections)} onDecide={() => first && goTo(first.section, first.intent.key)} order={order} title={n.total > 0 ? nightsSummary(n) : undefined} />
         {plan.notices.map((x) => (
           <div key={x.text} className="notice">
             ⚠ {x.text}

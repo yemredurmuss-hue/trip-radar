@@ -5305,6 +5305,19 @@ try {
   await app.getByRole("heading", { name: "Portekiz (örnek)" }).waitFor();
   const flat = (texts) => texts.map((t) => t.replace(/\s+/g, " ").trim());
   const tab = (name) => app.getByRole("tab", { name, exact: true });
+  // v83 "gezi sırasında" (D8, row 126): the hero's place holds the Bugün strip (the date, the day's lines by the hour, the
+  // flight home's row), and the Plan opens in trip order, today's chapter (the way home) saying "Bugün", the ones behind folded.
+  const today = app.locator(".x-hero .x-today");
+  await today.waitFor();
+  assert.match(flat([await today.locator(".xt-d small").innerText()])[0], /^14 Ekim Çarşamba · Lizbon · eve dönüş$/);
+  assert.equal(await app.locator(".x-hero .x-mos, .x-hero .x-strip").count(), 0, "no mosaic, no strip: the day stands in for them");
+  const tpRow = today.locator(".xt-r", { hasText: "TP1760" });
+  assert.equal(flat([await tpRow.locator("time").innerText()])[0], "19:40");
+  assert.equal(await tab("Yolculuk sırasıyla").getAttribute("aria-selected"), "true", "on the trip the Plan opens in trip order");
+  await app.locator(".q-trip .q-chap.now .q-chap-now", { hasText: "Bugün" }).waitFor();
+  assert.match(flat([await app.locator(".q-trip .q-chap.now .q-chap-h b").innerText()])[0], /^Lizbon → İstanbul$/);
+  await app.locator(".q-trip .q-past .q-pastb[aria-expanded=false]").waitFor();
+  await app.screenshot({ path: `${out}/3e-today-strip.png` });
   await tab("Gün gün").click();
   const dayCard = (n) => app.locator(".dg-day", { has: app.locator(".dg-no", { hasText: new RegExp(`^Gün ${n}$`) }) });
   // 0.36.15/0.36.18: a flight's real data (as the server would give it) on its day: late in red, its gate, the
@@ -5323,6 +5336,12 @@ try {
   const live = dayCard(7).locator(".dg-live.alert");
   await live.waitFor();
   assert.equal(await live.innerText(), "Yeni kalkış 20:05 (+25 dk) · Kapı 14 · Veri: AeroDataBox");
+  // C4 on the Bugün strip: the day's flight as its data says it (the new time, the gate), and the plan moved with it.
+  const strip = today.locator(".xt-live.alert");
+  await strip.waitFor();
+  assert.deepEqual(flat(await strip.locator(".xt-tile").allInnerTexts()), ["Yeni kalkış 20:05 +25 dk", "Kapı 14"]);
+  assert.match(flat([await strip.locator(".xt-shift").innerText()])[0], /^Planı yeni saate göre kaydırdım/);
+  assert.match(flat([await today.locator(".xt-r", { hasText: "TP1760" }).locator(".xt-m small").innerText()])[0], /Rötar \+25 dk · Kapı 14/);
   await live.scrollIntoViewIfNeeded();
   await app.screenshot({ path: `${out}/3e-flight-live.png` });
   await tab("Plan").click();
@@ -5357,9 +5376,170 @@ try {
   await stage.waitFor();
   assert.deepEqual(flat(await stage.allInnerTexts()), ["Durum Biniş başladı"]);
   assert.equal(await stage.evaluate((el) => getComputedStyle(el.querySelector("b")).color), "rgb(29, 116, 66)", "boarding: the existing green");
-  console.log("✓ flight on its day: late in red with its new time and gate, in the day's line and as boxes on the Plan's card, the source named");
+  console.log("✓ flight on its day: the Bugün strip in the hero's place and the Plan in trip order from today (D8); late in red with its new time and gate, in the day's line, on the strip and as boxes on the Plan's card, the source named");
 } finally {
   await flightDay.close();
+}
+
+// ---------------------------------------------------------------------------------------------
+// Part 6c (v82 D): "Yolculuk sırasıyla" (v81-v83, rows 124-125), the chat's cards and quick replies (C34, row 140), a link
+// the chat couldn't read (C35), the drawer under 860 px (A7, row 38) and a trip with no dates (D15, row 32), in its own
+// browser on a fresh sample trip (8-14 October, loaded on the 5th).
+const journeyCtx = await chromium.launchPersistentContext(mkdtempSync(path.join(tmpdir(), "trip-radar-journey-")), {
+  executablePath,
+  headless: false,
+  timezoneId: "Europe/Istanbul",
+  viewport: { width: 1440, height: 900 },
+  ...TURKISH,
+  args: [...HEADLESS_ARGS, LANG_ARG, `--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
+});
+await journeyCtx.route("**/functions/v1/offers**", (route) => route.fulfill({ json: { offers: [] } }));
+await journeyCtx.route(/functions\/v1\/web-search/, (route) => route.fulfill({ json: { answer: null, reason: "not-configured" } }));
+await journeyCtx.route(/functions\/v1\/city-image/, (route) => route.fulfill({ json: { url: null, reason: "no-photo" } }));
+await frozen(journeyCtx);
+try {
+  const worker = journeyCtx.serviceWorkers()[0] ?? (await journeyCtx.waitForEvent("serviceworker"));
+  const id = new URL(worker.url()).host;
+  const app = await journeyCtx.newPage();
+  await app.goto(`chrome-extension://${id}/app.html`);
+  await app.getByText("Örnek geziyi yükle →").click();
+  await app.getByRole("heading", { name: "Portekiz (örnek)" }).waitFor();
+  const flat = (texts) => texts.map((t) => t.replace(/\s+/g, " ").trim());
+  const statusOf = (name) => app.evaluate(async (n) => {
+    const request = indexedDB.open("trip-radar");
+    const database = await new Promise((resolve) => (request.onsuccess = () => resolve(request.result)));
+    const all = await new Promise((resolve) => (database.transaction("items").objectStore("items").getAll().onsuccess = (e) => resolve(e.target.result)));
+    return all.find((i) => i.name === n)?.status ?? null;
+  }, name);
+  const flashed = () => app.locator(".panel .flash").first().waitFor({ state: "attached", timeout: 5000 });
+
+  // Rows 124-125: the chapters in the order the trip is lived; a city with its photo's place, its days and "n hazır · n karar".
+  await app.getByRole("tab", { name: "Yolculuk sırasıyla", exact: true }).click();
+  const journey = app.locator(".panel .q-trip");
+  await journey.waitFor();
+  assert.deepEqual(flat(await journey.locator(".q-chap-h b").allInnerTexts()), ["Yola çıkmadan", "İstanbul → Porto", "Porto", "Lizbon", "Lizbon → İstanbul"]);
+  const porto = journey.locator(".q-chap", { has: app.locator(".q-chap-h b", { hasText: /^Porto$/ }) });
+  assert.match(flat([await porto.locator(".q-chap-h small").innerText()])[0], /^8–11 Ekim · 3 gece$/);
+  assert.equal(await porto.locator(".q-chap-img").count(), 1, "a city's chapter has its picture's place (the hero's photo, a quiet tile without one)");
+  assert.equal(await journey.locator(".q-chap-now").count(), 0, "before the trip no chapter is today's");
+  // Each step: its day, its state's dot, "kind · state", its name and one button; "Uçakta" for the night on the plane (D14).
+  const stayStep = porto.locator(".q-step", { has: app.locator(".q-sm b", { hasText: "Jardim Stay" }) });
+  assert.equal(await stayStep.getAttribute("data-st"), "ai");
+  assert.match(flat([await stayStep.locator(".q-skind").innerText()])[0], /^Konaklama · Önerimiz, onayla$/);
+  assert.equal(flat([await stayStep.locator(".q-sdate").innerText()])[0], "8 Eki");
+  await journey.locator(".q-step[data-st=night]", { hasText: "Uçakta" }).waitFor();
+  await porto.locator(".q-scard.idea", { hasText: "Porto için 3 etkinlik önerisi" }).getByRole("button", { name: /Önerilere bak/ }).waitFor();
+  await app.screenshot({ path: `${out}/6c-journey.png` });
+  // A choice made here is the Plan's at once: "Bunu seç" takes our pick; the step says Seçildi and offers the booking.
+  await stayStep.getByRole("button", { name: "Bunu seç" }).click();
+  await porto.locator('.q-step[data-st="sel"]', { has: app.locator(".q-sm b", { hasText: "Jardim Stay" }) }).waitFor();
+  await porto.locator(".q-step", { hasText: "Jardim Stay" }).locator("a.q-cta", { hasText: "Rezerve et" }).waitFor();
+  assert.equal(await statusOf("Jardim Stay"), "chosen", "chosen in the Plan too");
+  // "›" goes to the step's box on the Plan by category, with a flash.
+  await porto.locator(".q-step", { hasText: "Douro tekne turu" }).getByRole("button", { name: "Douro tekne turu: planda göster" }).click();
+  await app.getByRole("tab", { name: "Kategoriye göre", exact: true, selected: true }).waitFor();
+  await flashed();
+
+  // C34: a turn that touched a record carries its card under the reply; at most three quick replies over the box.
+  await app.evaluate(async () => {
+    const request = indexedDB.open("trip-radar");
+    const database = await new Promise((resolve) => (request.onsuccess = () => resolve(request.result)));
+    const all = (store) => new Promise((resolve) => (database.transaction(store).objectStore(store).getAll().onsuccess = (e) => resolve(e.target.result)));
+    const put = (store, v) => new Promise((resolve) => { const tx = database.transaction(store, "readwrite"); tx.objectStore(store).put(v); tx.oncomplete = resolve; });
+    const trip = (await all("trips"))[0];
+    const stay = (await all("items")).find((i) => i.tripId === trip.id && i.name === "Casa Azul");
+    const t = Date.now() + 1000;
+    const msg = (id, role, text, at) => ({ id, tripId: trip.id, role, content: [{ type: "text", text }], text, choices: [], createdAt: at });
+    await put("messages", msg("e2e-d-u", "user", "Porto için daha sakin bir yer?", t));
+    await put("items", { ...stay, statusAt: t + 1, updatedAt: t + 1 });
+    await put("messages", msg("e2e-d-a", "assistant", "Casa Azul daha sakin: arka sokakta ve gecesi daha ucuz.", t + 2));
+    new BroadcastChannel("trip-radar").postMessage("changed");
+  });
+  const card = app.locator(".chat .msg-assistant", { hasText: "Casa Azul daha sakin" }).locator(".c-card");
+  await card.waitFor();
+  assert.match(flat([await card.innerText()])[0], /Airbnb.*Casa Azul.*€\d+.*\/ gece.*Planda göster.*Bunu seç/);
+  const quick = app.locator(".chat .c-quick .c-q");
+  assert.ok((await quick.count()) >= 1 && (await quick.count()) <= 3, `one to three quick replies (${await quick.count()})`);
+  assert.equal(await app.locator(".chat .c-quick").evaluate((el) => el.nextElementSibling?.classList.contains("composer")), true, "the quick replies sit over the box");
+  await app.locator(".chat").screenshot({ path: `${out}/6c-chat-card.png` });
+  // "Planda göster": the box comes into view and flashes; "Bunu seç" takes it there, the card says Seçildi.
+  await card.getByRole("button", { name: "Casa Azul: planda göster" }).click();
+  await flashed();
+  await card.getByRole("button", { name: "Casa Azul: Bunu seç" }).click();
+  await card.locator(".c-done", { hasText: "Seçildi" }).waitFor();
+  assert.equal(await statusOf("Casa Azul"), "chosen");
+  assert.equal(await statusOf("Jardim Stay"), "saved", "one stay for the nights: the one chosen before goes back to the options");
+  // A quick reply goes the way a typed line goes (no key here: the chat says it couldn't reach the assistant).
+  const asked = flat([await quick.first().innerText()])[0];
+  await quick.first().click();
+  await app.locator(".chat .chat-banner", { hasText: "Asistana bağlanamadım" }).waitFor({ timeout: 8000 });
+  assert.ok(asked.length > 0);
+
+  // C35: a link sent in the chat that couldn't be read is a dashed card: Okunamadı, why, Tekrar dene, Kaldır.
+  await app.getByPlaceholder("Bir link bırak, görsel yapıştır veya yaz…").fill("https://www.klook.com/activity/91234-e2e-unread/");
+  await app.getByRole("button", { name: "Gönder" }).click();
+  const unread = app.locator(".chat .ar-sent", { hasText: "e2e-unread" }).locator(".c-link.failed");
+  await unread.waitFor({ timeout: 25000 });
+  assert.match(flat([await unread.innerText()])[0], /^Okunamadı klook\.com\/activity\/\d*… .+ Tekrar dene Kaldır$/);
+  await unread.getByRole("button", { name: "Tekrar dene" }).waitFor();
+  await app.locator(".chat").screenshot({ path: `${out}/6c-chat-unread.png` });
+  await unread.getByRole("button", { name: "Kaldır" }).click();
+  await unread.waitFor({ state: "detached" });
+  await app.locator(".chat .ar-sent", { hasText: "e2e-unread" }).locator(".ar-chip-text", { hasText: "Kaldırıldı" }).waitFor();
+
+  // A7 (row 38): at 820 px the plan comes first, its hero in the first screen; the chat is a drawer shut at the bottom.
+  await app.setViewportSize({ width: 820, height: 900 });
+  await app.evaluate(() => window.scrollTo(0, 0));
+  const handle = app.locator(".chat .c-handle");
+  assert.equal(await handle.getAttribute("aria-expanded"), "false");
+  assert.match(flat([await handle.innerText()])[0], /^Asistan \S/, "the handle: Asistan and the last thing said");
+  assert.ok((await app.locator(".x-hero").boundingBox()).y < 900, "the hero is in the first screen");
+  assert.equal(await app.locator(".chat .messages").isVisible(), false, "shut: no conversation, only the handle and the box");
+  await app.getByPlaceholder("Bir link bırak, görsel yapıştır veya yaz…").waitFor();
+  const sheetHeight = () => app.locator(".chat .c-sheet").evaluate((el) => Math.round(el.getBoundingClientRect().height));
+  assert.ok((await sheetHeight()) < 180, `shut, it is a strip (${await sheetHeight()} px)`);
+  await app.screenshot({ path: `${out}/6c-drawer-shut.png` });
+  await handle.click();
+  assert.equal(await handle.getAttribute("aria-expanded"), "true");
+  await app.waitForFunction(() => Math.abs(document.querySelector(".chat .c-sheet").getBoundingClientRect().height - innerHeight * 0.82) < 3);
+  await app.locator(".chat .messages .c-card").first().waitFor();
+  // "← Seyahatlerim" stays on top while it's open.
+  const back = await app.locator(".trip-switch").boundingBox();
+  const sheetTop = await app.locator(".chat .c-sheet").evaluate((el) => el.getBoundingClientRect().top);
+  assert.ok(back && back.y >= 0 && back.y + back.height <= sheetTop, "Seyahatlerim above the open drawer");
+  await app.screenshot({ path: `${out}/6c-drawer-open.png` });
+  // Escape shuts it, the focus back on the handle.
+  await app.keyboard.press("Escape");
+  assert.equal(await handle.getAttribute("aria-expanded"), "false");
+  assert.equal(await app.evaluate(() => document.activeElement?.classList.contains("c-handle")), true, "the focus goes back to the handle");
+  // "Planda göster" from the drawer shuts it and goes to the box.
+  await handle.click();
+  await app.locator(".chat .messages .c-card .c-go").first().click();
+  assert.equal(await handle.getAttribute("aria-expanded"), "false", "Planda göster shuts the drawer");
+  await flashed();
+  await app.setViewportSize({ width: 1440, height: 900 });
+
+  // D15 (row 32): a trip with no dates has no trip order: the switch shows it faded, says why, and isn't pressed.
+  await app.evaluate(async () => {
+    const request = indexedDB.open("trip-radar");
+    const database = await new Promise((resolve) => (request.onsuccess = () => resolve(request.result)));
+    const tx = database.transaction("trips", "readwrite");
+    tx.objectStore("trips").put({ id: "e2e-nodates", title: "Yazın bir ara", confirmedDates: null, budget: null, heroImage: null, createdAt: Date.now(), updatedAt: Date.now() });
+    await new Promise((resolve) => (tx.oncomplete = resolve));
+    new BroadcastChannel("trip-radar").postMessage("changed");
+  });
+  await app.locator(".trip-switch").click();
+  await app.locator(".trip-card", { hasText: "Yazın bir ara" }).click();
+  await app.getByRole("heading", { name: "Yazın bir ara" }).waitFor();
+  const shut = app.getByRole("tab", { name: /^Yolculuk sırasıyla/ });
+  assert.equal(await shut.getAttribute("aria-disabled"), "true");
+  assert.equal(await shut.getAttribute("title"), "Tarihler belli olunca açılır");
+  await shut.click({ force: true });
+  assert.equal(await app.getByRole("tab", { name: "Kategoriye göre", exact: true }).getAttribute("aria-selected"), "true", "not pressed");
+  assert.equal(await app.locator(".panel .q-trip").count(), 0);
+  console.log("✓ v82 D: Yolculuk sırasıyla in chapters (Bunu seç is the Plan's choice, › goes to the box); the chat's card (Planda göster, Bunu seç → Seçildi), quick replies, an unread link's card (Kaldır); the drawer at 820 px (Escape, focus, Planda göster shuts it); no dates, no trip order");
+} finally {
+  await journeyCtx.close();
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -5735,9 +5915,9 @@ try {
       inside: document.querySelectorAll(".mv-ghost *").length,
       view: [],
     };
-    // (Yolculuk sırasıyla is drawn within a frame or two of the press: its own .jf, the plan's other .trip-plan pieces were there before)
-    for (let i = 0; i < 100 && !document.querySelector(".panel .jf.trip-plan"); i++) await new Promise((r) => requestAnimationFrame(r));
-    out.view = [...document.querySelectorAll(".panel .jf.trip-plan")].flatMap((g) => g.getAnimations().map((a) => [a.animationName, a.effect.getComputedTiming().duration]));
+    // (Yolculuk sırasıyla is drawn within a frame or two of the press: its own .q-trip, the plan's other .trip-plan pieces were there before)
+    for (let i = 0; i < 100 && !document.querySelector(".panel .q-trip.trip-plan"); i++) await new Promise((r) => requestAnimationFrame(r));
+    out.view = [...document.querySelectorAll(".panel .q-trip.trip-plan")].flatMap((g) => g.getAnimations().map((a) => [a.animationName, a.effect.getComputedTiming().duration]));
     return out;
   });
   assert.ok(toTrip.ghost.some(([, d, easing]) => d === 120 && easing === "cubic-bezier(0.5, 0, 0.75, 0)"), `m-sekme: the old view fades 120 ms, --e-in (${JSON.stringify(toTrip.ghost)})`);
