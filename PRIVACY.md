@@ -1,4 +1,4 @@
-# Trip Radar — Gizlilik politikası / Privacy policy
+# Trip Radar · Gizlilik politikası / Privacy policy
 
 Son güncelleme / Last updated: 2026-10-19 · Sürüm / Version: 0.38.0
 
@@ -14,7 +14,7 @@ koyan bir Chrome eklentisidir.
 - Hesap açılmaz. Reklam yoktur. Analiz ya da izleme aracı yoktur. Eklenti çerez koymaz. Verilerin satılmaz.
 - Verilerin büyük kısmı yalnız senin tarayıcında durur; bize gelmez.
 - Bilgisayarından dışarı çıkan veriler şunlardır: yapay zekâya gönderdiklerin, paylaşmayı seçtiğin geziler ve
-  harita, kur ve şehir fotoğrafı için gönderilen kısa sorgular. Aşağıda her biri tek tek anlatılıyor.
+  harita, hava, kur ve gezi fotoğrafları için gönderilen kısa sorgular. Aşağıda her biri tek tek anlatılıyor.
 
 ### 2. Biz kimiz (veri sorumlusu)
 
@@ -36,6 +36,7 @@ Anthropic'in ve aşağıda adı geçen diğer hizmetlerin kendi gizlilik politik
 - notların ve yapay zekâ ile sohbet geçmişin,
 - eklediğin belgeler (bilet PDF'leri, görseller),
 - tercihlerin, profil adın ve (eklediysen) profil fotoğrafın,
+- Hazırlık'taki Bavul listen, "bana göre değil" dediklerin ve "Her gezide götürdüklerin" listen,
 - "Kimler gidiyor?"a yazdığın kişilere eklediğin fotoğraflar (yalnız bu bilgisayarda; kimseye, o kişiye de
   gönderilmez),
 - yeni gezi başlatırken yarım bıraktığın taslaklar ve sohbet sürerken onlar için hazırlananlar (yerin fotoğraf
@@ -72,6 +73,12 @@ Ne gönderilir:
   ve türleri, notların). Seçenekleri karşılaştırma yorumu, gezinin tarz etiketleri ve öneriler bundan çıkar; öneri gözden
   geçirmesi gezi başına günde en fazla bir kez ve yalnız gezide büyük bir değişiklik olduğunda yapılır. Öneriler
   yalnız bu bilgisayarda tutulur, paylaşılmaz.
+- arka planda, Hazırlık'ı bir gezide ilk açtığında, Bavul listesi için bir kez: gezinin ülkeleri, şehirleri ve
+  günleri, kaç kişi gittiği, gezinin türü (ör. festival), şehirlerin beklenen havası, plandaki seçilmiş ya da alınmış
+  etkinliklerin, ulaşımların ve yapılacakların adları, kamp ya da tekne gibi konaklama biçimi, bagaj hakkın, priz tipi,
+  pasaportunun ülkesi, "bana göre değil" dediklerin ve her gezide götürdüklerin. "Kimler gidiyor"daki adlar gönderilmez. Gelen
+  liste ve günlük hayat notları ("Bilmen gerekenler") yalnız bu bilgisayarda tutulur.
+- Pano'nun İlham bölümünde "İçinden yerleri çıkar"a bastığında o kaydın adı ve bağlantısı (bkz. bölüm 8).
 
 Kime gönderilir:
 
@@ -111,9 +118,10 @@ Anahtarının sunucudan silinmesini istersen info@emredurmus.net adresine yaz; s
 
 Bir geziyi paylaşırsan paylaşım sunucusuna (Supabase) şunlar gider:
 
-- gezinin ayarları (gezide kimlerin olduğunu söylediğin adlar, "Gidenler", ve farklı yerden gelenlerin kalkış şehri dahil),
+- gezinin ayarları (gezide kimlerin olduğunu söylediğin adlar, "Gidenler", kaç kişi gittiği, kaçının çocuk olduğu,
+  kaç oda istendiği ve farklı yerden gelenlerin kalkış şehri dahil),
 - kaydettiğin sayfalar (küçük ekran görüntüsü dahil),
-- oylar ve tepkiler,
+- beğeniler (♥; eski oylar dahil) ve tepkiler,
 - üyelerin adları ve (eklediyseler) küçük profil fotoğrafları (128 piksel JPEG).
 
 Gezinin gizli kodunu ya da bağlantısını bilen herkes bu verilere erişebilir. Bağlantıyı yalnız güvendiğin kişilerle
@@ -134,8 +142,21 @@ profilleri ve geçmişiyle birlikte) senin isteğinle silinir: info@emredurmus.n
   IP adresin ve tarayıcı bilgin görünür.
 - **Web araması (Google, sunucumuz üzerinden):** Sohbet canlı bir bilgiyi (ör. etkinlik tarihleri, açılış saatleri) aradığında ya da sen "şunu araştır" dediğinde yalnız arama sorusu gider; bir yer ya da etkinlik adı içerebilir (soru bir yer söylemiyorsa gezinin yer adı eklenir, ör. "karavan kiralama Dahab"). Seninle ya da gezinin geri kalanıyla ilgili hiçbir şey gönderilmez. Sonuç sunucuda soruyla birlikte birkaç gün saklanır (aynı soru tekrar aranmaz); günlük sınır için cihazının rastgele kimliği ve adresinin yalnız tek yönlü özeti (hash) tutulur.
 - **Frankfurter:** döviz kuru için yalnız para birimi çifti gönderilir.
-- **Wikipedia / Unsplash / Pexels:** gezi fotoğrafı için yalnız yerin ya da etkinliğin adı gönderilir; Wikipedia'ya
-  doğrudan, Unsplash ve Pexels'a paylaşım sunucusu üzerinden. Fotoğrafın altında çekenin adı ve kaynağı yazılır.
+- **Open-Meteo:** hero'daki hava için yalnız şehrin konumu (enlem ve boylam) ve gezinin günleri gönderilir (gezi 10
+  günden uzaksa geçmiş beş yılın aynı günleri); şehrin adı, gezinin adı ya da kişiler gönderilmez. Cevap bu
+  tarayıcıda saklanır; aynı gün aynı şehir için yeniden sorulmaz.
+- **Gezi fotoğrafları (Wikipedia / Wikimedia, Unsplash, Pexels):** hero'nun mozaiği, PDF kapağı, Seyahatlerim'deki gezi
+  kartı ve harita için. Gönderilen yalnız arama sözcükleridir: ana yerin adı ("Lizbon"), sohbetle başlarken yerin
+  İngilizce adı ve ülkesi ("Ella Sri Lanka"), bir etkinliğin adı ("Ozora Festival") ya da gezinin bir anı ("Lisbon local
+  food"); bir etkinlikte bulunamazsa yedek aramalar da ("music festival crowd stage"). Paylaşım sunucusu kuruluysa önce
+  oradaki `city-image` işlevine gider; sunucu aramayı Unsplash'e, bulamazsa Pexels'a sorar.
+  Sunucu, aynı arama herkes için tekrar sorulmasın diye arama sözcüklerini bulduğu fotoğrafın adresiyle, çekenin adıyla
+  ve kaynağıyla saklar (fotoğraf 30, "bulunamadı" 7 gün sonra yeniden aranır); kimin sorduğunu saklamaz. Unsplash'in
+  kuralı gereği seçilen fotoğraf Unsplash'e bir kez bildirilir; bunda senden bir bilgi yoktur. Sunucu yoksa ya da bulamazsa aynı ad
+  tarayıcından doğrudan Wikipedia'ya (Türkçe ve İngilizce) sorulur. Fotoğrafın kendisi images.unsplash.com,
+  images.pexels.com ya da upload.wikimedia.org'dan yüklenir. Mozaikteki yer kareleri plandaki ya da Pano'daki bir
+  kaydın kendi fotoğrafıdır: kaydettiğin sayfanın fotoğrafı o sitenin görsel sunucusundan yüklenir, bunun için yeni bir
+  arama yapılmaz. Her karede üzerine gelince çekenin adı ve kaynağı yazar.
 - **AeroDataBox (RapidAPI üzerinden):** yalnız bileti alınmış (rezerve) uçuşlar için, o uçuşun tarifesi, durumu,
   kapısı, terminali ve bagaj bandı için yalnız uçuş numarası ve günü gönderilir ("KL1577, 7 Ekim"), bizim
   sunucumuz üzerinden. Sunucu bu herkese açık uçuş bilgisini, aynı uçuşu soran herkes için tekrar sormamak adına uçuş
@@ -161,9 +182,16 @@ profilleri ve geçmişiyle birlikte) senin isteğinle silinir: info@emredurmus.n
   Kendi rezervasyonunu ya da hesabını taşıyabilecek sayfalar (rezervasyon yönetimi, onay, hesap, giriş; içinde
   rezervasyon numarası ya da anahtar olan adresler) hiçbir zaman çevrilmez. Eklenti ziyaret ettiğin sitelerdeki
   bağlantıları değiştirmez. Tıkladığında Travelpayouts ve o site kendi çerezlerini koyar.
+- **İlham'dan yer çıkarma (yapay zekâ):** Pano'nun İlham bölümünde bir kaydın "İçinden yerleri çıkar" düğmesine
+  basınca, o kaydın adı ve bağlantısı sohbete senin yazdığın bir mesaj gibi gider ("Bu kayıttaki yerleri çıkar ve plana
+  uygun ihtiyaçlara ekle: …"). Mesaj, bölüm 5'teki sohbetle aynı yoldan ve aynı gezi bilgileriyle yapay zekâya gider
+  (kendi anahtarınla doğrudan Google ya da Anthropic'e, davetle AI kapısı üzerinden). Ne eklenti ne de yapay zekâ o
+  bağlantıyı açar: o kaydı kaydederken okunan sayfa metni bu bilgisayarda durur; yapay zekâ gerekirse içinde kelime
+  arar ve yalnız bulunan kısa parçalar ona gider. Gerekirse yapay zekâ web araması yapar (yukarıdaki "Web araması"
+  gibi). Yapay zekânın bulduğu yerler, sohbetteki her öneri gibi planına kayıt olarak eklenir.
 
-Bu hizmetlere ad, e-posta ya da gezi içeriği gönderilmez. Her bağlantıda olduğu gibi, istek yapılan sunucu
-IP adresini görebilir.
+İlham'dan yer çıkarma dışında (o, bölüm 5'teki yapay zekâya gider) bu hizmetlere ad, e-posta ya da gezi içeriği
+gönderilmez. Her bağlantıda olduğu gibi, istek yapılan sunucu IP adresini görebilir.
 
 ### 9. Neden işliyoruz (hukuki dayanak)
 
@@ -181,7 +209,7 @@ IP adresini görebilir.
 Trip Radar'ın hiçbir sunucusu Türkiye'de değildir:
 
 - Paylaşım sunucusu ve AI kapısı aynı Supabase projesindedir ve **Hindistan'da (Mumbai, ap-south-1)** çalışır.
-- Google, Anthropic, OpenStreetMap, OpenFreeMap, Frankfurter, Wikipedia, Unsplash, Pexels, AeroDataBox (RapidAPI), Kiwi.com, Aviasales, Travelpayouts, Tripadvisor (RapidAPI), Xotelo, SerpApi, Viator, Airalo ve Omio kendi sunucularını kullanır; bunlar ABD, AB ya da
+- Google, Anthropic, OpenStreetMap, OpenFreeMap, Open-Meteo, Frankfurter, Wikipedia, Unsplash, Pexels, AeroDataBox (RapidAPI), Kiwi.com, Aviasales, Travelpayouts, Tripadvisor (RapidAPI), Xotelo, SerpApi, Viator, Airalo ve Omio kendi sunucularını kullanır; bunlar ABD, AB ya da
   başka ülkelerde olabilir.
 
 Bu aktarımlar yalnız senin başlattığın işlemler (yapay zekâ, paylaşım, davet) için ve o işlem için gerektiği kadar
@@ -195,12 +223,14 @@ kullanmaman yeterlidir; tarayıcında kalan veriler hiçbir yere gitmez.
 | --- | --- | --- |
 | Geziler, kayıtlar, notlar, sohbet, belgeler, anahtarın | Tarayıcında | Sen silene ya da eklentiyi kaldırana kadar |
 | Silinenler | Tarayıcındaki Çöp kutusu | 30 gün, sonra kendiliğinden silinir |
-| Paylaşılan gezi (kayıtlar, oylar, profiller) | Paylaşım sunucusu | Silinmesini isteyene kadar |
+| Paylaşılan gezi (kayıtlar, beğeniler, profiller) | Paylaşım sunucusu | Silinmesini isteyene kadar |
 | Ortak ayarların eski hâlleri | Paylaşım sunucusu | En yeni 200 sürüm; daha eskisi kendiliğinden silinir |
 | AI kapısı sayaçları (içerik yok, yalnız sayı) | Sunucu | Davet var olduğu sürece; silinmesini isteyene kadar |
 | Davet edenin Gemini anahtarı | Sunucu | Silinmesini isteyene kadar |
 | Uçuş bilgisi (uçuş numarası, gün, tarife ve durum; kişi yok) | Sunucu ve tarayıcın | Sunucuda silinmesini isteyene kadar; tarayıcında eklentiyi kaldırana kadar |
 | Öneriler (sorulan yer ve gün, kaynakların fiyat ve otel bilgisi; kişi yok) | Sunucu ve tarayıcın | Sunucuda silinmesini isteyene kadar (fiyatlar 12–24 saatte yenilenir); tarayıcında 6 saat |
+| Fotoğraf aramaları (arama sözcükleri, fotoğrafın adresi, çekenin adı ve kaynak; kişi yok) | Sunucu | Silinmesini isteyene kadar (fotoğraf 30, "bulunamadı" 7 günde yeniden aranır) |
+| Hava (şehir ve günler için tahmin ya da ortalama) | Tarayıcın | Eklentiyi kaldırana kadar; aynı gün içinde yeniden sorulmaz |
 | Yapay zekâya gönderilen içerik | Google / Anthropic | Sağlayıcının kendi koşullarına göre |
 
 ### 12. Güvenlik
@@ -247,6 +277,11 @@ Eklenti kendini otomatik günceller. Bu politika değişirse üstteki tarih ve s
 Önemli bir değişiklik (yeni bir veri türü ya da yeni bir alıcı gibi), değişikliği getiren sürümle birlikte bu
 sayfada açıkça yazılır.
 
+0.38.0'da eklenenler: Bavul listesi için yapay zekâya giden gezi bilgileri (bölüm 5), İlham'dan yer çıkarma (bölüm 8),
+gezi fotoğraflarının kaynakları ve sunucudaki fotoğraf aramaları (bölüm 8 ve 11), hava için Open-Meteo (önceki
+sürümlerde de kullanılıyordu, bu sayfada yazmıyordu), paylaşılan gezide çocuk ve oda sayısı (bölüm 7). Yeni bir sunucu
+ya da yeni bir alıcı yok.
+
 ### 17. İletişim
 
 Emre Durmuş · info@emredurmus.net
@@ -263,7 +298,7 @@ compares them and puts them in a day-by-day plan.
 - No account. No ads. No analytics or tracking tools. The extension sets no cookies. Your data is never sold.
 - Most of your data stays only in your browser and never reaches us.
 - What leaves your computer: what you send to the AI, trips you choose to share, and short lookups for maps,
-  exchange rates and city photos. Each is explained below.
+  the weather, exchange rates and trip photos. Each is explained below.
 
 ### 2. Who we are (controller)
 
@@ -285,6 +320,7 @@ The following is kept only in this browser's local storage (IndexedDB and `chrom
 - your notes and your chat history with the AI,
 - documents you attach (ticket PDFs, images),
 - your preferences, your profile name and (if you added one) your profile photo,
+- your Packing list in Prep, what you said "Not for me" to, and your "What you take on every trip",
 - photos you give the people you name in "Who's going?" (only on this computer; sent to no one, not to that person
   either),
 - drafts of a new trip you left unfinished and what is prepared for them while you chat (the place's photo addresses,
@@ -321,6 +357,14 @@ What is sent:
   options you saved and their kinds, your notes). The comparison review, the trip's style words and suggestions come from it; the
   suggestions review runs at most once a day per trip and only after a big change. Suggestions are kept only on this
   computer and are not shared.
+- in the background, once, the first time you open Prep on a trip, for its Packing list: the trip's countries, cities
+  and their days, how many people go, the kind of trip (a festival, say), the cities' likely weather, the names of the
+  activities, transport and things to do chosen or booked on the plan, a way of sleeping such as a camp or a boat, your
+  baggage allowance, the plug type, your passport's country, what you said "not for me" to and what you take on every
+  trip. The names in "Who's going?" are not sent. The list and the daily-life notes that come back ("Good to know") are kept only on this
+  computer.
+- when you press "Pull out its places" on a saved item in the Board's Inspiration, that item's name and link (see
+  section 8).
 
 Who it goes to:
 
@@ -359,9 +403,10 @@ To have your key deleted from the server, write to info@emredurmus.net; we delet
 
 When you share a trip, the following goes to the sharing server (Supabase):
 
-- the trip's settings (including the names of who's going that you entered, "Travellers", and the departure city of anyone coming from elsewhere),
+- the trip's settings (including the names of who's going that you entered, "Travellers", how many go, how many of
+  them are children, how many rooms are wanted, and the departure city of anyone coming from elsewhere),
 - the pages you saved (including the small screenshot),
-- votes and reactions,
+- likes (♥, earlier votes included) and reactions,
 - members' names and (if they added one) small profile photos (128-pixel JPEG).
 
 Anyone who holds the trip's secret code or link can access this data. Share the link only with people you trust.
@@ -381,8 +426,21 @@ and history) is deleted on request: write to info@emredurmus.net.
   address and browser details are visible.
 - **Web search (Google, through our server):** when the chat looks up a live fact (e.g. an event's dates, opening hours) or you ask it to research something, only the search question is sent; it may contain a place or event name (when the question names no place, the trip's place name is added, e.g. "camper van rental Dahab"). Nothing about you or the rest of the trip is sent. The answer is kept on the server with the question for a few days (the same question isn't searched again); for the daily limit, only a one-way hash of your install's random id and of your address is kept.
 - **Frankfurter:** only a currency pair, for exchange rates.
-- **Wikipedia / Unsplash / Pexels:** only the name of a place or an event, for a trip photo; directly to Wikipedia,
-  and to Unsplash and Pexels through the sharing server. The photo shows who took it and where it is from.
+- **Open-Meteo:** for the weather in the hero, only the city's position (latitude and longitude) and the trip's days
+  (the same days over the last five years when the trip is more than 10 days away); not the city's name, the trip's
+  name or anyone in it. The answer is kept in this browser and not asked again for the same city the same day.
+- **Trip photos (Wikipedia / Wikimedia, Unsplash, Pexels):** for the hero's mosaic, the PDF's cover, the trip's card in
+  My trips and the map. Only search words are sent: the main place's name ("Lisbon"), when starting by chat the place's
+  English name and its country ("Ella Sri Lanka"), an event's name ("Ozora Festival") or one of the trip's moments
+  ("Lisbon local food"); for an event, fallback searches too when nothing is found ("music festival crowd stage"). When
+  the sharing server is set up they go to its `city-image` function first, which asks Unsplash, then Pexels. So that the
+  same search isn't asked again for everyone, the server keeps the search words with the photo's address, who took it
+  and its source (a photo is searched again after 30 days, "none found" after 7); it doesn't keep who asked. As
+  Unsplash's rule asks, a photo chosen is reported to Unsplash once; nothing about you is in it. When there is no server
+  or it finds nothing, the same name is asked of Wikipedia (Turkish and English) directly from your browser. The photo itself loads
+  from images.unsplash.com, images.pexels.com or upload.wikimedia.org. A place's tile in the mosaic is a record's own
+  photo from the plan or the Board: the photo of a page you saved loads from that site's image server, and no new
+  search is made for it. Hovering a tile shows who took the photo and where it is from.
 - **AeroDataBox (via RapidAPI):** only for flights with a ticket bought (booked), only a flight number and its day
   ("KL1577, 7 October"), for that flight's schedule, status, gate, terminal and baggage belt, through our server. The server keeps
   this public flight information by flight number and day, so the same flight isn't asked about again for everyone
@@ -409,9 +467,16 @@ and history) is deleted on request: write to info@emredurmus.net.
   may carry your own booking or account (managing a booking, confirmations, account, sign-in; addresses with a
   booking number or a key in them) are never turned. The extension doesn't change links on the sites you visit.
   When you click, Travelpayouts and that site set their own cookies.
+- **Pulling places out of an inspiration (AI):** pressing "Pull out its places" on an item in the Board's Inspiration
+  sends that item's name and link to the chat as if you had typed it ("Pull out the places in this and add them where
+  they fit the plan: …"). It goes to the AI the same way as the chat in section 5, with the same trip details (with
+  your own key straight to Google or Anthropic, when invited through the AI gate). Neither the extension nor the AI
+  opens that link: the page text read when you saved the item stays on this computer; the AI may search it for words,
+  and only the short passages found are sent to it. The AI may also search the web (as under "Web search" above).
+  The places the AI finds are added to your plan as records, like any suggestion in the chat.
 
-No name, email or trip content is sent to these services. As with any connection, the server receiving the request
-can see your IP address.
+Apart from pulling places out of an inspiration (that goes to the AI of section 5), no name, email or trip content is
+sent to these services. As with any connection, the server receiving the request can see your IP address.
 
 ### 9. Why we process data (legal bases)
 
@@ -429,7 +494,7 @@ can see your IP address.
 None of Trip Radar's servers are in Turkey:
 
 - The sharing server and the AI gate are in the same Supabase project, in **India (Mumbai, ap-south-1)**.
-- Google, Anthropic, OpenStreetMap, OpenFreeMap, Frankfurter, Wikipedia, Unsplash, Pexels, AeroDataBox (RapidAPI), Kiwi.com, Aviasales, Travelpayouts, Tripadvisor (RapidAPI), Xotelo, SerpApi, Viator, Airalo and Omio use their own servers, which may be in the US,
+- Google, Anthropic, OpenStreetMap, OpenFreeMap, Open-Meteo, Frankfurter, Wikipedia, Unsplash, Pexels, AeroDataBox (RapidAPI), Kiwi.com, Aviasales, Travelpayouts, Tripadvisor (RapidAPI), Xotelo, SerpApi, Viator, Airalo and Omio use their own servers, which may be in the US,
   the EU or other countries.
 
 These transfers happen only for actions you start (AI, sharing, invites) and only as far as that action needs; what
@@ -442,12 +507,14 @@ apply. If you don't want a transfer, not using that action is enough; what stays
 | --- | --- | --- |
 | Trips, saves, notes, chat, documents, your key | Your browser | Until you delete them or uninstall |
 | Deleted items | Trash in your browser | 30 days, then erased on their own |
-| Shared trip (saves, votes, profiles) | Sharing server | Until you ask for deletion |
+| Shared trip (saves, likes, profiles) | Sharing server | Until you ask for deletion |
 | Earlier versions of common settings | Sharing server | The newest 200 versions; older ones are deleted automatically |
 | AI gate counters (numbers only, no content) | Server | While the invite exists; until deletion is requested |
 | Inviter's Gemini key | Server | Until deletion is requested |
 | Flight information (number, day, schedule and status; no person) | Server and your browser | On the server until deletion is requested; in your browser until you uninstall |
 | Offers (the place and days asked, the sources' prices and hotels; no person) | Server and your browser | On the server until deletion is requested (prices refreshed every 12–24 hours); in your browser for 6 hours |
+| Photo searches (the search words, the photo's address, who took it and the source; no person) | Server | Until deletion is requested (a photo is searched again after 30 days, "none found" after 7) |
+| Weather (the forecast or average for a city and days) | Your browser | Until you uninstall; not asked again the same day |
 | Content sent to the AI | Google / Anthropic | Under the provider's own terms |
 
 ### 12. Security
@@ -491,6 +558,11 @@ In practice:
 The extension updates itself. When this policy changes, the date and version at the top are updated.
 A significant change (a new kind of data or a new recipient, say) is stated plainly on this page with the version
 that brings it.
+
+Added in 0.38.0: the trip details sent to the AI for the Packing list (section 5), pulling places out of an
+inspiration (section 8), where trip photos come from and the photo searches kept on the server (sections 8 and 11),
+Open-Meteo for the weather (used in earlier versions too, but missing from this page), and the number of children and
+rooms on a shared trip (section 7). No new server and no new recipient.
 
 ### 17. Contact
 
