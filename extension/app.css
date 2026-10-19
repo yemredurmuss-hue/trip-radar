@@ -1,3 +1,10 @@
+/* Plus Jakarta Sans (OFL, static/licenses/plus-jakarta-sans-OFL.txt): the home's headings (--hm-display), bundled so the
+   extension never fetches a font; the variable file covers 500–800, latin and latin-ext (Turkish letters). */
+@font-face { font-family: "Plus Jakarta Sans"; font-style: normal; font-weight: 500 800; font-display: swap; src: url("fonts/PlusJakartaSans-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: "Plus Jakarta Sans"; font-style: normal; font-weight: 500 800; font-display: swap; src: url("fonts/PlusJakartaSans-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+
 :root {
   /* v82 (aşama 8, A3, C36): the older palettes below take their colours from the plan's tokens at the end of this file
      (--q-*), so Gün gün, Seyahatlerim, Ayarlar, the toasts and the popup speak the same colours as the plan: one ink, one
@@ -2313,7 +2320,9 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
 /* Home (2026-10-09, Emre: "ortada kocaman AI başlangıç"): the lavender page with its soft shapes, the big question and
    one big box in the middle, the start chips under it; the top bar holds the currency, the language and the profile
    photo (its menu: the profile, the settings, the trash…); the trips below as v11 cards, Yaklaşan · Geçmiş. */
+/* --hm-display (ana-sayfa-v1): the headings' face, a plain clean sans (bundled, the @font-face at the top of this file). */
 .hm { --hm-ink: var(--q-ink); --hm-muted: var(--q-mut); --hm-line: var(--q-line); --hm-lav: var(--q-acc-s); --hm-accent: var(--q-acc); --hm-dash: var(--q-st-wait-line);
+  --hm-display: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", system-ui, sans-serif;
   --hm-book-bar: var(--q-ok); --hm-plan: var(--q-warn); --hm-ease: cubic-bezier(.16, 1, .3, 1);
   --hm-shadow: 0 1px 2px rgba(28, 26, 51, .05), 0 16px 40px -22px rgba(28, 26, 51, .28);
   --hm-shadow-up: 0 1px 2px rgba(28, 26, 51, .06), 0 24px 48px -24px rgba(28, 26, 51, .38); }
@@ -2355,10 +2364,10 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
 .hm-pop-me span { display: block; margin-top: 2px; font-size: 13px; color: var(--hm-muted); }
 
 .st-hero { position: relative; text-align: center; padding: 64px 32px 56px; }
-.st-hello { margin: 0 auto 32px; max-width: 980px; font-size: clamp(34px, 4.6vw, 58px); line-height: 1.06; letter-spacing: -.035em; font-weight: 800; color: var(--hm-ink); text-wrap: balance; animation: hm-rise .7s var(--hm-ease) both; }
+.st-hello { margin: 0 auto 32px; max-width: 980px; font-family: var(--hm-display); font-size: clamp(34px, 4.6vw, 58px); line-height: 1.06; letter-spacing: -.025em; font-weight: 800; color: var(--hm-ink); text-wrap: balance; animation: hm-rise .7s var(--hm-ease) both; }
 .st-prompt { position: relative; max-width: 780px; margin: 0 auto; text-align: left; background: #fff; border-radius: 30px; padding: 24px 18px 14px 28px; border: 1px solid rgba(91, 69, 224, .08);
   box-shadow: 0 2px 4px rgba(60, 40, 140, .05), 0 30px 70px -30px rgba(91, 69, 224, .5); transition: box-shadow .3s var(--hm-ease), border-color .3s; view-transition-name: start-prompt; animation: hm-rise .7s var(--hm-ease) 80ms both; }
-.st-prompt:focus-within { border-color: rgba(91, 69, 224, .3); box-shadow: 0 0 0 5px rgba(91, 69, 224, .1), 0 30px 70px -28px rgba(91, 69, 224, .6); }
+.st-prompt:focus-within, .st-prompt.lit { border-color: rgba(91, 69, 224, .3); box-shadow: 0 0 0 5px rgba(91, 69, 224, .1), 0 30px 70px -28px rgba(91, 69, 224, .6); }
 .st-prompt.drag { border-style: dashed; border-color: var(--hm-accent); background: #faf9ff; }
 .st-prompt textarea { display: block; width: 100%; min-height: 66px; border: 0; outline: 0; resize: none; background: transparent; font: inherit; font-size: 19px; line-height: 1.45; color: var(--hm-ink); caret-color: var(--hm-accent); }
 .st-prompt textarea::placeholder { color: #8f8bab; }
@@ -2370,11 +2379,33 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
   box-shadow: 0 10px 24px -10px rgba(91, 69, 224, .7); transition: transform .2s var(--hm-ease), background .2s, box-shadow .2s; }
 .st-go:hover { background: #4b36cf; transform: translateY(-1px); box-shadow: 0 14px 28px -10px rgba(91, 69, 224, .75); }
 .st-go:active { transform: translateY(0) scale(.98); }
-.st-starts { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; max-width: 980px; margin: 24px auto 0; animation: hm-rise .7s var(--hm-ease) 160ms both; }
-.st-start { display: inline-flex; align-items: center; gap: 8px; border: 0; border-radius: 999px; padding: 10px 18px 10px 14px; background: rgba(255, 255, 255, .8); color: var(--hm-ink); font-size: var(--q-fs-button); font-weight: 600;
-  box-shadow: 0 1px 2px rgba(28, 26, 51, .06); transition: background .2s, box-shadow .25s, transform .25s var(--hm-ease); }
-.st-start svg { color: var(--hm-accent); }
-.st-start:hover { background: #fff; transform: translateY(-1px); box-shadow: 0 8px 18px -8px rgba(91, 69, 224, .35); }
+/* An idea chip pressed writes its sentence into the box (TripsHome), which lights while it does, and the go button pulses once. */
+.st-go.ready { animation: hm-ready 1.2s var(--hm-ease) 1; }
+@keyframes hm-ready { 30% { box-shadow: 0 0 0 7px rgba(91, 69, 224, .18), 0 10px 24px -10px rgba(91, 69, 224, .7); } }
+/* Idea chips (ana-sayfa-v1, 2026-10-19): six ideas, each with its small round drawing, a short name and its place, then
+   "Sürpriz bir yer" (a die) and "Başka fikirler" (plain, its arrow turns once). Below about 760 px of the home they are one
+   row that scrolls sideways, without a scrollbar, edge to edge. As wide as the old start row (980 px): English stays on two rows too. */
+.hm-ideas-wrap { container: hm-ideas / inline-size; max-width: 980px; margin: 22px auto 0; }
+.hm-ideas { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.hm-idea { display: inline-flex; align-items: center; gap: 8px; border: 0; border-radius: 999px; padding: 4px 16px 4px 4px; background: rgba(255, 255, 255, .8); color: var(--hm-ink); font-size: 14.5px; font-weight: 600; white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(28, 26, 51, .06); transition: background .2s, box-shadow .25s, transform .25s var(--hm-ease); animation: hm-idea-in .5s var(--hm-ease) both; }
+.hm-idea:hover { background: #fff; transform: translateY(-1px); box-shadow: 0 8px 18px -8px rgba(91, 69, 224, .35); }
+.hm-idea-th { width: 30px; height: 30px; border-radius: 50%; overflow: hidden; flex: none; display: block; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .06); }
+.hm-idea-th svg { width: 100%; height: 100%; display: block; transition: transform .5s var(--hm-ease); }
+.hm-idea:hover .hm-idea-th svg { transform: scale(1.18); }
+.hm-idea-ic { display: grid; place-items: center; background: var(--hm-lav); color: var(--hm-accent); }
+.hm-idea-ic svg, .hm-idea:hover .hm-idea-ic svg { width: 16px; height: 16px; transform: none; }
+.hm-idea small { font-size: 13px; font-weight: 500; color: var(--hm-muted); }
+.hm-idea.hm-more { padding: 9px 14px; background: transparent; box-shadow: none; color: var(--hm-muted); }
+.hm-idea.hm-more:hover { background: rgba(255, 255, 255, .7); box-shadow: none; }
+.hm-more svg { color: var(--hm-accent); transition: transform .5s var(--hm-ease); }
+.hm-more.spin svg { transform: rotate(-360deg); }
+@keyframes hm-idea-in { from { opacity: 0; transform: translateY(8px); } }
+@container hm-ideas (max-width: 700px) {
+  .hm-ideas { flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; margin: 0 -16px; padding: 4px 16px 10px; scrollbar-width: none; }
+  .hm-ideas::-webkit-scrollbar { display: none; }
+  .hm-idea { flex: none; }
+}
 .st-ask { max-width: 780px; margin: 14px auto 0; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; text-align: left; background: #fff; border-radius: 18px; padding: 12px 14px 12px 18px; color: var(--hm-ink); font-weight: 600; box-shadow: 0 8px 24px rgba(91, 69, 224, .12); }
 .st-ask > span { flex: 1; min-width: 220px; }
 .st-join { max-width: 540px; margin: 18px auto 0; text-align: left; background: #fff; border-radius: 18px; padding: 6px 18px 12px; box-shadow: 0 8px 24px rgba(91, 69, 224, .12); }
@@ -2386,7 +2417,7 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
 .hm-seg { display: inline-flex; margin-top: 12px; padding: 4px; border-radius: 999px; background: rgba(255, 255, 255, .75); box-shadow: 0 1px 2px rgba(28, 26, 51, .06); }
 .hm-seg button { border: 0; background: none; border-radius: 999px; padding: 8px 18px; font-size: 14.5px; font-weight: 650; color: var(--hm-muted); transition: background .2s, color .2s; }
 .hm-seg button.on { background: var(--hm-ink); color: #fff; }
-.st-section { font-size: var(--q-fs-page); letter-spacing: -.025em; font-weight: 750; color: var(--hm-ink); margin: 0; }
+.st-section { font-family: var(--hm-display); font-size: var(--q-fs-page); letter-spacing: -.025em; font-weight: 800; color: var(--hm-ink); margin: 0; }
 .hm-count { font-size: 14px; font-weight: 650; color: var(--hm-muted); background: #fff; border-radius: 999px; padding: 2px 10px; font-variant-numeric: tabular-nums; }
 .hm .trip-grid { grid-template-columns: repeat(auto-fit, minmax(300px, 352px)); justify-content: center; gap: 28px 24px; margin-top: 26px; }
   background: repeating-linear-gradient(135deg, rgba(91, 69, 224, .06) 0 10px, transparent 10px 20px), var(--hm-lav); }
@@ -2407,8 +2438,9 @@ button.ar-ev:hover { color: #1d1d1f; text-decoration: underline dotted; text-und
   .hm-pop-menu { width: min(300px, calc(100vw - 32px)); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .st-hello, .st-prompt, .st-starts, .hm .trip-grid > *, .hm-pop { animation: none; }
-  .vcard .pic, .st-go, .st-start, .hm-prof-btn .hm-face { transition: none; }
+  .st-hello, .st-prompt, .hm-idea, .st-go.ready, .hm .trip-grid > *, .hm-pop { animation: none; }
+  .vcard .pic, .st-go, .hm-idea, .hm-idea-th svg, .hm-more svg, .hm-prof-btn .hm-face { transition: none; }
+  .hm-idea:hover .hm-idea-th svg { transform: none; }
   .vcard:hover .pic { transform: none; }
   .hm-plane { display: none; }
 }
@@ -3817,7 +3849,6 @@ a.ch-why { text-decoration: none; }
    from 20 px, the Pano's "Neden?" unfolds (the strip lets a card grow alone) and its arrow turns, the heart springs, the home box's hints rotate. */
 @keyframes mv-rise-s { from { opacity: 0; transform: translateY(6px); } }
 @keyframes mv-toast { from { opacity: 0; transform: translateX(-50%) translateY(20px); } }
-@keyframes phc { 0% { opacity: 0; transform: translateY(6px); } 5%, 30% { opacity: 1; transform: none; } 36%, 100% { opacity: 0; transform: translateY(-4px); } }
 .pk-fold { animation: mv-rise-s 300ms var(--e-out) backwards; }
 .msg-user, .msg-assistant { animation: mv-rise-s var(--t-base) var(--e-out) backwards; }
 .pk-undo { animation: mv-toast 300ms var(--e-out) backwards; }
@@ -3830,10 +3861,9 @@ a.ch-why { text-decoration: none; }
 .pn-why[aria-expanded="true"] .pn-chev { transform: rotate(180deg); }
 .pn-new { padding: 1px 8px; border-radius: 99px; background: var(--v-lav, #f1eefc); color: var(--v-accent-ink, #4a35c8); font-size: 11.5px; font-weight: 700; }
 .st-ta { position: relative; }
-.st-ph { position: absolute; inset: 0 0 auto; pointer-events: none; font-size: 19px; line-height: 1.45; color: #8f8bab; }
-.st-ph i { position: absolute; left: 0; right: 0; top: 0; font-style: normal; opacity: 0; animation: phc 9s infinite; }
-.st-ph i:nth-child(2) { animation-delay: 3s; }
-.st-ph i:nth-child(3) { animation-delay: 6s; }
+/* One line at a time (ana-sayfa-v1): every 3.2 s it fades and blurs out, the next comes in (TripsHome turns them). */
+.st-ph { position: absolute; inset: 0 0 auto; pointer-events: none; font-size: 19px; line-height: 1.45; color: #8f8bab; transition: opacity .45s, filter .45s; }
+.st-ph.out { opacity: 0; filter: blur(3px); }
 .st-prompt textarea.rot::placeholder { color: transparent; }
 
 /* Aşama geçişi (K29, plan-v45 §4b #1): Seçildi / Rezerve: the card glows 0 > 6 > 14 px for 1.6 s (in place of the plain glow), the ticket's plane
