@@ -20,7 +20,7 @@ import { metricsOf } from "./items";
 import { isPrep } from "./prep";
 import { choreText, isRental } from "./travelKinds";
 import type { KV } from "./share/store";
-import type { Item, PackAsk, PackGroup, PackLine, PackList, PackTip, TripIntent } from "./types";
+import type { Item, PackAsk, PackGroup, PackLine, PackList, PackTip, TripIntent, TripPacking } from "./types";
 import type { PlugFit } from "./heroInfo";
 import type { Visa } from "./visa";
 
@@ -416,6 +416,34 @@ export function acceptPack(raw: PackAnswer, now: number, never: readonly string[
     .filter((t): t is PackTip => t.label != null && t.text != null)
     .slice(0, PACK_LIMITS.tips);
   return { at: now, groups, ask, tips };
+}
+
+/** The Bavul group gear to rent or get goes in ("Ekipman"), found by its title when the list has one. */
+const GEAR_GROUP = /ekipman|equipment|gear/i;
+
+/**
+ * A chore the model sent as a thing to do (Emre, 0.38.9: "Şnorkel ekipmanı kiralama" is Hazırlık, not Yapılacaklar) put
+ * on the Bavul the trip already has: a line in its gear group (made when there's none and room for it). Null when the
+ * trip has no list yet, the line is already on it, or there's no room: the suggestion is dropped then.
+ */
+export function withPrepLine(packing: TripPacking | undefined, name: string, why: string | null): TripPacking | null {
+  const list = packing?.list;
+  const n = clip(name, 48);
+  if (!list || !n) return null;
+  const key = packKey(n);
+  if (list.groups.some((g) => g.lines.some((l) => packKey(l.name) === key))) return null;
+  if (list.groups.reduce((sum, g) => sum + g.lines.length, 0) >= PACK_LIMITS.total) return null;
+  const added = line(n, clip(why, 70));
+  const at = list.groups.findIndex((g) => GEAR_GROUP.test(g.title));
+  let groups: PackGroup[];
+  if (at >= 0) {
+    if (list.groups[at].lines.length >= PACK_LIMITS.lines) return null;
+    groups = list.groups.map((g, k) => (k === at ? { ...g, lines: [...g.lines, added] } : g));
+  } else {
+    if (list.groups.length >= PACK_LIMITS.groups) return null;
+    groups = [...list.groups, { title: L("Ekipman", "Gear"), lines: [added] }];
+  }
+  return { ...packing, list: { ...list, groups } };
 }
 
 // --- the traveller's own lists (chrome.storage.local) -----------------------------------------------------------------
