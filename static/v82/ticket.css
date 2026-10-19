@@ -1,1 +1,195 @@
-/* Plan v82, aşama 3b: the ticket family (flight, train, transfer, bus, ferry, rental), its option rows, the flight day live strip, Dahil rows. */
+/* Plan v82, aşama 3b: the ticket family (flight, train, transfer, bus, ferry, rental, pass), its option rows, the flight
+   day's live strip, Ayarlandı and Dahil, C15's ways. Rules are ported from the approved prototype (plan-v32-tasarim:
+   docs/mockups/plan-v83-turler/kaynak/mk81.css, mk82.css, mk83.css: .z-tk, .z-tm, .z-route, .q-row.z-r, .z-live) and keep
+   its class names; the frame and the side column are intent.css's (.z-f, .z-s). */
+
+/* ---- the ticket: the carrier's line | the route | the chips, beside the side column ---- */
+.z-tk { display: grid; grid-template-columns: minmax(0, 1fr) var(--side); gap: 18px; padding-left: 18px; }
+.z-tk > .z-ib { top: 12px; right: calc(var(--side) + 34px); }
+.z-tk.inc { background: linear-gradient(180deg, #f3fbf8, #fff 60%); }
+.z-tm { display: grid; grid-template-rows: 28px minmax(0, 1fr) 30px; grid-template-columns: minmax(0, 1fr); gap: 4px; min-width: 0; padding-right: 36px; }
+.z-car { display: flex; align-items: center; gap: 10px; min-width: 0; font-size: var(--q-fs-info); white-space: nowrap; }
+.z-cn { display: flex; align-items: baseline; gap: 6px; min-width: 0; overflow: hidden; }
+.z-cn b { font-size: var(--q-fs-button); font-weight: 750; color: var(--q-ink); overflow: hidden; text-overflow: ellipsis; }
+.z-cn b.z-dim { font-size: var(--q-fs-info); font-weight: 650; color: var(--q-mut); }
+.z-cn small { flex: none; font-size: var(--q-fs-small); color: var(--q-mut); }
+.z-lgi { flex: none; width: 30px; height: 30px; border-radius: 8px; overflow: hidden; background: #fff; box-shadow: inset 0 0 0 1px var(--q-line); display: grid; place-items: center; }
+.z-lgi img { width: 100%; height: 100%; object-fit: contain; }
+.z-route { display: grid; grid-template-columns: minmax(0, 1fr) minmax(120px, 1.1fr) minmax(0, 1fr); align-items: center; gap: 14px; min-width: 0; }
+.q-tm { display: grid; gap: 0; text-align: left; min-width: 0; }
+.q-tm.r { text-align: right; }
+.q-tm > b, .q-tm > small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.q-tm.q-city b { font-size: var(--q-fs-price); font-weight: 800; letter-spacing: -.015em; line-height: 1.15; color: var(--q-ink); }
+.q-tm.q-city small { font-size: var(--q-fs-info); color: var(--q-mut); font-weight: 600; }
+.q-tm.q-city small strong { color: var(--q-ink); font-weight: 800; font-size: var(--q-fs-button); }
+.q-tm small sup, .q-tm b sup { font-size: var(--q-fs-badge); color: var(--q-acc); margin-left: 1px; }
+.q-mid { display: grid; justify-items: center; gap: 3px; min-width: 0; }
+.q-mid small { font-size: var(--q-fs-badge); color: var(--q-mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.q-mid small.ok { color: var(--q-ok); font-weight: 700; }
+.q-mid small.warn { color: var(--q-warn); font-weight: 700; }
+.q-mid.big { gap: 2px; width: 100%; }
+/* The way's drawing on a dashed line, the line stopping short of it on both sides. */
+.q-mid.big i { position: relative; display: grid; place-items: center; width: 100%; height: 34px; }
+.q-mid.big i::before, .q-mid.big i::after { content: ""; position: absolute; top: 50%; border-top: 1.5px dashed #cfcbe0; }
+.q-mid.big i::before { left: 0; right: calc(50% + 30px); }
+.q-mid.big i::after { left: calc(50% + 30px); right: 0; }
+.q-mid.big i img { position: relative; height: 34px; width: auto; max-width: 56px; object-fit: contain; mix-blend-mode: multiply; }
+.z-tk.em .q-mid.big i img { opacity: .55; filter: grayscale(.3); }
+.z-tm > .z-l3 { display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; }
+.z-tm .z-l3 .z-chip { flex: none; }
+.z-tm .z-l3 .z-chip > svg { color: var(--q-mut); flex: none; }
+.z-tm .z-l3 .q-est { font-size: var(--q-fs-info); white-space: nowrap; }
+/* D7: a connecting flight's stubs, one per leg. */
+.z-stub { font-variant-numeric: tabular-nums; }
+/* The side column's word, its code with its label ("PNR K7T2QX"), the check-in, the new times on a late flight. */
+.z-tk .z-top > .z-ok, .z-tk .z-top > .z-inc, .z-tk .z-top > .z-gr { font-size: 16px; }
+.z-top .q-code.st.tk { gap: 8px; }
+.q-code.st .z-cl { color: var(--q-mut); font-weight: 700; letter-spacing: 0; }
+.z-top .q-cv { display: inline-flex; align-items: center; gap: 6px; }
+.z-bt > .q-ckin { box-sizing: border-box; width: 100%; height: var(--q-act-h, 42px); min-height: var(--q-act-h, 42px); justify-content: center; border-radius: 12px; font-size: var(--q-fs-button); }
+.q-ckin .q-ext { opacity: .75; font-size: var(--q-fs-small); }
+.z-row > button.q-alk { font: inherit; font-size: var(--q-fs-info); font-weight: 650; background: none; border: 0; padding: 6px 0; cursor: pointer; color: var(--q-ink); }
+.z-row > button.q-alk:hover { color: var(--q-acc); }
+.z-row > .z-shift { white-space: normal; font-size: var(--q-fs-small); line-height: 1.35; color: #b54708; font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+/* Dahil: the button that goes to what covers it. */
+.z-bt > .q-doc.add.z-goinc { border-style: solid; border-color: #bfe6da; color: #0e7c66; background: #fff; }
+.z-bt > .q-doc.add.z-goinc:hover { border-color: #0e7c66; color: #0e7c66; }
+
+/* ---- uçuş günü (C4): the chip line turns into the live strip; "Biniş başladı" on the carrier's line ---- */
+.z-tm > .z-live { gap: 6px; flex-wrap: nowrap; }
+.z-live > span { flex: none; display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 9px; border-radius: 8px; background: #f2f4f7; font-size: 12.5px; color: var(--q-mut); white-space: nowrap; box-sizing: border-box; }
+.z-live b { color: var(--q-ink); font-weight: 800; }
+.z-live i { font-style: normal; }
+.z-live > span.bad { background: #fff4e5; }
+.z-live > span.bad b { color: #b54708; }
+.z-live .z-ldot { background: #e7f6ec; color: #067647; font-weight: 800; }
+/* D10: the live dot breathes as the live one did (1.6 s, its ring 4 > 7 px; pk-live-pulse in app.css), in the dot's own colour. */
+.z-live .z-ldot::before { content: ""; flex: none; width: 7px; height: 7px; border-radius: 50%; margin: 0 3px 0 1px; background: #12b76a; box-shadow: 0 0 0 4px color-mix(in srgb, currentColor 14%, transparent); animation: pk-live-pulse 1.6s ease-in-out infinite; }
+.z-live .z-ldot.late { background: #fff4e5; color: #b54708; }
+.z-live .z-ldot.late::before { background: #f79009; }
+.z-live .z-lsrc { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--q-fs-badge); color: #8d89a8; margin-left: 2px; }
+.z-lst { flex: none; margin-left: auto; display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 99px; background: var(--q-acc); color: #fff; font-size: var(--q-fs-small); font-weight: 800; }
+.z-lst.bad { background: var(--q-bad); }
+body.still .z-live .z-ldot::before { animation: none; }
+@media (prefers-reduced-motion: reduce) { .z-live .z-ldot::before { animation: none; } }
+
+/* ---- C15: the ways a change of city nobody planned can go, drawn, in the route's place ---- */
+.z-ways { display: flex; gap: 8px; min-width: 0; align-items: stretch; }
+.z-way { flex: 1 1 0; min-width: 0; display: grid; grid-template-rows: minmax(0, 1fr) auto; justify-items: center; align-items: center; gap: 4px; padding: 8px 6px; border: 1px solid var(--q-line); border-radius: 12px; background: #fff; font: inherit; font-size: var(--q-fs-info); font-weight: 700; color: var(--q-ink); cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+.z-way img { height: 44px; width: auto; max-width: 100%; object-fit: contain; mix-blend-mode: multiply; }
+.z-way > i { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--q-ok-s); color: var(--q-ok); }
+.z-way > span { max-width: 100%; text-align: center; line-height: 1.2; overflow-wrap: anywhere; }
+.z-way:hover { border-color: var(--q-acc); box-shadow: 0 2px 10px rgba(91, 69, 224, .15); color: var(--q-acc); }
+.z-way:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 2px; }
+.z-way.own { border-style: dashed; }
+
+/* ---- the options of a way of travel (Karar bekliyor, Değiştir): three rows as tall as one another ---- */
+.z-rows { display: grid; grid-auto-rows: calc((var(--zh) - 36px - 12px) / 3); gap: 6px; height: 100%; min-height: 0; }
+.q-row.z-r { position: relative; display: grid; grid-template-columns: 170px minmax(0, 1fr) 92px 140px auto; align-items: center; gap: 14px; box-sizing: border-box; height: 100%; min-height: 0; min-width: 0; padding: 0 12px 0 14px; border: 1px solid var(--q-line); border-radius: 12px; background: #fff; transition: border-color .15s, box-shadow .15s, transform .18s ease; }
+/* yükselme (hareket dili §2.6): an option lifts 3 px while pointed at; the one already chosen stays where it is. */
+.q-row.z-r:hover { border-color: color-mix(in srgb, var(--q-acc) 35%, var(--q-line)); box-shadow: 0 6px 18px -12px rgba(28, 26, 51, .35); }
+.q-row.z-r:not(.is-cur):hover { transform: translateY(-3px); }
+.q-row.z-r.is-cur { box-shadow: 0 0 0 2px var(--q-ok); border-color: var(--q-ok); }
+.q-row.z-r.is-cur .q-pick { background: var(--q-ok-s); color: var(--q-ok); box-shadow: none; cursor: default; }
+.q-air { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.q-air .q-logo, .q-air .z-lgi { width: 30px; height: 30px; }
+.q-an { display: grid; min-width: 0; }
+.q-an b { font-size: var(--q-fs-info); font-weight: 750; color: var(--q-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.q-an small { font-size: var(--q-fs-small); color: var(--q-mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.q-leg { display: grid; grid-template-columns: auto minmax(60px, 1fr) auto; align-items: center; gap: 14px; min-width: 0; }
+.q-leg > .q-tm { max-width: 110px; }
+.q-row.z-r .q-tm b { font-size: var(--q-fs-button); font-weight: 800; font-variant-numeric: tabular-nums; color: var(--q-ink); }
+.q-row.z-r .q-tm small, .q-row.z-r .q-mid small { font-size: var(--q-fs-small); }
+.q-row.z-r .q-mid > i { display: block; width: 100%; height: 1px; background: #cfcbe0; position: relative; }
+.q-row.z-r .q-mid > i::after { content: ""; position: absolute; right: -1px; top: -3px; width: 7px; height: 7px; border-radius: 50%; background: #cfcbe0; }
+.z-tags { display: flex; align-items: center; min-width: 0; }
+.q-ribs { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; }
+.q-rb1 { font-size: var(--q-fs-badge); font-weight: 800; border-radius: 6px; padding: 0 7px; line-height: 16px; white-space: nowrap; }
+.q-rb1.best { background: var(--q-acc); color: #fff; }
+.q-rb1.tag { background: var(--q-ok-s); color: var(--q-ok); box-shadow: inset 0 0 0 1px var(--q-ok-l); }
+.q-buy { display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-width: 0; }
+.q-row.z-r .q-pr b { font-size: var(--q-fs-card); }
+.q-bg { display: inline-flex; align-items: center; gap: 4px; font-size: var(--q-fs-small); color: var(--q-mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.q-bg > svg { flex: none; }
+.q-sel { display: flex; align-items: center; gap: 10px; }
+.q-row.z-r .q-pick { height: 32px; min-height: 32px; padding: 0 16px; }
+.q-who { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: var(--q-fs-badge); font-weight: 800; flex: none; }
+.q-who.ai { background: var(--q-acc-s); color: var(--q-acc); }
+.q-who.link { background: #2b2842; color: #fff; }
+.q-who.p { background: #e3dcff; color: #3f2fa8; }
+.q-an .z-tb { font-weight: inherit; }
+/* Fewer than three: the rest of the frame asks for more. */
+.z-r0 { grid-row: span var(--span, 1); display: flex; align-items: center; justify-content: center; gap: 12px; border: 1.5px dashed #d6d2e4; border-radius: 12px; background: rgba(255, 255, 255, .5); min-width: 0; padding: 0 12px; }
+.z-r0 b { font-size: var(--q-fs-info); color: var(--q-ink); }
+.z-r0 .q-ai { min-height: 32px; padding: 0 14px; background: var(--q-acc-s); color: var(--q-acc); }
+/* The AI looking for the options: three rows. */
+.z-skr { height: auto; }
+.z-skr > .z-sk { grid-template-rows: none; grid-template-columns: 170px minmax(0, 1fr); border-radius: 12px; }
+.z-skr > .z-sk > span { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: center; }
+/* C10: rows that came in after a search set in one after another, 60 ms apart. */
+.z-xf.in .z-rows > * { animation: z-in var(--t-base) var(--e-out) both; }
+.z-xf.in .z-rows > :nth-child(2) { animation-delay: 60ms; }
+.z-xf.in .z-rows > :nth-child(3) { animation-delay: 120ms; }
+.q-row.z-r.ar-new::after { content: attr(data-new); position: absolute; z-index: 3; top: -8px; right: 10px; padding: 1px 7px; border-radius: 999px; background: var(--q-acc); color: #fff; font-size: var(--q-fs-badge); font-weight: 750; line-height: 1.4; pointer-events: none; }
+/* D9 and K29 on a ticket (hareket dili §2.3, §2.5): a flight's plane glides to its route the first time this session draws it
+   (.9 s, from 18 px left); a step forward to Seçildi or Alındı takes the plane off (1.1 s) and, booked, stamps the tick (420 ms).
+   No glow: the ticket the person pressed is in sight. */
+.z-tk .q-mid.big img.z-fly { animation: pk-fly .9s cubic-bezier(.16, 1, .3, 1) both; }
+.z-int.z-go .z-tk .q-mid.big img { animation: pk-takeoff 1.1s cubic-bezier(.16, 1, .3, 1); }
+.z-int.z-go .z-tk .z-ok svg { animation: mv-stamp 420ms cubic-bezier(.2, .9, .3, 1.3) backwards; }
+body.still .z-xf.in .z-rows > *, body.still .z-tk .q-mid.big img, body.still .z-int.z-go .z-tk .z-ok svg { animation: none !important; }
+body.still .q-row.z-r:hover { transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .z-xf.in .z-rows > *, .z-tk .q-mid.big img, .z-int.z-go .z-tk .z-ok svg { animation: none !important; }
+  .q-row.z-r, .z-way { transition: none; }
+  .q-row.z-r:hover { transform: none; }
+}
+
+/* ---- narrow: the ticket keeps its order; the rows shrink, then stack ---- */
+@media (max-width: 980px) {
+  .q-row.z-r { grid-template-columns: 136px minmax(0, 1fr) 76px 112px auto; gap: 10px; padding: 0 10px 0 12px; }
+  .q-leg { gap: 10px; }
+  .q-leg > .q-tm { max-width: 84px; }
+  .q-row.z-r .q-tm b { font-size: var(--q-fs-info); }
+  .q-row.z-r .q-pr b { font-size: var(--q-fs-button); }
+  .q-row.z-r .q-bg { display: none; }
+  .q-row.z-r .q-who { display: none; }
+  .q-row.z-r .q-pick { padding: 0 12px; }
+  .q-tm.q-city b { font-size: 21px; }
+  .z-route { gap: 10px; grid-template-columns: minmax(0, 1fr) minmax(96px, 1fr) minmax(0, 1fr); }
+  .z-skr > .z-sk { grid-template-columns: 136px minmax(0, 1fr); }
+  .z-way { font-size: var(--q-fs-small); padding: 6px 4px; }
+  .z-way img { height: 36px; }
+  .z-way > i { width: 34px; height: 34px; }
+}
+@media (max-width: 640px) {
+  .z-tk { grid-template-columns: minmax(0, 1fr); padding-left: 12px; gap: 12px; }
+  .z-tk > .z-ib { right: 10px; }
+  .z-tm { grid-template-rows: auto auto auto; padding-right: 28px; gap: 10px; }
+  .z-tm > .z-l3 { flex-wrap: wrap; overflow: visible; }
+  .z-car { white-space: normal; }
+  .z-cn { flex-wrap: wrap; }
+  .q-tm.q-city b { font-size: 18px; }
+  .q-tm.q-city small strong { font-size: var(--q-fs-info); }
+  .z-route { gap: 6px; grid-template-columns: minmax(0, 1fr) minmax(60px, .6fr) minmax(0, 1fr); }
+  .q-mid.big i img { max-width: 44px; height: 28px; }
+  .q-mid.big i::before { right: calc(50% + 24px); }
+  .q-mid.big i::after { left: calc(50% + 24px); }
+  .z-ways { flex-wrap: wrap; }
+  .z-way { flex: 1 1 calc(33% - 8px); }
+  .z-rows { grid-auto-rows: auto; height: auto; gap: 8px; }
+  .q-row.z-r { height: auto; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "air buy" "leg leg" "tags sel"; gap: 10px; padding: 12px; }
+  .q-row.z-r > .q-air { grid-area: air; }
+  .q-row.z-r > .q-leg { grid-area: leg; }
+  .q-row.z-r > .q-buy { grid-area: buy; }
+  .q-row.z-r > .z-tags { grid-area: tags; }
+  .q-row.z-r > .q-sel { grid-area: sel; }
+  .q-row.z-r .q-bg, .q-row.z-r .q-who { display: inline-flex; }
+  .q-ribs { flex-direction: row; flex-wrap: wrap; }
+  .q-leg > .q-tm { max-width: none; }
+  .z-r0 { grid-row: auto; padding: 12px; flex-wrap: wrap; }
+  .z-skr > .z-sk { grid-template-columns: 1fr; height: 72px; }
+  .q-row.z-r .q-buy { flex-direction: column; align-items: flex-end; gap: 0; }
+  /* "Kendin ara" keeps the sites' marks when their names go (intent.css hides the names). */
+  .q-oh .z-pl > .q-logo { display: grid; }
+}
