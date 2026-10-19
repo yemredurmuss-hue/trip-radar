@@ -44,9 +44,8 @@ import { newId } from "../lib/db";
 import { AddButton, AddSheet } from "./cards/AddSheet";
 import { openDoc, useTripDocs } from "./cards/DocAccess";
 import { LegCard } from "./cards/LegCard";
-import { EmptyLegCard, EmptyRecordCard } from "./cards/EmptyCard";
 import { EmptyEnvContext, type EmptyEnv } from "./cards/emptyEnv";
-import { isEmptyLeg, isEmptyRecord } from "../lib/emptyCards";
+import { isEmptyRecord } from "../lib/emptyCards";
 import { liveSource } from "../lib/offerSources";
 import { foreignCountries, homeFromFlights } from "../lib/suggestions";
 import { CardEnvContext, NavGroup, PlanCard, type CardEnv } from "./cards/PlanCard";
@@ -95,7 +94,6 @@ import { PanoDialog } from "./board/v82/PanoDialog";
 import { usePrepSummaryWith } from "./plan/prep/usePrep";
 import { NeedGroup } from "./cards/NeedCard";
 import { draftOf } from "../lib/draft";
-import { journeyOf } from "../lib/tripShape";
 import { UndatedIdeas } from "./ideas/IdeaTiles";
 import { choiceOf, type Choice } from "../lib/choice";
 import { pivotalFindings } from "../lib/pivots";
@@ -167,8 +165,6 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const failed = openCaptures.filter((c) => c.status === "error");
   const listings = decisions?.ctx.listings;
   const legs = useMemo(() => buildLegs(plan, trip, listings), [plan, trip, listings]);
-  // The trip's shape under the Plan's head (v11): its stops and the way between them.
-  const shape = useMemo(() => journeyOf(plan, legs, items), [plan, legs, items]);
   const reading = listings
     ? new Set(items.filter((i) => needsReading(i, listings.get(listingKeyOf(i))) && !listings.get(listingKeyOf(i))?.error).map(listingKeyOf)).size
     : 0;
@@ -852,33 +848,6 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     />
   );
 
-  // Boş kartlar (spec 2026-10-06-bos-kartlar-design.md), on the Plan only: a need with nothing booked or saved yet
-  // (a flight or stay the start made room for, a flight said with nothing chosen, a transfer with no plan) is the
-  // approved card made plain. A need with another option, a file or a booking keeps today's full card.
-  // The card being filled in where it stands (a tile just added, a field opened) is the full card while it's edited:
-  // its hour and price are there to type; once left with nothing concrete on it, it's empty again.
-  const emptyRecord = (item: Item) => !(focus?.id === item.id && focus.field != null) && isEmptyRecord(trip, item, env.docsFor(item.id).length, items);
-  const planRenderGroup: RenderGroup = (group, heading, groupSubtitle, nested = false) => {
-    const lone = group.items.length === 1 ? group.items[0] : null;
-    if (!lone || !emptyRecord(lone)) return renderGroup(group, heading, groupSubtitle, nested);
-    return (
-      <div key={group.key} className={nested ? "group nested" : "section"} data-option-ids={lone.id}>
-        {(heading || groupSubtitle) && (
-          <div className={nested ? "group-head" : "section-head"}>
-            <span className="group-title">
-              {heading && <span>{heading}</span>}
-              {groupSubtitle && <span className="muted">{groupSubtitle}</span>}
-            </span>
-          </div>
-        )}
-        <EmptyRecordCard item={lone} />
-      </div>
-    );
-  };
-  // A decided record drawn alone (an activity on its day, a plan in its city): empty while it has no concrete option.
-  const planSettled: SettledFor = (item, decision, onChange, changing) =>
-    !onChange && item.category !== "stay" && emptyRecord(item) ? <EmptyRecordCard key={item.id} item={item} /> : settled(item, decision, onChange, changing);
-  const planLegCard = (l: Leg) => (isEmptyLeg(l) ? <EmptyLegCard key={l.key} leg={l} /> : legCard(l));
   const emptyEnv: EmptyEnv = {
     tripId: trip.id,
     travellers: who.count || null,
@@ -1110,16 +1079,12 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
             isOpen={arrivals.isOpen}
             onOpen={arrivals.onOpen}
             pending={arrivals.pending}
-            tripId={trip.id}
-            cities={cityNames}
-            cards={{ legCard: planLegCard, renderGroup: planRenderGroup, card, settled: planSettled }}
             onAdd={addIn}
             today={today}
             items={items}
             suggestions={suggestions}
             visa={facts.visa}
             visaDone={!!trip.visaDone}
-            shape={shape}
             decide={counts.open}
             order={<PlanOrder view="plan" onView={(v) => setView(v)} off={orderOff} />}
             onVisaDone={(done) => void setVisaDone(trip.id, done)}

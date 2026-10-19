@@ -2,9 +2,9 @@
 // spec 0.34 and v11): the head ("Plan · Gezinin omurgası · n karar bekliyor" and the three ways to read it), then each
 // category one card with its closed row (78 px), one open at a time (B8): opening one closes the others and brings it to
 // the top in one move unless it is there already (E1). A category drawn the new way (V82_SECTIONS) has its intents on a
-// rail inside (TimelineRail, IntentBox); the others keep their old body for now (their timeline of cards), side by side
-// for a short while. Hazırlık is drawn on every trip (its list works out chores from the trip, Bilmen gerekenler and the
-// Bavul, aşama 7); any other category with nothing in it isn't; "+ Yeni ihtiyaç ekle" at the end adds any kind (B6).
+// rail inside (TimelineRail, IntentBox); Hazırlık has its list and İlham its tiles (ideas/IdeaList InspoGrid). Hazırlık
+// is drawn on every trip (its list works out chores from the trip, Bilmen gerekenler and the Bavul, aşama 7); any other
+// category with nothing in it isn't; "+ Yeni ihtiyaç ekle" at the end adds any kind (B6).
 import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { isIdeaSection, planSectionOfItem, sectionProgress, type CatEntry, type CatSection, type SectionId } from "../../lib/categories";
 import { activityGaps } from "../../lib/emptyCards";
@@ -20,11 +20,11 @@ import { eMove, scrollBy } from "../../lib/planOpen";
 import type { BudgetSlice } from "../../lib/progress";
 import { entryDomId } from "../../lib/progress";
 import type { InsertAt } from "../../lib/templates";
-import type { JourneyHop, JourneyStop } from "../../lib/tripShape";
 import type { Item } from "../../lib/types";
 import type { Visa } from "../../lib/visa";
 import { useEmptyEnv } from "../cards/emptyEnv";
 import { useCardEnv } from "../cards/PlanCard";
+import { InspoGrid } from "../ideas/IdeaList";
 import { reducedMotion } from "../motion";
 import { show } from "../Progress";
 import type { BoardSuggestions } from "../useSuggestions";
@@ -33,8 +33,6 @@ import { PrepList } from "./PrepList";
 import { usePrepSummary } from "./prep/usePrep";
 import { ideaCount, Section } from "./Section";
 import { SECTION_META } from "./sectionMeta";
-import { SectionSuggestContext } from "./sectionSuggest";
-import { SectionTimeline, type SectionCards } from "./SectionTimeline";
 import { SuggestionCards } from "./SuggestionCards";
 import type { RowView } from "./v82/CategoryRow";
 import { CollectEnvContext } from "./v82/collectEnv";
@@ -45,9 +43,6 @@ import { PlanHeader } from "./v82/PlanHeader";
 import { TimelineRail } from "./v82/TimelineRail";
 import { intentEl, V82EnvContext, type V82Env } from "./v82/v82Env";
 import { VisaRow } from "./VisaRow";
-
-/** The sections whose suggestions are tiles among their ideas. */
-const TILED: SectionId[] = ["activity", "todo"];
 
 /**
  * v82 geçişi (C raporu §3): the categories drawn with the new intent boxes (lib/intents.ts) instead of their old timeline.
@@ -95,15 +90,12 @@ function bringUp(head: HTMLElement) {
   requestAnimationFrame(step);
 }
 
-export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tripId, cities, cards, onAdd, today, items, pending, suggestions, visa = null, visaDone = false, onVisaDone, shape = null, order = null, info = {}, decide }: {
+export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onAdd, today, items, pending, suggestions, visa = null, visaDone = false, onVisaDone, order = null, info = {}, decide }: {
   plan: Plan;
   sections: CatSection[];
   /** Open now: the traveller's choice, remembered (sectionMeta.useSectionOpen), or held open while a link is read into it. */
   isOpen: (section: CatSection) => boolean;
   onOpen: (id: SectionId, open: boolean) => void;
-  tripId: string;
-  cities: string[];
-  cards: SectionCards;
   /** Adds in a section (its kind; at a day and city when given), or (null) anything from the plan's end. */
   onAdd: (section: SectionId | null, at: InsertAt | null) => void;
   today: string;
@@ -116,10 +108,8 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
   visa?: Visa | null;
   visaDone?: boolean;
   onVisaDone?: (done: boolean) => void;
-  /** The trip's stops and the ways between them: Yapılacaklar draws the way between one city's row and the next. */
   /** "n karar bekliyor" as the hero counts it (tripPhase.countedIntents, row 127): on the trip a need whose day went by is none. */
   decide?: number;
-  shape?: { stops: JourneyStop[]; hops: JourneyHop[] } | null;
   /** The three ways to read the plan (PlanOrder), drawn in the plan's head. */
   order?: ReactNode;
   /** v11: the budget shared out by section ("€500 ayrıldı"), when the trip has one. */
@@ -305,14 +295,14 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, tri
                       {s.id === "activity" && <CityGaps gaps={gaps.filter((g) => !(c?.intents ?? []).some((i) => i.frame === "collection" && i.head.city != null && sameCity(i.head.city, g.city)))} section="activity" />}
                     </TimelineRail>
                   ) : (
-                    <SectionSuggestContext.Provider value={suggestions && TILED.includes(s.id) ? { list: suggested(s), add: suggestions.add, dismiss: suggestions.dismiss, notes: suggestions.notes } : null}>
-                      {/* Etkinlik ve turlar and Yapılacak şeyler show their suggestions among their ideas, as tiles (sectionSuggest). */}
-                      {suggestions && !TILED.includes(s.id) && <SuggestionCards list={suggested(s)} onAdd={suggestions.add} onDismiss={suggestions.dismiss} notes={suggestions.notes} />}
+                    <>
+                      {suggestions && <SuggestionCards list={suggested(s)} onAdd={suggestions.add} onDismiss={suggestions.dismiss} notes={suggestions.notes} />}
                       {pending?.bySection[s.id]}
                       {/* Hazırlık on every trip, a chore saved or not: the check-in and the visa worked out from the trip, Bilmen gerekenler, the Bavul. */}
                       {s.id === "prep" && <PrepList entries={s.prep} />}
-                      {own && s.id !== "prep" && <SectionTimeline section={s} plan={plan} tripId={tripId} cities={cities} cards={cards} onAdd={(at) => onAdd(s.id, at)} onIdea={(item) => onOpen(planSectionOfItem(item), true)} today={today} items={items} journey={shape} />}
-                    </SectionSuggestContext.Provider>
+                      {/* İlham: what was saved to look at, as tiles. */}
+                      {own && s.id === "inspo" && <InspoGrid section={s} plan={plan} />}
+                    </>
                   )}
                 </Section>
               );

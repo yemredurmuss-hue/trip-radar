@@ -4,7 +4,6 @@
 import { cardKind, type CardKind } from "./cardKinds";
 import { isCampStay } from "./campStay";
 import { sectionOfItem } from "./categories";
-import { legItem, type Leg } from "./legs";
 import { sameCity, type DateRange, type Plan } from "./plan";
 import type { Item, Trip } from "./types";
 
@@ -40,17 +39,6 @@ export function isEmptyRecord(_trip: Pick<Trip, "startGuide">, item: Item, files
   // The start's placeholders (startTrip isPlaceholder) are such plans: made in the chat, nothing concrete. One that
   // got a page, a price or an hour is a real option now, whatever its print says.
   return bareChatPlan(item);
-}
-
-/**
- * A transfer or change of city with nothing said for it (LegCard's "Planlanmadı"): no way chosen, not
- * arranged or booked, no saved options, no record of its own.
- */
-export function isEmptyLeg(leg: Leg): boolean {
-  const mode = leg.choice?.mode ?? leg.mode;
-  const booked = leg.status === "booked" || Boolean(leg.choice?.booked);
-  const planned = mode != null || leg.status === "chosen" || leg.status === "planned";
-  return !booked && !planned && leg.status !== "options" && !legItem(leg);
 }
 
 export interface ActivityGap {

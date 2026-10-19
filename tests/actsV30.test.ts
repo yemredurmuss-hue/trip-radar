@@ -9,7 +9,6 @@ import { campWords, stayKindSet, validEffect } from "../src/lib/playbooks";
 import { closedNoteOf } from "../src/lib/reason";
 import { activityLinks, restLinks } from "../src/lib/searchLinks";
 import { wayName } from "../src/lib/tripShape";
-import { restCityOf } from "../src/app/plan/ActivityBoard";
 import { citiesOfPlan, EVENT_RANK, eventsByCity } from "../src/lib/categories";
 import { EMPTY_METRICS } from "../src/lib/items";
 import { makeItem } from "./fixtures/makeItem";
@@ -65,15 +64,6 @@ describe("the type note and the rest after a festival", () => {
     expect(withLang("tr", () => closedNoteOf("festival", false))).toBe("Festival gezisi: tur önerisi kapalı");
     expect(withLang("en", () => closedNoteOf("festival", true))).toMatch(/^Festival trip: tour suggestions are off/);
     expect(withLang("tr", () => closedNoteOf("wellness", false))).toMatch(/gezinin sebebi bu/);
-  });
-  const block = (city: string, start: string, end: string) => ({ kind: "open", range: { start, end }, nights: 2, city, groups: [], searchUrl: "" }) as never;
-  it("rests in the last stop after the festival's own place", () => {
-    expect(restCityOf({ stayBlocks: [block("Ozora", "2027-07-25", "2027-08-02"), block("Budapeşte", "2027-08-02", "2027-08-04")] }, "Ozora")).toBe("Budapeşte");
-  });
-  it("has none when the trip stays at the festival, or the festival is last", () => {
-    expect(restCityOf({ stayBlocks: [block("Ozora", "2027-07-25", "2027-08-02")] }, "Ozora")).toBeNull();
-    expect(restCityOf({ stayBlocks: [block("Budapeşte", "2027-07-24", "2027-07-25"), block("Ozora", "2027-07-25", "2027-08-02")] }, "Ozora")).toBeNull();
-    expect(restCityOf({ stayBlocks: [] }, "Ozora")).toBeNull();
   });
   it("only searches (a link set with the city and the word), never a made-up place", () => {
     const links = withLang("tr", () => restLinks("Budapeşte"));

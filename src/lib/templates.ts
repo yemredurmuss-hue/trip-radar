@@ -10,9 +10,8 @@ import { liveLabels } from "./i18nText";
 import { isoDate } from "./items";
 import { ALL_PLANNED_KINDS, checkPlanned, isGeneratedName, plannedItem, type PlannedInput } from "./planned";
 import { addDays } from "./plan";
-import { cityOfAirport } from "./airports";
 import { esimInCountry } from "./chatBooking";
-import type { TimelineEntry, TimelineSection } from "./timeline";
+import type { TimelineSection } from "./timeline";
 import type { Item, PlannedKind } from "./types";
 
 export type TemplateId = TransportMode | "hotel" | "home" | "activity" | "todo" | "food" | "esim" | "insurance" | "note";
@@ -201,33 +200,6 @@ export function formOf(item: Item, currency: string): { template: Template; valu
       currency: item.price.currency ?? currency,
     },
   };
-}
-
-/**
- * The "+" under a card of the plan: its city and day. A trip's city is the leg's (a station or an airport
- * code never is one), else the city of its airport; after the flight home there's no city. After a stay,
- * its city and no day: which night is picked in the form.
- */
-export function insertAt(entry: TimelineEntry): InsertAt {
-  switch (entry.kind) {
-    case "stay":
-      return { city: entry.block.city, date: null, night: addDays(entry.block.range.end, -1) };
-    case "travel": {
-      if (entry.role === "departure") return { city: null, date: entry.date };
-      const f = (entry.travel?.settled ?? entry.travel?.items[0])?.flight;
-      return { city: entry.leg?.to.city ?? (f?.to ? cityOfAirport(f.to) : null), date: entry.date };
-    }
-    case "leg":
-      return { city: entry.leg.to.city ?? entry.leg.from.city, date: entry.date };
-    case "event":
-      return { city: entry.item.city, date: entry.date };
-    case "day":
-      return { city: null, date: entry.date };
-    case "plan":
-      return { city: entry.city, date: entry.date };
-    case "rental":
-      return { city: entry.group.items[0]?.city ?? null, date: entry.date };
-  }
 }
 
 /** The "+" at the very top of the plan (before the way in): the first day, no city (the way to the airport is at home). */
