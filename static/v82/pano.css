@@ -95,6 +95,9 @@
 .q-sheetp .q-score em { font-style: normal; font-size: 11px; font-weight: 700; margin-left: 6px; color: var(--q-mut); }
 .q-sheetp .q-like { display: inline-flex; align-items: center; gap: 5px; font: inherit; font-size: 12px; font-weight: 700; border: 1px solid var(--q-line); background: #fff; border-radius: 99px; padding: 3px 9px; cursor: pointer; color: var(--q-mut); transition: transform .25s cubic-bezier(.2, 1.6, .4, 1); }
 .q-sheetp .q-like:active { transform: scale(.88); }
+/* (a 32 px high hit area around the small pill) */
+.q-sheetp .q-like { position: relative; z-index: 1; }
+.q-sheetp .q-like::after { content: ""; position: absolute; inset: -6px 0; }
 .q-sheetp .q-like.on { color: #d1335b; border-color: #f3c3cf; background: #fff3f6; }
 .q-sheetp .q-like.on .i { fill: currentColor; }
 .q-sheetp .q-avs { display: inline-flex; }
@@ -102,7 +105,7 @@
 .q-sheetp .q-avs i:first-child { margin-left: 0; }
 .q-sheetp .q-avs i.e { background: #ffe1c7; color: #9a4b00; }
 /* "Yeni": saved since the last visit on this computer (the v11 Pano's mark, kept). */
-.q-sheetp .q-new { font-size: 11px; font-weight: 800; color: var(--q-acc); background: var(--q-acc-s); border-radius: 6px; padding: 1px 6px; }
+.q-sheetp .q-new, .q-sheetp .q-pgb .q-new { font-size: 11px; font-weight: 800; color: var(--q-acc); background: var(--q-acc-s); border-radius: 6px; padding: 1px 6px; }
 .q-sheetp .q-ai { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 16px; border: 0; border-radius: 10px; background: var(--q-acc); color: #fff; font: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; }
 .q-sheetp .q-ai.sm { justify-self: start; min-height: 34px; padding: 0 14px; background: var(--q-acc-s); color: var(--q-acc); }
 

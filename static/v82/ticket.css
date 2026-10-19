@@ -22,6 +22,14 @@
 .q-tm.q-city b { font-size: var(--q-fs-price); font-weight: 800; letter-spacing: -.015em; line-height: 1.15; color: var(--q-ink); }
 .q-tm.q-city small { font-size: var(--q-fs-info); color: var(--q-mut); font-weight: 600; }
 .q-tm.q-city small strong { color: var(--q-ink); font-weight: 800; font-size: var(--q-fs-button); }
+/* (wide: an end's station is cut before its hour, never the hour) */
+@media (min-width: 641px) {
+  .q-tm.q-city > small { display: flex; min-width: 0; }
+  .q-tm.q-city.r > small { justify-content: flex-end; }
+  .q-tm.q-city > small > * { flex: none; }
+  .q-tm.q-city > small > .q-tplace { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .q-tm.q-city > small > .q-tsep { white-space: pre; }
+}
 .q-tm small sup, .q-tm b sup { font-size: var(--q-fs-badge); color: var(--q-acc); margin-left: 1px; }
 .q-mid { display: grid; justify-items: center; gap: 3px; min-width: 0; }
 .q-mid small { font-size: var(--q-fs-badge); color: var(--q-mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }

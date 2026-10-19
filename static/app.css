@@ -1141,7 +1141,7 @@ button.it-line:hover b { text-decoration: underline; text-decoration-color: #cfc
 .dg-day { align-self: start; display: grid; grid-template-columns: 62px minmax(0, 1fr); gap: 14px; align-items: start; scroll-margin-top: 90px; }
 .dg-d { display: flex; justify-content: center; }
 .dg-date { display: grid; justify-items: center; line-height: 1.12; width: 56px; padding: 6px 2px 7px; border-radius: 12px; background: #fff; box-shadow: var(--v30-shadow); }
-.dg-date span { font-size: var(--q-fs-badge); font-weight: 750; letter-spacing: .06em; text-transform: uppercase; color: var(--v-accent-ink); }
+.dg-date span { font-size: var(--q-fs-badge); font-weight: 750; color: var(--v-accent-ink); }
 .dg-date b { font-size: var(--q-fs-category); font-weight: 800; letter-spacing: -.02em; color: var(--v-ink); }
 .dg-date small { font-size: var(--q-fs-small); color: var(--v-muted); }
 .dg-date i { font-style: normal; font-size: var(--q-fs-badge); font-weight: 700; color: var(--v-muted); margin-top: 3px; padding-top: 3px; border-top: 1px solid var(--v-line2); width: 78%; text-align: center; white-space: nowrap; }
@@ -1199,6 +1199,9 @@ button.dg-main:hover .dg-ttl { text-decoration: underline; text-underline-offset
 .dg-today { color: var(--v-accent-ink); }
 .dg-add { flex: none; margin-left: auto; padding: 2px 8px; border: 1.5px dashed var(--v-dash); border-radius: 8px; background: none; font: inherit; font-size: 12px; color: var(--v-muted); white-space: nowrap; cursor: pointer; }
 .dg-add:hover { border-color: var(--v-ink); color: var(--v-ink); }
+/* (a 32 px high hit area around the small dashed button; on a phone it is the + alone) */
+.dg-add { position: relative; }
+.dg-add::after { content: ""; position: absolute; inset: -8px -4px; }
 .dg-grip { position: absolute; left: -12px; top: 1px; z-index: 2; width: 14px; height: 24px; padding: 0; border: 0; border-radius: 6px; background: none; color: #aeaeb2; display: grid; place-items: center; cursor: grab; opacity: 0; transition: opacity .12s; }
 .dg-i:hover > .dg-grip, .dg-grip:focus, .dg-grip:focus-visible { opacity: 1; }
 .dg-grip:hover { color: var(--v-ink); background: rgba(0,0,0,.05); }
