@@ -49,6 +49,8 @@ const cardSchema = z.object({
 
 export const planSchema = z.object({
   label: z.string(),
+  // The end of the trip's title in the traveller's words ("Dalış Gezisi", "Aile Kutlaması"; tripName.ts checks it).
+  title_theme: z.string(),
   base: z.string(),
   focus: z.string(),
   stay_type: z.string(),
@@ -68,7 +70,7 @@ export const planSchema = z.object({
   avoid: z.string(),
   musts: z.array(z.object({ id: z.string(), text: z.string() })),
 });
-type ShapeKeys = "gateway" | "moving_base" | "per_day" | "info";
+type ShapeKeys = "gateway" | "moving_base" | "per_day" | "info" | "title_theme";
 type CardShapeKeys = "section" | "frame" | "word" | "pick" | "covers" | "by";
 type FullCard = z.infer<typeof cardSchema>;
 /** One card as it may come: a playbook made before gezi biçimi has none of the shape's fields. */
@@ -232,8 +234,10 @@ export function validModelPlaybook(raw: RawPlan | null | undefined): CustomPlayb
     if (said && (PART_SECTIONS as readonly unknown[]).includes(row.section) && !info[row.section as PartSection]) info[row.section as PartSection] = said;
   }
 
+  const titleTheme = text(raw.title_theme, 40);
   return {
     label,
+    ...(titleTheme ? { titleTheme } : {}),
     base,
     focus,
     stayType,

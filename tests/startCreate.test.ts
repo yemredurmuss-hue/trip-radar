@@ -42,7 +42,7 @@ describe("Gezimi oluştur", () => {
     const s = await runAll(interview(true));
     const d = await db();
     const trip = (await d.get("trips", s.tripId!))!;
-    expect(trip.title).toBe("Bali Gezisi");
+    expect(trip.title).toBe("1 Aylık Bali Doğa Gezisi");
     expect(trip.confirmedDates).toEqual({ start: "2026-12-10", end: "2027-01-10" });
     expect(trip.startGuide?.createdAt).toBeGreaterThan(0);
     const items = await listItems(trip.id);
@@ -76,7 +76,7 @@ describe("Gezimi oluştur", () => {
     const chat = await listMessages(trip.id);
     expect(chat.map((m) => m.role)).toEqual(["user", "assistant", "user", "assistant"]);
     expect(chat[0].text).toBe("Sabine'yle 10 Aralık'tan 1 ay Bali");
-    expect(chat.at(-1)!.text).toMatch(/^Bali Gezisi hazır: 31 gece, 3 durak\./);
+    expect(chat.at(-1)!.text).toMatch(/^1 Aylık Bali Doğa Gezisi hazır: 31 gece, 3 durak\./);
     expect(chat.every((m) => m.provider === "gemini")).toBe(true);
   });
 
@@ -104,7 +104,7 @@ describe("Gezimi oluştur", () => {
     await expect(runStep("route", interview(true), { provider: "gemini" })).rejects.toThrow("Gezi kaydı bulunamadı.");
     const again = await runAll(interview(false));
     const trip = (await (await db()).get("trips", again.tripId!))!;
-    expect(trip.title).toMatch(/^Bali Gezisi( · Aralık 2026| \d+)$/);
+    expect(trip.title).toMatch(/^1 Aylık Bali Doğa Gezisi( · Aralık 2026| \d+)$/);
     const titles = (await (await db()).getAll("trips")).map((t) => t.title);
     expect(new Set(titles).size).toBe(titles.length);
   });
@@ -125,7 +125,7 @@ describe("Gezimi oluştur", () => {
     const s = interview(true);
     const lines = stepsFor(s, creationOf(s)!).map((x) => x.done);
     expect(lines).toEqual([
-      "Gezi açıldı: Bali Gezisi",
+      "Gezi açıldı: 1 Aylık Bali Doğa Gezisi",
       // In the map's order (v5): the way there, then the stays.
       "İstanbul ⇄ Denpasar uçuşları için yer açıldı",
       "Rota çizildi: Ubud 12 gece → Canggu 10 gece → Uluwatu 9 gece",

@@ -193,13 +193,13 @@ describe("the route typed and the trip's name (items 3, 4)", () => {
     expect(s1.where?.place).toBe("Sri Lanka");
     const s2 = typed(s1, "Ahangama", raw({ destination: "Ahangama", destination_country: "Sri Lanka", destination_country_code: "LK" }), 3);
     expect(s2.where).toMatchObject({ place: "Ahangama", code: "LK", within: "Sri Lanka" });
-    expect(withLang("tr", () => tripTitle(s2))).toBe("Sri Lanka Gezisi");
-    expect(withLang("en", () => tripTitle(s2))).toBe("Sri Lanka Trip");
+    expect(withLang("tr", () => tripTitle(s2))).toBe("15 Günlük Sri Lanka Gezisi");
+    expect(withLang("en", () => tripTitle(s2))).toBe("15-Day Sri Lanka Trip");
     // The same place said again keeps it.
     expect(typed(s2, "Ahangama", raw({ destination: "Ahangama", destination_country: "Sri Lanka", destination_country_code: "LK" }), 4).where?.within).toBe("Sri Lanka");
     const s3 = { ...s2, from: "Bodrum", start: { date: "2026-12-01", approx: false } };
     const c = withLang("tr", () => creationOf(s3))!;
-    expect(c.title).toBe("Sri Lanka Gezisi");
+    expect(c.title).toBe("15 Günlük Sri Lanka Gezisi");
     expect(c.stays.map((x) => x.city)).toEqual(["Ahangama"]);
     expect(c.travel.map((x) => `${x.from}→${x.to}`)).toEqual(["Bodrum→Kolombo", "Kolombo→Bodrum"]);
   });
@@ -221,13 +221,13 @@ describe("the route typed and the trip's name (items 3, 4)", () => {
     expect(made.where?.within).toBeUndefined();
     const s = { ...made, from: "İstanbul" };
     const c = withLang("tr", () => creationOf(s))!;
-    expect(c.title).toBe("Koh Phangan Gezisi");
+    expect(c.title).toBe("1 Aylık Koh Phangan Gezisi");
     // "Oluştur": the trip the board opens has the title the generating screen says.
     for (const step of stepsFor(s, c)) {
       const { tripId } = await runStep(step.id, s, { provider: "gemini" });
       if (step.id === "trip") s.tripId = tripId;
     }
-    expect((await (await db()).get("trips", s.tripId!))!.title).toBe("Koh Phangan Gezisi");
+    expect((await (await db()).get("trips", s.tripId!))!.title).toBe("1 Aylık Koh Phangan Gezisi");
   });
 
   it("a stop with no airport of its own flies to the country's (Sri Lanka → Kolombo), never to the stop's name", () => {

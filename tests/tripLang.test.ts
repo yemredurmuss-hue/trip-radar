@@ -62,7 +62,7 @@ describe("the trip's language", () => {
     s = typed({ ...s, asking: "from" }, "Istanbul", 3);
     s = await make(s);
     const trip = (await (await db()).get("trips", s.tripId!))!;
-    expect(trip.title).toBe("Bali Trip");
+    expect(trip.title).toBe("2-Week Bali Trip");
     expect(trip.lang).toBe("en");
     const names = (await listItems(s.tripId!)).map((i) => i.name).sort();
     expect(names).toEqual(["Flight · Denpasar → Istanbul", "Flight · Istanbul → Denpasar", "Stay · Bali"]);
@@ -92,7 +92,7 @@ describe("the trip's language", () => {
     systems.length = 0;
     s = await make(s);
     const trip = (await (await db()).get("trips", s.tripId!))!;
-    expect(trip.title).toBe("Bali Gezisi");
+    expect(trip.title).toBe("2 Haftalık Bali Gezisi");
     expect(trip.lang).toBe("tr");
     const names = (await listItems(s.tripId!)).map((i) => i.name).sort();
     expect(names).toEqual(["Konaklama · Bali", "Uçuş · Denpasar → İstanbul", "Uçuş · İstanbul → Denpasar"]);

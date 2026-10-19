@@ -26,6 +26,7 @@ import {
 } from "./playbooks";
 import { CIRCUITS, englishName, fitCircuit } from "./startCircuits";
 import { daysBetween, eventDays, findEvent, intentAt, intentOf, intentTitle, plusDays, type Intent } from "./startEvents";
+import { tripName, type TitleState } from "./tripName";
 import { STYLES, type BudgetLevel, type StyleId } from "./tripStyle";
 import type { ChatMessage, CustomPlaybook, GroundWay, Item, StayKind, Trip } from "./types";
 
@@ -1366,7 +1367,7 @@ const NO_PART = { section: "", frame: "", word: "", pick: "", covers: [] as stri
 const planExamples = () =>
   JSON.stringify([
     {
-      label: L("Ozora Festivali", "Ozora Festival"), base: "festival", focus: "only", stay_type: "camp", stay_port: "Ozora",
+      label: L("Ozora Festivali", "Ozora Festival"), title_theme: L("Festival Deneyimi", "Festival Experience"), base: "festival", focus: "only", stay_type: "camp", stay_port: "Ozora",
       gateway: L("Budapeşte", "Budapest"), moving_base: false, per_day: "",
       info: [{ section: "stay", text: L("Festival günlerinde konaklama bilete dahil kamp; otel aranmaz.", "On the festival days the camp comes with the ticket; no hotel to look for.") }],
       cards: [{ ref: "ticket", kind: "activity", title: L("Festival bileti", "Festival ticket"), place: "Ozora", anchor: "stay", section: "activity", frame: "collection", word: "Festival", pick: "multi", covers: ["stay"], by: "" }],
@@ -1379,7 +1380,7 @@ const planExamples = () =>
       tone: L("Enerjik, festivali bilen bir arkadaş gibi.", "Energetic, like a friend who knows festivals."), avoid: L("Tur ya da müze önerme; amaç festival.", "No tours or museums; the festival is the point."), musts: [],
     },
     {
-      label: L("Kızıldeniz liveaboard dalış gezisi", "Red Sea liveaboard diving trip"), base: "dive", focus: "only", stay_type: "boat", stay_port: L("Hurgada", "Hurghada"),
+      label: L("Kızıldeniz liveaboard dalış gezisi", "Red Sea liveaboard diving trip"), title_theme: L("Dalış Gezisi", "Diving Trip"), base: "dive", focus: "only", stay_type: "boat", stay_port: L("Hurgada", "Hurghada"),
       gateway: "", moving_base: false, per_day: "",
       info: [{ section: "stay", text: L("Konaklama, yemek ve dalışlar tekne paketinde; otel aranmaz.", "The nights, meals and dives are in the boat's package; no hotel to look for.") }],
       cards: [
@@ -1402,6 +1403,7 @@ const planRules = () =>
   L(
     `plan: bu geziye özel kalıp. YALNIZ gezinin ne tür bir gezi olduğu bu mesajda ilk kez anlaşılıyorsa ya da kullanıcı türü değiştiriyorsa doldur. Bilinenlerde "Kalıp hazır" varsa ve tür değişmediyse plan.label "" kalır (yeni bir şart söylendiyse kalıbı yeniden ver, şartlarla).
 - label: türün kısa adı ("Kızıldeniz liveaboard dalış gezisi", "Babanın 70. yaşı, aile kutlaması", "Toskana karavan turu"). Sıradan bir şehir gezisinde label yaz, base classic, kart ve soru verme.
+- title_theme: gezi başlığının sonu, 1-3 kelime, yolcunun kendi sözünden: türü ve havası ("Dalış Gezisi", "Aile Kutlaması", "Karavan Macerası", "Balayı", "Kuzey Işıkları Gezisi"). Yer adı, süre, yıl ya da sayı yazma (başlığın başı onları zaten söylüyor). Sıradan bir gezide "".
 - base: en yakın hazır karışım: festival | ski | honeymoon | wellness | cruise (kruvaziyer) | road (yol gezisi) | dive (dalış teknesi) | day (günübirlik) | business (iş, fuar) | safari | classic. Yalnız varsayılanları verir; aşağıda yazdığın her alan onu ezer.
 - focus: gezinin amacını anla. Kullanıcı yalnız bu deneyim için gidip geliyorsa ("sadece festivale", "yalnız dalış için", "maça gidip döneceğim") "only": plan yalnız deneyimin gerektirdiği şeyler (oraya ulaşım, bilet, ekipman, izin, transfer, gerektiği kadar gece); araya tur, şehir gezisi ya da başka durak konmaz. Deneyimin etrafında bir tatil istiyorsa ya da belli değilse "around".
 - stay_type: hotel | boat (liveaboard, gulet, mavi yolculuk) | camp (çadır, kamp alanı, lodge) | cabin (gemi kabini, kruvaziyer) | vehicle (karavanda/araçta uyunur) | none (günübirlik: aynı gün dönüş, gece yok). stay_port: boat, camp ya da cabin için kalkış limanı ya da üs olan GERÇEK şehir ("Hurgada", "Fethiye"). Deniz, okyanus, körfez ya da bölge adı ("Kızıldeniz", "Red Sea") asla şehir değildir; ne stay_port ne place ne gateway olur.
@@ -1417,6 +1419,7 @@ const planRules = () =>
 Örnekler: ${planExamples()}`,
     `plan: this trip's own playbook. Fill it ONLY when this message first makes clear what kind of trip it is, or the user changes the kind. When "Playbook made" is in the known facts and the kind hasn't changed, plan.label stays "" (if a new must is said, give the playbook again with it).
 - label: the kind in a few words ("Red Sea liveaboard diving trip", "Dad's 70th, a family celebration", "Tuscany camper van tour"). For a plain city trip give a label, base classic, no cards or questions.
+- title_theme: the end of the trip's title, 1-3 words, from the traveller's own words: its kind and mood ("Diving Trip", "Family Celebration", "Camper Van Adventure", "Honeymoon", "Northern Lights Trip"). No place name, length, year or number (the title's start says those). "" for a plain trip.
 - base: the nearest ready mix: festival | ski | honeymoon | wellness | cruise | road (road trip) | dive (liveaboard) | day (day trip) | business (work, a trade fair) | safari | classic. It only gives the defaults; every field you write below wins over it.
 - focus: understand what the trip is for. When the user goes only for this experience and back ("just for the festival", "only to dive", "fly in for the match"), "only": the plan holds only what the experience needs (getting there, tickets, gear, permits, transfers, the nights it takes); no tours, sightseeing or other stops in between. A holiday around it, or unclear: "around".
 - stay_type: hotel | boat (liveaboard, gulet) | camp (tent, campsite, lodge) | cabin (a ship's cabin, a cruise) | vehicle (sleeping in a camper van) | none (a day trip: back the same day, no night). stay_port: for boat, camp or cabin, the REAL town the boat leaves from or the camp is based at ("Hurghada"). A sea, ocean, gulf or region ("Red Sea") is never a town: never stay_port, place or gateway.
@@ -2874,11 +2877,10 @@ export function lineLink(s: Pick<StartState, "intent">, line: string): string | 
 }
 
 /** The trip's title (2026-10-06): the event or theme when there is one ("AfrikaBurn 2027"), else the place's. */
-export function tripTitle(s: Pick<StartState, "where" | "intent">): string {
-  if (s.intent) return intentTitle(s.intent);
-  // "Sri Lanka", then "Ahangama": the country's trip (its route, stays and flights keep the town).
-  const place = s.where?.within || s.where?.place || "";
-  return L(`${place} Gezisi`, `${place} Trip`);
+export function tripTitle(s: TitleState): string {
+  // No length said: an event's own days (its dates come with it).
+  const it = s.intent?.dates;
+  return tripName(s, !s.duration && it ? eventDays(it) : null);
 }
 
 /** What the start screen calls the trip while it's made: the event's name ("AfrikaBurn"), else the place's. */

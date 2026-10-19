@@ -306,7 +306,7 @@ describe("what gets made", () => {
   it("a confirmed route: the nights split in order; the flights land where the route says", () => {
     const route = acceptRoute({ stops: [{ city: "Ubud", nights: 12, country_code: "" }, { city: "Canggu", nights: 10, country_code: "" }, { city: "Uluwatu", nights: 9, country_code: "" }], arrival_airport_city: "Denpasar", departure_airport_city: "Denpasar" }, 31)!;
     const c = creationOf({ ...base(), route: { ...route, confirmed: true } })!;
-    expect(c.title).toBe("Bali Gezisi");
+    expect(c.title).toBe("1 Aylık Bali Doğa Tatili");
     expect(c.dates).toEqual({ start: "2026-12-10", end: "2027-01-10" });
     expect(c.stays.map((x) => [x.city, x.date, x.end_date])).toEqual([
       ["Ubud", "2026-12-10", "2026-12-22"],
