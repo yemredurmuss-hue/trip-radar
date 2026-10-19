@@ -97,6 +97,8 @@
 .q-trip button.q-cta { padding: 0 14px; }
 .q-trip .q-ext { opacity: .75; font-size: var(--q-fs-small); }
 .q-trip .q-logo { flex: none; width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; background: var(--bl, #6b6880); color: #fff; font-size: var(--q-fs-small); font-weight: 800; box-shadow: 0 0 0 2px rgba(255, 255, 255, .85); }
+/* A flight's airline logo on its button (0.38.8). */
+.q-trip img.q-logo.q-air { display: block; object-fit: contain; background: #fff; box-shadow: 0 0 0 2px rgba(255, 255, 255, .85); }
 .q-trip .q-open { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 0 14px; border: 0; border-radius: 11px; background: var(--q-ok); color: #fff; font: inherit; font-size: var(--q-fs-info); font-weight: 700; text-decoration: none; cursor: pointer; white-space: nowrap; }
 .q-trip .q-open:hover { background: #186437; }
 .q-trip .q-open svg { width: 15px; height: 15px; }
