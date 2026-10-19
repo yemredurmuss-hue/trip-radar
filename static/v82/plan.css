@@ -134,3 +134,6 @@
 }
 /* Etkinlik ve turlar's own board has its "+ Ekle" in its head line: the category's end needs none (as before). */
 .cat-body:has(> .ev-wrap) > .q-add { display: none; }
+/* The row's bar grows to its new share over .3 s; "azaltılmış hareket" and "Hareketi duraklat" put it there at once. */
+body.still .q-bar i { transition: none; }
+@media (prefers-reduced-motion: reduce) { .q-bar i { transition: none; } }

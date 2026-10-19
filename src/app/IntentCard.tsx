@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+// "Seni böyle anladım": what the traveller said and what was read from their saves and choices (the hero's Tercihler,
+// hero/PrefsRow.tsx, draws them).
 import { db, notifyChanged } from "../lib/db";
 import { updateTrip } from "./actions";
 import { L } from "../lib/i18n";
@@ -6,11 +7,9 @@ import { lowerText } from "../lib/i18nText";
 import { CRITERION_LABELS, LEVEL_LABELS, levelFor, noteCriteria, requirementLabel, saidTopics, WISH_TOPIC, WISHES } from "../lib/decision";
 import { activeSignals, pendingSignals } from "../lib/intent";
 import { CATEGORY_LABELS } from "../lib/items";
-import { noteLabelKey, preferenceTags, type Pref } from "../lib/preferences";
+import { noteLabelKey, type Pref } from "../lib/preferences";
 import { findingTag } from "../lib/proscons";
 import { amenityLabel, type Category, type CriterionId, type Trip } from "../lib/types";
-import { HeroIcon } from "./Icons";
-import { useAppear } from "./useAppear";
 import type { Decisions } from "./useDecisions";
 
 export interface Entry {
@@ -177,113 +176,4 @@ export function intentEntries(trip: Trip, decisions: Decisions | null): { entrie
   // A guess from their choices changes nothing until they say yes: asked, one at a time.
   const guess = pendingSignals(decisions?.signals ?? [], trip)[0];
   return { entries, guess };
-}
-
-/**
- * The hero card's "Tercihler" (v9; "Seni böyle anladım" before): a few tags of what was understood (0.35.4,
- * lib/preferences.ts preferenceTags; a must or "Çok önemli" stronger) and "+7 tercih ›"; a tap opens the window
- * over the card (it doesn't push anything) with each entry, its scope, its level, where it came from and a ×,
- * and the one waiting question.
- */
-export function Preferences({ trip, decisions }: { trip: Trip; decisions: Decisions | null }) {
-  const [open, setOpen] = useState(false);
-  const box = useRef<HTMLDivElement>(null);
-  const { entries, guess } = intentEntries(trip, decisions);
-  const nothing = !entries.length && !guess;
-  // Notes, findings and the question come with the decisions: until then, no "I'll get to know you" yet.
-  const loading = !decisions && nothing;
-  const appear = useAppear(entries.length > 0, !!decisions);
-  // Answering the last question leaves nothing to show: close, so a later entry doesn't appear already open.
-  useEffect(() => {
-    if (nothing) setOpen(false);
-  }, [nothing]);
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent) => {
-      if (!box.current?.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("click", close);
-    return () => document.removeEventListener("click", close);
-  }, [open]);
-  const { tags, rest } = preferenceTags(entries.map((e) => e.pref));
-  const toggle = () => setOpen(!open);
-  const question = guess && (
-    <span className="ask-mark">
-      <i aria-hidden />
-      {L("1 soru", "1 question")}
-    </span>
-  );
-  return (
-    <div className={`hx-block hx-prefs${open ? " open" : ""}`} ref={box}>
-      {nothing ? (
-        <h3 className="hx-h">{L("Tercihler", "Preferences")}</h3>
-      ) : (
-        <button className="hx-h" aria-expanded={open} onClick={toggle}>
-          {L("Tercihler", "Preferences")}
-        </button>
-      )}
-      {entries.length > 0 ? (
-        <div key="full" className={`hx-prefs-body${appear}`}>
-          <ul className="hx-ptags" aria-label={L("Tercihler", "Preferences")}>
-            {tags.map((t) => (
-              <li key={t.label} className={`hx-ptag${t.strong ? " strong" : ""}`} title={`${t.label} · ${t.title}`}>
-                {t.label}
-              </li>
-            ))}
-          </ul>
-          <button className="hx-link hx-prefs-link" aria-expanded={open} onClick={toggle}>
-            <span>{rest > 0 ? L(`+${rest} tercih`, `+${rest} more`) : L("Düzenle", "Edit")}</span>
-            <HeroIcon name="chevRight" size={18} />
-            {question}
-          </button>
-        </div>
-      ) : loading ? (
-        <div key="loading" className="hx-prefs-body" aria-hidden>
-          <p className="hx-empty hx-wait">&nbsp;</p>
-        </div>
-      ) : (
-        <div key="empty" className="hx-prefs-body">
-          <p className="hx-empty">{L("Konuştukça ve seçtikçe seni tanıyacağım.", "As you chat and choose, I'll get to know you.")}</p>
-          {guess && (
-            <button className="hx-link hx-prefs-link" aria-expanded={open} onClick={toggle}>
-              {question}
-              <HeroIcon name="chevRight" size={18} />
-            </button>
-          )}
-        </div>
-      )}
-      {open && (
-        <div className="hx-prefs-pop" role="dialog" aria-label={L("Seni böyle anladım", "What I understood")}>
-          <div className="pop-title">{L("Seni böyle anladım", "What I understood")}</div>
-          {entries.length > 0 && (
-            <ul>
-              {entries.map((e) => (
-                <li key={e.key}>
-                  <span>
-                    <span className="hx-tag">{e.scope}</span>
-                    {e.text} <small>· {e.detail}</small>
-                  </span>
-                  <button className="x" aria-label={L(`${e.text} kaldır`, `Remove ${e.text}`)} title={L("Kaldır / yok say", "Remove / ignore")} onClick={() => void (e.change ? updateTrip(trip.id, e.change) : e.action?.())}>
-                    ×
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-          {guess && (
-            <div className={`ask${entries.length ? "" : " first"}`}>
-              <p>
-                {guess.question} <span className="muted">{guess.evidence}</span>
-              </p>
-              <button className="yes" onClick={() => void updateTrip(trip.id, (t) => ({ ...t, confirmedSignals: [...new Set([...(t.confirmedSignals ?? []), guess.id])] }))}>
-                {L("Evet", "Yes")}
-              </button>
-              <button onClick={() => void updateTrip(trip.id, (t) => ({ ...t, ignoredSignals: [...new Set([...(t.ignoredSignals ?? []), guess.id])] }))}>{L("Hayır", "No")}</button>
-            </div>
-          )}
-          <div className="edit">{L("Yanlış olanı × ile kaldır; yenisini sohbette söylemen yeter.", "Remove what's wrong with ×; just say anything new in the chat.")}</div>
-        </div>
-      )}
-    </div>
-  );
 }

@@ -9,6 +9,7 @@ import { addedCount, DONE_MS } from "../src/app/WorkPill";
 // app.css carries (read as plain text: vitest runs in node).
 const css = readFileSync("static/app.css", "utf8");
 const f8b = css.slice(css.indexOf("/* -- F8b Hareket Dili"));
+const plan = readFileSync("static/v82/plan.css", "utf8");
 
 describe("m-sekme: tabs", () => {
   it("the new view comes from the side the later segment is on", () => {
@@ -28,10 +29,11 @@ describe("m-sekme: tabs", () => {
 describe("m-bolum: a section folds on a grid", () => {
   it("rows 0fr to 1fr over 260 ms, the cards 80 ms late and 180 ms, shut at once", () => {
     expect(FOLD_MS).toBe(260);
-    expect(f8b).toContain(".cat-fold { display: grid; grid-template-rows: 0fr; transition: grid-template-rows var(--t-base) var(--e-out); }");
-    expect(f8b).toContain(".cat-fold.on { grid-template-rows: 1fr; }");
-    expect(f8b).toContain(".cat-fold .cat-body { opacity: 0; transition: opacity var(--t-quick) var(--e-out); }");
-    expect(f8b).toContain(".cat-fold.on .cat-body { opacity: 1; transition-delay: 80ms; }");
+    // v82: the category's body (static/v82/plan.css .q-fold, plan/Section.tsx).
+    expect(plan).toContain(".q-fold { display: grid; grid-template-rows: 0fr; transition: grid-template-rows var(--t-base) var(--e-out); }");
+    expect(plan).toContain(".q-fold.on { grid-template-rows: 1fr; }");
+    expect(plan).toContain(".q-fold-in > * { opacity: 0; transition: opacity var(--t-quick) var(--e-out); }");
+    expect(plan).toContain(".q-fold.on > .q-fold-in > * { opacity: 1; transition-delay: 80ms; }");
   });
   it("the card's own opening (the Pano's detail) is the old rule, untouched", () => {
     expect(css).toContain(".pn-detail { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .4s var(--e-out)");

@@ -47,7 +47,7 @@ export interface PrintPlanProps {
   cityImage: (city: string | null) => string | null;
   /** The print window closed (saved or not): the page goes. */
   onDone: (made: "file" | "print" | null) => void;
-  /** The board's own hero (section.hx): copied onto the page as it is drawn, photo, faces and all; without it, a summary. */
+  /** The board's own hero (section.x-hero): copied onto the page as it is drawn, mosaic, faces and all; without it, a summary. */
   hero?: React.RefObject<HTMLElement | null>;
 }
 
@@ -169,8 +169,8 @@ async function planPdf(el: HTMLElement): Promise<Uint8Array> {
 export function PrintPlan(props: PrintPlanProps) {
   const { trip, range } = props;
   const root = useRef<HTMLDivElement>(null);
-  // The hero as the board draws it (Emre: "hero bilgileri olduğu gibi, tasarımda ne varsa"): its own markup copied in,
-  // the buttons left out; drawn before the print window opens.
+  // The hero as the board draws it (Emre: "hero bilgileri olduğu gibi, tasarımda ne varsa"): its own markup copied in;
+  // what's only there to tap is hidden by the copy's styles (v82/hero.css .pp-hero-copy). Drawn before the print window opens.
   const heroBox = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
   useLayoutEffect(() => {
@@ -178,10 +178,6 @@ export function PrintPlan(props: PrintPlanProps) {
     const box = heroBox.current;
     if (!from || !box) return;
     const copy = from.cloneNode(true) as HTMLElement;
-    // What's only there to tap ("Birini davet et", "Düzenle ›", "1 soru") or an empty block's hint means nothing on paper.
-    copy.querySelectorAll(".hx-go, .hx-alt, .hx-menu, .hx-acts, .todo-list, .hx-prefs-link, .ask-mark, .hx-styles .empty, .hx-wait, small.accent").forEach((el) => el.remove());
-    // Only the photo shown (its credit is the one drawn): the other cities' photos would only make the file heavy.
-    copy.querySelectorAll(".hx-photo img:not(.on)").forEach((img) => img.remove());
     copy.querySelectorAll("img").forEach((img) => {
       img.removeAttribute("loading");
       img.src = paperSize(img.src);

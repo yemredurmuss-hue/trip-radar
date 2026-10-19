@@ -5,6 +5,10 @@ import { describe, expect, it } from "vitest";
 // "Hareketi duraklat" (body.still) switch are all in the F8 block.
 const css = readFileSync("static/app.css", "utf8");
 const f8 = css.slice(css.indexOf("/* -- F8 hareket"));
+// v82 (aşama 2, 3a): the category's fold and its row's bar are drawn by static/v82/plan.css, their stops sit with the boxes' (intent.css).
+const v82 = ["plan", "intent"].map((f) => readFileSync(`static/v82/${f}.css`, "utf8")).join("\n");
+const v82Reduced = [...v82.matchAll(/@media \(prefers-reduced-motion: reduce\) \{[^@]*/g)].map((m) => m[0]).join("\n");
+const v82Still = v82.split("\n").filter((l) => l.startsWith("body.still ")).join("\n");
 const reduced = f8.slice(f8.indexOf("@media (prefers-reduced-motion: reduce)"), f8.indexOf("body.still .dc-flash"));
 const still = f8.slice(f8.indexOf("body.still .dc-flash"));
 
@@ -20,7 +24,8 @@ describe("reduced motion and Hareketi duraklat", () => {
       expect(block).toMatch(/animation: none/);
     });
     it(`${name}: bars and card hover stop moving`, () => {
-      for (const sel of [".cat-bar > span", ".hx-bar i", ".pn-card", ".pk-card"]) expect(block).toContain(`${prefix}${sel}`);
+      for (const sel of [".pn-card", ".pk-card"]) expect(block).toContain(`${prefix}${sel}`);
+      expect(prefix ? v82Still : v82Reduced).toContain(`${prefix}.q-bar i`);
       expect(block).toMatch(/transition: none/);
       expect(block).toContain(`${prefix}.pn-card:hover`);
       expect(block).toMatch(/transform: none/);
@@ -41,7 +46,9 @@ describe("reduced motion and Hareketi duraklat", () => {
   for (const [name, block, prefix] of [["system setting", reduced, ""], ["body.still", still, "body.still "]] as const) {
     it(`${name}: the Hareket Dili movements stop (hop, tick, banner, light, pill, skeleton, view in, section fold, sliding highlight)`, () => {
       for (const sel of [".ms-wrap[data-state=\"done\"] .ms", ".mv-tick", ".mv-banner-out", ".work-line.on i", ".work-pill.done", ".ar-skel::after", ".ar-new", ".panel .cat-plan", ".chat-banner"]) expect(block).toContain(`${prefix}${sel}`);
-      for (const sel of [".cat-fold", ".cat-body", ".view-tabs.has-ind::before", ".plan-order.has-ind::before"]) expect(block).toContain(`${prefix}${sel}`);
+      for (const sel of [".cat-body", ".view-tabs.has-ind::before", ".plan-order.has-ind::before"]) expect(block).toContain(`${prefix}${sel}`);
+      // v82: the category folds on .q-fold (static/v82/plan.css).
+      for (const sel of [".q-fold", ".q-fold-in > *"]) expect(prefix ? v82Still : v82Reduced).toContain(`${prefix}${sel}`);
     });
   }
   it("the new movements use the motion language's own durations and curves", () => {
