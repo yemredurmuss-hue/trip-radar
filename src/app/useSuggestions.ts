@@ -8,7 +8,7 @@ import type { HiddenInput } from "../lib/history";
 import type { Leg } from "../lib/legs";
 import { newId } from "../lib/db";
 import { cityKeyOf, type Plan } from "../lib/plan";
-import { reviewDue, reviewKey, reviewPrompt, runReview, tripTaste } from "../lib/suggestReview";
+import { reviewDue, reviewKey, reviewPrompt, reviewWait, runReview, tripTaste } from "../lib/suggestReview";
 import { bySection, ruleSuggestions, shownSuggestions } from "../lib/suggestions";
 import type { Timeline } from "../lib/timeline";
 import type { InsertAt, TemplateId } from "../lib/templates";
@@ -104,10 +104,22 @@ export function useSuggestions(args: {
       return true;
     });
 
-  // The AI review: once the trip has places and dates, then after a big change, at most once a day.
+  // The AI review: once the trip has places and dates, then after a big change (other places or dates soon, a new stay
+  // at most once a day).
   const range = plan.range ?? trip.confirmedDates ?? null;
   const key = reviewKey(mains, range, items);
-  const due = ready && !trip.demo && mains.length > 0 && !!range && range.end >= today && reviewDue(trip.suggestReview, key, Date.now());
+  const can = ready && !trip.demo && mains.length > 0 && !!range && range.end >= today;
+  const due = can && reviewDue(trip.suggestReview, key, Date.now());
+  // Not due only for a few minutes yet (the gap after the start's review, a claim gone stale): looked at again then.
+  const [, setTick] = useState(0);
+  const wait = can && !due ? reviewWait(trip.suggestReview, key, Date.now()) : null;
+  const later = wait != null && wait > 0;
+  useEffect(() => {
+    if (!later) return;
+    const t = setTimeout(() => setTick((n) => n + 1), wait! + 50);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per review state and key
+  }, [later, trip.id, key, trip.suggestReview?.at, trip.suggestReview?.state]);
   const asked = useRef(new Set<string>());
   useEffect(() => {
     const at = `${trip.id}:${key}`;

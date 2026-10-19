@@ -17,7 +17,7 @@ import { selfSearches, type SelfSearch } from "../../../lib/intentFrame";
 import type { IntentVM, OptionVM } from "../../../lib/intents";
 import { formatDateRange } from "../../../lib/items";
 import { photoFromOffers, sameTour, type Need, type Offer } from "../../../lib/offerSource";
-import { cityTours } from "../../../lib/offerSources";
+import { cityTours, tourWords } from "../../../lib/offerSources";
 import { sameCity, type Plan } from "../../../lib/plan";
 import type { Item } from "../../../lib/types";
 import { addOffer, chooseItem, setItemPhoto } from "../../actions";
@@ -65,12 +65,16 @@ function useRemembered(key: string, initial: boolean): [boolean, (v: boolean) =>
 }
 
 /**
- * The connected source's tours for a city of Etkinlik (v11: real offers, never made up), the saved ones left out; a record
- * the chat made from its words gets the same tour's photo. Nothing while no source is connected.
+ * The connected source's tours for a city of Etkinlik (v11: real offers, never made up), the ones for the trip's kind and
+ * style first (a surf trip: surf lessons; 0.38.5), the saved ones left out; a record the chat made from its words gets the
+ * same tour's photo. Nothing while no source is connected.
  */
 function useCityOffers(city: string | null, plan: Pick<Plan, "stayBlocks"> | null, saved: Item[], tripId: string) {
   const { offers: source, travellers } = useEmptyEnv();
   const { byId } = useV82Env();
+  const { trip } = useCardEnv();
+  const words = tourWords(trip);
+  const wordsKey = words.join("|");
   const stop = city && plan ? (citiesOfPlan(plan).find((c) => sameCity(c.city, city)) ?? null) : null;
   const need: Need | null = stop ? { key: needKey("activity", stop.city, stop.start, stop.end), section: "activity", kind: "activity", city: stop.city, start: stop.start, end: stop.end, adults: travellers } : null;
   const country = stop && plan ? stopCountry(plan, stop.city) : null;
@@ -82,13 +86,14 @@ function useCityOffers(city: string | null, plan: Pick<Plan, "stayBlocks"> | nul
   useEffect(() => {
     if (!need || !available) return;
     let live = true;
-    void cityTours(source, need, country, near).then((list) => live && setGot({ key: need.key, list }));
+    const at = `${need.key}|${wordsKey}`;
+    void cityTours(source, need, country, near, words).then((list) => live && setGot({ key: at, list }));
     return () => {
       live = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- asked again only for another city, days, country or nearby cities
-  }, [need?.key, country, nearKey, available, source]);
-  const all = got && need && got.key === need.key ? got.list : [];
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- asked again only for another city, days, country, nearby cities or trip kind
+  }, [need?.key, country, nearKey, wordsKey, available, source]);
+  const all = got && need && got.key === `${need.key}|${wordsKey}` ? got.list : [];
   const missing = saved.filter((i) => !i.imageUrl);
   useEffect(() => {
     for (const item of missing) {

@@ -3524,7 +3524,9 @@ try {
   await openSec("transport");
   assert.equal(await sgSec("transport").locator('.sg-card, .q-ints > .q-int[data-intent^="suggestion:"]').count(), 0, "the added suggestion doesn't come back");
   await sgSec("transport").getByText("Motosiklet", { exact: true }).first().waitFor();
-  assert.equal(reviewPrompts.filter((p) => p.includes("Ubud")).length, 1, "the AI review is asked once for the trip");
+  // Asked once for each route and days (0.38.5: other places or dates are asked again; a new stay waits a day).
+  const ubudAsks = reviewPrompts.filter((p) => p.includes("Ubud")).map((p) => { const d = JSON.parse(p.split("\n")[1]); return JSON.stringify([d.places.map((x) => x.name).sort(), d.dates]); });
+  assert.ok(ubudAsks.length >= 1 && new Set(ubudAsks).size === ubudAsks.length, `the AI review is asked once per route and days (${ubudAsks.join(" | ")})`);
   await openSec("other");
   await sgSec("other").scrollIntoViewIfNeeded();
   await board.screenshot({ path: `${out}/19b-suggestions-after.png` });
