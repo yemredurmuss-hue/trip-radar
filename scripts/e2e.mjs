@@ -3795,18 +3795,25 @@ try {
   assert.deepEqual(await esimEmpty.locator(".z-pi").evaluateAll((els) => els.map((a) => a.getAttribute("href"))), ["https://www.airalo.com/indonesia-esim", "https://esim.holafly.com/esim-indonesia/"]);
   // Etkinlikler (v11): the source's tours as cards; with none, each stop's own searches ("Kendin ara"), no empty card.
   // v82: a stop with nothing yet is one thin line (AI'a arat, Kendin ara); Uluwatu's source answers one Viator tour: it's a
-  // card under its line (the brand's label, how long, the price a person, "+ Plana koy"); put on the plan, Uluwatu has its box.
+  // card under its line (the brand's label, where it was found, how long, the price a person, "+ Plana koy"); put on the
+  // plan, Uluwatu has its box. 0.38.4: the trip's other stops in Indonesia have few of their own, so Uluwatu's tour is
+  // theirs too, saying where ("Viator · Uluwatu"); once it's on the plan it leaves them and they're thin lines again.
   await ekOpen("activity");
   assert.equal(await ekSec("activity").locator(".ek-card").count(), 0);
-  const tourTile = ekSec("activity").locator('.z-k[data-offer][aria-label="Uluwatu gün batımı ve kecak dansı"]');
+  const tourIn = (city) => ekSec("activity").locator(`.q-gapl[data-city="${city}"] .z-k[data-offer][aria-label="Uluwatu gün batımı ve kecak dansı"]`);
+  const tourTile = tourIn("Uluwatu");
   await tourTile.waitFor({ timeout: 10000 });
   assert.equal(await tourTile.locator(".q-brand").innerText(), "Viator");
+  assert.equal(await tourTile.locator(".q-src").innerText(), "Viator · Uluwatu");
   assert.match(await tourTile.locator(".z-l2").innerText(), /^4 sa · €45\s+kişi başı$/);
   assert.equal(await ekSec("activity").locator('.q-gapl.has-offers[data-city="Uluwatu"]').locator(".z-k[data-offer]").count(), 1, "the tour is in its city's place");
-  assert.equal(await ekSec("activity").locator(".q-gapl:not(.has-offers)").count(), 2, "the stops the source found nothing for: their own searches");
+  await tourIn("Canggu").waitFor({ timeout: 10000 });
+  assert.equal(await tourIn("Canggu").locator(".q-src").innerText(), "Viator · Uluwatu", "a nearby stop's row says where its tour is");
   await tourTile.getByRole("button", { name: "+ Plana koy" }).click();
   await ekSec("activity").locator('[data-row="plan"] .z-k[aria-label="Uluwatu gün batımı ve kecak dansı"]').waitFor();
   await tourTile.waitFor({ state: "detached" });
+  await tourIn("Canggu").waitFor({ state: "detached" });
+  assert.equal(await ekSec("activity").locator(".q-gapl:not(.has-offers)").count(), 2, "the stops the source found nothing more for: their own searches");
   const selfHrefs = (scope) => scope.locator(".z-pl").evaluateAll((els) => els.map((a) => ["", a.getAttribute("href")]));
   // (v82 providers.ts: in Asia Klook comes first, the design note's "Klook (Asya) · GetYourGuide · Viator".)
   assert.deepEqual((await selfHrefs(ekSec("activity").locator(".q-gapl", { hasText: "Canggu" }))).map(([, u]) => u), [

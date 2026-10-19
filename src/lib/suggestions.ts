@@ -48,6 +48,12 @@ export const SUGGESTION_TEMPLATES: readonly TemplateId[] = [...new Set(Object.va
 
 export const isSuggestionSection = (id: string): id is SuggestionSection => (SUGGESTION_SECTIONS as readonly string[]).includes(id);
 
+/**
+ * Etkinlik ve turlar takes no suggestion to add (Emre, 0.38.4): its ideas are the source's real tours (Viator) and what
+ * the traveller saved, never a card with no page, photo or source. A warning may still sit there.
+ */
+export const sourcedOnly = (s: Pick<Suggestion, "section" | "kind">): boolean => s.section === "activity" && s.kind === "add";
+
 /** The section a template's record lands in. */
 export const sectionOfTemplate = (id: string): SuggestionSection | null =>
   SUGGESTION_SECTIONS.find((s) => (SECTION_TEMPLATES[s] as readonly string[]).includes(id)) ?? null;
@@ -350,7 +356,8 @@ export function shownSuggestions(stored: readonly Suggestion[] | undefined, rule
   const ruleTopics = new Set([...fromRules, ...list.filter((s) => s.source === "rule")].map(topicOf).filter(Boolean));
   const seen = new Set(fromRules.map((r) => r.key));
   const others = list.filter((s) => {
-    if (s.source === "rule" || s.state !== "open" || seen.has(s.key)) return false;
+    // One stored before Etkinlik took only sourced cards (the chat's "Sörf deneyimi") isn't shown either.
+    if (s.source === "rule" || s.state !== "open" || seen.has(s.key) || sourcedOnly(s)) return false;
     seen.add(s.key);
     const topic = topicOf(s);
     return !(topic && (ruleTopics.has(topic) || dismissedTopics.has(topic) || coveringItems(s, items).length));
@@ -462,6 +469,12 @@ export function checkSuggestionInput(raw: Partial<Record<keyof SuggestionInput, 
   if (!isSuggestionSection(section)) return L(`Geçersiz bölüm: "${section}". Olanlar: ${SUGGESTION_SECTIONS.join(", ")}.`, `Invalid section: "${section}". Allowed: ${SUGGESTION_SECTIONS.join(", ")}.`);
   const kind = str(raw.kind) as SuggestionKind;
   if (!SUGGESTION_KINDS.includes(kind)) return L(`Geçersiz tür: "${kind}" (add ya da warning).`, `Invalid kind: "${kind}" (add or warning).`);
+  if (sourcedOnly({ section, kind })) {
+    return L(
+      "Etkinlik ve turlar'a öneri kartı bırakılmaz: oraya yalnız gerçek kaynağın turları (Viator) ve kullanıcının kaydettikleri girer. find_offers kind activity ile ara; bulamazsan \"Viator'da bu bölge için tur bulamadım\" de.",
+      "No suggestion card goes in Activities and tours: only the source's real tours (Viator) and what the user saved go there. Search with find_offers kind activity; when it finds none, say \"I couldn't find tours for this area on Viator\".",
+    );
+  }
   const title = str(raw.title);
   const why = str(raw.why);
   if (!title || title.length > 80) return L("title kısa olmalı (1–80 karakter).", "title must be short (1–80 characters).");

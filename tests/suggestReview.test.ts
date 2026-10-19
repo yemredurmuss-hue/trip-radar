@@ -77,6 +77,12 @@ describe("what the review keeps", () => {
     expect(JSON.parse(reviewPrompt({ mains: ubud, nights: {}, range, items: [], sectionOf: () => "stay", suggestions: [] }).split("\n")[1])).toMatchObject({ kind: null, style: [] });
     expect(reviewSystem()).toContain("Etkinlikler gezinin türüne (\"kind\") ve tarzına (\"style\") uysun.");
   });
+  it("is not asked for Etkinlik ve turlar (0.38.4: tours only from a real source)", () => {
+    const rules = reviewSystem();
+    expect(rules).toContain("section şunlardan biri: flight, stay, transport, todo, food, other.");
+    expect(rules).not.toMatch(/activity: activity/);
+    expect(rules).toContain("Tur ya da biletli etkinlik önerme");
+  });
 });
 
 describe("one review", () => {

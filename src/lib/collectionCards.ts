@@ -8,13 +8,14 @@
 //
 // Nothing is decided here: what's on the plan is intents.ts's, the facts cardFacts.ts's, the source's badge pano.ts's, the
 // reason for the trip reason.ts's, the days and the done line ideas.ts's. This file only puts them in the cards' shape. Pure.
+import { airportCities, cityOfAirport, countryOfAirport } from "./airports";
 import { brandOf, type Brand } from "./brands";
 import { cardFacts, durationText } from "./cardFacts";
 import { ticketPrices } from "./cardTicket";
 import { topDate } from "./cardView";
 import { refFromNote } from "./bookingRows";
 import { needsBooking } from "./booking";
-import type { SectionId } from "./categories";
+import { citiesOfPlan, type SectionId } from "./categories";
 import { L } from "./i18n";
 import { num } from "./i18nText";
 import { ideaKindOf, kindLabel } from "./ideaKinds";
@@ -24,6 +25,7 @@ import type { IntentVM, OptionSource } from "./intents";
 import { formatPrice, isoDate, placeMapUrl } from "./items";
 import { clockOf } from "./legs";
 import type { Offer } from "./offerSource";
+import type { NearPlace } from "./offerSources";
 import { adderOf } from "./pano";
 import { sameCity, type Plan } from "./plan";
 import { reasonItemOf } from "./reason";
@@ -201,8 +203,14 @@ export function recordCard(item: Item, at: CardCtx & { planned: boolean; wanted:
     // A place's picture is its saved page's (a Maps pin's photo); a ticket's whatever its page gave.
     photo: event ? facts.image : ideaThumb(item),
     art: ART[family],
-    // A pin saved from Google Maps says "Maps" (the live tile's badge); anything else who put it there.
-    badge: !event && ideaSource(item) === "Maps" ? { tone: "mine", text: "Maps", initial: null } : sourceBadge({ ours: false, source: sourceOf(item) }),
+    // A pin saved from Google Maps says "Maps" (the live tile's badge); a source's tour saved from its row its source
+    // ("Viator", not a model's idea); anything else who put it there.
+    badge:
+      !event && ideaSource(item) === "Maps"
+        ? { tone: "mine", text: "Maps", initial: null }
+        : event && adderOf(item) === "ai" && item.provider && item.url
+          ? { tone: "mine", text: item.provider, initial: null }
+          : sourceBadge({ ours: false, source: sourceOf(item) }),
     brand: event ? brandOf(facts.source?.label, facts.source?.host) : null,
     tag: family === "food" ? L("Restoran", "Restaurant") : family === "note" ? L("Not", "Note") : event ? null : L("Gezilecek", "To see"),
     line: state === "done" ? doneLine(item) : event ? eventLine(item, facts, at.people) : family === "note" ? item.summary.trim() || null : placeLine(item),
@@ -254,6 +262,29 @@ export function stopCountry(plan: Pick<Plan, "stayBlocks">, city: string): strin
   return null;
 }
 
+/**
+ * The trip's other cities in a town's country, asked for tours when the town has few of its own (offerSources.cityTours):
+ * the stays' cities there, then the airports flown into or out of there (Kolombo for Ahangama), searched by their English
+ * name. Only the trip's own places: nothing is looked up by distance. None while the country isn't known.
+ */
+export function nearPlaces(plan: Pick<Plan, "stayBlocks">, items: Iterable<Item>, city: string, country: string | null): NearPlace[] {
+  if (!country) return [];
+  const out: NearPlace[] = [];
+  const add = (search: string, label: string) => {
+    if (sameCity(search, city) || sameCity(label, city) || out.some((p) => sameCity(p.city, search) || sameCity(p.label, label))) return;
+    out.push({ city: search, label });
+  };
+  for (const c of citiesOfPlan(plan)) if (stopCountry(plan, c.city) === country) add(c.city, c.city);
+  for (const i of items) {
+    if (i.status === "dismissed" || i.category !== "flight" || !i.flight) continue;
+    for (const code of [i.flight.to, i.flight.from]) {
+      const en = airportCities(code)[1];
+      if (en && countryOfAirport(code) === country) add(en, cityOfAirport(code!));
+    }
+  }
+  return out;
+}
+
 /** A tour the connected source offers for the city (its page, its photo, how long, its price a person). */
 export function offerCard(o: Offer, people: number | null): KCardVM {
   const each = o.price != null && o.price > 0 ? (people && people > 1 ? o.price / people : o.price) : null;
@@ -268,8 +299,8 @@ export function offerCard(o: Offer, people: number | null): KCardVM {
     title: o.title,
     photo: o.photo ?? null,
     art: ART.event,
-    // The source's own name (a real tour it lists, not a model's idea; Emre, 19 Ekim).
-    badge: { tone: "mine", text: o.source, initial: null },
+    // The source's own name (a real tour it lists, not a model's idea; Emre, 19 Ekim) and where it was asked ("Viator · Galle").
+    badge: { tone: "mine", text: o.place ? `${o.source} · ${o.place}` : o.source, initial: null },
     brand: brandOf(o.source, null),
     tag: null,
     line: [o.durationMinutes ? durationText(o.durationMinutes) : null, price].filter(Boolean).join(" · ") || null,

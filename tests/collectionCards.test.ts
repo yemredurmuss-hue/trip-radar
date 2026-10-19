@@ -4,12 +4,13 @@
 // and its "n yapıldı".
 import { describe, expect, it } from "vitest";
 import { categorize } from "../src/lib/categories";
-import { accessOf, askLike, askMore, collectionRow, doneCount, doneLine, familyOf, filterOf, ideasCaption, mapsSearch, offerCard, recordCard, rowCells, stateOf, stopCountry, suggestionCard } from "../src/lib/collectionCards";
+import { accessOf, askLike, askMore, collectionRow, doneCount, doneLine, familyOf, filterOf, ideasCaption, mapsSearch, nearPlaces, offerCard, recordCard, rowCells, stateOf, stopCountry, suggestionCard } from "../src/lib/collectionCards";
 import { decideTrip, makeContext } from "../src/lib/decision";
 import { isEmptyRecord } from "../src/lib/emptyCards";
 import { collectionsOf, type IntentInput } from "../src/lib/intents";
 import { buildLegs } from "../src/lib/legs";
 import { buildPlan } from "../src/lib/plan";
+import { bySection, shownSuggestions } from "../src/lib/suggestions";
 import { isPlaceholder } from "../src/lib/startTrip";
 import { buildTimeline } from "../src/lib/timeline";
 import type { Item, Suggestion, Trip } from "../src/lib/types";
@@ -135,9 +136,11 @@ describe("a row's four cells", () => {
 });
 
 describe("a city's two rows from its intent", () => {
-  it("Planında: what intents.ts put on the plan (booked first); Öneriler: the rest, the source's new tours, the suggestions", () => {
+  it("Planında: what intents.ts put on the plan (booked first); Öneriler: the rest and the source's new tours, no AI card", () => {
     const items = [...stays, act("Shibuya Sky", "booked"), act("teamLab", "chosen"), act("Sumo", "saved"), act("Tsukiji turu", "saved")];
-    const b = rows(base, items, { suggestions: { activity: [{ key: "ai:ghibli", section: "activity", kind: "add", title: "Ghibli Müzesi", why: "", source: "ai", createdAt: 1, state: "open", payload: { city: "Tokyo" } }] } });
+    // An AI card stored for Etkinlik (before 0.38.4: the chat's "Sörf deneyimi") isn't shown: only real tours and saved ones.
+    const ghibli: Suggestion = { key: "ai:ghibli", section: "activity", kind: "add", title: "Ghibli Müzesi", why: "", source: "ai", createdAt: 1, state: "open", payload: { city: "Tokyo" } };
+    const b = rows(base, items, { suggestions: bySection(shownSuggestions([ghibli], [], items)) });
     const vm = b.of("activity", "Tokyo");
     const offers = [
       { id: "o1", kind: "activity" as const, title: "Tsukiji Turu", url: "https://viator.com/a", why: "", source: "Viator", fetchedAt: 1 },
@@ -146,9 +149,10 @@ describe("a city's two rows from its intent", () => {
     const row = collectionRow(vm, b.byId, { trip: base, people: 2, offers });
     expect(row.plan.map((c) => [c.title, c.state])).toEqual([["Shibuya Sky", "booked"], ["teamLab", "planned"]]);
     // The saved tour of the same name isn't offered again.
-    // The records, then the source's tours, then the AI's ideas (Emre, 19 Ekim).
-    expect(row.ideas.map((c) => c.title)).toEqual(["Sumo", "Tsukiji turu", "Asakusa yürüyüşü", "Ghibli Müzesi"]);
-    expect(row.counts).toEqual({ all: 6, go: 6, food: 0 });
+    // The records, then the source's tours (Emre, 19 Ekim); no AI idea (0.38.4).
+    expect(row.ideas.map((c) => c.title)).toEqual(["Sumo", "Tsukiji turu", "Asakusa yürüyüşü"]);
+    expect(row.ideas.some((c) => c.suggestion)).toBe(false);
+    expect(row.counts).toEqual({ all: 5, go: 5, food: 0 });
   });
   it("Gezinin sebebi: on a festival trip its ticket leads Planında", () => {
     const trip: Trip = { ...base, intent: { playbook: "festival", name: "Ozora Festival" } };
@@ -193,5 +197,37 @@ describe("a stop's country (the second question for a town the source doesn't kn
     const plan = buildPlan(trip, items);
     expect(stopCountry(plan, "Ahangama")).toBe("LK");
     expect(stopCountry(plan, "Kolombo")).toBeNull();
+  });
+});
+
+describe("Emre's Sri Lanka (0.38.4): the trip's cities near a town, and where each tour was found", () => {
+  const trip: Trip = { ...base, title: "Sri Lanka", confirmedDates: { start: "2026-11-02", end: "2026-11-16" } };
+  const lkStay = (id: string, city: string, start: string, end: string, countryCode: string) =>
+    makeItem({ id, name: `${city} villa`, category: "stay", city, countryCode, needKey: `stay:${city}`, dates: { start, end, source: "user" }, guests: two, status: "chosen" });
+  const flight = (id: string, from: string, to: string, status: Item["status"] = "chosen") =>
+    makeItem({ id, name: `${from} → ${to}`, category: "flight", needKey: `flight:${from}-${to}`, status, flight: { from, to, departure: null, arrival: null, carrier: null, flightNumber: null, stops: null } });
+  const items = [
+    lkStay("ah", "Ahangama", "2026-11-02", "2026-11-09", "LK"),
+    lkStay("ga", "Galle", "2026-11-09", "2026-11-12", "LK"),
+    lkStay("ba", "Ubud", "2026-11-12", "2026-11-16", "ID"),
+    flight("in", "BJV", "CMB"),
+    flight("out", "CMB", "DPS"),
+    flight("old", "IST", "HRI", "dismissed"),
+  ];
+  const plan = buildPlan(trip, items);
+
+  it("the stays' cities and the airports in the town's country, the town itself and the other countries left out", () => {
+    // Galle a stay, Kolombo the airport flown into and out of (searched by its English name); Bali, Bodrum are elsewhere.
+    expect(nearPlaces(plan, items, "Ahangama", "LK")).toEqual([{ city: "Galle", label: "Galle" }, { city: "Colombo", label: "Kolombo" }]);
+    expect(nearPlaces(plan, items, "Galle", "LK").map((p) => p.label)).toEqual(["Ahangama", "Kolombo"]);
+    expect(nearPlaces(plan, items, "Ahangama", null)).toEqual([]);
+  });
+
+  it("a tour's card says its source and where it was asked; a saved Viator tour its source, not an AI pick", () => {
+    const o = { id: "vi:1", kind: "activity" as const, title: "Galle kalesi yürüyüşü", url: "https://www.viator.com/g", why: "", source: "Viator", fetchedAt: 1 };
+    expect(offerCard({ ...o, place: "Galle" }, 2).badge).toEqual({ tone: "mine", text: "Viator · Galle", initial: null });
+    expect(offerCard(o, 2).badge?.text).toBe("Viator");
+    const saved = act("Galle kalesi yürüyüşü", "saved", { addedBy: "ai", provider: "Viator", url: "https://www.viator.com/g", city: "Ahangama" });
+    expect(recordCard(saved, { section: "activity", people: 2, planned: false, wanted: false, reason: false }).badge?.text).toBe("Viator");
   });
 });

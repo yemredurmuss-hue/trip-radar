@@ -73,6 +73,8 @@ export interface Offer {
   meta?: string | null;
   /** One of a stay's three picks (stayPicks.ts): "Sana en uygun", "Daha ekonomik", "Daha konforlu". */
   pick?: "best" | "cheaper" | "comfier" | null;
+  /** A city's tour: the place it was asked for (the town, a nearby city of the trip, the country), said on its card. */
+  place?: string | null;
 }
 
 export interface SuggestionSource {

@@ -138,18 +138,54 @@ describe("a town the source doesn't know (Emre's Ahangama, 19 Ekim)", () => {
     const asked: Need[] = [];
     const empty = { offers: async (n: Need) => (asked.push(n), n.query ? [tour("v1")] : []) };
     expect((await cityTours(empty, ahangama, "LK")).map((o) => o.id)).toEqual(["v1"]);
-    expect(asked.map((n) => [n.city, n.query ?? null])).toEqual([["Ahangama", null], ["Sri Lanka", "Ahangama"]]);
+    // One of its own is few: the country's popular ones are asked too (none here).
+    expect(asked.map((n) => [n.city, n.query ?? null])).toEqual([["Ahangama", null], ["Sri Lanka", "Ahangama"], ["Sri Lanka", null]]);
 
     asked.length = 0;
     expect(await cityTours(empty, ahangama, null)).toEqual([]);
     expect(asked).toHaveLength(1);
 
     asked.length = 0;
-    const full = { offers: async (n: Need) => (asked.push(n), [tour("v2"), { ...tour("h"), kind: "stay" as const }]) };
-    expect((await cityTours(full, ahangama, "LK")).map((o) => o.id)).toEqual(["v2"]);
+    const many = ["v2", "v3", "v4", "v5"].map((id, i) => ({ ...tour(id), title: `Tur ${i}`, url: `https://www.viator.com/${id}` }));
+    const full = { offers: async (n: Need) => (asked.push(n), [...many, { ...tour("h"), kind: "stay" as const }]) };
+    expect((await cityTours(full, ahangama, "LK")).map((o) => o.id)).toEqual(["v2", "v3", "v4", "v5"]);
     expect(asked).toHaveLength(1);
 
     const failing = { offers: async () => Promise.reject(new Error("down")) };
     expect(await cityTours(failing, ahangama, "LK")).toEqual([]);
+  });
+
+  it("few of its own: the trip's nearby cities and the country's popular tours join the town's row, once each, saying where (0.38.4)", async () => {
+    const asked: Need[] = [];
+    const by: Record<string, Offer[]> = {
+      "Ahangama|": [],
+      "Sri Lanka|Ahangama": [{ ...tour("surf"), title: "Ahangama sörf dersi", url: "https://www.viator.com/surf" }],
+      "Colombo|": [
+        { ...tour("cmb"), title: "Colombo yemek turu", url: "https://www.viator.com/cmb" },
+        { ...tour("surf"), title: "Ahangama sörf dersi", url: "https://www.viator.com/surf" },
+      ],
+      "Sri Lanka|": [
+        { ...tour("galle"), title: "Galle kalesi yürüyüşü", url: "https://www.viator.com/galle" },
+        { ...tour("cmb2"), title: "Colombo Yemek Turu", url: "https://www.viator.com/cmb2" },
+      ],
+    };
+    const source = { offers: async (n: Need) => (asked.push(n), by[`${n.city}|${n.query ?? ""}`] ?? []) };
+    const near = [{ city: "Colombo", label: "Kolombo" }, { city: "Ahangama", label: "Ahangama" }];
+    const list = await cityTours(source, ahangama, "LK", near);
+    // The town's own first, then Kolombo's, then the country's; the same tour (by id, page or name) once.
+    expect(list.map((o) => [o.id, o.place])).toEqual([["surf", "Ahangama"], ["cmb", "Kolombo"], ["galle", "Sri Lanka"]]);
+    // The town itself isn't asked twice; a nearby city is asked in the country, by no words.
+    expect(asked.map((n) => [n.city, n.query ?? null, n.country ?? null])).toEqual([
+      ["Ahangama", null, null], ["Sri Lanka", "Ahangama", null], ["Colombo", null, "LK"], ["Sri Lanka", null, null],
+    ]);
+    expect(new Set(asked.map((n) => n.key)).size).toBe(asked.length);
+
+    // A card that names its kind ("Sörf dersi") stays with what it asked for; no country, no wider question.
+    asked.length = 0;
+    await cityTours(source, { ...ahangama, query: "Sörf dersi" }, "LK", near);
+    expect(asked.map((n) => n.city)).toEqual(["Ahangama"]);
+    asked.length = 0;
+    await cityTours(source, ahangama, null, []);
+    expect(asked.map((n) => n.city)).toEqual(["Ahangama"]);
   });
 });

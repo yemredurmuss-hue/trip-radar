@@ -5,11 +5,12 @@
 // where all of it gathers to sift and compare, opened on this city). Yapılacaklar' Planında head has its chips (Hepsi, Gezilecek, Restoranlar; C20), Etkinlik's
 // Öneriler folds away (C26, remembered in this browser as the live bar was). Öneriler holds the saved ideas, the connected
 // source's tours for the city (the live board's Viator cards, their photos kept on the records; a town it doesn't know is
-// searched in its country), then the suggestions to add (Emre, 19 Ekim);
+// searched in its country; a town with few has the trip's nearby cities' and the country's too, each card saying where),
+// then Yapılacaklar' suggestions to add (Emre, 19 Ekim; Etkinlik takes none: only real tours and saved ones, 0.38.4);
 // "Kendin ara" on its right. "+ Plana koy" flies the card to its slot (E6, putFly). The box around it is CollectionBox.
 import { useEffect, useState, type ReactNode } from "react";
 import { citiesOfPlan, type SectionId } from "../../../lib/categories";
-import { askMore, collectionRow, filterWord, ideasCaption, inFilter, K_FILTERS, mapsSearch, offerCard, ROW_CELLS, rowCells, stopCountry, type KCardVM, type KFilter } from "../../../lib/collectionCards";
+import { askMore, collectionRow, filterWord, ideasCaption, inFilter, K_FILTERS, mapsSearch, nearPlaces, offerCard, ROW_CELLS, rowCells, stopCountry, type KCardVM, type KFilter } from "../../../lib/collectionCards";
 import { needKey, type ActivityGap } from "../../../lib/emptyCards";
 import { L } from "../../../lib/i18n";
 import { selfSearches, type SelfSearch } from "../../../lib/intentFrame";
@@ -69,21 +70,24 @@ function useRemembered(key: string, initial: boolean): [boolean, (v: boolean) =>
  */
 function useCityOffers(city: string | null, plan: Pick<Plan, "stayBlocks"> | null, saved: Item[], tripId: string) {
   const { offers: source, travellers } = useEmptyEnv();
+  const { byId } = useV82Env();
   const stop = city && plan ? (citiesOfPlan(plan).find((c) => sameCity(c.city, city)) ?? null) : null;
   const need: Need | null = stop ? { key: needKey("activity", stop.city, stop.start, stop.end), section: "activity", kind: "activity", city: stop.city, start: stop.start, end: stop.end, adults: travellers } : null;
   const country = stop && plan ? stopCountry(plan, stop.city) : null;
+  const near = stop && plan ? nearPlaces(plan, byId.values(), stop.city, country) : [];
+  const nearKey = near.map((p) => p.city).join("|");
   const [got, setGot] = useState<{ key: string; list: Offer[] } | null>(null);
   const [taken, setTaken] = useState<string[]>([]);
   const available = source.available();
   useEffect(() => {
     if (!need || !available) return;
     let live = true;
-    void cityTours(source, need, country).then((list) => live && setGot({ key: need.key, list }));
+    void cityTours(source, need, country, near).then((list) => live && setGot({ key: need.key, list }));
     return () => {
       live = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- asked again only for another city, days or country
-  }, [need?.key, country, available, source]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- asked again only for another city, days, country or nearby cities
+  }, [need?.key, country, nearKey, available, source]);
   const all = got && need && got.key === need.key ? got.list : [];
   const missing = saved.filter((i) => !i.imageUrl);
   useEffect(() => {
@@ -93,7 +97,9 @@ function useCityOffers(city: string | null, plan: Pick<Plan, "stayBlocks"> | nul
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- when the offers or the records without a photo change
   }, [all.length, missing.map((i) => i.id).join(" ")]);
-  const offers = all.filter((o) => !taken.includes(o.id) && !saved.some((i) => sameTour(i, o))).slice(0, PER_CITY);
+  // A tour saved in another city of the trip (a nearby city's, put on the plan there) isn't offered here again.
+  const elsewhere = new Set([...byId.values()].filter((i) => i.status !== "dismissed" && i.url).map((i) => i.url));
+  const offers = all.filter((o) => !taken.includes(o.id) && !elsewhere.has(o.url) && !saved.some((i) => sameTour(i, o))).slice(0, PER_CITY);
   const put = async (o: Offer) => {
     if (!need) return;
     setTaken((t) => [...t, o.id]);

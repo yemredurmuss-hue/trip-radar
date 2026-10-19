@@ -66,13 +66,53 @@ export function countryNeed(need: Need, countryCode: string | null | undefined):
   return { ...need, key: `${need.key}:in:${countryCode!.toUpperCase()}`, city: country, country: null, query: town };
 }
 
-/** A city's tours from a source: the city's own, else (none) its country's searched by the town's name; a failure is none. */
-export async function cityTours(source: Pick<SuggestionSource, "offers">, need: Need, countryCode: string | null | undefined): Promise<Offer[]> {
-  const tours = (n: Need) => source.offers(n).then((list) => list.filter((o) => o.kind === "activity"), () => [] as Offer[]);
-  const list = await tours(need);
-  const wider = list.length ? null : countryNeed(need, countryCode);
-  return wider ? tours(wider) : list;
+/** Fewer of a town's own tours than this: the trip's nearby cities and the country's popular ones are asked too. */
+export const FEW_TOURS = 4;
+
+/** A city of the trip in the town's country (a stay's, an airport's): its name to search by, and as its card says it. */
+export interface NearPlace {
+  city: string;
+  label: string;
 }
+
+const fold = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLocaleLowerCase("en").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+
+/**
+ * A city's tours from a source, each with the place it was asked for: the city's own, else (none) its country's searched
+ * by the town's name; while they are few (FEW_TOURS), the trip's cities in the same country (`near`: Kolombo for
+ * Ahangama) and the country's popular ones (no words) after them. Joined without repeats; a failure is none.
+ */
+export async function cityTours(source: Pick<SuggestionSource, "offers">, need: Need, countryCode: string | null | undefined, near: readonly NearPlace[] = []): Promise<Offer[]> {
+  const tours = (n: Need, place: string | null | undefined): Promise<Offer[]> =>
+    source.offers(n).then(
+      (list) => list.filter((o) => o.kind === "activity").map((o) => ({ ...o, place: place ?? null })),
+      () => [] as Offer[],
+    );
+  const town = need.city?.trim() ?? null;
+  let list = await tours(need, town);
+  const wider = list.length ? null : countryNeed(need, countryCode);
+  if (wider) list = await tours(wider, town);
+  if (list.length >= FEW_TOURS || need.kind !== "activity" || need.query?.trim()) return list;
+  const country = countryName(countryCode);
+  const others = near.filter((p, i) => fold(p.city) !== fold(town ?? "") && near.findIndex((q) => fold(q.city) === fold(p.city)) === i);
+  const asks = [
+    ...others.map((p) => tours({ ...need, key: `${need.key}:near:${fold(p.city)}`, city: p.city, country: countryCode ?? need.country ?? null, query: null }, p.label)),
+    ...(country && fold(country) !== fold(town ?? "") ? [tours({ ...need, key: `${need.key}:in:${countryCode!.toUpperCase()}:top`, city: country, country: null, query: null }, countryLabel(countryCode!))] : []),
+  ];
+  for (const more of await Promise.all(asks)) {
+    for (const o of more) if (!list.some((x) => x.id === o.id || x.url === o.url || fold(x.title) === fold(o.title))) list.push(o);
+  }
+  return list;
+}
+
+/** The country as the traveller reads it ("Sri Lanka", "Endonezya"). */
+const countryLabel = (code: string): string => {
+  try {
+    return new Intl.DisplayNames([lang()], { type: "region" }).of(code.toUpperCase()) ?? code;
+  } catch {
+    return code;
+  }
+};
 
 /** How the chat may narrow it: the cheapest instead of the mixed three, a ceiling in euros (a stay's by the night, a flight's per person). */
 export interface Narrow {
