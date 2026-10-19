@@ -143,6 +143,8 @@ export interface PlaceFound {
   map: string | null;
   /** The rating is the city's Google sights' (no review count: the card draws it on the picture); unset: Maps' or none. */
   sight?: true;
+  /** Who took Google's photo, when the Places API names them (the credit says it). */
+  photoBy?: string;
 }
 
 export type FindPlaces = (search: string) => Promise<MapsPlace[]>;
@@ -218,6 +220,7 @@ export function findPlace(
         reviews: maps?.reviews ?? null,
         map: maps?.url ?? null,
         ...(rated ? { sight: true as const } : {}),
+        ...(maps?.photo && typeof maps.photoBy === "string" && maps.photoBy.trim() ? { photoBy: maps.photoBy.trim() } : {}),
       },
       sure,
     };

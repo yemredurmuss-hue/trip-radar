@@ -271,9 +271,12 @@ export function placeRatingLine(why: string | null, rating: number | null | unde
   return uniq([stars, stars ? said : null, why]).join(" · ") || null;
 }
 
-/** A suggested place's photo credit (its title): Google Maps', a city's Google sights' ("Google"), or Wikipedia's. */
-export function placePhotoCredit(credit: PlaceFound["credit"] | undefined): string | undefined {
-  if (credit === "Google Maps") return L("Fotoğraf: Google Haritalar", "Photo: Google Maps");
+/**
+ * A suggested place's photo credit (its title): Google Maps' and who took it when Google names them, a city's Google
+ * sights' ("Google"), or Wikipedia's.
+ */
+export function placePhotoCredit(credit: PlaceFound["credit"] | undefined, by?: string | null): string | undefined {
+  if (credit === "Google Maps") return by?.trim() ? L(`Fotoğraf: Google Haritalar · ${by.trim()}`, `Photo: Google Maps · ${by.trim()}`) : L("Fotoğraf: Google Haritalar", "Photo: Google Maps");
   if (credit === "Google") return L("Fotoğraf: Google", "Photo: Google");
   return credit === "Wikipedia" ? L("Fotoğraf: Wikipedia", "Photo: Wikipedia") : undefined;
 }

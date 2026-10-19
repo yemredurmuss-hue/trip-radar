@@ -435,7 +435,7 @@ export function SuggestCard({ card, onPut, onDismiss }: { card: KCardVM; onPut: 
   const map = found?.map ?? card.map;
   // The rating is drawn once: Google's sights' (no review count) on the picture, Maps' with its reviews in the grey line.
   const rating = card.rating ?? (found?.sight ? sightRating(found.rating) : null);
-  const credit = found ? placePhotoCredit(found.credit) : card.photo ? placePhotoCredit("Google") : undefined;
+  const credit = found ? placePhotoCredit(found.credit, found.photoBy) : card.photo ? placePhotoCredit("Google") : undefined;
   return (
     <KCard
       className={`${card.family === "event" ? "q-card" : "q-tile"} q-opt sugg${place ? " z-kplace" : ""}`}
