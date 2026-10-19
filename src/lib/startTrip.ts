@@ -1945,6 +1945,14 @@ export const saysSomething = (e: Extracted): boolean => said(e);
 
 const samePlace = (a: string | null | undefined, b: string | null | undefined) => !!a && !!b && (cityKeyOf(a) === cityKeyOf(b) || squash(a) === squash(b));
 
+/** Whether a line names a place (any of its known names, endings typed on: "Tayland'a", "Sri Lankaya"). */
+function namesPlace(text: string, p: Place): boolean {
+  const known = knownPlaceOf(p.place);
+  const names = [p.place, p.country, known?.tr, known?.en, ...(known?.also ?? [])].filter((n): n is string => Boolean(n && squash(n).length > 2));
+  const line = squash(text);
+  return names.some((n) => line.includes(squash(n)));
+}
+
 /** Words that mean the event's own days, typed to the length question. */
 const JUST_THE_EVENT = /(sadece|yalnız|yalnizca|yalnızca|only|just)\s+(festival|etkinlik|the festival|the event|for the festival|for the event)|festival (boyunca|kadar|süresince)|ne zamansa|o zaman|whenever it is|whenever (the|that) (festival|event)|for the festival|the festival dates|festival tarihleri/iu;
 
@@ -1972,7 +1980,9 @@ export function bindToQuestion(s: StartState, text: string, read: Extracted, q: 
   if (samePlace(e.where.place, s.where.place)) return s.where.within && !e.where.within ? { ...e, where: { ...e.where, within: s.where.within } } : e;
   // Koh Phangan after Thailand: the same country, said more exactly (the trip keeps the country's name as its title).
   const refines = Boolean(s.where.code && e.where.code === s.where.code && countryCodeOfName(s.where.place) === s.where.code);
-  if (refines) return { ...e, where: { ...e.where, within: s.where.place } };
+  // Only a town said in a later message: "Tayland Kohphandan" in one line (read by the code, then by the model)
+  // is the town's trip, "Sri Lanka", then "Ahangama" the country's.
+  if (refines) return namesPlace(text, s.where) ? e : { ...e, where: { ...e.where, within: s.where.place } };
   if (q === "where") return e;
   // A change of mind: where changes; where from stays as it was unless this line says it ("İstanbul'dan", "from").
   if (saysWhereTo(text)) return q === "from" && !/['’](d|t)[ae]n(?![\p{L}])|\bfrom\b/iu.test(text) ? { ...e, from: null } : e;

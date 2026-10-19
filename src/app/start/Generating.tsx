@@ -227,7 +227,8 @@ export function Generating({ state, onTripId, onFinished, onBack, onLine }: Prop
 
   return T(() => (
     <div className="st-gen" role="status" aria-live="polite">
-      <h2>{state.intent ? L(`${creation?.title} planlanıyor`, `Planning ${creation?.title}`) : L(`${place} Gezisi planlanıyor`, `Planning your ${place} trip`)}</h2>
+      {/* The trip's own title (creationOf.tripTitle): the board that opens says the same. */}
+      <h2>{creation ? L(`${creation.title} planlanıyor`, `Planning ${creation.title}`) : L(`${place} Gezisi planlanıyor`, `Planning your ${place} trip`)}</h2>
       {creation && <div className="st-gen-sub">{genSubLine(state, creation)}</div>}
       <div className={`st-gen-stage${world === null ? " no-map" : ""}`}>
         {world === "loading" ? (
