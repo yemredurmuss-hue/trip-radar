@@ -6,6 +6,7 @@
 // and its way (C15) on the leg itself (Trip.hidden, Trip.legs). Ayrıntı opens over the frame (DetailLayer);
 // "Gerek yok" folds the body (E7) and the box goes under the category's "Gizlenenler · n" (F3). A record's days, name and
 // price edit where they stand (C2); a thin "+ Buraya ekle" under a stay adds on its last night, in its city (C3).
+import { removeEntries } from "./removeEntries";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { isCampStay } from "../../../lib/campStay";
 import { L } from "../../../lib/i18n";
@@ -152,7 +153,9 @@ export function IntentBox({ vm: given, color, onHere = null }: {
       </InlineEdit>
     );
   }
-  return <Box vm={vm} color={color} extra={[]} field={null} pickDoc={null} cancel={null} onHere={onHere} itemId={null} />;
+  // Nothing chosen yet: a candidate saved in it can be taken off alone ("Kaldır"), not only the whole need ("Gerek yok").
+  const removals = removeEntries([...vm.options, ...(vm.more ?? [])], byId, env.remove);
+  return <Box vm={vm} color={color} extra={removals} field={null} pickDoc={null} cancel={null} onHere={onHere} itemId={null} />;
 }
 
 /**
