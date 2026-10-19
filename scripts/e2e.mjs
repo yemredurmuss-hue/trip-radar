@@ -625,7 +625,7 @@ try {
   const dayTimesOf = (n) => dayCard(n).locator(".dg-tl > li").evaluateAll((els) => els.map((e) => e.querySelector(".t")?.textContent ?? ""));
   // The seven days of the trip, each its own row (the two free days in Lisbon too), in order, each with its date box.
   assert.deepEqual(await app.locator(".dg-day .dg-no").allInnerTexts(), ["Gün 1", "Gün 2", "Gün 3", "Gün 4", "Gün 5", "Gün 6", "Gün 7"]);
-  assert.deepEqual(flat(await app.locator(".dg-day .dg-date").allInnerTexts()), ["EKİ 8 Per Gün 1", "EKİ 9 Cum Gün 2", "EKİ 10 Cmt Gün 3", "EKİ 11 Paz Gün 4", "EKİ 12 Pzt Gün 5", "EKİ 13 Sal Gün 6", "EKİ 14 Çar Gün 7"]);
+  assert.deepEqual(flat(await app.locator(".dg-day .dg-date").allInnerTexts()), ["Eki 8 Per Gün 1", "Eki 9 Cum Gün 2", "Eki 10 Cmt Gün 3", "Eki 11 Paz Gün 4", "Eki 12 Pzt Gün 5", "Eki 13 Sal Gün 6", "Eki 14 Çar Gün 7"]);
   assert.equal(await app.locator(".dg-day").count(), 7);
   // One row a day: a row is its date box and a card, no photo, no strip of days, no Liste | Kartlar switch.
   assert.equal(await app.locator(".dg-day img, .dc-strip, .dc-seg, .dc-cday").count(), 0, "no photo cards, no strip, no switch");
