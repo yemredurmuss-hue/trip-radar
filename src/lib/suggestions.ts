@@ -630,9 +630,12 @@ function inputOf(s: Suggestion, tpl: (typeof TEMPLATES)[number]): PlannedInput {
   const start = isoDate(p.start ?? null);
   const end = isoDate(p.end ?? null);
   const trip = tpl.form === "trip";
+  // A place to see or eat at takes no day of its own: the day its stop starts isn't the day the traveller goes (Emre,
+  // 0.39.3: "Plana koy" gave every one the stop's first day). It is put on the plan undated; a day is given by hand.
+  const dayless = tpl.id === "todo" || tpl.id === "food";
   return {
     kind: tpl.kind,
-    date: start,
+    date: dayless ? null : start,
     end_date: tpl.form === "rental" || tpl.form === "stay" || tpl.id === "insurance" ? (end && start && end > start ? end : null) : null,
     time: trip && p.time && /^\d{2}:\d{2}$/.test(p.time) ? p.time : null,
     from: trip && tpl.kind !== "taxi" ? city : null,

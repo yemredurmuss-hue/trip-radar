@@ -64,7 +64,9 @@ async function bali() {
   const trip = await create();
   const start = await listItems(trip.id);
   const need = tourNeeds(buildPlan(trip, start), ["Canggu"], 2)[0].need;
-  const surf: Item = { ...offerItem(tour("surf", "Sörf dersi"), need, trip.id, "surf", 1), status: "chosen" };
+  // (Saved before 0.39.3, when a tour took the window it was looked for in as its days; a new one is saved undated.)
+  const fresh = offerItem(tour("surf", "Sörf dersi"), need, trip.id, "surf", 1);
+  const surf: Item = { ...fresh, status: "chosen", dates: { start: need.start ?? null, end: need.end ?? null, source: "unverified" } };
   const sunset: Item = { ...offerItem(tour("sunset", "Tanah Lot gün batımı"), need, trip.id, "sunset", 1), status: "booked" };
   // A day the traveller gave it ("+ Gün"): its own day.
   const batur = onDay({ ...offerItem(tour("batur", "Mount Batur gün doğumu"), need, trip.id, "batur", 1), status: "chosen" }, "2026-12-05", null);
@@ -76,7 +78,8 @@ describe("Emre's Bali: a tour with no day of its own gets none", () => {
   it("the stop's days a tour was looked for in are no day; one given by the traveller is", async () => {
     const { trip, items, surf, batur } = await bali();
     const { plan } = board(trip, items);
-    // The record keeps what it was saved with: only the view reads it as no day.
+    // A tour saved now takes no day (0.39.3); one saved before with the window keeps it, and the view reads it as no day.
+    expect(offerItem(tour("surf2", "Sörf dersi"), tourNeeds(buildPlan(trip, items), ["Canggu"], 2)[0].need, trip.id, "surf2", 1).dates.start).toBeNull();
     expect(surf.dates).toEqual({ start: "2026-12-01", end: "2027-01-01", source: "unverified" });
     expect(ownDay(surf, plan)).toBeNull();
     expect(ownDay(batur, plan)).toBe("2026-12-05");

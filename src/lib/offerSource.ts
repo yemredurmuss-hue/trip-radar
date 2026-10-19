@@ -287,9 +287,11 @@ const KIND_OF: Record<OfferKind, PlannedKind> = { flight: "flight", stay: "stay"
 
 /** An offer added to the need's options: a saved option (not chosen), its page, photo, rating and price as read. */
 export function offerItem(offer: Offer, need: Need, tripId: string, id: string, now: number): Item {
-  // Not a plan said in the chat: no origin, no planned kind (it's an option read from a page).
+  // Not a plan said in the chat: no origin, no planned kind (it's an option read from a page). A tour's need spans the
+  // stop's days, the window it was looked for in, not a day it is on: put on the plan undated (Emre, 0.39.3).
+  const window = offer.kind === "activity";
   const { origin: _origin, plannedKind: _kind, ...base } = plannedItem(
-    { kind: KIND_OF[offer.kind], date: need.start ?? null, end_date: need.end ?? null, time: null, from: need.from ?? null, to: need.to ?? null, city: need.city ?? null, title: offer.title, booked: false, note: null },
+    { kind: KIND_OF[offer.kind], date: window ? null : (need.start ?? null), end_date: window ? null : (need.end ?? null), time: null, from: need.from ?? null, to: need.to ?? null, city: need.city ?? null, title: offer.title, booked: false, note: null },
     tripId,
     id,
     now,
