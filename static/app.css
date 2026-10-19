@@ -2521,7 +2521,7 @@ body.still .hm-plane { display: none; }
 .st-row.tentative .st-check { border: 2px solid var(--hx-accent); background: #fff; color: var(--hx-accent); font-size: 14px; font-weight: 800; }
 .st-row.tentative .st-row-value { color: var(--hx-ink); }
 .st-row-label em.st-row-check { color: #a35a00; }
-.st-row-label { display: block; font-size: 12.5px; font-weight: 700; letter-spacing: .08em; color: #5d5885; }
+.st-row-label { display: block; font-size: 12.5px; font-weight: 700; color: #5d5885; }
 .st-row-label em { font-style: normal; font-weight: 600; letter-spacing: 0; color: var(--hx-accent); }
 .st-row-value { display: block; margin-top: 2px; font-size: 17px; color: var(--hx-ink); }
 .st-row:not(.done) .st-row-value { color: #5d5885; }

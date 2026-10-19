@@ -82,7 +82,7 @@ describe("the chat's language (item 1)", () => {
     const from = withLang(s1.lang, () => questionOf(s1, "from", ctx));
     // The English board's guess, said the Turkish way and only once.
     expect(from.chips.map((c) => c.label)).toEqual(["İstanbul", "Ankara", "İzmir", "Antalya"]);
-    expect(withLang(s1.lang, () => checklist(s1, ctx).map((r) => r.label))).toEqual(["NEREYE", "NEREDEN", "KİMLE", "NE ZAMAN", "NE İSTİYORSUN", "ROTA"]);
+    expect(withLang(s1.lang, () => checklist(s1, ctx).map((r) => r.label))).toEqual(["Nereye", "Nereden", "Kimle", "Ne zaman", "Ne istiyorsun", "Rota"]);
     expect(withLang(s1.lang, () => creationOf(s1))!.title).toBe("Koh Phangan Gezisi");
     // The board's own language is untouched.
     expect(lang()).toBe("en");
