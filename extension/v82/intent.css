@@ -135,6 +135,13 @@ img.q-logo.q-air { display: block; object-fit: contain; background: #fff; box-sh
 .z-t { margin: 0; font-size: var(--q-fs-intent); line-height: 28px; font-weight: 800; letter-spacing: -.01em; color: var(--q-ink); }
 .z-c.em .z-t { font-size: var(--q-fs-card); }
 .z-l2 { font-size: var(--q-fs-info); color: var(--q-mut); display: flex; align-items: center; gap: 10px; }
+/* A stay's nearby places and what its reviews say (Google Hotels, offers 2026-10-19): extra lines under l2. */
+.z-near { display: flex; flex-wrap: wrap; column-gap: 14px; min-width: 0; font-size: var(--q-fs-small); color: var(--q-mut); line-height: 1.4; overflow-wrap: anywhere; }
+.z-tops { display: block; min-width: 0; font-size: var(--q-fs-small); color: var(--q-mut); line-height: 1.4; }
+.z-near > span { min-width: 0; }
+.z-tops b { font-weight: 700; }
+.z-tops b.up { color: var(--q-ok); }
+.z-tops b.dn { color: var(--q-bad); }
 .z-l3 { display: flex; align-items: center; gap: 6px; overflow: hidden; }
 .z-rate { display: inline-flex; align-items: center; gap: 6px; font-size: var(--q-fs-small); color: var(--q-mut); }
 .z-rate small { font-size: var(--q-fs-badge); }
