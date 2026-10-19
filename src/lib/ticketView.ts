@@ -10,7 +10,7 @@ import { cityOfAirport } from "./airports";
 import { durationText } from "./cardFacts";
 import type { CardKind } from "./cardKinds";
 import { rentalLine } from "./cardTicket";
-import { transportFace } from "./cardView";
+import { legEnd, transportFace } from "./cardView";
 import { isPass } from "./covers";
 import { delayOf, flightTiles, phaseOf, sourceText, stageOf, type FlightSeen, type FlightTile } from "./flightData";
 import { L } from "./i18n";
@@ -182,7 +182,7 @@ function seatChips(item: Item): TicketChip[] {
 }
 
 /** The bag a flight comes with, when the page says it. */
-function bagChip(item: Item): TicketChip | null {
+export function bagChip(item: Item): TicketChip | null {
   const bag = metricsOf(item).checkedBagIncluded;
   return bag == null ? null : { kind: "bag", text: bag ? L("1 bagaj dahil", "1 checked bag") : L("Yalnız el bagajı", "Cabin bag only") };
 }
@@ -236,11 +236,16 @@ export function ticketViewOf(shown: readonly Item[], ctx: TicketCtx): TicketVM {
   const art = pass ? "tren" : (ART[ctx.kind] ?? "taksi-transfer");
   const empty = (city: string | null | undefined): TicketEnd | null => (city ? { city, place: null, time: null, plus: null } : null);
   if (!lead) {
-    return {
-      mode, art, carrier: null, from: empty(ctx.route?.from), to: empty(ctx.route?.to), duration: null, stops: null, chips: [], legs: [], pass: null, rental: null, live: null,
+    // A transfer with nothing of its own says its ends as its card did (F5a): the airport and its code, the stay and its name.
+    const end = (side: "from" | "to"): TicketEnd | null => {
+      if (!ctx.leg || ctx.leg.kind === "move" || ctx.leg.kind === "change") return empty(ctx.route?.[side]);
+      const e = legEnd(ctx.leg, side);
+      return e.city ? { city: e.city, place: e.sub, time: e.time, plus: null } : empty(ctx.route?.[side]);
     };
+    return { mode, art, carrier: null, from: end("from"), to: end("to"), duration: null, stops: null, chips: [], legs: [], pass: null, rental: null, live: null };
   }
-  const legs = shown.map((item, n) => legOf(item, ctx.kind, n === 0 ? { from: ctx.ends?.from } : n === shown.length - 1 ? { to: ctx.ends?.to } : {}));
+  // The plan's cities name the first leg's way out and the last leg's way in (one leg: both its ends).
+  const legs = shown.map((item, n) => legOf(item, ctx.kind, { from: n === 0 ? ctx.ends?.from : null, to: n === shown.length - 1 ? ctx.ends?.to : null }));
   const many = legs.length > 1;
   const span = many ? spanMinutes(shown) : null;
   const stops = many ? { text: nStops(legs.length - 1), direct: false } : legs[0].stops;

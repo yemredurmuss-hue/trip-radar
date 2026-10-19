@@ -241,6 +241,8 @@ export const CHECKIN_HOURS = 48;
 export interface CoverVM {
   /** The covering box's key ("Festival biletini aç" goes there); null when it isn't drawn on the plan. */
   key: string | null;
+  /** The category that box is in (the plan opens it to go there). */
+  section?: SectionId | null;
   itemId: string;
   /** "festival biletiyle", "Hakone Free Pass ile", "kiralık araçla", "tekne paketiyle". */
   by: string;
@@ -305,8 +307,16 @@ export interface IntentVM {
   cover: CoverVM | null;
   /** The ticket frame's view (a flight, a train, a transfer, a bus, a boat, a rental, a pass); null in the other frames. */
   ticket: TicketVM | null;
-  /** C15: a change of city nobody has planned: the ways to pick from (Tren, Otobüs, Araba, Uçak); "Ben hallettim" is the menu's. */
+  /**
+   * C15: a change of city nobody has planned: the ways to pick from (Tren, Otobüs, Araba, Uçak); a transfer to or from the
+   * airport its own (Metro, Otobüs, Tren, Taksi, Transfer). "Ben hallettim" is drawn after them.
+   */
   modes: LegMode[];
+  /**
+   * The change of city or the transfer it is for (legs.ts's key): with no record of its own, its "Gerek yok", "Ben
+   * hallettim" and C15's ways are said on it (Trip.hidden, Trip.legs). Null or missing for anything else.
+   */
+  legKey?: string | null;
   itemIds: string[];
   /** Its entries' DOM keys (categories.catDomKey): the Plan scrolls to these. */
   domKeys: string[];
@@ -650,6 +660,8 @@ const endsOf = (leg: Leg | null): { from?: string | null; to?: string | null } =
 
 /** C15: the ways to pick from for a change of city nobody has planned. */
 const MOVE_MODES: readonly LegMode[] = ["train", "bus", "car", "flight"];
+/** And for a transfer to or from the airport or the station nobody has planned (its old card's chips: no plane across town). */
+const TRANSFER_MODES: readonly LegMode[] = ["metro", "bus", "train", "taxi", "transfer"];
 
 function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
   const records = uniq(b.entries.flatMap((e) => e.itemIds))
@@ -731,7 +743,8 @@ function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
     wanted: [],
     cover,
     ticket: frame === "ticket" ? ticketViewOf(shown ? [shown] : [], { kind, leg, route: head.route, ends: endsOf(leg), now: env.now }) : null,
-    modes: status === "searching" && leg?.kind === "move" && !legMode ? [...MOVE_MODES] : [],
+    modes: status === "searching" && leg && !legMode ? (leg.kind === "move" ? [...MOVE_MODES] : leg.kind === "arrival" || leg.kind === "departure" ? [...TRANSFER_MODES] : []) : [],
+    legKey: leg?.key ?? null,
     itemIds: records.map((i) => i.id),
     domKeys: b.entries.map(catDomKey),
   };
@@ -907,7 +920,7 @@ function joinConnections(list: IntentVM[], env: Env): IntentVM[] {
       // What both legs cost is said once, in the details: a box shows one price.
       paid: status === "booked" ? (paid ?? prev.paid) : null,
       access: status === "booked" ? prev.access : null,
-      ticket: ticketViewOf(shown, { kind: "flight", leg: null, route, now: env.now }),
+      ticket: ticketViewOf(shown, { kind: "flight", leg: null, route, ends: route ? { from: route.from, to: route.to } : {}, now: env.now }),
       itemIds: uniq([...prev.itemIds, ...cur.itemIds]),
       domKeys: uniq([...prev.domKeys, ...cur.domKeys]),
     };
@@ -974,12 +987,15 @@ function sectionsWith(sections: CatSection[], env: Env): Built[] {
 /** What covers is drawn as its box's key, and a pass counts the ways on the plan it covers. */
 function linked(built: Built[], env: Env): Built[] {
   const all = built.flatMap((b) => b.intents);
-  const keyOf = (itemId: string) => all.find((i) => i.itemIds.includes(itemId) && i.status !== "skipped")?.key ?? null;
+  const ownerOf = (itemId: string) => all.find((i) => i.itemIds.includes(itemId) && i.status !== "skipped") ?? null;
   const covered = new Map<string, number>();
   for (const i of all) if (i.cover) covered.set(i.cover.itemId, (covered.get(i.cover.itemId) ?? 0) + 1);
   const fix = (i: IntentVM): IntentVM => {
     let out = i;
-    if (i.cover) out = { ...out, cover: { ...i.cover, key: keyOf(i.cover.itemId) } };
+    if (i.cover) {
+      const owner = ownerOf(i.cover.itemId);
+      out = { ...out, cover: { ...i.cover, key: owner?.key ?? null, section: owner?.section ?? null } };
+    }
     const pass = i.ticket?.pass && i.chosen ? (covered.get(i.chosen.id) ?? 0) : 0;
     if (pass && i.ticket && i.chosen) {
       const lead = env.byId.get(i.chosen.id);
