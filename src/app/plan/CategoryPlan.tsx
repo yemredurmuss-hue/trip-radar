@@ -16,6 +16,7 @@ import { collectionsOf, V82_ORDER, type Collection, type IntentInput } from "../
 import { formatPrice } from "../../lib/items";
 import { nightsSummary } from "../../lib/lifecycle";
 import { sameCity, type Plan } from "../../lib/plan";
+import { REVIEW_SECTIONS } from "../../lib/suggestReview";
 import { eMove, scrollBy } from "../../lib/planOpen";
 import type { BudgetSlice } from "../../lib/progress";
 import { entryDomId } from "../../lib/progress";
@@ -40,6 +41,7 @@ import { CollectionBox } from "./v82/CollectionBox";
 import { CityGaps } from "./v82/CollectionRow";
 import { artOf, IntentBox } from "./v82/IntentBox";
 import { PlanHeader } from "./v82/PlanHeader";
+import { Searching } from "./v82/Searching";
 import { TimelineRail } from "./v82/TimelineRail";
 import { intentEl, V82EnvContext, type V82Env } from "./v82/v82Env";
 import { VisaRow } from "./VisaRow";
@@ -103,7 +105,7 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
   /** What's being read now (arrive/useArrivals): under the head when its place can't be guessed, else atop its section (drawn even while empty). */
   pending?: { lead: ReactNode; bySection: Partial<Record<SectionId, ReactNode>> };
   /** Öneriler (useSuggestions): a missing eSIM or policy is an intent (C16); the rest cards atop their section. */
-  suggestions?: Pick<BoardSuggestions, "bySection" | "add" | "dismiss" | "notes">;
+  suggestions?: Pick<BoardSuggestions, "bySection" | "add" | "dismiss" | "notes"> & { reviewing?: boolean };
   /** The traveller's visa for the trip's country: Belgeler ve internet's first line, drawn even with nothing else there. */
   visa?: Visa | null;
   visaDone?: boolean;
@@ -128,6 +130,9 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
   // The new categories' suggestions to add are their intents (C16); only a warning stays a card.
   const cardSuggestions = (s: CatSection) => (v82(s) ? suggested(s).filter((x) => x.kind !== "add") : suggested(s));
   const gaps = activityGaps(plan, items);
+  // The AI review out now: a small line atop the sections it writes in, until its cards come (0.38.8).
+  const reviewLine = (s: CatSection) =>
+    suggestions?.reviewing && (REVIEW_SECTIONS as readonly string[]).includes(s.id) ? <Searching className="q-lookrow" text={L("Öneriler aranıyor…", "Looking for suggestions…")} /> : null;
   const visaLine = (s: CatSection) => s.id === "other" && visa != null && visa.kind !== "none";
   const dismissed = useMemo(() => (env.trip.suggestions ?? []).filter((s) => s.state === "dismissed"), [env.trip.suggestions]);
   // Hazırlık's closed row counts what its open list does (the worked-out chores too, never the Bavul's lines).
@@ -280,6 +285,7 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
                       lead={
                         <>
                           {pending?.bySection[s.id]}
+                          {reviewLine(s)}
                           {suggestions && <SuggestionCards list={cardSuggestions(s)} onAdd={suggestions.add} onDismiss={suggestions.dismiss} notes={suggestions.notes} />}
                           {visaLine(s) && <VisaRow visa={visa} done={visaDone} onDone={(d) => onVisaDone?.(d)} />}
                         </>
@@ -298,6 +304,7 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
                     </TimelineRail>
                   ) : (
                     <>
+                      {reviewLine(s)}
                       {suggestions && <SuggestionCards list={suggested(s)} onAdd={suggestions.add} onDismiss={suggestions.dismiss} notes={suggestions.notes} />}
                       {pending?.bySection[s.id]}
                       {/* Hazırlık on every trip, a chore saved or not: the check-in and the visa worked out from the trip, Bilmen gerekenler, the Bavul. */}

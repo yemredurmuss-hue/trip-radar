@@ -10,6 +10,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { isCampStay } from "../../../lib/campStay";
 import { L } from "../../../lib/i18n";
 import { areaSearch, changeList, currentOption, frameForm, headName, offerNeed, otherOptions, placeholderOf, railState, SHOWN_OPTIONS, statusChip, unlessEmpty } from "../../../lib/intentFrame";
+import { offersLooking } from "../../../lib/looking";
 import { queryOf, type StayCandidate } from "../../../lib/offerSources";
 import { typicalNight } from "../../../lib/stayPicks";
 import type { IntentStatus, IntentVM, OptionVM } from "../../../lib/intents";
@@ -42,6 +43,7 @@ import { IntentHead } from "./IntentHead";
 import { IntentMenu } from "./IntentMenu";
 import { OptionList, type Typical } from "./OptionCompact";
 import { OptionRows } from "./OptionRow";
+import { useLooking } from "./Searching";
 import { useCrossfade, type Entry } from "./useCrossfade";
 import { useIntentActions } from "./useIntentActions";
 import { useV82Env } from "./v82Env";
@@ -379,6 +381,9 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
   // "Aranıyor" only while something looks or has looked: the source asked by itself (OfferRow), or the chat (0.38.5).
   const looking = a.searching || hasSearched(`intent:${vm.key}`) || (need != null && offers.available() && queryOf(need) != null);
   const chip = statusChip(vm, looking);
+  // Its "Aranıyor" moves (three small dots) only while a search is out now: the chat's, or the source's (0.38.8).
+  const lookingNow = useLooking(offersLooking, need?.key);
+  const busy = vm.status === "searching" && looking && (a.searching || lookingNow);
   const placeholder = need?.kind === "stay" ? placeholderOf(vm.itemIds.map((id) => v82.byId.get(id)).filter((i): i is Item => i != null), env.trip, "stay") : null;
   const headArt = vm.head.image ? { src: vm.head.image, photo: true } : { src: art, photo: false };
   const camp = record != null && vm.kind === "stay" && isCampStay(record);
@@ -400,7 +405,7 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
         // What just arrived wears "Yeni" while it rings (arrive/useArrivals pulses .ar-new on it, C10/C35).
         data-new={L("Yeni", "New")}
       >
-        <IntentHead vm={vm} art={headArt} chip={chip} chipId={chipId} pop={pop} onPano={a.pano} menu={<IntentMenu entries={menu} name={name} />} />
+        <IntentHead vm={vm} art={headArt} chip={chip} busy={busy} chipId={chipId} pop={pop} onPano={a.pano} menu={<IntentMenu entries={menu} name={name} />} />
         <div className="q-bwrap">
           <div className="q-body">
             <div key={xf.key} className={xf.cls}>

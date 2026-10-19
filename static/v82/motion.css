@@ -1,2 +1,15 @@
 /* v82 motion: docs/superpowers/specs/2026-10-18-v82-gecis/02-spec.md. Rules are ported from the approved prototype
    (plan-v32-tasarim: docs/mockups/plan-v83-turler/kaynak/mk81.css, mk82.css, mk83.css) and keep its class names. */
+
+/* 0.38.8: the small "aranıyor" line where a background answer will land (plan/v82/Searching.tsx): the chat's three dots
+   (app.css .th-dots) and a short line; in a chip that already says "Aranıyor", the dots alone. Still with reduced motion. */
+.q-look { display: inline-flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; font-size: var(--q-fs-small); color: var(--q-mut); }
+.q-look .q-lookt { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.q-look.q-lookrow { display: flex; min-height: 28px; }
+.q-bv .q-look { padding: 0 14px 10px 50px; background: #fbfaf7; display: flex; }
+@media (max-width: 860px) { .q-bv .q-look { padding-left: 14px; } }
+.q-st .q-lookd i { width: 4px; height: 4px; background: currentColor; }
+@media (prefers-reduced-motion: reduce) {
+  .q-lookd i { animation: none !important; opacity: .6; transform: none; }
+}
+body.still .q-lookd i { animation: none !important; opacity: .6; transform: none; }
