@@ -283,7 +283,7 @@ export function ShareDialog({ trip, onClose, onSettings }: { trip: Trip; onClose
 
 // --- joining (from Seyahatlerim) ------------------------------------------------------------------
 
-/** `startOpen`: opened by the home's "Paylaşılan geziye katıl" chip; `onCancel` then hides it again. */
+/** `startOpen`: opened by "Paylaşılan geziye katıl" in the home's profile menu; `onCancel` then hides it again. */
 export function JoinShared({ onJoined, startOpen = false, onCancel }: { onJoined: (tripId: string) => void; startOpen?: boolean; onCancel?: () => void }) {
   const [open, setOpen] = useState(startOpen);
   const [code, setCode] = useState("");

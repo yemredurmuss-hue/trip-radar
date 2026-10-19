@@ -235,10 +235,14 @@ export function withTypedLang(s: StartState, text: string): StartState {
   return { ...s, lang: said, langFixed: true, messages };
 }
 
-/** The start's own first lines in both languages ([tr, en]): the home's chips (TripsHome MODES) and the first questions. */
+/**
+ * The start's own first lines in both languages ([tr, en]): the home's chips (TripsHome: "Sürpriz bir yer"; the older
+ * ones stay for the drafts and trips begun with them) and the first questions.
+ */
 const OPENERS: readonly (readonly [string, string])[] = [
   ["Yeni gezi planla", "Plan a new trip"],
   ["Yeni gezi planla", "Create a new trip"],
+  ["Sürpriz bir yer", "Surprise me"],
   ["Bana ilham ver", "Inspire me where to go"],
   ["Yol gezisi", "Plan a road trip"],
   ["Son dakika kaçamağı", "A last-minute escape"],

@@ -22,6 +22,7 @@ import { addImages, addLinks } from "./capture";
 import { HomeBackdrop } from "./HomeBackdrop";
 import { Mascot } from "./Mascot";
 import { HeroIcon, type HeroIconName } from "./Icons";
+import { DiceIcon, HINTS, IDEAS, IdeaArt, ideasFor, ideaTip, inLang, RefreshIcon } from "./homeIdeas";
 import { useMyPhoto, usePeoplePhotos } from "./Profile";
 import { JoinShared } from "./Share";
 import { DraftCard, TripCard } from "./TripCard";
@@ -29,7 +30,7 @@ import { joinTr } from "./TripPanel";
 import { reducedMotion } from "./motion";
 import { WorkPill } from "./WorkPill";
 
-/** What opens the start chat: a mode (the chips), what was typed, or a draft to go on with. */
+/** What opens the start chat: a mode (an idea chip's, or "Sürpriz bir yer"), what was typed, or a draft to go on with. */
 export interface StartLaunch {
   mode: StartMode;
   text?: string;
@@ -55,20 +56,9 @@ interface Props {
   onTrash: () => void;
 }
 
-/** What the home box suggests, one after another (a writing hint, not data); the first is the one that stays. */
-const HINTS: (() => string)[] = [
-  () => L("Bali'ye 3 hafta, Sabine'yle… ya da bir link yapıştır", "Three weeks in Bali with Sabine… or paste a link"),
-  () => L("Mayısta Lizbon, babamlarla, merdiven yok…", "Lisbon in May, with my parents, no stairs…"),
-  () => L("Ozora festivaline 3 arkadaş gidiyoruz…", "Three friends going to the Ozora festival…"),
-];
-
-const MODES: { mode: StartMode | "join"; icon: HeroIconName; label: () => string }[] = [
-  { mode: "plan", icon: "sparkle", label: () => L("Yeni gezi planla", "Create a new trip") },
-  { mode: "inspire", icon: "globe", label: () => L("Bana ilham ver", "Inspire me where to go") },
-  { mode: "road", icon: "car", label: () => L("Yol gezisi", "Plan a road trip") },
-  { mode: "lastminute", icon: "clock", label: () => L("Son dakika kaçamağı", "A last-minute escape") },
-  { mode: "join", icon: "users", label: () => L("Paylaşılan geziye katıl", "Join a shared trip") },
-];
+/** How long the box's placeholder line stays, and its fade out before the next one (app.css `.st-ph.out`). */
+const HINT_MS = 3200;
+const HINT_FADE_MS = 450;
 
 /** The people's own colours (v11: Emre violet, Sabine teal), then the rest of the set, the same name the same colour. */
 const FACES = ["#5b45e0", "#1d8577", "#c0256b", "#b5761c", "#2563c9", "#5d8a1c"];
@@ -210,7 +200,8 @@ function ProfileMenu(p: { name: string | null; photo: string | null; model: stri
  * one box on the left, the traveller's corner on the right (who they are, who they travel with, how many trips and
  * bookings, which AI), the trips below as v11 cards. A link, a file or a pasted screenshot is read and sorted into its
  * trip as before; typed words start a trip by chat (or, when they name a trip there is, ask which). A half-done
- * interview waits as a dashed draft card.
+ * interview waits as a dashed draft card. Under the box (ana-sayfa-v1, 2026-10-19): idea chips that write a sentence into
+ * it, "Sürpriz bir yer" (the inspire mode) and "Başka fikirler"; joining a shared trip is in the profile menu.
  */
 export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettings, onStart, onAddToTrip, ctx, onTrash }: Props) {
   const [text, setText] = useState("");
@@ -225,6 +216,44 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
   const [rates, setRates] = useState<Rates | null>(null);
   useEffect(() => void getRates().then(setRates).catch(() => undefined), []);
   const fileInput = useRef<HTMLInputElement>(null);
+  const box = useRef<HTMLTextAreaElement>(null);
+  const go = useRef<HTMLButtonElement>(null);
+  // The idea chips: which set of six, the mode of the one pressed (until the box is emptied), its sentence being typed in.
+  const [ideaSet, setIdeaSet] = useState(0);
+  const [ideaMode, setIdeaMode] = useState<StartMode | null>(null);
+  const [writing, setWriting] = useState(false);
+  const [written, setWritten] = useState(0);
+  const [spin, setSpin] = useState(false);
+  const typing = useRef<number | undefined>(undefined);
+  useEffect(() => () => clearInterval(typing.current), []);
+  // The placeholder line turns while the box is empty and left alone (none under reduced motion: the first stays).
+  const [hint, setHint] = useState(0);
+  const [hintOut, setHintOut] = useState(false);
+  const turning = !text && !focused;
+  useEffect(() => {
+    if (!turning || reducedMotion()) return;
+    let swap: number | undefined;
+    const turn = window.setInterval(() => {
+      setHintOut(true);
+      swap = window.setTimeout(() => (setHint((i) => (i + 1) % HINTS.length), setHintOut(false)), HINT_FADE_MS);
+    }, HINT_MS);
+    return () => (clearInterval(turn), clearTimeout(swap), setHintOut(false));
+  }, [turning]);
+  // A sentence written in: the caret at its end (once React has put all of it in), and "Planlamaya başla" pulses once.
+  useEffect(() => {
+    if (!written) return;
+    const ta = box.current;
+    if (ta) {
+      ta.focus({ preventScroll: true });
+      ta.setSelectionRange(ta.value.length, ta.value.length);
+    }
+    const b = go.current;
+    if (b && !reducedMotion()) {
+      b.classList.remove("ready");
+      void b.offsetWidth;
+      b.classList.add("ready");
+    }
+  }, [written]);
   const myPhoto = useMyPhoto();
   const peoplePhoto = usePeoplePhotos();
   const working = openCaptures.filter((c) => c.status !== "error");
@@ -271,7 +300,43 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
     void addImages(Array.from(e.dataTransfer.files));
   }
 
-  async function submit(mode: StartMode = "plan", label?: string) {
+  /** A sentence still being written in stops where it is (the person typed, or sent it). */
+  function stopTyping() {
+    if (typing.current === undefined) return;
+    clearInterval(typing.current);
+    typing.current = undefined;
+    setWriting(false);
+  }
+
+  /** An idea chip: its sentence typed into the box (at once under reduced motion), its mode kept for when it's sent. */
+  function writeIdea(say: string, mode: StartMode) {
+    clearInterval(typing.current);
+    setAsk(null);
+    setIdeaMode(mode);
+    const done = () => {
+      typing.current = undefined;
+      setWriting(false);
+      setWritten((n) => n + 1);
+    };
+    if (reducedMotion()) {
+      setText(say);
+      return done();
+    }
+    setWriting(true);
+    setText("");
+    let k = 0;
+    typing.current = window.setInterval(() => {
+      k += 2;
+      setText(say.slice(0, k));
+      if (k >= say.length) {
+        clearInterval(typing.current);
+        done();
+      }
+    }, 14);
+  }
+
+  async function submit(mode: StartMode = ideaMode ?? "plan", label?: string) {
+    stopTyping();
     const typed = text.trim();
     // Links: read and sorted into their trips, as always; words typed with them go on to the conversation.
     const { links, words } = splitLinks(typed);
@@ -286,6 +351,7 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
     const named = mode === "plan" ? tripNamedIn(said, trips, items) : null;
     if (named) return setAsk({ trip: named.trip, text: said });
     setText("");
+    setIdeaMode(null);
     onStart({ mode, text: said, label, note });
   }
 
@@ -299,6 +365,9 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
   // The faces' colours follow this order (me first); my face without a name is the person icon.
   const people = [me ?? "", ...companions];
   const today = ctx.today;
+  // This month's ideas first (ctx.today is "YYYY-MM-DD").
+  const month = Number(today.slice(5, 7)) - 1;
+  const ideas = ideasFor(ideaSet, Number.isInteger(month) && month >= 0 ? month : new Date().getMonth());
   // Yaklaşan · Geçmiş (Layla's toggle): a trip whose last day is past is past; one without dates is still ahead.
   const [when, setWhen] = useState<"ahead" | "past">("ahead");
   const rangeOf = (t: Trip) => t.confirmedDates ?? tripDateRange(items.filter((i) => i.tripId === t.id && i.status !== "dismissed"));
@@ -365,7 +434,7 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
           </section>
         )}
         <form
-          className={`st-prompt${dragging ? " drag" : ""}`}
+          className={`st-prompt${dragging ? " drag" : ""}${writing ? " lit" : ""}`}
           onSubmit={(e) => {
             e.preventDefault();
             void submit();
@@ -373,13 +442,14 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
         >
           {/* The hints turn while the box is empty and left alone; focus or typing stops them, and the first stays (reduced motion: app.css). */}
           <div className="st-ta">
-            {!text && !focused && (
-              <span className="st-ph" aria-hidden>
-                {HINTS.map((hint, i) => <i key={i}>{hint()}</i>)}
+            {turning && (
+              <span className={`st-ph${hintOut ? " out" : ""}`} aria-hidden>
+                {HINTS[hint]()}
               </span>
             )}
             <textarea
-              className={!text && !focused ? "rot" : undefined}
+              ref={box}
+              className={turning ? "rot" : undefined}
               value={text}
               rows={2}
               aria-label={L("Gezi kutusu", "Trip box")}
@@ -387,7 +457,10 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
               onFocus={() => setFocused(true)}
               onBlur={() => setFocused(false)}
               onChange={(e) => {
+                // Typing takes over from a sentence still being written in; an emptied box forgets the idea's mode.
+                stopTyping();
                 setText(e.target.value);
+                if (!e.target.value.trim()) setIdeaMode(null);
                 setAsk(null);
               }}
               onPaste={onPaste}
@@ -416,7 +489,7 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
               }}
             />
             <span className="st-prompt-hint">{L("link, ekran görüntüsü ya da yazı", "a link, a screenshot or words")}</span>
-            <button className="st-go" type="submit">
+            <button ref={go} className="st-go" type="submit" onAnimationEnd={(e) => e.currentTarget.classList.remove("ready")}>
               {L("Planlamaya başla", "Start planning")} <span aria-hidden>↗</span>
             </button>
           </div>
@@ -432,12 +505,37 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
             </button>
           </div>
         )}
-        <div className="st-starts">
-          {MODES.map((m) => (
-            <button key={m.mode} type="button" className="st-start" onClick={() => (m.mode === "join" ? setJoining(true) : void submit(m.mode, m.label()))}>
-              <HeroIcon name={m.icon} size={16} /> {m.label()}
+        <div className="hm-ideas-wrap">
+          <div className="hm-ideas" role="group" aria-label={L("Gezi fikirleri", "Trip ideas")}>
+            {ideas.map((idea, i) => (
+              <button key={`${ideaSet}-${idea.art}`} type="button" className="hm-idea" style={{ animationDelay: `${i * 40}ms` }} title={ideaTip(idea)} onClick={() => writeIdea(inLang(idea.say), idea.mode)}>
+                <span className="hm-idea-th">
+                  <IdeaArt art={idea.art} />
+                </span>
+                {inLang(idea.title)}
+                <small>{inLang(idea.place)}</small>
+              </button>
+            ))}
+            <button type="button" className="hm-idea" style={{ animationDelay: `${ideas.length * 40}ms` }} onClick={() => void submit("inspire", L("Sürpriz bir yer", "Surprise me"))}>
+              <span className="hm-idea-th hm-idea-ic">
+                <DiceIcon />
+              </span>
+              {L("Sürpriz bir yer", "Surprise me")}
             </button>
-          ))}
+            <button
+              type="button"
+              className={`hm-idea hm-more${spin ? " spin" : ""}`}
+              style={{ animationDelay: `${(ideas.length + 1) * 40}ms` }}
+              onClick={() => {
+                setIdeaSet((n) => (n + 1) % IDEAS.length);
+                setSpin(true);
+                setTimeout(() => setSpin(false), 520);
+              }}
+            >
+              <RefreshIcon />
+              {L("Başka fikirler", "More ideas")}
+            </button>
+          </div>
         </div>
         {joining && (
           <div className="st-join">
