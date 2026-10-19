@@ -5,7 +5,7 @@
 import { L } from "./i18n";
 import { liveLabels, nNights } from "./i18nText";
 import { formatDateRange, isoDate, nightsBetween } from "./items";
-import { endsOf, isHiddenLeg, isHomeLeg, isRental, travelsOf, type Leg, type Travel } from "./legs";
+import { endsOf, farHub, isHiddenLeg, isHomeLeg, isRental, travelsOf, type Leg, type Travel } from "./legs";
 import { cityKeyOf, sameCity, type DateRange, type OptionGroup, type Plan, type StayBlock } from "./plan";
 import { isIdea, needsBooking } from "./booking";
 import type { Category, Item, LegMode } from "./types";
@@ -438,16 +438,18 @@ export function buildTimeline(plan: Plan, allLegs: Leg[], items: Item[], hidden:
     })
     .filter((g) => g.items.length > 0);
   // The front: days give way to what's in them that is a block of its own; a transfer shows once there's
-  // a plan for it (an empty one is a to-do, and a line of the itinerary).
+  // a plan for it (an empty one is a to-do, and a line of the itinerary). An empty road from an airport in
+  // another city (legs.farHub: Kolombo → Ahangama) is a way to plan all the same.
   const board: TimelineEntry[] = [];
+  const onFront = (l: Leg) => l.status !== "empty" || farHub(l) != null;
   for (const e of entries) {
     if (e.kind === "day") {
-      for (const l of e.legs) if (l.status !== "empty") board.push(legRow(l));
+      for (const l of e.legs) if (onFront(l)) board.push(legRow(l));
       for (const i of e.items) {
         // Only what needs booking is a block of the plan; an idea put on this day is a line of the itinerary.
         if ((i.status === "chosen" || i.status === "booked") && needsBooking(i)) board.push({ kind: "event", key: `event:${i.id}`, date: e.date, dayNo: e.dayNo, item: i });
       }
-    } else if (!(e.kind === "leg" && e.leg.status === "empty")) {
+    } else if (!(e.kind === "leg" && !onFront(e.leg))) {
       board.push(e);
     }
   }

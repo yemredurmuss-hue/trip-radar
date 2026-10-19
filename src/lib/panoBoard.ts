@@ -13,6 +13,7 @@ import { brandOf } from "./brands";
 import { cardFacts, durationText, type CardFacts } from "./cardFacts";
 import { cardKind, type CardKind } from "./cardKinds";
 import { flightLeg, ticketPrices } from "./cardTicket";
+import { bareChatPlan } from "./emptyCards";
 import { planSectionOfItem, type SectionId } from "./categories";
 import type { GroupDecision } from "./decision";
 import { L } from "./i18n";
@@ -370,7 +371,9 @@ export function panoBoardOf(input: PanoInput): PanoBoard {
   for (const d of input.decisions?.values() ?? []) for (const o of d.options) byItem.set(o.item.id, d);
   const ctx: Ctx = { input, byItem, people: input.people ?? null };
   const byId = new Map(input.items.map((i) => [i.id, i]));
-  const live = (i: Item | undefined): i is Item => i != null && i.status !== "dismissed";
+  // A plan said in the chat with nothing concrete on it (the start's placeholder stay, "Bali Konaklama") is not
+  // something the trip gathered: the Plan holds its room, the Pano has no option to show for it.
+  const live = (i: Item | undefined): i is Item => i != null && i.status !== "dismissed" && !bareChatPlan(i);
   const collections = collectionsOf(input).map(({ section, intents }) => ({
     section: section.id,
     intents: intents.map((need) => ({ need, records: need.itemIds.map((id) => byId.get(id)).filter(live) })),

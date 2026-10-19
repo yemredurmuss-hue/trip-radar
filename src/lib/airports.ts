@@ -75,6 +75,9 @@ export function cityOfAirport(text: string): string {
   return names ? L(names[0], names[1]) : text;
 }
 
+/** The city an exact airport code names, in both languages (["Kolombo", "Colombo"]); none for any other text. */
+export const airportCities = (text: string | null | undefined): readonly string[] => (text && isCode(text) ? (AIRPORTS[text] ?? []) : []);
+
 /** Whether the code is one we can name a city for (an unknown code stays a code). */
 export const knownAirport = (text: string | null | undefined): boolean => !!text && isCode(text) && text in AIRPORTS;
 

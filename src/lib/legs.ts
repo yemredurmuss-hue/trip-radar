@@ -4,7 +4,7 @@
 // what the traveller decides for a transfer (how they'll go, that it's arranged, a note) is stored,
 // on the trip, by leg key; the key names the day and the cities, not the hotels, so a plan survives
 // switching hotels.
-import { countryOfAirport } from "./airports";
+import { cityOfAirport, countryOfAirport, knownAirport } from "./airports";
 import { L } from "./i18n";
 import { lookWord } from "./stageWords";
 import { SCHENGEN } from "./visa";
@@ -667,8 +667,27 @@ const stayWord = (p: LegPoint) => stayWordOf(p.item);
  * A transfer in a few words, like a ticket: "Havalimanı → Otel", "Daire → Gar", "Otel değişimi". The
  * names (OPO, the stay's name) go under it; the notes open with it.
  */
+/**
+ * A way in or out whose airport is in another city than the stay (a flight landing at CMB, the stay in Ahangama): that
+ * city ("Kolombo"), a road between two places to plan, not a ride across town. Null when either city isn't known (an
+ * airport the table can't name, a stay with no city) or both are the same.
+ */
+export function farHub(leg: Leg): string | null {
+  if (leg.kind !== "arrival" && leg.kind !== "departure") return null;
+  const end = leg.kind === "arrival" ? "to" : "from";
+  const flights = (leg.travel?.settled ? [leg.travel.settled] : (leg.travel?.items ?? [])).filter((i) => i.category === "flight");
+  const codes = [...new Set(flights.map((i) => i.flight?.[end] ?? null))];
+  const code = codes.length === 1 ? codes[0] : null;
+  const stay = (leg.kind === "arrival" ? leg.to : leg.from).city;
+  if (!code || !stay || !knownAirport(code)) return null;
+  const city = cityOfAirport(code);
+  return sameCity(city, stay) ? null : city;
+}
+
 export function legShortTitle(leg: Leg): string {
   if (leg.kind === "move") return `${leg.from.city ?? leg.from.label} → ${leg.to.city ?? leg.to.label}`;
+  const far = farHub(leg);
+  if (far) return leg.kind === "arrival" ? `${far} → ${leg.to.city}` : `${leg.from.city} → ${far}`;
   if (leg.kind === "change") return L(`${stayWord(leg.from)} değişimi`, `${stayWord(leg.from)} change`);
   const word = leg.via && HUB_NAMES[leg.via];
   const hub = word ? capitalize(word) : leg.kind === "arrival" ? leg.from.label : leg.to.label;

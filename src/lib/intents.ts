@@ -31,7 +31,7 @@ import { bookingCopies, refFromNote } from "./bookingRows";
 import { catDomKey, citiesOfPlan, EVENT_RANK, eventsByCity, needsOf, recordOf, type CatEntry, type CatSection, type SectionId } from "./categories";
 import type { GroupDecision } from "./decision";
 import { needsDoc } from "./docs";
-import { allAboard, nightsAboard } from "./nightsAboard";
+import { afterExit, allAboard, nightsAboard } from "./nightsAboard";
 import { campCoverOf, coversWays, isPass, partCoverOf, rideCoverOf, wayCoverOf } from "./covers";
 import { draftOf } from "./draft";
 import { estimatedRange, rangeLabel, type EstRange } from "./estRange";
@@ -39,7 +39,7 @@ import { L } from "./i18n";
 import { count, joinAnd, locative, lowerFirst, nNights, nReviews } from "./i18nText";
 import { shortDay } from "./ideas";
 import { formatDateRange, isoDate, listingKeyOf, nightsBetween, placeMapUrl, rankItems } from "./items";
-import { clockOf, legShortTitle, type Leg } from "./legs";
+import { clockOf, farHub, legShortTitle, type Leg } from "./legs";
 import { noCounts, type Stage } from "./lifecycle";
 import { cancellationText } from "./needs";
 import { ratingText } from "./offerSource";
@@ -507,6 +507,9 @@ function nightsOf(b: Bucket, lead: Item | null): { start: string | null; end: st
 function routeOf(b: Bucket, lead: Item | null, leg: Leg | null): IntentHead["route"] {
   if (leg) {
     if (leg.kind === "move") return { from: leg.from.city ?? leg.from.label, to: leg.to.city ?? leg.to.label };
+    // The road from an airport in another city: its two places (Kolombo → Ahangama), not the airport and the stay's word.
+    const far = farHub(leg);
+    if (far) return leg.kind === "arrival" ? { from: far, to: leg.to.city! } : { from: leg.from.city!, to: far };
     const view = legCardView(leg);
     return { from: view.from.city, to: view.to.city };
   }
@@ -707,6 +710,8 @@ const ROUTE_SECTIONS: readonly SectionId[] = ["flight", "stay", "transport"];
 const MOVE_MODES: readonly LegMode[] = ["train", "bus", "car", "flight"];
 /** And for a transfer to or from the airport or the station nobody has planned (its old card's chips: no plane across town). */
 const TRANSFER_MODES: readonly LegMode[] = ["metro", "bus", "train", "taxi", "transfer"];
+/** And for the road from an airport in another city to the stay (legs.farHub: Kolombo → Ahangama), or back. */
+const FAR_MODES: readonly LegMode[] = ["train", "bus", "transfer", "taxi", "car"];
 
 function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
   const records = uniq(b.entries.flatMap((e) => e.itemIds))
@@ -799,7 +804,7 @@ function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
     cover,
     ticket: frame === "ticket" ? ticketViewOf(shown ? [shown] : [], { kind, leg, route: head.route, ends: endsOf(leg), now: env.now }) : null,
     // (and for one whose way was said with nothing to book: Değiştir draws them again in place)
-    modes: (status === "searching" && leg && !legMode) || legSaid ? (leg?.kind === "move" ? [...MOVE_MODES] : leg?.kind === "arrival" || leg?.kind === "departure" ? [...TRANSFER_MODES] : []) : [],
+    modes: (status === "searching" && leg && !legMode) || legSaid ? (leg?.kind === "move" ? [...MOVE_MODES] : leg && farHub(leg) ? [...FAR_MODES] : leg?.kind === "arrival" || leg?.kind === "departure" ? [...TRANSFER_MODES] : []) : [],
     legKey: leg?.key ?? null,
     ...(draftRoute ? { routeDraft: true } : {}),
     ...(party != null ? { people: party } : {}),
@@ -992,6 +997,10 @@ function joinConnections(list: IntentVM[], env: Env): IntentVM[] {
 const onPlane = (b: Bucket, aboard: ReadonlySet<string>): boolean =>
   b.entries.every((e) => !e.itemIds.length && e.piece.kind === "entry" && e.piece.entry.kind === "stay" && e.piece.entry.block.kind === "open" && allAboard(e.piece.entry.block.range, aboard));
 
+/** Nights with nothing of their own after the trip's way out, where nothing says it goes on (nightsAboard.afterExit). */
+const pastExit = (b: Bucket, items: readonly Item[]): boolean =>
+  b.entries.every((e) => !e.itemIds.length && e.piece.kind === "entry" && e.piece.entry.kind === "stay" && e.piece.entry.block.kind === "open" && afterExit(e.piece.entry.block.range, items));
+
 /** An empty way in or home: a trip's flight to find, with nothing saved or planned for it. */
 const emptyWay = (b: Bucket): boolean => b.entries.every((e) => e.piece.kind === "entry" && e.piece.entry.kind === "travel" && !e.piece.entry.travel && !e.itemIds.length && !e.piece.entry.leg?.choice);
 
@@ -1015,10 +1024,10 @@ function intentsWith(section: CatSection, env: Env): IntentVM[] {
   } else {
     // A road trip (the start's road mode): the car is the way there; an empty way in or home is no flight to find (H5).
     const road = Boolean(env.input.trip.startGuide?.road) && section.id === "flight";
-    // D14 (H6): an empty night spent on the plane is no stay to find.
+    // D14 (H6): an empty night spent on the plane is no stay to find; nor one after the trip's way out (0.38.2).
     const aboard = section.id === "stay" ? nightsAboard(env.input.items) : null;
     own = bucketsOf(section)
-      .filter((b) => !(road && emptyWay(b)) && !(aboard?.size && onPlane(b, aboard)))
+      .filter((b) => !(road && emptyWay(b)) && !(aboard?.size && onPlane(b, aboard)) && !(aboard && pastExit(b, env.input.items)))
       .map((b) => singleIntent(section.id, b, env));
     if (section.id === "flight") own = joinConnections(own, env);
     own = [...own, ...(env.input.suggestions?.[section.id] ?? []).filter((s) => s.kind === "add").map((s) => suggestedIntent(section.id, s, env))];
