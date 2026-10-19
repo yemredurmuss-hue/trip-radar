@@ -2121,17 +2121,18 @@ try {
   await app.locator(".cat-plan").evaluate((el) => el.scrollIntoView({ block: "start" }));
   await app.screenshot({ path: `${out}/5a-categories.png` });
   // v11: the visa is Belgeler ve internet's first line (Emre: where the papers are, and something to tick): a
-  // Turkish passport to Portugal needs a Schengen visa, amber with its source; ticked, "Vize alındı", green.
+  // Turkish passport to Portugal needs a Schengen visa, amber with its source; marked "Var", "Vize tamam", green (0.39.1).
   await openSec("prep");
   assert.equal(await sec("prep").locator(".q-pbody").count(), 1, "Hazırlık open");
   assert.equal(await app.locator(".q-pbody .z-visa, .q-pbody .visa-row, .prep-visa").count(), 0, "not in Hazırlık");
   await openSec("other");
   const visaRow = sec("other").locator(".z-visa");
-  // v11 as drawn: one full-width line; the visa to get has its source and "✓ Vize alındı" like a plan's "Aldım" (v83 C25: amber).
-  assert.match((await visaRow.innerText()).replace(/\s+/g, " "), /^! Schengen vizesi gerekiyor Resmî kaynak ↗ ✓ Vize alındı$/);
+  // v11 as drawn: one full-width line; 0.39.1: the answer said directly, the source small beside it, and "Var" / "Yok" like a
+  // plan's "Aldım" (v83 C25: amber while "Yok").
+  assert.match((await visaRow.innerText()).replace(/\s+/g, " "), /^! Vize gerekli · başvuru Schengen vizesi Resmî kaynak ↗ Var Yok$/);
   assert.ok(await visaRow.evaluate((el) => el.classList.contains("need")), "C25: amber");
-  await visaRow.getByRole("checkbox").click();
-  await sec("other").locator(".z-visa.ok", { hasText: "Vize alındı" }).waitFor();
+  await visaRow.getByRole("button", { name: "Var", exact: true }).click();
+  await sec("other").locator(".z-visa.ok", { hasText: "Vize tamam" }).waitFor();
   // The records read again (as after any save): nothing "moves" (a restaurant drawn under Yapılacak şeyler, a chore
   // under Hazırlık stay where they are), so the page doesn't scroll to one of them on its own (0.36.56's bug).
   await app.evaluate(() => {
@@ -2148,8 +2149,8 @@ try {
   await app.setViewportSize({ width: 1440, height: 900 });
   await sec("other").evaluate((el) => el.scrollIntoView({ block: "start" }));
   await app.screenshot({ path: `${out}/5i-visa.png` });
-  await visaRow.getByRole("checkbox").click();
-  await sec("other").locator(".z-visa.need", { hasText: "Schengen vizesi gerekiyor" }).waitFor();
+  await visaRow.getByRole("button", { name: "Yok", exact: true }).click();
+  await sec("other").locator(".z-visa.need", { hasText: "Vize gerekli · başvuru" }).waitFor();
   // v82 (aşama 6): the Pano is a window over the plan (E8), no longer a tab of its own: the plan stays behind it and the Pano tab reads
   // as chosen while it is open. Its side menu (Tümü · Biriktirdiklerim · AI önerileri · İlham · Belgeler, then the intents by category
   // with their dots); every option a card of one size (220 px), group by group; an intent's options side by side (280 px columns that
@@ -2360,7 +2361,7 @@ try {
   // F4: "Sıradaki" updates itself. The visa ticked as got, its chip turns green and the next need takes its place; a tap opens
   // that need's category (closed here: one is open at a time, Belgeler ve internet's) and brings it into view with a flash.
   await openSec("other");
-  await sec("other").locator("[data-visa] .q-got").click();
+  await sec("other").locator("[data-visa]").getByRole("button", { name: "Var", exact: true }).click();
   await app.locator(".x-hero .x-chip.c-visa.ok", { hasText: "Vize alındı" }).waitFor();
   await app.waitForFunction(() => !/vize/.test(document.querySelector(".x-hero .x-next")?.textContent ?? "vize"));
   const nextNow = flat([await app.locator(".x-hero .x-next").innerText()])[0];

@@ -48,6 +48,7 @@ import { EmptyEnvContext, type EmptyEnv } from "./cards/emptyEnv";
 import { isEmptyRecord } from "../lib/emptyCards";
 import { liveSource } from "../lib/offerSources";
 import { foreignCountries, homeFromFlights } from "../lib/suggestions";
+import { visaCountry, visaDoneOf, visaFor } from "../lib/visa";
 import { CardEnvContext, NavGroup, PlanCard, type CardEnv } from "./cards/PlanCard";
 import { SilhouetteDefs } from "./cards/Silhouettes";
 import { UndoToast } from "./cards/UndoToast";
@@ -592,6 +593,16 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const countries = useMemo(() => countryCodesOf(items), [items]);
   // D9: a trip of several countries, each one's own money, clock, plug and visa (the "n ülke" chip's rows).
   const perCountry = useMemo(() => (countries.length > 1 ? countries.map((c) => countryFacts(c, factsOpts)) : []), [countries, factsOpts]);
+  // Belgeler's visa line, the hero's visa chip and "Sıradaki": for the passport set, else home by the first flight (never a
+  // Turkish one taken for granted: the line asks), to the trip's country abroad, found from its places and where its flights
+  // land; drawn whenever the trip goes abroad, sorted or not (one mark with Hazırlık's visa chore: visaDoneOf).
+  const visaHome = home ?? homeFromFlights(items);
+  const visa = useMemo(() => {
+    const to = visaCountry(facts.country, esimCountries.length ? esimCountries : countries, visaHome);
+    return to ? visaFor(visaHome, to) : null;
+  }, [facts.country, esimCountries, countries, visaHome]);
+  const visaDone = visaDoneOf(trip);
+  const heroFacts = useMemo(() => ({ ...facts, visa }), [facts, visa]);
   const places = useMemo(() => cityRanges(plan, mains, range), [plan, mains, range]);
   const mood = trip.mood?.key === moodFor && trip.mood.text ? trip.mood.text : null;
   // The sections' "3/4"s added up: whether anything is saved yet, and (with nothing left to do) all set.
@@ -673,7 +684,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     return bar && view ? { view, bar } : null;
   }, [bar, who.count, facts.adults]);
   // Row 127: a visa is a thing to get only while the trip is being planned.
-  const visaToGet = mode === "plan" && facts.visa?.kind === "visa" && !trip.visaDone;
+  const visaToGet = mode === "plan" && visa?.kind === "visa" && !visaDone;
   // B15: the bookings in their last two weeks with no file yet; a tap goes to the first.
   const missingDocs = docsMissing(counted);
   // D16: no budget yet: one is set in the budget segment, in the money the board shows the trip in.
@@ -939,7 +950,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           docs={missingDocs.length ? { count: missingDocs.length, go: () => goIntent(missingDocs[0]) } : null}
           perCountry={perCountry}
           next={heroNext}
-          facts={facts}
+          facts={heroFacts}
           countries={countryNames(countries)}
           places={places}
           home={passport}
@@ -1100,8 +1111,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
             today={today}
             items={items}
             suggestions={suggestions}
-            visa={facts.visa}
-            visaDone={!!trip.visaDone}
+            visa={visa}
+            visaDone={visaDone}
             tourPhotos={tourPlaces}
             decide={counts.open}
             order={<PlanOrder view="plan" onView={(v) => setView(v)} off={orderOff} />}

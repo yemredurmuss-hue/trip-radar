@@ -13,7 +13,7 @@
 import { cityOfAirport } from "./airports";
 import { L, lang } from "./i18n";
 import { ablative } from "./i18nText";
-import { SCHENGEN, visaFor } from "./visa";
+import { SCHENGEN, visaDoneOf, visaFor } from "./visa";
 import type { Item, Trip } from "./types";
 
 /** Where a chore (and its day) came from: its small label ("uçuş kartından"). */
@@ -59,8 +59,8 @@ export interface PrepInput {
   trip: Pick<Trip, "prepDone" | "hidden" | "visaDone">;
   /** The trip's first and last day. */
   range: { start: string; end: string } | null;
-  /** The passport the visa rules answer for (Settings → Pasaport). */
-  passport: string;
+  /** The passport the visa rules answer for (Settings → Pasaport, else home); null: not known, no visa chore. */
+  passport: string | null;
   /** The countries the trip goes to (ISO 3166-1 alpha-2), in the order its places come. */
   countries: string[];
   /** YYYY-MM-DD. */
@@ -156,7 +156,7 @@ function schengen(input: PrepInput): PrepTask | null {
     sub: L(`Başvuru en geç gidişten ${SCHENGEN_LEAD_DAYS} gün önce`, `Apply at least ${SCHENGEN_LEAD_DAYS} days before you go`),
     day: { date: addDays(input.range.start, -SCHENGEN_LEAD_DAYS), time: null, rel: "by" },
     from: "visa",
-    done: Boolean(input.trip.visaDone),
+    done: visaDoneOf(input.trip),
     doneAt: null,
     item: null,
     of: null,
@@ -166,16 +166,18 @@ function schengen(input: PrepInput): PrepTask | null {
 }
 
 /**
- * A visa outside Schengen the passport needs (the visa table: Sri Lanka's ETA, the UK's, the US's): applied for before
- * leaving, from the visa rule, with its official page. No lead time is said where the rule gives none.
+ * A visa outside Schengen the passport needs (the visa table: Sri Lanka's ETA, the UK's, the US's; Indonesia's e-VOA, or
+ * the visa on arrival): got before leaving, from the visa rule, with its official page. No lead time is said where the rule
+ * gives none. Ticked with Belgeler's "Var" too, and the other way round (one mark: visa.ts visaDoneOf).
  */
 function otherVisas(input: PrepInput): PrepTask[] {
   const leave = leaveDay(input.items, input.range);
   return input.countries.flatMap((code): PrepTask[] => {
     if (SCHENGEN.includes(code)) return [];
     const visa = visaFor(input.passport, code);
-    if (visa.kind !== "visa" || !visa.apply) return [];
-    return [{ key: `visa:${code}`, title: visa.apply, sub: null, day: leave ? { date: leave, time: null, rel: "before" } : null, from: "visa", done: false, doneAt: null, item: null, of: null, official: visa.link, tick: "mark" }];
+    if ((visa.kind !== "visa" && visa.kind !== "arrival") || !visa.apply) return [];
+    const sub = visa.kind === "arrival" ? L("Varışta da alınabilir, ücretli", "Can also be bought on arrival; a fee is paid") : null;
+    return [{ key: `visa:${code}`, title: visa.apply, sub, day: leave ? { date: leave, time: null, rel: "before" } : null, from: "visa", done: visaDoneOf(input.trip), doneAt: null, item: null, of: null, official: visa.link, tick: "visa" }];
   });
 }
 

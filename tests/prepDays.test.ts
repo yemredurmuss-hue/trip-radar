@@ -81,16 +81,25 @@ describe("the days", () => {
     expect(prepTasks(input({ countries: ["PT"], chores: [chore("Vize başvurusu yap")] })).map((x) => x.key)).toEqual([expect.stringMatching(/^item:/)]);
   });
 
+  it("Indonesia on a Turkish passport (Emre's Bali, 0.39.1): the e-VOA before leaving, or the visa on arrival, with its fee; one mark with Belgeler", () => {
+    const t = prepTasks(input({ countries: ["TR", "ID"] })).find((x) => x.key === "visa:ID")!;
+    expect(t).toMatchObject({ title: "Endonezya e-VOA'sını al (ya da varışta vize)", sub: "Varışta da alınabilir, ücretli", from: "visa", official: "https://evisa.imigrasi.go.id/", tick: "visa", done: false });
+    expect(prepTasks(input({ countries: ["ID"], trip: { visaDone: true } })).find((x) => x.key === "visa:ID")?.done).toBe(true);
+    // No passport known: no chore taken for a Turkish one.
+    expect(prepTasks(input({ countries: ["ID"], passport: null }))).toEqual([]);
+  });
+
   it("Sri Lanka's ETA (Emre's Ahangama, 19 Ekim): applied for before leaving, from the visa rule, its official page, no lead time made up", () => {
     const out = makeItem({ category: "flight", needKey: "flight:bjv-cmb", name: "Bodrum → Kolombo", status: "chosen", flight: { from: "Bodrum", to: "Kolombo", departure: null, arrival: null, carrier: null, flightNumber: null, stops: null }, dates: { start: "2026-11-02", end: null, source: "user" } });
     const tasks = prepTasks(input({ countries: ["LK"], items: [out], range: { start: "2026-11-02", end: "2026-11-20" } }));
     const t = tasks.find((x) => x.key === "visa:LK")!;
-    expect(t).toMatchObject({ title: "Sri Lanka ETA başvurusu", from: "visa", day: { date: "2026-11-02", rel: "before" }, official: "https://www.eta.gov.lk/", done: false, tick: "mark" });
+    expect(t).toMatchObject({ title: "Sri Lanka ETA başvurusu", from: "visa", day: { date: "2026-11-02", rel: "before" }, official: "https://www.eta.gov.lk/", done: false, tick: "visa" });
     expect(prepDayText(t.day!)).toBe("2 Kas'tan önce");
     expect(prepFromText(t.from!)).toBe("vize kuralından");
     expect(t.sub).toBeNull();
-    // Ticked: a mark on the trip.
+    // Ticked: a mark on the trip, one with Belgeler's "Var" (trip.visaDone).
     expect(prepTasks(input({ countries: ["LK"], trip: { prepDone: { "visa:LK": 7 } } })).find((x) => x.key === "visa:LK")).toMatchObject({ done: true, doneAt: 7 });
+    expect(prepTasks(input({ countries: ["LK"], trip: { visaDone: true } })).find((x) => x.key === "visa:LK")).toMatchObject({ done: true });
     // The UK's too; none for a country without a visa, another passport, or said in the chat already.
     expect(prepTasks(input({ countries: ["GB"] })).map((x) => x.title)).toEqual(["Birleşik Krallık vizesine başvur"]);
     expect(prepTasks(input({ countries: ["JP"] })).some((x) => x.key.startsWith("visa:"))).toBe(false);
