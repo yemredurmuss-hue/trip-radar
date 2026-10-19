@@ -1,6 +1,6 @@
 // 0.38.4 (Y3): Emre's Sri Lanka trip, landing at Colombo (CMB) and staying in Ahangama. The road from the airport is one box
 // in Ulaşım named by its two cities (Kolombo → Ahangama, the airport's code small); the start's "Havalimanı transferi"
-// said at the airport's city is that road's, not a box of its own; Önerimiz offers the train, then a taxi or a private
+// said at the airport's city is that road's, not a box of its own; Önerimiz offers public transport (0.39.1; the train in 0.38.4), then a taxi or a private
 // transfer, each with a real search and no made-up length, hour or price; "Bunu seç" says the way as C15's tiles do.
 import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
@@ -83,12 +83,13 @@ describe("Kolombo → Ahangama in Ulaşım", () => {
     expect(transport.some((i) => i.head.name === "Havalimanı transferi")).toBe(false);
   });
 
-  it("offers Önerimiz: the train, then a taxi or a private transfer, with real searches and no length, hour or price", () => {
+  it("offers Önerimiz: public transport, then a taxi or a private transfer, with real searches and no length, hour or price", () => {
     const road = withStart().transport[0];
     expect(road.modes).toEqual(["train", "bus", "transfer", "taxi", "car"]);
     expect(road.wayPicks).toEqual(["train", "taxi"]);
     expect(road.estimate).toBeNull();
     const picks = withLang("tr", () => wayPicks(road, { countries: ["LK"] }));
+    // (Sri Lanka has its coast line: a train, on the map's directions as no rail site is registered; 0.39.1 kept it)
     expect(picks.map((p) => [p.mode, p.label])).toEqual([["train", "Tren"], ["taxi", "Taksi ya da özel transfer"]]);
     const train = new URL(picks[0].site!.url);
     expect(train.origin + train.pathname).toBe("https://www.google.com/maps/dir/");
@@ -97,6 +98,11 @@ describe("Kolombo → Ahangama in Ulaşım", () => {
     expect(picks[1].site!.url).toMatch(/^https:\/\/m\.uber\.com\/ul\/\?action=setPickup&pickup\[formatted_address\]=Kolombo%20Havaliman%C4%B1&dropoff\[formatted_address\]=Ahangama$/);
     // Nothing made up: no figures in the rows' words.
     expect(picks.map((p) => p.label).join(" ")).not.toMatch(/\d/);
+  });
+
+  it("a place with no passenger rail (Bali, 0.39.1): public transport there, picked as a bus, never a train made up", () => {
+    const vm = { wayPicks: ["train", "taxi"] as LegMode[], head: { ...withStart().transport[0].head, city: "Canggu" }, ticket: null };
+    expect(withLang("tr", () => wayPicks(vm as never, { countries: ["ID"] })).map((p) => [p.mode, p.label])).toEqual([["bus", "Toplu taşıma"], ["taxi", "Taksi ya da özel transfer"]]);
   });
 
   it("uses the country's own rail site when the register has one (JR in Japan)", () => {

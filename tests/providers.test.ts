@@ -13,7 +13,7 @@ const ids = (kind: ProviderKind, at: Parameters<typeof pickProviders>[1] = {}) =
 describe("the register", () => {
   it("holds the sites of the v82 drawing, each with its mark, kinds and countries", () => {
     expect(PROVIDERS.map((p) => p.id).sort()).toEqual(
-      ["agoda", "airalo", "airbnb", "amazon", "booking", "getyourguide", "gflights", "hepsiburada", "holafly", "jr", "klook", "rome2rio", "skyscanner", "trendyol", "viator"].sort(),
+      ["agoda", "airalo", "airbnb", "amazon", "bikesbooking", "booking", "discovercars", "getyourguide", "gflights", "hepsiburada", "holafly", "jr", "klook", "rome2rio", "skyscanner", "trendyol", "viator"].sort(),
     );
     for (const p of PROVIDERS) {
       expect(p.kinds.length, p.id).toBeGreaterThan(0);
@@ -29,7 +29,9 @@ describe("the register", () => {
 
   it("the partner flag and the label colour are affiliate.ts's and brands.ts's", () => {
     const partners = PROVIDERS.filter((p) => p.partner).map((p) => p.id).sort();
-    expect(partners).toEqual(["agoda", "airalo", "booking", "getyourguide", "klook", "viator"]);
+    // (0.39.1: the rental sites, Travelpayouts partners too)
+    expect(partners).toEqual(["agoda", "airalo", "bikesbooking", "booking", "discovercars", "getyourguide", "klook", "viator"]);
+    expect(providerById("discovercars").chip).toBe(brandOf("DiscoverCars")!.color);
     expect(providerById("booking").chip).toBe(brandOf("Booking.com")!.color);
     expect(providerById("airbnb").chip).toBe(brandOf("Airbnb")!.color);
     expect(providerById("rome2rio").chip).toBeNull();

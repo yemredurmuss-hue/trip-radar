@@ -213,7 +213,7 @@ function SelfMarks({ links }: { links: SelfSearch[] }) {
       <span className="z-pis">
         {links.map((l) => {
           // The map's directions say so ("Yol tarifi"); a site says where it looks ("Skyscanner'da ara", as the options' header).
-          const said = l.id === "maps" ? L("Yol tarifi", "Directions") : L(`${l.name}'da ara`, `Search ${l.name}`);
+          const said = l.said ? `${l.said} · ${l.name}` : l.id === "maps" ? L("Yol tarifi", "Directions") : L(`${l.name}'da ara`, `Search ${l.name}`);
           return (
             <a key={l.id} className="z-pi" href={l.url} target="_blank" rel="noopener noreferrer" title={said} aria-label={said}>
               <Mark color={l.color} letter={l.letter} />

@@ -98,7 +98,9 @@ describe("Emre's Bali: picking changes the spine", () => {
     const transfer = aiSuggestion("Havalimanı transferi ayarlayın", "taxi", { city: "Canggu" });
     const open = board(trip, items, [transfer]);
     expect(open.shown.map((s) => s.key)).toEqual([transfer.key]);
-    expect(open.of("transport").find((i) => i.key === `suggestion:${transfer.key}`)?.head.name).toBe("Havalimanı transferi");
+    // 0.39.1: while that road is open the AI's transfer is that road's own box (its ends, the landing's hour), not a second, empty one.
+    expect(open.of("transport").map((i) => i.key)).not.toContain(`suggestion:${transfer.key}`);
+    expect(open.of("transport").filter((i) => i.legKey === arrival.key)).toHaveLength(1);
     const taxi: Trip = { ...trip, legs: { [arrival.key]: { mode: "taxi", booked: false, note: null, updatedAt: 2 } } };
     const sorted = board(taxi, items, [transfer]);
     expect(arrangedTransfer(transfer, sorted.legs)).toMatchObject({ kind: "arrival", date: "2026-12-01" });

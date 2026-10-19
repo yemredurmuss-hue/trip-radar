@@ -18,7 +18,8 @@ import { amazonLink } from "./prepBuy";
 import { activityLinks, BRANDS as MARKS, esimLinks, flightLinks, headCount, stayLinks, type Brand as MarkId, type SearchLink } from "./searchLinks";
 
 /** What a provider is looked up for: the plan's needs, and Hazırlık's things to buy ("shop"). */
-export type ProviderKind = "flight" | "stay" | "train" | "activity" | "esim" | "shop";
+/** (`car`: a rented car or campervan; `bike`: a rented scooter, motorbike or bicycle.) */
+export type ProviderKind = "flight" | "stay" | "train" | "activity" | "esim" | "shop" | "car" | "bike";
 
 export type ProviderId =
   | "booking"
@@ -35,7 +36,9 @@ export type ProviderId =
   | "trendyol"
   | "hepsiburada"
   | "airalo"
-  | "holafly";
+  | "holafly"
+  | "discovercars"
+  | "bikesbooking";
 
 /** What a search is filled with; each site takes what it can and leaves the rest (a site that can't take what's known gives none). */
 export interface SearchQuery {
@@ -178,6 +181,10 @@ const ENTRIES: readonly Entry[] = [
   { id: "getyourguide", name: () => "GetYourGuide", logo: mark("getyourguide"), kinds: ["activity"], countries: "global", serves: "trip", site: /(^|\.)getyourguide\./i, home: "https://www.getyourguide.com/", search: (q) => urlOf(tours(q), "getyourguide") },
   { id: "viator", name: () => "Viator", logo: mark("viator"), kinds: ["activity"], countries: "global", serves: "trip", site: /(^|\.)viator\.com$/i, home: "https://www.viator.com/", search: (q) => urlOf(tours(q), "viator") },
   { id: "klook", name: () => "Klook", logo: mark("klook"), kinds: ["activity"], countries: "global", front: ASIA, serves: "trip", site: /(^|\.)klook\.com$/i, home: "https://www.klook.com/", search: (q) => urlOf(tours(q), "klook") },
+  // Kiralama: DiscoverCars (araç) · BikesBooking (motosiklet, scooter), both Travelpayouts partners (affiliate.ts). Neither has a
+  // documented public search that takes the place and the days: their home page (as JR's), the place and days in the link's words.
+  { id: "discovercars", name: () => "DiscoverCars", logo: { color: "#0f6b3a", letter: "D" }, kinds: ["car"], countries: "global", serves: "trip", site: /(^|\.)discovercars\.com$/i, home: "https://www.discovercars.com/", search: () => "https://www.discovercars.com/" },
+  { id: "bikesbooking", name: () => "BikesBooking", logo: { color: "#f39200", letter: "B" }, kinds: ["bike"], countries: "global", serves: "trip", site: /(^|\.)bikesbooking\.com$/i, home: "https://bikesbooking.com/", search: () => "https://bikesbooking.com/" },
   // Hazırlık alışverişi: Türkiye'den gidene Trendyol · Hepsiburada · Amazon.com.tr; başka ülkede o ülkenin Amazon'u.
   { id: "trendyol", name: () => "Trendyol", logo: { color: "#f27a1a", letter: "T" }, kinds: ["shop"], countries: ["TR"], serves: "home", site: /(^|\.)trendyol\.com$/i, home: "https://www.trendyol.com/", search: shopSearch("https://www.trendyol.com/sr?q=") },
   { id: "hepsiburada", name: () => "Hepsiburada", logo: { color: "#ff6000", letter: "H" }, kinds: ["shop"], countries: ["TR"], serves: "home", site: /(^|\.)hepsiburada\.com$/i, home: "https://www.hepsiburada.com/", search: shopSearch("https://www.hepsiburada.com/ara?q=") },

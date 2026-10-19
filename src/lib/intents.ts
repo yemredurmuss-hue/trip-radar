@@ -54,6 +54,8 @@ import { isPackLine } from "./prepPack";
 import { lookWord } from "./stageWords";
 import { countryCodeOfName, isPlaceholder, isRouteDraft, knownPlaceOf } from "./startTrip";
 import { hoursTo, ticketCarrier, ticketViewOf, type TicketCarrier, type TicketVM } from "./ticketView";
+import { isTransferSuggestion } from "./suggestions";
+import { budgetLevel } from "./tripStyle";
 import { whoGoes } from "./tripSettings";
 import { headCountOf } from "./whose";
 import type { DocMeta, Item, LegMode, PartFrame, PartSection, Suggestion, Trip } from "./types";
@@ -728,8 +730,29 @@ const MOVE_MODES: readonly LegMode[] = ["train", "bus", "car", "flight"];
 const TRANSFER_MODES: readonly LegMode[] = ["metro", "bus", "train", "taxi", "transfer"];
 /** And for the road from an airport in another city to the stay (legs.farHub: Kolombo → Ahangama), or back. */
 const FAR_MODES: readonly LegMode[] = ["train", "bus", "transfer", "taxi", "car"];
-/** Önerimiz on that road: the train first, then a taxi or a private transfer (no line or length is known: only the ways). */
+/**
+ * Önerimiz on that road (no line or length is known: only the ways): public transport
+ * (`train`: the country's rail where the register has it, else the map's public transport directions, ticketFrame.wayPicks)
+ * and a taxi or a private transfer.
+ */
 const FAR_PICKS: readonly LegMode[] = ["train", "taxi"];
+/** From this hour (and until LATE_UNTIL) a landing is late: a taxi or a private transfer comes first. */
+const LATE_FROM = "22:00";
+const LATE_UNTIL = "05:00";
+
+/**
+ * The order of Önerimiz by what the trip is for (0.39.1, Emre: "düşük bütçe dediysem taksi koymazsın"): a budget said to be
+ * low (by the day and the person, tripStyle.budgetLevel) puts public transport first; a mid or high one, a luxury trip or a
+ * landing late at night the taxi or the private transfer. Nothing said: public transport first, as before.
+ */
+export function wayPickOrder(trip: Pick<Trip, "budget" | "style" | "confirmedDates" | "travellers">, lands: string | null, people: number | null): LegMode[] {
+  const late = lands != null && (lands >= LATE_FROM || lands < LATE_UNTIL);
+  const days = trip.confirmedDates ? nightsBetween(trip.confirmedDates.start, trip.confirmedDates.end) + 1 : 0;
+  const level = budgetLevel(trip.budget ?? null, days, people ?? trip.travellers?.count ?? null, null);
+  const luxury = (trip.style?.ids ?? []).includes("luxury");
+  const taxiFirst = late || luxury || level === "mid" || level === "high";
+  return taxiFirst ? ["taxi", "train"] : [...FAR_PICKS];
+}
 
 function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
   const records = uniq(b.entries.flatMap((e) => e.itemIds))
@@ -839,7 +862,7 @@ function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
     ticket: frame === "ticket" ? ticketViewOf(shown ? [shown] : [], { kind, leg, route: head.route, ends: endsOf(leg), now: env.now }) : null,
     // (and for one whose way was said with nothing to book: Değiştir draws them again in place)
     modes,
-    ...(far && status === "searching" && modes.length ? { wayPicks: [...FAR_PICKS] } : {}),
+    ...(far && status === "searching" && modes.length ? { wayPicks: wayPickOrder(env.input.trip, leg?.kind === "arrival" ? leg.after : null, env.people) } : {}),
     legKey: leg?.key ?? null,
     ...(draftRoute ? { routeDraft: true } : {}),
     ...(party != null ? { people: party } : {}),
@@ -856,7 +879,9 @@ function suggestedIntent(section: SectionId, s: Suggestion, env: Env): IntentVM 
   const kind: CardKind = s.template === "esim" ? "esim" : s.template === "insurance" ? "insurance" : (mode ?? DEFAULT_KIND[section] ?? "other");
   // A rental says what it is ("Motosiklet kiralama"), the AI's longer line stays its note (Emre, 19 Ekim).
   const rental = RENTAL_MODES.includes(kind as (typeof RENTAL_MODES)[number]);
-  const name = mode && rental ? L(`${cardKindLabel(kind)} kiralama`, `${cardKindLabel(kind)} rental`) : plainTitle(s.title);
+  // (a car's own word is already its rental's: "Araç kiralama", never "Araç kiralama kiralama")
+  const label = cardKindLabel(kind);
+  const name = mode && rental ? (/kiralama|rental/i.test(label) ? label : L(`${label} kiralama`, `${label} rental`)) : plainTitle(s.title);
   const start = isoDate(s.payload?.start ?? null);
   const trip = env.input.plan.range;
   // A rental said from the trip's first day with no last one ("Uzun dönem motor kiralama · 1 Ara") is for the stay: until
@@ -1161,7 +1186,11 @@ function intentsWith(section: CatSection, env: Env): IntentVM[] {
       .filter((b) => !(road && emptyWay(b)) && !(aboard?.size && onPlane(b, aboard)) && !(aboard && pastExit(b, env.input.items)))
       .map((b) => singleIntent(section.id, b, env));
     if (section.id === "flight") own = joinConnections(own, env);
-    own = [...own, ...(env.input.suggestions?.[section.id] ?? []).filter((s) => s.kind === "add").map((s) => suggestedIntent(section.id, s, env))];
+    // The AI's "Havalimanı transferi" for a day the trip lands or leaves on is that way's own box (its ends, the landing's
+    // hour, Önerimiz), never a second, empty one beside it (0.39.1, Emre: "havaalanı transferi boş gelmiş").
+    const roads = new Set(own.flatMap((i) => (i.legKey && /:(arrival|departure):/.test(i.legKey) ? [i.legKey.slice(0, 10)] : [])));
+    const asked = (env.input.suggestions?.[section.id] ?? []).filter((s) => s.kind === "add" && !(isTransferSuggestion(s) && roads.has(isoDate(s.payload?.start ?? null) ?? "")));
+    own = [...own, ...asked.map((s) => suggestedIntent(section.id, s, env))];
   }
   // D4: a category the trip's shape makes needless (a day out: Konaklama) closes; what's still open in it is "Gerek yok", with why.
   const reason = env.shape.closes[section.id as PartSection];

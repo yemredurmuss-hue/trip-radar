@@ -65,6 +65,8 @@ export interface PrepInput {
   countries: string[];
   /** YYYY-MM-DD. */
   today: string;
+  /** The ride apps the plan's ways suggest ("Uber": ticketFrame.rideApps), each a chore to download it once. */
+  rides?: readonly string[];
 }
 
 /** A chore whose day is this close (or gone by) and still open is orange ("yaklaşan gün", F2's 14 days). */
@@ -236,6 +238,26 @@ export function storedTask(item: Item): PrepTask {
   };
 }
 
+/** The app of a ride the plan suggests (an airport taxi's Uber), to have on the phone before landing; one each, taken off for good. */
+function rideApps(input: PrepInput): PrepTask[] {
+  const leave = leaveDay(input.items, input.range);
+  return [...new Set(input.rides ?? [])]
+    .filter((app) => !input.chores.some((c) => c.name.toLocaleLowerCase("tr").includes(app.toLocaleLowerCase("tr"))))
+    .map((app) => ({
+      key: `app:${app.toLocaleLowerCase("en")}`,
+      title: L(`${app} uygulamasını indir`, `Download the ${app} app`),
+      sub: L("Havalimanı yolu için önerdik; inince hazır olsun", "Suggested for the ride from the airport; have it ready when you land"),
+      day: leave ? { date: leave, time: null, rel: "before" as const } : null,
+      from: null,
+      done: false,
+      doneAt: null,
+      item: null,
+      of: null,
+      official: null,
+      tick: "mark" as const,
+    }));
+}
+
 const VISA_SAID = /(^|[^\p{L}])(vize\p{L}*|visas?|schengen|eta)(?![\p{L}])/iu;
 const CHECKIN_SAID = /check-?in/i;
 
@@ -252,6 +274,7 @@ export function prepTasks(input: PrepInput): PrepTask[] {
     ...(said(VISA_SAID) ? [] : [schengen(input)].filter((t): t is PrepTask => t != null)),
     ...(said(VISA_SAID) ? [] : otherVisas(input)),
     ...entries(input),
+    ...rideApps(input),
   ]
     .filter((t) => !input.trip.hidden?.includes(prepHiddenKey(t.key)))
     .map((t) => {

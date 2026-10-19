@@ -346,7 +346,7 @@ export function coveringItems(s: Suggestion, items: readonly Item[]): Item[] {
 
 /** A transfer to or from the airport or the station: the taxi template, or the words of one ("Havalimanı transferi"). */
 const TRANSFER_WORDS = /transfer|shuttle|servis|taksi|taxi/i;
-const isTransferSuggestion = (s: Suggestion): boolean => s.section === "transport" && (s.template === "taxi" || (!s.template && TRANSFER_WORDS.test(s.title)));
+export const isTransferSuggestion = (s: Suggestion): boolean => s.section === "transport" && (s.template === "taxi" || (!s.template && TRANSFER_WORDS.test(s.title)));
 
 /**
  * The way in or out on a transfer suggestion's day that is already sorted (0.38.6, Emre: a taxi picked for the road from

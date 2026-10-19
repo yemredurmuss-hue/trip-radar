@@ -226,6 +226,8 @@ export interface SelfSearch {
   color: string;
   letter: string;
   url: string;
+  /** Its words when they say more than "…'da ara" (a rental's: "Kiralık araç ara: Canggu, 10 Ara – 10 Oca"). */
+  said?: string;
 }
 
 export interface SelfSearchAt {
@@ -240,7 +242,17 @@ export interface SelfSearchAt {
   rooms?: number | null;
 }
 
-const PROVIDER_KIND: Partial<Record<CardKind, ProviderKind>> = { stay: "stay", esim: "esim", flight: "flight", train: "train", activity: "activity" };
+// (a bus or a boat is looked for where every way is compared, as a train; a rented car or bike on the rental sites)
+const PROVIDER_KIND: Partial<Record<CardKind, ProviderKind>> = { stay: "stay", esim: "esim", flight: "flight", train: "train", bus: "train", minibus: "train", ferry: "train", activity: "activity", car: "car", rv: "car", moto: "bike", bike: "bike" };
+
+/** A rental's search in words: what, where and which days ("Kiralık araç ara: Canggu, 10 Ara – 10 Oca"); only what is known. */
+function rentalWords(kind: ProviderKind, vm: Pick<IntentVM, "head">): string | null {
+  if (kind !== "car" && kind !== "bike") return null;
+  const days = vm.head.parts.find((p) => /\d/.test(p) && !/→/.test(p)) ?? null;
+  const where = [vm.head.city, days].filter(Boolean).join(", ");
+  const what = kind === "car" ? L("Kiralık araç ara", "Search rental cars") : L("Kiralık motosiklet ara", "Search motorbike rentals");
+  return where ? `${what}: ${where}` : what;
+}
 
 /**
  * "Kendin ara" for an intent (providers.ts): the site of the link the traveller sent for it first, then the place's own,
@@ -268,9 +280,10 @@ export function selfSearches(vm: Pick<IntentVM, "kind" | "head" | "options" | "c
     from: route ? route.from : null,
     to: route ? route.to : null,
   };
+  const said = rentalWords(kind, vm);
   return providerLinks(kind, { link, country: [...at.countries] }, q)
     .filter((p) => p.provider.id !== "agoda")
-    .map(({ provider, url }) => ({ id: provider.id, name: provider.name(), color: provider.logo.color, letter: provider.logo.letter, url }));
+    .map(({ provider, url }) => ({ id: provider.id, name: provider.name(), color: provider.logo.color, letter: provider.logo.letter, url, ...(said ? { said } : {}) }));
 }
 
 /** An area chip's search (regionHints): the first site's, looking in that area of the city ("Namba, Osaka"). */
@@ -304,8 +317,8 @@ const codeOf = (city: string, end: { place: string | null } | null | undefined):
 
 /**
  * The offers' question for an intent still to choose (offerSource.Need, the empty cards' own): a stay's city and nights, a
- * flight's two ends and its day (0.38.5: looked for by itself once the route and the day are known), an eSIM's country;
- * null for anything else or when it isn't known.
+ * flight's two ends and its day (0.38.5: looked for by itself once the route and the day are known), a way between two
+ * cities' ends and day, an eSIM's country; null for anything else or when it isn't known.
  */
 export function offerNeed(vm: Pick<IntentVM, "kind" | "head"> & { ticket?: IntentVM["ticket"] }, at: SelfSearchAt): Need | null {
   const { city, date: start, nights } = vm.head;
@@ -317,10 +330,19 @@ export function offerNeed(vm: Pick<IntentVM, "kind" | "head"> & { ticket?: Inten
     if (!fromCode || !toCode || fromCode === toCode) return null;
     return { key: needKey("flight", route.from, route.to, start), section: "flight", kind: "flight", from: route.from, to: route.to, start, adults: at.adults, fromCode, toCode };
   }
+  // A way between two places by train, bus or boat, or a change of city whose way is still open (0.39.1: asked again since
+  // the v82 boxes took the old empty leg card's place, which was the only one asking): Omio's ways between the cities.
+  if (TRANSFER_KINDS.has(vm.kind) && route?.from && route.to && !sameEnd(route.from, route.to)) {
+    return { key: needKey("transfer", route.from, route.to, start), section: "transport", kind: "transfer", from: route.from, to: route.to, start, adults: at.adults };
+  }
   const country = at.countries[0];
   if (vm.kind === "esim" && country) return { key: needKey("esim", country), section: "other", kind: "esim", country, start, end };
   return null;
 }
+
+/** What the source's ways between cities are asked for: a ticket by land or sea, or a way not said yet (never a taxi or a rental). */
+const TRANSFER_KINDS: ReadonlySet<CardKind> = new Set<CardKind>(["train", "bus", "minibus", "ferry", "transport"]);
+const sameEnd = (a: string, b: string) => a.trim().toLocaleLowerCase("tr") === b.trim().toLocaleLowerCase("tr");
 
 // --- the closed row (K0) ----------------------------------------------------------------------------------------
 
