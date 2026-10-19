@@ -143,11 +143,11 @@ describe("the interview", () => {
     // A month only: never a day made up; the day is asked next, before anything else (it settles every card's date).
     expect(nextQuestion(s)).toBe("day");
     const day = questionOf(s, "day", ctx);
-    expect(day.text).toBe("Kasım ayının hangi günü yola çıkıyorsun?");
+    expect(day.text).toBe("Lizbon'a Kasım'da hangi gün çıkıyorsun?");
     expect(day.chips.map((c) => [c.label, (c.answer as { date: string }).date])).toEqual([["Ayın başı", "2026-11-01"], ["Ortası", "2026-11-15"], ["Sonu", "2026-11-24"]]);
     const mid = applyAnswer(s, day.chips[1].answer, 3);
     expect(mid.start).toEqual({ date: "2026-11-15", approx: true, part: "mid" });
-    expect(replyText(s, mid, ctx)).toBe("15 Kasım'ı başlangıç aldım, değiştirebilirsin.\nBu gezide en çok ne istiyorsun? (birden çok seçebilirsin)");
+    expect(replyText(s, mid, ctx)).toBe("15 Kasım'ı başlangıç aldım, değiştirebilirsin.\nLizbon'da en çok ne yapmak istersin? (birden çok seçebilirsin)");
     expect(whenText(mid)).toBe("15–22 Kasım · 7 gece (yaklaşık)");
     const picked = applyAnswer(s, { q: "day", date: "2026-11-09", part: null }, 3);
     expect(picked.start).toEqual({ date: "2026-11-09", approx: false });
@@ -216,7 +216,7 @@ describe("the interview", () => {
     const before = fresh();
     const { state } = typed(before, "Sabine'yle 10 Aralık'tan 1 ay Bali");
     // Short and specific (rev 3), the question on its own line.
-    expect(replyText(before, state, ctx)).toBe("Sabine ile Bali, 10 Aralık – 10 Ocak · 31 gece.\nBu gezide en çok ne istiyorsun? (birden çok seçebilirsin)");
+    expect(replyText(before, state, ctx)).toBe("Sabine ile Bali, 10 Aralık – 10 Ocak · 31 gece.\nBali'de en çok ne yapmak istersiniz? (birden çok seçebilirsiniz)");
     const where = applyAnswer(before, { q: "where", place: "Bali", country: null }, 2);
     expect(replyText(before, where, ctx)).toBe("Bali kulağa harika geliyor: Ubud'un pirinç terasları, tapınaklar ve okyanusta gün batımları.\nBali'de kaç gün kalmak istersin?");
     // A place the small table doesn't know: the plain word.
@@ -224,7 +224,7 @@ describe("the interview", () => {
     expect(replyText(before, other, ctx)).toBe("Harika, Zagreb!\nZagreb'de kaç gün kalmak istersin?");
     // A chip's answer isn't said back.
     const friends = applyAnswer(state, { q: "who", kind: "friends" }, 3);
-    expect(replyText(state, friends, ctx, false, true)).toBe("Bu gezide en çok ne istiyorsun? (birden çok seçebilirsin)");
+    expect(replyText(state, friends, ctx, false, true)).toBe("Bali'de en çok ne yapmak istersiniz? (birden çok seçebilirsiniz)");
   });
   it("quick answers: the origin guess first; lengths and start months asked apart (item 3)", () => {
     const s = applyAnswer(fresh(), { q: "where", place: "Bali", country: null }, 2);

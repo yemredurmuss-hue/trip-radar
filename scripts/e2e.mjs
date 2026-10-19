@@ -3612,7 +3612,8 @@ try {
     return board.evaluate(() => window.__gen);
   };
   // K4 (2026-10-09): what they want comes first, where from is asked last. Only what the first message left out is asked (item 2).
-  await board.locator(".st-msg-bot", { hasText: "Bu gezide en çok ne istiyorsun?" }).waitFor();
+  // (0.38.5: the place and the company in the question, never a form's fixed words.)
+  await board.locator(".st-msg-bot", { hasText: "Bali'de en çok ne yapmak istersiniz?" }).waitFor();
   const side = board.locator(".st-side");
   const list = side.locator(".st-list");
   await list.getByText("Bali · Endonezya").waitFor();
@@ -3624,7 +3625,8 @@ try {
   await answers.getByRole("button", { name: "Tamam" }).click();
   await board.locator(".st-msg-bot", { hasText: "Rota önerim: Ubud 12 · Canggu 10 · Uluwatu 9 gece. Bu olsun mu?" }).waitFor();
   assert.equal(startPrompts.length, 2, "the model read the one typed line and was asked for the route once (prepared in the background as soon as Bali and 31 nights were known)");
-  assert.equal(replyPrompts.length, 0, "a quick answer costs no model call");
+  // 0.38.5: a chip's next question may be asked in the model's words, but never the route's (its stops are the code's).
+  assert.equal(replyPrompts.length, 0, "the style chips lead to the route: no model call for its words");
   await board.screenshot({ path: `${out}/20b-start-interview.png` });
   // Narrow (item 9): the list folds into a bar above the chat.
   await board.setViewportSize({ width: 560, height: 900 });
@@ -4395,7 +4397,7 @@ try {
   await board.locator(".st-msg-bot", { hasText: "Lizbon'da kaç gün kalmak istersin?" }).waitFor();
   await answers.getByRole("button", { name: "1 hafta", exact: true }).click();
   await answers.getByRole("button", { name: "Aralık", exact: true }).click();
-  await board.locator(".st-msg-bot", { hasText: "Aralık ayının hangi günü yola çıkıyorsun?" }).waitFor();
+  await board.locator(".st-msg-bot", { hasText: "Lizbon'a Aralık'ta hangi gün çıkıyorsun?" }).waitFor();
   assert.deepEqual(await answers.locator(".st-chip").allInnerTexts(), ["Ayın başı", "Ortası", "Sonu"]);
   await answers.locator("input[type=date]").waitFor();
   await board.screenshot({ path: `${out}/20e-start-day.png` });
@@ -4505,7 +4507,7 @@ try {
   await board.waitForTimeout(500); // the lines' fade-in done, the model still writing (1.5 s)
   await board.screenshot({ path: `${out}/21b-start-thinking.png` });
   // ... the model read it as Koh Phangan: its line replaces the code's, in the same element (not made anew).
-  await board.locator(".st-msg-bot", { hasText: "palmiyeli koylar, orman şelaleleri ve dolunay sahilleri. Bu gezide en çok ne istiyorsun?" }).waitFor();
+  await board.locator(".st-msg-bot", { hasText: "palmiyeli koylar, orman şelaleleri ve dolunay sahilleri. Koh Phangan'da en çok ne yapmak istersiniz?" }).waitFor();
   assert.match(await firstLine.evaluate((n) => n.isConnected && n.textContent), /palmiyeli koylar/, "the replaced line keeps its element");
   await board.locator(".st-thinking").waitFor({ state: "detached" });
   assert.equal(await board.locator(".st-side .st-row.reading").count(), 0, "the reading is over: no row reads");
@@ -4661,7 +4663,7 @@ try {
   await lkList.locator(".st-row.done", { hasText: "Sabine ile · 2 kişi" }).waitFor({ timeout: 3000 });
   await lkList.locator(".st-row.done", { hasText: "20 Kasım – 4 Aralık · 14 gece" }).waitFor({ timeout: 3000 });
   // K4: what they want comes first, then the route, and where from last.
-  await board.locator(".st-msg-bot .st-q", { hasText: "Bu gezide en çok ne istiyorsun?" }).waitFor({ timeout: 3000 });
+  await board.locator(".st-msg-bot .st-q", { hasText: "Sri Lanka'da en çok ne yapmak istersiniz?" }).waitFor({ timeout: 3000 });
   assert.ok(Date.now() - sentAt < 4000, "captured before the model answered");
   assert.equal(await board.locator(".st-msg-bot", { hasText: "Nereye gidiyoruz?" }).count(), 0, "where to isn't asked again");
   // The chat goes on while the model is still reading (chips, no waiting).
@@ -4776,14 +4778,14 @@ try {
   await answers.getByRole("button", { name: "Yes", exact: true }).click();
   await board.locator(".st-msg-bot", { hasText: "Papua New Guinea, 3 weeks in November with a friend." }).waitFor();
   // K4 (2026-10-09): the day first (a month only), then what you want; where from is asked last.
-  await board.locator(".st-msg-bot .st-q", { hasText: "Which day in November are you setting off?" }).last().waitFor();
+  await board.locator(".st-msg-bot .st-q", { hasText: "Which day in November are you setting off for Papua New Guinea?" }).last().waitFor();
   assert.equal(await board.locator(".st-top-title").innerText(), "Papua New Guinea · new trip", "the country's own name, never the typing");
   await pngList.locator(".st-row.done", { hasText: "Papua New Guinea" }).waitFor();
   assert.equal(await board.locator(".st-side .st-gen-btn").isEnabled(), true);
   await board.waitForTimeout(600);
   await board.screenshot({ path: `${out}/23f-start-png-from.png` });
   await answers.getByRole("button", { name: "Skip" }).click();
-  await board.locator(".st-msg-bot .st-q", { hasText: "What are you after on this trip?" }).waitFor();
+  await board.locator(".st-msg-bot .st-q", { hasText: "What would you most like to do in Papua New Guinea?" }).waitFor();
   await answers.getByRole("button", { name: "Skip" }).click();
   await board.locator(".st-msg-bot", { hasText: "I'd keep it to one stop: Papua New Guinea 21 nights. Go with it?" }).waitFor();
   await answers.getByRole("button", { name: "Go with it" }).click(); // the route
@@ -4814,7 +4816,7 @@ try {
   await trList.locator(".st-row.done", { hasText: "Bir arkadaşınla · 2 kişi" }).waitFor({ timeout: 3000 });
   await trList.locator(".st-row.done", { hasText: "Kasım · 3 hafta" }).waitFor({ timeout: 3000 });
   await board.locator(".st-msg-bot", { hasText: "Bir arkadaşınla Papua Yeni Gine, Kasım'da 3 hafta." }).waitFor({ timeout: 3000 });
-  await board.locator(".st-msg-bot .st-q", { hasText: "Kasım ayının hangi günü yola çıkıyorsunuz?" }).waitFor({ timeout: 3000 });
+  await board.locator(".st-msg-bot .st-q", { hasText: "Papua Yeni Gine'ye Kasım'da hangi gün çıkıyorsunuz?" }).waitFor({ timeout: 3000 });
   assert.equal(await board.locator(".st-top-title").innerText(), "Papua Yeni Gine · yeni gezi");
   await board.waitForTimeout(600);
   await board.screenshot({ path: `${out}/23g-start-png-tr.png` });
@@ -5013,7 +5015,7 @@ try {
   await flow.unroute(/wikipedia\.org\/api\/rest_v1\//, wiki);
   await flow.unroute(/upload\.wikimedia\.org\/e2e\//, upload);
   await flow.unroute(/functions\/v1\/city-image/, proxy);
-  console.log("✓ start rev 3, the second report (Turkish): Papua Yeni Gine, Bir arkadaşınla · 2 kişi, Kasım · 3 hafta at once; \"Kasım ayının hangi günü yola çıkıyorsunuz?\" next, in bold");
+  console.log("✓ start rev 3, the second report (Turkish): Papua Yeni Gine, Bir arkadaşınla · 2 kişi, Kasım · 3 hafta at once; \"Papua Yeni Gine'ye Kasım'da hangi gün çıkıyorsunuz?\" next, in bold");
   console.log(`✓ start rev 2: on an English board the Turkish sentence gets Turkish lines; "İstanbul" to Nereden is where from (the model calling it the destination changes nothing); Koh Phangan, Tayland, ${jan10} → ${feb10}; "Yazıyor…" while the model writes; the preview fills (route proposed in the background, photos, dates, flights İstanbul ⇄ Koh Samui); "Şimdilik bununla oluştur"; 2 read-and-reply calls, 1 route call`);
   console.log(`screenshots: ${out}`);
 } finally {

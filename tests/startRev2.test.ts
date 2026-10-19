@@ -75,7 +75,7 @@ describe("the chat's language (item 1)", () => {
     expect(withLang(asked.lang, () => questionOf(asked, "guess", ctx)).chips.map((c) => c.label)).toEqual(["Evet", "Hayır, Kohphandan"]);
     const s1 = yes(asked);
     const reply = withLang(s1.lang, () => replyText(asked, s1, ctx));
-    expect(reply).toMatch(/\(birden çok seçebilirsin\)$/);
+    expect(reply).toMatch(/\nKoh Phangan'da en çok ne yapmak istersiniz\? \(birden çok seçebilirsiniz\)$/);
     expect(reply).toContain("Sabine ile Koh Phangan kulağa harika geliyor");
     expect(reply).not.toMatch(ENGLISH);
     expect(nextQuestion(s1)).toBe("want");
@@ -161,7 +161,7 @@ describe("an answer fills the question it answers (item 2)", () => {
     const s3 = typedFrom(s1, "London", null, 3);
     expect([s3.where?.place, s3.from]).toEqual(["Koh Phangan", "London"]);
     const reply = withLang("en", () => replyText(s1, s2, ctx));
-    expect(reply).toMatch(/^Got it: from Istanbul\.|What are you after/);
+    expect(reply).toMatch(/^Got it: from Istanbul\.|What would you most like to do in Koh Phangan\?/);
     expect(withLang("en", () => creationOf(s2))!.title).toBe("Koh Phangan trip");
   });
 
@@ -263,7 +263,7 @@ describe("the model's reply (item 5)", () => {
     const reply = { text: "İstanbul'dan Koh Phangan'a uzun ama güzel bir yol.", question: "Bu gezide en çok ne arıyorsunuz?" };
     expect(withLang("tr", () => modelReplyText(s1, s2, ctx, reply, "want"))).toBe(`${reply.text}\n${reply.question}`);
     // Told another question: its line, the code's question.
-    expect(withLang("tr", () => modelReplyText(s1, s2, ctx, reply, "who"))).toBe(`${reply.text}\nBu gezide en çok ne istiyorsun? (birden çok seçebilirsin)`);
+    expect(withLang("tr", () => modelReplyText(s1, s2, ctx, reply, "who"))).toBe(`${reply.text}\nKoh Phangan'da en çok ne yapmak istersiniz? (birden çok seçebilirsiniz)`);
     const route: StartRoute = { stops: [{ city: "Koh Phangan", nights: 31 }], arrive: null, leave: null, confirmed: false, source: "single" };
     const atRoute = { ...applyAnswer(s2, { q: "want", styles: ["calm"], budget: null }, 4), route };
     expect(withLang("tr", () => modelReplyText(s2, atRoute, ctx, reply, "route"))).toBe(withLang("tr", () => replyText(s2, atRoute, ctx)));

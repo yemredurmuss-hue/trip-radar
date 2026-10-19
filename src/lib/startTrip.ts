@@ -15,7 +15,7 @@
 import { z } from "zod";
 import { L, lang, withLang, type Lang } from "./i18n";
 import { formatDateRange, isoDate, nightsBetween } from "./items";
-import { placesKey } from "./destinations";
+import { placesKey, regionTownOf } from "./destinations";
 import { addDays, cityKeyOf } from "./plan";
 import { looksLikeUrl } from "./url";
 import type { PlannedInput } from "./planned";
@@ -144,6 +144,11 @@ export interface StartState {
   way?: GroundWay | null;
   /** Gezi biçimi: a day out, back the same day ("günübirlik"). */
   dayTrip?: boolean;
+  /**
+   * The one place they stay the whole trip, when they said so ("bir sabit yerde kalmalı, Canggu'da"; 0.38.5): the route
+   * is that stop for all the nights, agreed as said, never proposed.
+   */
+  base?: string | null;
   messages: StartMsg[];
   /** The trip record once made: a retry after a failed step continues it, never makes a second trip. */
   tripId: string | null;
@@ -756,6 +761,8 @@ export interface Extracted {
   dayTrip?: boolean;
   /** The playbook the model made for this trip (checked); only the model makes one. */
   playbook?: CustomPlaybook | null;
+  /** The one place they stay the whole trip ("tek yer", "sadece Canggu", "Canggu'da kalacağız"). */
+  base?: string | null;
 }
 
 /** "Kohphandan" read as Koh Phangan: kept apart until the traveller says yes ("Evet") or no ("Hayır, Kohphandan"). */
@@ -793,7 +800,7 @@ const TO_SUFFIX = new Set(["ya", "ye", "a", "e", "na", "ne"]);
 const WITH_SUFFIX = new Set(["yle", "yla", "le", "la", "ile"]);
 const STYLE_WORDS: [RegExp, StyleId][] = [
   [/\b(doğa|doga|nature|hiking|yürüyüş)/i, "nature"],
-  [/\b(deniz|plaj|sahil|beach|sea)/i, "beach"],
+  [/\b(deniz|plaj|sahil|beach|sea|sörf|sorf|surf)/i, "beach"],
   [/\b(kültür|kultur|tarih|müze|culture|history|museum)/i, "culture"],
   [/\b(romantik|balayı|romantic|honeymoon)/i, "romantic"],
   [/\b(macera|adventure)/i, "adventure"],
@@ -802,7 +809,7 @@ const STYLE_WORDS: [RegExp, StyleId][] = [
   [/\b(dingin|sakin|huzur|calm|relax)/i, "calm"],
   [/\b(şehir gezisi|city break)/i, "city"],
   [/\b(eğlence|gece hayatı|nightlife|party|parti)/i, "nightlife"],
-  [/\b(aktif|spor|active|sport)/i, "active"],
+  [/\b(aktif|spor|active|sport|sörf|sorf|surf)/i, "active"],
 ];
 
 const COMPANION_WORDS: [RegExp, Companions][] = [
@@ -851,6 +858,79 @@ const COUNTRY_STOP_AFTER = new Set(["cevizi", "gevreği", "gevregi", "unu", "dur
 
 /** Words that look like a name before "ile" but aren't one. */
 const NOT_NAMES = new Set(["ben", "biz", "sen", "o", "onlar", "partner", "aile", "arkadaş", "araba", "uçak", "tren", "otobüs", "gemi", "feribot"]);
+
+/**
+ * One place for the whole trip said in words (0.38.5): "bir sabit yerde kalmalı", "tek yerde", "aynı yerde kalacağız",
+ * "one base", "stay put".
+ */
+const ONE_PLACE = /(?<![\p{L}])(sabit (bir )?(yer|yerde|üs|üste)(?![\p{L}])|tek (bir )?(yer|yerde|üs|üste)(?![\p{L}])|(bir|aynı|tek) yerde kal\p{L}*|hep aynı yer|yer değiştirmeden|(one|single) (place|base|spot)(?![\p{L}])|stay put|base (ourselves )?(in|at)(?![\p{L}]))/iu;
+/** "Canggu'da kalacağız", "Canggu da kalalım": the town before "kal…" (taken only when it is a known town). */
+const STAY_AT = /(?<![\p{L}])(\p{L}+)(?:['’]?\s?[dt][ae])\s+kal(?:acağ|al|ır|mak|ma|ıyor|dık|ıca)\p{L}*/giu;
+/** "sadece Canggu", "only Canggu": the town after it (taken only when it is a known town). */
+const ONLY_AT = /(?<![\p{L}])(?:sadece|yalnızca|yalnız|only|just)\s+(\p{L}+(?:\s\p{L}+)?)/giu;
+
+/**
+ * The one place they stay, when the message says so (0.38.5): a town the code knows inside where they go ("canggu"
+ * in Bali, typed in lower case too), else, with the words for one place and no town, the destination itself when it
+ * is no country. Null otherwise. `where`: the destination read (or null; then the town's island or region is it).
+ */
+function onePlaceOf(text: string, raw: string[], where: Place | null): { base: string; where: Place | null } | null {
+  const townOf = (word: string): { base: string; where: Place | null } | null => {
+    const t = regionTownOf(word);
+    if (t && (!where || samePlace(t.region, where.place) || (where.code ?? null) === t.country)) return { base: t.town, where: where ?? placeOf(t.region, null, t.country) };
+    const k = knownPlaceOf(word);
+    if (k?.city && where && !samePlace(placeName(k), where.place) && knownCode(k) === (where.code ?? null)) return { base: placeName(k), where };
+    return null;
+  };
+  for (const m of text.matchAll(STAY_AT)) {
+    const hit = townOf(m[1]);
+    if (hit) return hit;
+  }
+  for (const m of text.matchAll(ONLY_AT)) {
+    const hit = townOf(m[1]) ?? townOf(m[1].split(/\s/)[0]);
+    if (hit) return hit;
+  }
+  if (!ONE_PLACE.test(text)) return null;
+  for (let i = 0; i < raw.length; i++) {
+    const hit = (raw[i + 1] ? townOf(`${raw[i]} ${raw[i + 1]}`) : null) ?? townOf(raw[i]);
+    if (hit) return hit;
+  }
+  return where && !countryItself(where) ? { base: where.place, where } : null;
+}
+
+/** Words that end in "-(y)la/-(y)le" but are no one's name ("hızla", "keyifle", "böyle", "uçakla", "rehberle"). */
+const NOT_GLUED_NAMES = new Set([
+  "hız", "zor", "keyif", "sevgi", "özen", "dikkat", "acele", "merak", "heyecan", "böy", "şöy", "para", "kart", "nakit", "bütçe",
+  "plan", "program", "rota", "tur", "otel", "uçak", "araba", "araç", "otobüs", "tren", "vapur", "feribot", "gemi", "tekne", "metro", "taksi",
+  "bisiklet", "motor", "karavan", "valiz", "çanta", "bavul", "rehber", "grup", "ekip", "aile", "kamp", "çadır", "sörf", "kitap",
+  "hafta", "gün", "gece", "tatil", "gezi", "uçuş", "bilet", "vize", "okul", "ders", "başka", "herkes", "kimse",
+]);
+/** Stems that are a relation or company, not a name ("annemle", "arkadaşınla", "köpeğimle"): COMPANION_WORDS' job. */
+const RELATION = /^(arkadaş|kardeş|sevgili|partner|nişanlı|çocuk|bebek|köpek|kedi|anne|baba|teyze|amca|dayı|dede|ağabey|abla|kız|oğul|oğl|eş|karı|koca|hala|abi|nine)(?:[ıiuü]?[mn]|[ıiuü]m[ıiuü]z|[ıiuü]n[ıiuü]z|ler|lar|[ıiuü]|u)?$/u;
+
+/**
+ * A name typed in lower case or with "-(y)le" glued on (0.38.5): "sabinle", "sabin ile", "ayşeyle" are Sabin and
+ * Ayşe. Kept only when the ending fits the name's vowels and the word is no place, month, relation or common word.
+ */
+function gluedName(word: string, next: string): string | null {
+  const low = word.toLocaleLowerCase("tr");
+  let stem: string | null = null;
+  if (next === "ile" && /^\p{Ll}{3,14}$/u.test(word)) stem = low;
+  else {
+    const m = /^(\p{L}{2,13}?)(y?)(l[ae])$/u.exec(low);
+    if (m) {
+      const vowelEnd = /[aeıioöuü]$/.test(m[1]);
+      const last = [...m[1]].reverse().find((ch) => /[aeıioöuü]/.test(ch));
+      const front = last != null && /[eiöü]/.test(last);
+      if (vowelEnd === (m[2] === "y") && (m[3] === "le") === front) stem = m[1];
+    }
+  }
+  if (!stem || stem.length < 3 || NOT_NAMES.has(stem) || NOT_GLUED_NAMES.has(stem) || RELATION.test(stem)) return null;
+  if (knownPlaceOf(stem) || monthOf(stem) || countryCodeOfName(stem) || regionTownOf(stem) || STYLE_WORDS.some(([re]) => re.test(stem!))) return null;
+  // A plural or a possessive ("çocuklarla", "otelimizle", "köpeğimle"): never a name.
+  if (/(lar|ler|m[ıiuü]z|ğ[ıiuü]m)$/.test(stem)) return null;
+  return stem.charAt(0).toLocaleUpperCase("tr") + stem.slice(1);
+}
 
 /** Tokens of the original text: letters/digits runs, the Turkish ending after an apostrophe as its own token. */
 function tokensOf(text: string): string[] {
@@ -1131,8 +1211,25 @@ export function parseStartText(text: string, today: string, pending: QuestionId 
     const next = low[i + 1] ?? "";
     if (WITH_SUFFIX.has(next) || low[i - 1] === "with") names.push(word);
   }
+  // Typed in lower case or glued ("sabinle", "sabin ile", "ayşeyle"; 0.38.5); never while a place is asked for.
+  if (pending !== "from" && pending !== "pb") {
+    for (let i = 0; i < raw.length; i++) {
+      if (inEvent(i) || names.some((n) => n.toLocaleLowerCase("tr") === low[i])) continue;
+      const name = gluedName(raw[i], low[i + 1] ?? "");
+      if (name && !names.includes(name)) names.push(name);
+    }
+  }
   const count = companyCount(text, kind);
   if (kind || names.length || count) out.who = { kind: kind ?? (count === 1 ? "solo" : null), names: [...new Set(names)], ...(count ? { count } : {}) };
+
+  // One place for the whole trip, its town named ("bir sabit yerde kalmalı canggu da"; 0.38.5): the only stop.
+  if (!out.intent) {
+    const one = onePlaceOf(text, raw, out.where);
+    if (one) {
+      out.base = one.base;
+      if (!out.where && one.where) out.where = one.where;
+    }
+  }
 
   for (const [re, id] of STYLE_WORDS) if (re.test(text) && !out.styles.includes(id)) out.styles.push(id);
   if (/(ekonomik|ucuz|düşük bütçe|budget trip|cheap|on a budget)/i.test(text)) out.budget = "low";
@@ -1167,6 +1264,8 @@ export const extractionSchema = z.object({
   event_dates_sure: z.boolean().optional(),
   // The option picked when a trip kind's question with options is answered (optional, like the event's).
   choice: z.string().optional(),
+  // The one place they stay the whole trip, when they say so (0.38.5; optional, like the event's).
+  one_place: z.string().optional(),
 });
 export type RawExtraction = z.infer<typeof extractionSchema>;
 
@@ -1182,7 +1281,8 @@ start_date: başlangıç günü YYYY-MM-DD (bugünden sonraki ilk uygun yıl). Y
 duration_days: gün olarak süre (gece söylendiyse gece + 1); "1 ay" gibi ay söylendiyse duration_months. styles: yalnız bu id'lerden: ${Object.keys(STYLES).join(", ")}. budget: low | mid | high ya da "".
 "Kullanıcının cevapladığı soru" verildiyse mesaj o soruyu cevaplar: "nereden" sorusuna verilen yer adı origin'dir, destination değil. Gidilecek yer bilinirken destination yalnız kullanıcı açıkça başka yere gitmek istediğini söylerse ("aslında Bali'ye gidelim") dolar.
 event: kullanıcı bir etkinliğe, festivale ya da temaya gitmek istiyorsa onun bilinen adı ("burning man africa" → "AfrikaBurn", "kuzey ışıkları" → "Kuzey Işıkları"); yoksa "". event_kind: event | theme. event_place: yapıldığı yer (destination da o olur, ör. "Tankwa Karoo"); event_country_code: ülkesinin ISO kodu. event_start / event_end: bildiğin sıradaki tarihleri (bugünden sonraki ilk) YYYY-MM-DD, bilmiyorsan "". event_dates_sure: yalnız tarihlerden kesin eminsen true.
-choice: cevaplanan soru seçenekleriyle verildiyse ("değer = etiket"), mesajın seçtiği seçeneğin değeri; cevap vermek istemiyorsa ya da hiçbirine uymuyorsa "skip"; seçenek yoksa "".`,
+choice: cevaplanan soru seçenekleriyle verildiyse ("değer = etiket"), mesajın seçtiği seçeneğin değeri; cevap vermek istemiyorsa ya da hiçbirine uymuyorsa "skip"; seçenek yoksa "".
+one_place: kullanıcı gezi boyunca tek bir yerde kalmak istediğini söylüyorsa ("sabit bir yerde", "tek yer", "sadece Canggu", "Canggu'da kalacağız") o yerin adı, ek olmadan; söylemiyorsa "". Bu durumda destination gidilen ada, bölge ya da ülke kalır ("Bali"), one_place kasaba ("Canggu").`,
     `From the user's message in a trip-planning chat, take only what is clearly said. Never invent; what isn't said stays empty ("" or 0 or []).
 destination: the place to go (a city, island, region or country), its name only; when several are said, the most specific ("Thailand, Koh Phangan" → "Koh Phangan", country Thailand), spelled correctly. destination_country: its country when known; destination_country_code: that country's ISO 3166-1 alpha-2 code ("TH").
 origin: the city they leave from. companions: solo | partner | friends | family or "". names: the people going with them (not the user).
@@ -1190,7 +1290,8 @@ start_date: the first day, YYYY-MM-DD (the first fitting year from today). If on
 duration_days: the length in days (nights said: nights + 1); a length in months goes in duration_months. styles: only these ids: ${Object.keys(STYLES).join(", ")}. budget: low | mid | high or "".
 When "The user is answering" is given, the message answers that question: a place given to "where from" is the origin, not the destination. While the destination is known, destination is filled only when the user clearly says they want to go somewhere else ("actually, let's go to Bali").
 event: when the user wants to go to an event, a festival or a theme, its known name ("burning man africa" → "AfrikaBurn", "the northern lights" → "Northern Lights"); else "". event_kind: event | theme. event_place: where it happens (that is the destination too, e.g. "Tankwa Karoo"); event_country_code: its country's ISO code. event_start / event_end: its next dates you know (the first after today) as YYYY-MM-DD, "" if unsure. event_dates_sure: true only when you are certain of the dates.
-choice: when the question being answered comes with options ("value = label"), the value of the option the message picks; "skip" when they'd rather not say or it fits none; "" when there are no options.`,
+choice: when the question being answered comes with options ("value = label"), the value of the option the message picks; "skip" when they'd rather not say or it fits none; "" when there are no options.
+one_place: when the user says they stay in one place the whole trip ("one base", "just Canggu", "we'll stay in Canggu"), that place's name; else "". Then destination stays the island, region or country they go to ("Bali"), one_place the town ("Canggu").`,
   );
 
 /** What each question asks, in words for the model ("where they leave from"). */
@@ -1315,6 +1416,7 @@ export const turnSystem = (plan = true) => `${extractionSystem()}\n${plan ? `${p
 export function knownLines(s: StartState, ctx: StartCtx): string {
   const rows = [
     s.where ? `${L("Nereye", "Where to")}: ${s.where.place}${s.where.country && s.where.country !== s.where.place ? ` (${s.where.country})` : ""}` : "",
+    s.base ? `${L("Kalınacak tek yer", "The one place they stay")}: ${s.base}` : "",
     s.intent ? `${L("Etkinlik", "Event")}: ${s.intent.name}${s.intent.dates ? ` (${s.intent.dates.start} – ${s.intent.dates.end}${s.intent.dates.approx ? L(", tahmini", ", estimated") : ""})` : ""}` : "",
     s.from ? `${L("Nereden", "From")}: ${s.from}` : "",
     s.who ? `${L("Kimle", "Who")}: ${whoText(s.who, ctx.myName)}` : "",
@@ -1368,11 +1470,42 @@ export function acceptReply(raw: RawReply | null | undefined, l: Lang): { text: 
     return said != null && said !== l;
   };
   if (!text || text.length > REPLY_MAX || PRICE.test(text) || BOOKING.test(text) || wrongLang(text)) return null;
+  return { text, question: acceptQuestion(question, l) };
+}
+
+/** The model's question kept only when it is one: ends with "?" (one short line may follow), short, no prices, in the chat's language. */
+export function acceptQuestion(raw: string | null | undefined, l: Lang): string | null {
+  const question = (raw ?? "").replace(/\s+/g, " ").replace(/—/g, ",").trim();
+  const said = langSignal(question);
   // A question, and at most one short line after it on what it unlocks ("…? Uçuşlar o güne yerleşsin.").
   const asks = /\?\s*([^?]{0,90}[.!]?)?$/.test(question) && question.includes("?");
-  const q = question && asks && question.length <= 200 && !PRICE.test(question) && !wrongLang(question) ? question : null;
-  return { text, question: q };
+  return question && asks && question.length <= 200 && !PRICE.test(question) && !BOOKING.test(question) && (said == null || said === l) ? question : null;
 }
+
+/**
+ * A quick answer (a chip) tapped (0.38.5): the next question in the model's words, bound to what was said so far.
+ * Before, a chip's next question was always the code's fixed line ("Kasım ayının hangi günü…").
+ */
+export const nextSystem = () =>
+  L(
+    `Bir gezi planlama sohbetinde kullanıcı hazır bir cevaba bastı. "Sıradaki soru"yu tek, kısa, doğal bir cümleyle sor (question), soru işaretiyle bitsin. Bir arkadaş gibi konuş, form gibi değil: bilinenlere ve az önceki cevaba bağla (yer, kimle, ne zaman; birlikte gidiyorlarsa "siz"). Örnekler: "Kasım sonu güzel; ayın başı mı, ortası mı, sonu mu, yoksa belli bir gün var mı?", "Canggu'da en çok ne yapmak istersiniz, sörf mü, dinlenme mi?". Bilinenleri sorma. "Eksikler"den bir şeyi de aynı cümlede sorabilirsin (en fazla iki şey). Fiyat, saat, süre ya da olgu uydurma. text "" kalır.`,
+    `In a trip-planning chat the user tapped a quick answer. Ask the "Next question" in one short, natural sentence (question) ending with a question mark. Talk like a friend, not a form: tie it to what is known and the answer just given (the place, who, when; "you" for all of them when they go together). Examples: "Late November sounds good; early, mid or late in the month, or a day in mind?", "What would you most like to do in Canggu, surf or slow down?". Never ask what is known. You may ask one more thing from "Still missing" in the same sentence (two at most). Never invent prices, times, lengths or facts. text stays "".`,
+  ) + `\n${answerIn()}`;
+
+export function nextPrompt(a: { today: string; known: string; answered: QuestionId; label: string; next: QuestionId; open?: QuestionId[] }): string {
+  return [
+    "<start_reply>",
+    `${L("Bugün", "Today")}: ${a.today}`,
+    `${L("Bilinenler", "Known so far")}: ${a.known}`,
+    `${L("Kullanıcının cevapladığı soru", "The user answered")}: ${slotWords(a.answered)} → ${a.label}`,
+    `${L("Sıradaki soru", "Next question")}: ${slotWords(a.next)}`,
+    a.open?.length ? `${L("Eksikler (önem sırasıyla)", "Still missing (most important first)")}: ${a.open.map(slotWords).join("; ")}` : "",
+    "</start_reply>",
+  ].filter(Boolean).join("\n");
+}
+
+/** The questions a chip's next one may be worded by the model for: never the route, a trip kind's own, a guess or an event's (their words are the code's). */
+export const modelWordsQuestion = (q: QuestionId | null): q is QuestionId => Boolean(q && !["route", "pb", "guess", "clash", "venue", "names"].includes(q));
 
 const COMPANIONS: readonly Companions[] = ["solo", "partner", "friends", "family"];
 const BUDGETS: readonly BudgetLevel[] = ["low", "mid", "high"];
@@ -1391,6 +1524,8 @@ export function acceptExtraction(raw: RawExtraction & { plan?: RawPlan | null },
   if (kind || names.length) out.who = { kind, names: [...new Set(names)] };
   const choice = typeof raw.choice === "string" ? raw.choice.trim() : "";
   if (choice && choice.length <= 60) out.choice = choice;
+  const base = bareName(typeof raw.one_place === "string" ? raw.one_place : "");
+  if (base && looksLikePlace(base, PLACE_WORDS)) out.base = placeOf(base).place;
   const date = isoDate(raw.start_date);
   // A start in the past (or years away) is a misread, not a plan.
   if (date && date >= today && date <= addMonths(today, 36)) out.start = { date, approx: false };
@@ -1477,6 +1612,7 @@ export function mergeExtracted(code: Extracted, model: Extracted | null): Extrac
     ...(model.playbook ? { playbook: model.playbook } : {}),
     ...(code.way ? { way: code.way } : {}),
     ...(code.dayTrip ? { dayTrip: true } : {}),
+    ...(code.base || model.base ? { base: code.base ?? model.base } : {}),
   };
 }
 
@@ -1775,6 +1911,11 @@ export function askAgain(s: StartState, q: QuestionId, now: number): StartState 
  */
 function keepRoute(before: StartState, next: StartState): StartState {
   const after = keepPrepared(withEventDates(next));
+  // One place for the whole trip (0.38.5): that stop for all the nights, as said; never a proposal to agree on.
+  if (after.base && !after.intent) {
+    const total = totalNights(after);
+    return { ...after, route: total ? { stops: [{ city: after.base, nights: total, code: after.where?.code ?? null }], arrive: null, leave: null, confirmed: true, source: "user" } : null, editingRoute: false };
+  }
   // An event's or a theme's route is its own (gateway → event → gateway, a theme's places): made again as the
   // length or the dates change; one typed or agreed by the traveller stays while it still adds up.
   if (after.intent && (!after.route || after.route.source === "event" || after.route.source === "circuit" || after.route.source === "single" || before.intent?.name !== after.intent.name)) {
@@ -1899,7 +2040,8 @@ export function applyAnswer(s: StartState, a: Answer, now: number): StartState {
     }
     case "route":
       if (a.action === "accept" && s.route) next = { ...next, route: { ...s.route, confirmed: true }, editingRoute: false };
-      else if (a.action === "change") next = { ...next, editingRoute: true, asking: "route" };
+      // (Changed by hand: no longer the one place said, 0.38.5.)
+      else if (a.action === "change") next = { ...next, editingRoute: true, asking: "route", base: null };
       else if (a.action === "single") {
         const single = singleRoute(s);
         next = { ...next, route: single ? { ...single, confirmed: true } : s.route, editingRoute: false };
@@ -1925,6 +2067,9 @@ export function applyExtracted(s: StartState, e: Extracted, now: number): StartS
   if (e.duration) next.duration = e.duration;
   if (e.way) next.way = e.way;
   if (e.dayTrip) next.dayTrip = true;
+  // One place said (0.38.5); another country said without one: no longer that town.
+  if (e.base) next.base = e.base;
+  else if (e.where && s.base && (e.where.code ?? null) !== (s.where?.code ?? null)) next.base = null;
   // Another kind of trip said: its playbook replaces the one before, and the old kind's answers go with it.
   if (e.playbook) {
     if (s.playbook && s.playbook.label !== e.playbook.label) next.pbAnswers = Object.fromEntries(Object.entries(s.pbAnswers ?? {}).filter(([k]) => !k.startsWith("custom:")));
@@ -1956,6 +2101,7 @@ export function onlyEmpty(s: StartState, e: Extracted): Extracted {
     styles: want ? e.styles : [],
     budget: want ? e.budget : null,
     ...(s.playbook || !e.playbook ? {} : { playbook: e.playbook }),
+    ...(s.base || !e.base ? {} : { base: e.base }),
   };
 }
 
@@ -2231,9 +2377,12 @@ export function questionOf(s: StartState, q: QuestionId, ctx: StartCtx): Questio
   // Asked as one would ask a friend (0.38.4): "siz" once others come along, the trip's event or place named.
   const we = Boolean(s.who && s.who.kind !== "solo");
   const you = (one: string, many: string) => (we ? many : one);
-  const goal = s.intent?.kind === "event" ? s.intent.name : (s.where?.place ?? null);
+  // (The one place said for the whole trip, when there is one: "Canggu'ya", 0.38.5.)
+  const goal = s.intent?.kind === "event" ? s.intent.name : (s.base ?? s.where?.place ?? null);
   // "Bali'ye", "Ozora Festivali için" (an event's name may end in a possessive: never a wrong ending).
   const toGoal = goal ? (s.intent?.kind === "event" ? `${goal} için` : dative(goal)) : "";
+  // "Canggu'da": where they are, for what they'll do there (an event's name takes none).
+  const inGoal = goal && s.intent?.kind !== "event" ? `${goal}${locative(goal)}` : null;
   switch (q) {
     case "guess": {
       const g = s.guess;
@@ -2322,7 +2471,7 @@ export function questionOf(s: StartState, q: QuestionId, ctx: StartCtx): Questio
       };
     case "duration": {
       if (s.intent?.dates) return eventLengthQuestion(s.intent, s.intent.dates);
-      const where = s.where?.place;
+      const where = s.base ?? s.where?.place;
       const text = where
         ? L(`${where}${locative(where)} kaç gün kalmak ister${you("sin", "siniz")}?`, `How long would you like to stay in ${where}?`)
         : L("Kaç gün sürsün?", "How long should it be?");
@@ -2338,7 +2487,11 @@ export function questionOf(s: StartState, q: QuestionId, ctx: StartCtx): Questio
             { label: L("Gelecek hafta sonu", "Next weekend"), answer: { q: "start", date: weekendStart(ctx.today, true), approx: false } },
           ]
         : monthChips(ctx.today);
-      return { id: q, text: L(`Ne zaman yola çıkmayı düşünüyor${you("sun", "sunuz")}?`, "When are you thinking of setting off?"), hint: L("Bir ay seç ya da günü işaretle.", "Pick a month or mark the day."), chips, date: true };
+      // The place named (0.38.5: "Canggu'ya ne zaman…"), never a bare form question.
+      const text = goal
+        ? L(`${toGoal} ne zaman yola çıkmayı düşünüyor${you("sun", "sunuz")}?`, `When are you thinking of setting off for ${goal}?`)
+        : L(`Ne zaman yola çıkmayı düşünüyor${you("sun", "sunuz")}?`, "When are you thinking of setting off?");
+      return { id: q, text, hint: L("Bir ay seç ya da günü işaretle.", "Pick a month or mark the day."), chips, date: true };
     }
     case "day": {
       const month = Number((s.start?.date ?? ctx.today).slice(5, 7));
@@ -2346,7 +2499,10 @@ export function questionOf(s: StartState, q: QuestionId, ctx: StartCtx): Questio
       const labels: Record<MonthPart, string> = { begin: L("Ayın başı", "Early in the month"), mid: L("Ortası", "Mid-month"), end: L("Sonu", "Late in the month") };
       return {
         id: q,
-        text: L(`${monthName(month)} ayının hangi günü yola çıkıyor${you("sun", "sunuz")}?`, `Which day in ${monthName(month)} are you setting off?`),
+        // "Canggu'ya Kasım'da hangi gün çıkıyorsunuz?" (0.38.5): the place and the month said, not a form's words.
+        text: goal
+          ? L(`${toGoal} ${monthName(month)}${locative(monthName(month))} hangi gün çıkıyor${you("sun", "sunuz")}?`, `Which day in ${monthName(month)} are you setting off for ${goal}?`)
+          : L(`${monthName(month)}${locative(monthName(month))} hangi gün yola çıkıyor${you("sun", "sunuz")}?`, `Which day in ${monthName(month)} are you setting off?`),
         hint: L("Günü seç; bilmiyorsan ayın başı, ortası ya da sonu.", "Pick the day; if you don't know yet, early, mid or late in the month."),
         chips: days.map(({ part, date }) => ({ label: labels[part], answer: { q: "day" as const, date, part } })),
         date: true,
@@ -2363,7 +2519,11 @@ export function questionOf(s: StartState, q: QuestionId, ctx: StartCtx): Questio
     }
     case "want":
       return {
-        id: q, text: L("Bu gezide en çok ne istiyorsun? (birden çok seçebilirsin)", "What are you after on this trip? (pick as many as you like)"),
+        // "Canggu'da en çok ne yapmak istersiniz?" (0.38.5): the place and the company in the words.
+        id: q,
+        text: inGoal
+          ? L(`${inGoal} en çok ne yapmak ister${you("sin", "siniz")}? (birden çok seçebilir${you("sin", "siniz")})`, `What would you most like to do in ${goal}? (pick as many as you like)`)
+          : L(`Bu gezide en çok ne istiyor${you("sun", "sunuz")}? (birden çok seçebilir${you("sin", "siniz")})`, "What are you after on this trip? (pick as many as you like)"),
         chips: [], multi: true,
       };
     case "route": {
@@ -2400,20 +2560,34 @@ export function ackText(before: StartState, after: StartState, ctx: StartCtx): s
   const when = whenWords(before, after);
   const who = after.who && JSON.stringify(after.who) !== JSON.stringify(before.who) ? whoWords(after.who, ctx.myName) : "";
   const from = after.from && after.from !== before.from ? after.from : null;
+  // The one place said and the styles said with the rest (0.38.5: "…, tek yer: Canggu.", "…, deniz ve doğa."): what was understood.
+  const base = !after.base || after.base === before.base ? "" : samePlace(after.base, after.where?.place) ? L("tek yerde", "all in one place") : L(`tek yer: ${after.base}`, `all in ${after.base}`);
+  const newStyles = after.wantDone && after.styles.length > 0 && JSON.stringify(after.styles) !== JSON.stringify(before.styles);
+  const styles = newStyles && (newPlace || when || who || from || base) ? andList(knownStyles(after.styles).map((id) => STYLES[id]().toLocaleLowerCase(lang() === "tr" ? "tr" : "en"))) : "";
+  const extra = [base, styles].filter(Boolean).join(", ");
   // A length alone, its start still to come, isn't said back ("1 hafta · başlangıç?"): the start is asked.
-  if (!newPlace && !who && !from && after.duration && !after.start) return "";
+  if (!newPlace && !who && !from && !extra && after.duration && !after.start) return "";
   // The place alone gets a word of its own (a small table of popular places; the model writes richer ones).
-  if (newPlace && !when && !who && !from) return colourLine(after, ctx) ?? L(`Harika, ${after.where!.place}!`, `Great, ${after.where!.place}!`);
+  if (newPlace && !when && !who && !from && !extra) return colourLine(after, ctx) ?? L(`Harika, ${after.where!.place}!`, `Great, ${after.where!.place}!`);
   // Else one short sentence of what was understood: "Papua New Guinea, 3 weeks in November with a friend."
   const head = [newPlace ? after.where!.place : "", when].filter(Boolean).join(", ");
   const fromText = from ? L(`${from}${fromSuffix(from)}`, `from ${from}`) : "";
-  if (!head && !who && !fromText) return "";
+  if (!head && !who && !fromText && !extra) return "";
   // "Sabine ile Bali, 10 Aralık – 10 Ocak · 31 gece, İstanbul'dan." / "Bali, Dec 10 – Jan 10 · 31 nights with Sabine from Istanbul."
-  const line = L(
-    [[who, head].filter(Boolean).join(" "), fromText].filter(Boolean).join(", "),
-    [head, who, fromText].filter(Boolean).join(" ").replace(/^, /, ""),
-  );
+  const line = [
+    L(
+      [[who, head].filter(Boolean).join(" "), fromText].filter(Boolean).join(", "),
+      [head, who, fromText].filter(Boolean).join(" ").replace(/^, /, ""),
+    ),
+    extra,
+  ].filter(Boolean).join(", ");
   return `${line.charAt(0).toLocaleUpperCase(lang() === "tr" ? "tr" : "en")}${line.slice(1)}.`;
+}
+
+/** "deniz, doğa ve eğlence" / "beach, nature and nightlife". */
+function andList(words: string[]): string {
+  if (words.length < 2) return words[0] ?? "";
+  return `${words.slice(0, -1).join(", ")} ${L("ve", "and")} ${words.at(-1)}`;
 }
 
 /** The dates or the length just said, in words ("3 weeks in November", "Kasım'da 3 hafta", "20 Kasım – 4 Aralık · 14 gece"). */
@@ -2522,7 +2696,8 @@ function mustSay(before: StartState, after: StartState): string {
     const route = after.route?.source === "event" && after.route.stops.length > 1 ? ` (${routeText(after.route)})` : "";
     return L(`Gezi: ${whenText(after)}${route}.`, `The trip: ${whenText(after)}${route}.`);
   }
-  if (after.route?.confirmed && !before.route?.confirmed && after.route.source !== "event") return L("Tamam, rota bu.", "Great, that's the route.");
+  // (One place said for the whole trip is its own route: said back with the rest, never as a route agreed.)
+  if (after.route?.confirmed && !before.route?.confirmed && after.route.source !== "event" && !after.base) return L("Tamam, rota bu.", "Great, that's the route.");
   if (after.start?.part && (after.start.date !== before.start?.date || !before.start?.part)) {
     const d = dayText(after.start.date);
     return L(`${d}'${dayAccusative(after.start.date)} başlangıç aldım, değiştirebilirsin.`, `I've taken ${d} as the start; you can change it.`);
@@ -2554,7 +2729,7 @@ export function nextLine(after: StartState, ctx: StartCtx, drawing = false): str
 export function modelMayReply(before: StartState, after: StartState): boolean {
   // An event's dates are said by the code (estimated, with the site to check): never in the model's words.
   if (after.intent && (after.intent.name !== before.intent?.name || mustSay(before, after))) return false;
-  if (after.route?.confirmed && !before.route?.confirmed) return false;
+  if (after.route?.confirmed && !before.route?.confirmed && !after.base) return false;
   if (after.start?.part && (after.start.date !== before.start?.date || !before.start?.part)) return false;
   return nextQuestion(after) !== "route";
 }
@@ -2930,12 +3105,14 @@ export function routeForGenerate(s: StartState): StartRoute | null {
 }
 
 /** Short trips and single cities are one stop; the model is asked only for a longer trip to a country, an island or a region. */
-export function wantsRouteAdvice(s: Pick<StartState, "where" | "duration" | "start"> & { intent?: Intent | null; playbook?: CustomPlaybook | null }): boolean {
+export function wantsRouteAdvice(s: Pick<StartState, "where" | "duration" | "start"> & { intent?: Intent | null; playbook?: CustomPlaybook | null; base?: string | null }): boolean {
   const total = totalNights(s) ?? 0;
   // Going for one experience only ("sadece dalışa gidip geleceğim"): no other stops are drawn around it.
   if (s.playbook?.focus === "only") return false;
   // An event or a theme with a route of its own (gateway → event → gateway): never the model's for the place.
   if (!s.where || total < 6 || intentRoute(s)) return false;
+  // One place said for the whole trip (0.38.5): no route to propose.
+  if (s.base) return false;
   const known = knownPlaceOf(s.where.place);
   return !known?.city;
 }

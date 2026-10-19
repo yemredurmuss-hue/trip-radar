@@ -111,7 +111,7 @@ describe("instant capture, most important first (the owner's second report)", ()
     const yes = withLang("en", () => applyAnswer(s, { q: "guess", accept: true }, 3));
     expect(yes.where).toEqual({ place: "Papua New Guinea", country: "Papua New Guinea", code: "PG" });
     expect(nextQuestion(yes)).toBe("day");
-    expect(withLang("en", () => replyText(s, yes, ctx, false, true))).toBe("Papua New Guinea, 3 weeks in November with a friend.\nWhich day in November are you setting off?");
+    expect(withLang("en", () => replyText(s, yes, ctx, false, true))).toBe("Papua New Guinea, 3 weeks in November with a friend.\nWhich day in November are you setting off for Papua New Guinea?");
     expect(canGenerate(yes)).toBe(true);
     // Then the day (not needed), the style, who: never the names.
     let next = withLang("en", () => applyAnswer(yes, { q: "from", city: "London" }, 4));
@@ -153,7 +153,7 @@ describe("instant capture, most important first (the owner's second report)", ()
     expect(s.duration).toEqual({ unit: "week", n: 3 });
     expect(s.start).toEqual({ date: "2026-11-01", approx: true });
     expect(nextQuestion(s)).toBe("day");
-    expect(withLang("tr", () => replyText(before, s, ctx))).toBe("Bir arkadaşınla Papua Yeni Gine, Kasım'da 3 hafta.\nKasım ayının hangi günü yola çıkıyorsunuz?");
+    expect(withLang("tr", () => replyText(before, s, ctx))).toBe("Bir arkadaşınla Papua Yeni Gine, Kasım'da 3 hafta.\nPapua Yeni Gine'ye Kasım'da hangi gün çıkıyorsunuz?");
     expect(withLang("tr", () => checklist(s, ctx).find((r) => r.id === "when"))).toMatchObject({ done: true, value: "Kasım · 3 hafta" });
   });
 

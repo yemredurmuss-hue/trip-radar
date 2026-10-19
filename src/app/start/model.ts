@@ -11,7 +11,7 @@ import { imageProxy, pickCityImage } from "../../lib/cityImages";
 import { withLang, type Lang } from "../../lib/i18n";
 import { getProvider } from "../../lib/llm";
 import {
-  acceptExtraction, acceptReply, acceptRoute, photoQuery, routePrompt, routeSchema, routeSystem, singleRoute,
+  acceptExtraction, acceptQuestion, acceptReply, acceptRoute, nextPrompt, nextSystem, photoQuery, replySchema, routePrompt, routeSchema, routeSystem, singleRoute,
   totalNights, turnLiteSchema, turnPrompt, turnSchema, turnSystem, wantsRouteAdvice, type Extracted, type QuestionId, type StartRoute, type StartState,
 } from "../../lib/startTrip";
 
@@ -93,6 +93,25 @@ export async function readAndReply(
     return withLang(a.lang, () => ({ read: acceptExtraction(raw, a.today), reply: acceptReply(raw.reply, a.lang) }));
   } catch (error) {
     if (!signal?.aborted) console.warn("[start] reading the message", error);
+    return null;
+  }
+}
+
+/**
+ * A quick answer tapped (0.38.5): the next question in the model's words, bound to what is known; null on no key, an
+ * error, REPLY_MS or `signal` aborted (the code's line stands). One small call, never retried.
+ */
+export async function askNext(
+  a: { today: string; known: string; answered: QuestionId; label: string; next: QuestionId; open?: QuestionId[]; lang: Lang },
+  signal?: AbortSignal,
+): Promise<string | null> {
+  try {
+    const llm = await getProvider();
+    const [system, prompt] = withLang(a.lang, () => [nextSystem(), nextPrompt(a)]);
+    const raw = await timed((sig) => llm.generateJson(system, prompt, replySchema, [], { signal: sig, maxRetries: 0 }), REPLY_MS, signal);
+    return acceptQuestion(raw.question, a.lang);
+  } catch (error) {
+    if (!signal?.aborted) console.warn("[start] the next question", error);
     return null;
   }
 }
