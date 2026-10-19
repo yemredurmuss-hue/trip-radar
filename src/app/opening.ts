@@ -34,8 +34,15 @@ export const SCROLL_GAP = 45;
 /** The flourish, in ms from the start: the orb is out at the border by `burst`, leaves it at `back`, and is home when it is over. */
 export const FLOURISH = { burst: 260, back: 560 } as const;
 export const FLOURISH_MS = 900;
-/** The sparks of a burst: how many, and how far they fly. */
+/** The sparks of a burst: how many, and how long they fly (ms). */
 export const SPARKS = 14;
+export const SPARK_MS = 600;
+
+/**
+ * How long the flourish's layer still waits at its end (ms from `now`): none, unless a burst went off late (a frame held up
+ * on a busy machine) and its sparks are still flying until `sparksOut`; a slow frame never swallows the burst. Pure.
+ */
+export const layerLeft = (now: number, sparksOut: number | null): number => (sparksOut == null ? 0 : Math.max(0, Math.ceil(sparksOut - now)));
 /** A glint sweeps only the counters that start within this long (ms), so it is over with the rest. */
 export const GLINT_UNTIL = 300;
 export const GLINT_MS = 560;
@@ -182,6 +189,7 @@ function flourish(doc: Document, counters: { el: HTMLElement; delay: number }[])
   layer.setAttribute("aria-hidden", "true");
   doc.body.appendChild(layer);
   const later = (fn: () => void, ms: number) => void timers.push(setTimeout(fn, ms));
+  let sparksOut: number | null = null;
   const anim = (el: Element, keyframes: Keyframe[], ms: number, easing: string, delay = 0) => {
     const a = el.animate(keyframes, { duration: ms, delay, easing, fill: "both" });
     anims.push(a);
@@ -197,8 +205,9 @@ function flourish(doc: Document, counters: { el: HTMLElement; delay: number }[])
       s.style.left = `${x}px`;
       s.style.top = `${y}px`;
       layer.appendChild(s);
-      anim(s, [{ transform: "translate(-50%,-50%) scale(.4)", opacity: 1 }, { transform: `translate(calc(${dx}px - 50%),calc(${dy}px - 50%)) scale(1)`, opacity: 0 }], 600, "cubic-bezier(.2,.7,.3,1)");
+      anim(s, [{ transform: "translate(-50%,-50%) scale(.4)", opacity: 1 }, { transform: `translate(calc(${dx}px - 50%),calc(${dy}px - 50%)) scale(1)`, opacity: 0 }], SPARK_MS, "cubic-bezier(.2,.7,.3,1)");
     });
+    sparksOut = performance.now() + SPARK_MS;
   };
   const glint = (el: HTMLElement) => {
     const r = el.getBoundingClientRect();
@@ -260,7 +269,12 @@ function flourish(doc: Document, counters: { el: HTMLElement; delay: number }[])
     seat?.classList.remove("away");
     layer.remove();
   };
-  later(end, FLOURISH_MS);
+  const endOnceOut = () => {
+    const left = layerLeft(performance.now(), sparksOut);
+    if (left) later(endOnceOut, left);
+    else end();
+  };
+  later(endOnceOut, FLOURISH_MS);
   return end;
 }
 

@@ -6434,6 +6434,40 @@ try {
   const id = new URL(worker.url()).host;
   const app = await opening.newPage();
   await app.goto(`chrome-extension://${id}/app.html`);
+  // The flourish is recorded in the page as it plays (the burst lives 600 ms: a round trip from here, on a loaded machine, can
+  // land after it), with the frames the page's main thread was held up for (a held-up frame stretches the flourish by its
+  // own length, which says nothing of the flourish's timing; they are taken off its measured length below).
+  await app.evaluate(() => {
+    const fx = (window.__fx = { added: null, removed: null, burst: null, held: [] });
+    let last = performance.now();
+    const tick = () => {
+      const now = performance.now();
+      if (now - last > 100) fx.held.push([last, now]);
+      last = now;
+      if (fx.removed == null) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+    new MutationObserver((records) => {
+      for (const r of records) {
+        for (const n of r.addedNodes) {
+          if (!(n instanceof HTMLElement)) continue;
+          if (n.classList.contains("op-fx") && fx.added == null) fx.added = performance.now();
+          if (n.classList.contains("op-spark") && !fx.burst) {
+            // (the whole burst is appended in one go: read it once it's all in)
+            queueMicrotask(() => {
+              const layer = document.querySelector(".op-fx");
+              fx.burst = {
+                sparks: [...(layer?.querySelectorAll(".op-spark") ?? [])].filter((x) => x.getBoundingClientRect().width > 0).length,
+                stars: layer?.querySelectorAll(".op-star").length ?? 0,
+                away: document.querySelectorAll(".mascot-seat.away").length,
+              };
+            });
+          }
+        }
+        for (const n of r.removedNodes) if (n instanceof HTMLElement && n.classList.contains("op-fx") && fx.removed == null) fx.removed = performance.now();
+      }
+    }).observe(document.body, { childList: true, subtree: true });
+  });
   await app.getByText("Örnek geziyi yükle →").click();
   await app.getByRole("heading", { name: "Portekiz (örnek)" }).waitFor();
   // (the opening's own animations are script ones: no CSS animation name)
@@ -6444,26 +6478,15 @@ try {
   await app.waitForFunction(() => document.getAnimations().some((x) => !("animationName" in x)), null, { timeout: 3000 });
   // The flourish over it (orb, sparks, glint): the mascot's orb is out of its seat, a burst of sparks and stars goes off, and all of it
   // is over within 1.2 s, leaving the mascot back in its seat; the panel is not scrolled by it.
-  await app.waitForSelector(".op-fx .op-orb", { timeout: 3000 });
-  // (the burst lives 600 ms and goes with the flourish's layer: read at its first frame, all at once, not in three round trips
-  // that can land after the layer is gone)
-  const burst = await (
-    await app.waitForFunction(() => {
-      const sparks = [...document.querySelectorAll(".op-fx .op-spark")].filter((s) => s.getBoundingClientRect().width > 0).length;
-      return sparks ? { sparks, stars: document.querySelectorAll(".op-fx .op-star").length, away: document.querySelectorAll(".mascot-seat.away").length } : null;
-    }, null, { timeout: 3000, polling: "raf" })
-  ).jsonValue();
-  assert.ok(burst.stars > 0, `the burst has stars as well as sparks (${JSON.stringify(burst)})`);
-  assert.equal(burst.away, 1, "the orb has left the mascot's seat");
-  const flourishMs = await app.evaluate(async () => {
-    const t0 = performance.now() - (Number(document.querySelector(".op-fx")?.getAnimations({ subtree: true })[0]?.currentTime) || 0);
-    await new Promise((done) => {
-      const timer = setInterval(() => document.querySelector(".op-fx") || (clearInterval(timer), done()), 16);
-    });
-    return performance.now() - t0;
-  });
+  await app.waitForFunction(() => window.__fx.added != null, null, { timeout: 3000 });
+  const fx = await (await app.waitForFunction(() => window.__fx.removed != null && window.__fx, null, { timeout: 6000 })).jsonValue();
+  assert.ok(fx.burst, "a burst of sparks went off");
+  assert.ok(fx.burst.sparks > 0 && fx.burst.stars > 0, `the burst has stars as well as sparks (${JSON.stringify(fx.burst)})`);
+  assert.equal(fx.burst.away, 1, "the orb has left the mascot's seat");
+  const flourishMs = fx.removed - fx.added;
+  const heldMs = fx.held.reduce((n, [from, to]) => n + Math.max(0, Math.min(to, fx.removed) - Math.max(from, fx.added) - 16), 0);
   assert.ok(flourishMs > 0, "the flourish was measured while it played");
-  assert.ok(flourishMs <= 1200, `the flourish is over within 1.2 s (${Math.round(flourishMs)} ms)`);
+  assert.ok(flourishMs - heldMs <= 1200, `the flourish is over within 1.2 s (${Math.round(flourishMs)} ms, of which ${Math.round(heldMs)} ms in held-up frames)`);
   assert.equal(await app.locator(".mascot-seat.away").count(), 0, "the mascot is back in its seat");
   await app.screenshot({ path: `${out}/39a-opening-mid.png` });
   assert.ok(await app.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight + 1), "the page doesn't scroll while it plays");

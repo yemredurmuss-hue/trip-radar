@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FLOURISH, FLOURISH_MS, GAP, MAX_START, OFF_KEY, RISE_MS, SPARKS, claimOpening, countAt, openedKey, schedule, scheduleBeats, sparkVectors } from "../src/app/opening";
+import { FLOURISH, FLOURISH_MS, GAP, MAX_START, OFF_KEY, RISE_MS, SPARKS, SPARK_MS, claimOpening, layerLeft, countAt, openedKey, schedule, scheduleBeats, sparkVectors } from "../src/app/opening";
 
 const memory = () => {
   const data = new Map<string, string>();
@@ -67,6 +67,16 @@ describe("when it plays", () => {
 });
 
 describe("the flourish: orb, sparks, glint (Emre, 2026-10-13)", () => {
+  it("ends on time, unless a late burst's sparks are still flying (a held-up frame doesn't swallow them)", () => {
+    // on time: the burst at 260 ms is out by 860, before the end at 900
+    expect(FLOURISH.burst + SPARK_MS).toBeLessThanOrEqual(FLOURISH_MS);
+    expect(layerLeft(FLOURISH_MS, FLOURISH.burst + SPARK_MS)).toBe(0);
+    expect(layerLeft(FLOURISH_MS, null)).toBe(0);
+    // a burst that went off at 1100 (a frame held up 840 ms) keeps the layer until 1700
+    expect(layerLeft(1150, 1100 + SPARK_MS)).toBe(550);
+    expect(layerLeft(1700, 1100 + SPARK_MS)).toBe(0);
+  });
+
   it("is over within 1.2 s, with the burst at the border before the orb heads home", () => {
     expect(FLOURISH_MS).toBeLessThanOrEqual(1200);
     expect(FLOURISH.burst).toBeLessThan(FLOURISH.back);
