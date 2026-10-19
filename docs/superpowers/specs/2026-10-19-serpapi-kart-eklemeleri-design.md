@@ -234,3 +234,14 @@ Günlük tavanlar: `serp_otel` 2, `serp_fiyat` 2, `serp_yer` 1, `serp_airbnb` 1,
 3. `offers` fonksiyonunu deploy et.
 4. Eklenti sürümü: tabandaki 0.38.7 henüz yayınlanmadı ve e2e'de üç bilinen kırık var; sürüm numarası diğer
    oturumlarla paylaşılıyor. Yayın yalnız Emre "yayınla" deyince.
+
+## Supabase (2026-10-19 akşam, yapıldı)
+
+- `trip_radar.price_log` + `price_log_add` / `price_log_read` uygulandı (migration `trip_radar_price_log`); anon erişemiyor.
+- `offers` sürüm 20 yüklendi (Supabase bağlantısıyla, dalın `3cc1cad` dosyalarından). Öncesinde canlı sürüm 19 = `a7c77ec`
+  (uçuş servisi oturumu), başka bekleyen değişiklik yoktu.
+- Canlı deneme: flight, esim, transfer, activity eskisi gibi; days 4 gün; price (110–200, 61 nokta), sights 8, events 2,
+  stay Google Hotels önde (fotoğraf, yakın yer, yorum konusu; linkler Travelpayouts ortaklık linki). price_log ilk satır yazıldı.
+- SerpApi hesabı 19 Ekim'de 79/250 (canlı sistem eski `serpapi` tavanıyla günde 8'e kadar kullanıyordu).
+- Eklentinin yeni sürümü henüz yok: kullanıcılar sunucudaki otel değişikliğini (Google önde) şimdiden alıyor; rozet,
+  grafik, fikirler, etkinlik ve Airbnb eklenti sürümüyle gelir.
