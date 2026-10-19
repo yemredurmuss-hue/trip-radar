@@ -8,12 +8,13 @@
 // never scored as good or bad and never claimed: a "quiet" wish counts only when a label says it, a distance only
 // when both the hotel and the trip's plans in that city are on the map. The price is weighed against the other
 // candidates, never against a share of the trip's budget: how much of a trip goes on beds differs every trip.
+import { brandOf, type Brand } from "./brands";
 import { levelFor, levelSource, wantedAmenities } from "./decision";
 import { distanceKm } from "./geo";
 import { L } from "./i18n";
 import { nNights, nReviews, num } from "./i18nText";
 import { formatPrice } from "./items";
-import type { Need, Offer } from "./offerSource";
+import { ratingText, type Need, type Offer } from "./offerSource";
 import type { StayCandidate } from "./offerSources";
 import { cityKeyOf, sameCity } from "./plan";
 import type { Amenity, CriterionId, Item, PriorityLevel, Trip } from "./types";
@@ -316,3 +317,52 @@ export function candidateOffer(c: StayCandidate, kind: PickKind, why: string): O
     pick: kind,
   };
 }
+
+/** A pick as the plan's option card draws it (v82 OptionCompact): its photo, its label, the site, the rating, the price by the night. */
+export interface PickCard {
+  id: string;
+  kind: PickKind;
+  title: string;
+  url: string;
+  image: string | null;
+  /** "Sana en uygun", "Daha ekonomik", "Daha konforlu": the badge on the photo. */
+  label: string;
+  brand: Brand | null;
+  /** "★ 4,6 · 1.240 yorum" (ratingParts' shape); null without a rating. */
+  rating: string | null;
+  /** The big part and its unit ("€155", "/ gece"), the whole stay in the tooltip; a usual range only as "tipik". */
+  price: { amount: string; unit: string; title: string | null } | null;
+  why: string;
+}
+
+const hostOf = (url: string): string | null => {
+  try {
+    return new URL(url).host;
+  } catch {
+    return null;
+  }
+};
+
+export function pickCard(kind: PickKind, { cand: c, why }: StayPick): PickCard {
+  const source = c.source ?? "Tripadvisor";
+  const parts = priceParts(c);
+  const perNight = L("/ gece", "/ night");
+  let price: PickCard["price"] = null;
+  if (c.nightly != null) price = { amount: eur(c.nightly), unit: perNight, title: parts.rest || null };
+  else if (c.priceRange && parts.main) price = { amount: parts.main.replace(` ${perNight}`, ""), unit: perNight, title: parts.rest };
+  return {
+    id: c.id,
+    kind,
+    title: c.name,
+    url: c.url,
+    image: c.photo,
+    label: pickLabel(kind),
+    brand: brandOf(source, hostOf(c.url)),
+    rating: c.rating == null ? null : [ratingText(c.rating), c.reviews ? nReviews(c.reviews) : null].filter(Boolean).join(" · "),
+    price,
+    why,
+  };
+}
+
+/** A candidate already on the plan (by its page, not taken off): "Seç" chooses that record again, never a second copy. */
+export const pickOnPlan = (c: Pick<StayCandidate, "url">, items: readonly Item[]): Item | undefined => items.find((i) => i.url === c.url && i.status !== "dismissed");

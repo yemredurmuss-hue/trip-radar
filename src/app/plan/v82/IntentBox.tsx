@@ -389,7 +389,7 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
       </section>
       {need && !camp && (
         <div className="q-offers">
-          <OfferRow key={need.key} need={need} />
+          <OfferRow key={need.key} need={need} onChoose={a.choose} />
         </div>
       )}
     </>

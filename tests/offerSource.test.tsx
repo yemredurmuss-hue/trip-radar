@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import { EmptyEnvContext } from "../src/app/cards/emptyEnv";
 import { OfferRow, OfferRowView, StayPicksView } from "../src/app/cards/OfferRow";
 import type { StayCandidate } from "../src/lib/offerSources";
-import { candidateOffer, pickList, pickThree } from "../src/lib/stayPicks";
+import { candidateOffer, pickCard, pickList, pickOnPlan, pickThree } from "../src/lib/stayPicks";
 import {
   dealPrice,
   MAX_OFFERS,
@@ -154,33 +154,48 @@ describe("a stay's three picks in the row", () => {
   });
   const picks = () =>
     pickList(pickThree([c("Komaneka"), c("Bucu View", { nightly: 40, total: 160, rating: 4.3, reviews: 380 }), c("Mandapa", { nightly: 209, total: 836, rating: 4.9, reviews: 640 })], { centre: null }));
-  it("the labels on top, then photo, name, ★ rating · reviews, the price with its scope, why, Favorile and İncele ↗", () => {
-    const html = renderToStaticMarkup(<StayPicksView picks={picks()} open added={["Mandapa"]} onToggle={noop} onFavorite={noop} />);
-    expect(html.match(/class="ek-pick pick-/g)).toHaveLength(3);
+  it("the plan's option cards (v82 OptionCompact): photo with its label, site, ★ rating · reviews, name to its page, the price by the night, Seç; no Favorile, no İncele", () => {
+    const html = renderToStaticMarkup(<StayPicksView picks={picks()} open chosen={["Mandapa"]} onToggle={noop} onPick={noop} />);
+    expect(html.match(/<article class="q-card q-opt z-oc/g)).toHaveLength(3);
     expect([...html.matchAll(/data-pick="(\w+)"/g)].map((m) => m[1])).toEqual(["best", "cheaper", "comfier"]);
     for (const part of [
-      '<span class="ek-pick-label">Sana en uygun</span>', '<span class="ek-pick-label">Daha ekonomik</span>', '<span class="ek-pick-label">Daha konforlu</span>',
-      'src="https://img.example.com/Komaneka.jpg"', '<span class="ek-of-rate">★ 4,6</span>1.240 yorum · Resort', "<b>€155 / gece</b> · 4 gece €620",
-      "✨ Bulduklarımın en ucuzu, ★4,3", "✨ Gecelik €54 daha fazla ama ★4,9", ">Favorile<", "✓ Favorilendi",
-      'href="https://www.booking.com/Komaneka?aid=1"', "İncele ↗",
+      '<span class="q-src best">✨ Sana en uygun</span>', '<span class="q-src">Daha ekonomik</span>', '<span class="q-src">Daha konforlu</span>',
+      'class="ph" src="https://img.example.com/Komaneka.jpg"', '<b class="q-rb star">★ 4,6</b><small>1.240 yorum</small>', "Booking.com",
+      '<span class="q-pr" title="4 gece €620"><b>€155</b><small>/ gece</small></span>',
+      'title="Bulduklarımın en ucuzu, ★4,3"', 'title="Gecelik €54 daha fazla ama ★4,9"', ">Seç<", ">Seçili<",
+      'href="https://www.booking.com/Komaneka?aid=1"',
     ]) {
       expect(html).toContain(part);
     }
+    expect(html).not.toMatch(/Favori|İncele|ek-pick-/);
   });
   it("closed: the count only; nothing to show: nothing at all", () => {
-    const html = renderToStaticMarkup(<StayPicksView picks={picks()} open={false} added={[]} onToggle={noop} onFavorite={noop} />);
+    const html = renderToStaticMarkup(<StayPicksView picks={picks()} open={false} chosen={[]} onToggle={noop} onPick={noop} />);
     expect(html).toContain("Senin için 3 öneri");
-    expect(html).not.toContain("ek-pick-list");
-    expect(renderToStaticMarkup(<StayPicksView picks={[]} open added={[]} onToggle={noop} onFavorite={noop} />)).toBe("");
+    expect(html).not.toContain("z-oc");
+    expect(renderToStaticMarkup(<StayPicksView picks={[]} open chosen={[]} onToggle={noop} onPick={noop} />)).toBe("");
   });
-  it("a hotel with only its usual range: said as typical, no price for the dates", () => {
+  it("a hotel with only its usual range: said as typical, no price for the dates in its tooltip; none at all: no price, the drawing", () => {
     const only = pickList(pickThree([c("Range", { nightly: null, total: null, source: null, priceRange: { min: 120, max: 180 } })], { centre: null }));
-    expect(renderToStaticMarkup(<StayPicksView picks={only} open added={[]} onToggle={noop} onFavorite={noop} />)).toContain("<b>tipik €120–180 / gece</b> · tarihli fiyat yok");
+    expect(pickCard(only[0].kind, only[0].pick)).toMatchObject({ price: { amount: "tipik €120–180", unit: "/ gece", title: "tarihli fiyat yok" }, brand: { label: "Booking.com" } });
+    expect(renderToStaticMarkup(<StayPicksView picks={only} open chosen={[]} onToggle={noop} onPick={noop} />)).toContain("<b>tipik €120–180</b><small>/ gece</small>");
+    const bare = [{ kind: "best" as const, pick: { cand: c("Bare", { nightly: null, total: null, photo: null, rating: null, reviews: null, source: "Hostelworld", url: "https://example.org/h" }), why: "" } }];
+    expect(pickCard(bare[0].kind, bare[0].pick)).toMatchObject({ price: null, rating: null, image: null, brand: { label: "Hostelworld", color: null } });
+    const html = renderToStaticMarkup(<StayPicksView picks={bare} open chosen={[]} onToggle={noop} onPick={noop} />);
+    expect(html).toContain('<div class="z-op art"><img src="illus/otel.png"');
+    expect(html).not.toMatch(/q-pr|q-rb|title=""/);
   });
-  it("Favorile saves the pick as an option of the need: its page, rating with reviews, the price for these nights", () => {
+  it("Seç saves the pick as an option of the need (then chooses it): its page, rating with reviews, the price for these nights", () => {
     const [{ kind, pick }] = picks();
     const item = offerItem(candidateOffer(pick.cand, kind, pick.why), need, "t1", "n1", 9);
     expect(item).toMatchObject({ status: "saved", name: "Komaneka", provider: "Booking", url: "https://www.booking.com/Komaneka?aid=1", rating: { value: 4.6, scale: 5, count: 1240 }, price: { amount: 620, currency: "EUR", scope: "total" } });
+  });
+  it("Seç on a pick already on the plan chooses that record (by its page), never a second copy; one taken off is added anew", () => {
+    const [{ kind, pick }] = picks();
+    const saved = offerItem(candidateOffer(pick.cand, kind, pick.why), need, "t1", "n1", 9);
+    expect(pickOnPlan(pick.cand, [saved])?.id).toBe("n1");
+    expect(pickOnPlan(pick.cand, [{ ...saved, status: "dismissed" }])).toBeUndefined();
+    expect(pickOnPlan(picks()[1].pick.cand, [saved])).toBeUndefined();
   });
   it("a source with candidates: a stay's row waits for them (nothing drawn before), never the plain list", () => {
     const fake: SuggestionSource = { available: () => true, offers: vi.fn(async () => [offer()]), candidates: vi.fn(async () => []) };
