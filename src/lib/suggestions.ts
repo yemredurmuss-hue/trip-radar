@@ -362,9 +362,6 @@ export function bySection(list: readonly Suggestion[]): Partial<Record<SectionId
   return out;
 }
 
-/** The header's count: "1 öneri", "2 öneri". */
-export const suggestionCount = (n: number): string => L(`${n} öneri`, n === 1 ? "1 suggestion" : `${n} suggestions`);
-
 /**
  * The stored list after the traveller acted on a suggestion. A rule's suggestion put back to open is taken out of the
  * list again (the rule shows it while it still holds); an AI or chat suggestion keeps its record with the new state.

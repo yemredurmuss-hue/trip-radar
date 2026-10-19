@@ -23,13 +23,13 @@ import { updateTrip } from "../actions";
 import { loadWorld, type WorldMap } from "./FlightMap";
 import { GenMap, type GenMapProps, type GenStop } from "./GenMap";
 import { placePhotos } from "./model";
+import { reducedMotion } from "../motion";
 
 /** A step is seen running at least this long, so a quick one doesn't flash past (the work itself is often quicker). */
 export const MIN_STEP_MS = 600;
 /** Then its tick shows a moment before the next step starts. */
 const TICK_MS = 220;
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
-const reduced = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 type StepState = "wait" | "run" | "done" | "error";
 
@@ -93,7 +93,8 @@ export function Generating({ state, onTripId, onFinished, onBack, onLine }: Prop
   // the photos alone and the steps tick as their work finishes.
   const [world, setWorld] = useState<WorldMap | null | "loading">("loading");
   const [plan, setPlan] = useState<{ map: Omit<GenMapProps, "world" | "photos" | "lang" | "still">; timeline: GenTimeline; t0: number } | null>(null);
-  const still = useMemo(() => reduced(), []);
+  // (the system setting and "Hareketi duraklat" alike)
+  const still = useMemo(() => reducedMotion(), []);
   useEffect(() => {
     let live = true;
     void loadWorld().then((w) => {

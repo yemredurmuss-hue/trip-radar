@@ -13,7 +13,7 @@ import { buildLegs } from "../src/lib/legs";
 import { countStages, heroNumbers, noCounts, type StageCounts } from "../src/lib/lifecycle";
 import { buildPlan } from "../src/lib/plan";
 import { plannedItem, type PlannedInput } from "../src/lib/planned";
-import { listTodos, planList, type PlanList } from "../src/lib/planList";
+import { planList, type PlanList } from "../src/lib/planList";
 import { decisionProgress } from "../src/lib/progress";
 import { isPlaceholder, placeholderPrint } from "../src/lib/startTrip";
 import { buildTimeline } from "../src/lib/timeline";
@@ -222,12 +222,5 @@ describe("one source: hero = list = Plan sections", () => {
     expect(home.list.counts.search).toBe(0);
     // Nobody coming their own way: Emre's flight back is the way home.
     expect(listOf(ways, { ...trip, travellers: { names: ["Sabine"], count: 2 } }).list.counts.search).toBe(0);
-  });
-
-  it("the next step is the soonest row; a missing file isn't one", () => {
-    const { list } = listOf([stay("Jardim", "chosen"), flight("Out", "IST", "OPO", "2026-10-08", "booked")]);
-    const all = listTodos(list);
-    expect(all.length).toBe(list.open.length + list.book.length + list.ways.length + list.deadlines.length);
-    expect(all.map((t) => t.date ?? "9999")).toEqual([...all.map((t) => t.date ?? "9999")].sort());
   });
 });

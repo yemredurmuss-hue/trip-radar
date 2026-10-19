@@ -4,7 +4,6 @@
 import { cardKind, type CardKind } from "./cardKinds";
 import { isCampStay } from "./campStay";
 import { sectionOfItem } from "./categories";
-import { formatDateRange } from "./items";
 import { legItem, type Leg } from "./legs";
 import { sameCity, type DateRange, type Plan } from "./plan";
 import type { Item, Trip } from "./types";
@@ -78,9 +77,6 @@ export function activityGaps(plan: Pick<Plan, "stayBlocks">, items: Item[]): Act
   const has = (city: string) => items.some((i) => i.status !== "dismissed" && sectionOfItem(i) === "activity" && sameCity(i.city, city));
   return out.filter((g) => !has(g.city));
 }
-
-/** "10–17 Aralık". */
-export const rangeText = (r: DateRange | null): string | null => (r ? formatDateRange(r.start, r.end) : null);
 
 /** A need's stable key for the offers row (and its tests). */
 export const needKey = (kind: string, ...parts: (string | null | undefined)[]): string =>

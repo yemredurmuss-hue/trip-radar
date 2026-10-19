@@ -94,5 +94,3 @@ export function planList(sections: CatSection[], todos: Todo[], today: string): 
   };
 }
 
-/** What's left to act on, soonest first: the hero's "Planı tamamla" goes to the first. A missing file isn't a step. */
-export const listTodos = (list: PlanList): Todo[] => [...list.open, ...list.book, ...list.ways, ...list.deadlines].sort(byDate);

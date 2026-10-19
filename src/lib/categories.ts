@@ -775,24 +775,6 @@ export function planSectionOf(e: Pick<CatEntry, "section" | "piece">): SectionId
 }
 
 /**
- * The header's line in stage words (v11): "1 rezerve · 1 önerimiz · 2 seçildi · 1 aranıyor". Rezerve is booked and ready,
- * önerimiz a need waiting on a draft (`drafts` of the Seçenekler, F7), seçildi planned, aranıyor what's still to find or
- * pick. Null when nothing in it takes a booking.
- */
-export function stageLine(stages: StageCounts, drafts = 0): string | null {
-  const booked = stages.booked + stages.ready;
-  const chosen = stages.planned;
-  const open = stages.search + stages.options - drafts;
-  const parts = [
-    booked && L(`${booked} rezerve`, `${booked} booked`),
-    drafts && L(`${drafts} önerimiz`, `${drafts} of our picks`),
-    chosen && L(`${chosen} seçildi`, `${chosen} chosen`),
-    open && L(`${open} aranıyor`, `${open} to find`),
-  ].filter((x): x is string => Boolean(x));
-  return parts.length ? parts.join(" · ") : null;
-}
-
-/**
  * Everything out of the way, each once, in the section it belongs to: closed options and ruled-out records
  * by what they are, a hidden transfer where its card would be (Ulaşım; Uçuş if by plane), nights under Konaklama.
  */

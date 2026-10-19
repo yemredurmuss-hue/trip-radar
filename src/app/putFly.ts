@@ -151,9 +151,9 @@ export function installPutFly(doc: Document = document): () => void {
     const mark = SECTION_MARKS.map((sel) => section?.querySelector<HTMLElement>(sel) ?? null).find(Boolean) ?? null;
     const markBox = mark?.getBoundingClientRect();
     const view = doc.defaultView?.innerHeight ?? 0;
-    // The tab, as before; scrolled out of sight, the sticky bar's own Plan button stands in for it.
+    // The tab, as before; scrolled out of sight, the thin bar's own Plan button stands in for it (hero/HeroMini).
     const tab0 = doc.querySelector<HTMLElement>(".view-tabs [role=tab]");
-    const tab = tab0 && onScreen(tab0.getBoundingClientRect(), view) ? tab0 : (doc.querySelector<HTMLElement>(".sbar-tabs button") ?? tab0);
+    const tab = tab0 && onScreen(tab0.getBoundingClientRect(), view) ? tab0 : (doc.querySelector<HTMLElement>(".h-mini.on .h-tabs button") ?? tab0);
     const target = mark && markBox && onScreen(markBox, view) ? mark : tab;
     const to = target?.getBoundingClientRect();
     if (!target || !to || to.width === 0) return;

@@ -19,6 +19,7 @@ import { alongLine, boundsOf, easeInOutCubic, formatMinutes, greatCircle, km, li
 import type { MapMode, MapPlace } from "../../lib/mapLegs";
 import { PLANE } from "../start/FlightMap";
 import { canDrawMap, loadMapLibre, MAP_STYLE, offline, type MapLibreGL } from "./maplibre";
+import { reducedMotion } from "../motion";
 
 export interface TripMapStop extends MapPlace {
   key: string;
@@ -63,8 +64,6 @@ const GEN_MIN_ZOOM = 2.5;
 /** Generate: the flight from home to the destination. */
 export const FLY_MS = 2300;
 const LAND_MS = 500;
-
-const systemReduced = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 // Lucide's outlines (ISC licence, static/licenses/lucide.txt, shipped in dist/licenses/), one per way of going.
 const ICONS: Record<MapMode | "any", string> = {
@@ -149,7 +148,8 @@ export function TripMap(props: TripMapProps) {
   const handMoved = useRef(false);
   const anim = useRef(0);
   const flying = useRef<Marker | null>(null);
-  const still = useMemo(() => props.reducedMotion ?? systemReduced(), [props.reducedMotion]);
+  // (the system setting and "Hareketi duraklat" alike)
+  const still = useMemo(() => props.reducedMotion ?? reducedMotion(), [props.reducedMotion]);
   const [phase, setPhase] = useState<"loading" | "zoom" | "flying" | "landed" | "ready" | "failed">("loading");
   const [playing, setPlaying] = useState(false);
   const latest = useRef(props);
