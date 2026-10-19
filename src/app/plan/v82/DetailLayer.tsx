@@ -234,10 +234,12 @@ export function DetailLayer({ vm, option, booked, onClose, onAddDoc, footer }: {
             </ul>
           </Col>
         )}
-        {(cancel.state !== "unknown" || place) && (
+        {(cancel.state !== "unknown" || place || facts.price?.source) && (
           <Col title={L("Koşullar", "Terms")}>
             {cancel.state !== "unknown" && <p>{cancel.text}</p>}
             {place && <p title={L("AI analizi dahil", "AI analysis included")}>{place}</p>}
+            {/* D17: the box shows it converted ("≈"); here the price as the page gave it. */}
+            {facts.price?.source && <p>{L(`Sayfadaki fiyat: ${facts.price.source}`, `Price on the page: ${facts.price.source}`)}</p>}
           </Col>
         )}
         {(choice?.headline || ranked?.trade) && (
