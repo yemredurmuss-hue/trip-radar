@@ -8,6 +8,7 @@ import { sectionOfItem } from "../../lib/categories";
 import { buildLegs } from "../../lib/legs";
 import { loadHome } from "../../lib/passport";
 import { cityKeyOf } from "../../lib/plan";
+import { mapsIdeas, stayTown } from "../../lib/placeSuggest";
 import { boardMains } from "../../lib/startBoard";
 import { setRulesPreview, setSuggestionsReview } from "../../lib/startHooks";
 import { reviewKey, reviewPrompt, runReview, tripTaste } from "../../lib/suggestReview";
@@ -36,7 +37,8 @@ export async function reviewNewTrip(tripId: string): Promise<number> {
   // instead of asking too; "skipped" when it was claimed already, "no-key" without a model: the rules still show.
   // Only for a trip with places and days, as the board asks (useSuggestions): an undated start isn't reviewed empty and
   // stamped done, the board asks once the dates are there.
-  if (mains.length && range) await runReview({ key, prompt, lang: trip.lang, playbook: trip.intent, save: (change) => updateTrip(tripId, change, { touch: false }) });
+  const town = stayTown(plan.stayBlocks, mains[0]?.name);
+  if (mains.length && range) await runReview({ key, prompt, lang: trip.lang, playbook: trip.intent, places: town ? () => mapsIdeas(trip, town) : undefined, save: (change) => updateTrip(tripId, change, { touch: false }) });
   const after = (await d.get("trips", tripId)) ?? trip;
   const legs = buildLegs(plan, after);
   const timeline = buildTimeline(plan, legs, items, new Set(after.hidden ?? []));

@@ -20,6 +20,9 @@
 // each page turned into a partner link; the feed read at most a few times a day.
 // Between cities (?kind=transfer&from=Lisbon&to=Porto&adults=2) from Omio's route feed: each way's starting price
 // and time, its page a partner link.
+// A place to see or eat at (?kind=place&q=Tanah Lot Temple, Tabanan&lang=en, or a kind of place: "romantic restaurants
+// in Canggu") from Google Maps through SerpApi (google_maps, type=search): { offers: [], places } with its photo, rating,
+// reviews and own Maps page; kept a month, under a part of SerpApi's daily cap (serpmaps).
 // Each source is its own part: one failing leaves that kind with no offers and the card with its search buttons.
 // Calls out are capped per source and day. Deployed with verify_jwt off like `flight`: nothing personal comes in,
 // only places, days and a head-count.
@@ -30,6 +33,7 @@ import {
   adultsOf, airportCodeOk, askableDay, bookingSearch, cheapest, flightOffer, geoFromTypeahead, langOf, maxOf, nightsBetween,
   candidateOffer, pickCandidates, pickCheapFlights, pickCheapStays, pickFlights, pickLiveStays, pickStays, placeOk, preferOf,
   airaloPacks, airaloPlace, omioName, omioRoutes, pickActivities, pickEsims, pickTransfers, placeKey, serpFlights, serpStays, stayCandidate, stayOffer, ucusFlights, viatorDestination, type AviaFlight, type OfferOut, type StayCandidate,
+  placeSearchOk, serpPlaces,
   type EsimPack, type OmioRoute, type ViProduct, type XoHotel, type XoRate,
 } from "./shape.ts";
 
@@ -40,8 +44,10 @@ const cors = {
 };
 const reply = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 
-const HOURS = { flight: 12, stay: 24, activity: 1, esim: 24, transfer: 24 };
-const CAPS: Record<string, number> = { aviasales: 400, xotelo: 400, tripadvisor: 5, links: 300, serpapi: 8, viator: 300, airalo: 6, omio: 4, ucus: 450 };
+const HOURS = { flight: 12, stay: 24, activity: 1, esim: 24, transfer: 24, place: 24 * 30 };
+// serpmaps: the places' share of SerpApi's own daily cap (each place search takes from both), so the cards' photos
+// never use up the live flight and hotel look.
+const CAPS: Record<string, number> = { aviasales: 400, xotelo: 400, tripadvisor: 5, links: 300, serpapi: 8, serpmaps: 5, viator: 300, airalo: 6, omio: 4, ucus: 450 };
 const cap = (source: string) => Number(Deno.env.get(`OFFERS_CAP_${source.toUpperCase()}`)) || CAPS[source];
 
 type Sb = ReturnType<typeof createClient>;
@@ -79,15 +85,18 @@ async function loadNames() {
 
 type Ask = { adults: number; lang: "tr" | "en"; prefer: "cheap" | null; max: number | null; live: boolean };
 
-/** One SerpApi search, cached (its answers don't change in hours), under its own small daily cap. */
-async function serp(sb: Sb, params: Record<string, string>, hours: number): Promise<unknown | null> {
+/**
+ * One SerpApi search, cached (its answers don't change in hours), under its own small daily cap; `share`, a part of
+ * that cap a kind of search may take at most (the places').
+ */
+async function serp(sb: Sb, params: Record<string, string>, hours: number, share?: string): Promise<unknown | null> {
   const key = (Deno.env.get("SERPAPI_KEY") ?? "").trim();
   if (!key) return null;
   const q = new URLSearchParams(params);
   const cacheKey = `serp|${q}`;
   const had = await cached<unknown>(sb, cacheKey, hours);
   if (had) return had;
-  if (!(await take(sb, "serpapi"))) return (await cached<unknown>(sb, cacheKey, null)) ?? null;
+  if ((share && !(await take(sb, share))) || !(await take(sb, "serpapi"))) return (await cached<unknown>(sb, cacheKey, null)) ?? null;
   q.set("api_key", key);
   const res = await fetch(`https://serpapi.com/search.json?${q}`);
   if (!res.ok) return null;
@@ -383,6 +392,11 @@ Deno.serve(async (req: Request) => {
       const had = await cached<OfferOut[]>(sb, key, HOURS.activity);
       offers = had ?? (await activities(sb, city, country, start, end, q, ask));
       if (!had) await store(sb, key, offers);
+    } else if (p("kind") === "place") {
+      const q = placeSearchOk(p("q"));
+      if (!q) return reply(400, { error: "ask" });
+      const body = await serp(sb, { engine: "google_maps", type: "search", q, hl: ask.lang }, HOURS.place, "serpmaps");
+      return reply(200, { offers: [], places: serpPlaces(body, Date.now()) });
     } else if (p("kind") === "esim") {
       const place = airaloPlace(p("country") ?? "");
       const start = askableDay(p("start"), now), end = askableDay(p("end"), now);

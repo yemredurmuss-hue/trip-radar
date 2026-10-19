@@ -11,12 +11,12 @@
 // it's empty: its head says so); more than the row holds: "+n Pano'da".
 import { useEffect, useState, type ReactNode } from "react";
 import { cardFacts } from "../../../lib/cardFacts";
-import { askLike, askOther, moreLabel, pictureChips, type KCardVM } from "../../../lib/collectionCards";
+import { askLike, askOther, moreLabel, pictureChips, placeRatingLine, type KCardVM } from "../../../lib/collectionCards";
 import { L } from "../../../lib/i18n";
 import type { AccessVM, IntentVM, OptionVM } from "../../../lib/intents";
 import { moveToBookings, setDone, setIdeaDay, setPrep } from "../../../lib/ideas";
 import type { Plan } from "../../../lib/plan";
-import { findPlacePhoto, knownPlacePhoto, photoNames, type PlacePhoto } from "../../../lib/placeSuggest";
+import { findPlace, knownPlace, placeLookupKey, type PlaceFound } from "../../../lib/placeSuggest";
 import type { Item, Suggestion } from "../../../lib/types";
 import { setItemStatus, setNotNeeded } from "../../actions";
 import type { MenuEntry } from "../../cards/CardShell";
@@ -395,33 +395,36 @@ function RecordFace({ card, vm, plan, search, onPut, onTakeOff }: RecordCardProp
   );
 }
 
-/** A place's photo from its own Wikipedia page (placeSuggest.ts), asked once a card shows; null while none is found. */
-function usePlacePhoto(s: Suggestion | null, on: boolean): PlacePhoto | null {
-  const names = s && on ? photoNames(s) : [];
-  const key = names.join("|");
-  const [found, setFound] = useState<{ key: string; photo: PlacePhoto | null } | null>(null);
+/** A place's photo, rating and Maps page (Google Maps, else its Wikipedia page's photo: placeSuggest.ts), asked once a card shows; null while none is found. */
+function usePlaceFound(s: Suggestion | null, on: boolean): PlaceFound | null {
+  const key = s && on ? placeLookupKey(s) : "";
+  const [found, setFound] = useState<{ key: string; place: PlaceFound | null } | null>(null);
   useEffect(() => {
-    if (!key || knownPlacePhoto(names) !== undefined) return;
+    if (!key || !s || knownPlace(s) !== undefined) return;
     let live = true;
-    void findPlacePhoto(names).then((photo) => live && setFound({ key, photo }));
+    void findPlace(s).then((place) => live && setFound({ key, place }));
     return () => {
       live = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- the names, by their key
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the place, by its key
   }, [key]);
-  if (!key) return null;
-  return found?.key === key ? found.photo : (knownPlacePhoto(names) ?? null);
+  if (!key || !s) return null;
+  return found?.key === key ? found.place : (knownPlace(s) ?? null);
 }
 
 /**
  * A suggestion to add (the chat's, a rule's): ✨, why, "+ Plana koy", × Gerek yok. A place to see or eat at shows its
- * own photo (else the drawing), its word on the picture, its name over two lines (never cut in a word) and "Haritada aç";
- * put on the plan, the record keeps the photo.
+ * own photo (else the drawing), its word on the picture, its name over two lines (never cut in a word), Google Maps' rating
+ * and reviews when Maps gave them, and "Haritada aç" (the place's own Maps page once found); put on the plan, the record
+ * keeps the photo and that page.
  */
-export function SuggestCard({ card, onPut, onDismiss }: { card: KCardVM; onPut: (photo: string | null) => void; onDismiss: () => void }) {
+export function SuggestCard({ card, onPut, onDismiss }: { card: KCardVM; onPut: (photo: string | null, map: string | null) => void; onDismiss: () => void }) {
   const place = card.family !== "event";
-  const photo = usePlacePhoto(card.suggestion, place);
+  const found = usePlaceFound(card.suggestion, place);
+  const photo = found?.photo ?? null;
   const shown = photo ? { ...card, photo: photo.url } : card;
+  // Maps' own page for the place once it's found there; else the card's Maps search.
+  const map = found?.map ?? card.map;
   return (
     <KCard
       className={`${card.family === "event" ? "q-card" : "q-tile"} q-opt sugg${place ? " z-kplace" : ""}`}
@@ -431,7 +434,12 @@ export function SuggestCard({ card, onPut, onDismiss }: { card: KCardVM; onPut: 
       pic={
         <>
           {place ? (
-            <FallbackImg className="ph" src={shown.photo} fallback={<img className="art" src={card.art} alt="" />} title={photo ? L("Fotoğraf: Wikipedia", "Photo: Wikipedia") : undefined} />
+            <FallbackImg
+              className="ph"
+              src={shown.photo}
+              fallback={<img className="art" src={card.art} alt="" />}
+              title={found?.credit === "Google Maps" ? L("Fotoğraf: Google Haritalar", "Photo: Google Maps") : found?.credit === "Wikipedia" ? L("Fotoğraf: Wikipedia", "Photo: Wikipedia") : undefined}
+            />
           ) : (
             <Picture card={shown} />
           )}
@@ -444,18 +452,18 @@ export function SuggestCard({ card, onPut, onDismiss }: { card: KCardVM; onPut: 
         </>
       }
       title={<span className="z-tn">{card.title}</span>}
-      l2={card.line}
+      l2={place ? placeRatingLine(card.line, found?.rating, found?.reviews) : card.line}
       foot={
-        place && card.map ? (
+        place && map ? (
           <span className="q-act">
-            {card.canPut && <PutButton title={card.title} onPut={() => onPut(photo?.url ?? null)} />}
-            <a className="z-kmap" href={card.map} target="_blank" rel="noopener noreferrer" data-map="" aria-label={L(`${card.title}: haritada aç`, `${card.title}: open on the map`)} title={L("Haritada aç", "Open on the map")}>
+            {card.canPut && <PutButton title={card.title} onPut={() => onPut(photo?.url ?? null, found?.map ?? null)} />}
+            <a className="z-kmap" href={map} target="_blank" rel="noopener noreferrer" data-map="" aria-label={L(`${card.title}: haritada aç`, `${card.title}: open on the map`)} title={L("Haritada aç", "Open on the map")}>
               <Ic name="pin" size={14} stroke={2.2} />
               {!card.canPut && <span>{L("Haritada aç", "Open on the map")}</span>}
             </a>
           </span>
         ) : card.canPut ? (
-          <PutButton title={card.title} onPut={() => onPut(null)} />
+          <PutButton title={card.title} onPut={() => onPut(null, null)} />
         ) : null
       }
     />

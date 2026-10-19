@@ -17,7 +17,7 @@ import { refFromNote } from "./bookingRows";
 import { needsBooking } from "./booking";
 import { citiesOfPlan, type SectionId } from "./categories";
 import { L } from "./i18n";
-import { num } from "./i18nText";
+import { nReviews, num } from "./i18nText";
 import { ideaKindOf, kindLabel } from "./ideaKinds";
 import { dayChip, ideaMapUrl, ideaSource, ideaThumb, mealLabel, shortDay } from "./ideas";
 import { sourceBadge } from "./intentFrame";
@@ -253,6 +253,16 @@ export function suggestionCard(s: Suggestion, section: SectionId): KCardVM {
     map: place ? placeMapsUrl(s) : null,
     canPut: s.kind === "add",
   };
+}
+
+/**
+ * A suggested place's grey line once Google Maps found it (placeSuggest.findPlace): its rating and reviews as Maps gives
+ * them before the why ("★ 4,6 · 1.234 yorum · Canggu'ya yakın…"); only the why (or nothing) when Maps said neither.
+ */
+export function placeRatingLine(why: string | null, rating: number | null | undefined, reviews: number | null | undefined): string | null {
+  const stars = rating != null && rating > 0 ? `★ ${num(rating)}` : null;
+  const said = reviews != null && reviews > 0 ? nReviews(reviews) : null;
+  return uniq([stars, stars ? said : null, why]).join(" · ") || null;
 }
 
 /** The country (ISO alpha-2) of the stay the plan has in a city: its record's, the first that says. */

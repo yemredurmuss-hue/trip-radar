@@ -8,6 +8,7 @@ import type { HiddenInput } from "../lib/history";
 import type { Leg } from "../lib/legs";
 import { newId } from "../lib/db";
 import { cityKeyOf, type Plan } from "../lib/plan";
+import { mapsIdeas, stayTown } from "../lib/placeSuggest";
 import { reviewDue, reviewKey, reviewPrompt, reviewRunning, reviewWait, runReview, tripTaste } from "../lib/suggestReview";
 import { bySection, ruleSuggestions, shownSuggestions } from "../lib/suggestions";
 import type { Timeline } from "../lib/timeline";
@@ -134,7 +135,9 @@ export function useSuggestions(args: {
     }
     // In the trip's own language when it has one (started by chat in another language than the board's).
     const prompt = withLang(trip.lang, () => reviewPrompt({ mains, nights, range, items, sectionOf: sectionOfItem, suggestions: trip.suggestions ?? [], travellers, ...tripTaste(trip) }));
-    void runReview({ key, prompt, lang: trip.lang, playbook: trip.intent, save: (change) => updateTrip(trip.id, change, { touch: false }) });
+    // Real places on Google Maps for what the trip is for (its kind, style, who goes), in the town with the most nights.
+    const town = stayTown(plan.stayBlocks, mains[0]?.name);
+    void runReview({ key, prompt, lang: trip.lang, playbook: trip.intent, places: town ? () => mapsIdeas(trip, town) : undefined, save: (change) => updateTrip(trip.id, change, { touch: false }) });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- asked once per trip state (key)
   }, [trip.id, key, due]);
 

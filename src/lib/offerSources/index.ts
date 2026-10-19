@@ -42,7 +42,25 @@ export interface StayCandidate {
   fetchedAt: number;
 }
 
-type Answer = { offers: Offer[]; candidates?: StayCandidate[] };
+/**
+ * A place to see or eat at as Google Maps has it (the offers function's `places`, kind=place): what Maps said, nothing
+ * guessed; `url` is the place's own Maps page.
+ */
+export interface MapsPlace {
+  id: string;
+  name: string;
+  address: string | null;
+  rating: number | null;
+  reviews: number | null;
+  photo: string | null;
+  geo: { lat: number; lng: number } | null;
+  type: string | null;
+  url: string;
+  source: string;
+  fetchedAt: number;
+}
+
+type Answer = { offers: Offer[]; candidates?: StayCandidate[]; places?: MapsPlace[] };
 type Seen = Record<string, { at: number } & Answer>;
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -115,6 +133,49 @@ export function tourWords(trip: Pick<Trip, "intent" | "style"> | null | undefine
   const words = KIND_WORDS.filter(([re]) => re.test(said)).map(([, w]) => w);
   for (const id of acceptStyle(trip?.style?.ids ?? [])) words.push(...(STYLE_WORDS[id] ?? []));
   return [...new Set(words)].slice(0, TASTE_MAX);
+}
+
+/** Kinds of place Google Maps is asked for, by the trip's kind (its label and name; a honeymoon is romantic). */
+const KIND_PLACES: readonly [RegExp, (city: string) => string][] = [
+  [/kite|windsurf|sorf|surf/, (c) => `surf spots in ${c}`],
+  [/dalis|dive|diving|scuba|snorkel/, (c) => `dive sites near ${c}`],
+  [/yoga|wellness|retreat/, (c) => `yoga studios in ${c}`],
+  [/trek|hiking|yuruyus/, (c) => `hiking trails near ${c}`],
+  [/balayi|honeymoon/, (c) => `romantic restaurants in ${c}`],
+  [/gastronomi|culinary|yemek/, (c) => `local restaurants in ${c}`],
+];
+/** By the style chips (Romantik: romantic restaurants, Doğa: waterfalls); a style with no kind of place of its own says none. */
+const STYLE_PLACES: Partial<Record<StyleId, (city: string) => string>> = {
+  romantic: (c) => `romantic restaurants in ${c}`,
+  nature: (c) => `waterfalls near ${c}`,
+  beach: (c) => `beaches in ${c}`,
+  culture: (c) => `historic sites in ${c}`,
+  food: (c) => `local restaurants in ${c}`,
+  active: (c) => `hiking trails near ${c}`,
+  family: (c) => `family friendly restaurants in ${c}`,
+  luxury: (c) => `fine dining restaurants in ${c}`,
+  calm: (c) => `quiet cafes in ${c}`,
+};
+/** Kinds of place asked at most for a trip (each one more SerpApi search, kept a month there and hours here). */
+export const PLACE_SEARCH_MAX = 2;
+
+/**
+ * What the trip is for, as Google Maps searches for its kinds of place in a city (Emre, 0.39.1: "seyahatin niyetini
+ * anlayıp ona göre öneriler"): its kind's first (a surf trip: surf spots), then its style chips' (Romantik, Doğa:
+ * romantic restaurants, waterfalls), then who goes (with children: family friendly restaurants). At most
+ * PLACE_SEARCH_MAX; none for a trip that says none of these.
+ */
+export function placeSearches(trip: Pick<Trip, "intent" | "style" | "travellers"> | null | undefined, city: string): string[] {
+  const c = city.trim();
+  if (!c) return [];
+  const said = fold(`${trip?.intent?.label ?? ""} ${trip?.intent?.name ?? ""} ${trip?.intent?.playbook ?? ""}`).replace(/ı/g, "i");
+  const out = KIND_PLACES.filter(([re]) => re.test(said)).map(([, q]) => q(c));
+  for (const id of acceptStyle(trip?.style?.ids ?? [])) {
+    const q = STYLE_PLACES[id];
+    if (q) out.push(q(c));
+  }
+  if ((trip?.travellers?.children ?? 0) > 0) out.push(`family friendly restaurants in ${c}`);
+  return [...new Set(out)].slice(0, PLACE_SEARCH_MAX);
 }
 
 /**
@@ -224,10 +285,22 @@ export function queryOf(need: Need, language: "tr" | "en" = lang(), narrow: Narr
   return null;
 }
 
+/** A place from the function, kept only with what a card needs whole: a name, an id and an https page of its own. */
+const mapsPlaceOk = (p: MapsPlace): boolean =>
+  !!p && typeof p.name === "string" && !!p.name.trim() && typeof p.id === "string" && typeof p.url === "string" && /^https:\/\//.test(p.url) && (p.photo == null || /^https:\/\//.test(p.photo));
+
+/** The function's question for a place search (kind=place), or null when the words can't be searched. */
+export function placeQueryOf(search: string, language: "tr" | "en" = lang()): string | null {
+  const q = search.normalize("NFC").replace(/\s+/g, " ").trim();
+  if (!q || q.length > 100 || !/^[\p{L}\p{M}\p{N} .,'’&()-]+$/u.test(q)) return null;
+  return new URLSearchParams({ kind: "place", q, lang: language }).toString();
+}
+
 /** The live source, with its storage and fetch handed in for the tests; `find` is the chat's way in (find_offers). */
 export function makeLiveSource(opts: { kv?: KV; fetcher?: typeof fetch; now?: () => number; server?: string } = {}): SuggestionSource & {
   find(need: Need, narrow?: Narrow): Promise<Offer[]>;
   candidates(need: Need): Promise<StayCandidate[]>;
+  places(search: string): Promise<MapsPlace[]>;
 } {
   const kv = opts.kv ?? chromeKV;
   const get = opts.fetcher ?? ((...a: Parameters<typeof fetch>) => fetch(...a));
@@ -263,8 +336,12 @@ export function makeLiveSource(opts: { kv?: KV; fetcher?: typeof fetch; now?: ()
     try {
       const res = await get(`${server}/functions/v1/offers?${q}`);
       if (!res.ok) return { offers: [] };
-      const body = (await res.json()) as { offers?: Offer[]; candidates?: StayCandidate[] };
-      const answer: Answer = { offers: Array.isArray(body.offers) ? body.offers : [], ...(Array.isArray(body.candidates) ? { candidates: body.candidates } : {}) };
+      const body = (await res.json()) as { offers?: Offer[]; candidates?: StayCandidate[]; places?: MapsPlace[] };
+      const answer: Answer = {
+        offers: Array.isArray(body.offers) ? body.offers : [],
+        ...(Array.isArray(body.candidates) ? { candidates: body.candidates } : {}),
+        ...(Array.isArray(body.places) ? { places: body.places.filter(mapsPlaceOk) } : {}),
+      };
       await keep(q, answer);
       return answer;
     } catch {
@@ -288,12 +365,18 @@ export function makeLiveSource(opts: { kv?: KV; fetcher?: typeof fetch; now?: ()
     const q = queryOf(need, lang());
     return q ? ((await once(`${q}&candidates=1`)).candidates ?? []) : [];
   };
+  /** Google Maps' places for a name and its town, or a kind of place ("romantic restaurants in Canggu"); [] when none (or a function without them). */
+  const places = async (search: string): Promise<MapsPlace[]> => {
+    const q = placeQueryOf(search, lang());
+    return q ? ((await once(q)).places ?? []) : [];
+  };
 
   return {
     available: () => true,
     offers: (need) => find(need),
     find,
     candidates,
+    places,
   };
 }
 
@@ -305,5 +388,8 @@ export const findOffers = (need: Need, narrow: Narrow = {}): Promise<Offer[]> =>
 
 /** A stay's hotels to choose from (up to six; the priced ones first): [] when the sources have none. */
 export const stayCandidates = (need: Need): Promise<StayCandidate[]> => liveSource.candidates(need);
+
+/** Google Maps' places for a search (a place's name and town, or a kind of place): [] when the sources have none. */
+export const findPlaces = (search: string): Promise<MapsPlace[]> => liveSource.places(search);
 
 export const liveSource = makeLiveSource();

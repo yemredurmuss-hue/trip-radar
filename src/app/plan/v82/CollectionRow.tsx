@@ -149,7 +149,7 @@ export function CollectionRow({ vm, onPut, onTakeOff }: CollectionRowProps) {
     if (c.item) return <RecordCard key={c.key} card={c} vm={vm} plan={plan} search={links[0] ?? null} onPut={(item) => onPut({ item })} onTakeOff={(item) => onTakeOff({ item })} />;
     if (c.suggestion) {
       const s = c.suggestion;
-      return <SuggestCard key={c.key} card={c} onPut={(photo) => v82.addSuggestion?.(withPlacePhoto(s, photo))} onDismiss={() => v82.dismissSuggestion?.(s)} />;
+      return <SuggestCard key={c.key} card={c} onPut={(photo, map) => v82.addSuggestion?.(withPlacePhoto(s, photo, map))} onDismiss={() => v82.dismissSuggestion?.(s)} />;
     }
     if (c.offer) {
       const offer = c.offer;

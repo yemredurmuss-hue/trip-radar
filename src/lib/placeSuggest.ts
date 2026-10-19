@@ -1,12 +1,16 @@
 // A place the AI review suggests to see or to eat at (Yapılacaklar ve restoranlar): its name read as a name, where Google
-// Maps finds it, and its own photo. Google Maps' photos need the Places API, which this version has no endpoint for
-// (the backend is unchanged), so the photo is the place's own Wikipedia page's, and only a page with coordinates: a place,
-// not a song or a dish of the same name. The sharing server's photo search (Unsplash, Pexels) isn't asked: it finds a
-// photo like the words, not of the place. No page: the family's drawing. Pure but for findPlacePhoto's requests.
+// Maps finds it, and its own photo. First Google Maps itself (0.39.1: the offers function's kind=place, SerpApi's
+// google_maps search): the place's photo, its rating and reviews as Maps gives them and its own Maps page. A function
+// without that answer (not deployed yet) or a place Maps doesn't find: the photo is the place's own Wikipedia page's,
+// and only a page with coordinates: a place, not a song or a dish of the same name. The sharing server's photo search
+// (Unsplash, Pexels) isn't asked: it finds a photo like the words, not of the place. No page: the family's drawing.
+// The trip's kinds of place (offerSources placeSearches) are searched on Maps too, for the review to pick real places
+// from (mapsIdeas). Pure but for the requests.
 import { isPhoto } from "./cityImages";
 import { lang } from "./i18n";
 import { placeMapUrl } from "./items";
-import type { Suggestion } from "./types";
+import { findPlaces, placeSearches, type MapsPlace } from "./offerSources";
+import type { Suggestion, Trip } from "./types";
 
 /** A case ending after an apostrophe ("'nın", "'da", "'dan", "'ya", "'yı", "'yla", "'daki"): a name said in a sentence. */
 const CASE_ENDING = /['’](?:n?[ıiuü]n|n?[dt][ae]n?|[dt][ae]ki|[ny]?[ae]|[ny]?[ıiuü]|y?l[ae])$/iu;
@@ -118,5 +122,115 @@ export function findPlacePhoto(names: readonly string[], fetchJson: FetchJson = 
   );
 }
 
-/** The suggestion as put on the plan with the photo its card found (the record keeps it: suggestions.ts suggestedItem). */
-export const withPlacePhoto = (s: Suggestion, photo: string | null): Suggestion => (photo ? { ...s, payload: { ...s.payload, photo } } : s);
+/**
+ * The suggestion as put on the plan with the photo its card found and the place's own Maps page when Maps found it (the
+ * record keeps both: suggestions.ts suggestedItem).
+ */
+export const withPlacePhoto = (s: Suggestion, photo: string | null, map: string | null = null): Suggestion =>
+  photo || map ? { ...s, payload: { ...s.payload, ...(photo ? { photo } : {}), ...(map ? { map } : {}) } } : s;
+
+// --- Google Maps first --------------------------------------------------------------------------------------
+
+/** What a suggestion's card shows of its place: the photo and whose, the rating and reviews (Maps' only), its Maps page. */
+export interface PlaceFound {
+  photo: PlacePhoto | null;
+  credit: "Google Maps" | "Wikipedia" | null;
+  rating: number | null;
+  reviews: number | null;
+  /** The place's own Maps page; null: the card's Maps search stays. */
+  map: string | null;
+}
+
+export type FindPlaces = (search: string) => Promise<MapsPlace[]>;
+
+const foldName = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLocaleLowerCase("en").replace(/ı/g, "i").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+/** Words any place's name may have: two places sharing only these aren't the same one. */
+const COMMON = new Set(["the", "and", "temple", "tapinagi", "pura", "beach", "pantai", "plaji", "warung", "restaurant", "restoran", "cafe", "bar", "kitchen", "club", "waterfall", "selalesi", "air", "terjun", "rice", "terrace", "park", "market", "pazari"]);
+const nameWords = (s: string) => foldName(s).split(" ").filter((w) => w.length >= 3 && !COMMON.has(w));
+
+/** Whether Maps' place is the suggestion's: one name holds the other, or they share a word of its own ("Tanah", "Lot"). */
+export function samePlace(s: Pick<Suggestion, "title" | "payload">, name: string): boolean {
+  const theirs = foldName(name);
+  if (!theirs) return false;
+  const ours = [s.payload?.place?.split(",")[0] ?? "", cleanPlaceTitle(s.title)].map(foldName).filter(Boolean);
+  if (ours.some((o) => o === theirs || (o.length > 3 && theirs.includes(o)) || (theirs.length > 3 && o.includes(theirs)))) return true;
+  const words = new Set(nameWords(name));
+  return ours.some((o) => nameWords(o).some((w) => words.has(w)));
+}
+
+/** Places found by the trip's kinds of place (mapsIdeas), by name: a card for one of them needs no search of its own. */
+const seenOnMaps = new Map<string, MapsPlace>();
+export function rememberPlaces(list: readonly MapsPlace[]): void {
+  for (const p of list) if (!seenOnMaps.has(foldName(p.name))) seenOnMaps.set(foldName(p.name), p);
+}
+const rememberedFor = (s: Pick<Suggestion, "title" | "payload">): MapsPlace | null =>
+  [s.payload?.place?.split(",")[0] ?? "", cleanPlaceTitle(s.title)].map((n) => seenOnMaps.get(foldName(n))).find(Boolean) ?? null;
+
+const placeAsked = new Map<string, Promise<PlaceFound | null>>();
+const placeKnown = new Map<string, PlaceFound | null>();
+/** What a card asks its place by (its Maps search and its Wikipedia names): one answer per key. */
+export const placeLookupKey = (s: Pick<Suggestion, "title" | "payload">): string => `${placeQuery(s)}|${photoNames(s).join("|")}`;
+
+/** The answer already in for this suggestion's place (undefined: not asked yet or still out). */
+export const knownPlace = (s: Pick<Suggestion, "title" | "payload">): PlaceFound | null | undefined => placeKnown.get(placeLookupKey(s));
+
+/**
+ * The suggestion's place: Google Maps' (a place the trip's kinds of place found, else Maps searched by its name and
+ * town, its first answer when the names agree) with its photo, rating, reviews and page; without a photo there, its
+ * Wikipedia page's photo (findPlacePhoto). Asked once per place; null when neither has anything, and a request that
+ * got no answer isn't remembered.
+ */
+export function findPlace(
+  s: Pick<Suggestion, "title" | "payload">,
+  deps: { places?: FindPlaces; fetchJson?: FetchJson } = {},
+): Promise<PlaceFound | null> {
+  const key = placeLookupKey(s);
+  const was = placeAsked.get(key);
+  if (was) return was;
+  const run = (async (): Promise<{ found: PlaceFound | null; sure: boolean }> => {
+    let maps = rememberedFor(s);
+    if (!maps) {
+      const search = placeQuery(s);
+      const list = search ? await (deps.places ?? findPlaces)(search).catch(() => [] as MapsPlace[]) : [];
+      maps = list.find((p) => samePlace(s, p.name)) ?? null;
+    }
+    const names = photoNames(s);
+    const wiki = maps?.photo ? null : await findPlacePhoto(names, deps.fetchJson);
+    // Wikipedia had no answer at all (offline): not remembered, asked again on the next card.
+    const sure = !!maps?.photo || wiki != null || !names.length || knownPlacePhoto(names) !== undefined;
+    const photo = maps?.photo ? { url: maps.photo, page: maps.url } : wiki;
+    if (!photo && !maps) return { found: null, sure };
+    return {
+      found: { photo, credit: maps?.photo ? "Google Maps" : wiki ? "Wikipedia" : null, rating: maps?.rating ?? null, reviews: maps?.reviews ?? null, map: maps?.url ?? null },
+      sure,
+    };
+  })();
+  const out = run.then(({ found, sure }) => {
+    if (sure) placeKnown.set(key, found);
+    else placeAsked.delete(key);
+    return found;
+  });
+  placeAsked.set(key, out);
+  return out;
+}
+
+/** The town the trip's kinds of place are searched in: the one with the most nights booked or chosen, else the first place. */
+export function stayTown(blocks: readonly { city: string | null; nights: number }[], fallback: string | null | undefined): string | null {
+  const nights = new Map<string, number>();
+  for (const b of blocks) if (b.city?.trim()) nights.set(b.city.trim(), (nights.get(b.city.trim()) ?? 0) + b.nights);
+  let best: string | null = null;
+  for (const [city, n] of nights) if (best == null || n > nights.get(best)!) best = city;
+  return best ?? (fallback?.trim() || null);
+}
+
+/** Real places the review can pick from: up to six names per kind of place the trip is for (placeSearches), in a city. */
+export async function mapsIdeas(trip: Pick<Trip, "intent" | "style" | "travellers">, city: string, find: FindPlaces = findPlaces): Promise<Record<string, string[]>> {
+  const out: Record<string, string[]> = {};
+  const searches = placeSearches(trip, city);
+  const found = await Promise.all(searches.map((q) => find(q).catch(() => [] as MapsPlace[])));
+  searches.forEach((q, i) => {
+    rememberPlaces(found[i]);
+    if (found[i].length) out[q] = found[i].slice(0, 6).map((p) => p.name);
+  });
+  return out;
+}
