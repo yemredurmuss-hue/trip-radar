@@ -241,6 +241,12 @@ describe("what's missing, said not needed, covered by a ticket", () => {
     expect(b.intents.find((i) => i.section === "other")).toMatchObject({ kind: "insurance", status: "searching", word: "Aranıyor", estimate: null, note: "Yurt dışına çıkıyorsun.", head: { name: "Seyahat sağlık sigortası", parts: ["1–7 Kasım"] } });
   });
 
+  it("an AI suggestion for a way of travel is named and drawn by what it is (Emre, 19 Ekim: a motorbike, not 'Sahil ulaşımı')", () => {
+    const moto = { key: "ai:moto", section: "transport" as const, kind: "add" as const, title: "Sahil ulaşımı için motosiklet kiralama", why: "Ahangama içindeki sörf noktalarına kolayca ulaşım sağlar", source: "ai" as const, createdAt: 1, state: "open" as const };
+    const b = board(base, [stay("Hyatt", "Tokyo", "2026-11-01", "2026-11-04", "booked")], { suggestions: { transport: [moto] } });
+    expect(b.intents.find((i) => i.key === "suggestion:ai:moto")).toMatchObject({ kind: "moto", status: "searching", note: "Ahangama içindeki sörf noktalarına kolayca ulaşım sağlar", head: { name: "Motosiklet kiralama" } });
+  });
+
   // Aşama 3b (spec §1.3, D3): Dahil follows what covers it. A camp made before the trip's parts were kept is covered by
   // the festival's ticket on the plan; with no ticket there it is a stay to find, never "Ayarlandı" by itself.
   it("a festival's camp is covered by its ticket: Dahil", () => {
