@@ -2,8 +2,9 @@
 // what each fixed 224 px card of a city's two rows says, and how the rows are laid out. A city's row is one intent
 // (intents.ts collectionIntents): what's on the plan in "Planında", the rest in "Öneriler". Each card is one of four
 // families (a ticket or a tour, a place to see, a restaurant, a note) in one of five states (an idea, on the plan, bought or
-// a table booked, done, or a place the start opened that nobody has filled). A row has four cells: up to four cards, else
-// three and "+n Pano'da" (the row keeps its size, v82 "iki sabit sıra"); an empty Planında is four empty slots.
+// a table booked, done, or a place the start opened that nobody has filled). Öneriler is one row of four cells: up to four
+// cards, else three and "+n Pano'da"; Planında has every card on the plan, four across (Emre, 19 Ekim), and an empty
+// Planında is four empty slots.
 //
 // Nothing is decided here: what's on the plan is intents.ts's, the facts cardFacts.ts's, the source's badge pano.ts's, the
 // reason for the trip reason.ts's, the days and the done line ideas.ts's. This file only puts them in the cards' shape. Pure.
@@ -299,7 +300,7 @@ export function collectionRow(
 const fold = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLocaleLowerCase("tr").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 const sameName = (a: string, b: string) => fold(a) === fold(b);
 
-/** A row's four cells: every card while they fit, else three and "+n Pano'da" (n: the rest). */
+/** Öneriler's four cells: every card while they fit, else three and "+n Pano'da" (n: the rest). */
 export function rowCells<T>(cards: readonly T[], cells = ROW_CELLS): { shown: T[]; more: number } {
   if (cards.length <= cells) return { shown: [...cards], more: 0 };
   return { shown: cards.slice(0, cells - 1), more: cards.length - (cells - 1) };

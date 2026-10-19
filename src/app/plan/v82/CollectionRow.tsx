@@ -1,6 +1,7 @@
-// The collection family (plan v82: things to book and do, by city; aşama 4): two fixed rows of 224 px cards (KCard),
-// Planında (four empty slots, "Henüz plana koymadın", while nothing is there) and Öneriler, four across, the rest "+n Pano'da"
-// (the Pano opened on this city). Yapılacaklar' Planında head has its chips (Hepsi, Gezilecek, Restoranlar; C20), Etkinlik's
+// The collection family (plan v82: things to book and do, by city; aşama 4): two rows of 224 px cards (KCard), four across.
+// Planında has every card on the plan, row after row (Emre, 19 Ekim: twelve activities on the plan are twelve on the plan;
+// four empty slots, "Henüz plana koymadın", while nothing is there); Öneriler stops at a row, the rest "+n Pano'da" (the Pano,
+// where all of it gathers to sift and compare, opened on this city). Yapılacaklar' Planında head has its chips (Hepsi, Gezilecek, Restoranlar; C20), Etkinlik's
 // Öneriler folds away (C26, remembered in this browser as the live bar was). Öneriler holds the saved ideas, the suggestions
 // to add and the connected source's tours for the city (the live board's Viator cards, their photos kept on the records);
 // "Kendin ara" on its right. "+ Plana koy" flies the card to its slot (E6, putFly). The box around it is CollectionBox.
@@ -114,7 +115,6 @@ export function CollectionRow({ vm, onPut, onTakeOff }: CollectionRowProps) {
   const [open, setOpen] = useRemembered(`trip-radar:ideasOpen:${env.tripId}:${vm.section}`, true);
   const plans = row.plan.filter((c) => inFilter(c, filter));
   const ideas = row.ideas.filter((c) => inFilter(c, filter));
-  const p = rowCells(plans);
   const o = rowCells(ideas);
   const links: SelfSearch[] = todo ? [mapsSearch(vm.head.city, filter)].filter((l): l is SelfSearch => l != null) : selfSearches(vm, v82.selfAt);
   const city = vm.head.city ?? vm.head.name;
@@ -153,9 +153,9 @@ export function CollectionRow({ vm, onPut, onTakeOff }: CollectionRowProps) {
           )}
         </div>
         <div className="q-prow z-ks" data-row="plan">
-          {p.shown.map(cardOf)}
-          {p.more > 0 && <MoreTile n={p.more} title={L(`${city}: planında`, `${city}: on your plan`)} onOpen={pano} />}
-          <EmptySlots n={ROW_CELLS - p.shown.length - (p.more > 0 ? 1 : 0)} empty={plans.length === 0} />
+          {plans.map(cardOf)}
+          {/* (the last row filled to four: the next "+ Plana koy" lands in a slot, E6) */}
+          <EmptySlots n={plans.length ? (ROW_CELLS - (plans.length % ROW_CELLS)) % ROW_CELLS : ROW_CELLS} empty={plans.length === 0} />
         </div>
       </div>
       {ideas.length > 0 && (

@@ -41,7 +41,8 @@
 .q-pbody .q-pr1.done .q-pt1 b { color: #8e8aa6; text-decoration: line-through; }
 .q-pbody .q-pday { flex: none; font-size: 12px; font-weight: 800; color: #3d3566; background: #f3f1fa; border-radius: 8px; padding: 4px 9px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .q-pbody .q-pday.soon { background: #fff4e5; color: #b54708; }
-.q-pbody .q-pday.past { background: #f2f4f7; color: var(--q-mut); }
+/* A day gone by with the task still open (Emre, 19 Ekim: red, not loud): the soft red of a miss, the warning orange is for what is coming. */
+.q-pbody .q-pday.past { background: #fef3f2; color: var(--q-bad); }
 .q-pbody .q-pr1.done .q-pday { opacity: .5; }
 .q-pbody .q-ptag { font-style: normal; font-size: 11px; font-weight: 700; color: var(--q-mut); background: #f2f4f7; border-radius: 6px; padding: 1px 6px; margin-left: 3px; white-space: nowrap; }
 .q-pbody .q-pdone { flex: none; font-size: 12px; font-weight: 700; color: var(--q-ok); }
