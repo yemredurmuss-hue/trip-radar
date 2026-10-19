@@ -13,6 +13,7 @@ import { isDemoTrip } from "../lib/trips";
 import { getSettings, listMessages, onChanged } from "../lib/db";
 import { canPick, CURRENCIES, CURRENCY_SIGN, displayCurrency, saveCurrency, type DisplayCurrency } from "../lib/displayCurrency";
 import { getRates, type Rates } from "../lib/currency";
+import { HOME_HASH } from "../lib/openingTrip";
 import type { Capture, ChatMessage, Item, Settings, Trip } from "../lib/types";
 import { RoutingLine } from "./Chat";
 import { UiIcon } from "./cards/Silhouettes";
@@ -115,6 +116,12 @@ function usePopover(): { open: boolean; setOpen: (v: boolean) => void; box: Reac
   }, [open]);
   return { open, setOpen, box, button };
 }
+
+/**
+ * A language or money picked here reloads every board tab into it (main.tsx: the stored choice changed); this tab
+ * comes back to the home ("#home"), not to the trip another open board was showing last.
+ */
+const stayHome = () => history.replaceState(null, "", `${location.pathname}${HOME_HASH}`);
 
 /** A small pill in the top bar (₺, TR) opening its list of choices. */
 function Picker({ label, shown, current, options, onPick }: { label: string; shown: string; current: string | null; options: { value: string; text: string; off?: string }[]; onPick: (v: string) => void }) {
@@ -326,14 +333,14 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
               text: `${CURRENCY_SIGN[c]}  ${c}`,
               off: canPick(c, rates, displayCurrency()) ? undefined : L("Kur bilgisi gelince seçilebilir", "Can be picked once its exchange rate is known"),
             }))}
-            onPick={(c) => void saveCurrency(c as DisplayCurrency)}
+            onPick={(c) => (stayHome(), void saveCurrency(c as DisplayCurrency))}
           />
           <Picker
             label={L("Dil", "Language")}
             shown={lang().toUpperCase()}
             current={lang()}
             options={[{ value: "tr", text: "Türkçe" }, { value: "en", text: "English" }]}
-            onPick={(l) => void saveLang(l as Lang).then(() => location.reload())}
+            onPick={(l) => (stayHome(), void saveLang(l as Lang).then(() => location.reload()))}
           />
         </nav>
         <ProfileMenu
