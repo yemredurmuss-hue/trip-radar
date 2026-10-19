@@ -8,15 +8,8 @@ import { L } from "../../lib/i18n";
 import { savePassport } from "../../lib/passport";
 import { visaAnswer, type Visa } from "../../lib/visa";
 import { IdeaGlyph } from "../ideas/IdeaIcons";
+import { PASSPORTS } from "../PassportField";
 
-/** The passports the visa rules can be asked for (as Settings → Pasaport lists them). */
-const PASSPORTS: ReadonlyArray<[string, () => string]> = [
-  ["TR", () => L("Türkiye", "Turkey")],
-  ["DE", () => L("Almanya", "Germany")],
-  ["GB", () => L("Birleşik Krallık", "United Kingdom")],
-  ["US", () => L("ABD", "USA")],
-  ["XX", () => L("Diğer", "Other")],
-];
 
 export function VisaRow({ visa, done, onDone }: { visa: Visa | null; done: boolean; onDone: (done: boolean) => void }) {
   if (!visa || visa.kind === "none") return null;
