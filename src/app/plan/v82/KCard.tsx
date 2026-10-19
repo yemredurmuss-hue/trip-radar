@@ -11,7 +11,7 @@
 // it's empty: its head says so); more than the row holds: "+n Pano'da".
 import { useEffect, useState, type ReactNode } from "react";
 import { cardFacts } from "../../../lib/cardFacts";
-import { askLike, askOther, moreLabel, pictureChips, placeRatingLine, type KCardVM } from "../../../lib/collectionCards";
+import { askLike, askOther, moreLabel, pictureChips, placePhotoCredit, placeRatingLine, type KCardVM } from "../../../lib/collectionCards";
 import { L } from "../../../lib/i18n";
 import type { AccessVM, IntentVM, OptionVM } from "../../../lib/intents";
 import { moveToBookings, setDone, setIdeaDay, setPrep } from "../../../lib/ideas";
@@ -438,7 +438,7 @@ export function SuggestCard({ card, onPut, onDismiss }: { card: KCardVM; onPut: 
               className="ph"
               src={shown.photo}
               fallback={<img className="art" src={card.art} alt="" />}
-              title={found?.credit === "Google Maps" ? L("Fotoğraf: Google Haritalar", "Photo: Google Maps") : found?.credit === "Wikipedia" ? L("Fotoğraf: Wikipedia", "Photo: Wikipedia") : undefined}
+              title={placePhotoCredit(found?.credit, found?.photoBy)}
             />
           ) : (
             <Picture card={shown} />

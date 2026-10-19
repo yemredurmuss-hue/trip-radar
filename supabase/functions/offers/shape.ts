@@ -628,6 +628,8 @@ export interface PlaceOut {
   url: string;
   source: "Google Maps";
   fetchedAt: number;
+  /** Who took the photo, as Google names them (the Places API's own answer only; the card's credit says it). */
+  photoBy?: string;
 }
 
 interface SerpMapsPlace {
@@ -689,6 +691,79 @@ export function serpPlaces(body: unknown, now: number): PlaceOut[] {
         fetchedAt: now,
       };
     });
+}
+
+// --- places (Google Places API (New), Text Search) ---------------------------------------------------------
+// The same places from Google's own Places API (GOOGLE_PLACES_KEY), asked first. Google lets a place's id be kept but
+// not its photo's address: a photo is kept by its name ("places/…/photos/…") and the card's picture is the function's
+// own kind=placephoto, which asks Google for the photo's address when it is shown and sends the picture there.
+
+/** The fields Text Search is asked for (each field is billed by its kind: only what a card shows). */
+export const GOOGLE_PLACE_FIELDS =
+  "places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.location,places.googleMapsUri,places.photos";
+
+interface GooglePlace {
+  id?: string;
+  displayName?: { text?: string };
+  formattedAddress?: string;
+  rating?: number;
+  userRatingCount?: number;
+  location?: { latitude?: number; longitude?: number };
+  googleMapsUri?: string;
+  photos?: { name?: string; authorAttributions?: { displayName?: string }[] }[];
+}
+
+/** A photo's name as the Places API gives it ("places/<place id>/photos/<photo id>"): nothing else is asked for. */
+export function photoNameOk(raw: string | null | undefined): string | null {
+  const s = raw?.trim();
+  return s && s.length <= 600 && /^places\/[A-Za-z0-9_-]+\/photos\/[A-Za-z0-9_-]+$/.test(s) ? s : null;
+}
+
+/** A card's picture of a Places photo: the offers function's kind=placephoto at `base` (the project's https address). */
+export function placePhotoUrl(name: string, base: string): string | null {
+  const b = base.trim().replace(/\/+$/, "");
+  return photoNameOk(name) && /^https:\/\//.test(b) ? `${b}/functions/v1/offers?kind=placephoto&name=${encodeURIComponent(name)}` : null;
+}
+
+/**
+ * Text Search's answer as places, in the shape serpPlaces gives (the cards read either): in Google's order, kept only
+ * with a name and a place id, at most PLACE_MAX. The photo is its first one's picture through the function (`base`)
+ * and who took it; what Google doesn't say stays null.
+ */
+export function googlePlaces(body: unknown, now: number, base: string): PlaceOut[] {
+  const list = (body as { places?: GooglePlace[] } | null)?.places;
+  if (!Array.isArray(list)) return [];
+  return list
+    .filter((p) => typeof p?.id === "string" && p.id && typeof p.displayName?.text === "string" && p.displayName.text.trim())
+    .slice(0, PLACE_MAX)
+    .map((p) => {
+      const name = p.displayName!.text!.trim();
+      const lat = p.location?.latitude, lng = p.location?.longitude;
+      const first = Array.isArray(p.photos) ? p.photos.find((ph) => photoNameOk(ph?.name)) : undefined;
+      const photo = first ? placePhotoUrl(first.name!, base) : null;
+      const by = photo ? first?.authorAttributions?.map((a) => a?.displayName?.trim()).find(Boolean) : undefined;
+      return {
+        id: p.id!,
+        dataId: null,
+        name,
+        address: p.formattedAddress?.trim() || null,
+        rating: typeof p.rating === "number" && p.rating > 0 ? p.rating : null,
+        reviews: typeof p.userRatingCount === "number" && p.userRatingCount > 0 ? p.userRatingCount : null,
+        photo,
+        geo: typeof lat === "number" && typeof lng === "number" ? { lat, lng } : null,
+        type: null,
+        url: typeof p.googleMapsUri === "string" && /^https:\/\//.test(p.googleMapsUri) ? p.googleMapsUri : mapsPlaceUrl(name, p.id!),
+        source: "Google Maps" as const,
+        fetchedAt: now,
+        ...(by ? { photoBy: by } : {}),
+      };
+    });
+}
+
+/** The photo's address from the Places media answer (skipHttpRedirect): https only, else null. */
+export function googlePhotoUri(body: unknown): string | null {
+  const uri = (body as { photoUri?: unknown } | null)?.photoUri;
+  return typeof uri === "string" && /^https:\/\//.test(uri) ? uri : null;
 }
 
 // --- activities (Viator Partner API, basic access) ---------------------------------------------------------

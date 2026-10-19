@@ -265,6 +265,12 @@ export function placeRatingLine(why: string | null, rating: number | null | unde
   return uniq([stars, stars ? said : null, why]).join(" · ") || null;
 }
 
+/** A suggested place's photo credit (its title): Google Maps and who took it when Google names them, or Wikipedia. */
+export function placePhotoCredit(credit: "Google Maps" | "Wikipedia" | null | undefined, by?: string | null): string | undefined {
+  if (credit === "Google Maps") return by?.trim() ? L(`Fotoğraf: Google Haritalar · ${by.trim()}`, `Photo: Google Maps · ${by.trim()}`) : L("Fotoğraf: Google Haritalar", "Photo: Google Maps");
+  return credit === "Wikipedia" ? L("Fotoğraf: Wikipedia", "Photo: Wikipedia") : undefined;
+}
+
 /** The country (ISO alpha-2) of the stay the plan has in a city: its record's, the first that says. */
 export function stopCountry(plan: Pick<Plan, "stayBlocks">, city: string): string | null {
   for (const b of plan.stayBlocks) {

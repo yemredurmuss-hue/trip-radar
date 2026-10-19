@@ -139,6 +139,8 @@ export interface PlaceFound {
   reviews: number | null;
   /** The place's own Maps page; null: the card's Maps search stays. */
   map: string | null;
+  /** Who took Google's photo, when the Places API names them (the credit says it). */
+  photoBy?: string;
 }
 
 export type FindPlaces = (search: string) => Promise<MapsPlace[]>;
@@ -201,7 +203,14 @@ export function findPlace(
     const photo = maps?.photo ? { url: maps.photo, page: maps.url } : wiki;
     if (!photo && !maps) return { found: null, sure };
     return {
-      found: { photo, credit: maps?.photo ? "Google Maps" : wiki ? "Wikipedia" : null, rating: maps?.rating ?? null, reviews: maps?.reviews ?? null, map: maps?.url ?? null },
+      found: {
+        photo,
+        credit: maps?.photo ? "Google Maps" : wiki ? "Wikipedia" : null,
+        rating: maps?.rating ?? null,
+        reviews: maps?.reviews ?? null,
+        map: maps?.url ?? null,
+        ...(maps?.photo && typeof maps.photoBy === "string" && maps.photoBy.trim() ? { photoBy: maps.photoBy.trim() } : {}),
+      },
       sure,
     };
   })();

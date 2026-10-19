@@ -44,7 +44,8 @@ export interface StayCandidate {
 
 /**
  * A place to see or eat at as Google Maps has it (the offers function's `places`, kind=place): what Maps said, nothing
- * guessed; `url` is the place's own Maps page.
+ * guessed; `url` is the place's own Maps page. From Google's Places API, `photo` is the function's own kind=placephoto
+ * address (an <img> is sent on to Google's photo) and `photoBy` who took it.
  */
 export interface MapsPlace {
   id: string;
@@ -58,6 +59,7 @@ export interface MapsPlace {
   url: string;
   source: string;
   fetchedAt: number;
+  photoBy?: string;
 }
 
 type Answer = { offers: Offer[]; candidates?: StayCandidate[]; places?: MapsPlace[] };

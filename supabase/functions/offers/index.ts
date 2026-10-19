@@ -22,7 +22,11 @@
 // and time, its page a partner link.
 // A place to see or eat at (?kind=place&q=Tanah Lot Temple, Tabanan&lang=en, or a kind of place: "romantic restaurants
 // in Canggu") from Google Maps through SerpApi (google_maps, type=search): { offers: [], places } with its photo, rating,
-// reviews and own Maps page; kept a month, under a part of SerpApi's daily cap (serpmaps).
+// reviews and own Maps page; kept a month, under a part of SerpApi's daily cap (serpmaps). Google's own Places API (New)
+// first when its key is set (GOOGLE_PLACES_KEY; Text Search, under its own cap: googleplaces), SerpApi when it has no key
+// or no answer. Google's photos are kept only by their names: a card's picture is ?kind=placephoto&name=places/…/photos/…,
+// which asks Google for the photo's address (kept a day, its own cap: googlephoto) and sends the picture there (302;
+// `json=1` gives { url } instead).
 // Each source is its own part: one failing leaves that kind with no offers and the card with its search buttons.
 // Calls out are capped per source and day. Deployed with verify_jwt off like `flight`: nothing personal comes in,
 // only places, days and a head-count.
@@ -33,7 +37,7 @@ import {
   adultsOf, airportCodeOk, askableDay, bookingSearch, cheapest, flightOffer, geoFromTypeahead, langOf, maxOf, nightsBetween,
   candidateOffer, pickCandidates, pickCheapFlights, pickCheapStays, pickFlights, pickLiveStays, pickStays, placeOk, preferOf,
   airaloPacks, airaloPlace, omioName, omioRoutes, pickActivities, pickEsims, pickTransfers, placeKey, serpFlights, serpStays, stayCandidate, stayOffer, ucusFlights, viatorDestination, type AviaFlight, type OfferOut, type StayCandidate,
-  placeSearchOk, serpPlaces,
+  placeSearchOk, serpPlaces, GOOGLE_PLACE_FIELDS, googlePhotoUri, googlePlaces, photoNameOk, type PlaceOut,
   type EsimPack, type OmioRoute, type ViProduct, type XoHotel, type XoRate,
 } from "./shape.ts";
 
@@ -44,10 +48,14 @@ const cors = {
 };
 const reply = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 
-const HOURS = { flight: 12, stay: 24, activity: 1, esim: 24, transfer: 24, place: 24 * 30 };
+const HOURS = { flight: 12, stay: 24, activity: 1, esim: 24, transfer: 24, place: 24 * 30, placephoto: 24 };
 // serpmaps: the places' share of SerpApi's own daily cap (each place search takes from both), so the cards' photos
-// never use up the live flight and hotel look.
-const CAPS: Record<string, number> = { aviasales: 400, xotelo: 400, tripadvisor: 5, links: 300, serpapi: 8, serpmaps: 5, viator: 300, airalo: 6, omio: 4, ucus: 450 };
+// never use up the live flight and hotel look. googleplaces (Text Search) and googlephoto (a photo's address): the
+// Places API's, well inside its free monthly share.
+const CAPS: Record<string, number> = {
+  aviasales: 400, xotelo: 400, tripadvisor: 5, links: 300, serpapi: 8, serpmaps: 5, viator: 300, airalo: 6, omio: 4, ucus: 450,
+  googleplaces: 150, googlephoto: 300,
+};
 const cap = (source: string) => Number(Deno.env.get(`OFFERS_CAP_${source.toUpperCase()}`)) || CAPS[source];
 
 type Sb = ReturnType<typeof createClient>;
@@ -104,6 +112,62 @@ async function serp(sb: Sb, params: Record<string, string>, hours: number, share
   if ((body as { error?: unknown }).error) return null;
   await store(sb, cacheKey, body);
   return body;
+}
+
+const googleKey = () => (Deno.env.get("GOOGLE_PLACES_KEY") ?? "").trim();
+
+/**
+ * Places for these words from Google's Places API (New) Text Search, kept a month by the words (the places' ids, names,
+ * ratings, pages and photos' names: never a photo's address); null when there is no key, it is over its cap or Google
+ * didn't answer, so the caller asks SerpApi.
+ */
+async function googleSearch(sb: Sb, q: string, lang: "tr" | "en"): Promise<PlaceOut[] | null> {
+  const key = googleKey();
+  if (!key) return null;
+  const cacheKey = `gplace|${lang}|${q.toLocaleLowerCase("en")}`;
+  const had = await cached<PlaceOut[]>(sb, cacheKey, HOURS.place);
+  if (had) return had;
+  if (!(await take(sb, "googleplaces"))) return null;
+  try {
+    const res = await fetch("https://places.googleapis.com/v1/places:searchText", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Goog-Api-Key": key, "X-Goog-FieldMask": GOOGLE_PLACE_FIELDS },
+      body: JSON.stringify({ textQuery: q, languageCode: lang, maxResultCount: 5 }),
+      signal: AbortSignal.timeout(8_000),
+    });
+    if (!res.ok) return null;
+    const found = googlePlaces(await res.json(), Date.now(), Deno.env.get("SUPABASE_URL") ?? "");
+    await store(sb, cacheKey, found);
+    return found;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A Places photo's address for its name (the media call with skipHttpRedirect), kept a day; null when there is no
+ * key, it is over its cap, or Google has no such photo (a name gone stale: kept as none for the day too).
+ */
+async function googlePhoto(sb: Sb, name: string): Promise<string | null> {
+  const key = googleKey();
+  if (!key) return null;
+  const cacheKey = `gphoto|${name}`;
+  const had = await cached<{ uri: string | null }>(sb, cacheKey, HOURS.placephoto);
+  if (had) return had.uri;
+  if (!(await take(sb, "googlephoto"))) return null;
+  try {
+    const q = new URLSearchParams({ maxWidthPx: "480", skipHttpRedirect: "true", key });
+    const res = await fetch(`https://places.googleapis.com/v1/${name}/media?${q}`, { signal: AbortSignal.timeout(8_000) });
+    if (!res.ok) {
+      if (res.status === 400 || res.status === 404) await store(sb, cacheKey, { uri: null });
+      return null;
+    }
+    const uri = googlePhotoUri(await res.json());
+    await store(sb, cacheKey, { uri });
+    return uri;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -395,8 +459,18 @@ Deno.serve(async (req: Request) => {
     } else if (p("kind") === "place") {
       const q = placeSearchOk(p("q"));
       if (!q) return reply(400, { error: "ask" });
+      const google = await googleSearch(sb, q, ask.lang);
+      if (google?.length) return reply(200, { offers: [], places: google });
       const body = await serp(sb, { engine: "google_maps", type: "search", q, hl: ask.lang }, HOURS.place, "serpmaps");
       return reply(200, { offers: [], places: serpPlaces(body, Date.now()) });
+    } else if (p("kind") === "placephoto") {
+      const name = photoNameOk(p("name"));
+      if (!name) return reply(400, { error: "ask" });
+      const photo = await googlePhoto(sb, name);
+      if (!photo) return reply(404, { error: "none" });
+      if (p("json") === "1") return reply(200, { url: photo });
+      // The picture itself: an <img> follows this to Google's photo (its address isn't kept past the day).
+      return new Response(null, { status: 302, headers: { ...cors, Location: photo, "Cache-Control": "public, max-age=3600" } });
     } else if (p("kind") === "esim") {
       const place = airaloPlace(p("country") ?? "");
       const start = askableDay(p("start"), now), end = askableDay(p("end"), now);
