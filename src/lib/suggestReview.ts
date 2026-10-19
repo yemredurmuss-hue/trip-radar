@@ -272,7 +272,8 @@ export async function runReview(args: {
   const now = args.now ?? Date.now();
   let llm: LlmProvider;
   try {
-    llm = await (args.provider ?? getProvider)();
+    // In the model's line right after what the traveller waits on (llm/queue.ts): the review first, then the Bavul.
+    llm = await (args.provider ?? (() => getProvider({ priority: "review" })))();
   } catch (error) {
     if (error instanceof MissingKeyError) return "no-key"; // nothing stored: asked once a key is there
     console.warn("suggestion review", error);

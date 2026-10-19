@@ -320,7 +320,7 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
             })}
           </div>
         )}
-        {/* The Bavul's list asked ahead, behind everything else in the model's line (draws nothing). */}
+        {/* The Bavul's list asked ahead, after the suggestions review in the model's line (draws nothing). */}
         <PackPrefetch />
         <button type="button" className="q-add q-addall" onClick={() => onAdd(null, null)}>
           + {L("Yeni ihtiyaç ekle", "Add a new need")}

@@ -27,7 +27,7 @@ const page = (dates: { start: string | null; end: string | null }): Extraction =
 
 let answer: Extraction = page({ start: null, end: null });
 const deps: Deps = { extract: async () => answer, heroImage: async () => null, geocode: async () => null, home: async () => "TR" };
-const snapshot = (url: string) => ({ url, title: "Taj Mahal", pageText: "", viewportText: "", selection: "", jsonLd: [], meta: {} });
+const snapshot = (url: string) => ({ url, title: "Taj Mahal", pageText: "", viewportText: "", selection: "", jsonLd: [], meta: {}, coords: [] });
 
 beforeEach(async () => {
   const d = await db();
