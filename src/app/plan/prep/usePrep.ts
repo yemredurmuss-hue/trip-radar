@@ -69,6 +69,8 @@ export interface PrepModel {
   /** The money there and the plugs, as the hero has them. */
   money: { name: string; rate: string | null; own: boolean } | null;
   plug: ReturnType<typeof plugFit>;
+  /** The ride apps the plan's ways suggest (an airport taxi's Uber): Telefonuna kur lists them (0.39.7), no chore of their own. */
+  rides: string[];
 }
 
 /** What Hazırlık reads of the board: the Plan's card envs (usePrep), or the board's own values where it provides them (TripPanel). */
@@ -125,9 +127,9 @@ export function usePrepWith(entries: CatEntry[], env: PrepEnv): PrepModel {
   // The ride apps the plan's ways suggest (an airport taxi's Uber): one chore each to download it.
   const rides = useMemo(() => rideApps(buildLegs(buildPlan(trip, items), trip), trip).join("|"), [trip, items]);
   const tasks = useMemo(
-    () => prepTasks({ chores, items, trip, range, passport: visaPassport, countries, today: env.today, rides: rides ? rides.split("|") : [] }),
+    () => prepTasks({ chores, items, trip, range, passport: visaPassport, countries, today: env.today, rides: [] }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the trip's fields it reads
-    [chores, items, trip.prepDone, trip.hidden, trip.visaDone, range?.start, range?.end, visaPassport, countries, env.today, rides],
+    [chores, items, trip.prepDone, trip.hidden, trip.visaDone, range?.start, range?.end, visaPassport, countries, env.today],
   );
   const local = facts.local;
   // (one object while the chores stand: the board's intents are worked out again only when it changes)
@@ -152,6 +154,7 @@ export function usePrepWith(entries: CatEntry[], env: PrepEnv): PrepModel {
     },
     money: local ? { name: currencyName(local.currency), rate: local.rateText, own: local.currency === (displayCurrency() ?? homeCurrencyOf(passport, currency)) } : null,
     plug: facts.country ? plugFit(passport, facts.country) : null,
+    rides: rides ? rides.split("|") : [],
   };
 }
 

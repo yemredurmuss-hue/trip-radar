@@ -1,7 +1,7 @@
 // Hazırlık's small pictures (v82, the prototype's z83_prep.py set): lines on a 24 px grid in the text's colour.
 import type { KnowIcon } from "../../../lib/prepKnow";
 
-const PATHS: Record<KnowIcon | "bag" | "check" | "x" | "chev" | "spark", string> = {
+const PATHS: Record<KnowIcon | "bag" | "check" | "x" | "chev" | "spark" | "phone", string> = {
   alert: "M12 3l9.5 17h-19zM12 10v4M12 17h.01",
   cash: "M3 7h18v10H3zM12 14.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM6 10v.01M18 14v.01",
   plug: "M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0zM12 17v4",
@@ -16,6 +16,7 @@ const PATHS: Record<KnowIcon | "bag" | "check" | "x" | "chev" | "spark", string>
   x: "M7 7l10 10M17 7 7 17",
   chev: "M9 6l6 6-6 6",
   spark: "M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z",
+  phone: "M8 2h8a1.5 1.5 0 0 1 1.5 1.5v17A1.5 1.5 0 0 1 16 22H8a1.5 1.5 0 0 1-1.5-1.5v-17A1.5 1.5 0 0 1 8 2zM11 18.5h2",
 };
 
 export function PrepIcon({ name, size = 16, stroke = 2 }: { name: keyof typeof PATHS; size?: number; stroke?: number }) {

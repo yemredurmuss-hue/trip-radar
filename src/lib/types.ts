@@ -253,6 +253,8 @@ export interface Trip {
   prepDone?: Record<string, number>;
   /** Hazırlık's Bavul (v82 T6, prepPack.ts): the traveller's own packing list for this trip. This computer only. */
   packing?: TripPacking;
+  /** Hazırlık's "Telefonuna kur" (0.39.7, phoneApps.ts): the apps ticked as installed, the ones said not for me, the AI's lines. This computer only. */
+  phone?: import("./phoneApps").TripPhone;
   /** Shared with someone (see share/): the secret id of the shared copy on the sharing server. */
   shareId?: string;
   /** Hero photo per city (city key → URL, null when none was found); fetched once. */

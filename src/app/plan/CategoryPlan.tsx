@@ -6,6 +6,7 @@
 // is drawn on every trip (its list works out chores from the trip, Bilmen gerekenler and the Bavul, aşama 7); any other
 // category with nothing in it isn't; "+ Yeni ihtiyaç ekle" at the end adds any kind (B6).
 import { PackPrefetch } from "./prep/usePackAi";
+import { PhonePrefetch } from "./prep/PhoneApps";
 import { stayQueryOf } from "../../lib/travelWants";
 import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { isIdeaSection, planSectionOfItem, sectionProgress, type CatEntry, type CatSection, type SectionId } from "../../lib/categories";
@@ -322,6 +323,7 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
         )}
         {/* The Bavul's list asked ahead, after the suggestions review in the model's line (draws nothing). */}
         <PackPrefetch />
+        <PhonePrefetch />
         <button type="button" className="q-add q-addall" onClick={() => onAdd(null, null)}>
           + {L("Yeni ihtiyaç ekle", "Add a new need")}
         </button>

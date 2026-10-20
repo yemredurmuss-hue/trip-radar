@@ -15,6 +15,7 @@ import { entryDomId } from "../../lib/progress";
 import { useEmptyEnv } from "../cards/emptyEnv";
 import { useCardEnv } from "../cards/PlanCard";
 import { Bavul } from "./prep/Bavul";
+import { PhoneApps } from "./prep/PhoneApps";
 import { KnowCard } from "./prep/KnowCard";
 import { PrepIcon } from "./prep/PrepIcons";
 import { PrepRow } from "./prep/PrepRow";
@@ -101,6 +102,7 @@ export function PrepList({ entries }: { entries: CatEntry[] }) {
           <PrepRow key={t.key} task={t} trip={trip} today={model.today} shopHome={model.shopHome} domId={t.item ? domIds.get(t.item.id) : undefined} />
         ))}
         <Bavul view={view} sub={sub} bag={bag} model={model} looking={packing} />
+        <PhoneApps model={model} />
       </ul>
     </div>
   );
