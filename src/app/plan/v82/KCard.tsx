@@ -9,9 +9,12 @@
 // and Daha fazla öner for a place (C20). An idea's foot is "+ Plana koy"; a place on the plan gets its day there ("Gün
 // ver ›"). "Gezinin sebebi" pins the trip's own ticket (C26). Planında's last row is filled with unseen cells (none while
 // it's empty: its head says so); more than the row holds: "+n Pano'da".
+// 0.39.10: every card of Etkinlik ve turlar is the approved three-across card (docs/mockups/etkinlik-karti-uclu): one word
+// on the photo top left, the source at its foot, one grey line of facts, the day over the price big on the foot's left and
+// one button on its right ("+ Plana koy", "Rezerve et ↗", "✓ Aldım", "Bileti aç"); "Aldım" is in ⋯ when the button is another.
 import { useEffect, useState, type ReactNode } from "react";
 import { cardFacts } from "../../../lib/cardFacts";
-import { askLike, askOther, moreLabel, pictureChips, placePhotoCredit, placeRatingLine, type KCardVM, type KDeal } from "../../../lib/collectionCards";
+import { askLike, askOther, eventPicture, moreLabel, pictureChips, placePhotoCredit, placeRatingLine, type KCardVM, type KDeal } from "../../../lib/collectionCards";
 import { L } from "../../../lib/i18n";
 import type { AccessVM, IntentVM, OptionVM } from "../../../lib/intents";
 import { moveToBookings, setDone, setIdeaDay, setPrep } from "../../../lib/ideas";
@@ -143,6 +146,51 @@ function Access({ card }: { card: KCardVM }) {
   );
 }
 
+/**
+ * An Etkinlik card's picture (0.39.10, the approved three-across card, docs/mockups/etkinlik-karti-uclu): its photo (else
+ * the drawing, small on cream), one word top left, the source at its foot, the tools top right.
+ */
+function EventPic({ card, tools, photo }: { card: KCardVM; tools?: ReactNode; photo?: ReactNode }) {
+  const { word, source } = eventPicture(card);
+  return (
+    <>
+      {photo ?? <Picture card={card} />}
+      {word && (
+        <span className="z-kc">
+          <span className={`z-kpick ${word.tone}`}>{word.text}</span>
+        </span>
+      )}
+      {source && (
+        <span className="z-kd">
+          <span className="z-ksrc">{source}</span>
+        </span>
+      )}
+      {tools && <span className="z-kt">{tools}</span>}
+    </>
+  );
+}
+
+/** An Etkinlik card's foot, left (as drawn): its day (else "kişi başı") small over its price big; "Fiyat yok" for an idea with none. */
+function PriceBlock({ deal, none }: { deal: Pick<KDeal, "price" | "per" | "when"> | null; none?: boolean }) {
+  const when = deal?.when ?? null;
+  const per = deal?.per ?? true;
+  const price = deal?.price ?? null;
+  if (!when && !price && !none) return <span className="z-kpr" />;
+  return (
+    <span className="z-kpr">
+      {when ? <small className="z-kwhen">{when}</small> : price && per ? <small>{L("kişi başı", "per person")}</small> : null}
+      {price ? (
+        <b>
+          {price}
+          {when && per && <i>{L(" kişi başı", " per person")}</i>}
+        </b>
+      ) : none ? (
+        <b className="z-knone">{L("Fiyat yok", "No price")}</b>
+      ) : null}
+    </span>
+  );
+}
+
 export interface RecordCardProps {
   card: KCardVM;
   /** The row's intent (its city, its planned options for Ayrıntı). */
@@ -196,9 +244,14 @@ function RecordFace({ card, vm, plan, search, onPut, onTakeOff }: RecordCardProp
   const notNeeded: MenuEntry = { label: L("Gerek yok", "Not needed"), run: () => leave(() => void setNotNeeded(item).then(env.offer)), danger: true, sep: true };
   const stageRest = stage.menu.filter((m) => m.id !== "change" && m.label !== L("Çıkar", "Rule out"));
 
+  // 0.39.10: an Etkinlik card on the plan has one button ("Rezerve et ↗" on its page, a file's "Bileti aç", else "✓ Aldım");
+  // "Aldım" steps into ⋯ when the button is another.
+  const gotIt = () => void setItemStatus(item, "booked");
+  const reserve = event && (card.state === "planned" || card.state === "wanted") && (docs.length > 0 || !!card.page || (card.state === "wanted" && !!search));
   let menu: MenuEntry[];
   if (event) {
     menu = [
+      ...(reserve ? [{ label: `✓ ${L("Aldım", "Got it")}`, run: gotIt }] : []),
       // C26: another in this one's place (the chat looks), where the live card's ↻ was.
       ...(card.state === "planned" && env.ask ? [{ label: `↻ ${L("Yerine başkasını öner", "Suggest another in its place")}`, run: () => env.ask!(askOther(card.title)) }] : []),
       ...rename,
@@ -292,6 +345,80 @@ function RecordFace({ card, vm, plan, search, onPut, onTakeOff }: RecordCardProp
     <DayGive item={item} plan={plan} />
   ) : null;
 
+  if (event) {
+    const deal = card.deal ?? null;
+    const site = card.brand?.label;
+    let main: ReactNode = null;
+    // (the record's own line is its day and price, which the foot says now)
+    let l2e: ReactNode = <DealFacts deal={deal} fallback={null} />;
+    if (card.state === "idea") main = <PutButton title={card.title} onPut={() => onPut(item)} />;
+    else if (card.state === "booked") {
+      // A bought ticket (v81, kept): its code to copy and the meeting place on the grey line, "Bileti aç" (else "Bilet ekle").
+      const a = card.access;
+      if (a?.code || a?.where)
+        l2e = (
+          <span className="q-acc z-kacc">
+            {a.code && <CopyCode value={a.code.value} label={a.code.label} className="q-code z-kcode" />}
+            {a.where &&
+              (a.map ? (
+                <a className="q-aw" href={a.map} target="_blank" rel="noopener noreferrer" title={L("Haritada aç", "Open on the map")}>
+                  <Ic name="pin" size={12} />
+                  {a.where}
+                </a>
+              ) : (
+                <span className="q-aw">
+                  <Ic name="pin" size={12} />
+                  {a.where}
+                </span>
+              ))}
+          </span>
+        );
+      main = docButton;
+    } else if (docs.length) main = docButton;
+    else if (card.page && card.state === "planned")
+      main = (
+        <a className="z-kgo" href={card.page} target="_blank" rel="noopener noreferrer" title={site ? L(`${site} sitesinde aç`, `Open on ${site}`) : L("Sayfasında aç", "Open its page")}>
+          {L("Rezerve et", "Book")} ↗
+        </a>
+      );
+    else if (card.state === "wanted" && search)
+      main = (
+        <a className="z-kgo" href={search.url} target="_blank" rel="noopener noreferrer" title={L(`${search.name}'da ara · yeni sekmede açılır`, `Search ${search.name} · opens in a new tab`)}>
+          {L(`${search.name}'da ara`, `Search ${search.name}`)} ↗
+        </a>
+      );
+    else
+      main = (
+        <button type="button" className="z-kgo" onClick={gotIt}>
+          <Ic name="check" size={13} stroke={2.6} /> {L("Aldım", "Got it")}
+        </button>
+      );
+    return (
+      <KCard
+        className={`q-card z-ko ${where}${look}${leaving ? " leaving" : ""}`}
+        k={card.key}
+        label={card.title}
+        attrs={{ "data-item-id": item.id, "data-st": card.state }}
+        pic={<EventPic card={card} tools={tools} />}
+        title={name}
+        l2={l2e}
+        foot={
+          <>
+            <PriceBlock deal={deal} none={card.state === "idea"} />
+            {main}
+          </>
+        }
+        extra={
+          <>
+            {detailNode}
+            {stage.field}
+            {doc.field}
+          </>
+        }
+      />
+    );
+  }
+
   let foot: ReactNode;
   let l2: ReactNode = card.line;
   if (card.state === "idea") {
@@ -314,23 +441,6 @@ function RecordFace({ card, vm, plan, search, onPut, onTakeOff }: RecordCardProp
           <a className="q-cta sm" href={search.url} target="_blank" rel="noopener noreferrer" title={L(`${search.name}'da ara · yeni sekmede açılır`, `Search ${search.name} · opens in a new tab`)}>
             <Mark color={search.color} letter={search.letter} small />
             <span>{L("Ara", "Search")}</span>
-          </a>
-        )}
-      </span>
-    );
-  } else if (event) {
-    foot = (
-      <span className="q-act">
-        <button type="button" className="q-got sm" onClick={() => void setItemStatus(item, "booked")}>
-          <Ic name="check" size={13} stroke={2.6} /> {L("Aldım", "Got it")}
-        </button>
-        {/* A file on it already (a ticket kept before it's marked bought): it opens here, where the site's link was. */}
-        {docs.length ? (
-          docButton
-        ) : card.page && (
-          <a className="q-cta sm" href={card.page} target="_blank" rel="noopener noreferrer" title={card.brand ? L(`${card.brand.label} sitesinde aç`, `Open on ${card.brand.label}`) : undefined}>
-            {card.brand && <Mark color={card.brand.color ?? "#6b6f80"} letter={[...card.brand.label][0] ?? ""} small />}
-            <span>{L("Satın al", "Buy")}</span>
           </a>
         )}
       </span>
@@ -427,8 +537,46 @@ function usePlaceFound(s: Suggestion | null, on: boolean): PlaceFound | null {
  */
 export function SuggestCard({ card, onPut, onDismiss }: { card: KCardVM; onPut: (photo: string | null, map: string | null) => void; onDismiss: () => void }) {
   const place = card.family !== "event";
+  if (!place) return <EventSuggestCard card={card} onPut={() => onPut(null, null)} onDismiss={onDismiss} />;
+  return <PlaceSuggestCard card={card} onPut={onPut} onDismiss={onDismiss} />;
+}
+
+/**
+ * An AI idea for Etkinlik (0.39.10, the approved card's "fotoğrafsız fikir"): "AI fikri" on its drawing, its why for the
+ * grey line, "Fiyat yok" beside "+ Plana koy" (a model's idea has no price), × Gerek yok.
+ */
+function EventSuggestCard({ card, onPut, onDismiss }: { card: KCardVM; onPut: () => void; onDismiss: () => void }) {
+  return (
+    <KCard
+      className="q-card q-opt sugg z-ko"
+      k={card.key}
+      label={card.title}
+      attrs={{ "data-suggestion": card.suggestion?.key }}
+      pic={
+        <EventPic
+          card={card}
+          tools={
+            <button type="button" className="q-rm" aria-label={L(`${card.title}: gerek yok`, `${card.title}: not needed`)} title={L("Gerek yok", "Not needed")} onClick={onDismiss}>
+              <Ic name="x" size={12} stroke={2.6} />
+            </button>
+          }
+        />
+      }
+      title={<span className="z-tn">{card.title}</span>}
+      l2={card.line}
+      foot={
+        <>
+          <PriceBlock deal={null} none={card.canPut} />
+          {card.canPut && <PutButton title={card.title} onPut={onPut} />}
+        </>
+      }
+    />
+  );
+}
+
+function PlaceSuggestCard({ card, onPut, onDismiss }: { card: KCardVM; onPut: (photo: string | null, map: string | null) => void; onDismiss: () => void }) {
   // A sight from Google has its photo and rating already; any other place is looked up (Maps, its city's sights, Wikipedia).
-  const found = usePlaceFound(card.suggestion, place && !card.photo);
+  const found = usePlaceFound(card.suggestion, !card.photo);
   const photo = found?.photo ?? null;
   const shown = photo ? { ...card, photo: photo.url } : card;
   // Maps' own page for the place once it's found there; else the card's Maps search.
@@ -438,19 +586,15 @@ export function SuggestCard({ card, onPut, onDismiss }: { card: KCardVM; onPut: 
   const credit = found ? placePhotoCredit(found.credit, found.photoBy) : card.photo ? placePhotoCredit("Google") : undefined;
   return (
     <KCard
-      className={`${card.family === "event" ? "q-card" : "q-tile"} q-opt sugg${place ? " z-kplace" : ""}`}
+      className="q-tile q-opt sugg z-kplace"
       k={card.key}
       label={card.title}
       attrs={{ "data-suggestion": card.suggestion?.key }}
       pic={
         <>
-          {place ? (
-            <FallbackImg className="ph" src={shown.photo} fallback={<img className="art" src={card.art} alt="" />} title={credit} />
-          ) : (
-            <Picture card={shown} />
-          )}
+          <FallbackImg className="ph" src={shown.photo} fallback={<img className="art" src={card.art} alt="" />} title={credit} />
           <Chips card={card} />
-          {place && rating && (
+          {rating && (
             <span className="z-prate" title={L("Google puanı", "Google rating")}>
               {rating}
             </span>
@@ -463,9 +607,9 @@ export function SuggestCard({ card, onPut, onDismiss }: { card: KCardVM; onPut: 
         </>
       }
       title={<span className="z-tn">{card.title}</span>}
-      l2={place ? placeRatingLine(card.line, found?.sight ? null : found?.rating, found?.reviews) : card.line}
+      l2={placeRatingLine(card.line, found?.sight ? null : found?.rating, found?.reviews)}
       foot={
-        place && map ? (
+        map ? (
           <span className="q-act">
             {card.canPut && <PutButton title={card.title} onPut={() => onPut(photo?.url ?? card.photo ?? null, found?.map ?? null)} />}
             <a className="z-kmap" href={map} target="_blank" rel="noopener noreferrer" data-map="" aria-label={L(`${card.title}: haritada aç`, `${card.title}: open on the map`)} title={L("Haritada aç", "Open on the map")}>
@@ -481,10 +625,14 @@ export function SuggestCard({ card, onPut, onDismiss }: { card: KCardVM; onPut: 
   );
 }
 
-/** The source's tour's grey line (0.39.9): ★ its rating (its reviews), how long, free cancellation. */
-function DealFacts({ deal, fallback }: { deal: KDeal; fallback: string | null }) {
+/**
+ * An Etkinlik card's grey line (0.39.9, every card of the row since 0.39.10): ★ its rating (its reviews), how long, free
+ * cancellation, a saved ticket's own words after them; none of these, the card's own line.
+ */
+function DealFacts({ deal, fallback }: { deal: KDeal | null; fallback: string | null }) {
   const loc = L("tr-TR", "en-GB");
   const parts: ReactNode[] = [];
+  if (!deal) return <>{fallback}</>;
   if (deal.rating != null)
     parts.push(
       <span key="r" className="z-kst">
@@ -495,6 +643,7 @@ function DealFacts({ deal, fallback }: { deal: KDeal; fallback: string | null })
     );
   if (deal.duration) parts.push(<span key="d">{deal.duration}</span>);
   if (deal.free) parts.push(<span key="f" className="z-kfree">{L("Ücretsiz iptal", "Free cancellation")}</span>);
+  if (deal.note) parts.push(<span key="n" className="z-knote">{deal.note}</span>);
   return parts.length ? <span className="z-kfacts">{parts}</span> : <>{fallback}</>;
 }
 
@@ -514,24 +663,7 @@ export function OfferCard({ card, onPut }: { card: KCardVM; onPut: () => void })
         k={card.key}
         label={card.title}
         attrs={{ "data-offer": card.offer?.id }}
-        pic={
-          <>
-            <Picture card={card} />
-            {deal.pick && (
-              <span className="z-kc">
-                <span className="z-kpick">{deal.pick}</span>
-              </span>
-            )}
-            {source && source.kind === "source" && (
-              <span className="z-kd">
-                <span className={`q-src ${source.tone}${source.mark ? " site" : ""}`}>
-                  {source.mark ? <Mark color={source.mark.color} letter={source.mark.letter} small /> : source.initial && <i>{source.initial}</i>}
-                  {source.text}
-                </span>
-              </span>
-            )}
-          </>
-        }
+        pic={<EventPic card={card} />}
         title={
           card.page ? (
             <a className="z-tb" href={card.page} target="_blank" rel="noopener noreferrer">
@@ -544,30 +676,22 @@ export function OfferCard({ card, onPut }: { card: KCardVM; onPut: () => void })
         l2={<DealFacts deal={deal} fallback={card.line} />}
         foot={
           <>
-            {deal.price && (
-              <span className="z-kpr">
-                <small>{L("kişi başı", "per person")}</small>
-                <b>{deal.price}</b>
-              </span>
-            )}
+            <PriceBlock deal={deal} />
             <PutButton title={card.title} onPut={onPut} />
           </>
         }
       />
     );
   }
+  // A city's event (Google Events): the same card, its day and hour where a price would be, its place for the grey line.
+  const o = card.offer;
   return (
     <KCard
-      className="q-card q-opt"
+      className="q-card q-opt z-ko"
       k={card.key}
       label={card.title}
-      attrs={{ "data-offer": card.offer?.id }}
-      pic={
-        <>
-          <Picture card={card} />
-          <Chips card={card} />
-        </>
-      }
+      attrs={{ "data-offer": o?.id }}
+      pic={<EventPic card={card} />}
       title={
         card.page ? (
           <a className="z-tb" href={card.page} target="_blank" rel="noopener noreferrer">
@@ -577,8 +701,13 @@ export function OfferCard({ card, onPut }: { card: KCardVM; onPut: () => void })
           <span className="z-tn">{card.title}</span>
         )
       }
-      l2={card.line}
-      foot={<PutButton title={card.title} onPut={onPut} />}
+      l2={o ? (o.meta ?? null) : card.line}
+      foot={
+        <>
+          <PriceBlock deal={o?.why ? { price: null, when: o.why } : null} />
+          <PutButton title={card.title} onPut={onPut} />
+        </>
+      }
     />
   );
 }

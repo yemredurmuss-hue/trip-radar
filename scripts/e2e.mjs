@@ -582,8 +582,9 @@ try {
   await portoAct.locator(".z-fold").click();
   await portoAct.locator('[data-row="ideas"] .z-k').first().waitFor();
   assert.equal(await portoAct.locator('[data-row="plan"] .z-k[data-item-id] .z-kp img').count(), 1, "a card has its picture");
-  // v82 (izlenebilirlik 120): a bought ticket keeps the card's size: the green band, its day and hour and its meeting place
-  // (to the map), its code to copy, "Bileti aç" opening its file; ⓘ opens Ayrıntı over the card, where files are added too.
+  // v82 (izlenebilirlik 120): a bought ticket keeps the card's size: "✓ Alındı" on its picture, its code to copy and its
+  // meeting place (to the map) for the grey line, its day and hour over its price, "Bileti aç" opening its file (0.39.10,
+  // the approved three-across card); ⓘ opens Ayrıntı over the card, where files are added too.
   // (Tiyatro for a moment, put back as it was after.)
   const tiyatroId = await portoAct.locator('.z-k[aria-label="Tiyatro"]').getAttribute("data-item-id");
   const writeItem = (change) =>
@@ -611,8 +612,9 @@ try {
   await bought.waitFor();
   // (its 2 px edge included: the height is the row's, as a ticket not bought yet)
   assert.equal(Math.round((await bought.boundingBox()).height), Math.round((await portoAct.locator('[data-row="plan"] .z-k[aria-label="Douro tekne turu"]').boundingBox()).height), "a bought ticket doesn't grow");
-  assert.match(await bought.locator(".q-vband").innerText(), /Bilet alındı/);
-  assert.match(flat([await bought.locator(".q-acc").innerText()])[0], /^10 Eki 21:00 Teatro Nacional São João$/);
+  assert.equal(flat([await bought.locator(".z-kc .z-kpick.ok").innerText()])[0], "✓ Alındı");
+  assert.match(flat([await bought.locator(".q-acc").innerText()])[0], /^KL-90231 Teatro Nacional São João$/);
+  assert.match(flat([await bought.locator(".z-kpr").innerText()])[0], /^10 Ekim · 21:00 €\d+/);
   assert.match(await bought.locator(".q-acc a.q-aw").getAttribute("href"), /^https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=/);
   assert.equal(await bought.locator(".q-code > span").first().innerText(), "KL-90231");
   await bought.locator(".q-code .q-cp").click();
@@ -3854,16 +3856,16 @@ try {
   const tourIn = (city) => ekSec("activity").locator(`.q-gapl[data-city="${city}"] .z-k[data-offer][aria-label="Uluwatu gün batımı ve kecak dansı"]`);
   const tourTile = tourIn("Uluwatu");
   await tourTile.waitFor({ timeout: 10000 });
-  // 0.38.8 (option A): the brand's label and where it was found are one chip on the picture, with the site's mark.
-  assert.equal(await tourTile.locator(".z-kp .q-src .q-logo").innerText(), "V");
-  assert.match(await tourTile.locator(".z-kp .q-src").innerText(), /^V\s*Viator · Uluwatu$/);
+  // 0.38.8 (option A): the brand's label and where it was found are one chip on the picture; 0.39.10 (the approved card)
+  // a dark one at its foot, the source's name alone.
+  assert.match(await tourTile.locator(".z-kp .z-kd .z-ksrc").innerText(), /^Viator · Uluwatu$/);
   assert.equal(await tourTile.locator(".q-brand").count(), 0, "the source's chip names the site: no second label");
   // 0.39.9 (Viator's own card as the model): the grey line says how long; the price a person is the foot's, beside "+ Plana koy".
   assert.match(await tourTile.locator(".z-l2").innerText(), /^4 sa$/);
   assert.match(await tourTile.locator(".z-kpr").innerText(), /^kişi başı\s+€45$/);
   assert.equal(await ekSec("activity").locator('.q-gapl.has-offers[data-city="Uluwatu"]').locator(".z-k[data-offer]").count(), 1, "the tour is in its city's place");
   await tourIn("Canggu").waitFor({ timeout: 10000 });
-  assert.match(await tourIn("Canggu").locator(".q-src").innerText(), /^V\s*Viator · Uluwatu$/, "a nearby stop's row says where its tour is");
+  assert.match(await tourIn("Canggu").locator(".z-ksrc").innerText(), /^Viator · Uluwatu$/, "a nearby stop's row says where its tour is");
   await tourTile.getByRole("button", { name: "+ Plana koy" }).click();
   await ekSec("activity").locator('[data-row="plan"] .z-k[aria-label="Uluwatu gün batımı ve kecak dansı"]').waitFor();
   await tourTile.waitFor({ state: "detached" });

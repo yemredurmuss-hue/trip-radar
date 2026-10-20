@@ -4,7 +4,7 @@
 // and its "n yapıldı".
 import { describe, expect, it } from "vitest";
 import { categorize } from "../src/lib/categories";
-import { accessOf, askLike, askMore, collectionRow, doneCount, doneLine, familyOf, filterOf, ideasCaption, mapsSearch, nearPlaces, offerCard, pickWord, pictureChips, recordCard, rowCells, stateOf, stopCountry, suggestionCard } from "../src/lib/collectionCards";
+import { accessOf, askLike, askMore, collectionRow, doneCount, doneLine, eventPicture, familyOf, filterOf, ideasCaption, mapsSearch, nearPlaces, offerCard, pickWord, pictureChips, recordCard, rowCells, stateOf, stopCountry, suggestionCard } from "../src/lib/collectionCards";
 import { decideTrip, makeContext } from "../src/lib/decision";
 import { isEmptyRecord } from "../src/lib/emptyCards";
 import { collectionsOf, type IntentInput } from "../src/lib/intents";
@@ -289,5 +289,38 @@ describe("0.39.9: the source's tour as a deal (Viator's own card as the model)",
   });
   it("the source's whys as words", () => {
     expect([pickWord("Viator'da öne çıkan"), pickWord("İyi puanlılar içinde en uygunu"), pickWord("Bulduklarımın en ucuzu"), pickWord("x")]).toEqual(["Öne çıkan", "Uygun fiyatlı", "En ucuz", null]);
+  });
+});
+
+describe("0.39.10: every Etkinlik card in the approved card's language", () => {
+  const at = { section: "activity" as const, people: 2, planned: false, wanted: false, reason: false };
+  it("a saved ticket as a deal: its day over its price a person, its rating out of 5, its length, its own words", () => {
+    const t = act("Douro tekne turu", "chosen", {
+      summary: "Altı köprü turu",
+      rating: { value: 9.2, scale: 10, count: 530, source: "page" },
+      metrics: { durationMinutes: 50 } as Item["metrics"],
+      flight: { from: null, to: null, departure: "2026-11-02T16:00", arrival: null, carrier: null, flightNumber: null, stops: null },
+    });
+    expect(recordCard(t, { ...at, planned: true }).deal).toMatchObject({ price: "€45", per: true, rating: 4.6, reviews: 530, duration: "50 dk", free: false, pick: null, when: "2 Kasım · 16:00", note: "Altı köprü turu" });
+  });
+  it("a summary that is only the source's why is its pick, not its words; no price, no price", () => {
+    const d = recordCard(act("Fado gecesi", "saved", { summary: "Viator'da öne çıkan", price: eur(null) }), at).deal;
+    expect(d).toMatchObject({ price: null, pick: "Öne çıkan", note: null });
+  });
+  it("a place to see has no deal", () => {
+    expect(recordCard(place("Senso-ji"), { ...at, section: "todo" }).deal).toBeNull();
+  });
+  it("the word on the picture: on the plan, bought, the trip's reason, the source's pick, an AI idea; the source at its foot", () => {
+    const viator = act("Douro", "chosen", { addedBy: "ai", provider: "Viator", url: "https://www.viator.com/d" });
+    expect(eventPicture(recordCard(viator, { ...at, planned: true }))).toEqual({ word: { text: "✓ Planında", tone: "ok" }, source: "Viator" });
+    expect(eventPicture(recordCard(act("Tiyatro", "booked"), { ...at, planned: true })).word).toEqual({ text: "✓ Alındı", tone: "ok" });
+    expect(eventPicture(recordCard(act("Festival", "booked"), { ...at, planned: true, reason: true })).word?.tone).toBe("rsn");
+    // a saved source tour: no word over its source's name
+    expect(eventPicture(recordCard({ ...viator, status: "saved" }, at)).word).toBeNull();
+    const tour = { id: "v1", kind: "activity" as const, title: "Porto yemek turu", url: "https://viator.com/p", why: "Viator'da öne çıkan", source: "Viator", fetchedAt: 1, place: "Porto" };
+    expect(eventPicture(offerCard(tour, 2))).toEqual({ word: { text: "Öne çıkan", tone: "acc" }, source: "Viator · Porto" });
+    expect(eventPicture(offerCard({ ...tour, why: "En beğenilen" }, 2)).word).toEqual({ text: "En beğenilen", tone: "plain" });
+    const s = { key: "k", kind: "add", section: "activity", title: "Fado gecesi", why: "Porto'nun sesi" } as unknown as Suggestion;
+    expect(eventPicture(suggestionCard(s, "activity"))).toEqual({ word: { text: "AI fikri", tone: "plain" }, source: null });
   });
 });

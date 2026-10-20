@@ -108,6 +108,62 @@ export interface KDeal {
   free: boolean;
   /** The source's pick in a word ("Öne çıkan", "En beğenilen", "Uygun fiyatlı", "En ucuz"). */
   pick: string | null;
+  /** False when the price is the whole party's (a saved ticket's total); a source's tour's is a person's (unset). */
+  per?: boolean;
+  /** A saved ticket's day and hour ("9 Ekim · 16:00"), over its price (0.39.10). */
+  when?: string | null;
+  /** A saved ticket's own words (its summary), after the facts. */
+  note?: string | null;
+}
+
+/**
+ * A saved ticket or tour in Etkinlik as a deal (0.39.10, the approved three-across card for every card of the row): its
+ * day and its price for the foot, its rating (out of 5), reviews and length for the grey line, its own words after them.
+ * Only what the record says; a summary that is only the source's why ("Viator'da öne çıkan") is its pick, not its words.
+ */
+export function recordDeal(item: Item, facts: ReturnType<typeof cardFacts>, people: number | null): KDeal {
+  const prices = ticketPrices(item, facts.price, people);
+  const r = item.rating.value != null && item.rating.value > 0 ? item.rating.value : null;
+  const summary = item.summary.trim() || null;
+  const pick = pickWord(summary);
+  const mins = item.metrics?.durationMinutes;
+  return {
+    price: prices?.each ?? prices?.total ?? facts.price?.text ?? null,
+    per: prices?.each != null,
+    rating: r == null ? null : item.rating.scale === 10 || r > 5 ? Math.round(r * 5) / 10 : r,
+    reviews: r != null && item.rating.count != null && item.rating.count > 0 ? item.rating.count : null,
+    duration: mins ? durationText(mins) : null,
+    free: /ücretsiz iptal|free cancellation/i.test(summary ?? ""),
+    pick,
+    when: topDate(item, "activity"),
+    note: pick ? null : summary,
+  };
+}
+
+/** The word on an Etkinlik card's picture, top left (0.39.10, as drawn): one word, its tone. */
+export interface KWord {
+  text: string;
+  tone: "acc" | "ok" | "plain" | "rsn";
+}
+
+/**
+ * An Etkinlik card's picture (0.39.10, the approved three-across card): one word top left (the trip's reason, "✓ Alındı",
+ * "✓ Planında", the source's pick, who put an idea there, "AI fikri"), and the source at its foot ("Viator · Porto").
+ */
+export function eventPicture(card: Pick<KCardVM, "reason" | "state" | "badge" | "brand" | "offer" | "suggestion" | "deal">): { word: KWord | null; source: string | null } {
+  const source = card.offer ? (card.badge?.text ?? card.offer.source ?? null) : (card.brand?.label ?? null);
+  let word: KWord | null = null;
+  if (card.reason) word = { text: L("Gezinin sebebi", "The reason for the trip"), tone: "rsn" };
+  else if (card.state === "booked") word = { text: `✓ ${L("Alındı", "Booked")}`, tone: "ok" };
+  else if (card.state === "planned") word = { text: `✓ ${L("Planında", "On the plan")}`, tone: "ok" };
+  else if (card.state === "idea") {
+    const pick = card.deal?.pick ?? null;
+    const b = card.badge;
+    if (pick) word = { text: pick, tone: /öne çıkan|featured/i.test(pick) ? "acc" : "plain" };
+    else if (card.suggestion || b?.tone === "ai") word = { text: L("AI fikri", "AI idea"), tone: "plain" };
+    else if (b && !card.offer && !(source && b.text.startsWith(source))) word = { text: b.text, tone: "plain" };
+  }
+  return { word, source };
 }
 
 /** The source's why (supabase offers pickActivities) as a word for the picture; null for any other. */
@@ -253,6 +309,7 @@ export function recordCard(item: Item, at: CardCtx & { planned: boolean; wanted:
     page: item.url,
     map: mapOf(item, family),
     canPut: state === "idea",
+    deal: event ? recordDeal(item, facts, at.people) : null,
   };
 }
 
