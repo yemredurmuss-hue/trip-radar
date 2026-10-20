@@ -1,6 +1,7 @@
 // "Telefonuna kur"'s data (0.39.7, lib/phoneApps.ts): the table read once per page from the extension's own file
-// (static/data/country-apps.json, kept out of app.js), and the AI's lines asked once per trip and language in the model's
-// line after the Bavul ("soon"), kept on the trip (Trip.phone.ai). No key, an error, offline: the table's lines stand alone.
+// (static/data/country-apps.json, kept out of app.js), and the AI's pick (0.39.8: the short list chosen from the candidates,
+// with up to two of its own) asked once per trip and language in the model's line after the Bavul ("soon"), kept on the
+// trip (Trip.phone.ai, v 2). No key, an error, offline: the plan's own short list stands.
 import { useEffect, useState } from "react";
 import { contentLang, withLang } from "../../../lib/i18n";
 import { getProvider, MissingKeyError, promoteAi, type AiPriority } from "../../../lib/llm";
@@ -37,7 +38,7 @@ const phoneKey = (at: string) => `phone:${at}`;
 /** Asks the AI's lines once for the trip in the board's language, when its countries are known. */
 export function usePhoneAi(trip: Trip, input: PhoneAiInput, ready: boolean, priority: AiPriority = "soon"): void {
   const write = contentLang(trip.lang);
-  const has = trip.phone?.ai != null && trip.phone.ai.lang === write;
+  const has = trip.phone?.ai != null && trip.phone.ai.lang === write && trip.phone.ai.v === 2;
   useEffect(() => {
     const at = `${trip.id}:${write}`;
     if (has || !ready || trip.demo) return;
@@ -50,9 +51,9 @@ export function usePhoneAi(trip: Trip, input: PhoneAiInput, ready: boolean, prio
       try {
         const llm = await getProvider({ priority, key: phoneKey(at) });
         const out = await llm.generateJson(withLang(write, phoneAiSystemPrompt), phoneAiPrompt(input), phoneAiSchema);
-        const list = acceptPhoneAi(out);
-        if (!list) return;
-        await updateTrip(trip.id, (t) => (t.phone?.ai?.lang === write ? t : { ...t, phone: { ...t.phone, ai: { lang: write, at: Date.now(), list } } }), { touch: false });
+        const made = acceptPhoneAi(out, input.candidates.map((c) => c.key));
+        if (!made) return;
+        await updateTrip(trip.id, (t) => (t.phone?.ai?.lang === write && t.phone.ai.v === 2 ? t : { ...t, phone: { ...t.phone, ai: { lang: write, at: Date.now(), v: 2, ...made } } }), { touch: false });
       } catch (error) {
         if (!(error instanceof MissingKeyError)) console.warn("phone apps", error);
       }

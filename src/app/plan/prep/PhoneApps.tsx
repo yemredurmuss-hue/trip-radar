@@ -1,12 +1,13 @@
-// Hazırlık's "Telefonuna kur" (0.39.7, lib/phoneApps.ts): a folded line under the Bavul, drawn like it: "Telefonuna kur ·
-// Tayland · 6 uygulama + internet · 1/7 kuruldu". Open: the groups (rides, trains, town transit, maps, messaging, food,
-// paying; the trip's kinds; the internet's eSIM providers; the AI's), each line with why, its App Store and Google Play
-// pages (the AI's: a search), "Kurdum" and × (not for me, "Geri al" for a moment).
+// Hazırlık's "Telefonuna kur" (0.39.7; 0.39.8 kısa liste, lib/phoneApps.ts): a folded line under the Bavul, drawn like it:
+// "Telefonuna kur · Mısır · 5 uygulama + internet · 1/6 kuruldu". Open: the short list (at most six, most important
+// first, each with its kind, why and "yedek: Careem" when it has a second), the eSIM provider, and a folded "Diğer
+// uygulamalar (N)" with the rest by kind. Each line: its App Store and Google Play pages (the AI's: a search), "Kurdum"
+// and × (not for me, "Geri al" for a moment).
 import { useMemo, useState } from "react";
 import { L, lang } from "../../../lib/i18n";
 import { countryName } from "../../../lib/prepKnow";
 import { kindWord, planNames, stayCities, tripDays } from "../../../lib/prepPack";
-import { phoneCount, phoneGroups, phoneSub, tripKinds, type PhoneAiInput, type PhoneApp, type PhoneGroup } from "../../../lib/phoneApps";
+import { kindTitle, phoneCount, phonePlan, phoneSub, tripKinds, tripShape, type PhoneAiInput, type PhoneApp } from "../../../lib/phoneApps";
 import type { Trip } from "../../../lib/types";
 import { updateTrip } from "../../actions";
 import { usePrep, type PrepModel } from "./usePrep";
@@ -39,14 +40,15 @@ export function usePhoneModel(model: Pick<PrepModel, "trip" | "items" | "countri
   const { trip, items, countries, range, rides } = model;
   const table = usePhoneTable();
   const kinds = useMemo(() => tripKinds(trip, items), [trip, items]);
+  const shape = useMemo(() => tripShape(items), [items]);
   const hidden = trip.phone?.hidden ?? [];
-  const groups = useMemo(
+  const plan = useMemo(
     () =>
       table
-        ? phoneGroups({ table, countries, countryName, kinds, rides, days: tripDays(range), ai: trip.phone?.ai ?? null, hidden, lang: lang() === "en" ? "en" : "tr" })
-        : [],
+        ? phonePlan({ table, countries, countryName, kinds, shape, rides, days: tripDays(range), ai: trip.phone?.ai ?? null, hidden, lang: lang() === "en" ? "en" : "tr" })
+        : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the trip's fields it reads
-    [table, countries.join(), kinds.join(), rides.join(), range?.start, range?.end, trip.phone?.ai, hidden.join()],
+    [table, countries.join(), kinds.join(), shape, rides.join(), range?.start, range?.end, trip.phone?.ai, hidden.join()],
   );
   const input: PhoneAiInput = {
     countries: countries.map(countryName),
@@ -54,25 +56,28 @@ export function usePhoneModel(model: Pick<PrepModel, "trip" | "items" | "countri
     kinds,
     about: aboutOf(trip),
     plan: planNames(items),
-    have: groups.filter((g) => g.key !== "ai").flatMap((g) => g.apps.map((a) => a.name)),
+    candidates: (plan?.candidates ?? []).map((a) => ({ key: a.key, name: a.name, cat: a.cat, why: a.why })),
   };
-  usePhoneAi(trip, input, table != null && countries.length > 0, priority);
-  return { groups, table };
+  usePhoneAi(trip, input, plan != null && plan.candidates.length > 0, priority);
+  return { plan, table };
 }
 
 export function PhoneApps({ model }: { model: PrepModel }) {
   const { trip, countries } = model;
-  const { groups } = usePhoneModel(model, "now");
+  const { plan, table } = usePhoneModel(model, "now");
   const [open, setOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [gone, setGone] = useState<PhoneApp | null>(null);
-  if (groups.length === 0) return null;
+  if (!plan || (plan.main.length === 0 && !plan.esim)) return null;
   const done = trip.phone?.done ?? [];
-  const count = phoneCount(groups, done);
-  const sub = phoneSub(countries.slice(0, 3).map(countryName), groups);
+  const count = phoneCount(plan, done);
+  const sub = phoneSub(countries.slice(0, 3).map(countryName), plan);
   const hide = (app: PhoneApp) => {
     setGone(app);
     void setHidden(trip, app.key, true);
   };
+  const moreCount = plan.more.reduce((n, g) => n + g.apps.length, 0);
+  const row = (a: PhoneApp, label: boolean) => <AppRow key={a.key} app={a} label={label ? kindTitle(a.cat, table) : null} on={done.includes(a.key)} trip={trip} onHide={hide} />;
   return (
     <li className="q-phli">
       <div className={`q-bv${open ? " open" : ""}`}>
@@ -106,17 +111,30 @@ export function PhoneApps({ model }: { model: PrepModel }) {
                 </button>
               </div>
             )}
-            <div className="q-bvgs">
-              {groups.map((g) => (
-                <Group key={g.key} group={g} done={done} trip={trip} onHide={hide} />
-              ))}
+            <div className="q-bvg q-phmain">
+              <ul>
+                {plan.main.map((a) => row(a, true))}
+                {plan.esim && row(plan.esim, true)}
+              </ul>
             </div>
-            <small className="q-bvnote">
-              {L(
-                "Ülkenin uygulamaları elle tutulan tablodan gelir; AI etiketliler bu gezi için AI'ın önerisi, mağazada aratırsın.",
-                "The countries' apps come from a hand-kept table; the AI-tagged ones are the AI's picks for this trip, found by a search.",
-              )}
-            </small>
+            {moreCount > 0 && (
+              <div className="q-phmore">
+                <button type="button" className="q-phmb" aria-expanded={moreOpen} onClick={() => setMoreOpen(!moreOpen)}>
+                  {L(`Diğer uygulamalar (${moreCount})`, `Other apps (${moreCount})`)}
+                  <PrepIcon name="chev" size={14} stroke={2.2} />
+                </button>
+                {moreOpen && (
+                  <div className="q-bvgs">
+                    {plan.more.map((g) => (
+                      <div key={g.key} className="q-bvg">
+                        <b>{g.title}</b>
+                        <ul>{g.apps.map((a) => row(a, g.key === "intent"))}</ul>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -124,56 +142,54 @@ export function PhoneApps({ model }: { model: PrepModel }) {
   );
 }
 
-function Group({ group, done, trip, onHide }: { group: PhoneGroup; done: readonly string[]; trip: Trip; onHide: (a: PhoneApp) => void }) {
+function AppRow({ app: a, label, on, trip, onHide }: { app: PhoneApp; label: string | null; on: boolean; trip: Trip; onHide: (a: PhoneApp) => void }) {
   return (
-    <div className="q-bvg">
-      <b>{group.title}</b>
-      <ul>
-        {group.apps.map((a) => {
-          const on = done.includes(a.key);
-          return (
-            <li key={a.key} className={`q-bv1 q-ph1${on ? " done" : ""}`} aria-label={a.name}>
-              <button type="button" className="q-ck q-bvck" role="checkbox" aria-checked={on} aria-label={on ? L(`${a.name}: kurulmadı`, `${a.name}: not installed`) : L(`${a.name}: kurdum`, `${a.name}: installed`)} onClick={() => void setDone(trip, a.key, !on)}>
-                {on && <PrepIcon name="check" size={11} stroke={3.2} />}
-              </button>
-              <span className="q-pt1">
-                <b>
-                  {a.name}
-                  {a.ai && <span className="q-phai">AI</span>}
-                  {a.where.length > 0 && <span className="q-phw">{a.where.join(", ")}</span>}
-                </b>
-                {a.why && <small>{a.why}</small>}
-              </span>
-              <span className="q-phst">
-                {a.ios && (
-                  <a href={a.ios} target="_blank" rel="noreferrer">
-                    App Store
-                  </a>
-                )}
-                {a.android && (
-                  <a href={a.android} target="_blank" rel="noreferrer">
-                    Google Play
-                  </a>
-                )}
-                {a.search && (
-                  <a href={a.search} target="_blank" rel="noreferrer">
-                    {L("Ara ↗", "Search ↗")}
-                  </a>
-                )}
-              </span>
-              <button type="button" className="q-bvx" aria-label={L(`${a.name}: bana göre değil`, `${a.name}: not for me`)} title={L("Bana göre değil", "Not for me")} onClick={() => onHide(a)}>
-                <PrepIcon name="x" size={12} stroke={2.4} />
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
+    <li className={`q-bv1 q-ph1${on ? " done" : ""}`} aria-label={a.name}>
+      <button type="button" className="q-ck q-bvck" role="checkbox" aria-checked={on} aria-label={on ? L(`${a.name}: kurulmadı`, `${a.name}: not installed`) : L(`${a.name}: kurdum`, `${a.name}: installed`)} onClick={() => void setDone(trip, a.key, !on)}>
+        {on && <PrepIcon name="check" size={11} stroke={3.2} />}
+      </button>
+      <span className="q-pt1">
+        <b>
+          {a.name}
+          {a.ai && <span className="q-phai">AI</span>}
+          {label && <span className="q-phk">{label}</span>}
+          {a.where.length > 0 && <span className="q-phw">{a.where.join(", ")}</span>}
+        </b>
+        {(a.why || a.alt) && (
+          <small>
+            {a.why}
+            {a.alt && <span className="q-phalt">{L(` · yedek: ${a.alt}`, ` · backup: ${a.alt}`)}</span>}
+          </small>
+        )}
+      </span>
+      <span className="q-phst">
+        {a.ios && (
+          <a href={a.ios} target="_blank" rel="noreferrer">
+            App Store
+          </a>
+        )}
+        {a.android && (
+          <a href={a.android} target="_blank" rel="noreferrer">
+            Google Play
+          </a>
+        )}
+        {a.search && (
+          <a href={a.search} target="_blank" rel="noreferrer">
+            {L("Ara ↗", "Search ↗")}
+          </a>
+        )}
+      </span>
+      <button type="button" className="q-bvx" aria-label={L(`${a.name}: bana göre değil`, `${a.name}: not for me`)} title={L("Bana göre değil", "Not for me")} onClick={() => onHide(a)}>
+        <PrepIcon name="x" size={12} stroke={2.4} />
+      </button>
+    </li>
   );
 }
 
-/** The AI's lines asked ahead (after the Bavul's), whatever is open: Hazırlık opens with them made. Draws nothing. */
+/** The AI's pick asked ahead (after the Bavul's), whatever is open: Hazırlık opens with it made. Draws nothing. */
 export function PhonePrefetch(): null {
   usePhoneModel(usePrep([]), "soon");
   return null;
 }
+
+
