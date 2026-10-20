@@ -82,12 +82,13 @@ export function modelName(model: string): string {
   return out.join(" ");
 }
 
-/** "Gemini 3.8 Flash'la", "Gemini 3.5 Flash-Lite'la" (layt), "… Pro'yla"; a name Turkish can't say for sure: "… ile". */
+/** The Turkish "with" by how the name ends aloud: "Gemini 3.8 Flash'la", "Gemini 3.5 Flash-Lite'la" ("layt"), "Gemini 3 Pro'yla". */
 export function trWith(name: string): string {
   const last = name.split(/[\s-]/).at(-1)?.toLowerCase() ?? "";
-  if (last === "flash" || last === "lite") return `${name}'la`;
-  if (last === "pro") return `${name}'yla`;
-  return `${name} ile`;
+  const said = last === "lite" ? "layt" : last;
+  const back = /[aıou][^aeıioöuü]*$/.test(said) || !/[aeıioöuü]/.test(said);
+  const vowelEnd = /[aeıioöuü]$/.test(said);
+  return `${name}'${vowelEnd ? "y" : ""}${back ? "la" : "le"}`;
 }
 
 // --- the last switch, for the line where saves land -------------------------------------------------------------------

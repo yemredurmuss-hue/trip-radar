@@ -294,7 +294,7 @@ export function describeGeminiError(error: unknown): string | null {
     if (isDailyQuota(error)) return L(`Gemini'nin bugünkü ücretsiz hakkı doldu; kota ${resetWhen()} yenilenir.`, `Gemini's free requests for today are used up; they come back ${resetWhen()}.`);
     return L(
       "Gemini'nin dakikalık ücretsiz kotası doldu. Bir dakika bekleyip 'Tekrar dene'ye bas.",
-      "Gemini's free per-minute quota is used up. Wait a minute, then press 'Try again'.",
+      "Gemini's free quota for this minute is used up. Wait a minute, then press 'Try again'.",
     );
   }
   if (error.status >= 500) {
