@@ -141,3 +141,6 @@
 /* The row's bar grows to its new share over .3 s; "azaltılmış hareket" and "Hareketi duraklat" put it there at once. */
 body.still .q-bar i { transition: none; }
 @media (prefers-reduced-motion: reduce) { .q-bar i { transition: none; } }
+/* P7: the visa asked first ("Geçerli bir Schengen vizen var mı?"): its line under the question, wrapping at 390 px. */
+.z-visa { min-width: 0; max-width: 100%; }
+.z-visa > b, .z-visa > span { min-width: 0; overflow-wrap: anywhere; }
