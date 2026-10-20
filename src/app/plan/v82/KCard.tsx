@@ -11,7 +11,7 @@
 // it's empty: its head says so); more than the row holds: "+n Pano'da".
 import { useEffect, useState, type ReactNode } from "react";
 import { cardFacts } from "../../../lib/cardFacts";
-import { askLike, askOther, moreLabel, pictureChips, placePhotoCredit, placeRatingLine, type KCardVM } from "../../../lib/collectionCards";
+import { askLike, askOther, moreLabel, pictureChips, placePhotoCredit, placeRatingLine, type KCardVM, type KDeal } from "../../../lib/collectionCards";
 import { L } from "../../../lib/i18n";
 import type { AccessVM, IntentVM, OptionVM } from "../../../lib/intents";
 import { moveToBookings, setDone, setIdeaDay, setPrep } from "../../../lib/ideas";
@@ -481,8 +481,81 @@ export function SuggestCard({ card, onPut, onDismiss }: { card: KCardVM; onPut: 
   );
 }
 
-/** A tour the connected source offers for the city: its page on the name, its price a person, "+ Plana koy". */
+/** The source's tour's grey line (0.39.9): ★ its rating (its reviews), how long, free cancellation. */
+function DealFacts({ deal, fallback }: { deal: KDeal; fallback: string | null }) {
+  const loc = L("tr-TR", "en-GB");
+  const parts: ReactNode[] = [];
+  if (deal.rating != null)
+    parts.push(
+      <span key="r" className="z-kst">
+        <Ic name="star" size={12} />
+        {deal.rating.toLocaleString(loc, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+        {deal.reviews != null && <small>({deal.reviews.toLocaleString(loc)})</small>}
+      </span>,
+    );
+  if (deal.duration) parts.push(<span key="d">{deal.duration}</span>);
+  if (deal.free) parts.push(<span key="f" className="z-kfree">{L("Ücretsiz iptal", "Free cancellation")}</span>);
+  return parts.length ? <span className="z-kfacts">{parts}</span> : <>{fallback}</>;
+}
+
+/**
+ * A tour the connected source offers for the city (0.39.9, Emre: Viator's own card as the model, three across): the
+ * source's pick in a word top left, the source at the picture's foot; its name over two lines (its page), one line of
+ * rating, length and free cancellation; the price a person big beside "+ Plana koy". A city's event (no deal) keeps the
+ * plain card.
+ */
 export function OfferCard({ card, onPut }: { card: KCardVM; onPut: () => void }) {
+  const deal = card.deal;
+  if (deal) {
+    const source = pictureChips(card).find((c) => c.kind === "source");
+    return (
+      <KCard
+        className="q-card q-opt z-ko"
+        k={card.key}
+        label={card.title}
+        attrs={{ "data-offer": card.offer?.id }}
+        pic={
+          <>
+            <Picture card={card} />
+            {deal.pick && (
+              <span className="z-kc">
+                <span className="z-kpick">{deal.pick}</span>
+              </span>
+            )}
+            {source && source.kind === "source" && (
+              <span className="z-kd">
+                <span className={`q-src ${source.tone}${source.mark ? " site" : ""}`}>
+                  {source.mark ? <Mark color={source.mark.color} letter={source.mark.letter} small /> : source.initial && <i>{source.initial}</i>}
+                  {source.text}
+                </span>
+              </span>
+            )}
+          </>
+        }
+        title={
+          card.page ? (
+            <a className="z-tb" href={card.page} target="_blank" rel="noopener noreferrer">
+              {card.title}
+            </a>
+          ) : (
+            <span className="z-tn">{card.title}</span>
+          )
+        }
+        l2={<DealFacts deal={deal} fallback={card.line} />}
+        foot={
+          <>
+            {deal.price && (
+              <span className="z-kpr">
+                <small>{L("kişi başı", "per person")}</small>
+                <b>{deal.price}</b>
+              </span>
+            )}
+            <PutButton title={card.title} onPut={onPut} />
+          </>
+        }
+      />
+    );
+  }
   return (
     <KCard
       className="q-card q-opt"

@@ -3857,7 +3857,9 @@ try {
   assert.equal(await tourTile.locator(".z-kp .q-src .q-logo").innerText(), "V");
   assert.match(await tourTile.locator(".z-kp .q-src").innerText(), /^V\s*Viator · Uluwatu$/);
   assert.equal(await tourTile.locator(".q-brand").count(), 0, "the source's chip names the site: no second label");
-  assert.match(await tourTile.locator(".z-l2").innerText(), /^4 sa · €45\s+kişi başı$/);
+  // 0.39.9 (Viator's own card as the model): the grey line says how long; the price a person is the foot's, beside "+ Plana koy".
+  assert.match(await tourTile.locator(".z-l2").innerText(), /^4 sa$/);
+  assert.match(await tourTile.locator(".z-kpr").innerText(), /^kişi başı\s+€45$/);
   assert.equal(await ekSec("activity").locator('.q-gapl.has-offers[data-city="Uluwatu"]').locator(".z-k[data-offer]").count(), 1, "the tour is in its city's place");
   await tourIn("Canggu").waitFor({ timeout: 10000 });
   assert.match(await tourIn("Canggu").locator(".q-src").innerText(), /^V\s*Viator · Uluwatu$/, "a nearby stop's row says where its tour is");

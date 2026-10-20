@@ -44,8 +44,12 @@ export interface CollectionRowProps {
   onTakeOff: (o: Pick<OptionVM, "item">) => void;
 }
 
-/** The source's tours a city shows at most (the live board's). */
-const PER_CITY = 4;
+/** The source's tours a city shows at most (0.39.9: three, Etkinlik's row of three). */
+const PER_CITY = 3;
+/** Etkinlik ve turlar's row (0.39.9, Emre: "4'lü yerine 3'lü, daha rahat görünür"): three cards a row; the others four. */
+const ACT_CELLS = 3;
+const cellsOf = (section: SectionId): number => (section === "activity" ? ACT_CELLS : ROW_CELLS);
+const rowClass = (section: SectionId): string => (section === "activity" ? "z-ks z-k3" : "z-ks");
 
 /** A per-viewer open/closed state kept in this browser (nothing else depends on it). */
 function useRemembered(key: string, initial: boolean): [boolean, (v: boolean) => void] {
@@ -174,7 +178,8 @@ export function CollectionRow({ vm, onPut, onTakeOff }: CollectionRowProps) {
   const [open, setOpen] = useRemembered(`trip-radar:ideasOpen:${env.tripId}:${vm.section}`, true);
   const plans = row.plan.filter((c) => inFilter(c, filter));
   const ideas = row.ideas.filter((c) => inFilter(c, filter));
-  const o = rowCells(ideas);
+  const cells = cellsOf(vm.section);
+  const o = rowCells(ideas, cells);
   const links: SelfSearch[] = todo ? [mapsSearch(vm.head.city, filter)].filter((l): l is SelfSearch => l != null) : selfSearches(vm, v82.selfAt);
   const city = vm.head.city ?? vm.head.name;
   const pano = () => env.onPano(vm.key);
@@ -216,10 +221,10 @@ export function CollectionRow({ vm, onPut, onTakeOff }: CollectionRowProps) {
             </>
           )}
         </div>
-        <div className="q-prow z-ks" data-row="plan">
+        <div className={`q-prow ${rowClass(vm.section)}`} data-row="plan">
           {plans.map(cardOf)}
           {/* (the last row filled to four with unseen cells; none while empty: putFly lands on the new card itself, E6) */}
-          <EmptySlots n={(ROW_CELLS - (plans.length % ROW_CELLS)) % ROW_CELLS} />
+          <EmptySlots n={(cells - (plans.length % cells)) % cells} />
         </div>
       </div>
       {ideas.length === 0 && looking && (
@@ -254,7 +259,7 @@ export function CollectionRow({ vm, onPut, onTakeOff }: CollectionRowProps) {
             )}
           </div>
           {(todo || open || plans.length === 0) && (
-            <div className="q-cards z-ks" data-row="ideas">
+            <div className={`q-cards ${rowClass(vm.section)}`} data-row="ideas">
               {o.shown.map(cardOf)}
             </div>
           )}
@@ -268,7 +273,7 @@ export function CollectionRow({ vm, onPut, onTakeOff }: CollectionRowProps) {
             <span className="q-sp" />
             <small className="z-evsrc">{L("Kaynak: Google Etkinlikler", "Source: Google Events")}</small>
           </div>
-          <div className="q-cards z-ks">
+          <div className={`q-cards ${rowClass(vm.section)}`}>
             {events.map((e) => {
               const c = offerCard(e, v82.selfAt.adults);
               return <OfferCard key={c.key} card={c} onPut={() => void put(e)} />;
@@ -304,7 +309,7 @@ function CityGap({ gap: g, section }: { gap: ActivityGap; section: SectionId }) 
   const { offers, put, looking } = useCityOffers(g.city, cx?.plan ?? null, [], env.tripId);
   const links = selfSearches({ kind: "activity", head: { name: g.city, route: null, parts: [], kindWord: null, word: null, wants: [], image: null, city: g.city, date: g.range.start, nights: 0 }, options: [], chosen: null }, v82.selfAt);
   const cards = offers.map((o) => offerCard(o, v82.selfAt.adults));
-  const o = rowCells(cards);
+  const o = rowCells(cards, cellsOf(section));
   const line = (
     <>
       <Ic name="pin" size={14} />
@@ -332,7 +337,7 @@ function CityGap({ gap: g, section }: { gap: ActivityGap; section: SectionId }) 
   return (
     <div className="q-gapl has-offers" data-city={g.city}>
       <p className="q-gaph">{line}</p>
-      <div className="q-cards z-ks" data-row="ideas">
+      <div className={`q-cards ${rowClass(section)}`} data-row="ideas">
         {o.shown.map((c) => (
           <OfferCard key={c.key} card={c} onPut={() => c.offer && void put(c.offer)} />
         ))}

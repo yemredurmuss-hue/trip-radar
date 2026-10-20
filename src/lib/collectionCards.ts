@@ -90,6 +90,34 @@ export interface KCardVM {
   map: string | null;
   /** "+ Plana koy" puts it on the plan (an idea, a suggestion to add, the source's tour). */
   canPut: boolean;
+  /**
+   * The source's tour as a deal (0.39.9, Emre: Viator's own card as the model, three across): its price a person for the
+   * foot, its rating and reviews, how long, free cancellation, and the source's pick in one word for the picture
+   * ("En beğenilen"). Only what the source said; a city's event (Google Events) has none.
+   */
+  deal?: KDeal | null;
+}
+
+export interface KDeal {
+  /** The price a person ("€45"); null when the source gave none. */
+  price: string | null;
+  /** Out of 5. */
+  rating: number | null;
+  reviews: number | null;
+  duration: string | null;
+  free: boolean;
+  /** The source's pick in a word ("Öne çıkan", "En beğenilen", "Uygun fiyatlı", "En ucuz"). */
+  pick: string | null;
+}
+
+/** The source's why (supabase offers pickActivities) as a word for the picture; null for any other. */
+export function pickWord(why: string | null | undefined): string | null {
+  const w = why ?? "";
+  if (/öne çıkan|featured/i.test(w)) return L("Öne çıkan", "Featured");
+  if (/en beğenilen|best liked/i.test(w)) return L("En beğenilen", "Best liked");
+  if (/en ucuz|cheapest/i.test(w)) return L("En ucuz", "Cheapest");
+  if (/en uygun|uygun fiyatl|least dear|low priced/i.test(w)) return L("Uygun fiyatlı", "Good value");
+  return null;
 }
 
 /** A city's two rows: what's on the plan (the reason first), the rest to pick from, the chips' counts. */
@@ -341,6 +369,16 @@ export function offerCard(o: Offer, people: number | null): KCardVM {
     page: o.url,
     map: null,
     canPut: true,
+    deal: o.id.startsWith("ev:")
+      ? null
+      : {
+          price: each != null ? formatPrice(Math.round(each), o.currency ?? "EUR") : null,
+          rating: o.rating != null && o.rating > 0 ? (o.rating > 5 ? Math.round(o.rating * 5) / 10 : o.rating) : null,
+          reviews: o.reviews ?? null,
+          duration: o.durationMinutes ? durationText(o.durationMinutes) : null,
+          free: /ücretsiz iptal|free cancellation/i.test(o.meta ?? ""),
+          pick: pickWord(o.why),
+        },
   };
 }
 

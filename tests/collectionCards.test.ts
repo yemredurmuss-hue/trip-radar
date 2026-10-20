@@ -4,7 +4,7 @@
 // and its "n yapıldı".
 import { describe, expect, it } from "vitest";
 import { categorize } from "../src/lib/categories";
-import { accessOf, askLike, askMore, collectionRow, doneCount, doneLine, familyOf, filterOf, ideasCaption, mapsSearch, nearPlaces, offerCard, pictureChips, recordCard, rowCells, stateOf, stopCountry, suggestionCard } from "../src/lib/collectionCards";
+import { accessOf, askLike, askMore, collectionRow, doneCount, doneLine, familyOf, filterOf, ideasCaption, mapsSearch, nearPlaces, offerCard, pickWord, pictureChips, recordCard, rowCells, stateOf, stopCountry, suggestionCard } from "../src/lib/collectionCards";
 import { decideTrip, makeContext } from "../src/lib/decision";
 import { isEmptyRecord } from "../src/lib/emptyCards";
 import { collectionsOf, type IntentInput } from "../src/lib/intents";
@@ -272,5 +272,22 @@ describe("Emre's Sri Lanka (0.38.4): the trip's cities near a town, and where ea
     expect(offerCard(o, 2).badge?.text).toBe("Viator");
     const saved = act("Galle kalesi yürüyüşü", "saved", { addedBy: "ai", provider: "Viator", url: "https://www.viator.com/g", city: "Ahangama" });
     expect(recordCard(saved, { section: "activity", people: 2, planned: false, wanted: false, reason: false }).badge?.text).toBe("Viator");
+  });
+});
+
+describe("0.39.9: the source's tour as a deal (Viator's own card as the model)", () => {
+  const tour = { id: "v9", kind: "activity", title: "Douro şarap turu", url: "https://viator.com/d", price: 258, currency: "EUR", why: "En beğenilenlerden · hızlı tükeniyor", source: "Viator", fetchedAt: 1, durationMinutes: 600, rating: 4.9, reviews: 21225, meta: "21.225 yorum · Ücretsiz iptal" } as const;
+  it("its price a person, rating, reviews, length, free cancellation and the source's pick in a word", () => {
+    expect(offerCard(tour as never, 2).deal).toEqual({ price: "€129", rating: 4.9, reviews: 21225, duration: "10 sa", free: true, pick: "En beğenilen" });
+  });
+  it("a rating out of 10 is said out of 5; no free cancellation unless the source says it", () => {
+    const d = offerCard({ ...tour, rating: 9.2, meta: null, why: "" } as never, 1).deal;
+    expect(d).toMatchObject({ rating: 4.6, free: false, pick: null, price: "€258" });
+  });
+  it("a city's event (Google Events) is no deal", () => {
+    expect(offerCard({ ...tour, id: "ev:2026-10-23:x" } as never, 2).deal).toBeNull();
+  });
+  it("the source's whys as words", () => {
+    expect([pickWord("Viator'da öne çıkan"), pickWord("İyi puanlılar içinde en uygunu"), pickWord("Bulduklarımın en ucuzu"), pickWord("x")]).toEqual(["Öne çıkan", "Uygun fiyatlı", "En ucuz", null]);
   });
 });
