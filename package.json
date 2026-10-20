@@ -1,6 +1,6 @@
 {
   "name": "trip-radar",
-  "version": "0.39.21",
+  "version": "0.39.22",
   "description": "Kişisel seyahat karar panosu (Chrome eklentisi)",
   "scripts": {
     "build": "node scripts/build.mjs",
