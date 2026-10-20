@@ -102,6 +102,32 @@ export function pageGeo(capture: Capture): Item["geo"] {
   return { lat: candidate.lat, lng: candidate.lng, source: "page" };
 }
 
+/**
+ * The town the page's own structured data puts the place in (JSON-LD `address.addressLocality` of a hotel, a lodging, a
+ * place): P5 (F13), a Porto hotel the model read as "Lizbon" (the trip's other city) is in Porto. Null when the page
+ * says none or says several different ones.
+ */
+export function pageLocality(capture: Pick<Capture, "jsonLd">): string | null {
+  const found = new Set<string>();
+  const walk = (v: unknown, depth: number): void => {
+    if (!v || typeof v !== "object" || depth > 6) return;
+    if (Array.isArray(v)) return v.forEach((x) => walk(x, depth + 1));
+    const o = v as Record<string, unknown>;
+    const addr = o.address;
+    const town = addr && typeof addr === "object" && !Array.isArray(addr) ? (addr as Record<string, unknown>).addressLocality : null;
+    if (typeof town === "string" && town.trim() && town.trim().length <= 60) found.add(town.trim());
+    for (const [k, x] of Object.entries(o)) if (k !== "address") walk(x, depth + 1);
+  };
+  for (const raw of capture.jsonLd ?? []) {
+    try {
+      walk(JSON.parse(raw), 0);
+    } catch {
+      // not JSON: nothing said
+    }
+  }
+  return found.size === 1 ? [...found][0] : null;
+}
+
 const finite = (n: number | null | undefined) => (typeof n === "number" && Number.isFinite(n) ? n : null);
 const httpUrl = (u: string | null | undefined) => (u && /^https?:\/\//i.test(u.trim()) ? u.trim() : null);
 
@@ -151,7 +177,8 @@ export function buildItem(
     url: capture.url,
     // A web address only from a page (a screenshot alone has none to give; its photo is cut out, see process.ts).
     imageUrl: capture.url ? (httpUrl(x.image_url) ?? httpUrl(capture.meta["og:image"])) : null,
-    city: x.city,
+    // P5 (F13): a stay, a sight or a table is where its page's address says, before the model's reading.
+    city: (["stay", "activity", "food"].includes(x.category) ? pageLocality(capture) : null) ?? x.city,
     country: x.country,
     countryCode: countryCodeOf(x.country_code),
     location: { ...x.location },

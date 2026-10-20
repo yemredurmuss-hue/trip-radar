@@ -2582,14 +2582,20 @@ export const routeWords = (r: StartRoute): string =>
   r.stops.map((x) => `${x.city} ${x.nights} ${L("gece", x.nights === 1 ? "night" : "nights")}${x.note ? ` (${x.note})` : ""}`).join(" → ");
 
 /** A Turkish proper name with "to": "Bali'ye", "Porto'ya", "Paris'e", "Porto ve Madeira Gezisi'ne". */
+/** The question word after a Turkish word, in its vowel's harmony: "Porto'ya mı", "Gezisi'ne mi", "Turu'na mı". */
+export function askWord(word: string): string {
+  const last = [...word.toLocaleLowerCase("tr-TR")].reverse().find((ch) => /[aeıioöuü]/.test(ch));
+  return last === "a" || last === "ı" ? "mı" : last === "e" || last === "i" ? "mi" : last === "o" || last === "u" ? "mu" : "mü";
+}
+
 export function dative(name: string): string {
   const n = name.trim();
   if (!n) return n;
   const lower = n.toLocaleLowerCase("tr-TR");
   const last = [...lower].reverse().find((ch) => /[aeıioöuüâîû]/.test(ch));
   const front = last != null && /[eiöüî]/.test(last);
-  // A possessive ending ("Gezisi") takes an "n": Gezisi'ne.
-  if (/(si|sı|su|sü)$/.test(lower) && /gezisi$|turu$|tatili$/.test(lower)) return `${n}'n${front ? "e" : "a"}`;
+  // A possessive ending ("Gezisi", "Turu", "Balayı") takes an "n": Gezisi'ne, Turu'na, Balayı'na (P5, F69: "Balayı'ya").
+  if (/(gezisi|turu|tatili|balayı|kaçamağı|macerası|rotası|yolculuğu|keşfi)$/.test(lower)) return `${n}'n${front ? "e" : "a"}`;
   const vowelEnd = /[aeıioöuü]$/.test(lower);
   return `${n}'${vowelEnd ? "y" : ""}${front ? "e" : "a"}`;
 }
@@ -4191,9 +4197,11 @@ export function tripNamedIn(text: string, trips: Trip[], items: Item[]): { trip:
   for (const trip of ordered) {
     const places = new Set<string>();
     for (const i of items) if (i.tripId === trip.id && i.status !== "dismissed" && i.city) places.add(cityKeyOf(i.city)!);
+    // Only the title's place words (P5, F44/F69: "7 Günlük Porto Şehir Turu" put "günlük" and "şehir" beside Porto, and
+    // "Ağustosta 4 arkadaş Sziget…" was offered the Porto trip).
     for (const w of tokensOf(trip.title)) {
       const k = cityKeyOf(w);
-      if (k && !TITLE_WORDS.has(k) && k.length >= 3) places.add(k);
+      if (k && !TITLE_WORDS.has(k) && k.length >= 3 && knownPlaceOf(w)) places.add(k);
     }
     for (const [key, words] of keys) if (places.has(key)) return { trip, place: words };
   }

@@ -6,7 +6,7 @@ import { L, lang, saveLang, withLang, type Lang } from "../lib/i18n";
 import { formatDateRange, nightsBetween, tripDateRange } from "../lib/items";
 import { retryCapture } from "../lib/process";
 import { listDrafts, onDraftsChanged, removeDraft, saveDraft } from "../lib/startDrafts";
-import { checklist, dative, detectLang, progressOf, splitLinks, tripNamedIn, type StartCtx, type StartMode, type StartState } from "../lib/startTrip";
+import { askWord, checklist, dative, detectLang, progressOf, splitLinks, tripNamedIn, type StartCtx, type StartMode, type StartState } from "../lib/startTrip";
 import { creditLine, creditOf } from "../lib/cityImages";
 import { tripCardPhoto } from "../lib/tripBrief";
 import { isDemoTrip } from "../lib/trips";
@@ -496,7 +496,7 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
         </form>
         {ask && (
           <div className="st-ask" role="group" aria-label={L("Hangi gezi?", "Which trip?")}>
-            <span>{L(`${dative(ask.trip.title)} mi ekleyeyim, yeni gezi mi?`, `Add it to ${ask.trip.title}, or a new trip?`)}</span>
+            <span>{L(`${dative(ask.trip.title)} ${askWord(dative(ask.trip.title))} ekleyeyim, yeni gezi mi?`, `Add it to ${ask.trip.title}, or a new trip?`)}</span>
             <button type="button" className="st-primary" onClick={() => (setAsk(null), setText(""), onAddToTrip(ask.trip.id, ask.text))}>
               {L(`${dative(ask.trip.title)} ekle`, `Add to ${ask.trip.title}`)}
             </button>
