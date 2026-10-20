@@ -1,6 +1,7 @@
 // Small facts a plan card says from the record as it is (plan v30): a flight ticket's stub prices, a rental car's
 // pick-up and return line, whether a way of travel needs a ticket at all, which drawing a stay gets. Nothing is
 // guessed: a price comes only from what was saved, a line only from the dates and places on the record. Pure.
+import { soloTicket } from "./decision";
 import type { CardFacts } from "./cardFacts";
 import { daysToStart, showBookingRef } from "./cardTime";
 import type { CardKind } from "./cardKinds";
@@ -31,6 +32,8 @@ export function ticketPrices(item: Item, facts?: CardFacts["price"], people?: nu
     return { each: formatPrice(amount, currency), total: formatPrice(amount, currency) };
   }
   if (scope === "total") {
+    // P3 (F36): the page priced one adult on a trip of several: that is one person's, not everyone's.
+    if (soloTicket(item, people ?? 0)) return { each: formatPrice(amount, currency), total: formatPrice(amount * people!, currency) };
     if (adults > 1) return { each: formatPrice(amount / adults, currency), total: formatPrice(amount, currency) };
     return { each: null, total: formatPrice(amount, currency) };
   }

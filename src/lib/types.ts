@@ -743,6 +743,11 @@ export interface Item {
    * already keeps it out of the plan, and its need is to find again. Gizlenenler's "Geri al" makes it booked again.
    */
   cancelledAt?: number;
+  /**
+   * A booking switched for another one ("Bununla değiştir", P3 F30): counted as cancelled here, but the real one is still
+   * open on its site until the traveller says "İptal ettim"; Hazırlık lists it to cancel by its free-cancel day.
+   */
+  cancelPending?: boolean;
   /** What was said about the money back ("iade 3 güne yatar", "iade yok"). */
   refundNote?: string | null;
   /** "chat": the traveller said it in the chat, no page behind it (a plan until a saved page replaces it). */

@@ -404,11 +404,10 @@ export function FrameTicket({ vm, form, page, links, info, detail, quiet, on, on
             <CopyCode value={a.code.value} label={code} className="q-cv" />
           </span>
         )}
-        {vm.paid && (
-          <small className="z-paid">
-            <Editable field="price">{vm.paid}</Editable>
-          </small>
-        )}
+        {/* P3 (F28): no price on a booking: "Ne kadar ödedin?" opens the price, which the budget then counts. */}
+        <small className={`z-paid${vm.paid ? "" : " ask"}`}>
+          <Editable field="price">{vm.paid ?? ""}</Editable>
+        </small>
         {a?.docMissing && <small className="z-docw">{L("belge yok", "no document")}</small>}
       </>
     );

@@ -115,7 +115,9 @@ describe("Bununla değiştir", () => {
     expect(pano.map((o) => o.id).sort()).toEqual(["fh", "rn"]);
     expect(pano.find((o) => o.id === "fh")?.cancelled).toBe(true);
     const lines = (await d.getAll("messages")).filter((m) => m.tripId === "t1" && m.role === "event").map((m) => m.text);
-    expect(lines).toContain("Fisherman's Hut iptal edildi sayıldı, yerine Remote Nest Cabins seçildi");
+    // P3 (F30): the booking is still open on its site: said so, and Hazırlık lists it to cancel there.
+    expect(old.cancelPending).toBe(true);
+    expect(lines).toContain("Remote Nest Cabins seçildi; Fisherman's Hut rezervasyonunu sitesinde iptal etmen gerek");
     // Gizlenenler's "Geri getir" (setItemStatus saved on a cancelled booking): booked again, the new one under it.
     await setItemStatus(old, "saved");
     const back = await all();

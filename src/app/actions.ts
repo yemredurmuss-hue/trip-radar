@@ -41,7 +41,7 @@ export async function setItemStatus(item: Item, status: ItemStatus): Promise<voi
   const back = status === "saved" && found.status === "dismissed" && found.dismissedFrom ? found.dismissedFrom : status;
   // A cancelled booking brought back is a booking again, not a cancelled one (lifecycle.ts reads cancelledAt), and
   // what was said about its refund goes with the cancellation.
-  const { dismissedFrom: _from, cancelledAt: _cancelled, refundNote: _refund, ...fresh } = found;
+  const { dismissedFrom: _from, cancelledAt: _cancelled, cancelPending: _pending, refundNote: _refund, ...fresh } = found;
   await d.put("items", { ...fresh, status: back, statusAt: Date.now(), updatedAt: Date.now() });
   await addEvent(item.tripId, statusEvent(item.name, back));
   // A chosen stay given up (back to the options, ruled out): the start's place set aside for it comes back.
@@ -74,6 +74,16 @@ export async function cancelBooking(item: Item, refundNote: string | null = null
   await addEvent(item.tripId, L(`${item.name} iptal edildi`, `${item.name} cancelled`));
   notifyChanged();
   return { kind: "cancelled", item: cancelled };
+}
+
+/** P3 (F30): the switched booking cancelled on its site too ("İptal ettim"), or taken back to "still to cancel". */
+export async function setCancelDone(item: Item, done: boolean): Promise<void> {
+  const d = await db();
+  const found = (await d.get("items", item.id)) ?? item;
+  const { cancelPending: _was, ...rest } = found;
+  await d.put("items", done ? { ...rest, updatedAt: Date.now() } : { ...rest, cancelPending: true, updatedAt: Date.now() });
+  if (done) await addEvent(item.tripId, L(`${item.name} rezervasyonu sitesinde de iptal edildi`, `${item.name} booking cancelled on its site too`));
+  notifyChanged();
 }
 
 /** The Pano's heart (v11): who liked it, by name ("me" for the board's owner without one); no Geçmiş line, likes are light. */
@@ -306,8 +316,9 @@ export async function replaceBooking(next: Item, booked: Item, alternatives: Ite
   const found = (await d.get("items", booked.id)) ?? booked;
   if (found.status === "booked") {
     const now = Date.now();
-    await d.put("items", { ...found, status: "dismissed", dismissedFrom: "booked", cancelledAt: now, refundNote: null, statusAt: now, updatedAt: now });
-    await addEvent(booked.tripId, L(`${booked.name} iptal edildi sayıldı, yerine ${next.name} seçildi`, `${booked.name} counted as cancelled, ${next.name} chosen instead`));
+    // P3 (F30): the booking on its site is still open; Hazırlık asks to cancel it there until "İptal ettim".
+    await d.put("items", { ...found, status: "dismissed", dismissedFrom: "booked", cancelledAt: now, cancelPending: true, refundNote: null, statusAt: now, updatedAt: now });
+    await addEvent(booked.tripId, L(`${next.name} seçildi; ${booked.name} rezervasyonunu sitesinde iptal etmen gerek`, `${next.name} chosen; cancel the ${booked.name} booking on its site`));
   }
   await chooseItem(next, alternatives.filter((i) => i.id !== booked.id));
 }

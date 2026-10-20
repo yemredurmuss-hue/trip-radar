@@ -377,6 +377,11 @@ function median(values: number[]): number {
  * for all of them, so a flat for 8–12 and a hotel for 7–12 compare fairly (`ownNights` says the stay
  * itself covers fewer).
  */
+const TICKET_KINDS: readonly string[] = ["flight", "train", "bus", "ferry"];
+/** A ticket priced for the one adult the page said, on a trip of several (P3, F36). */
+export const soloTicket = (item: Pick<Item, "category" | "guests" | "price" | "forWho">, people: number): boolean =>
+  TICKET_KINDS.includes(item.category) && item.price.scope === "total" && item.guests.adults === 1 && people > 1 && !item.forWho?.length;
+
 function comparablePrice(item: Item, ctx: DecisionContext): { amount: number; original: number; currency: string; ownNights: number | null } | null {
   const p = item.price;
   if (p.amount == null || !p.currency) return null;
@@ -398,6 +403,12 @@ function comparablePrice(item: Item, ctx: DecisionContext): { amount: number; or
     if (p.scope === "per_person") {
       if (!item.guests.adults) return null;
       total *= item.guests.adults;
+    }
+    // P3 (F36): a ticket the page priced for one adult on a trip of several is one person's: everyone's is that times them
+    // (only when the page said one adult; a ticket for someone in particular stays as it is).
+    else {
+      const people = ctx.trip?.travellers?.count ?? 0;
+      if (soloTicket(item, people)) total *= people;
     }
     if (groupNights && ownCount && ownCount !== groupNights) {
       ownNights = ownCount;

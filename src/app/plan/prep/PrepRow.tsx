@@ -6,7 +6,7 @@ import { setDone, setPrep, shortDay } from "../../../lib/ideas";
 import { prepDayText, prepDayTone, prepFromText, prepHiddenKey, type PrepTask } from "../../../lib/prepDays";
 import { shopLabel, shopLinks, type Provider } from "../../../lib/providers";
 import type { Trip } from "../../../lib/types";
-import { setHidden, setInstalled, setVisaDone, updateTrip } from "../../actions";
+import { setCancelDone, setHidden, setInstalled, setVisaDone, updateTrip } from "../../actions";
 import { CardMenu, type MenuEntry } from "../../cards/CardShell";
 import { Editable, InlineEdit, useInlineEdit } from "../../cards/InlineEdit";
 import { NAME_IN_PLACE } from "../../../lib/inlineEdit";
@@ -37,6 +37,8 @@ export function ShopLink({ provider, url }: { provider: Provider; url: string })
 export async function tickTask(trip: Trip, task: PrepTask, done: boolean): Promise<void> {
   if (task.tick === "record" && task.item) return void (await setDone(task.item, done));
   if (task.tick === "installed" && task.of) return setInstalled(task.of, done);
+  // P3 (F30): the switched booking cancelled on its site ("İptal ettim").
+  if (task.tick === "cancel" && task.of) return setCancelDone(task.of, done);
   // The visa: one mark with Belgeler's "Var"/"Yok".
   if (task.tick === "visa") return setVisaDone(trip.id, done, task.key, task.key === "visa:schengen");
   await updateTrip(trip.id, (t) => {
@@ -110,7 +112,7 @@ function PrepRowFace({ task, trip, today, shopHome, domId }: { task: PrepTask; t
         <ShopLink provider={shop.provider} url={shop.url} />
       ) : task.official && !done ? (
         <a className="q-buy1" href={task.official} target="_blank" rel="noreferrer">
-          {L("Resmî site ↗", "Official site ↗")}
+          {task.tick === "cancel" ? L("Sitesinde iptal et ↗", "Cancel on its site ↗") : L("Resmî site ↗", "Official site ↗")}
         </a>
       ) : null}
       {done && (

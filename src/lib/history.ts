@@ -235,7 +235,7 @@ export function buildHistory(input: HistoryInput): HistoryRow[] {
         who: meName,
         me: true,
         // A booking cancelled ("İptal ettim", lifecycle.ts) says so: one row with the chat's line.
-        verb: item.cancelledAt ? L("İptal edildi", "Cancelled") : chat ? L("Kaldırıldı", "Removed") : L("Elendi", "Ruled out"),
+        verb: item.cancelPending ? L("İptal edilecek", "To cancel") : item.cancelledAt ? L("İptal edildi", "Cancelled") : chat ? L("Kaldırıldı", "Removed") : L("Elendi", "Ruled out"),
         parts: null,
         text: item.name,
         how: chat ? [L("sohbetten", "in the chat"), L("Gizlenenler'de", "under Hidden")] : [L("Gizlenenler'de", "under Hidden")],

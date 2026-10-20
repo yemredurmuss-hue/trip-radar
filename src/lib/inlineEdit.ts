@@ -141,6 +141,8 @@ export function fieldLabel(key: FieldKey, item: Item): string {
 /** What an empty field says on the card ("Tarih ekle", "Fiyat ekle"); a trip's ends read "Nereden" / "Nereye". */
 export function fieldPlaceholder(key: FieldKey, item: Item): string {
   if (key === "from" || key === "to") return fieldLabel(key, item);
+  // P3 (F28): a booking with no price asks what was paid ("Aldım" said, the budget waits for it).
+  if (key === "price" && item.status === "booked") return L("Ne kadar ödedin?", "What did you pay?");
   const label = fieldLabel(key, item);
   return L(`${label} ekle`, `Add ${label.toLowerCase()}`);
 }

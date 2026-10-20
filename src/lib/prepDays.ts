@@ -48,7 +48,7 @@ export interface PrepTask {
    * What its tick writes: the chore's own doneAt, the eSIM's "Kurdum", a mark on the trip (trip.prepDone), or for the visa
    * that mark with "✓ Vize alındı" (ticked by either; taken back from both).
    */
-  tick: "record" | "installed" | "mark" | "visa";
+  tick: "record" | "installed" | "mark" | "visa" | "cancel";
 }
 
 export interface PrepInput {
@@ -273,9 +273,35 @@ const CHECKIN_SAID = /check-?in/i;
  * without a day last in their own order. What's done stays where it is. A worked-out chore the traveller said themselves
  * ("vize başvurusu yap", "online check-in yap") isn't worked out again; one taken off stays off.
  */
+/**
+ * P3 (F30): a booking switched for another ("Bununla değiştir") is still open on its site: cancel it there, by its free
+ * cancel day when the page said one, its page to open. Ticked: "İptal ettim".
+ */
+function cancels(items: Item[]): PrepTask[] {
+  return items
+    .filter((i) => i.cancelPending && i.cancelledAt)
+    .map((i) => {
+      const until = i.cancellation.freeUntil && /^\d{4}-\d{2}-\d{2}/.test(i.cancellation.freeUntil) ? i.cancellation.freeUntil.slice(0, 10) : null;
+      return {
+        key: `cancel:${i.id}`,
+        title: L(`${i.name} rezervasyonunu iptal et`, `Cancel the ${i.name} booking`),
+        sub: until ? L("Başka seçenekle değiştirdin · ücretsiz iptal bu güne kadar", "Switched for another · free cancellation until then") : L("Başka seçenekle değiştirdin; sitesinde hâlâ açık", "Switched for another; still open on its site"),
+        day: until ? { date: until, time: null, rel: "by" as const } : null,
+        from: null,
+        done: false,
+        doneAt: null,
+        item: null,
+        of: i,
+        official: i.url && /^https:\/\//.test(i.url) ? i.url : null,
+        tick: "cancel" as const,
+      };
+    });
+}
+
 export function prepTasks(input: PrepInput): PrepTask[] {
   const said = (re: RegExp) => input.chores.some((c) => re.test(c.name));
   const worked = [
+    ...cancels(input.items),
     ...(said(CHECKIN_SAID) ? [] : checkins(input.items, input.today)),
     ...esims(input.items, leaveDay(input.items, input.range)),
     ...(said(VISA_SAID) ? [] : [schengen(input)].filter((t): t is PrepTask => t != null)),
