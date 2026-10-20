@@ -6543,9 +6543,19 @@ try {
   const settingsTab = await motion.newPage();
   await settingsTab.goto(`chrome-extension://${id}/app.html#settings`);
   await settingsTab.locator(".modal-card").waitFor();
+  // (the copy lives 320 ms, EXIT_MS: it is read in the page the moment it comes, not over a round trip that can outlast it)
+  await settingsTab.evaluate(() => {
+    window.__exitCopy = null;
+    new MutationObserver((records, watch) => {
+      const copy = records.flatMap((r) => [...r.addedNodes]).find((n) => n instanceof HTMLElement && n.classList.contains("mv-leaving"));
+      if (!copy) return;
+      window.__exitCopy = { inert: copy.inert, hidden: copy.getAttribute("aria-hidden"), ids: copy.querySelectorAll("[id]").length + (copy.id ? 1 : 0) };
+      watch.disconnect();
+    }).observe(document.body, { childList: true, subtree: true });
+  });
   await settingsTab.locator(".modal").click({ position: { x: 5, y: 5 } });
-  await settingsTab.locator(".mv-leaving").first().waitFor({ state: "attached", timeout: 1000 });
-  const leaving = await settingsTab.locator(".mv-leaving").first().evaluate((el) => ({ inert: el.inert, hidden: el.getAttribute("aria-hidden"), ids: el.querySelectorAll("[id]").length + (el.id ? 1 : 0) }));
+  await settingsTab.waitForFunction(() => window.__exitCopy, null, { timeout: 1000 });
+  const leaving = await settingsTab.evaluate(() => window.__exitCopy);
   assert.deepEqual(leaving, { inert: true, hidden: "true", ids: 0 }, "exit: the copy is inert, aria-hidden and carries no id");
   await settingsTab.waitForFunction(() => !document.querySelector(".mv-leaving"), null, { timeout: 1000 });
   assert.equal(await settingsTab.locator(".modal-card").count(), 0, "exit: the real window is gone, not the copy only");
