@@ -29,7 +29,7 @@ import { removeDraft, saveDraft, worthKeeping } from "../../lib/startDrafts";
 import { applyLiveDates, checkingLine, datesWait, lookupFor, startLookup, type DatesLookup } from "../../lib/startEventDates";
 import { rulesPreview } from "../../lib/startHooks";
 import {
-  applyAnswer, applyExtracted, applyText, askAgain, budgetChips, historyOf, budgetWord, canGenerate, checklist, autoPrint, drawingLine, isComplete, isGoCommand, knownLines, lineLink, mergeExtracted, startName,
+  applyAnswer, applyExtracted, applyText, askAgain, budgetChips, historyOf, placeOf, budgetWord, canGenerate, checklist, autoPrint, drawingLine, isComplete, isGoCommand, knownLines, lineLink, mergeExtracted, startName,
   missingForGenerate, modelReplyText, modelWordsQuestion, NOT_UNDERSTOOD, nextQuestion, assumeAnswered, stillOpen, onlyEmpty, parseRouteText, parseStartText, pbCurrent, pbPromptOf, photosToFind, preparedRoute, previewOf, skipPb,
   questionOf, readingLine, readingName, readingRows, replyText, restoreRoute, routeThinkingLine, shouldAutoStart, autoHeld, memoAfterGenerate, AUTO_SECONDS, autoSeconds, waitingInstead, routeForGenerate, routeKey, routeToPrepare, rulesKey, saysSomething, singleRoute, skip, totalNights, wantsRouteAdvice,
   tentativeWhere, whereKey, withGuessTaken, withoutOverruled, withPhotos, withPreparedRoute, withTypedLang,
@@ -107,7 +107,9 @@ function BotLine({ text, link, linkLabel }: { text: string; link?: string; linkL
   );
 }
 
-export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onClose, onCreated }: Props) {
+export function StartChat({ initial: given, firstText, firstLabel, firstNote, ctx, onClose, onCreated }: Props) {
+  // (0.39.13, F55) a new chat starts from where the traveller's trips leave from: never asked again (its row changes it).
+  const [initial] = useState(() => (!given.from && !given.messages.length && ctx.fromTrips ? { ...given, from: placeOf(ctx.fromTrips).place } : given));
   const [state, setState] = useState(initial);
   const live = useRef(initial);
   const [stage, setStageState] = useState<Stage>(null);

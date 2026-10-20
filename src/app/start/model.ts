@@ -12,7 +12,7 @@ import { withLang, type Lang } from "../../lib/i18n";
 import { getProvider } from "../../lib/llm";
 import {
   acceptExtraction, acceptQuestion, acceptReply, acceptRoute, nextPrompt, nextSystem, photoQuery, replySchema, routePrompt, routeSchema, routeSystem, singleRoute,
-  totalNights, turnLiteSchema, turnPrompt, turnSchema, turnSystem, wantsRouteAdvice, type Extracted, type QuestionId, type StartRoute, type StartState,
+  stopsWanted, totalNights, trimRoute, turnLiteSchema, turnPrompt, turnSchema, turnSystem, wantsRouteAdvice, withoutDayTrips, type Extracted, type QuestionId, type StartRoute, type StartState,
 } from "../../lib/startTrip";
 
 /** A message's reading: applied whenever it comes within this (the traveller may be waiting for it, "Düşünüyor…"). */
@@ -151,7 +151,11 @@ export async function proposeRoute(s: StartState, useModel: boolean, signal?: Ab
     const llm = await getProvider({ priority: "now" }); // the start chat waits on it
     const [system, prompt] = withLang(s.lang, () => [routeSystem(), routePrompt(s)]);
     const raw = await timed((sig) => llm.generateJson(system, prompt, routeSchema, [], { signal: sig, maxRetries: 0 }), ROUTE_MS, signal);
-    return acceptRoute(raw, total, s.from, s.where?.code ?? null) ?? single;
+    const route = acceptRoute(raw, total, s.from, s.where?.code ?? null);
+    // (0.39.13) the places said as a day out never stay, and the number of stops asked for holds.
+    const cut = route ? withoutDayTrips(route, s.dayTrips, total) : null;
+    const n = stopsWanted(s);
+    return (cut && n === 1 ? single : cut && n ? trimRoute(cut, n, total) : cut) ?? single;
   } catch (error) {
     if (!signal?.aborted) console.warn("[start] the route", error);
     return single;

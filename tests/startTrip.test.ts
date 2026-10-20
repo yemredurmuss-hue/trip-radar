@@ -155,8 +155,8 @@ describe("the interview", () => {
     s = mid;
     expect(nextQuestion(s)).toBe("want");
     s = applyAnswer(s, { q: "want", styles: ["culture"], budget: null }, 4);
-    expect(nextQuestion(s)).toBe("route");
-    s = skip(s, "route", 5);
+    // One city (Lizbon): its route is that city, not asked (0.39.13, F54).
+    expect(nextQuestion(s)).toBe("who");
     // Who and where from open the fewest cards: they come last.
     expect(nextQuestion(s)).toBe("who");
     s = applyAnswer(s, { q: "who", kind: "partner" }, 6);

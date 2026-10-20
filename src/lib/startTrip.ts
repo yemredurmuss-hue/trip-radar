@@ -150,6 +150,8 @@ export interface StartState {
   way?: GroundWay | null;
   /** Gezi biçimi: a day out, back the same day ("günübirlik"). */
   dayTrip?: boolean;
+  /** Places said as a day out from a stop ("Capri'ye tekneyle günübirlik"; 0.39.13): never a stop with nights. */
+  dayTrips?: string[];
   /**
    * The one place they stay the whole trip, when they said so ("bir sabit yerde kalmalı, Canggu'da"; 0.38.5): the route
    * is that stop for all the nights, agreed as said, never proposed.
@@ -260,6 +262,8 @@ const OPENERS: readonly (readonly [string, string])[] = [
 export interface StartCtx {
   myName: string | null;
   fromGuess: string | null;
+  /** Where the traveller's own trips left from (0.39.13, F55): taken as where from, never asked again (changed from its row). */
+  fromTrips?: string | null;
   today: string;
 }
 
@@ -357,6 +361,25 @@ export function monthStart(month: number, today: string): string {
 }
 
 /** The coming Friday (today when it is Friday or Saturday), or the one a week after. */
+/** "bu cuma", "gelecek cumartesi", "this friday", "next saturday" (0.39.13, F52): that day; null when none is said. */
+const WEEKDAYS: [RegExp, number][] = [
+  [/^(pazartesi|monday)$/, 1], [/^(salı|sali|tuesday)$/, 2], [/^(çarşamba|carsamba|wednesday)$/, 3], [/^(perşembe|persembe|thursday)$/, 4],
+  [/^(cuma|friday)$/, 5], [/^(cumartesi|saturday)$/, 6], [/^(pazar|sunday)$/, 0],
+];
+export function weekdayStart(text: string, today: string): string | null {
+  const low = text.toLocaleLowerCase("tr").split(/[^\p{L}]+/u).filter(Boolean);
+  for (let i = 1; i < low.length; i++) {
+    const day = WEEKDAYS.find(([re]) => re.test(low[i].replace(/(ya|ye|a|e|ı|i|dan|den|tan|ten|da|de|ta|te|günü)$/u, "")) || re.test(low[i]))?.[1];
+    if (day == null) continue;
+    const next = /^(gelecek|önümüzdeki|haftaya|next)$/.test(low[i - 1]);
+    if (!next && !/^(bu|this|on)$/.test(low[i - 1])) continue;
+    const now = new Date(`${today}T00:00:00Z`).getUTCDay();
+    const ahead = (day - now + 7) % 7;
+    return addDays(today, ahead + (next ? 7 : 0));
+  }
+  return null;
+}
+
 export function weekendStart(today: string, next = false): string {
   const day = new Date(`${today}T00:00:00Z`).getUTCDay(); // 0 Sun … 5 Fri, 6 Sat
   const toFriday = day === 5 ? 0 : day === 6 ? -1 : (5 - day + 7) % 7;
@@ -429,6 +452,9 @@ export const KNOWN_PLACES: KnownPlace[] = [
   P("İzlanda", "Iceland", null, null, false),
   P("Tayland", "Thailand", null, null, false),
   P("Japonya", "Japan", null, null, false),
+  // Ski towns (0.39.13, F70: "Bansko" went unread and Bulgaria became the place).
+  P("Bansko", "Bansko", "Bulgaristan", "Bulgaria", true),
+  P("Borovets", "Borovets", "Bulgaristan", "Bulgaria", true),
   P("İtalya", "Italy", null, null, false),
   P("İspanya", "Spain", null, null, false),
   P("Portekiz", "Portugal", null, null, false),
@@ -787,6 +813,8 @@ export interface Extracted {
   way?: GroundWay | null;
   /** A day out ("günübirlik"): one day, no night. */
   dayTrip?: boolean;
+  /** Places said as a day out from a stop ("Capri'ye günübirlik"): no nights there (0.39.13). */
+  dayTrips?: string[];
   /** The playbook the model made for this trip (checked); only the model makes one. */
   playbook?: CustomPlaybook | null;
   /** The one place they stay the whole trip ("tek yer", "sadece Canggu", "Canggu'da kalacağız"). */
@@ -850,6 +878,8 @@ const STYLE_WORDS: [RegExp, StyleId][] = [
   [/\b(şehir gezisi|city break)/i, "city"],
   [/\b(eğlence|gece hayatı|nightlife|party|parti)/i, "nightlife"],
   [/\b(aktif|spor|active|sport|sörf|sorf|surf)/i, "active"],
+  // "yürüyerek gezmeyi severiz", "we like to walk everywhere" (0.39.13, F04): on foot is an active trip.
+  [/(yürüyerek|yürümeyi|yürümek|yürüyüşle|on foot|walking|walk everywhere)/i, "active"],
 ];
 
 const COMPANION_WORDS: [RegExp, Companions][] = [
@@ -880,7 +910,10 @@ export function companyCount(text: string, kind: Companions | null): number | nu
   const friends = low.match(/(?<![\p{L}\d])(\d{1,2}|iki|üç|dört|beş|two|three|four|five)\s+(arkadaş\p{L}*|friends|kids|children|çocuk\p{L}*)(?![\p{L}])/u);
   if (friends) {
     const v = n(friends[1]);
-    if (v && v <= 20) return v + 1;
+    // (0.39.13, F46) "4 arkadaş gidiyoruz", "4 arkadaşız": the four of us; "4 arkadaşımla", "with 4 friends", "2 çocuğumla":
+    // me and them. Said without either, Turkish means the four in all.
+    const mine = /(arkadaşım\p{L}*|arkadaşlarım\p{L}*|çocuğum\p{L}*|çocuklarım\p{L}*|kids|children)/u.test(friends[2]) || /(?<![\p{L}])(with|my)\s+$/u.test(low.slice(0, friends.index));
+    if (v && v <= 20) return mine ? v + 1 : v;
   }
   if (kind === "friends" && /(arkadaşımla|(?<![\p{L}])bir arkadaş\p{L}*|with (my|a|one) friend(?!s))/u.test(low)) return 2;
   return null;
@@ -1059,13 +1092,23 @@ export function parseStartText(text: string, today: string, pending: QuestionId 
   // "hafta sonu", "this weekend", "next weekend".
   const lowText = text.toLocaleLowerCase("tr");
   // Gezi biçimi (H13): a day out, back the same day ("günübirlik", "day trip"): one day, no night.
-  if (DAY_TRIP.test(lowText)) {
+  // A place's day out inside a longer trip ("Capri'ye tekneyle günübirlik", 0.39.13): that place gets no nights; the
+  // trip itself is a day out only when nothing else is said.
+  const outings = [...text.matchAll(/(\p{Lu}[\p{L}’'-]+)(?:\s+\p{L}+){0,3}?\s+(günübirlik|günü birlik|day[ -]?trip)/gu)]
+    .map((m) => bareName(m[1]))
+    .filter((x) => looksLikePlace(x, 2) && !/^(Bir|Bu|Sonra|Önce|Ve|Then|And|A)$/u.test(x));
+  if (outings.length) out.dayTrips = [...new Set(outings.map((x) => placeOf(x).place))];
+  if (DAY_TRIP.test(lowText) && !(outings.length && /(\d+|bir|iki|üç|dört|beş|altı|yedi|on)\s*(gün|gece|hafta|day|night|week)/iu.test(lowText))) {
     out.dayTrip = true;
     out.duration ??= { unit: "day", n: 1 };
   }
   // The way there when it isn't a flight ("otobüsle", "trenle", "arabayla", "by bus"): no flight is made.
   const way = GROUND_WAYS.find(([re]) => re.test(lowText))?.[1];
   if (way) out.way = way;
+  if (!out.start) {
+    const day = weekdayStart(text, today);
+    if (day) out.start = { date: day, approx: false };
+  }
   if (/hafta ?sonu|weekend/.test(lowText)) {
     out.duration ??= { unit: "weekend", n: 1 };
     if (!out.start && /(bu|this) (hafta ?sonu|weekend)/.test(lowText)) out.start = { date: weekendStart(today), approx: false };
@@ -1237,6 +1280,16 @@ export function parseStartText(text: string, today: string, pending: QuestionId 
       out.whereSure = sure(pick);
       if (pick.weak) out.whereWeak = true;
     }
+    // "Bansko, Bulgaristan" (0.39.13, F70): a name before a comma and the country said after is the place, in that country.
+    const land0 = toHits.find((f) => !f.loose && !f.p.city && f.at != null && raw[f.at - 1] && /,\s*$/.test(text.slice(0, text.indexOf(raw[f.at]))));
+    if (land0 && (out.where?.place === placeName(land0.p) || !out.where)) {
+      const before = text.slice(0, text.indexOf(raw[land0.at!])).replace(/,\s*$/, "").trim().split(/\s+/).pop() ?? "";
+      const town = bareName(before);
+      if (town && /^\p{Lu}/u.test(town) && looksLikePlace(town, 2) && !samePlace(town, placeName(land0.p))) {
+        out.where = { place: knownPlaceOf(town) ? placeName(knownPlaceOf(town)!) : town, country: countryNameOf(land0.p), code: knownCode(land0.p) };
+        out.whereSure = true;
+      }
+    }
     // A route said ("önce Tokyo'da 3 gece, sonra Kyoto'da…", 0.39.12): its cities in order, each with the nights said
     // with it, and their country where they go. The code's own reading, for when the model is out (its free quota spent).
     const cities = ROUTE_TALK(text) && !out.guess
@@ -1314,7 +1367,7 @@ export function parseStartText(text: string, today: string, pending: QuestionId 
   }
 
   for (const [re, id] of STYLE_WORDS) if (re.test(text) && !out.styles.includes(id)) out.styles.push(id);
-  if (/(ekonomik|ucuz|düşük bütçe|budget trip|cheap|on a budget)/i.test(text)) out.budget = "low";
+  if (/(ekonomik|ucuz|düşük bütçe|budget trip|cheap|on a budget|en uygun|uygun fiyat|cheapest)/i.test(text)) out.budget = "low";
   else if (/(orta bütçe|mid-range|mid range)/i.test(text)) out.budget = "mid";
   else if (/(yüksek bütçe|bol bütçe|high budget|splurge)/i.test(text)) out.budget = "high";
   return out;
@@ -1370,6 +1423,7 @@ event: kullanıcı bir etkinliğe, festivale ya da temaya gitmek istiyorsa onun 
 choice: cevaplanan soru seçenekleriyle verildiyse ("değer = etiket"), mesajın seçtiği seçeneğin değeri; cevap vermek istemiyorsa ya da hiçbirine uymuyorsa "skip"; seçenek yoksa "".
 one_place: kullanıcı gezi boyunca tek bir yerde kalmak istediğini söylüyorsa ("sabit bir yerde", "Canggu'da sabit", "tek yer", "sadece Canggu", "Canggu'da kalacağız") o yerin adı, ek olmadan; söylemiyorsa "". Bu durumda destination gidilen ada, bölge ya da ülke kalır ("Bali"), one_place kasaba ("Canggu").
 stops: kullanıcı birden çok durak söylediyse ("önce Tokyo'da 3 gece, sonra Kyoto"), bu sohbette şimdiye kadar söylenen bütün durakların GÜNCEL listesi, sırasıyla (önceki mesajlar dahil; yeni mesaj bir durağı değiştiriyorsa o değişmiş hâli). Her durak: place (yalnız yer adı), nights (söylendiyse gece sayısı, söylenmediyse 0), note (o durakla ilgili söylenenler, kısa: "kızıl yapraklar", "1 gece ryokan"; yoksa ""). Bir konaklama türü (ryokan, otel, kamp) ayrı bir yer adı söylenmedikçe durak değildir, ilgili durağın notuna yazılır. Mesaj rotaya hiç değinmiyorsa ve ilk mesaj değilse stops boş kalır. Birden çok şehir durak olarak söylendiyse destination ülkedir ("Japonya"), şehirler değil. Bir durağın gece sayısı gezinin toplam süresi değildir: duration_days yalnız toplam süre söylendiyse dolar.
+Günübirlik gidilen yer ("Capri'ye tekneyle günübirlik") durak değildir: stops'a girmez, bir önceki durağın notuna yazılır ("Capri'ye günübirlik tekne").
 start_part: ayın hangi kısmı söylendiyse ("Kasım sonunda" → end, "ortasında" → mid, "başında" → begin); yoksa "".`,
     `From the user's message in a trip-planning chat, take only what is clearly said. Never invent; what isn't said stays empty ("" or 0 or []).
 destination: the place to go (a city, island, region or country), its name only; when several are said, the most specific ("Thailand, Koh Phangan" → "Koh Phangan", country Thailand), spelled correctly. destination_country: its country when known; destination_country_code: that country's ISO 3166-1 alpha-2 code ("TH").
@@ -1381,6 +1435,7 @@ event: when the user wants to go to an event, a festival or a theme, its known n
 choice: when the question being answered comes with options ("value = label"), the value of the option the message picks; "skip" when they'd rather not say or it fits none; "" when there are no options.
 one_place: when the user says they stay in one place the whole trip ("one base", "just Canggu", "we'll stay in Canggu"), that place's name; else "". Then destination stays the island, region or country they go to ("Bali"), one_place the town ("Canggu").
 stops: when the user says several stops ("first 3 nights in Tokyo, then Kyoto"), the CURRENT list of every stop said in this conversation so far, in order (earlier messages included; when the new message changes a stop, its changed form). Each stop: place (the place's name only), nights (the nights when said, else 0), note (what was said of it, short: "autumn leaves", "1 night in a ryokan"; else ""). A kind of stay (ryokan, hotel, camp) is no stop unless a place of its own is named: it goes in the note of its stop. When the message doesn't touch the route and isn't the first, stops stays empty. When several cities are said as stops, destination is the country ("Japan"), not a city. A stop's nights are not the trip's length: duration_days is filled only when the whole length is said.
+A place said as a day trip ("a day trip to Capri by boat") is no stop: not in stops, written in the note of the stop before ("day trip to Capri by boat").
 start_part: the part of the month said ("late November" → end, "mid" → mid, "early" → begin); else "".`,
   );
 
@@ -1729,6 +1784,7 @@ export function mergeExtracted(code: Extracted, model: Extracted | null): Extrac
     ...(model.playbook ? { playbook: model.playbook } : {}),
     ...(code.way ? { way: code.way } : {}),
     ...(code.dayTrip ? { dayTrip: true } : {}),
+    ...(code.dayTrips?.length ? { dayTrips: code.dayTrips } : {}),
     ...(code.base || model.base ? { base: code.base ?? model.base } : {}),
   };
 }
@@ -1844,8 +1900,11 @@ function open(s: StartState, q: QuestionId): boolean {
       // A month only: which day of it (never one made up silently).
       return monthOnly(s);
     case "want":
-      return !s.wantDone;
+      // (0.39.13, F53) three nights or fewer: not asked (what's said is still read); the trip is made as it is.
+      return !s.wantDone && !((totalNights(s) ?? 99) <= 3 && s.mode !== "inspire");
     case "route":
+      // (0.39.13, F54) one city said, as said: nothing to agree on.
+      if (oneCity(s) && (!s.route || s.route.source === "single")) return false;
       return Boolean(s.where && totalNights(s) && !s.route?.confirmed);
     case "guess":
       return Boolean(s.guess);
@@ -1880,6 +1939,9 @@ export function stillOpen(s: StartState): QuestionId[] {
 }
 
 /** A start that is a month only: its day is still to be said (or a part of the month picked). An event's isn't. */
+/** A trip to one city (a known city, or the one place said): its route is that city, never asked (0.39.13). */
+export const oneCity = (s: Pick<StartState, "where" | "base" | "intent">): boolean => Boolean(!s.intent && (s.base || (s.where && knownPlaceOf(s.where.place)?.city)));
+
 const monthOnly = (s: Pick<StartState, "start">) => Boolean(s.start?.approx && !s.start.part && !s.start.event);
 
 /** The kinds of company that are a group of some size. */
@@ -2069,6 +2131,14 @@ function keepRoute(before: StartState, next: StartState): StartState {
   const placeChanged = before.where?.place !== after.where?.place;
   const total = totalNights(after);
   const sum = after.route.stops.reduce((a, b) => a + b.nights, 0);
+  // A proposal with more stops than asked for (F59, "iki resort" answered after it came): made again with that many.
+  const wanted = stopsWanted(after);
+  if (wanted && !after.route.confirmed && after.route.source !== "user" && after.route.stops.length > wanted) return restoreRoute({ ...after, route: null, editingRoute: false });
+  // A place said as a day out after the proposal came (0.39.13): it leaves the route, its nights to the stop before.
+  if (!after.route.confirmed && after.route.source !== "user" && after.dayTrips?.length) {
+    const cut = withoutDayTrips(after.route, after.dayTrips, total);
+    if (cut !== after.route) return { ...after, route: cut };
+  }
   // The traveller's own stops (0.39.10): kept while the country stays; the nights not said follow the length.
   if (after.route.source === "user" && after.route.stops.some((x) => x.said != null)) {
     const sameCountry = !placeChanged || (after.where?.code ?? null) === (before.where?.code ?? null) || after.route.stops.some((x) => samePlace(x.city, after.where?.place));
@@ -2198,6 +2268,23 @@ export function applyAnswer(s: StartState, a: Answer, now: number): StartState {
   return keepRoute(s, { ...next, skipped: next.skipped.filter((q) => q !== a.q) });
 }
 
+/**
+ * A trip kind's stay question the message already answers by a word of its own (0.39.13, F45: "5 gece kamp yapacağız" →
+ * "Çadır kampı"): taken, never asked. Only the stay's kind, only one chip's distinctive words (four letters or more).
+ */
+export function answeredInPassing(s: StartState, text: string, now: number): StartState {
+  const low = text.toLocaleLowerCase("tr");
+  let next = s;
+  for (const a of pbAsks(s)) {
+    if (Object.hasOwn(next.pbAnswers ?? {}, a.key) || a.q.money) continue;
+    const stayChips = a.chips.filter((c) => c.effects?.some((e) => e.op === "setStay"));
+    if (stayChips.length < 2) continue;
+    const hits = stayChips.filter((c) => (c.aliases ?? []).some((w) => /^\p{L}{4,}$/u.test(w) && new RegExp(`(?<![\\p{L}])${w.toLocaleLowerCase("tr")}`, "u").test(low)));
+    if (hits.length === 1) next = applyAnswer(next, { q: "pb", key: a.key, value: hits[0].value }, now);
+  }
+  return next;
+}
+
 /** What a typed message filled, applied (a later message wins over an earlier one). */
 export function applyExtracted(s: StartState, e: Extracted, now: number): StartState {
   const next: StartState = { ...s, updatedAt: now };
@@ -2214,6 +2301,7 @@ export function applyExtracted(s: StartState, e: Extracted, now: number): StartS
   if (e.duration) next.duration = e.duration;
   if (e.way) next.way = e.way;
   if (e.dayTrip) next.dayTrip = true;
+  if (e.dayTrips?.length) next.dayTrips = [...new Set([...(s.dayTrips ?? []), ...e.dayTrips])];
   // One place said (0.38.5); another country said without one: no longer that town.
   if (e.base) next.base = e.base;
   else if (e.where && s.base && (e.where.code ?? null) !== (s.where?.code ?? null)) next.base = null;
@@ -2227,10 +2315,13 @@ export function applyExtracted(s: StartState, e: Extracted, now: number): StartS
     next.budget = e.budget ?? s.budget;
     next.wantDone = true;
   }
+  // A honeymoon is the two of them (0.39.13, F60): never asked who comes.
+  if (!next.who && startPlaybook(next) === "honeymoon") next.who = { kind: "partner", names: [], count: 2 };
   const kept = keepRoute(s, next);
   // Several stops said (0.39.10): that's the route, to agree on; one stop said is the one place (base) as before.
-  if (e.stops && e.stops.length >= 2 && !kept.intent) {
-    const route = saidRoute(kept, e.stops);
+  const said = e.stops?.filter((x) => !(kept.dayTrips ?? []).some((d) => samePlace(d, x.city)));
+  if (said && said.length >= 2 && !kept.intent) {
+    const route = saidRoute(kept, said);
     // (Agreed before and said again the same: it stays agreed.)
     const same = s.route?.confirmed && s.route.stops.length === route.stops.length && s.route.stops.every((x, i) => samePlace(x.city, route.stops[i].city) && x.nights === route.stops[i].nights);
     return { ...kept, route: same ? { ...route, confirmed: true } : route, base: null, editingRoute: false };
@@ -2373,6 +2464,7 @@ export function applyText(s: StartState, text: string, read: Extracted, now: num
     const names = text.split(/,|\bve\b|\band\b|&/).map((n) => bareName(n)).filter((n) => /^[\p{L}][\p{L} .-]{0,30}$/u.test(n));
     if (names.length) state = applyAnswer(state, { q: "names", names: names.map(capitalizeWords) }, now);
   }
+  if (q !== "pb") state = answeredInPassing(state, text, now);
   const understood = state !== s && JSON.stringify({ ...state, updatedAt: 0, asking: null }) !== JSON.stringify({ ...s, updatedAt: 0, asking: null });
   return { state: understood ? { ...state, asking: null } : s, understood };
 }
@@ -2410,6 +2502,14 @@ const MAIN_CITY: Record<string, [string, string]> = {
  * flight of each trip, as written), else the passport country's main city.
  */
 export function guessOrigin(trips: Trip[], items: Item[], passport: string | null): string | null {
+  const best = originFromTrips(trips, items);
+  if (best) return best;
+  const main = passport ? MAIN_CITY[passport.toUpperCase()] : undefined;
+  return main ? L(main[0], main[1]) : null;
+}
+
+/** Where most of the traveller's own trips' first flights leave from; null with none (0.39.13, F55). */
+export function originFromTrips(trips: Trip[], items: Item[]): string | null {
   const counts = new Map<string, { name: string; n: number }>();
   for (const trip of trips) {
     if (trip.demo) continue;
@@ -2423,10 +2523,7 @@ export function guessOrigin(trips: Trip[], items: Item[], passport: string | nul
     at.n++;
     counts.set(key, at);
   }
-  const best = [...counts.values()].sort((a, b) => b.n - a.n)[0];
-  if (best) return best.name;
-  const main = passport ? MAIN_CITY[passport.toUpperCase()] : undefined;
-  return main ? L(main[0], main[1]) : null;
+  return [...counts.values()].sort((a, b) => b.n - a.n)[0]?.name ?? null;
 }
 
 /** Places to suggest for "Bana ilham ver", by the styles picked. */
@@ -2903,6 +3000,19 @@ export function nextLine(after: StartState, ctx: StartCtx, drawing = false): str
  * Whether the model may write this reply: not when the code says something back that must be exact (a guessed
  * start day, the route agreed) or the route is proposed (its stops and nights are the code's).
  */
+/** Whether a question in the model's words asks the slot its chips answer (a few words each slot's question has). */
+const SLOT_WORDS: Partial<Record<QuestionId, RegExp>> = {
+  where: /(nere|where|hangi (ülke|şehir|yer))/iu,
+  from: /(nereden|nerden|from|çıkış|kalkış|set(ting)? off|leav)/iu,
+  who: /(kim|who|with whom|eşlik|yalnız|alone|partner|arkadaş|aile|family|friends)/iu,
+  count: /(kaç kişi|how many|kişi)/iu,
+  duration: /(kaç gün|kaç gece|ne kadar|süre|how long|days|nights)/iu,
+  start: /(ne zaman|hangi (gün|tarih|ay)|tarih|zaman|ileride|erken|geç|when|date|day|month|ocak|şubat|mart|nisan|mayıs|haziran|temmuz|ağustos|eylül|ekim|kasım|aralık|january|february|march|april|may|june|july|august|september|october|november|december)/iu,
+  day: /(hangi gün|ne zaman|tarih|gün|zaman|başı|ortası|sonu|which day|when|date|day|early|mid|late)/iu,
+  want: /(ne yap|istersin|arıyor|en çok|tarz|tür|nasıl bir|style|kind of|like to|want|looking for|bütçe|budget)/iu,
+};
+export const questionFits = (q: QuestionId, text: string): boolean => !SLOT_WORDS[q] || SLOT_WORDS[q]!.test(text);
+
 export function modelMayReply(before: StartState, after: StartState): boolean {
   // An event's dates are said by the code (estimated, with the site to check): never in the model's words.
   if (after.intent && (after.intent.name !== before.intent?.name || mustSay(before, after))) return false;
@@ -2919,7 +3029,8 @@ export function modelReplyText(before: StartState, after: StartState, ctx: Start
   if (!reply || !modelMayReply(before, after)) return replyText(before, after, ctx, drawing);
   const q = nextQuestion(after);
   // (A trip kind's question is always the code's: its chips answer those words, and the next one may be another.)
-  const question = q && q !== "pb" && q === askedFor && reply.question ? reply.question : nextLine(after, ctx, drawing);
+  // (0.39.13, F60: the model asked "kiminle" over the day's chips) its question only when it asks what the chips answer.
+  const question = q && q !== "pb" && q === askedFor && reply.question && questionFits(q, reply.question) ? reply.question : nextLine(after, ctx, drawing);
   return `${reply.text}\n${question}`;
 }
 
@@ -3128,8 +3239,14 @@ export function checklist(s: StartState, ctx: StartCtx): ChecklistRow[] {
     { id: "want", label: L("Ne istiyorsun", "What you're after"), value: wantText(s) || L("Sence ne yapsın bu gezi?", "What should this trip be about?"), done: s.wantDone && Boolean(s.styles.length || s.budget), ask: "want", required: false, skipped: s.skipped.includes("want") },
     {
       id: "route", label: L("Rota", "Route"),
-      value: s.route?.confirmed ? routeText(s.route) : s.route ? L(`Öneri: ${routeText(s.route)}`, `Suggested: ${routeText(s.route)}`) : s.where && total ? L("Sırası gelince önereceğim", "I'll suggest one when we get there") : L("Nereye ve süre belli olunca önereceğim", "I'll suggest one once where and how long are known"),
-      done: !!s.route?.confirmed, ask: "route", required: false, skipped: s.skipped.includes("route"),
+      value: s.route?.confirmed
+        ? routeText(s.route)
+        : oneCity(s) && total && (!s.route || s.route.source === "single")
+          ? `${s.base ?? s.where!.place} ${total} ${L("gece", total === 1 ? "night" : "nights")}`
+          : s.route
+            ? s.route.source === "user" ? L(`Rotan: ${routeText(s.route)}`, `Your route: ${routeText(s.route)}`) : L(`Öneri: ${routeText(s.route)}`, `Suggested: ${routeText(s.route)}`)
+            : s.where && total ? L("Sırası gelince önereceğim", "I'll suggest one when we get there") : L("Nereye ve süre belli olunca önereceğim", "I'll suggest one once where and how long are known"),
+      done: !!s.route?.confirmed || Boolean(oneCity(s) && total && (!s.route || s.route.source === "single")), ask: "route", required: false, skipped: s.skipped.includes("route"),
     },
   ];
   return rows;
@@ -3316,6 +3433,8 @@ export function routePrompt(s: StartState): string {
     s.start ? `${L("Başlangıç", "Start")}: ${s.start.date}` : "",
     s.styles.length ? `${L("Tarz", "Style")}: ${s.styles.join(", ")}` : "",
     s.mode === "road" ? L("Yol gezisi (araçla).", "A road trip (by car).") : "",
+    stopsWanted(s) ? L(`Durak sayısı: tam ${stopsWanted(s)} (gezgin böyle istedi).`, `Number of stops: exactly ${stopsWanted(s)} (the traveller asked so).`) : "",
+    s.dayTrips?.length ? L(`Günübirlik gidilecek (durak değil, gece verme): ${s.dayTrips.join(", ")}`, `Day trips (not stops, no nights): ${s.dayTrips.join(", ")}`) : "",
     "</route_request>",
   ].filter(Boolean).join("\n");
 }
@@ -3575,6 +3694,42 @@ function keepPrepared(s: StartState): StartState {
 }
 
 /** A proposal asked before for the place and nights now comes back when the interview has none (no second call). */
+/** A route without the places said as a day out (their nights shared by the rest; 0.39.13). */
+export function withoutDayTrips(r: StartRoute, dayTrips: readonly string[] | undefined, total: number | null): StartRoute {
+  if (!dayTrips?.length) return r;
+  const keep = r.stops.filter((x) => !dayTrips.some((d) => samePlace(d, x.city)));
+  if (!keep.length || keep.length === r.stops.length) return r;
+  // The nights it had go to the stop it's visited from (the one before it), else the first.
+  const stops = keep.map((x) => ({ ...x }));
+  r.stops.forEach((x, i) => {
+    if (keep.some((k) => k.city === x.city)) return;
+    const before = r.stops.slice(0, i).reverse().find((y) => keep.some((k) => k.city === y.city));
+    const to = stops.find((y) => y.city === (before ?? keep[0]).city)!;
+    to.nights += x.nights;
+  });
+  void total;
+  return { ...r, stops };
+}
+
+/** How many stops the traveller asked for (0.39.13, F59: "İki resort" → 2, "Tek resort" → 1); null when not said. */
+export function stopsWanted(s: Pick<StartState, "where" | "pbAnswers" | "intent" | "mode" | "playbook" | "styles"> & Partial<StartState>): number | null {
+  const answers = s.pbAnswers ?? {};
+  if (Object.entries(answers).some(([k, v]) => /:resorts$/.test(k) && v === "one")) return 1;
+  const split = pbEffects(s as StartState).find((e) => e.op === "splitStay");
+  return split && split.op === "splitStay" ? split.n : null;
+}
+
+/** A route cut to n stops (0.39.13, F59): the ones with the most nights, in their order; the nights shared out again. */
+export function trimRoute(r: StartRoute, n: number, total: number | null): StartRoute {
+  if (r.stops.length <= n) return r;
+  const keep = new Set([...r.stops].map((x, i) => ({ x, i })).sort((a, b) => b.x.nights - a.x.nights || a.i - b.i).slice(0, n).map((y) => y.i));
+  const stops = r.stops.filter((_, i) => keep.has(i));
+  const sum = total ?? r.stops.reduce((a, b) => a + b.nights, 0);
+  const base = Math.floor(sum / stops.length);
+  let extra = sum - base * stops.length;
+  return { ...r, stops: stops.map((x) => ({ ...x, nights: Math.max(1, base + (extra-- > 0 ? 1 : 0)) })) };
+}
+
 export function restoreRoute(s: StartState): StartState {
   if (s.route) return s;
   // An event's or a theme's own route; one without (an event as a theme for their place) goes on as any place.
@@ -3583,7 +3738,11 @@ export function restoreRoute(s: StartState): StartState {
   if (s.intent?.kind === "event" || (s.intent?.kind === "theme" && s.intent.places?.length)) return s;
   const kept = preparedRoute(s);
   // The model's proposal kept; else the classic circuit at once (rev 3); else what was kept (one stop).
-  const best = (kept?.source === "ai" ? kept : null) ?? (s.guess ? null : circuitRoute(s)) ?? kept;
+  const found = (kept?.source === "ai" ? kept : null) ?? (s.guess ? null : circuitRoute(s)) ?? kept;
+  // The number of stops asked for (F59): one is the single stop; more are the route cut to them.
+  const n = stopsWanted(s);
+  const cut = found ? withoutDayTrips(found, s.dayTrips, totalNights(s)) : null;
+  const best = cut && n === 1 ? singleRoute(s) : cut && n ? trimRoute(cut, n, totalNights(s)) : cut;
   return best ? { ...s, route: { ...best, confirmed: false } } : s;
 }
 

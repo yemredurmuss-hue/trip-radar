@@ -52,6 +52,7 @@ async function withRetry<T>(call: () => Promise<T>, waitMs = RETRY_AFTER_MS, ret
  */
 export const GEMINI_FALLBACKS = ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"];
 const SPENT_MS = 6 * 3_600_000;
+const BUSY_MS = 5 * 60_000;
 const spentUntil = new Map<string, number>();
 /** For the tests. */
 export const resetSpentModels = () => spentUntil.clear();
@@ -76,6 +77,12 @@ export async function onModels<T>(first: string, run: (model: string) => Promise
     } catch (error) {
       if (isDailyQuota(error)) {
         spentUntil.set(model, now() + SPENT_MS);
+        continue;
+      }
+      // "This model is currently experiencing high demand" (503; 0.39.13, seen in the start chat): the next model now,
+      // this one skipped for a few minutes.
+      if (error instanceof ApiError && (error.status === 503 || error.status === 500) && i < chain.length - 1) {
+        spentUntil.set(model, now() + BUSY_MS);
         continue;
       }
       if (i > 0 && error instanceof ApiError && (error.status === 404 || error.status === 403)) {

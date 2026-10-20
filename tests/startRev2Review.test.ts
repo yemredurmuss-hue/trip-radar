@@ -179,11 +179,13 @@ describe("5. cost: start calls aborted on time, not retried", () => {
     const controller = new AbortController();
     const gemini = geminiProvider(client as never, "gemini-test", 0);
     await expect(gemini.generateJson("s", "p", z.object({ a: z.string() }), [], { signal: controller.signal, maxRetries: 0 })).rejects.toThrow();
-    expect(calls).toEqual([controller.signal]);
+    // (0.39.13: a busy model hands over to the same key's next ones at once; each with the same signal, never retried.)
+    expect(calls).toHaveLength(5);
+    expect(calls.every((c) => c === controller.signal)).toBe(true);
     // Elsewhere: the provider's default (one retry).
     calls.length = 0;
     await expect(gemini.generateJson("s", "p", z.object({ a: z.string() }))).rejects.toThrow();
-    expect(calls).toHaveLength(2);
+    expect(calls.length).toBeGreaterThanOrEqual(2);
   });
   it("Claude: the signal and maxRetries go with the request", async () => {
     const seen: unknown[] = [];

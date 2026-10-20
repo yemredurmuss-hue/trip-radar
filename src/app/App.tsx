@@ -26,7 +26,7 @@ import { withTransition, withTripPhoto } from "./viewTransition";
 import { newId } from "../lib/db";
 import { loadPassport } from "../lib/passport";
 import { useMyName } from "./Profile";
-import { guessOrigin, newStart, type StartCtx } from "../lib/startTrip";
+import { guessOrigin, originFromTrips, newStart, type StartCtx } from "../lib/startTrip";
 import { OfflineNotice } from "./OfflineNotice";
 import { UpdateBanner } from "./UpdateBanner";
 import { readSelectedTrip, useBoard } from "./useBoard";
@@ -67,7 +67,7 @@ export function App() {
     void loadPassport().then(setPassport);
   }, []);
   const startCtx: StartCtx = useMemo(
-    () => ({ myName, fromGuess: guessOrigin(board.trips, board.allItems, passport), today: new Date().toISOString().slice(0, 10) }),
+    () => ({ myName, fromGuess: guessOrigin(board.trips, board.allItems, passport), fromTrips: originFromTrips(board.trips, board.allItems), today: new Date().toISOString().slice(0, 10) }),
     [myName, passport, board.trips, board.allItems],
   );
 
