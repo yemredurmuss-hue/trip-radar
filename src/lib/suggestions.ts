@@ -647,8 +647,17 @@ export function suggestedItem(s: Suggestion, tripId: string, id: string, now: nu
   const made = esimInCountry(plannedItem(inputOf(s, tpl), tripId, id, now));
   if (tpl.id !== "todo" && tpl.id !== "food") return made;
   // A place to see or eat at: named as a place, its own Maps page when its card found it (else found on Google Maps by its
-  // name and town), with the photo its card had.
-  const place = { ...made, name: cleanPlaceTitle(made.name), url: s.payload?.map?.trim() || placeMapsUrl(s), imageUrl: s.payload?.photo?.trim() || null };
+  // name and town), with the photo its card had. 0.39.15 (Emre: "plana alınca mini açıklama kayboluyor"): what its card
+  // said goes with it, its why as the record's own words and its rating (out of 5) with its reviews.
+  const rated = s.payload?.rating != null && s.payload.rating > 0 ? s.payload.rating : null;
+  const place = {
+    ...made,
+    name: cleanPlaceTitle(made.name),
+    url: s.payload?.map?.trim() || placeMapsUrl(s),
+    imageUrl: s.payload?.photo?.trim() || null,
+    summary: made.summary.trim() || s.why.trim(),
+    ...(rated ? { rating: { value: rated, scale: 5, count: s.payload?.reviews ?? null, source: "url" as const } } : {}),
+  };
   return tpl.id === "todo" ? { ...place, booking: "none" } : place;
 }
 

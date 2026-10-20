@@ -308,6 +308,7 @@ a.z-krate:hover { color: var(--q-acc); }
 a.z-krate:hover small { color: var(--q-acc); }
 a.z-krate:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 2px; }
 a.z-krate:has(> span) { color: var(--q-mut); }
+a.z-krate:has(> span) > .i:first-child { fill: none; stroke: currentColor; }
 /* A narrow card (two across on a phone): the rating over the button, the button across. */
 @container zk (max-width: 220px) {
   .z-kplace .z-kb { grid-template-rows: auto 16px minmax(32px, 1fr); }

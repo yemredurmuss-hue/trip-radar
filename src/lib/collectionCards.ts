@@ -489,7 +489,13 @@ export function placeChips(card: Parameters<typeof pictureChips>[0]): KChip[] {
 export function collectionRow(
   vm: Pick<IntentVM, "section" | "itemIds" | "planned" | "wanted" | "suggestions">,
   byId: ReadonlyMap<string, Item>,
-  at: Omit<CardCtx, "section"> & { trip: Pick<Trip, "intent">; offers?: readonly Offer[]; sights?: readonly Suggestion[] },
+  at: Omit<CardCtx, "section"> & {
+    trip: Pick<Trip, "intent">;
+    offers?: readonly Offer[];
+    sights?: readonly Suggestion[];
+    /** The trip's suggestions already put on the plan: a place put there before 0.39.15 says its why from its own. */
+    said?: readonly Suggestion[];
+  },
 ): CollectionRowVM {
   const section = vm.section;
   const live = vm.itemIds.map((id) => byId.get(id)).filter((i): i is Item => i != null && i.status !== "dismissed");
@@ -497,7 +503,7 @@ export function collectionRow(
   const wanted = new Set(vm.wanted.map((o) => o.id));
   const onPlan = live.filter((i) => planned.has(i.id) || wanted.has(i.id));
   const reason = section === "activity" ? reasonItemOf(at.trip, onPlan) : null;
-  const card = (item: Item) => recordCard(item, { ...at, section, planned: planned.has(item.id), wanted: wanted.has(item.id), reason: item.id === reason?.id });
+  const card = (item: Item) => saidWhy(recordCard(item, { ...at, section, planned: planned.has(item.id), wanted: wanted.has(item.id), reason: item.id === reason?.id }), at.said);
   // The plan's order (intents.ts: booked, then on the plan), the reason first, the places still to fill after.
   const plan = [...onPlan.filter((i) => i.id === reason?.id), ...onPlan.filter((i) => i.id !== reason?.id && !wanted.has(i.id)), ...onPlan.filter((i) => i.id !== reason?.id && wanted.has(i.id))].map(card);
   const saved = live.filter((i) => !onPlan.includes(i));
@@ -517,6 +523,20 @@ export function collectionRow(
   const ideas = [...base, ...sights.map((s) => suggestionCard(s, section))];
   const all = [...plan, ...ideas];
   return { plan, ideas, counts: { all: all.length, go: all.filter((c) => filterOf(c) === "go").length, food: all.filter((c) => filterOf(c) === "food").length } };
+}
+
+/**
+ * A place put on the plan from a suggestion before 0.39.15 lost what its card said (Emre: "plana alınca mini açıklama
+ * kayboluyor"): its grey line says the suggestion's why (and its Google rating) again, by its name, while the record has no
+ * words of its own. Nothing is written; a place put there since keeps them in its record (suggestions.suggestedItem).
+ */
+function saidWhy(card: KCardVM, said: readonly Suggestion[] | undefined): KCardVM {
+  const item = card.item;
+  if (!item || !said?.length || item.summary.trim() || card.state === "done" || (card.family !== "place" && card.family !== "food")) return card;
+  const s = said.find((x) => x.state === "added" && x.why.trim() && (sameName(cleanPlaceTitle(x.title), item.name) || sameName(x.title, item.name)));
+  if (!s) return card;
+  const rating = item.rating.value == null && s.payload?.rating ? { value: s.payload.rating, scale: 5, count: s.payload.reviews ?? null, source: "url" as const } : item.rating;
+  return { ...card, line: placeLine({ ...item, summary: s.why, rating }) };
 }
 
 const fold = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLocaleLowerCase("tr").replace(/[^\p{L}\p{N}]+/gu, " ").trim();

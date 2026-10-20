@@ -390,6 +390,8 @@ export interface Suggestion {
     map?: string | null;
     /** A city's sight from Google (citySights.ts, spec 2026-10-19 SerpApi item 3): its rating out of 5, and that it is Google's. */
     rating?: number | null;
+    /** The place's reviews its card found (Google Maps'), handed to the record with its rating (0.39.15); not stored. */
+    reviews?: number | null;
     from?: "google" | null;
   };
   createdAt: number;

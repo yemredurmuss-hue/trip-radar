@@ -127,8 +127,14 @@ export function findPlacePhoto(names: readonly string[], fetchJson: FetchJson = 
  * The suggestion as put on the plan with the photo its card found and the place's own Maps page when Maps found it (the
  * record keeps both: suggestions.ts suggestedItem).
  */
-export const withPlacePhoto = (s: Suggestion, photo: string | null, map: string | null = null): Suggestion =>
-  photo || map ? { ...s, payload: { ...s.payload, ...(photo ? { photo } : {}), ...(map ? { map } : {}) } } : s;
+export const withPlacePhoto = (s: Suggestion, photo: string | null, map: string | null = null, rated: { rating: number | null; reviews: number | null } | null = null): Suggestion => {
+  // 0.39.15: the rating and reviews its card showed go with it too (a Google sight's rating is in its payload already).
+  const rating = rated?.rating != null && rated.rating > 0 ? rated.rating : null;
+  const reviews = rated?.reviews != null && rated.reviews > 0 ? rated.reviews : null;
+  return photo || map || rating || reviews
+    ? { ...s, payload: { ...s.payload, ...(photo ? { photo } : {}), ...(map ? { map } : {}), ...(rating ? { rating } : {}), ...(reviews ? { reviews } : {}) } }
+    : s;
+};
 
 // --- Google Maps first --------------------------------------------------------------------------------------
 

@@ -183,7 +183,8 @@ export function CollectionRow({ vm, onPut, onTakeOff }: CollectionRowProps) {
   // A sight put on the plan or said "Gerek yok" to stays away (its key in the trip's suggestions, not open).
   const gone = new Set((env.trip.suggestions ?? []).filter((s) => s.state !== "open").map((s) => s.key));
   const sights = sightCity ? sightList.map((s) => sightSuggestion(sightCity, s, 0)).filter((s) => !gone.has(s.key)) : [];
-  const row = collectionRow(vm, v82.byId, { trip: env.trip, people: v82.selfAt.adults, ctx: env.decisions?.ctx, offers, sights });
+  const said = (env.trip.suggestions ?? []).filter((s) => s.state === "added");
+  const row = collectionRow(vm, v82.byId, { trip: env.trip, people: v82.selfAt.adults, ctx: env.decisions?.ctx, offers, sights, said });
   const todo = vm.section === "todo";
   const [filter, setFilter] = useState<KFilter>("all");
   const [open, setOpen] = useRemembered(`trip-radar:ideasOpen:${env.tripId}:${vm.section}`, true);
@@ -199,7 +200,7 @@ export function CollectionRow({ vm, onPut, onTakeOff }: CollectionRowProps) {
     if (c.item) return <RecordCard key={c.key} card={c} vm={vm} plan={plan} search={links[0] ?? null} onPut={(item) => onPut({ item })} onTakeOff={(item) => onTakeOff({ item })} />;
     if (c.suggestion) {
       const s = c.suggestion;
-      return <SuggestCard key={c.key} card={c} onPut={(photo, map) => v82.addSuggestion?.(withPlacePhoto(s, photo, map))} onDismiss={() => v82.dismissSuggestion?.(s)} />;
+      return <SuggestCard key={c.key} card={c} onPut={(photo, map, rated) => v82.addSuggestion?.(withPlacePhoto(s, photo, map, rated))} onDismiss={() => v82.dismissSuggestion?.(s)} />;
     }
     if (c.offer) {
       const offer = c.offer;

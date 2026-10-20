@@ -535,9 +535,12 @@ function usePlaceFound(s: Suggestion | null, on: boolean): PlaceFound | null {
  * and reviews when Maps gave them, and "Haritada aç" (the place's own Maps page once found); put on the plan, the record
  * keeps the photo and that page.
  */
-export function SuggestCard({ card, onPut, onDismiss }: { card: KCardVM; onPut: (photo: string | null, map: string | null) => void; onDismiss: () => void }) {
+/** What a suggested place's card found, handed to its record when it's put on the plan (its rating and reviews). */
+export type PutRated = { rating: number | null; reviews: number | null } | null;
+
+export function SuggestCard({ card, onPut, onDismiss }: { card: KCardVM; onPut: (photo: string | null, map: string | null, rated: PutRated) => void; onDismiss: () => void }) {
   const place = card.family !== "event";
-  if (!place) return <EventSuggestCard card={card} onPut={() => onPut(null, null)} onDismiss={onDismiss} />;
+  if (!place) return <EventSuggestCard card={card} onPut={() => onPut(null, null, null)} onDismiss={onDismiss} />;
   return <PlaceSuggestCard card={card} onPut={onPut} onDismiss={onDismiss} />;
 }
 
@@ -574,7 +577,7 @@ function EventSuggestCard({ card, onPut, onDismiss }: { card: KCardVM; onPut: ()
   );
 }
 
-function PlaceSuggestCard({ card, onPut, onDismiss }: { card: KCardVM; onPut: (photo: string | null, map: string | null) => void; onDismiss: () => void }) {
+function PlaceSuggestCard({ card, onPut, onDismiss }: { card: KCardVM; onPut: (photo: string | null, map: string | null, rated: PutRated) => void; onDismiss: () => void }) {
   // A sight from Google has its photo and rating already; any other place is looked up (Maps, its city's sights, Wikipedia).
   const found = usePlaceFound(card.suggestion, !card.photo);
   const photo = found?.photo ?? null;
@@ -627,7 +630,7 @@ function PlaceSuggestCard({ card, onPut, onDismiss }: { card: KCardVM; onPut: (p
           ) : (
             rate && <span className="z-krate">{rate}</span>
           )}
-          {card.canPut && <PutButton title={card.title} onPut={() => onPut(photo?.url ?? card.photo ?? null, found?.map ?? null)} />}
+          {card.canPut && <PutButton title={card.title} onPut={() => onPut(photo?.url ?? card.photo ?? null, found?.map ?? null, { rating: stars, reviews })} />}
         </>
       }
     />
