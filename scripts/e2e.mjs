@@ -2629,7 +2629,29 @@ const cspErrors = [];
 const watchCsp = (p) => p.on("console", (m) => m.type() === "error" && /Content Security Policy|Refused to (load|execute|create)/i.test(m.text()) && cspErrors.push(m.text()));
 flow.pages().forEach(watchCsp);
 flow.on("page", watchCsp);
-// Not frozen: its worker writes analyses on the real clock, and the board judges their freshness by it.
+// On 5 October as every other part: the hotel's nights are 8–11 October, and on the real calendar the trip has gone by (from
+// 12 October Seyahatlerim files it under Geçmiş, and the overview shows no card for it). Playwright's clock reaches the pages
+// only, and the worker writes the analyses the board judges fresh by its own clock: the worker is put on the same calendar.
+await frozen(flow);
+const flowCalendar = new Date("2026-10-05T10:00:00").getTime() - Date.now();
+const onFlowCalendar = (worker) =>
+  worker.evaluate((shift) => {
+    if (globalThis.__e2eCalendar !== undefined) return;
+    globalThis.__e2eCalendar = shift;
+    const Real = Date;
+    function Shifted(...args) {
+      if (!new.target) return new Real(Real.now() + shift).toString();
+      return args.length ? new Real(...args) : new Real(Real.now() + shift);
+    }
+    Shifted.prototype = Real.prototype;
+    Shifted.now = () => Real.now() + shift;
+    Shifted.parse = Real.parse;
+    Shifted.UTC = Real.UTC;
+    globalThis.Date = Shifted;
+  }, flowCalendar);
+// (a worker started again later is put on it too; one already gone has nothing to put)
+flow.on("serviceworker", (worker) => void onFlowCalendar(worker).catch(() => undefined));
+for (const worker of flow.serviceWorkers()) await onFlowCalendar(worker);
 try {
   const flat = (texts) => texts.map((t) => t.replace(/\s+/g, " ").trim());
   const geminiBodies = [];
