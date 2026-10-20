@@ -4859,8 +4859,9 @@ try {
 
   // 23. The owner's second report: "Lets go to Papua New Gune with my friend for 3 weeks on nov" on an English board
   // captured nothing. Now, without waiting for the model (it never answers here): Papua New Guinea asked back, a
-  // friend, November · 3 weeks; then where from; no names question before the trip is made (asked once on the
-  // board's chat). And the Turkish equivalent, exact, taken at once.
+  // friend, November · 3 weeks; where from is already known from the trips before (0.39.13, F55), so "Yes" completes
+  // the essentials and the countdown starts (stopped here to go on); no names question before the trip is made (asked
+  // once on the board's chat). And the Turkish equivalent, exact, taken at once (its countdown starts at once).
   const silent = async (route) => {
     const body = route.request().method() === "POST" ? route.request().postDataJSON() : null;
     const prompt = JSON.stringify(body?.contents ?? "");
@@ -4887,17 +4888,24 @@ try {
   await tentativeRow.getByText("· check").waitFor();
   assert.equal(await pngList.locator(".st-row.tentative.done").count(), 0, "not ticked");
   assert.equal(await pngList.locator(".st-row", { hasText: "Where to" }).getByText("· needed").count(), 0, "not 'needed'");
-  await pngList.getByText("3 of 6 captured").waitFor();
+  // Where from is already filled from the trips before (F55): where (to check), who, when and where from.
+  await pngList.locator(".st-row.done", { hasText: "Where from" }).waitFor();
+  await pngList.getByText("4 of 6 captured").waitFor();
+  assert.equal(await board.locator(".st-auto").count(), 0, "not while the place is still to check");
   assert.equal(await board.locator(".st-side .st-gen-btn").isEnabled(), true, "Generate works with the guess");
   assert.equal(await board.locator(".st-top-title").innerText(), "Papua New Guinea · new trip");
   await board.waitForTimeout(600); // the lines and rows faded in
   await board.screenshot({ path: `${out}/23e-start-png-captured.png` });
   await answers.getByRole("button", { name: "Yes", exact: true }).click();
-  await board.locator(".st-msg-bot", { hasText: "Papua New Guinea, 3 weeks in November with a friend." }).waitFor();
-  // K4 (2026-10-09): the day first (a month only), then what you want; where from is asked last.
+  // Said once, in full, with the place (and where from, known from the trips before).
+  await board.locator(".st-msg-bot", { hasText: /Papua New Guinea, 3 weeks in November with a friend from [^.]+\./ }).waitFor();
+  // K4 (2026-10-09): the day first (a month only), then what you want. The essentials are in (where from known):
+  // "Generating… 3 · Cancel" starts; stopped here to go on (a stop holds until the checklist is full).
   await board.locator(".st-msg-bot .st-q", { hasText: "Which day in November are you setting off for Papua New Guinea?" }).last().waitFor();
+  await board.locator(".st-auto").getByRole("button", { name: "Cancel" }).click();
+  await board.locator(".st-auto").waitFor({ state: "detached" });
   assert.equal(await board.locator(".st-top-title").innerText(), "Papua New Guinea · new trip", "the country's own name, never the typing");
-  await pngList.locator(".st-row.done", { hasText: "Papua New Guinea" }).waitFor();
+  await pngList.locator(".st-row.done", { hasText: "Where to" }).filter({ hasText: "Papua New Guinea" }).waitFor(); // (the Where from row's flights name it too)
   assert.equal(await board.locator(".st-side .st-gen-btn").isEnabled(), true);
   await board.waitForTimeout(600);
   await board.screenshot({ path: `${out}/23f-start-png-from.png` });
@@ -4906,9 +4914,11 @@ try {
   await answers.getByRole("button", { name: "Skip" }).click();
   await board.locator(".st-msg-bot", { hasText: "I'd keep it to one stop: Papua New Guinea 21 nights. Go with it?" }).waitFor();
   await answers.getByRole("button", { name: "Go with it" }).click(); // the route
-  await board.locator(".st-msg-bot .st-q", { hasText: "Where are you setting off for Papua New Guinea from?" }).last().waitFor();
-  await chat.getByLabel("Message").fill("London");
-  await chat.getByLabel("Message").press("Enter");
+  // Nothing left to ask (where from known); stopped once and the style still open, so no countdown again.
+  await pngList.locator(".st-row.done", { hasText: "Route" }).waitFor();
+  await board.waitForTimeout(500);
+  assert.equal(await board.locator(".st-msg-bot .st-q", { hasText: "Where are you setting off for Papua New Guinea from?" }).count(), 0, "where from isn't asked");
+  assert.equal(await board.locator(".st-auto").count(), 0, "stopped once: only a full checklist starts it again");
   // Never a names question in the start chat; never "Got it: With friends. Who's coming?".
   const pngLines = await board.locator(".st-msg-bot").allInnerTexts();
   for (const line of pngLines) {
@@ -4918,7 +4928,7 @@ try {
   await board.locator(".st-side .st-gen-btn").click();
   await board.getByRole("heading", { name: titled("Papua New Guinea") }).waitFor({ timeout: 20000 });
   await board.locator(".chat .msg-assistant", { hasText: "Tell me their names if you like." }).waitFor();
-  console.log("✓ start rev 3, the second report (English): \"Papua New Gune\" asked back as Papua New Guinea, a friend, November · 3 weeks at once; then the day, what they want, where from last; no names before the trip; the board's chat asks them once");
+  console.log("✓ start rev 3, the second report (English): \"Papua New Gune\" asked back as Papua New Guinea, a friend, November · 3 weeks at once, where from from the trips before; \"Yes\" starts the countdown (stopped); then the day, what they want, the route; no names before the trip; the board's chat asks them once");
 
   // The Turkish equivalent: exact, taken at once.
   await switchLang("tr");
@@ -4929,12 +4939,15 @@ try {
   await board.locator(".st-ask, .st-screen").first().waitFor();
   if (await board.locator(".st-ask").count()) await board.locator(".st-ask").getByRole("button", { name: "Yeni gezi", exact: true }).click();
   const trList = board.locator(".st-side .st-list");
-  await trList.locator(".st-row.done", { hasText: "Papua Yeni Gine" }).waitFor({ timeout: 3000 });
+  await trList.locator(".st-row.done", { hasText: "Nereye" }).filter({ hasText: "Papua Yeni Gine" }).waitFor({ timeout: 3000 }); // (the Nereden row's flights name it too)
   await trList.locator(".st-row.done", { hasText: "Bir arkadaşınla · 2 kişi" }).waitFor({ timeout: 3000 });
   await trList.locator(".st-row.done", { hasText: "Kasım · 3 hafta" }).waitFor({ timeout: 3000 });
   await board.locator(".st-msg-bot", { hasText: "Bir arkadaşınla Papua Yeni Gine, Kasım'da 3 hafta." }).waitFor({ timeout: CODE_LINE_MS });
   await board.locator(".st-msg-bot .st-q", { hasText: "Papua Yeni Gine'ye Kasım'da hangi gün çıkıyorsunuz?" }).waitFor({ timeout: 3000 });
   assert.equal(await board.locator(".st-top-title").innerText(), "Papua Yeni Gine · yeni gezi");
+  // Where from known from the trips before (F55): the essentials are in at once and the countdown starts; stopped.
+  await board.locator(".st-auto").getByRole("button", { name: "Vazgeç" }).click();
+  await board.locator(".st-auto").waitFor({ state: "detached" });
   await board.waitForTimeout(600);
   await board.screenshot({ path: `${out}/23g-start-png-tr.png` });
   await board.getByRole("button", { name: /Seyahatlerim/ }).first().click();
@@ -5030,7 +5043,7 @@ try {
   // 26. Intent (2026-10-06, the owner's English test): "I want to go burning man africa with my friends and partner".
   // At once, without the model (it never answers here): AfrikaBurn in the Tankwa Karoo, South Africa; its dates said
   // as an estimate with the official site; the next question is the total length (its own chips). "+4 days in Cape
-  // Town", where from, how many: the essentials known, "Generating… 3 · Cancel"; a typed letter stops it; a style
+  // Town", how many (where from is known from the trips before, F55): the essentials known, "Generating… 3 · Cancel"; a typed letter stops it; a style
   // picked fills the checklist and it starts again; the trip makes itself: "AfrikaBurn 20xx", Cape Town 2 → Tankwa
   // Karoo 6 → Cape Town 2, İstanbul ⇄ Cape Town, 4 people.
   await board.getByRole("button", { name: /Seyahatlerim/ }).first().click({ timeout: 3000 }).catch(() => undefined);
@@ -5050,7 +5063,10 @@ try {
   assert.equal(await board.locator(".st-top-title").innerText(), "AfrikaBurn · new trip");
   // v5: while the model reads (it never answers here), the step line names the event and the row it can still fill reads.
   await board.locator(".st-thinking[data-call=read]", { hasText: "Recognising AfrikaBurn…" }).waitFor();
-  await abList.locator(".st-row.reading", { hasText: "Where from" }).waitFor();
+  // Where from is filled from the trips before (F55), so its row doesn't read; who (how many) does.
+  assert.equal(await abList.locator(".st-row.reading", { hasText: "Where from" }).count(), 0, "where from is known: its row doesn't read");
+  const abFrom = await abList.locator(".st-row.done", { hasText: "Where from" }).locator(".st-row-value").evaluate((n) => n.firstChild?.textContent?.trim());
+  assert.ok(abFrom, "where from is filled from the trips before");
   assert.deepEqual(await answers.locator(".st-chip").allInnerTexts(), ["Just AfrikaBurn (7 days)", "+2 days in Cape Town", "+4 days in Cape Town", "These dates are right", "📅 Different dates"]);
   await board.waitForTimeout(600);
   await board.screenshot({ path: `${out}/26a-intent-afrikaburn.png` });
@@ -5058,8 +5074,8 @@ try {
   await board.locator(".st-msg-bot", { hasText: /The trip: \d+ April – \d+ May · 10 nights \(estimated\) \(Cape Town 2 · Tankwa Karoo 6 · Cape Town 2 nights\)\./ }).waitFor();
   await board.locator(".st-msg-bot .st-q", { hasText: "A tent camp, a caravan, or a hotel?" }).last().waitFor();
   await abList.locator(".st-row.done", { hasText: "Route" }).getByText("Cape Town 2 · Tankwa Karoo 6 · Cape Town 2 nights").waitFor();
-  // K4 (2026-10-09): the festival's own questions (2026-10-07) first, each with its chips, then the style, how many,
-  // and where from last. The countdown starts only when the essentials are in, so not before the last answer.
+  // K4 (2026-10-09): the festival's own questions (2026-10-07) first, each with its chips, then the style and how
+  // many (where from is known). The countdown starts only when the essentials are in, so not before how many.
   // 0.36.83's "camp or a hotel?" is back as the festival question's third answer, beside the tent and the caravan.
   for (const chipName of ["Tent camp", "Let's rent a caravan", "Hotel"]) await answers.getByRole("button", { name: chipName, exact: true }).waitFor();
   for (const q of ["A tent camp, a caravan, or a hotel?", "Have you got your ticket yet?", "How many days before the festival would you like to arrive?"]) {
@@ -5071,11 +5087,7 @@ try {
   await board.locator(".st-msg-bot .st-q", { hasText: "How many of you are going, you included?" }).waitFor();
   assert.equal(await board.locator(".st-auto").count(), 0, "not before how many");
   await answers.getByRole("button", { name: "4", exact: true }).click();
-  await board.locator(".st-msg-bot .st-q", { hasText: "Where are you setting off for AfrikaBurn from?" }).last().waitFor();
-  assert.equal(await board.locator(".st-auto").count(), 0, "not before where from");
-  // Typed (the origin's guess depends on the trips before this one).
-  await chat.getByLabel("Message").fill("Istanbul");
-  await chat.getByLabel("Message").press("Enter");
+  assert.equal(await board.locator(".st-msg-bot .st-q", { hasText: "Where are you setting off for AfrikaBurn from?" }).count(), 0, "where from isn't asked");
   const autoRow = board.locator(".st-auto", { hasText: "Generating…" });
   await autoRow.waitFor();
   assert.equal(await board.locator(".st-msg-bot a.st-link").first().innerText(), "Official site ↗", "in the chat's language");
@@ -5098,7 +5110,7 @@ try {
   await board.locator(".st-gen h2", { hasText: /^Planning .*AfrikaBurn/ }).waitFor({ timeout: 4000 }).then(() => board.screenshot({ path: `${out}/26c-intent-generating.png` })).catch(() => undefined);
   await board.getByRole("heading", { name: titled("AfrikaBurn") }).waitFor({ timeout: 20000 });
   const abGen = await genSeen();
-  assert.equal(abGen.sub, "Istanbul → Cape Town → Tankwa Karoo 🎪 → Cape Town · 10 nights");
+  assert.equal(abGen.sub, `${abFrom} → Cape Town → Tankwa Karoo 🎪 → Cape Town · 10 nights`);
   assert.deepEqual(abGen.fest, ["Tankwa Karoo"], "the festival's stop is pink");
   assert.deepEqual(abGen.stops, ["Cape Town", "Tankwa Karoo"], "Cape Town once (its nights added up), the festival");
   assert.ok(abGen.steps.includes("Route drawn: Cape Town 2 nights → Tankwa Karoo 6 nights → Cape Town 2 nights"), `the route (${abGen.steps.join(" | ")})`);
@@ -5119,14 +5131,14 @@ try {
   assert.deepEqual(ab, {
     nights: 10,
     stays: ["Cape Town ZA", "Tankwa Karoo ZA", "Cape Town ZA"],
-    flights: ["Cape Town→Istanbul", "Istanbul→Cape Town"],
+    flights: [`Cape Town→${abFrom}`, `${abFrom}→Cape Town`].sort(),
     travellers: { names: [], count: 4 },
     style: ["adventure"],
     approx: true,
   });
   await board.waitForTimeout(800);
   await board.screenshot({ path: `${out}/26d-intent-board.png` });
-  console.log("✓ intent (the owner's English test): AfrikaBurn at once (Tankwa Karoo · South Africa, the dates estimated with the official site, the length next); +4 days, Istanbul, 4 → the countdown; a typed letter stops it; a full checklist starts it again and the trip makes itself: AfrikaBurn 20xx, Cape Town 2 → Tankwa Karoo 6 → Cape Town 2, Istanbul ⇄ Cape Town, 4 people");
+  console.log("✓ intent (the owner's English test): AfrikaBurn at once (Tankwa Karoo · South Africa, the dates estimated with the official site, the length next); +4 days, 4 (where from known from the trips before) → the countdown; a typed letter stops it; a full checklist starts it again and the trip makes itself: AfrikaBurn 20xx, Cape Town 2 → Tankwa Karoo 6 → Cape Town 2, the known origin ⇄ Cape Town, 4 people");
   await board.getByRole("button", { name: /Seyahatlerim|My trips/ }).first().click({ timeout: 3000 }).catch(() => undefined);
   await flow.unroute("https://generativelanguage.googleapis.com/**", silent);
   await flow.unroute(/wikipedia\.org\/api\/rest_v1\//, wiki);
