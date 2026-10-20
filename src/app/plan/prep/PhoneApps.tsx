@@ -74,7 +74,7 @@ export function PhoneApps({ model }: { model: PrepModel }) {
     void setHidden(trip, app.key, true);
   };
   return (
-    <li className="q-bvli q-phli">
+    <li className="q-phli">
       <div className={`q-bv${open ? " open" : ""}`}>
         <button type="button" className="q-bvs" aria-expanded={open} aria-controls={`phone-${trip.id}`} onClick={() => setOpen(!open)}>
           <span className="q-bvic">

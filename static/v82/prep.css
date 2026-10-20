@@ -144,7 +144,7 @@ body.still .q-pbody .q-bvchev, body.still .q-pbody .q-pdel, body.still .q-pbody 
 @media (prefers-reduced-motion: reduce) { .q-pbody .q-bvchev, .q-pbody .q-pdel, .q-pbody .q-pr1 .pk-menu-wrap { transition: none; } }
 
 /* Telefonuna kur (0.39.7, PhoneApps.tsx): the Bavul's line and rows, with each app's store links and the AI's tag. */
-.q-pbody .q-phli { margin-top: 8px; }
+.q-pbody .q-phli { list-style: none; border-top: 1px solid var(--q-line); }
 .q-pbody .q-ph1 .q-pt1 { flex: 1; min-width: 0; }
 .q-pbody .q-ph1 .q-pt1 b { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
 .q-pbody .q-phai { font-size: 10.5px; font-weight: 800; color: var(--q-acc); background: var(--q-acc-s); border-radius: 6px; padding: 0 6px; }

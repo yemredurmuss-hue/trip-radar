@@ -2032,10 +2032,17 @@ try {
   assert.equal(await know.locator('[data-know="emergency"] small').innerText(), "112 (AB ortak numara)");
   assert.match(await know.locator('[data-know="embassy"] a').getAttribute("href"), /^https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=T%C3%BCrkiye%20B%C3%BCy%C3%BCkel%C3%A7ili%C4%9Fi%20Portekiz$/);
   assert.equal(await know.locator('[data-know^="tip:"]').count(), 0, "no AI note without the AI");
-  // T6 a: the Bavul is the list's last line, folded, with its count; open, its groups with their reasons, a tick, and
-  // "bana göre değil" folding a line with its own "Geri al" (no toast).
+  // T6 a: the Bavul is the chores' last line (0.39.7: then "Telefonuna kur", the list's last), folded, with its count;
+  // open, its groups with their reasons, a tick, and "bana göre değil" folding a line with its own "Geri al" (no toast).
   const bavul = sec("prep").locator(".q-bvli");
-  assert.equal(await sec("prep").locator(".q-prows > li").last().getAttribute("class"), "q-bvli");
+  assert.deepEqual((await sec("prep").locator(".q-prows > li").evaluateAll((els) => els.map((e) => e.className))).slice(-2), ["q-bvli", "q-phli"]);
+  // 0.39.7 "Telefonuna kur": Portugal's apps from the table, each with its store pages, and the eSIM to pick in its app.
+  const phone = sec("prep").locator(".q-phli");
+  assert.match(await phone.locator(".q-bvs").innerText(), /Telefonuna kur[\s\S]*Portekiz · \d+ uygulama \+ internet[\s\S]*0\/\d+ kuruldu/);
+  await phone.locator(".q-bvs").click();
+  await phone.locator('.q-ph1[aria-label="Uber"] a', { hasText: "App Store" }).waitFor();
+  assert.match(await phone.locator(".q-bvg", { hasText: "İnternet (eSIM)" }).innerText(), /paketi uygulamada seç/);
+  await phone.locator(".q-bvs").click();
   const bavulCount = async () => (await bavul.locator(".q-bvn").innerText()).trim();
   assert.match(await bavulCount(), /^0\/\d+ hazır$/);
   await bavul.getByRole("button", { name: /^Bavul/ }).click();
