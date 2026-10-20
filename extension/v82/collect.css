@@ -229,3 +229,28 @@ body.still .z-k.q-opt:hover { transform: none; }
 /* What's on in the city on the stay's days (spec 2026-10-19 SerpApi, item 8): its own row under the suggestions. */
 .z-evs { margin-top: 14px; }
 .z-evsrc { font-size: var(--q-fs-small); color: var(--q-mut); }
+
+/* ---- 0.39.9 Etkinlik ve turlar (Emre: Viator's own card as the model, "4'lü yerine 3'lü"): three across, the picture
+   16:10, the source's tour as a deal: its pick top left, the source at the picture's foot, one line of ★ rating, length
+   and free cancellation, the price a person big beside "+ Plana koy". ---- */
+.z-ks.z-k3 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.z-k3 .z-kp { aspect-ratio: 16 / 10; }
+.z-k3 .z-kb .z-t { font-size: 16px; line-height: 21px; }
+.z-k3 .z-kb { grid-template-rows: 42px 18px auto; padding: 12px 14px 14px; }
+.z-kc > .z-kpick { height: 24px; padding: 0 10px; border-radius: 99px; background: var(--q-acc); color: #fff; font-size: 12px; font-weight: 750; box-shadow: 0 1px 4px rgba(28, 26, 51, .2); }
+.z-ko .z-kd > .q-src { gap: 5px; padding: 0 8px 0 4px; background: rgba(255, 255, 255, .94); color: var(--q-ink); font-weight: 750; font-size: var(--q-fs-badge); border-radius: 99px; box-shadow: 0 1px 4px rgba(28, 26, 51, .18); }
+.z-ko .z-kd > .q-src .q-logo.sm { width: 15px; height: 15px; border-radius: 4px; font-size: 10px; }
+.z-kfacts { display: flex; align-items: center; gap: 10px; min-width: 0; overflow: hidden; white-space: nowrap; }
+.z-kst { display: inline-flex; align-items: center; gap: 3px; color: var(--q-ink); font-weight: 750; }
+.z-kst .i { fill: var(--q-ok); stroke: var(--q-ok); }
+.z-kst small { color: var(--q-mut); font-weight: 500; font-size: inherit; }
+.z-kfree { color: var(--q-ok); font-weight: 650; }
+.z-ko .z-kf { justify-content: space-between; align-items: flex-end; gap: 10px; margin-top: 8px; }
+.z-kpr { display: grid; line-height: 1.15; min-width: 0; }
+.z-kpr small { font-size: var(--q-fs-small); color: var(--q-mut); }
+.z-kpr b { font-size: 20px; font-weight: 800; letter-spacing: -.01em; font-variant-numeric: tabular-nums; color: var(--q-ink); }
+.z-ko .z-kf > .q-pick { width: auto; flex: none; padding: 0 14px; height: 36px; min-height: 36px; }
+.z-ko .z-kf > .q-pick:only-child { margin-left: auto; }
+@media (max-width: 640px) {
+  .z-ks.z-k3 { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+}
