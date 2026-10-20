@@ -405,3 +405,8 @@ body.still .q-ofold-chev { transition: none; }
 
 /* 0.39.0: no price from the source at all: a small link to the site's page in the price's place. */
 .z-of .z-ppg { align-self: center; min-width: 0; }
+/* P9 (F19): "Kendin ara"'s sites say their names beside their letters (B Booking, A Airbnb), never a bare letter. */
+.z-pi { grid-auto-flow: column; align-items: center; gap: 6px; padding-right: 8px; border: 1px solid var(--q-line); background: #fff; }
+.z-pi .z-pin { font-size: var(--q-fs-small); font-weight: 650; color: var(--q-ink); white-space: nowrap; }
+/* P9 (F27): a chosen option's "Seçili" reads: green on its light green, never green on the purple of "Seç". */
+button.q-pick[aria-pressed="true"], button.q-pick[aria-pressed="true"]:hover { background: var(--q-ok-s); color: var(--q-ok); box-shadow: inset 0 0 0 1.5px var(--q-ok-l); cursor: default; }

@@ -210,7 +210,7 @@ export function CompareView({ trip, decision, card, inferred, ctx, title, steps,
                       <BookedBadge as={bookedAs(o.item)} />
                     ) : (
                       <button className={`plan-btn${o.item.status === "chosen" ? " on" : ""}`} onClick={() => void choose(o)}>
-                        {o.item.status === "chosen" ? L("Planda ✓", "In plan ✓") : L("Plana al", "Add to plan")}
+                        {o.item.status === "chosen" ? L("Seçili ✓", "Chosen ✓") : L("Seç", "Choose")}
                       </button>
                     )}
                   </th>

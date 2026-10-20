@@ -575,12 +575,17 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
           <Mascot size={56} className="empty-mascot" />
           <h2>{L("İlk gezini başlat", "Start your first trip")}</h2>
           <ol>
-            <li>
-              <a href="#settings" onClick={onSettings}>
-                {L("Ücretsiz Gemini anahtarını bağla", "Connect a free Gemini key")}
-              </a>{" "}
-              {L("(1 dakika, kart gerekmez).", "(1 minute, no card needed).")}
-            </li>
+            {/* P9 (F01): with a key saved the step says it's done, never "bağla" again. */}
+            {settings && (settings.provider === "gemini" ? settings.geminiKey : settings.apiKey) ? (
+              <li className="done">✓ {L("Yapay zekâ anahtarın bağlı.", "Your AI key is connected.")}</li>
+            ) : (
+              <li>
+                <a href="#settings" onClick={onSettings}>
+                  {L("Ücretsiz Gemini anahtarını bağla", "Connect a free Gemini key")}
+                </a>{" "}
+                {L("(1 dakika, kart gerekmez).", "(1 minute, no card needed).")}
+              </li>
+            )}
             <li>
               {L(
                 "Yukarıdaki kutuya nereye ve ne zaman gideceğini yaz ya da bir link bırak; birkaç soruyla gezinin omurgası kurulur.",

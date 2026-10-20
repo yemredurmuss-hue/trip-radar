@@ -11,7 +11,7 @@ import type { StartState } from "./startTrip";
 /** Longer than this, the theme word goes first, then the length. */
 export const TITLE_MAX = 42;
 
-export type TitleState = Pick<StartState, "where" | "intent"> & Partial<Pick<StartState, "messages" | "duration" | "who" | "styles" | "way" | "dayTrip" | "playbook">>;
+export type TitleState = Pick<StartState, "where" | "intent"> & Partial<Pick<StartState, "messages" | "duration" | "who" | "styles" | "way" | "dayTrip" | "playbook" | "route">>;
 
 /** Each word's first letter capital, in the title's language ("dalış gezisi" → "Dalış Gezisi"). */
 const titleCase = (s: string) =>
@@ -28,7 +28,16 @@ function placeOf(s: TitleState): string {
   const it = s.intent;
   if (it?.kind === "event") return withoutYear(it.name);
   if (it?.kind === "place") return `${it.name} ${it.place}`.trim();
-  return (s.where?.within || s.where?.place || it?.place || "").trim();
+  const here = (s.where?.within || s.where?.place || it?.place || "").trim();
+  // P9 (F08): a trip named by one city ("Porto") whose route goes on to another is named by both ("Porto ve Lizbon"),
+  // by its country with more stops; a region, a country or a theme said (Bali, Japonya, kiraz çiçekleri) keeps its name.
+  const stops = [...new Set((s.route?.stops ?? []).map((x) => x.city.trim()).filter(Boolean))];
+  const plain = (a: string) => normWords(a).join(" ");
+  if (!it && stops.length >= 2 && stops.some((x) => plain(x) === plain(here))) {
+    if (stops.length === 2) return L(`${stops[0]} ve ${stops[1]}`, `${stops[0]} and ${stops[1]}`);
+    if (s.where?.country) return s.where.country;
+  }
+  return here;
 }
 
 /** "7 Günlük", "3 Haftalık"; null with no length said (and no event dates to count). */
@@ -60,6 +69,8 @@ export function cleanTheme(raw: string | null | undefined, place: string): strin
   if (words.length > 3) return null;
   const own = new Set(normWords(place));
   if (normWords(t).some((w) => own.has(w))) return null;
+  // P9 (F08): "Şehir Turu" reads as one tour to buy, not the trip.
+  if (normWords(t).some((w) => w === "turu" || w === "tour")) return null;
   return titleCase(t);
 }
 
@@ -132,7 +143,12 @@ export function tripName(s: TitleState, days: number | null = null): string {
 
   if (!place) return join([word, noun]) || L("Yeni gezi", "New trip");
   if (dayTrip) return join([place, word, L("Günübirlik Gezisi", "Day Trip")]);
-  if (weekend) return join([place, L("Hafta Sonu", "Weekend"), model ?? NOUN.getaway()]);
+  // P9 (F56): "bu cuma … 3 gecelik kaçamak" is a weekend getaway by its words, whatever its nights are written as.
+  const said = (s.messages ?? []).filter((m) => m.role === "user").map((m) => m.text).join(" ");
+  const saidWeekend = n != null && n <= 4 && /hafta ?sonu|weekend|\bcuma\b|friday/i.test(said);
+  const saidGetaway = n != null && n <= 5 && /ka[çc]amak|getaway/i.test(said);
+  if (weekend || saidWeekend) return join([place, L("Hafta Sonu", "Weekend"), model ?? NOUN.getaway()]);
+  if (saidGetaway && !model) return join([place, word, NOUN.getaway()]);
 
   const length = lengthOf(s, days);
   // Too long: the theme word goes, then the length; the place and the kind always stay.

@@ -300,6 +300,7 @@ function SelfMarks({ links }: { links: SelfSearch[] }) {
           return (
             <a key={l.id} className="z-pi" href={l.url} target="_blank" rel="noopener noreferrer" title={said} aria-label={said}>
               <Mark color={l.color} letter={l.letter} />
+              <span className="z-pin">{l.name}</span>
             </a>
           );
         })}

@@ -119,7 +119,8 @@ describe("the hero's mosaic takes the source's tours", () => {
     });
     expect(m.cover?.image).toBe("a.jpg");
     // The tour named as a place already shown isn't shown twice.
-    expect(m.tiles.map((t) => [t.from, t.name])).toEqual([["place", "Villa"], ["link", "Kaydedilen kafe"], ["city", "Kolombo"], ["offer", "Sörf dersi"], ["moment", "Gün batımı"], ["art", "Bali"]]);
+    // P9 (F12): no abstract moment tile.
+    expect(m.tiles.map((t) => [t.from, t.name])).toEqual([["place", "Villa"], ["link", "Kaydedilen kafe"], ["city", "Kolombo"], ["offer", "Sörf dersi"]]);
     expect(m.kind).toBe("place");
   });
 

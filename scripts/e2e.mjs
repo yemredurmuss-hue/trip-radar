@@ -1213,13 +1213,13 @@ try {
   }
   console.log("✓ compare: Karşılaştır opens the Pano's comparison (B12); the old window's weights and table are not offered (C11, row 199, bu sürümde arayüzden düştü)");
 
-  // A stay chosen from its record's drawer ("Plana al"): the details' "Tüm detaylar ›" opens it, with its breakdown.
+  // A stay chosen from its record's drawer ("Seç", P9 F22: the card's verb): the details' "Tüm detaylar ›" opens it, with its breakdown.
   stayWin = await openStayChoice();
   await stayWin.getByRole("button", { name: "Tüm detaylar ›" }).click();
   await app.getByRole("dialog").waitFor();
   await app.locator(".breakdown .score-big").waitFor(); // per-criterion breakdown in the drawer
   await app.screenshot({ path: `${out}/4-drawer.png` });
-  await app.getByRole("dialog").getByRole("button", { name: "Plana al", exact: true }).click();
+  await app.getByRole("dialog").getByRole("button", { name: "Seç", exact: true }).click();
   await app.getByRole("dialog").getByRole("button", { name: "Kapat" }).click();
   // The chat folds a run of change lines ("N değişiklik ▾", drawing ux-katmanli-arayuz); open it to read them.
   const changeFold = app.locator(".chat .ev-fold-btn").last();
@@ -1229,7 +1229,7 @@ try {
   await app.screenshot({ path: `${out}/36d-chat-fold-closed.png` });
   for (const fold of await app.locator('.chat .ev-fold-btn[aria-expanded="false"]').all()) await fold.click();
   await app.screenshot({ path: `${out}/36e-chat-fold-open.png` });
-  await app.getByText("Jardim Stay plana alındı").waitFor();
+  await app.getByText("Jardim Stay seçildi").waitFor();
   // v82: chosen, the stay's box says "Seçildi" (sand), its side column the price, "Rezerve et ↗" and "✓ Aldım · Değiştir"; Değiştir
   // turns the card back to its options in place, the chosen one marked "Seçili" (no back over the row, no arrow keys: the cards are
   // buttons in the tab order); Vazgeç or Escape turns it back.

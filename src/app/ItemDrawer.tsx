@@ -22,7 +22,8 @@ const sourceText = (): Record<FactSource, string> => ({
 
 /** The drawer's status buttons; `event` is the line written to the trip's log, a whole sentence per language. */
 const statusActions = (): { status: ItemStatus; label: string; event: (name: string) => string }[] => [
-  { status: "chosen", label: L("Plana al", "Add to plan"), event: (name) => L(`${name} plana alındı`, `${name} added to the plan`) },
+  // P9 (F22): one verb for one act, the card's ("Seç"), never "Plana al" here.
+  { status: "chosen", label: L("Seç", "Choose"), event: (name) => L(`${name} seçildi`, `${name} chosen`) },
   {
     status: "booked",
     label: L("Rezerve ettim", "I booked it"),
@@ -80,7 +81,7 @@ function DecisionBreakdown({ item, decision, onCompare }: { item: Item; decision
         {/* The Pano's comparison (B12): only with another option to weigh it against. */}
         {!single && (
           <button className="link-btn" onClick={onCompare}>
-            {L("Karşılaştır →", "Compare →")}
+            {L("Pano'da karşılaştır →", "Compare on the Pano →")}
           </button>
         )}
       </div>

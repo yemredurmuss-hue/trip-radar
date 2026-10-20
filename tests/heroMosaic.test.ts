@@ -35,15 +35,15 @@ describe("mosaicOf", () => {
     expect(m.tiles.map((t) => [t.from, t.name, t.sub])).toEqual([["place", "Shibuya Sky", "Tokyo"], ["city", "Kyoto", "4 gece"], ["city", "Hakone", "3 gece"], ["city", "Osaka", "3 gece"]]);
   });
 
-  it("row 14: with no place's photo the tiles fill by the order (saved links, cities, moments, a drawing), none empty", () => {
+  it("row 14: with no place's photo the tiles fill by the order (saved links, cities, a drawing; no moments since P9), none empty", () => {
     const m = mosaicOf({
       cities: [city("Porto", "p.jpg"), city("Lizbon", "l.jpg"), city("Sintra", null, "1 gece")],
       places: [place("Douro", "Porto", null)],
       links: [place("Casa", "Porto", "c.jpg"), place("Tram 28", "Lizbon", "t.jpg"), place("No photo", "Lizbon", null)],
       moments: [{ name: "Yerel lezzetler", image: "f.jpg", credit: null }],
     });
-    expect(m.tiles.map((t) => [t.from, t.name])).toEqual([["link", "Casa"], ["link", "Tram 28"], ["city", "Lizbon"], ["moment", "Yerel lezzetler"]]);
-    expect(m.tiles.every((t) => t.image)).toBe(true);
+    // P9 (F12): never an abstract moment ("Yerel lezzetler"): the city with no photo is drawn instead.
+    expect(m.tiles.map((t) => [t.from, t.name])).toEqual([["link", "Casa"], ["link", "Tram 28"], ["city", "Lizbon"], ["art", "Sintra"]]);
     // Six wanted, five photos: the drawing of the city with no photo rounds the grid off (never a hole, never empty).
     const six = mosaicOf({
       cities: [city("Porto", "p.jpg"), city("Lizbon", "l.jpg"), city("Sintra", null, "1 gece")],
@@ -51,7 +51,8 @@ describe("mosaicOf", () => {
       moments: [{ name: "Gün batımı", image: "g.jpg", credit: null }],
     });
     expect(six.tiles.map((t) => [t.from, t.name, t.image])).toEqual([
-      ["place", "A", "1.jpg"], ["place", "B", "2.jpg"], ["place", "C", "3.jpg"], ["city", "Lizbon", "l.jpg"], ["moment", "Gün batımı", "g.jpg"], ["art", "Sintra", null],
+      // P9 (F12): no moment tile; four photos make the grid whole, so no drawing is needed.
+      ["place", "A", "1.jpg"], ["place", "B", "2.jpg"], ["place", "C", "3.jpg"], ["city", "Lizbon", "l.jpg"],
     ]);
   });
 

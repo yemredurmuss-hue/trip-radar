@@ -362,6 +362,7 @@ export function FrameCard({ vm, form, art, page, links, hints, info, detail, qui
               {links.map((l) => (
                 <a key={l.id} className="z-pi" href={l.url} target="_blank" rel="noopener noreferrer" title={L(`${locative(l.name)} ara`, `Search ${l.name}`)} aria-label={L(`${locative(l.name)} ara`, `Search ${l.name}`)}>
                   <Mark color={l.color} letter={l.letter} />
+                  <span className="z-pin">{l.name}</span>
                 </a>
               ))}
             </span>

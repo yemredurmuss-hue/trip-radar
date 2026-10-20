@@ -1277,7 +1277,7 @@ function OptionGroupView({
       {!decided && !choice?.headline && (comparable || single) && (
         <button className="verdict-line" onClick={onCompare}>
           <span className={single ? "muted" : ""}>{decision!.summary}</span>
-          <span className="verdict-cta">{single ? L("Kriterleri gör →", "See criteria →") : L("Karşılaştır →", "Compare →")}</span>
+          <span className="verdict-cta">{single ? L("Kriterleri gör →", "See criteria →") : L("Pano'da karşılaştır →", "Compare on the Pano →")}</span>
         </button>
       )}
     </div>
@@ -1322,7 +1322,7 @@ function Headline({ choice, alternatives, onCompare }: { choice: Choice; alterna
           </button>
         )}
         <button className="link-btn" onClick={onCompare}>
-          {L("Karşılaştır →", "Compare →")}
+          {L("Pano'da karşılaştır →", "Compare on the Pano →")}
         </button>
       </span>
     </div>
