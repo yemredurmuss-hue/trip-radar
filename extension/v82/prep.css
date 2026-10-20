@@ -142,3 +142,19 @@
 /* "Hareketi duraklat" and reduced motion: the chevron just turns. */
 body.still .q-pbody .q-bvchev, body.still .q-pbody .q-pdel, body.still .q-pbody .q-pr1 .pk-menu-wrap { transition: none; }
 @media (prefers-reduced-motion: reduce) { .q-pbody .q-bvchev, .q-pbody .q-pdel, .q-pbody .q-pr1 .pk-menu-wrap { transition: none; } }
+
+/* Telefonuna kur (0.39.7, PhoneApps.tsx): the Bavul's line and rows, with each app's store links and the AI's tag. */
+.q-pbody .q-phli { list-style: none; border-top: 1px solid var(--q-line); }
+.q-pbody .q-ph1 .q-pt1 { flex: 1; min-width: 0; }
+.q-pbody .q-ph1 .q-pt1 b { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
+.q-pbody .q-phai { font-size: 10.5px; font-weight: 800; color: var(--q-acc); background: var(--q-acc-s); border-radius: 6px; padding: 0 6px; }
+.q-pbody .q-phw { font-size: 11.5px; font-weight: 600; color: var(--q-mut); }
+.q-pbody .q-phst { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; flex: none; }
+.q-pbody .q-phst a { font-size: 11.5px; font-weight: 700; color: var(--q-ink); text-decoration: none; border: 1px solid var(--q-line); border-radius: 8px; padding: 3px 8px; background: #fff; white-space: nowrap; }
+.q-pbody .q-phst a:hover, .q-pbody .q-phst a:focus-visible { border-color: var(--q-acc); color: var(--q-acc); }
+.q-pbody .q-ph1.done .q-phst { opacity: .55; }
+.q-pbody .q-phgone { display: flex; align-items: center; gap: 10px; padding: 6px 10px; margin-bottom: 8px; border-radius: 10px; background: var(--q-soft); font-size: 12.5px; color: var(--q-mut); }
+@media (max-width: 640px) {
+  .q-pbody .q-ph1 { flex-wrap: wrap; }
+  .q-pbody .q-phst { order: 4; width: 100%; justify-content: flex-start; padding-left: 30px; }
+}
