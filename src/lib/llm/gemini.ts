@@ -2,6 +2,7 @@
 // prompts and responses to improve its products, including human review.
 import { ApiError, GoogleGenAI, type Content, type GenerateContentResponse, type Part } from "@google/genai";
 import { z } from "zod";
+import { resetWhen } from "../aiQuota";
 import { buildPrompt, extractionSchema, extractionSystem, imagePart, today } from "../extract";
 import { L, lang } from "../i18n";
 import type { ChatMessage } from "../types";
@@ -62,7 +63,7 @@ export const geminiSpent = (first: string, now: number = Date.now()): boolean =>
 /** Every Gemini model this key can fall back to has used up its free requests for today. */
 export class GeminiSpentError extends Error {
   constructor() {
-    super(L("Gemini'nin bugünkü ücretsiz hakkı doldu; yarın yenilenir. Ayarlar'dan Claude anahtarı eklersen o devam eder.", "Gemini's free requests for today are used up; they come back tomorrow. Add a Claude key in Settings to go on with Claude."));
+    super(L(`Gemini'nin bugünkü ücretsiz hakkı doldu; kota ${resetWhen()} yenilenir. Ayarlar'dan Claude anahtarı eklersen o devam eder.`, `Gemini's free requests for today are used up; they come back ${resetWhen()}. Add a Claude key in Settings to go on with Claude.`));
   }
 }
 
@@ -287,9 +288,10 @@ export function describeGeminiError(error: unknown): string | null {
     );
   }
   if (error.status === 429) {
+    if (isDailyQuota(error)) return L(`Gemini'nin bugünkü ücretsiz hakkı doldu; kota ${resetWhen()} yenilenir.`, `Gemini's free requests for today are used up; they come back ${resetWhen()}.`);
     return L(
-      "Gemini ücretsiz kotası doldu (dakikalık ya da günlük). Biraz bekleyip 'Tekrar dene'ye bas.",
-      "Gemini's free quota is used up (per minute or per day). Wait a little, then press 'Try again'.",
+      "Gemini'nin dakikalık ücretsiz kotası doldu. Bir dakika bekleyip 'Tekrar dene'ye bas.",
+      "Gemini's free per-minute quota is used up. Wait a minute, then press 'Try again'.",
     );
   }
   if (error.status >= 500) {
