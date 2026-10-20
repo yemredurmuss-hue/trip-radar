@@ -3976,7 +3976,7 @@ body.still .pk-card.tk .tk-stub, body.still .pk-card.tk .tk-stub::before, body.s
 .pk-rd-line { display: flex; align-items: center; gap: 4px; width: 100%; color: var(--mc); }
 .pk-rd-line i { flex: 1; height: 0; border-top: 1.5px solid color-mix(in srgb, var(--v-muted) 40%, transparent); }
 .pk-rd-line img { flex: none; width: 80px; height: 48px; object-fit: contain; mix-blend-mode: multiply; }
-.pk-rd-mid small { font-size: var(--q-fs-small); font-weight: 650; color: var(--v-muted); white-space: nowrap; }
+.pk-rd-mid small { max-width: 100%; font-size: var(--q-fs-small); font-weight: 650; color: var(--v-muted); text-align: center; text-wrap: balance; overflow-wrap: anywhere; }
 .pk-rd-line-t { color: var(--v-muted); font-size: var(--q-fs-small); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
 :root[data-theme="dark"] .pk-rd-line img { mix-blend-mode: normal; border-radius: 8px; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pk-rd-line img { mix-blend-mode: normal; border-radius: 8px; } }
