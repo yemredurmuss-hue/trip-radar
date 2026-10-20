@@ -4597,10 +4597,9 @@ try {
   await board.locator(".st-ask, .st-screen").first().waitFor();
   if (await board.locator(".st-ask").count()) await board.locator(".st-ask").getByRole("button", { name: "New trip", exact: true }).click();
   const chat = board.locator(".st-chat");
-  // The code's line at once, in Turkish; the row says it's writing; then the model's line over it.
-  // "Kohphandan" is a loose spelling: the code asks back, never takes it silently ...
-  await board.locator(".st-msg-bot", { hasText: "Koh Phangan mı demek istedin?" }).waitFor();
-  const firstLine = await board.locator(".st-msg-bot").first().elementHandle();
+  // 0.39.10 (cd1c3627): the chat says one line. "Kohphandan" is a loose spelling the model reads as Koh Phangan within
+  // REPLY_MS, so only the model's line is said and nothing is asked back (the code's "… mı demek istedin?" is said only when
+  // the model is late or fails).
   // v5: the step line names what the running call reads; the row the message can still fill reads too.
   await board.locator(".st-thinking[data-call=read]", { hasText: "Koh Phangan'ı tanıyorum…" }).waitFor();
   await board.locator(".st-side .st-row.reading", { hasText: "Nereden" }).waitFor();
@@ -4609,9 +4608,9 @@ try {
   assert.equal(await board.locator(".st-msgs .st-thinking, [role=log] [role=status]").count(), 0, "the status row is not inside the log");
   await board.waitForTimeout(500); // the lines' fade-in done, the model still writing (1.5 s)
   await board.screenshot({ path: `${out}/21b-start-thinking.png` });
-  // ... the model read it as Koh Phangan: its line replaces the code's, in the same element (not made anew).
+  // ... the model read it as Koh Phangan: its line is the chat's one line, and nothing asks it back.
   await board.locator(".st-msg-bot", { hasText: "palmiyeli koylar, orman şelaleleri ve dolunay sahilleri. Koh Phangan'da en çok ne yapmak istersiniz?" }).waitFor();
-  assert.match(await firstLine.evaluate((n) => n.isConnected && n.textContent), /palmiyeli koylar/, "the replaced line keeps its element");
+  assert.equal(await board.locator(".st-msg-bot", { hasText: "mı demek istedin" }).count(), 0, "a loose spelling the model read needs no asking back");
   await board.locator(".st-thinking").waitFor({ state: "detached" });
   assert.equal(await board.locator(".st-side .st-row.reading").count(), 0, "the reading is over: no row reads");
   // The route's row pressed while the proposal is still on its way (rev 3): the chat says it's drawing it and goes
