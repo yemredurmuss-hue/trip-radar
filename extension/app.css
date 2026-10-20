@@ -2200,6 +2200,36 @@ button.cat-hidden-name:hover { text-decoration: underline; }
   .ar-actions { width: 100%; padding-left: 48px; }
 }
 
+/* T1 "Kota dolunca" (arrive/QuotaLine.tsx, docs/arastirma/2026-10-20-ux-duzeltme-plani.html): another model answering because
+   the free Gemini quota is used up, said in one warm line where saves land ("Model değişti · … · Kota yarın 10:00'da yenilenir");
+   red when nothing goes on (no Claude key). Nothing else moves; × or the reset takes it away. */
+.qt-slot { margin: 8px 4px; }
+/* On the home: in the column of its errors and trips (.st-home > .errors). */
+.st-home > .qt-slot { max-width: 1180px; margin: 8px auto; padding: 0 32px; }
+@media (max-width: 620px) { .st-home > .qt-slot { padding: 0 16px; } }
+.qt-line {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0 0 12px; padding: 10px 12px; border-radius: 12px;
+  border: 1px solid #f6dfb4; background: #fff7ea; color: var(--q-ink); font-size: 14px; line-height: 1.35; animation: ar-fade .24s ease-out both;
+}
+.qt-slot .qt-line { margin: 0; }
+.qt-pill { flex: none; padding: 2px 8px; border-radius: 999px; background: #fdf1dc; color: #9a5b00; font-size: 12px; font-weight: 700; }
+.qt-text { min-width: 0; overflow-wrap: anywhere; }
+.qt-sp { flex: 1; }
+.qt-reset { color: var(--q-mut); font-size: 13px; }
+.qt-key { flex: none; height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid #ecc9c2; background: #fff; font: inherit; font-size: 13px; font-weight: 600; color: var(--q-bad); cursor: pointer; }
+.qt-key:hover { border-color: var(--q-bad); }
+.qt-x { flex: none; display: grid; place-items: center; width: 30px; height: 30px; margin: -6px -8px -6px -4px; padding: 0; border: 0; border-radius: 8px; background: none; color: #8e8e93; cursor: pointer; }
+.qt-x:hover { color: var(--q-ink); background: rgba(0, 0, 0, .05); }
+.qt-bad { border-color: #f3dcd6; background: #fff8f6; }
+.qt-bad .qt-pill { background: #fbe4e1; color: var(--q-bad); }
+:root[data-theme="dark"] .qt-line { border-color: #5a4a2a; background: #2a2418; }
+:root[data-theme="dark"] .qt-pill { background: #3d311a; color: var(--q-warn); }
+:root[data-theme="dark"] .qt-bad { border-color: #5b2d2e; background: #2f1b1d; }
+:root[data-theme="dark"] .qt-bad .qt-pill { background: #4a2326; color: var(--q-bad); }
+:root[data-theme="dark"] .qt-key { border-color: #5b2d2e; background: transparent; }
+:root[data-theme="dark"] .qt-x:hover { background: rgba(255, 255, 255, .08); }
+@media (prefers-reduced-motion: reduce) { .qt-line { animation: none; } }
+
 /* Pano v30 (rows by need, "Senin için", nothing wraps, the price always shown). These come before the Pano's older rules in the file, so they carry `.pn ` to win. */
 .pn .pn-head { flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .pn .pn-head h2, .pn .pn-n, .pn .pn-addlink, .pn .pn-back { white-space: nowrap; flex: none; }
@@ -3976,7 +4006,7 @@ body.still .pk-card.tk .tk-stub, body.still .pk-card.tk .tk-stub::before, body.s
 .pk-rd-line { display: flex; align-items: center; gap: 4px; width: 100%; color: var(--mc); }
 .pk-rd-line i { flex: 1; height: 0; border-top: 1.5px solid color-mix(in srgb, var(--v-muted) 40%, transparent); }
 .pk-rd-line img { flex: none; width: 80px; height: 48px; object-fit: contain; mix-blend-mode: multiply; }
-.pk-rd-mid small { font-size: var(--q-fs-small); font-weight: 650; color: var(--v-muted); white-space: nowrap; }
+.pk-rd-mid small { max-width: 100%; font-size: var(--q-fs-small); font-weight: 650; color: var(--v-muted); text-align: center; text-wrap: balance; overflow-wrap: anywhere; }
 .pk-rd-line-t { color: var(--v-muted); font-size: var(--q-fs-small); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
 :root[data-theme="dark"] .pk-rd-line img { mix-blend-mode: normal; border-radius: 8px; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pk-rd-line img { mix-blend-mode: normal; border-radius: 8px; } }
