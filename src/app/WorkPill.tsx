@@ -3,6 +3,7 @@
 // turning mark shows for a job that is over within 0.4 s (useLate); with reduced motion the light is a still, faint line.
 import { useEffect, useRef, useState } from "react";
 import { L } from "../lib/i18n";
+import { useQuotaLine } from "./arrive/QuotaLine";
 import { useLate } from "./motion";
 
 /** The "kayıt eklendi" message stays this long (app.css `mv-pill-bye` runs for the same time). */
@@ -46,6 +47,8 @@ export function WorkPill({ count, failed }: { count: number; failed: number }) {
     was.current = count;
   }, [count, failed]);
   useEffect(() => () => clearTimeout(bye.current), []);
+  // T1: another model answering (the free quota used up): its one line under the pill (arrive/QuotaLine.tsx).
+  const quota = useQuotaLine();
   return (
     <>
       <WorkLine on={count > 0} />
@@ -63,6 +66,7 @@ export function WorkPill({ count, failed }: { count: number; failed: number }) {
           )}
         </div>
       )}
+      {quota && <div className="qt-slot">{quota}</div>}
     </>
   );
 }

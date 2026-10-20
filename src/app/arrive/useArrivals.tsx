@@ -12,6 +12,7 @@ import { stampTick } from "../hareketDili";
 import { reducedMotion } from "../motion";
 import { findTarget } from "../Progress";
 import { ArriveToast, PendingCard, type Pending } from "./ArriveViews";
+import { useQuotaLine } from "./QuotaLine";
 import { captureById, endIntake, intakeNow, onRevealRequest, useIntake } from "./intake";
 
 /** How long the ring stays on a card that just came (the CSS animation is a little shorter). */
@@ -209,7 +210,15 @@ export function useArrivals({ tripId, items, sections, openCaptures, view, isOpe
   };
   const bySection: Partial<Record<SectionId, ReactNode>> = {};
   for (const s of new Set(pending.map(slotOf))) if (s !== "lead") bySection[s] = cards(pending.filter((p) => slotOf(p) === s));
-  const lead = cards(pending.filter((p) => slotOf(p) === "lead"));
+  const leadCards = cards(pending.filter((p) => slotOf(p) === "lead"));
+  // T1: another model answering (the free quota used up) says so in one line above what is being read (QuotaLine.tsx).
+  const quota = useQuotaLine();
+  const lead = quota || leadCards ? (
+    <>
+      {quota}
+      {leadCards}
+    </>
+  ) : null;
 
   return {
     pending: { lead, bySection },

@@ -1,7 +1,10 @@
-// When the free Gemini requests come back (F33, 2026-10-20).
+// When the free Gemini requests come back, and which model is answering meanwhile (F33, F34; T1 "Kota dolunca", 2026-10-20).
 // Google: "Requests per day (RPD) quotas reset at midnight Pacific time" (ai.google.dev/gemini-api/docs/rate-limits, read
 // 2026-10-20; limits are per project, per model). The traveller reads that moment on their own clock, plainly: "Kota yarın
 // 10:00'da yenilenir", never "biraz bekle" when it is 20 hours away.
+// The model chain (llm/gemini.ts onModels) and the Claude backup (llm/index.ts) note here when something other than the chosen
+// model answered; the last such switch sits in chrome.storage.local ("aiSwitch") for the line where saves land (arrive/QuotaLine.tsx).
+import { getSettings } from "./db";
 import { L, locale } from "./i18n";
 
 /** Where Google's day turns: midnight here is when every model's daily free requests come back. */
@@ -66,3 +69,157 @@ export const quotaResetLine = (now: number = Date.now(), timeZone?: string): str
   const when = resetWhen(now, timeZone);
   return L(`Kota ${when} yenilenir`, `Quota resets ${when}`);
 };
+
+/** "gemini-3.5-flash-lite" → "Gemini 3.5 Flash-Lite". */
+export function modelName(model: string): string {
+  const words = model.replace(/^models\//, "").split("-").filter(Boolean);
+  const out: string[] = [];
+  for (const w of words) {
+    const word = /^\d/.test(w) ? w : w[0].toUpperCase() + w.slice(1);
+    if (word === "Lite" && out.length) out[out.length - 1] += `-${word}`;
+    else out.push(word);
+  }
+  return out.join(" ");
+}
+
+/** "Gemini 3.8 Flash'la", "Gemini 3.5 Flash-Lite'la" (layt), "… Pro'yla"; a name Turkish can't say for sure: "… ile". */
+export function trWith(name: string): string {
+  const last = name.split(/[\s-]/).at(-1)?.toLowerCase() ?? "";
+  if (last === "flash" || last === "lite") return `${name}'la`;
+  if (last === "pro") return `${name}'yla`;
+  return `${name} ile`;
+}
+
+// --- the last switch, for the line where saves land -------------------------------------------------------------------
+
+/** Who answered instead of the chosen Gemini model: another flash model, Claude, or nobody (every model spent, no Claude key). */
+export type AiSwitchBy = "gemini-fallback" | "claude" | "none";
+export interface AiSwitch {
+  /** The model that answered ("gemini-3.8-flash", a Claude model); the chosen one for "none". */
+  model: string;
+  by: AiSwitchBy;
+  at: number;
+  /** When Gemini's free requests come back (nextQuotaReset): the line is gone from then on. */
+  resetAt: number;
+  /** Closed with × (the line stays closed for this switch; a new kind of switch shows again). */
+  dismissed?: boolean;
+}
+
+export const AI_SWITCH_KEY = "aiSwitch";
+
+/** The storage it is kept in: chrome.storage.local, or none (the tests, a page without the extension). */
+export interface SwitchStore {
+  get(): Promise<AiSwitch | null>;
+  set(value: AiSwitch): Promise<void>;
+  hasClaudeKey(): Promise<boolean>;
+}
+
+const chromeStore: SwitchStore = {
+  async get() {
+    const v = (await chrome.storage.local.get(AI_SWITCH_KEY))[AI_SWITCH_KEY];
+    return isSwitch(v) ? v : null;
+  },
+  set: (value) => chrome.storage.local.set({ [AI_SWITCH_KEY]: value }),
+  hasClaudeKey: async () => Boolean((await getSettings()).apiKey),
+};
+
+let store: SwitchStore | null = null;
+const currentStore = (): SwitchStore | null => store ?? (typeof chrome !== "undefined" && chrome.storage?.local ? chromeStore : null);
+/** For the tests: an in-memory store (null: back to chrome.storage, or none). */
+export function setSwitchStore(next: SwitchStore | null): void {
+  store = next;
+  last = null;
+}
+
+export const isSwitch = (v: unknown): v is AiSwitch =>
+  !!v && typeof v === "object" && typeof (v as AiSwitch).model === "string" && ["gemini-fallback", "claude", "none"].includes((v as AiSwitch).by) && typeof (v as AiSwitch).resetAt === "number";
+
+/** Shown now: not closed, and its day not over. */
+export const switchShown = (s: AiSwitch | null, now: number = Date.now()): s is AiSwitch => !!s && !s.dismissed && s.resetAt > now;
+
+/** This page's (or worker's) last word, so a call answered the same way as the one before writes nothing. */
+let last: AiSwitch | null = null;
+const same = (a: AiSwitch | null, b: AiSwitch) => !!a && a.by === b.by && a.model === b.model && a.resetAt > b.at;
+
+async function note(next: AiSwitch): Promise<void> {
+  const s = currentStore();
+  if (!s || same(last, next)) return;
+  // The stored one may be another page's, or closed with ×: the same switch, still today's, stays as it is; the next fallback
+  // model of the same day keeps its reset time and its ×.
+  const stored = await s.get();
+  if (same(stored, next)) {
+    last = stored;
+    return;
+  }
+  if (stored && stored.by === next.by && stored.resetAt > next.at) next = { ...next, resetAt: stored.resetAt, ...(stored.dismissed ? { dismissed: true } : {}) };
+  if (next.by === "none" && (await s.hasClaudeKey())) return; // Claude takes over at once and says so itself
+  last = next;
+  await s.set(next);
+}
+
+const quietly = (p: Promise<void>) => void p.catch(() => undefined);
+
+/**
+ * A fallback flash model answered because the chosen one's day is used up (llm/gemini.ts onModels). `spentAt`: when the chosen
+ * model was found spent; its requests come back at the first Pacific midnight after that. Already back (the chain still skips
+ * the model for its own hours): nothing to say.
+ */
+export function noteGeminiFallback(model: string, spentAt: number, now: number = Date.now()): void {
+  const resetAt = nextQuotaReset(spentAt);
+  if (resetAt <= now) return;
+  quietly(note({ model, by: "gemini-fallback", at: now, resetAt }));
+}
+
+/** Claude took over: every Gemini model's free requests for today are used up (llm/index.ts). */
+export function noteClaudeTakeover(model: string, now: number = Date.now()): void {
+  quietly(note({ model, by: "claude", at: now, resetAt: nextQuotaReset(now) }));
+}
+
+/** Every Gemini model is spent and nothing goes on (no Claude key): the line turns red (llm/gemini.ts onModels). */
+export function noteGeminiSpent(model: string, now: number = Date.now()): void {
+  quietly(note({ model, by: "none", at: now, resetAt: nextQuotaReset(now) }));
+}
+
+/** The switch as stored now (null: none, or no storage here). */
+export async function loadSwitch(): Promise<AiSwitch | null> {
+  return (await currentStore()?.get().catch(() => null)) ?? null;
+}
+
+/** × on the line: closed for this switch (a new kind of switch shows again). */
+export async function dismissSwitch(): Promise<void> {
+  const s = currentStore();
+  const stored = await s?.get();
+  if (!s || !stored) return;
+  last = { ...stored, dismissed: true };
+  await s.set(last);
+}
+
+/** The T1 line's words for a switch: the pill, what changed, and the right side ("Kota yarın 10:00'da yenilenir"). */
+export function switchText(s: AiSwitch, now: number = Date.now(), timeZone?: string): { pill: string; text: string; reset: string | null; addKey: boolean; tone: "warn" | "bad" } {
+  if (s.by === "gemini-fallback") {
+    const name = modelName(s.model);
+    return {
+      pill: L("Model değişti", "Model changed"),
+      text: L(`Ücretsiz kotan dolduğu için ${trWith(name)} devam ediyorum`, `Your free quota ran out, so I'm going on with ${name}`),
+      reset: quotaResetLine(now, timeZone),
+      addKey: false,
+      tone: "warn",
+    };
+  }
+  if (s.by === "claude") {
+    return {
+      pill: L("Model değişti", "Model changed"),
+      text: L("Gemini'nin bugünkü hakkı doldu, Claude'la devam ediyorum", "Gemini's requests for today are used up, I'm going on with Claude"),
+      reset: null,
+      addKey: false,
+      tone: "warn",
+    };
+  }
+  return {
+    pill: L("Kota doldu", "Quota used up"),
+    text: L("Gemini'nin bugünkü hakkı doldu", "Gemini's requests for today are used up"),
+    reset: quotaResetLine(now, timeZone),
+    addKey: true,
+    tone: "bad",
+  };
+}

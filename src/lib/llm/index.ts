@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenAI } from "@google/genai";
+import { noteClaudeTakeover } from "../aiQuota";
 import { getSettings } from "../db";
 import { aiGate } from "../share/ai";
 import { L } from "../i18n";
@@ -26,7 +27,7 @@ async function ownProvider(): Promise<LlmProvider> {
   if (s.provider === "gemini") {
     // 0.39.12 (Emre: "Claude otomatik devreye girsin"): with a Claude key too, Claude takes over once every Gemini model's
     // free requests for today are used up (the chat starts a fresh context with it, assistant.ts currentSession).
-    const claude = s.apiKey ? () => anthropicProvider(new Anthropic({ apiKey: s.apiKey!, dangerouslyAllowBrowser: true }), s.model) : null;
+    const claude = s.apiKey ? () => (noteClaudeTakeover(s.model), anthropicProvider(new Anthropic({ apiKey: s.apiKey!, dangerouslyAllowBrowser: true }), s.model)) : null;
     if (claude && geminiSpent(s.geminiModel)) return claude();
     if (s.geminiKey) return withClaudeBackup(geminiProvider(new GoogleGenAI({ apiKey: s.geminiKey }), s.geminiModel), claude);
     const gate = await aiGate();

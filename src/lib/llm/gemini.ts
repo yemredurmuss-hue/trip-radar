@@ -2,7 +2,7 @@
 // prompts and responses to improve its products, including human review.
 import { ApiError, GoogleGenAI, type Content, type GenerateContentResponse, type Part } from "@google/genai";
 import { z } from "zod";
-import { resetWhen } from "../aiQuota";
+import { noteGeminiFallback, noteGeminiSpent, resetWhen } from "../aiQuota";
 import { buildPrompt, extractionSchema, extractionSystem, imagePart, today } from "../extract";
 import { L, lang } from "../i18n";
 import type { ChatMessage } from "../types";
@@ -74,7 +74,9 @@ export async function onModels<T>(first: string, run: (model: string) => Promise
     if ((spentUntil.get(model) ?? 0) > now()) continue;
     tried = true;
     try {
-      return await run(model);
+      const answer = await run(model);
+      if (i > 0) noteGeminiFallback(model, (spentUntil.get(first) ?? now() + SPENT_MS) - SPENT_MS); // T1 line (aiQuota.ts)
+      return answer;
     } catch (error) {
       if (isDailyQuota(error)) {
         spentUntil.set(model, now() + SPENT_MS);
@@ -94,6 +96,7 @@ export async function onModels<T>(first: string, run: (model: string) => Promise
     }
   }
   void tried;
+  noteGeminiSpent(first); // T1 line, red when no Claude key (aiQuota.ts)
   throw new GeminiSpentError();
 }
 
