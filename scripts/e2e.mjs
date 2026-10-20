@@ -4329,6 +4329,9 @@ try {
   // (v83 C7: on every photo of the mosaic whose source is known; none without a photo)
   const creditBox = board.locator(".x-hero .x-big .x-cr").first();
   if (await creditBox.count()) {
+    // (the mouse is still where "Gezi menüsü" was, on the cover: off it first, and its fade ends)
+    await board.mouse.move(5, 5);
+    await creditBox.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
     assert.equal(await creditBox.evaluate((el) => getComputedStyle(el).opacity), "0", "only the photo until hovered");
     await board.locator(".x-hero .x-big").hover();
     await creditBox.hover();
