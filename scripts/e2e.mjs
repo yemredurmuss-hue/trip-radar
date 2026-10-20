@@ -568,13 +568,14 @@ try {
   assert.equal((await portoAct.locator(".q-opts .q-oc").innerText()).trim(), "3");
   assert.equal(await portoAct.locator(".q-planw .q-ot").innerText(), "Planında", "H1: what's on the plan says so in words");
   assert.equal(await sec("activity").locator('.q-gapl[data-city="Lizbon"] .z-ask', { hasText: "AI'a arat" }).count(), 1, "an empty city: AI'a arat");
-  // Every card is one height in every state (0.38.8, option A: the picture 4:3 on top, its height follows the width; it was
-  // 224 px), four cells a row (the plan's three unseen ones hold their places).
+  // Every card is one height in every state (0.38.8, option A: the picture on top, its height follows the width; it was
+  // 224 px). 0.39.9 (Emre: "4'lü yerine 3'lü"): Etkinlik's row is three cells, the picture 16:10 (the plan's two unseen
+  // ones hold their places).
   assert.equal(new Set(await portoAct.locator(".z-k").evaluateAll((els) => els.filter((e) => e.offsetParent).map((e) => Math.round(e.getBoundingClientRect().height)))).size, 1, "every card of the box is one height");
   for (const [w, h] of await portoAct.locator(".z-k[data-item-id] .z-kp").evaluateAll((els) => els.map((e) => [e.getBoundingClientRect().width, e.getBoundingClientRect().height]))) {
-    assert.ok(Math.abs(h - (w * 3) / 4) <= 1, `the picture is 4:3 (${w}×${h})`);
+    assert.ok(Math.abs(h - (w * 10) / 16) <= 1, `the picture is 16:10 (${w}×${h})`);
   }
-  assert.equal(await portoAct.locator('[data-row="plan"] > *').count(), 4);
+  assert.equal(await portoAct.locator('[data-row="plan"] > *').count(), 3);
   // C26: the ideas fold away (remembered in this browser), and come back.
   await portoAct.locator(".z-fold").click();
   assert.equal(await portoAct.locator('[data-row="ideas"] .z-k').count(), 0, "folded away");
@@ -1732,8 +1733,8 @@ try {
   assert.match(await sec("activity").locator(".q-count").textContent(), /^\d+\/5$/);
   await openSec("activity");
   // A to-do moved to Etkinlikler is a thing to do with a ticket there, not a "Yapılacak".
-  const lelloCard = sec("activity").locator('[data-item-id][aria-label="Livraria Lello, giriş bileti var"]');
-  await lelloCard.waitFor();
+  // (0.39.9: three cards a row, so it's Porto's fourth idea, on the Pano: Öneriler counts it.)
+  await sec("activity").locator('.q-int.multi[data-intent="activity:Porto"] .q-opts .q-oc', { hasText: /^4 · ilk 3, tümü Pano'da$/ }).waitFor();
   // The panel scrolls inside the page: scroll the list to the top, then take the window.
   await app.setViewportSize({ width: 1440, height: 1400 });
   await sec("activity").evaluate((el) => el.scrollIntoView({ block: "start" }));
