@@ -451,13 +451,17 @@ export function prosCons(input: { item: Item; option?: OptionResult; decision?: 
     });
   }
   for (const label of option?.limited ?? []) {
+    // P10 (F25): what every option compared has ("Fiyat geçici" on all three) tells them apart in nothing: not on the card.
+    const others = decision?.options.filter((o) => o.item.id !== item.id) ?? [];
+    if (others.length && others.every((o) => o.limited?.includes(label))) continue;
     const text =
       label === LIMITED.rate()
         ? L("Fiyat başka para biriminde; kur gelince karşılaştırılır", "Priced in another currency; compared once the rate comes in")
         : label === LIMITED.nights()
           ? L("Tarihsiz kaydedildi: bu gecelerin fiyatı belli değil", "Saved without dates: the price for these nights isn't known")
           : L(`${capital(label)} eksik; sayfayı tarih seçiliyken tekrar kaydet`, `${capital(label)} missing; save the page again with the dates picked`);
-    const short = label === LIMITED.rate() ? L("Kur bekleniyor", "Waiting for the rate") : L("Fiyat geçici", "Price not final");
+    // (its short word says why: no dates, or a price still missing; never a bare "Fiyat geçici")
+    const short = label === LIMITED.rate() ? L("Kur bekleniyor", "Waiting for the rate") : label === LIMITED.nights() ? L("Tarihsiz fiyat", "Undated price") : L(`${capital(label)} eksik`, `${capital(label)} missing`);
     cons.push({ key: `l:${label}`, text, short, detail: null, weight: 7, kind: "check" });
   }
   if (option?.coverage) {

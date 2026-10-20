@@ -30,6 +30,9 @@ const asking = new Map<string, Promise<Geo | null>>();
 const GAP_MS = 1100;
 
 /** Coordinates for a free-text place ("Rua do Almada 10, Porto"); null when not found or offline. */
+/** What Nominatim calls a place wider than a town: its centre may be anywhere in it (a mountain, a lake). */
+const AREA_TYPES = new Set(["state", "region", "province", "island", "archipelago", "country", "county", "state_district"]);
+
 export function geocode(query: string): Promise<Geo | null> {
   const key = query.trim().toLowerCase();
   if (key.length < 3) return Promise.resolve(null);
@@ -43,7 +46,7 @@ export function geocode(query: string): Promise<Geo | null> {
 async function lookUp(key: string, query: string): Promise<Geo | null> {
   const d = await db();
   const cached = await d.get("geocache", key);
-  if (cached) return cached.lat != null && cached.lng != null ? { lat: cached.lat, lng: cached.lng, source: "geocoded" } : null;
+  if (cached) return cached.lat != null && cached.lng != null ? { lat: cached.lat, lng: cached.lng, source: "geocoded", ...(cached.area ? { area: true } : {}) } : null;
   const turn = line.then(async () => {
     const wait = lastRequest + GAP_MS - Date.now();
     if (wait > 0) await new Promise((r) => setTimeout(r, wait));
@@ -55,11 +58,12 @@ async function lookUp(key: string, query: string): Promise<Geo | null> {
         signal: AbortSignal.timeout(10_000),
       });
       if (!res.ok) return null; // don't cache failures: they may be temporary
-      const [hit] = (await res.json()) as { lat: string; lon: string }[];
+      const [hit] = (await res.json()) as { lat: string; lon: string; addresstype?: string }[];
       const lat = hit ? Number(hit.lat) : null;
       const lng = hit ? Number(hit.lon) : null;
-      await d.put("geocache", { query: key, lat, lng, at: Date.now() });
-      return lat != null && lng != null ? ({ lat, lng, source: "geocoded" } as Geo) : null;
+      const area = AREA_TYPES.has(hit?.addresstype ?? "");
+      await d.put("geocache", { query: key, lat, lng, at: Date.now(), ...(area ? { area } : {}) });
+      return lat != null && lng != null ? ({ lat, lng, source: "geocoded", ...(area ? { area } : {}) } as Geo) : null;
     } catch {
       return null;
     }

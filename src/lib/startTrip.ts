@@ -17,7 +17,7 @@ import { L, lang, withLang, type Lang } from "./i18n";
 import { formatDateRange, isoDate, nightsBetween } from "./items";
 import { placesKey, regionTownOf } from "./destinations";
 import { airportCityOf, cityOfAirport, countryCodeNamed, countryOfCity } from "./airports";
-import { addDays, cityKeyOf } from "./plan";
+import { addDays, cityKeyOf, sameCity } from "./plan";
 import { looksLikeUrl } from "./url";
 import type { PlannedInput } from "./planned";
 import {
@@ -3390,6 +3390,25 @@ export function circuitRoute(s: Pick<StartState, "where" | "duration" | "start" 
  * stop is still the AI's (D5: `proposed`, its intents Önerimiz until agreed on the board).
  */
 export function routeForGenerate(s: StartState): StartRoute | null {
+  const r = routeToMake(s);
+  return r ? joinSameStops(r) : null;
+}
+
+/**
+ * P10 (F61): two stops of one city in a row are one stay ("Ubud 4 · Ubud 3" left over from a proposal turned down is
+ * "Ubud 7"): never two hotels to look for in the same town on the same nights' run.
+ */
+export function joinSameStops<R extends Pick<StartRoute, "stops">>(r: R): R {
+  const out: R["stops"] = [];
+  for (const x of r.stops) {
+    const last = out.at(-1);
+    if (last && sameCity(last.city, x.city)) out[out.length - 1] = { ...last, nights: last.nights + x.nights, note: last.note ?? x.note };
+    else out.push(x);
+  }
+  return out.length === r.stops.length ? r : { ...r, stops: out };
+}
+
+function routeToMake(s: StartState): StartRoute | null {
   if (s.route?.confirmed) return s.route;
   // An event's or a theme's own route (never a classic circuit for the country).
   const own = s.intent && !s.skipped.includes("route") ? intentRoute(s) : null;
@@ -4139,6 +4158,17 @@ export function readyText(c: Creation, missing: string[] = [], askNames: boolean
     ? L(`Önce aracı seç, sonra ${firstCity} konaklamasını bulalım.`, `First pick the car, then let's find a place in ${firstCity}.`)
     : L(`Önce uçuşu bul, sonra ${firstCity} konaklamasını seçelim. Her adımda buradayım.`, `First find the flight, then let's pick a place in ${firstCity}. I'm here at every step.`);
   return `${head} ${next}${rough}${ask}`;
+}
+
+/** The "ready" line's own first step ("Önce uçuşu bul, sonra Porto konaklamasını seçelim."), as written at the start. */
+const READY_NEXT = /Önce (?:uçuşu bul|aracı seç), sonra .+? (?:seçelim|bulalım)\.|First (?:find the flight|pick the car), then let's (?:pick|find) a place in [^.]+\./;
+
+/**
+ * P10 (F11, Emre: "asistan söylesin"): the chat's "ready" line says the hero's "Sıradaki" as it is now, never a first
+ * step of its own that the board has moved past ("Önce uçuşu bul" while Sıradaki says the visa).
+ */
+export function withNextStep(text: string, next: string | null | undefined): string {
+  return next ? text.replace(READY_NEXT, `${next}.`) : text;
 }
 
 // --- the conversation as the trip's chat --------------------------------------------------------------------------

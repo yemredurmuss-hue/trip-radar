@@ -91,8 +91,8 @@ export function weatherQuery(range: { start: string; end: string }, today: strin
 }
 
 const VARS = "temperature_2m_max,temperature_2m_min,precipitation_sum,cloud_cover_mean";
-const url = (host: string, at: { lat: number; lng: number }, start: string, end: string) =>
-  `https://${host}/v1/${host.startsWith("archive") ? "archive" : "forecast"}?latitude=${at.lat.toFixed(3)}&longitude=${at.lng.toFixed(3)}&start_date=${start}&end_date=${end}&daily=${VARS}&timezone=auto`;
+const url = (host: string, at: { lat: number; lng: number; area?: boolean }, start: string, end: string) =>
+  `https://${host}/v1/${host.startsWith("archive") ? "archive" : "forecast"}?latitude=${at.lat.toFixed(3)}&longitude=${at.lng.toFixed(3)}&start_date=${start}&end_date=${end}&daily=${VARS}&timezone=auto${at.area ? "&elevation=0" : ""}`;
 
 export type FetchDaily = (url: string) => Promise<Daily | null>;
 
@@ -105,7 +105,7 @@ const fetchDaily: FetchDaily = async (u) => {
 
 export async function cityWeather(
   city: string,
-  at: { lat: number; lng: number },
+  at: { lat: number; lng: number; area?: boolean },
   range: { start: string; end: string },
   today: string,
   get: FetchDaily = fetchDaily,

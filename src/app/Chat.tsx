@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState, type ClipboardEvent, type ReactNode } from "react";
+import { withNextStep } from "../lib/startTrip";
 import { resumeSearches, sendMessage } from "../lib/assistant";
 import { chatCards, quickReplies, type ChatCardVM, type PlanTarget } from "../lib/chatCards";
 import { chatPeek } from "../lib/chatPeek";
@@ -307,7 +308,7 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
             const line = (
               <div key={m.id} className={`msg-${m.role}`} data-who={m.role === "assistant" ? L("Asistan", "Assistant") : undefined}>
                 {/* A reply stored before the filter (the raw trip state as the answer) is cleaned here too. */}
-                <RichText text={m.role === "assistant" ? shownReply(m.text) : m.text} links={m.role === "assistant" ? m.webSources : undefined} names={m.role === "assistant" ? names : undefined} />
+                <RichText text={m.role === "assistant" ? withNextStep(shownReply(m.text), link?.next) : m.text} links={m.role === "assistant" ? m.webSources : undefined} names={m.role === "assistant" ? names : undefined} />
                 {/* A change said with no tool that made it (claims.ts): on screen only, never in the model's history. */}
                 {m.role === "assistant" && m.unbacked && <p className="msg-note">{noChangeNote()}</p>}
                 {/* find_offers: the real offers it found, as cards with "Ekle". */}

@@ -122,9 +122,10 @@ try {
   const id = new URL(worker.url()).host;
   console.log("extension id:", id);
 
-  // 0. First install opens the one-step setup.
-  const setupTab = context.pages().find((p) => p.url().endsWith("app.html#settings")) ??
-    (await context.waitForEvent("page", { predicate: (p) => p.url().endsWith("app.html#settings"), timeout: 10000 }));
+  // 0. First install opens the board, one tab (P10, F01); its first card's step 1 opens the one-step setup.
+  const setupTab = context.pages().find((p) => /app\.html(#.*)?$/.test(p.url())) ??
+    (await context.waitForEvent("page", { predicate: (p) => /app\.html(#.*)?$/.test(p.url()), timeout: 10000 }));
+  await setupTab.getByRole("link", { name: "Ücretsiz Gemini anahtarını bağla" }).click();
   await setupTab.getByText("Google'dan ücretsiz anahtar al").waitFor();
   await setupTab.screenshot({ path: `${out}/0-setup.png` });
   // A pasted key is checked against Google right away (a fake one must be rejected with a clear message).
@@ -2829,8 +2830,10 @@ try {
 
   const worker = flow.serviceWorkers()[0] ?? (await flow.waitForEvent("serviceworker"));
   const id = new URL(worker.url()).host;
-  const board = flow.pages().find((p) => p.url().endsWith("app.html#settings")) ??
-    (await flow.waitForEvent("page", { predicate: (p) => p.url().endsWith("app.html#settings") }));
+  const board = flow.pages().find((p) => /app\.html(#.*)?$/.test(p.url())) ??
+    (await flow.waitForEvent("page", { predicate: (p) => /app\.html(#.*)?$/.test(p.url()) }));
+  // P10 (F01): the board opens alone; step 1 of its first card opens the key's setup.
+  await board.getByRole("link", { name: "Ücretsiz Gemini anahtarını bağla" }).click();
 
   await board.getByPlaceholder("AIza… (yapıştır)").fill("AIzaSyTESTTESTTESTTESTTESTTESTTESTTEST12");
   await board.getByText("✓ Bağlandı (gemini-3-flash-preview)").waitFor({ timeout: 15000 }).catch(async (e) => {
@@ -5189,6 +5192,10 @@ await frozen(updating);
 try {
   const worker = updating.serviceWorkers()[0] ?? (await updating.waitForEvent("serviceworker"));
   const id = new URL(worker.url()).host;
+  // P10 (F01): the board the install opens (no dialog) would take the update itself and reload everything: waited for
+  // and closed here, so only the board under test sees the update.
+  const installed = updating.pages().find((p) => /app\.html(#.*)?$/.test(p.url())) ?? (await updating.waitForEvent("page", { predicate: (p) => /app\.html(#.*)?$/.test(p.url()), timeout: 10000 }).catch(() => null));
+  if (installed) await installed.close();
   const board = await updating.newPage();
   // Settings open: an update must not reload the page under an open dialog.
   await board.goto(`chrome-extension://${id}/app.html#settings`);

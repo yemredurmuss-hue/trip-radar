@@ -23,7 +23,8 @@ import { INSPO_LABEL, inspoPlatform, type InspoPlatform } from "./inspo";
 import { cancellationText } from "./needs";
 import { ratingText } from "./offerSource";
 import { adderOf, likersOf, savedByMe } from "./pano";
-import { groupKeyOf, stayRange } from "./plan";
+import { groupKeyOf, rangeOfGroupKey, stayRange } from "./plan";
+import { withDates } from "./url";
 import type { Item } from "./types";
 
 /** The side menu's top entries: everything, what people saved, what the AI found, the inspiration, the trip's documents. */
@@ -249,6 +250,18 @@ function subOf(item: Item, facts: CardFacts, kind: CardKind): string | null {
   return facts.subtitle ?? (item.summary.trim() || null);
 }
 
+/**
+ * P10 (F39, Emre: "seçince değişmesin"): the score an option was compared by stays once it is chosen or booked (86 seen
+ * while weighing it, 86 after "Seç", not 94); the score seen last before that, kept for the session.
+ */
+const seenScore = new Map<string, number>();
+function steadyScore(item: Pick<Item, "id" | "status">, score: number | null): number | null {
+  const taken = item.status === "chosen" || item.status === "booked";
+  if (taken) return seenScore.get(item.id) ?? score;
+  if (score != null) seenScore.set(item.id, score);
+  return score;
+}
+
 function sourceOf(item: Item, ours: boolean): PanoSource | null {
   if (ours) return { kind: "ours" };
   const adder = adderOf(item);
@@ -294,7 +307,7 @@ function optionOf(item: Item, need: IntentVM, ctx: Ctx, planned: ReadonlySet<str
     image: ticket ? null : facts.image,
     mark: ticket ? { letters: markLetters(item, brand), color: brandOf(brand, facts.source?.host)?.color ?? null } : null,
     price: priceOf(item, facts, kind, ctx.people),
-    score: facts.score != null ? Math.round(facts.score) : null,
+    score: steadyScore(item, facts.score != null ? Math.round(facts.score) : null),
     rank: null,
     rating: r.value != null ? { text: ratingText(r.value), star: r.value <= 5, reviews: r.count ? nReviews(r.count) : null } : null,
     cancel,
@@ -307,8 +320,15 @@ function optionOf(item: Item, need: IntentVM, ctx: Ctx, planned: ReadonlySet<str
     likes: likersOf(item),
     current: currentOf(item, multi, planned),
     ...(item.cancelledAt && item.status === "dismissed" ? { cancelled: true } : {}),
-    url: item.url,
+    // P10 (T4): a stay's page opens on its nights and head-count, so its site shows the price for them (Booking, Airbnb).
+    url: item.category === "stay" ? (datedPage(item, ctx.people) ?? item.url) : item.url,
   };
+}
+
+/** A stay's own page with its nights (its own, else its group's) and the travellers, when the site's parameters are known. */
+function datedPage(item: Item, people: number | null): string | null {
+  const range = stayRange(item) ?? rangeOfGroupKey(groupKeyOf(item));
+  return range ? withDates(item.url, range, item.guests.adults ?? people) : null;
 }
 
 /**

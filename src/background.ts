@@ -94,8 +94,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
 chrome.runtime.onStartup.addListener(() => void run());
 chrome.runtime.onInstalled.addListener((details) => {
-  // First install: open the one-step setup (free Gemini key) right away.
-  if (details.reason === "install") void chrome.tabs.create({ url: chrome.runtime.getURL("app.html#settings") });
+  // First install: the board, one tab (P10, F01): its first card's step 1 opens the free Gemini key's setup.
+  if (details.reason === "install") void chrome.tabs.create({ url: chrome.runtime.getURL("app.html") });
   // Updated from the board: bring the board back where it was.
   if (details.reason === "update") void reopenBoard();
   void run();

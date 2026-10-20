@@ -727,6 +727,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   // F4: "Sıradaki" updates itself; C30: "İlk kaydı ekle" with nothing saved, the PDF with every need on the plan, sharing once
   // every need is bought; on the trip and after it no decision (row 127).
   const step: NextStep = nextStep({ intents: counted, saved: done.total > 0, visa: visaToGet, visaAsk, sharable: !!onShare, mode });
+  // P10 (F11): the chat's "ready" line says this same step.
+  const nextText = nextLabel(step);
   const runStep: Record<NextStep["kind"], (() => void) | null> = {
     first: () => addIn(null, null),
     visa: goVisa,
@@ -857,6 +859,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     onPlanLink?.({
       tripId: trip.id,
       collections,
+      next: nextText,
       show,
       pick: (itemId, t) => {
         chatLive.current.take(itemId);
@@ -865,7 +868,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
         else show(t);
       },
     });
-  }, [trip.id, collections, onPlanLink]);
+  }, [trip.id, collections, onPlanLink, nextText]);
   useEffect(() => () => onPlanLink?.(null), [onPlanLink]);
   const decisionOf = (item: Item) => decisionByItem.get(item.id);
   /** A stay keeps its decision card; everything else is a plan card (cards/PlanCard.tsx). */

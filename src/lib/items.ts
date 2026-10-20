@@ -135,6 +135,17 @@ const httpUrl = (u: string | null | undefined) => (u && /^https?:\/\//i.test(u.t
 const confirmed = (x: Pick<Extraction, "booked" | "booking_reference" | "booking_quote">) =>
   Boolean(x.booked && (x.booking_reference?.trim() || x.booking_quote?.trim()));
 
+/**
+ * P10 (F49): a guided tour, a cruise or a ride "€3 per person" is a misread (a fee, a deposit, a review count), not its
+ * price: not kept, the card says to see the page. A museum's €3 stays (only tours, rides and trips by name).
+ */
+const TOUR_WORDS = /\b(tour|turu|turlar\w*|guided|rehberli|segway|safari|cruise|tekne|boat|excursion|day trip|günübirlik)\b/i;
+export function tooLowForATour(x: Pick<Extraction, "category" | "name" | "price">): boolean {
+  const amount = finite(x.price.amount);
+  const money = (x.price.currency ?? "").toUpperCase();
+  return x.category === "activity" && amount != null && amount > 0 && amount < 5 && ["EUR", "USD", "GBP", "CHF", "€", "$", "£"].includes(money) && TOUR_WORDS.test(x.name ?? "");
+}
+
 export function buildItem(
   extraction: Extraction,
   capture: Capture,
@@ -148,7 +159,7 @@ export function buildItem(
     ...raw,
     name: raw.name.trim() || capture.title?.trim() || L("Adsız kayıt", "Untitled"),
     dates: { ...raw.dates, start: isoDate(raw.dates.start), end: isoDate(raw.dates.end) },
-    price: { ...raw.price, amount: finite(raw.price.amount), currency: currencyCode(raw.price.currency) },
+    price: { ...raw.price, amount: tooLowForATour(raw) ? null : finite(raw.price.amount), currency: currencyCode(raw.price.currency) },
     cancellation: { ...raw.cancellation, free_until: isoDate(raw.cancellation.free_until) },
     rating: { ...raw.rating, value: finite(raw.rating.value), scale: finite(raw.rating.scale), count: finite(raw.rating.count) },
     image_url: httpUrl(raw.image_url),

@@ -157,6 +157,8 @@ export interface Geo {
   lat: number;
   lng: number;
   source: "page" | "geocoded";
+  /** Geocoded as a region, an island or a country, not a town (P10, F62: Bali's middle is its mountains). */
+  area?: boolean;
 }
 
 export interface Travellers {

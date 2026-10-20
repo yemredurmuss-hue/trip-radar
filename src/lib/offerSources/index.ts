@@ -122,6 +122,8 @@ const KIND_WORDS: readonly [RegExp, string][] = [
   [/tirmanis|climb/, "climbing"],
   [/\bski/, "ski"],
   [/gastronomi|culinary|yemek/, "cooking class"],
+  // P10 (F63): a honeymoon's tours are the two of them's (a sunset dinner, a couples' spa), not an ATV or a jungle swing.
+  [/balayi|honeymoon/, "romantic"],
 ];
 /** The style chips' words (Doğa: safari, hiking); a style with no tour of its own (Lüks, Şehir) says none. */
 const STYLE_WORDS: Partial<Record<StyleId, readonly string[]>> = {
@@ -141,7 +143,7 @@ export const TASTE_MAX = 3;
  * kind's (a surf trip: surf) first, then its style chips' (Doğa: safari, hiking); none for a trip that says neither.
  */
 export function tourWords(trip: Pick<Trip, "intent" | "style"> | null | undefined): string[] {
-  const said = fold(`${trip?.intent?.label ?? ""} ${trip?.intent?.name ?? ""} ${trip?.intent?.playbook === "ski" ? "ski" : ""} ${trip?.intent?.playbook === "wellness" ? "yoga" : ""}`).replace(/ı/g, "i");
+  const said = fold(`${trip?.intent?.label ?? ""} ${trip?.intent?.name ?? ""} ${trip?.intent?.playbook === "ski" ? "ski" : ""} ${trip?.intent?.playbook === "wellness" ? "yoga" : ""} ${trip?.intent?.playbook === "honeymoon" ? "honeymoon" : ""}`).replace(/ı/g, "i");
   const words = KIND_WORDS.filter(([re]) => re.test(said)).map(([, w]) => w);
   for (const id of acceptStyle(trip?.style?.ids ?? [])) words.push(...(STYLE_WORDS[id] ?? []));
   return [...new Set(words)].slice(0, TASTE_MAX);

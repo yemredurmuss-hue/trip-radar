@@ -10,7 +10,7 @@ interface TripRadarDB extends DBSchema {
   messages: { key: string; value: ChatMessage; indexes: { tripId: string } };
   preferences: { key: string; value: Preference };
   analyses: { key: string; value: Analysis; indexes: { tripId: string } };
-  geocache: { key: string; value: { query: string; lat: number | null; lng: number | null; at: number } };
+  geocache: { key: string; value: { query: string; lat: number | null; lng: number | null; at: number; area?: boolean } };
   listings: { key: string; value: Listing };
   docs: { key: string; value: DocRecord; indexes: { itemId: string; tripId: string } };
   /** Deleted records, kept 30 days (0.37, trash.ts): a card with its files, a file, or a whole trip. Light rows… */
