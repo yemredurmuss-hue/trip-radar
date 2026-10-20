@@ -238,8 +238,6 @@ body.still .z-k.q-opt:hover { transform: none; }
 .z-k3 .z-kb .z-t { font-size: 16px; line-height: 21px; }
 .z-k3 .z-kb { grid-template-rows: 42px 18px auto; padding: 12px 14px 14px; }
 .z-kc > .z-kpick { height: 24px; padding: 0 10px; border-radius: 99px; background: var(--q-acc); color: #fff; font-size: 12px; font-weight: 750; box-shadow: 0 1px 4px rgba(28, 26, 51, .2); }
-.z-ko .z-kd > .q-src { gap: 5px; padding: 0 8px 0 4px; background: rgba(255, 255, 255, .94); color: var(--q-ink); font-weight: 750; font-size: var(--q-fs-badge); border-radius: 99px; box-shadow: 0 1px 4px rgba(28, 26, 51, .18); }
-.z-ko .z-kd > .q-src .q-logo.sm { width: 15px; height: 15px; border-radius: 4px; font-size: 10px; }
 .z-kfacts { display: flex; align-items: center; gap: 10px; min-width: 0; overflow: hidden; white-space: nowrap; }
 .z-kst { display: inline-flex; align-items: center; gap: 3px; color: var(--q-ink); font-weight: 750; }
 .z-kst .i { fill: var(--q-ok); stroke: var(--q-ok); }
@@ -254,3 +252,39 @@ body.still .z-k.q-opt:hover { transform: none; }
 @media (max-width: 640px) {
   .z-ks.z-k3 { grid-template-columns: minmax(0, 1fr); gap: 12px; }
 }
+
+/* ---- 0.39.10: every card of Etkinlik in the approved card's language (docs/mockups/etkinlik-karti-uclu), not only the
+   source's tour: one word top left (white; the source's featured pick purple; "✓ Planında" / "✓ Alındı" green), the source
+   dark at the picture's foot, the drawing small on cream when there's no photo, the day small over the price big on the
+   left of the foot and one button on the right; on the plan the card is sand, bought it is green. ---- */
+.z-k3 .z-k { border-radius: 16px; }
+.z-k3 .z-kp { border-radius: 15px 15px 0 0; }
+.z-kc > .z-kpick.plain { background: #fff; color: var(--q-ink); }
+.z-kc > .z-kpick.ok { background: var(--q-ok); color: #fff; }
+.z-kc > .z-kpick.rsn { background: var(--k, #a8336f); color: #fff; }
+.z-kd > .z-ksrc { height: 20px; padding: 0 8px; border-radius: 6px; background: rgba(17, 15, 30, .55); color: #fff; font-size: 11.5px; font-weight: 700; }
+.z-k3 .z-kp:has(> img.art) { background: #fbf6ee; }
+.z-k3 .z-kp > img.art { inset: 0; margin: auto; width: 46%; height: auto; max-height: 86%; object-fit: contain; mix-blend-mode: multiply; }
+.z-k3 .q-card.z-k.q-plan { background: var(--q-sand); border-color: var(--q-sand-l); }
+.z-k3 .q-card.z-k.done { background: var(--q-ok-s); border: 1px solid var(--q-ok-l); }
+/* (one height whatever it holds: a day or "kişi başı" or nothing over the price, so every card of a row is one height) */
+.z-ko .z-kpr { min-height: 40px; align-content: end; }
+.z-ko .z-kpr small { height: 16px; line-height: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.z-ko .z-kpr b { height: 24px; line-height: 24px; white-space: nowrap; }
+.z-kpr .z-kwhen { font-size: 13px; font-weight: 700; color: var(--q-sand-ink); }
+.z-k3 .done .z-kpr .z-kwhen { color: var(--q-ok); }
+.z-kpr b i { font-style: normal; font-size: var(--q-fs-small); font-weight: 500; color: var(--q-mut); letter-spacing: 0; }
+.z-kpr b.z-knone { font-size: 15px; font-weight: 700; color: var(--q-mut); }
+.z-knote { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* The one button: "Rezerve et ↗" (its page), "✓ Aldım", a bought ticket's green "Bileti aç"; "+ Plana koy" is the outlined one. */
+.z-ko .z-kf > .q-open { flex: none; height: 36px; min-height: 36px; padding: 0 14px; font-size: 14px; }
+.z-ko .z-kf > .z-kgo { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border: 0; border-radius: 11px; background: var(--q-acc); color: #fff; font: inherit; font-size: 14px; font-weight: 700; white-space: nowrap; text-decoration: none; cursor: pointer; box-sizing: border-box; }
+.z-ko .z-kf > .z-kgo:hover { background: #4a36c9; }
+.z-ko .z-kf > .z-kgo:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 2px; }
+.z-ko .z-kf > .q-doc.add { flex: none; display: inline-flex; align-items: center; gap: 4px; height: 36px; padding: 0 4px; border: 0; background: none; color: var(--q-mut); font: inherit; font-size: var(--q-fs-small); font-weight: 700; white-space: nowrap; cursor: pointer; }
+.z-ko .z-kf > .q-doc.add:hover { color: var(--q-acc); text-decoration: underline; }
+/* A bought ticket's grey line: its code to copy, then the meeting place. */
+.z-kb .z-kacc { align-items: center; }
+.z-kb .z-kacc .z-kcode { flex: none; display: inline-flex; align-items: center; gap: 3px; height: 18px; padding: 0 2px 0 6px; border-radius: 6px; background: rgba(255, 255, 255, .7); border: 1px solid var(--q-ok-l); color: var(--q-ink); font-size: var(--q-fs-small); font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+.z-kb .z-kacc .z-kcode .q-cp { all: unset; cursor: pointer; display: grid; place-items: center; width: 16px; height: 16px; color: var(--q-mut); border-radius: 4px; }
+.z-kb .z-kacc .z-kcode .q-cp:hover { color: var(--q-acc); }
