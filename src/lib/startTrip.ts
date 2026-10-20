@@ -1112,7 +1112,7 @@ export function parseStartText(text: string, today: string, pending: QuestionId 
   // Places: known ones (spelled loosely too); "X'den" is where from, "X'e" where to. An answer to "Nereden?" is
   // where from unless it says "to" ("aslında Bali'ye"). Where to is the most specific place said: "Tayland
   // Kohphandan" is Koh Phangan (in Thailand), not Thailand.
-  type Hit = { p: KnownPlace; dir: "from" | "to" | null; loose: string | null; weak?: boolean };
+  type Hit = { p: KnownPlace; dir: "from" | "to" | null; loose: string | null; weak?: boolean; at?: number; len?: number };
   const found: Hit[] = [];
   const capital = (w: string | undefined) => !!w && /^\p{Lu}/u.test(w);
   /**
@@ -1209,7 +1209,7 @@ export function parseStartText(text: string, today: string, pending: QuestionId 
         : TO_SUFFIX.has(next) || low[i - 1] === "to"
           ? "to"
           : null;
-      found.push(hit);
+      found.push({ ...hit, at: i, len });
     }
     i += len - 1;
   }
@@ -1236,6 +1236,27 @@ export function parseStartText(text: string, today: string, pending: QuestionId 
       out.where = where(pick);
       out.whereSure = sure(pick);
       if (pick.weak) out.whereWeak = true;
+    }
+    // A route said ("önce Tokyo'da 3 gece, sonra Kyoto'da…", 0.39.12): its cities in order, each with the nights said
+    // with it, and their country where they go. The code's own reading, for when the model is out (its free quota spent).
+    const cities = ROUTE_TALK(text) && !out.guess
+      ? toHits.filter((f) => !f.loose && f.p.city && f.at != null).sort((a, b) => a.at! - b.at!).filter((f, k, all) => all.findIndex((g) => g.p === f.p) === k)
+      : [];
+    const land = cities[0]?.p.countryEn ?? null;
+    if (cities.length >= 2 && land && cities.every((c) => c.p.countryEn === land)) {
+      const nightsAt = (j: number) => {
+        const n = /^\d{1,2}$/.test(low[j] ?? "") ? Number(low[j]) : (NUMBER_WORDS[low[j] ?? ""] ?? null);
+        return n && n >= 1 && n <= 60 && /^(gece|gecelik|night|nights)$/.test(low[j + 1] ?? "") ? n : null;
+      };
+      out.stops = cities.map((c) => {
+        const after = c.at! + (c.len ?? 1);
+        // "Tokyo'da 3 gece" (right after, past its ending), "3 nights in Tokyo" (right before).
+        const nights = nightsAt(after) ?? nightsAt(after + 1) ?? (low[c.at! - 1] === "in" ? nightsAt(c.at! - 3) : null);
+        return { city: placeName(c.p), nights, note: null };
+      });
+      const country = toHits.find((f) => !f.loose && !f.p.city && f.p.en === land);
+      out.where = country ? where(country) : { place: countryNameOf(cities[0].p), country: countryNameOf(cities[0].p), code: knownCode(cities[0].p) };
+      out.whereSure = true;
     }
   }
   if (fromHit?.weak && out.from) out.fromWeak = true;
@@ -1701,7 +1722,7 @@ export function mergeExtracted(code: Extracted, model: Extracted | null): Extrac
     who: kind || names.length || count ? { kind, names, ...(count ? { count } : {}) } : null,
     start: code.start && !code.start.approx ? code.start : code.start?.part && !model.start?.part ? code.start : (model.start ?? code.start),
     duration: routeSaid ? (model.duration ?? code.duration) : (code.duration ?? model.duration),
-    ...(model.stops?.length ? { stops: model.stops } : {}),
+    ...(model.stops?.length ? { stops: model.stops } : code.stops?.length ? { stops: code.stops } : {}),
     styles: [...new Set([...code.styles, ...model.styles])],
     budget: code.budget ?? model.budget,
     ...(model.choice || code.choice ? { choice: model.choice || code.choice } : {}),

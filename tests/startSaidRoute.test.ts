@@ -94,3 +94,23 @@ describe("the model sees the chat", () => {
     expect(prompt).toContain("Rota: Tokyo 3 gece");
   });
 });
+
+describe("0.39.12: the code reads the route itself (the model out: its free quota spent)", () => {
+  it("Emre's sentence, without the model: Japan, Tokyo 3 as said, Kyoto the rest; never \"Tek durak\"", () => {
+    const e = parseStartText(FIRST, TODAY);
+    expect(e.where).toMatchObject({ place: "Japonya", code: "JP" });
+    expect(e.stops).toEqual([{ city: "Tokyo", nights: 3, note: null }, { city: "Kyoto", nights: null, note: null }]);
+    const s = applyText({ ...newStart("t", "plan", 1, "tr"), messages: [] }, FIRST, mergeExtracted(e, null), 2, null).state;
+    expect(s.route?.stops.map((x) => [x.city, x.nights, x.said])).toEqual([["Tokyo", 3, true], ["Kyoto", 6, false]]);
+    expect(questionOf({ ...s, wantDone: true }, "route", ctx).text).toMatch(/^Rotanı şöyle aldım: Tokyo 3 gece → Kyoto 6 gece\./);
+  });
+  it("in English too, the nights before the city", () => {
+    setLang("en");
+    const e = parseStartText("10 days in Japan: 3 nights in Tokyo, then Kyoto", TODAY);
+    expect(e.stops?.map((x) => [x.city, x.nights])).toEqual([["Tokyo", 3], ["Kyoto", null]]);
+  });
+  it("cities in different countries, or no route said: no stops from the code", () => {
+    expect(parseStartText("Tokyo ve Kyoto çok güzelmiş", TODAY).stops).toBeUndefined();
+    expect(parseStartText("önce Roma sonra Paris", TODAY).stops).toBeUndefined();
+  });
+});

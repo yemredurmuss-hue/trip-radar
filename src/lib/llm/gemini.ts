@@ -31,14 +31,62 @@ const RETRY_AFTER_MS = 20_000;
 /** Rate limits (429) and "model overloaded" (5xx) are usually gone after a short wait: retry once. */
 const RETRYABLE = new Set([429, 500, 502, 503, 504]);
 
+/** A model's free daily requests used up (429 "…PerDay…"): waiting 20 s doesn't bring them back. */
+export const isDailyQuota = (error: unknown): boolean => error instanceof ApiError && error.status === 429 && /per ?day|perday|daily/i.test(error.message);
+
 async function withRetry<T>(call: () => Promise<T>, waitMs = RETRY_AFTER_MS, retries = 1): Promise<T> {
   try {
     return await call();
   } catch (error) {
-    if (retries < 1 || !(error instanceof ApiError) || !RETRYABLE.has(error.status)) throw error;
+    if (retries < 1 || !(error instanceof ApiError) || !RETRYABLE.has(error.status) || isDailyQuota(error)) throw error;
     await new Promise((resolve) => setTimeout(resolve, waitMs));
     return call();
   }
+}
+
+/**
+ * 0.39.12 (2026-10-20: the free key's 20 requests a day ran out mid start chat and every answer fell back to the code's):
+ * when a model's free daily quota is used up, the same key's other flash models have quotas of their own and are tried
+ * in turn, the spent one skipped for some hours. Only the chosen model's own errors (a bad key, a model gone) are said
+ * as before; a fallback that isn't there for this key is skipped.
+ */
+export const GEMINI_FALLBACKS = ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"];
+const SPENT_MS = 6 * 3_600_000;
+const spentUntil = new Map<string, number>();
+/** For the tests. */
+export const resetSpentModels = () => spentUntil.clear();
+/** Every model of the chain has used up today's free requests (the Claude backup takes over: llm/index.ts). */
+export const geminiSpent = (first: string, now: number = Date.now()): boolean => [first, ...GEMINI_FALLBACKS].every((m) => (spentUntil.get(m) ?? 0) > now);
+
+/** Every Gemini model this key can fall back to has used up its free requests for today. */
+export class GeminiSpentError extends Error {
+  constructor() {
+    super(L("Gemini'nin bugünkü ücretsiz hakkı doldu; yarın yenilenir. Ayarlar'dan Claude anahtarı eklersen o devam eder.", "Gemini's free requests for today are used up; they come back tomorrow. Add a Claude key in Settings to go on with Claude."));
+  }
+}
+
+export async function onModels<T>(first: string, run: (model: string) => Promise<T>, now: () => number = Date.now): Promise<T> {
+  const chain = [first, ...GEMINI_FALLBACKS.filter((m) => m !== first)];
+  let tried = false;
+  for (const [i, model] of chain.entries()) {
+    if ((spentUntil.get(model) ?? 0) > now()) continue;
+    tried = true;
+    try {
+      return await run(model);
+    } catch (error) {
+      if (isDailyQuota(error)) {
+        spentUntil.set(model, now() + SPENT_MS);
+        continue;
+      }
+      if (i > 0 && error instanceof ApiError && (error.status === 404 || error.status === 403)) {
+        spentUntil.set(model, now() + 4 * SPENT_MS);
+        continue;
+      }
+      throw error;
+    }
+  }
+  void tried;
+  throw new GeminiSpentError();
 }
 
 function answerParts(response: GenerateContentResponse): Part[] {
@@ -84,10 +132,11 @@ export function geminiProvider(client: GeminiClient, model: string, retryWaitMs 
       }
       parts.push({ text: buildPrompt(capture, facts, trips, today()) });
 
-      const response = await withRetry(
+      const response = await onModels(model, (m) =>
+        withRetry(
         () =>
           client.models.generateContent({
-            model,
+            model: m,
             contents: [{ role: "user", parts }],
             config: {
               systemInstruction: extractionSystem(),
@@ -96,6 +145,7 @@ export function geminiProvider(client: GeminiClient, model: string, retryWaitMs 
             },
           }),
         retryWaitMs,
+        ),
       );
       const text = visibleText(answerParts(response));
       if (!text) throw new Error(L("Gemini boş yanıt döndürdü.", "Gemini returned an empty answer."));
@@ -112,15 +162,17 @@ export function geminiProvider(client: GeminiClient, model: string, retryWaitMs 
 
     async generateJson(system, prompt, schema, files = [], opts: CallOptions = {}) {
       const parts: Part[] = [...files.map((f): Part => ({ inlineData: { mimeType: f.mimeType, data: f.data } })), { text: prompt }];
-      const response = await withRetry(
+      const response = await onModels(model, (m) =>
+        withRetry(
         () =>
           client.models.generateContent({
-            model,
+            model: m,
             contents: [{ role: "user", parts }],
             config: { systemInstruction: system, responseMimeType: "application/json", responseJsonSchema: jsonSchemaFor(schema), ...(opts.signal ? { abortSignal: opts.signal } : {}) },
           }),
         retryWaitMs,
         opts.maxRetries ?? 1,
+        ),
       );
       const text = visibleText(answerParts(response));
       let json: unknown;
@@ -135,10 +187,11 @@ export function geminiProvider(client: GeminiClient, model: string, retryWaitMs 
     },
 
     async chatStep(history: ChatMessage[], system: string, tools: ToolSpec[], opts: CallOptions = {}): Promise<ChatStep | null> {
-      const response = await withRetry(
+      const response = await onModels(model, (m) =>
+        withRetry(
         () =>
           client.models.generateContent({
-            model,
+            model: m,
             contents: toContents(history),
             config: {
               systemInstruction: system,
@@ -155,6 +208,7 @@ export function geminiProvider(client: GeminiClient, model: string, retryWaitMs 
             },
           }),
         retryWaitMs,
+        ),
       );
       const parts = answerParts(response);
       if (parts.length === 0) return null;

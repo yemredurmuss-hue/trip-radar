@@ -4,7 +4,7 @@ import { getSettings } from "../db";
 import { aiGate } from "../share/ai";
 import { L } from "../i18n";
 import { anthropicNeedsSettings, anthropicProvider, anthropicUnreached, describeAnthropicError } from "./anthropic";
-import { describeGeminiError, geminiNeedsSettings, geminiProvider } from "./gemini";
+import { describeGeminiError, geminiNeedsSettings, geminiProvider, geminiSpent, GeminiSpentError } from "./gemini";
 import { queuedProvider, type AiCallOpts } from "./queue";
 import { MissingKeyError, type LlmProvider } from "./types";
 
@@ -24,13 +24,32 @@ export async function getProvider(opts: AiCallOpts = {}): Promise<LlmProvider> {
 async function ownProvider(): Promise<LlmProvider> {
   const s = await getSettings();
   if (s.provider === "gemini") {
-    if (s.geminiKey) return geminiProvider(new GoogleGenAI({ apiKey: s.geminiKey }), s.geminiModel);
+    // 0.39.12 (Emre: "Claude otomatik devreye girsin"): with a Claude key too, Claude takes over once every Gemini model's
+    // free requests for today are used up (the chat starts a fresh context with it, assistant.ts currentSession).
+    const claude = s.apiKey ? () => anthropicProvider(new Anthropic({ apiKey: s.apiKey!, dangerouslyAllowBrowser: true }), s.model) : null;
+    if (claude && geminiSpent(s.geminiModel)) return claude();
+    if (s.geminiKey) return withClaudeBackup(geminiProvider(new GoogleGenAI({ apiKey: s.geminiKey }), s.geminiModel), claude);
     const gate = await aiGate();
     if (!gate) throw new MissingKeyError();
     return geminiProvider(new GoogleGenAI({ apiKey: gate.ticket, httpOptions: { baseUrl: gate.baseUrl } }), s.geminiModel);
   }
   if (!s.apiKey) throw new MissingKeyError();
   return anthropicProvider(new Anthropic({ apiKey: s.apiKey, dangerouslyAllowBrowser: true }), s.model);
+}
+
+/**
+ * The call that finds Gemini spent goes on with Claude at once where it is one call (a reading, a JSON answer: the start
+ * chat, the reviews, the Bavul); a chat step fails once and the next one is Claude's (its history is the provider's own).
+ */
+export function withClaudeBackup(gemini: LlmProvider, claude: (() => LlmProvider) | null): LlmProvider {
+  if (!claude) return gemini;
+  const spent = (error: unknown) => error instanceof GeminiSpentError;
+  return {
+    ...gemini,
+    extract: (capture, facts, trips) => gemini.extract(capture, facts, trips).catch((error) => (spent(error) ? claude().extract(capture, facts, trips) : Promise.reject(error))),
+    generateJson: (system, prompt, schema, files, opts) =>
+      gemini.generateJson(system, prompt, schema, files, opts).catch((error) => (spent(error) ? claude().generateJson(system, prompt, schema, files, opts) : Promise.reject(error))),
+  };
 }
 
 /**
