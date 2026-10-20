@@ -939,7 +939,9 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
         counts={counts}
         budget={heroBudget?.view ?? null}
         view="plan"
-        onView={(v) => (v === "board" ? (setPanoFocus(null), setView("board")) : setView("plan"))}
+        // (Pano: the window itself, as the tab opens it; through the old "board" view the hero went for a moment and the plan
+        // jumped to its top, E §3.9: the plan stays where it is)
+        onView={(v) => (v === "board" ? openPano() : setView("plan"))}
         // C24: every need bought, the thin bar says "✓ Her şey hazır" where the hero offers sharing.
         next={!timed && allSet(step) ? { label: nextLabel({ kind: "ready" }), run: null } : heroNext}
         nextShort={timed ? timedNextLabel(timed) : nextShort(step)}

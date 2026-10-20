@@ -6094,7 +6094,9 @@ try {
       if (box && !window.__glow) window.__glow = { ids: box.getAttribute("data-option-ids"), anim: `${getComputedStyle(box).animationName} ${getComputedStyle(box).animationDuration}` };
     }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ["class"] });
   });
-  await app.getByRole("tab", { name: /Pano/ }).click();
+  // (from the thin bar, there while the box is scrolled to: the Plan | Pano tabs at the top would scroll the plan back up to
+  // them, and a box out of sight rightly doesn't glow)
+  await app.locator(".h-mini.on").getByRole("button", { name: "Pano" }).click();
   await motionPano.locator('.q-sgh[data-cat="stay"]').click();
   await motionPano.locator(".q-pg").first().waitFor();
   // (one of the box's options that can still be chosen here)
