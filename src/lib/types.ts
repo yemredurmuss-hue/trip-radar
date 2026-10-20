@@ -596,6 +596,8 @@ export interface Capture {
   capturedAt: number;
   status: "pending" | "processing" | "done" | "error";
   error: string | null;
+  /** When its latest reading began (process.ts processCapture): the deadline's and sweepStuck's clock. */
+  startedAt?: number;
   /** Times a busy/rate-limit failure was put back in the queue automatically. */
   autoRetries?: number;
   itemId: string | null;

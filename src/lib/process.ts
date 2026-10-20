@@ -31,7 +31,8 @@ export interface Deps {
 }
 
 const defaultDeps: Deps = {
-  extract: async (capture, facts, trips) => (await getProvider()).extract(capture, facts, trips),
+  // The traveller watches its waiting card: first in the model's line (llm/queue.ts "now"), so its deadline is spent reading.
+  extract: async (capture, facts, trips) => (await getProvider({ priority: "now" })).extract(capture, facts, trips),
   heroImage: destinationImage,
   crop: cropImage,
 };
@@ -126,13 +127,59 @@ export async function saveImage(dataUrl: string, forTripId?: string, fromTripId?
 
 // --- processing -------------------------------------------------------------------------------
 
-export async function processCapture(captureId: string, deps: Deps = defaultDeps): Promise<void> {
+/**
+ * F35 (2026-10-20: a save sat on "Plana yerleşiyor…" for 5+ minutes, no error, no retry): a capture's reading has a hard
+ * deadline. The slowest reading that still ends well: its turn in the model's line (it goes first, "now": behind at most
+ * the two calls already running), one Gemini answer of up to ~40 s, a busy model's 20 s wait and its second try (another
+ * ~40 s), the chain's daily-quota hops (a 429 comes back at once, no wait) or the Claude backup instead (~10–40 s), then the
+ * place lookups (10 s each at most, mostly cached) and, for a new trip, its photo. About 100 s at worst: 2 minutes.
+ */
+export const CAPTURE_DEADLINE_MS = 120_000;
+/** Still "processing" this long after its reading began: nothing is behind it any more (sweepStuck). */
+export const STUCK_AFTER_MS = CAPTURE_DEADLINE_MS + 30_000;
+/** "Bu kayıt 2 dakikada bitmedi. 'Tekrar dene'ye bas.": the card's own Tekrar dene does the rest. */
+export const timeoutMessage = (): string => {
+  const minutes = Math.round(CAPTURE_DEADLINE_MS / 60_000);
+  return L(`Bu kayıt ${minutes} dakikada bitmedi. 'Tekrar dene'ye bas.`, `This save didn't finish within ${minutes} minutes. Press 'Try again'.`);
+};
+
+/**
+ * Reads one capture and puts it in the plan, or says why not. The reading and the deadline race for the capture: whichever
+ * comes first owns it, the reading at its first write (commit), the deadline when it fires; the other writes nothing. So an
+ * answer that arrives after the deadline is dropped (the capture stays "error" with Tekrar dene, never flips back to done),
+ * and a reading that has begun writing finishes before the next capture starts.
+ */
+export async function processCapture(captureId: string, deps: Deps = defaultDeps, deadlineMs: number = CAPTURE_DEADLINE_MS): Promise<void> {
   const d = await db();
-  const capture = await d.get("captures", captureId);
-  if (!capture || capture.status === "done" || capture.status === "processing") return;
-  await d.put("captures", { ...capture, status: "processing", error: null });
+  const found = await d.get("captures", captureId);
+  if (!found || found.status === "done" || found.status === "processing") return;
+  // startedAt: this attempt's mark (a retry is another attempt; sweepStuck reads it).
+  const capture: Capture = { ...found, status: "processing", error: null, startedAt: Date.now() };
+  await d.put("captures", capture);
   notifyChanged();
 
+  let owner: "reading" | "deadline" | null = null;
+  const claim = (who: "reading" | "deadline") => (owner ??= who) === who;
+  // The reading may write: it owns the attempt, and the capture is still this attempt's (not swept, not retried meanwhile).
+  const commit = async () => {
+    if (!claim("reading")) return false;
+    const now = await d.get("captures", captureId);
+    return now?.status === "processing" && now.startedAt === capture.startedAt;
+  };
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<"deadline">((resolve) => (timer = setTimeout(() => resolve("deadline"), deadlineMs)));
+  const reading = readCapture(capture, deps, commit).then(() => "reading" as const);
+  const first = await Promise.race([reading, deadline]);
+  clearTimeout(timer);
+  if (first === "deadline" && claim("deadline")) {
+    const now = await d.get("captures", captureId);
+    if (now?.status === "processing" && now.startedAt === capture.startedAt) await d.put("captures", { ...now, status: "error", error: timeoutMessage() });
+  } else await reading;
+  notifyChanged();
+}
+
+async function readCapture(capture: Capture, deps: Deps, commit: () => Promise<boolean>): Promise<void> {
+  const d = await db();
   try {
     const facts = parseUrl(capture.url ?? "");
     const trips = await listTrips();
@@ -200,8 +247,8 @@ export async function processCapture(captureId: string, deps: Deps = defaultDeps
           items: allItems,
         });
     if (route.kind === "ask") {
+      if (!(await commit())) return;
       await holdCapture(capture, item, route, extraction, trips, allItems, Boolean(duplicate));
-      notifyChanged();
       return;
     }
     const before = duplicate?.item.tripId ?? null;
@@ -210,6 +257,9 @@ export async function processCapture(captureId: string, deps: Deps = defaultDeps
       const target = trips.find((t) => t.id === route.toTripId)!;
       item = { ...item, tripId: target.id, dates: datesIn(item, target, allItems) };
     }
+    // A new trip's photo is looked up before anything is written: a slow lookup runs into the deadline, never between writes.
+    const heroImage = item.tripId === newTripId ? await deps.heroImage(extraction.city ?? extraction.country) : null;
+    if (!(await commit())) return; // the deadline came first: this late answer writes nothing
     if (item.tripId === newTripId) {
       const now = Date.now();
       const made: Trip = {
@@ -217,7 +267,7 @@ export async function processCapture(captureId: string, deps: Deps = defaultDeps
         title: uniqueTitle((choice as { newTitle: string }).newTitle, facts.checkIn ?? isoDate(extraction.dates.start), trips),
         confirmedDates: null,
         budget: null,
-        heroImage: await deps.heroImage(extraction.city ?? extraction.country),
+        heroImage,
         createdAt: now,
         updatedAt: now,
       };
@@ -254,9 +304,8 @@ export async function processCapture(captureId: string, deps: Deps = defaultDeps
     if (current) await d.put("trips", { ...current, heroImage: current.heroImage ?? item.imageUrl, updatedAt: Date.now() });
     await d.put("captures", { ...capture, status: "done", error: null, itemId: item.id });
   } catch (error) {
-    await d.put("captures", { ...capture, status: "error", error: describeError(error) });
+    if (await commit()) await d.put("captures", { ...capture, status: "error", error: describeError(error) });
   }
-  notifyChanged();
 }
 
 /** What the model and the address say about where and when, for chooseTrip. */
@@ -363,8 +412,11 @@ export const isProcessing = () => running !== null;
 
 /** Processes every pending capture one at a time. Safe to call repeatedly. */
 export function processPending(deps?: Deps): Promise<void> {
+  // Asked for (a save, Tekrar dene, the board opening): what is stuck past its deadline says so first (F35).
+  const swept = sweepStuck().catch(() => 0);
   running ??= (async () => {
     try {
+      await swept;
       const d = await db();
       for (;;) {
         const next = (await d.getAllFromIndex("captures", "status", "pending"))
@@ -456,6 +508,24 @@ export async function recoverStuck(): Promise<void> {
   for (const capture of await d.getAllFromIndex("captures", "status", "processing")) {
     await d.put("captures", { ...capture, status: "pending" });
   }
+}
+
+/**
+ * F35: a capture still "processing" well past its deadline has nothing behind it (the request died without a word, the
+ * deadline never fired) and goes to "error" with Tekrar dene, while the worker lives on. Run whenever processing is asked
+ * for, which the board does as it opens (main.tsx). A fresh worker's recoverStuck comes first and queues them again instead.
+ */
+export async function sweepStuck(now: number = Date.now()): Promise<number> {
+  const tx = (await db()).transaction("captures", "readwrite");
+  let count = 0;
+  for (const capture of await tx.store.index("status").getAll("processing")) {
+    if (now - (capture.startedAt ?? capture.capturedAt) < STUCK_AFTER_MS) continue;
+    await tx.store.put({ ...capture, status: "error", error: timeoutMessage() });
+    count++;
+  }
+  await tx.done;
+  if (count) notifyChanged();
+  return count;
 }
 
 /** Puts every failed capture back in the queue (e.g. after a key was added or a quota reset). */
