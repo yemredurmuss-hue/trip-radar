@@ -4543,7 +4543,9 @@ try {
   const revModel = async (route) => {
     const body = route.request().method() === "POST" ? route.request().postDataJSON() : null;
     const prompt = JSON.stringify(body?.contents ?? "");
-    if (prompt.includes("<start_message>") && prompt.includes("Kohphandan")) {
+    // (the message itself: since 0.39.10 the prompt also carries the user's earlier lines, cd1c3627)
+    const said = prompt.match(/(?:Mesaj|Message): (.*?)\\n<\/start_message>/)?.[1] ?? "";
+    if (prompt.includes("<start_message>") && said.includes("Kohphandan")) {
       rev.message++;
       await later(1500); // slow enough to see the row that says it is writing
       return json(route, {
@@ -4551,7 +4553,7 @@ try {
         reply: { text: "Sabine ile Koh Phangan kulağa harika geliyor: palmiyeli koylar, orman şelaleleri ve dolunay sahilleri.", question: "Bu gezide en çok ne istiyorsunuz?" },
       });
     }
-    if (prompt.includes("<start_message>") && prompt.includes("İstanbul") && !prompt.includes("Kohphandan")) {
+    if (prompt.includes("<start_message>") && said.includes("İstanbul") && !said.includes("Kohphandan")) {
       rev.message++;
       await later(900);
       // The model of the bug: İstanbul as the destination and the origin both.
@@ -4728,6 +4730,9 @@ try {
   // on with chips while the model is slow; the classic circuit is proposed at once; "Şimdilik bununla oluştur" is
   // pressed while the Rota row still says "Rotayı çiziyor…"; the trip is built with the circuit; the generating
   // screen flies İstanbul → Sri Lanka on the bundled map, then fans in the stops' photos.
+  // 0.39.10 (cd1c3627): the list fills at once, but the chat says one line; with the model late it is the code's, after
+  // REPLY_MS (6 s, src/app/start/model.ts).
+  const CODE_LINE_MS = 8000;
   const lkSentence = "Sabine ile beraber 20 kasım civarı Sri lankaya gitmek isityorum 2 hafta";
   const lk = { message: 0, route: 0 };
   const fulfillLate = async (route, ms, value) => {
@@ -4764,9 +4769,11 @@ try {
   await lkList.locator(".st-row.done", { hasText: "Sri Lanka" }).waitFor({ timeout: 3000 });
   await lkList.locator(".st-row.done", { hasText: "Sabine ile · 2 kişi" }).waitFor({ timeout: 3000 });
   await lkList.locator(".st-row.done", { hasText: "20 Kasım – 4 Aralık · 14 gece" }).waitFor({ timeout: 3000 });
-  // K4: what they want comes first, then the route, and where from last.
-  await board.locator(".st-msg-bot .st-q", { hasText: "Sri Lanka'da en çok ne yapmak istersiniz?" }).waitFor({ timeout: 3000 });
   assert.ok(Date.now() - sentAt < 4000, "captured before the model answered");
+  // K4: what they want comes first, then the route, and where from last. (The code's line, still before the model's reading
+  // comes at 9 s.)
+  await board.locator(".st-msg-bot .st-q", { hasText: "Sri Lanka'da en çok ne yapmak istersiniz?" }).waitFor({ timeout: CODE_LINE_MS });
+  assert.ok(Date.now() - sentAt < 9000, "asked before the model answered");
   assert.equal(await board.locator(".st-msg-bot", { hasText: "Nereye gidiyoruz?" }).count(), 0, "where to isn't asked again");
   // The chat goes on while the model is still reading (chips, no waiting).
   await answers.getByRole("button", { name: /Doğa/ }).click();
@@ -4862,9 +4869,9 @@ try {
   await board.locator(".st-ask, .st-screen").first().waitFor();
   if (await board.locator(".st-ask").count()) await board.locator(".st-ask").getByRole("button", { name: "New trip", exact: true }).click();
   const pngList = board.locator(".st-side .st-list");
-  await board.locator(".st-msg-bot .st-q", { hasText: "Did you mean Papua New Guinea?" }).waitFor({ timeout: 3000 });
   await pngList.locator(".st-row.done", { hasText: "With a friend · 2 people" }).waitFor({ timeout: 3000 });
   await pngList.locator(".st-row.done", { hasText: "November · 3 weeks" }).waitFor({ timeout: 3000 });
+  await board.locator(".st-msg-bot .st-q", { hasText: "Did you mean Papua New Guinea?" }).waitFor({ timeout: CODE_LINE_MS });
   await board.locator(".st-msg-bot", { hasText: "3 weeks in November with a friend." }).waitFor();
   // "Where to" is filled at once, marked to check (not the done tick), counted; Generate works with it.
   const tentativeRow = pngList.locator(".st-row.tentative", { hasText: "Papua New Guinea?" });
@@ -4917,7 +4924,7 @@ try {
   await trList.locator(".st-row.done", { hasText: "Papua Yeni Gine" }).waitFor({ timeout: 3000 });
   await trList.locator(".st-row.done", { hasText: "Bir arkadaşınla · 2 kişi" }).waitFor({ timeout: 3000 });
   await trList.locator(".st-row.done", { hasText: "Kasım · 3 hafta" }).waitFor({ timeout: 3000 });
-  await board.locator(".st-msg-bot", { hasText: "Bir arkadaşınla Papua Yeni Gine, Kasım'da 3 hafta." }).waitFor({ timeout: 3000 });
+  await board.locator(".st-msg-bot", { hasText: "Bir arkadaşınla Papua Yeni Gine, Kasım'da 3 hafta." }).waitFor({ timeout: CODE_LINE_MS });
   await board.locator(".st-msg-bot .st-q", { hasText: "Papua Yeni Gine'ye Kasım'da hangi gün çıkıyorsunuz?" }).waitFor({ timeout: 3000 });
   assert.equal(await board.locator(".st-top-title").innerText(), "Papua Yeni Gine · yeni gezi");
   await board.waitForTimeout(600);
@@ -5028,7 +5035,7 @@ try {
   await abList.locator(".st-row.done", { hasText: "AfrikaBurn · Tankwa Karoo · South Africa" }).waitFor({ timeout: 3000 });
   await abList.locator(".st-row", { hasText: /\d+ April – \d+ May \(estimated\) · how many days in all\?/ }).waitFor({ timeout: 3000 });
   await abList.locator(".st-row", { hasText: "With friends" }).waitFor({ timeout: 3000 });
-  await board.locator(".st-msg-bot", { hasText: /AfrikaBurn 20\d\d usually runs late April to early May \(estimated \d+ April – \d+ May; check the official site\)\./ }).waitFor({ timeout: 3000 });
+  await board.locator(".st-msg-bot", { hasText: /AfrikaBurn 20\d\d usually runs late April to early May \(estimated \d+ April – \d+ May; check the official site\)\./ }).waitFor({ timeout: CODE_LINE_MS });
   assert.equal(await board.locator(".st-msg-bot a.st-link").getAttribute("href"), "https://www.afrikaburn.org", "the official site linked");
   await board.locator(".st-msg-bot .st-q", { hasText: "How many days in total: just AfrikaBurn, or some days in Cape Town before and after?" }).waitFor();
   assert.equal(await board.locator(".st-msg-bot", { hasText: "Where are we going?" }).count(), 0, "where to isn't asked");
