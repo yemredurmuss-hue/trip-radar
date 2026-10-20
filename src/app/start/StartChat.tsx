@@ -303,6 +303,12 @@ export function StartChat({ initial: given, firstText, firstLabel, firstNote, ct
     return false;
   }
 
+  /**
+   * The line as said: "ready, building it in a few seconds" only when it will (0.39.17). After a stop the countdown
+   * starts again only once the checklist is full, so until then the chat says it waits.
+   */
+  const asSaid = (s: StartState, text: string): string => (autoStopped.current && !T(() => isComplete(s)) ? (T(() => waitingInstead(text)) ?? text) : text);
+
   /** After an answer: the route when it's time for one (never waited for), then the next line. The line's index, or null. */
   function reply(before: StartState, after: StartState, write?: (next: StartState, drawing: boolean) => string): number | null {
     if (stale()) return null;
@@ -310,7 +316,7 @@ export function StartChat({ initial: given, firstText, firstLabel, firstNote, ct
     if (after !== live.current) commit(after);
     const drawing = routeNow();
     const next = live.current;
-    commit(say(next, "assistant", T(() => (write ? write(next, drawing) : replyText(before, next, ctx, drawing)))));
+    commit(say(next, "assistant", asSaid(next, T(() => (write ? write(next, drawing) : replyText(before, next, ctx, drawing))))));
     setPicking({ styles: next.styles, budget: next.budget });
     setPlaceholder(null);
     setDateOpen(false);
@@ -336,7 +342,7 @@ export function StartChat({ initial: given, firstText, firstLabel, firstNote, ct
       const drawing = routeNow();
       const after = live.current;
       // Its words too, when they hold (0.38.5: a slow reply's line was dropped and the code's always stood).
-      const words = T(() => (words0 ? modelReplyText(before, after, ctx, words0, askedFor, drawing) : replyText(before, after, ctx, drawing)));
+      const words = asSaid(after, T(() => (words0 ? modelReplyText(before, after, ctx, words0, askedFor, drawing) : replyText(before, after, ctx, drawing))));
       commit(isLast(after, at) ? replaceLine(after, at!, words) : say(after, "assistant", words));
       setPicking({ styles: after.styles, budget: after.budget });
       return;
@@ -349,7 +355,7 @@ export function StartChat({ initial: given, firstText, firstLabel, firstNote, ct
     if (busy.current || nextQuestion(next) === asked || next.messages.at(-1)?.role !== "assistant") return;
     const drawing = routeNow();
     const after = live.current;
-    commit(say(after, "assistant", T(() => replyText(now, after, ctx, drawing))));
+    commit(say(after, "assistant", asSaid(after, T(() => replyText(now, after, ctx, drawing)))));
     setPicking({ styles: after.styles, budget: after.budget });
   }
 
