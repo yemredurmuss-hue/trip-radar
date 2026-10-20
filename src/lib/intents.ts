@@ -207,6 +207,8 @@ export interface OptionVM {
   badges: OptionBadge[];
   /** Our pick (draft.ts): its "Önerimiz" ribbon. */
   ours: boolean;
+  /** The pick is the traveller's own save (P6, F38): "Senin kaydın" in its place. */
+  yours?: boolean;
   /** A ticket's hours, ends, length and stops (cardTicket.flightLeg). */
   leg: FlightLeg | null;
   /** A ticket's carrier on its row (Skyscanner's): the airline's or the operator's logo, its name, the number or the class. */
@@ -306,6 +308,8 @@ export interface IntentVM {
   status: IntentStatus;
   /** The state's word on the chip ("Seçildi", "2 planda · 1 alındı"). */
   word: string;
+  /** The pick waiting for a yes is the traveller's own save, not ours (P6, F38): "Senin kaydın", never "Önerimiz". */
+  own?: boolean;
   head: IntentHead;
   /** The options to pick from, best fit first: three for one choice, four for a row of cards; the rest are on the Pano. */
   options: OptionVM[];
@@ -498,7 +502,7 @@ function ratingOf(item: Item): string | null {
   return [ratingText(r.value), r.count ? nReviews(r.count) : null].filter(Boolean).join(" · ");
 }
 
-function optionVM(item: Item, env: Env, at: { place: number; frame: FrameFamily; kind: CardKind; draft: Item | null; badges?: OptionBadge[] }): OptionVM {
+function optionVM(item: Item, env: Env, at: { place: number; frame: FrameFamily; kind: CardKind; draft: Item | null; own?: boolean; badges?: OptionBadge[] }): OptionVM {
   const facts = env.facts(item);
   const wantsCancel = facts.needs.some((n) => n.key === "c:cancellation");
   // v82: no cancel chip on an eSIM or on a row's card (an activity's card says its day and price), nor twice beside a want.
@@ -519,7 +523,9 @@ function optionVM(item: Item, env: Env, at: { place: number; frame: FrameFamily;
     cancel: cancel && cancel.state !== "unknown" ? cancel.text.split(" · ")[0] : null,
     checks: facts.needs.filter((n) => n.state !== "unknown").slice(0, 2).map((n) => ({ label: n.label, ok: n.state === "yes", text: n.text })),
     badges: at.badges ?? [],
-    ours: at.draft?.id === item.id,
+    // The traveller's one save, nothing to pick between: theirs, not ours (P6, F38).
+    ours: at.draft?.id === item.id && !at.own,
+    yours: at.draft?.id === item.id && !!at.own,
     leg: at.frame === "ticket" ? flightLeg(item) : null,
     carrier: at.frame === "ticket" ? ticketCarrier(item, at.kind) : null,
     current: item.status === "chosen" || item.status === "booked",
@@ -827,10 +833,13 @@ function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
   // and to them) is Önerimiz until it is; nothing of it is chosen, so it is still looked for the same way.
   const draftRoute = status === "searching" && isRouteDraft(env.input.trip) && ROUTE_SECTIONS.includes(section) && (records.length ? records.every(env.placeholder) : leg != null);
   const badges = badgesOf(options, frame, env);
-  const top = options.slice(0, 3).map((item, n) => optionVM(item, env, { place: n + 1, frame, kind, draft, badges: badges.get(item.id) }));
-  const rest = options.slice(3).map((item, n) => optionVM(item, env, { place: n + 4, frame, kind, draft, badges: badges.get(item.id) }));
+  // P6 (F38): the one option there is, the traveller's own save, is "Senin kaydın", never "Önerimiz" (a pick among several
+  // stays ours).
+  const ownDraft = status === "suggested" && !draftRoute && draft != null && options.length === 1 && adderOf(draft) == null;
+  const top = options.slice(0, 3).map((item, n) => optionVM(item, env, { place: n + 1, frame, kind, draft, own: ownDraft, badges: badges.get(item.id) }));
+  const rest = options.slice(3).map((item, n) => optionVM(item, env, { place: n + 4, frame, kind, draft, own: ownDraft, badges: badges.get(item.id) }));
   const shown = status === "suggested" ? draft : status === "chosen" || status === "booked" || status === "arranged" || status === "included" ? settled : null;
-  const chosen = shown ? (top.find((o) => o.id === shown.id) ?? optionVM(shown, env, { place: options.indexOf(shown) + 1 || 1, frame, kind, draft, badges: badges.get(shown.id) })) : null;
+  const chosen = shown ? (top.find((o) => o.id === shown.id) ?? optionVM(shown, env, { place: options.indexOf(shown) + 1 || 1, frame, kind, draft, own: ownDraft, badges: badges.get(shown.id) })) : null;
   const booked = status === "booked" && settled?.status === "booked" ? settled : null;
   const paidText = booked ? ((frame === "ticket" ? ticketPrices(booked, env.facts(booked).price, env.people)?.total : null) ?? env.facts(booked).price?.text ?? null) : null;
   const open = status === "searching" || status === "deciding";
@@ -867,7 +876,8 @@ function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
     frame,
     kind,
     status: draftRoute ? "suggested" : status,
-    word: statusWord(draftRoute ? "suggested" : status, kind),
+    word: ownDraft ? L("Senin kaydın", "Your save") : statusWord(draftRoute ? "suggested" : status, kind),
+    ...(ownDraft ? { own: true } : {}),
     head,
     options: top,
     more: rest,
@@ -881,7 +891,7 @@ function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
     suggestions: [],
     wanted: [],
     cover,
-    ticket: frame === "ticket" ? ticketViewOf(shown ? [shown] : [], { kind, leg, route: head.route, ends: endsOf(leg), now: env.now }) : null,
+    ticket: frame === "ticket" ? ticketViewOf(shown ? [shown] : [], { kind, leg, route: head.route, ends: endsOf(leg), now: env.now, tripStart: env.input.plan.range?.start ?? null }) : null,
     // (and for one whose way was said with nothing to book: Değiştir draws them again in place)
     modes,
     ...(far && status === "searching" && modes.length ? { wayPicks: wayPickOrder(env.input.trip, leg?.kind === "arrival" ? leg.after : null, env.people) } : {}),
@@ -1161,7 +1171,7 @@ function joinConnections(list: IntentVM[], env: Env): IntentVM[] {
       // What both legs cost is said once, in the details: a box shows one price.
       paid: status === "booked" ? (paid ?? prev.paid) : null,
       access: status === "booked" ? prev.access : null,
-      ticket: ticketViewOf(shown, { kind: "flight", leg: null, route, ends: route ? { from: route.from, to: route.to } : {}, now: env.now }),
+      ticket: ticketViewOf(shown, { kind: "flight", leg: null, route, ends: route ? { from: route.from, to: route.to } : {}, now: env.now, tripStart: env.input.plan.range?.start ?? null }),
       itemIds: uniq([...prev.itemIds, ...cur.itemIds]),
       domKeys: uniq([...prev.domKeys, ...cur.domKeys]),
     };

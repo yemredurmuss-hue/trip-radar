@@ -67,7 +67,7 @@ export interface StatusChip {
  * The chip's word (0.38.5, Emre: "Aranıyor yazıyor ama bir şey aramıyor"): Aranıyor only while something looks or has
  * looked (`looking`: a source can be asked for it, or the chat was); else it says plainly there's nothing yet.
  */
-export function statusChip(vm: Pick<IntentVM, "status" | "word">, looking = true): StatusChip {
+export function statusChip(vm: Pick<IntentVM, "status" | "word" | "own">, looking = true): StatusChip {
   switch (vm.status) {
     case "searching":
       return { tone: "none", text: looking ? vm.word : L("Seçenek yok", "No options yet"), tick: false };
@@ -76,8 +76,8 @@ export function statusChip(vm: Pick<IntentVM, "status" | "word">, looking = true
     case "deciding":
       return { tone: "todo", text: vm.word, tick: false };
     case "suggested":
-      // Our pick waits for a yes: "✨ Önerimiz · onayla".
-      return { tone: "ai", text: `✨ ${vm.word} · ${L("onayla", "confirm")}`, tick: false };
+      // Our pick waits for a yes: "✨ Önerimiz · onayla"; the traveller's own save says so (P6, F38): "Senin kaydın · onayla".
+      return vm.own ? { tone: "todo", text: `${vm.word} · ${L("onayla", "confirm")}`, tick: false } : { tone: "ai", text: `✨ ${vm.word} · ${L("onayla", "confirm")}`, tick: false };
     case "chosen":
       return { tone: "sel", text: vm.word, tick: true };
     case "booked":
@@ -149,8 +149,9 @@ export function ratingParts(rating: string | null): { score: string; star: boole
 }
 
 /** Who put an option on the board, as its picture's badge: our pick, the AI, the traveller's own link, a fellow traveller. */
-export function sourceBadge(o: Pick<OptionVM, "ours" | "source">): { tone: "best" | "ai" | "mine"; text: string; initial: string | null } | null {
+export function sourceBadge(o: Pick<OptionVM, "ours" | "yours" | "source">): { tone: "best" | "ai" | "mine"; text: string; initial: string | null } | null {
   if (o.ours) return { tone: "best", text: `✨ ${L("Önerimiz", "Our pick")}`, initial: null };
+  if (o.yours) return { tone: "mine", text: L("Senin kaydın", "Your save"), initial: null };
   const s: OptionSource | null = o.source;
   if (!s) return null;
   if (s.kind === "ai") return { tone: "ai", text: `✨ ${L("AI önerisi", "AI pick")}`, initial: null };

@@ -13,7 +13,7 @@ export type NextIntent = Pick<IntentVM, "key" | "section" | "kind" | "status" | 
 
 export type NextStep =
   | { kind: "first" }
-  | { kind: "visa" }
+  | { kind: "visa"; ask?: boolean }
   | { kind: "intent"; intent: NextIntent }
   | { kind: "pdf" }
   | { kind: "share" }
@@ -24,18 +24,20 @@ const ORDER: readonly IntentStatus[] = ["suggested", "deciding", "searching"];
 /** Bought, or nothing to buy: what "hepsi alındı" counts (a need said not needed is no need). */
 const SETTLED: readonly IntentStatus[] = ["booked", "arranged", "included", "skipped"];
 
-export function nextStep({ intents, saved, visa, sharable, mode = "plan" }: {
+export function nextStep({ intents, saved, visa, visaAsk = false, sharable, mode = "plan" }: {
   intents: readonly NextIntent[];
   /** Anything saved on the trip at all (else "İlk kaydı ekle"). */
   saved: boolean;
   /** A visa is needed and not marked as got. */
   visa: boolean;
+  /** That visa is a Schengen one never answered for ("Geçerli bir Schengen vizen var mı?", P7): asked, not an appointment. */
+  visaAsk?: boolean;
   sharable: boolean;
   /** Planning it, on it, back from it (tripPhase.tripModeOf): a visa only while planning, a decision until the trip is over. */
   mode?: TripMode;
 }): NextStep {
   if (!saved && !intents.length) return { kind: "first" };
-  if (mode === "plan" && visa) return { kind: "visa" };
+  if (mode === "plan" && visa) return visaAsk ? { kind: "visa", ask: true } : { kind: "visa" };
   // (on the trip the intents are tripPhase.countedIntents': a need whose day went by is gone, one still ahead is a decision)
   if (mode !== "archive")
     for (const status of ORDER) {
@@ -83,7 +85,7 @@ export function nextLabel(step: NextStep): string {
     case "first":
       return L("İlk kaydı ekle", "Add the first one");
     case "visa":
-      return L("Sıradaki: vize randevusu", "Next: visa appointment");
+      return step.ask ? L("Sıradaki: vize durumun", "Next: your visa") : L("Sıradaki: vize randevusu", "Next: visa appointment");
     case "intent":
       return L(`Sıradaki: ${intentLabel(step.intent)}`, `Next: ${intentLabel(step.intent)}`);
     case "pdf":
@@ -97,7 +99,7 @@ export function nextLabel(step: NextStep): string {
 
 /** The thin bar's shorter form: "Sıradaki Porto konaklaması" (no colon), the others as they are. */
 export function nextShort(step: NextStep): string {
-  if (step.kind === "visa") return L("Sıradaki vize randevusu", "Next: visa");
+  if (step.kind === "visa") return step.ask ? L("Sıradaki vize durumun", "Next: your visa") : L("Sıradaki vize randevusu", "Next: visa");
   if (step.kind === "intent") return L(`Sıradaki ${intentLabel(step.intent)}`, `Next: ${intentLabel(step.intent)}`);
   return nextLabel(step);
 }

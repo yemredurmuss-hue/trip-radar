@@ -68,8 +68,15 @@ describe("the days", () => {
     expect(prepTasks(input({ items: [{ ...esim, status: "chosen" }] }))).toEqual([]);
   });
 
-  it("a Turkish passport to a Schengen country: apply at the latest 15 days ahead, from the visa rule; 'Vize alındı' ticks it", () => {
+  it("P7: a Schengen visa never answered for is asked first, with no deadline to have gone by; 'Var' kept for every trip sorts it", () => {
     const [t] = prepTasks(input({ countries: ["PT"] }));
+    expect(t).toMatchObject({ key: "visa:schengen", title: "Geçerli bir Schengen vizen var mı?", day: null, tick: "visa", done: false });
+    expect(prepTasks(input({ countries: ["PT"], schengen: true }))[0].done).toBe(true);
+    expect(prepTasks(input({ countries: ["PT"], schengen: false }))[0].title).toBe("Schengen vizesine başvur");
+  });
+
+  it("a Turkish passport to a Schengen country, no visa: apply at the latest 15 days ahead, from the visa rule; 'Vize alındı' ticks it", () => {
+    const [t] = prepTasks(input({ countries: ["PT"], schengen: false }));
     expect(t).toMatchObject({ key: "visa:schengen", title: "Schengen vizesine başvur", from: "visa", day: { date: "2026-09-23", rel: "by" }, tick: "visa", done: false });
     expect(t.official).toMatch(/^https:\/\//);
     expect(prepDayText(t.day!)).toBe("23 Eyl'e kadar");
@@ -130,7 +137,7 @@ describe("the order", () => {
     const c = chore("Kalan ödeme", { dates: { start: "2026-10-13", end: null, source: "unverified" } });
     const d = chore("Pasaportu kontrol et");
     const tp = flight("TP 1760", "2026-10-14T19:40");
-    const titles = prepTasks(input({ chores: [a, b, c, d], items: [tp], countries: ["PT"] })).map((t) => t.title);
+    const titles = prepTasks(input({ chores: [a, b, c, d], items: [tp], countries: ["PT"], schengen: false })).map((t) => t.title);
     expect(titles).toEqual(["Schengen vizesine başvur", "Yen bozdur", "Online check-in · TP 1760", "Kalan ödeme", "Biletleri telefona indir", "Pasaportu kontrol et"]);
   });
 });

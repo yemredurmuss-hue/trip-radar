@@ -15,6 +15,7 @@ import { withEdits } from "../lib/userEdits";
 import { checkVehicle, overlaps, periodOf, vehicleOf } from "../lib/vehicles";
 import { nightsKey } from "../lib/timeline";
 import { withVisaDone } from "../lib/visa";
+import { saveSchengenVisa } from "../lib/passport";
 import { offerItem, type Need, type Offer } from "../lib/offerSource";
 import type { DateRange } from "../lib/plan";
 import { plannedItem, type PlannedInput } from "../lib/planned";
@@ -95,8 +96,12 @@ export async function setNeedNotNeeded(items: Item[]): Promise<Undoable> {
   return u.kind === "notNeeded" ? { ...u, others: rest } : u;
 }
 
-/** Belgeler ve internet's visa line (v11): the visa sorted ("Var") or not yet ("Yok"); Hazırlık's visa chore (`key`) is the same mark. */
-export async function setVisaDone(tripId: string, done: boolean, key?: string): Promise<void> {
+/**
+ * Belgeler ve internet's visa line (v11): the visa sorted ("Var") or not yet ("Yok"); Hazırlık's visa chore (`key`) is the
+ * same mark. A Schengen visa's answer (`schengen`) is kept for every trip too (P7: asked once).
+ */
+export async function setVisaDone(tripId: string, done: boolean, key?: string, schengen = false): Promise<void> {
+  if (schengen) await saveSchengenVisa(done).catch(() => undefined);
   await updateTrip(tripId, (t) => withVisaDone(t, done, key));
   await addEvent(tripId, done ? L("Vize tamam olarak işaretlendi", "Visa marked as sorted") : L("Vize henüz yok olarak geri alındı", "Visa marked as not yet sorted"));
   notifyChanged();

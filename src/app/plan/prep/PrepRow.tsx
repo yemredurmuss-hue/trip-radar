@@ -38,7 +38,7 @@ export async function tickTask(trip: Trip, task: PrepTask, done: boolean): Promi
   if (task.tick === "record" && task.item) return void (await setDone(task.item, done));
   if (task.tick === "installed" && task.of) return setInstalled(task.of, done);
   // The visa: one mark with Belgeler's "Var"/"Yok".
-  if (task.tick === "visa") return setVisaDone(trip.id, done, task.key);
+  if (task.tick === "visa") return setVisaDone(trip.id, done, task.key, task.key === "visa:schengen");
   await updateTrip(trip.id, (t) => {
     const { [task.key]: _was, ...rest } = t.prepDone ?? {};
     return { ...t, prepDone: done ? { ...rest, [task.key]: Date.now() } : rest };

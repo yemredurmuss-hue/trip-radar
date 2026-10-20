@@ -255,3 +255,7 @@ body.still .q-row.z-r:hover { transform: none; }
 .z-pvf.high { color: var(--q-sand-ink); }
 /* A night change of plane (spec 2026-10-19 SerpApi, item 6): the warning's sand, as "Seçildi"'s, never red. */
 .z-tk .z-chip.night { background: var(--q-sand); border-color: var(--q-sand-l); color: var(--q-sand-ink); max-width: 100%; height: auto; min-height: 0; white-space: normal; line-height: 1.3; padding-top: 3px; padding-bottom: 3px; border-radius: 10px; }
+/* P6: a ticket's warnings (a long wait, landing at night, leaving before the trip) wrap wherever the ticket is drawn
+   (the Plan's box, the day's journey at 390 px), never pushing the page sideways. */
+.z-chip.night { max-width: 100%; height: auto; min-height: 26px; white-space: normal; line-height: 1.3; padding-top: 3px; padding-bottom: 3px; border-radius: 10px; }
+.z-tm .z-l3 .z-chip.night { flex: 0 1 auto; min-width: 0; }

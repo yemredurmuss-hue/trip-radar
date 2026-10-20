@@ -57,7 +57,7 @@ export interface TicketLeg {
 }
 
 export interface TicketChip {
-  kind: "bag" | "platform" | "seat" | "covers" | "where" | "night";
+  kind: "bag" | "platform" | "seat" | "covers" | "where" | "night" | "warn";
   text: string;
 }
 
@@ -229,6 +229,8 @@ export interface TicketCtx {
   covers?: number;
   /** A rental still to find: where and for which days the trip says it is for (its place, its return day). */
   span?: { city: string | null; start: string | null; end: string | null } | null;
+  /** The trip's first day (YYYY-MM-DD): a flight leaving before it is said (P6, F37). */
+  tripStart?: string | null;
 }
 
 /**
@@ -279,6 +281,9 @@ export function ticketViewOf(shown: readonly Item[], ctx: TicketCtx): TicketVM {
   // A change of plane at night (spec 2026-10-19 SerpApi, item 6): where, how long, from when to when there.
   const night = lead.category === "flight" ? nightChip(lead) : null;
   if (night) chips.push(night);
+  // P6 (F32, F37): what the times say plainly, never guessed: a long wait between two legs saved, landing at night, or
+  // leaving before the trip's first day.
+  if (lead.category === "flight") chips.push(...flightWarnings(shown, ctx.tripStart ?? null, !!night));
   const start = isoDate(lead.dates.start);
   const end = isoDate(lead.dates.end);
   const days = start && end ? nightsBetween(start, end) + (pass ? 1 : 0) : (lead.metrics?.validityDays ?? null);
@@ -307,6 +312,46 @@ export function hoursTo(item: Pick<Item, "flight" | "dates">, now: Date): number
   if (!at || at.length < 16) return null;
   const t = Date.parse(`${at.slice(0, 16)}:00Z`);
   return Number.isFinite(t) ? (t - now.getTime()) / 36e5 : null;
+}
+
+const clockOf = (at: string | null | undefined): number | null => {
+  const m = at ? /T(\d{2}):(\d{2})/.exec(at) : null;
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+};
+const localMs = (at: string | null | undefined): number | null => {
+  if (!at || at.length < 16) return null;
+  const t = Date.parse(`${at.slice(0, 16)}:00Z`);
+  return Number.isFinite(t) ? t : null;
+};
+const hoursText = (minutes: number) => {
+  const h = Math.floor(minutes / 60), m = minutes % 60;
+  return m ? L(`${h} sa ${m} dk`, `${h} h ${m} min`) : L(`${h} sa`, `${h} h`);
+};
+
+/**
+ * A flight's plain warnings from its own times (P6): a wait of 4 hours or more between two legs saved (both clocks the
+ * airport's), the last landing between midnight and six, and the first leaving before the trip's first day. Nothing is
+ * said without the times.
+ */
+export function flightWarnings(legs: readonly Item[], tripStart: string | null, nightSaid = false): TicketChip[] {
+  const out: TicketChip[] = [];
+  for (let i = 0; i + 1 < legs.length; i++) {
+    const land = localMs(legs[i].flight?.arrival), leave = localMs(legs[i + 1].flight?.departure);
+    const wait = land != null && leave != null ? Math.round((leave - land) / 6e4) : null;
+    if (wait != null && wait >= 240 && wait <= 24 * 60) {
+      const at = legs[i].flight?.to ? cityOfAirport(legs[i].flight!.to!) : null;
+      out.push({ kind: "warn", text: at ? L(`${locative(at)} ${hoursText(wait)} bekleme`, `${hoursText(wait)} wait in ${at}`) : L(`${hoursText(wait)} bekleme`, `${hoursText(wait)} wait`) });
+    }
+  }
+  const arrive = legs.at(-1)?.flight?.arrival;
+  const at = clockOf(arrive);
+  if (!nightSaid && at != null && at < 6 * 60) out.push({ kind: "warn", text: L(`Gece varış · ${arrive!.slice(11, 16)}`, `Lands at night · ${arrive!.slice(11, 16)}`) });
+  const leaves = legs[0]?.flight?.departure?.slice(0, 10);
+  if (tripStart && leaves && /^\d{4}-\d{2}-\d{2}$/.test(leaves) && leaves < tripStart) {
+    const days = Math.round((Date.parse(`${tripStart}T00:00:00Z`) - Date.parse(`${leaves}T00:00:00Z`)) / 864e5);
+    out.push({ kind: "warn", text: days === 1 ? L("Gezi başlangıcından 1 gün önce kalkış", "Leaves a day before the trip starts") : L(`Gezi başlangıcından ${days} gün önce kalkış`, `Leaves ${days} days before the trip starts`) });
+  }
+  return out;
 }
 
 /** "Gece aktarması · Madrid'de 7 sa (00:55–07:55)": a flight's night change of plane, as its source's legs said. */

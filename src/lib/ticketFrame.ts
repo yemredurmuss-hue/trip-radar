@@ -415,6 +415,6 @@ export function rowFace(o: OptionVM, kind: CardKind): RowFace {
     stops: stopsWord(leg?.stops ?? null, mode),
     bag: bagChip(item)?.text ?? null,
     price,
-    ribs: [...(o.ours ? [{ tone: "best" as const, text: `✨ ${L("Önerimiz", "Our pick")}` }] : []), ...o.badges.map((b) => ({ tone: "tag" as const, text: badge(b) }))],
+    ribs: [...(o.ours ? [{ tone: "best" as const, text: `✨ ${L("Önerimiz", "Our pick")}` }] : o.yours ? [{ tone: "tag" as const, text: L("Senin kaydın", "Your save") }] : []), ...o.badges.map((b) => ({ tone: "tag" as const, text: badge(b) }))],
   };
 }

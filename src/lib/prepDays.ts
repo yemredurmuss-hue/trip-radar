@@ -65,6 +65,8 @@ export interface PrepInput {
   countries: string[];
   /** YYYY-MM-DD. */
   today: string;
+  /** "Geçerli bir Schengen vizen var mı?" answered (kept for every trip, P7); null: not asked yet. */
+  schengen?: boolean | null;
   /** The ride apps the plan's ways suggest ("Uber": ticketFrame.rideApps), each a chore to download it once. */
   rides?: readonly string[];
 }
@@ -152,13 +154,18 @@ function esims(items: Item[], leave: string | null): PrepTask[] {
 function schengen(input: PrepInput): PrepTask | null {
   const there = input.countries.find((c) => SCHENGEN.includes(c) && visaFor(input.passport, c).kind === "visa");
   if (!there || !input.range) return null;
+  const done = visaDoneOf(input.trip) || input.schengen === true;
+  // Never answered (P7, F57): most who travel often have one, so it's asked first, with no deadline to have "gone by".
+  const ask = !done && input.schengen == null;
   return {
     key: "visa:schengen",
-    title: L("Schengen vizesine başvur", "Apply for the Schengen visa"),
-    sub: L(`Başvuru en geç gidişten ${SCHENGEN_LEAD_DAYS} gün önce`, `Apply at least ${SCHENGEN_LEAD_DAYS} days before you go`),
-    day: { date: addDays(input.range.start, -SCHENGEN_LEAD_DAYS), time: null, rel: "by" },
+    title: ask ? L("Geçerli bir Schengen vizen var mı?", "Do you have a valid Schengen visa?") : L("Schengen vizesine başvur", "Apply for the Schengen visa"),
+    sub: ask
+      ? L("Varsa işaretle; bir kez sorarım, sonraki gezilerde hatırlarım.", "Tick it if you do; asked once, remembered for later trips.")
+      : L(`Randevu haftalar sürebilir; başvuru en geç gidişten ${SCHENGEN_LEAD_DAYS} gün önce`, `Appointments can take weeks; apply at least ${SCHENGEN_LEAD_DAYS} days before you go`),
+    day: ask ? null : { date: addDays(input.range.start, -SCHENGEN_LEAD_DAYS), time: null, rel: "by" },
     from: "visa",
-    done: visaDoneOf(input.trip),
+    done,
     doneAt: null,
     item: null,
     of: null,

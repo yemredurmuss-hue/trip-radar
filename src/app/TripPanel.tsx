@@ -27,7 +27,7 @@ import { cityOfAirport } from "../lib/airports";
 import { budgetView, datesTip, docsMissing, heroCounts, heroLine } from "../lib/heroStrip";
 import { allSet, nextLabel, nextShort, nextStep, type NextIntent, type NextStep } from "../lib/nextStep";
 import { nNights } from "../lib/i18nText";
-import { loadHome, loadPassport } from "../lib/passport";
+import { loadHome, loadPassport, loadSchengenVisa, type SchengenAnswer } from "../lib/passport";
 import { displayCurrency } from "../lib/displayCurrency";
 import { countryFacts, homeCurrencyOf, tripFacts } from "../lib/tripFacts";
 
@@ -50,7 +50,7 @@ import { EmptyEnvContext, type EmptyEnv } from "./cards/emptyEnv";
 import { isEmptyRecord } from "../lib/emptyCards";
 import { liveSource } from "../lib/offerSources";
 import { foreignCountries, homeFromFlights } from "../lib/suggestions";
-import { visaCountry, visaDoneOf, visaFor } from "../lib/visa";
+import { SCHENGEN, visaCountry, visaDoneOf, visaFor } from "../lib/visa";
 import { CardEnvContext, NavGroup, PlanCard, type CardEnv } from "./cards/PlanCard";
 import { SilhouetteDefs } from "./cards/Silhouettes";
 import { UndoToast } from "./cards/UndoToast";
@@ -523,14 +523,17 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const [passport, setPassport] = useState("TR");
   // The passport as set in Settings (null while it's the default): the suggestions about going abroad wait for it.
   const [home, setHome] = useState<string | null>(null);
+  // "Geçerli bir Schengen vizen var mı?" answered once for every trip (P7); null while not asked.
+  const [schengenAns, setSchengenAns] = useState<SchengenAnswer | null>(null);
   useEffect(() => {
     const read = () => {
       void loadPassport().then(setPassport);
       void loadHome().then(setHome);
+      void loadSchengenVisa().then(setSchengenAns);
     };
     read();
-    // Changed in Settings (a dialog over this board).
-    const onChange = (changes: Record<string, unknown>) => "passport" in changes && read();
+    // Changed in Settings (a dialog over this board), or the visa answered on another trip.
+    const onChange = (changes: Record<string, unknown>) => ("passport" in changes || "schengenVisa" in changes) && read();
     try {
       chrome.storage.onChanged.addListener(onChange);
       return () => chrome.storage.onChanged.removeListener(onChange);
@@ -600,11 +603,12 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   // Turkish one taken for granted: the line asks), to the trip's country abroad, found from its places and where its flights
   // land; drawn whenever the trip goes abroad, sorted or not (one mark with Hazırlık's visa chore: visaDoneOf).
   const visaHome = home ?? homeFromFlights(items);
-  const visa = useMemo(() => {
-    const to = visaCountry(facts.country, esimCountries.length ? esimCountries : countries, visaHome);
-    return to ? visaFor(visaHome, to) : null;
-  }, [facts.country, esimCountries, countries, visaHome]);
-  const visaDone = visaDoneOf(trip);
+  const visaTo = useMemo(() => visaCountry(facts.country, esimCountries.length ? esimCountries : countries, visaHome), [facts.country, esimCountries, countries, visaHome]);
+  const visa = useMemo(() => (visaTo ? visaFor(visaHome, visaTo) : null), [visaTo, visaHome]);
+  // A Schengen visa to get (P7): sorted by the answer kept for every trip too; never answered, the line asks first.
+  const schengenVisa = visa?.kind === "visa" && !!visaTo && SCHENGEN.includes(visaTo);
+  const visaDone = visaDoneOf(trip) || (schengenVisa && schengenAns?.has === true);
+  const visaAsk = schengenVisa && !visaDone && schengenAns == null;
   const heroFacts = useMemo(() => ({ ...facts, visa }), [facts, visa]);
   const places = useMemo(() => cityRanges(plan, mains, range), [plan, mains, range]);
   const mood = trip.mood?.key === moodFor && trip.mood.text ? trip.mood.text : null;
@@ -719,7 +723,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   };
   // F4: "Sıradaki" updates itself; C30: "İlk kaydı ekle" with nothing saved, the PDF with every need on the plan, sharing once
   // every need is bought; on the trip and after it no decision (row 127).
-  const step: NextStep = nextStep({ intents: counted, saved: done.total > 0, visa: visaToGet, sharable: !!onShare, mode });
+  const step: NextStep = nextStep({ intents: counted, saved: done.total > 0, visa: visaToGet, visaAsk, sharable: !!onShare, mode });
   const runStep: Record<NextStep["kind"], (() => void) | null> = {
     first: () => addIn(null, null),
     visa: goVisa,
@@ -1133,10 +1137,11 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
             suggestions={suggestions}
             visa={visa}
             visaDone={visaDone}
+            visaAsk={visaAsk}
             tourPhotos={tourPlaces}
             decide={counts.open}
             order={<PlanOrder view="plan" onView={(v) => setView(v)} off={orderOff} />}
-            onVisaDone={(done) => void setVisaDone(trip.id, done)}
+            onVisaDone={(done) => void setVisaDone(trip.id, done, undefined, schengenVisa)}
           />
         </EmptyEnvContext.Provider>
       )}

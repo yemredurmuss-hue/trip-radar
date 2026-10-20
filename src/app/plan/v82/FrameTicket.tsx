@@ -89,9 +89,9 @@ function endFields(face: TicketFace): { from: FieldKey | null; to: FieldKey | nu
 }
 
 function Chip({ chip }: { chip: TicketChip }) {
-  const icon = chip.kind === "bag" ? <BagIcon /> : chip.kind === "where" || chip.kind === "platform" ? <Ic name="pin" size={12} /> : chip.kind === "covers" ? <Ic name="check" size={12} stroke={2.6} /> : chip.kind === "night" ? <span aria-hidden="true">⚠</span> : null;
+  const icon = chip.kind === "bag" ? <BagIcon /> : chip.kind === "where" || chip.kind === "platform" ? <Ic name="pin" size={12} /> : chip.kind === "covers" ? <Ic name="check" size={12} stroke={2.6} /> : chip.kind === "night" || chip.kind === "warn" ? <span aria-hidden="true">⚠</span> : null;
   return (
-    <span className={chip.kind === "night" ? "z-chip night" : "z-chip"} title={chip.text}>
+    <span className={chip.kind === "night" || chip.kind === "warn" ? "z-chip night" : "z-chip"} title={chip.text}>
       {icon}
       {chip.text}
     </span>

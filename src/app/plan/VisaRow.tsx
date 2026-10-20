@@ -11,12 +11,15 @@ import { IdeaGlyph } from "../ideas/IdeaIcons";
 import { PASSPORTS } from "../PassportField";
 
 
-export function VisaRow({ visa, done, onDone }: { visa: Visa | null; done: boolean; onDone: (done: boolean) => void }) {
+export function VisaRow({ visa, done, ask = false, onDone }: { visa: Visa | null; done: boolean; ask?: boolean; onDone: (done: boolean) => void }) {
   if (!visa || visa.kind === "none") return null;
-  const { head, sub } = visaAnswer(visa, done);
+  // A Schengen visa never answered for (P7, F57): asked first, once for every trip; "Yok" is kept too.
+  const { head, sub } = ask
+    ? { head: L("Geçerli bir Schengen vizen var mı?", "Do you have a valid Schengen visa?"), sub: L("Bir kez sorarım, hatırlarım.", "Asked once, remembered.") }
+    : visaAnswer(visa, done);
   const tone = done ? "ok" : visa.kind === "free" ? "ok free" : "need";
   return (
-    <p className={`z-visa ${tone}`} data-visa={visa.kind} data-done={done ? "" : undefined}>
+    <p className={`z-visa ${tone}${ask ? " ask" : ""}`} data-visa={visa.kind} data-done={done ? "" : undefined}>
       {done || visa.kind === "free" ? <IdeaGlyph name="check" size={14} /> : <i className="z-vx" aria-hidden>!</i>}
       <b>{head}</b>
       {sub && <span>{sub}</span>}
@@ -41,8 +44,8 @@ export function VisaRow({ visa, done, onDone }: { visa: Visa | null; done: boole
           title={L("Vize alındı ya da gerekmediği onaylandı", "Visa got, or confirmed it isn't needed")} onClick={() => !done && onDone(true)}>
           {L("Var", "Have it")}
         </button>
-        <button type="button" className={`q-got${done ? "" : " on"}`} aria-pressed={!done}
-          title={done ? L("Geri al: henüz yok", "Undo: not yet") : L("Henüz yok", "Not yet")} onClick={() => done && onDone(false)}>
+        <button type="button" className={`q-got${done || ask ? "" : " on"}`} aria-pressed={!done && !ask}
+          title={done ? L("Geri al: henüz yok", "Undo: not yet") : L("Henüz yok", "Not yet")} onClick={() => (done || ask) && onDone(false)}>
           {L("Yok", "Not yet")}
         </button>
       </span>

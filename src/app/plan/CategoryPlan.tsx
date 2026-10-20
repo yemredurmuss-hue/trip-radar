@@ -95,7 +95,7 @@ function bringUp(head: HTMLElement) {
   requestAnimationFrame(step);
 }
 
-export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onAdd, today, items, pending, suggestions, visa = null, visaDone = false, onVisaDone, order = null, info = {}, decide, tourPhotos = [] }: {
+export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onAdd, today, items, pending, suggestions, visa = null, visaDone = false, visaAsk = false, onVisaDone, order = null, info = {}, decide, tourPhotos = [] }: {
   plan: Plan;
   sections: CatSection[];
   /** Open now: the traveller's choice, remembered (sectionMeta.useSectionOpen), or held open while a link is read into it. */
@@ -112,6 +112,8 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
   /** The traveller's visa for the trip's country: Belgeler ve internet's first line, drawn even with nothing else there. */
   visa?: Visa | null;
   visaDone?: boolean;
+  /** A Schengen visa never answered for: the line asks "Geçerli bir Schengen vizen var mı?" (P7). */
+  visaAsk?: boolean;
   onVisaDone?: (done: boolean) => void;
   /** "n karar bekliyor" as the hero counts it (tripPhase.countedIntents, row 127): on the trip a need whose day went by is none. */
   decide?: number;
@@ -291,7 +293,7 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
                           {pending?.bySection[s.id]}
                           {reviewLine(s)}
                           {suggestions && <SuggestionCards list={cardSuggestions(s)} onAdd={suggestions.add} onDismiss={suggestions.dismiss} notes={suggestions.notes} />}
-                          {visaLine(s) && <VisaRow visa={visa} done={visaDone} onDone={(d) => onVisaDone?.(d)} />}
+                          {visaLine(s) && <VisaRow visa={visa} done={visaDone} ask={visaAsk} onDone={(d) => onVisaDone?.(d)} />}
                         </>
                       }
                       hidden={<Hidden section={s} live={items.filter((i) => i.status !== "dismissed" && planSectionOfItem(i) === s.id)} suggestions={dismissed} art={(kind) => artOf(kind)} />}

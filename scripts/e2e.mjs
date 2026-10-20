@@ -287,6 +287,11 @@ try {
   assert.deepEqual(fills.map((f) => [f.cls, f.width]), [["bk", atStart.bookedPct], ["ch", atStart.planPct - atStart.bookedPct]], JSON.stringify(fills));
   assert.notEqual(fills[0].paint, fills[1].paint, "two tones");
   // F4: a visa to get comes before everything (a Turkish passport for Portugal: Schengen); C25: its chip is amber.
+  // P7 (F57): never answered, it's a question first ("Geçerli bir Schengen vizen var mı?"), not an appointment; the
+  // answer is kept for every trip. "Yok" here, so the rest goes on with a visa to apply for.
+  assert.equal(flat([await hero.locator(".x-next").innerText()])[0], "Sıradaki Vize durumun");
+  await app.evaluate(() => chrome.storage.local.set({ schengenVisa: { has: false, at: Date.now() } }));
+  await hero.locator(".x-next", { hasText: "Vize randevusu" }).waitFor();
   assert.equal(flat([await hero.locator(".x-next").innerText()])[0], "Sıradaki Vize randevusu");
   // Who goes: two adults read from the saves (no names: two plain faces, the count big, "kişi" under it; the sample isn't
   // shared, so no invite).
@@ -1305,10 +1310,11 @@ try {
   // Back on the plan, without the train Porto → Lizbon is a move to plan: by plane it reads as a flight, with its status on it.
   await tab("Plan").click();
   // "Çıkar" in the ⋯: it leaves the options and waits at the end of its category, under "Gizlenenler · 1" (F3).
-  // v82 (B2): the one train saved is our pick on its ticket; its ⋯ is that option's.
+  // v82 (B2): the one train saved is the pick on its ticket; its ⋯ is that option's. P6 (F38): the traveller's own one save,
+  // nothing to pick between, says so ("Senin kaydın"), never our "Önerimiz".
   await openSec("transport");
   const train = sec("transport").locator(".q-ints > .q-int", { has: app.locator(".z-car", { hasText: "Alfa Pendular" }) });
-  assert.equal(flat([await train.locator(".q-st").innerText()])[0], "✨ Önerimiz · onayla");
+  assert.equal(flat([await train.locator(".q-st").innerText()])[0], "Senin kaydın · onayla");
   // Tren adlandırma (v81): the operator's mark, the service bold, the operator small; the plan's cities big, the stations under them.
   assert.equal(flat([await train.locator(".z-car").innerText()])[0], "CP Alfa Pendular CP · 11 Ekim");
   assert.match(flat([await train.locator(".z-route").innerText()])[0], /^Porto Porto Campanhã · 13:09 .*aktarmasız Lizbon Lisboa Santa Apolónia · 16:04$/);

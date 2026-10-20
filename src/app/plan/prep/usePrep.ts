@@ -9,7 +9,7 @@ import { lang } from "../../../lib/i18n";
 import { tripDateRange } from "../../../lib/items";
 import { buildLegs } from "../../../lib/legs";
 import { buildPlan } from "../../../lib/plan";
-import { loadHome, loadPassport } from "../../../lib/passport";
+import { loadHome, loadPassport, loadSchengenVisa } from "../../../lib/passport";
 import { prepSummary, prepTasks, type PrepSummary, type PrepTask } from "../../../lib/prepDays";
 import { isPackLine, loadPackMine, savePackMine, type PackMine } from "../../../lib/prepPack";
 import { chromeKV } from "../../../lib/share/store";
@@ -102,6 +102,7 @@ export function usePrepWith(entries: CatEntry[], env: PrepEnv): PrepModel {
   const { trip, items } = env;
   const passport = useStored(loadPassport, "TR", ["passport"]);
   const home = useStored(loadHome, null, ["passport"]);
+  const schengen = useStored(loadSchengenVisa, null, ["schengenVisa"]);
   const stored = useStored(() => loadPackMine(chromeKV), MINE_EMPTY, ["packMine"]);
   // What was just saved here, until storage says it back.
   const [mine, setMine] = useState<PackMine | null>(null);
@@ -127,9 +128,9 @@ export function usePrepWith(entries: CatEntry[], env: PrepEnv): PrepModel {
   // The ride apps the plan's ways suggest (an airport taxi's Uber): one chore each to download it.
   const rides = useMemo(() => rideApps(buildLegs(buildPlan(trip, items), trip), trip).join("|"), [trip, items]);
   const tasks = useMemo(
-    () => prepTasks({ chores, items, trip, range, passport: visaPassport, countries, today: env.today, rides: [] }),
+    () => prepTasks({ chores, items, trip, range, passport: visaPassport, countries, today: env.today, rides: [], schengen: schengen?.has ?? null }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the trip's fields it reads
-    [chores, items, trip.prepDone, trip.hidden, trip.visaDone, range?.start, range?.end, visaPassport, countries, env.today],
+    [chores, items, trip.prepDone, trip.hidden, trip.visaDone, range?.start, range?.end, visaPassport, countries, env.today, schengen?.has],
   );
   const local = facts.local;
   // (one object while the chores stand: the board's intents are worked out again only when it changes)
