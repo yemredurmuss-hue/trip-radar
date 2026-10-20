@@ -29,6 +29,8 @@ export function chatPeek(messages: readonly ChatMessage[], max = PEEK_MAX): stri
   // A web search's late line isn't a reply (the one before it is what was said); a change line isn't said by anyone.
   const last = messages.filter((m) => m.text.trim() !== "" && (m.role === "user" || (m.role === "assistant" && !m.landed))).at(-1);
   if (!last) return null;
-  const words = plainWords(last.role === "assistant" ? shownReply(last.text) : last.text);
+  // P8 (F43): a reply of several parts (the start chat's last line and "Gezin hazır" joined) peeks at its last one.
+  const said = last.role === "assistant" ? shownReply(last.text) : last.text;
+  const words = plainWords(said.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean).at(-1) ?? said);
   return words ? cutWords(words, max) : null;
 }

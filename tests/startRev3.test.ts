@@ -180,7 +180,8 @@ describe("instant capture, most important first (the owner's second report)", ()
   it("the names are asked once in the board's chat, after the trip is made", () => {
     const s = typed(newStart("png4", "plan", 1, "tr"), TR);
     const made = withLang("tr", () => creationOf(s))!;
-    expect(withLang("tr", () => readyText(made, [], namesToAsk(s)))).toMatch(/Bu arada, kimlerle gidiyorsun\? İstersen adlarını yazabilirsin\.$/);
+    // P8 (F10): who goes is known: only the names are asked ("kimlerle gidiyorsun?" never again).
+    expect(withLang("tr", () => readyText(made, [], namesToAsk(s) ? (s.who?.kind ?? true) : false))).toMatch(/Bu arada, istersen arkadaşlarının adlarını yazabilirsin\.$/);
     expect(namesToAsk({ who: { kind: "partner", names: ["Sabine"] } })).toBe(false);
   });
 });

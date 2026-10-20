@@ -3,15 +3,29 @@
 import { useState, type ReactNode } from "react";
 import { L } from "../lib/i18n";
 
-export const FOLD_MIN = 4;
+/** P8 (F29, T8): two change lines in a row are already gathered; the chat keeps to the talk and the decisions. */
+export const FOLD_MIN = 2;
 
-export function EventFold({ count, children }: { count: number; children: ReactNode }) {
+/** The fold's words from its lines: "3 kaydedildi, 1 güncellendi", else "4 değişiklik". */
+export function foldLabel(texts: readonly string[]): string {
+  const saved = texts.filter((t) => /kaydedildi|saved/i.test(t)).length;
+  const updated = texts.filter((t) => /güncellendi|updated/i.test(t)).length;
+  const rest = texts.length - saved - updated;
+  const parts = [
+    saved ? L(`${saved} kaydedildi`, `${saved} saved`) : "",
+    updated ? L(`${updated} güncellendi`, `${updated} updated`) : "",
+    rest && (saved || updated) ? L(`${rest} değişiklik`, `${rest} ${rest === 1 ? "change" : "changes"}`) : "",
+  ].filter(Boolean);
+  return parts.length ? parts.join(", ") : L(`${texts.length} değişiklik`, `${texts.length} changes`);
+}
+
+export function EventFold({ count, label, children }: { count: number; label?: string; children: ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
     <div className={`ev-fold${open ? " open" : ""}`}>
       <button type="button" className="ev-fold-btn" aria-expanded={open} onClick={() => setOpen(!open)}>
         <span aria-hidden>✓</span>
-        {L(`${count} değişiklik`, `${count} changes`)}
+        {label ?? L(`${count} değişiklik`, `${count} changes`)}
         <span className="ev-fold-chev" aria-hidden>
           ▾
         </span>

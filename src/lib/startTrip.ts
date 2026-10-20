@@ -4116,12 +4116,18 @@ export function startLead(trip: Pick<Trip, "startGuide" | "confirmedDates">, ite
 }
 
 /** The line under "Gezin hazır": "31 gün, 3 durak. Önce uçuşu bul, sonra Ubud konaklamasını seçelim." */
-export function readyText(c: Creation, missing: string[] = [], askNames = false): string {
+export function readyText(c: Creation, missing: string[] = [], askNames: boolean | Companions = false): string {
   const stops = c.stays.length;
   const firstCity = c.stays[0]?.city ?? "";
   // What wasn't said in the interview is asked here, in the board's chat that goes on with it (item 4); the names
   // of who goes, once and gently (rev 3: never asked before the trip is made).
-  const names = askNames ? L(" Bu arada, kimlerle gidiyorsun? İstersen adlarını yazabilirsin.", " By the way, who's going with you? Tell me their names if you like.") : "";
+  // P8 (F10): who goes is known by then ("eşimle"): only the names are asked, never "kimlerle gidiyorsun?" again.
+  const whose =
+    askNames === "partner" ? L("eşinin adını", "your partner's name")
+    : askNames === "friends" ? L("arkadaşlarının adlarını", "your friends' names")
+    : askNames === "family" ? L("ailenden gidenlerin adlarını", "the names of your family going")
+    : L("birlikte gidenlerin adlarını", "the names of who's going with you");
+  const names = askNames ? L(` Bu arada, istersen ${whose} yazabilirsin.`, ` By the way, tell me ${whose} if you like.`) : "";
   const ask = (missing.length ? L(` Eksik kalanları buradan konuşalım: ${missing.join(", ")}.`, ` Let's settle what's still open here: ${missing.join(", ")}.`) : "") + names;
   if (!c.dates) {
     return `${L(`${c.title} hazır.`, `${c.title} is ready.`)} ${L("Tarihleri söyleyince geceleri ve uçuşları yerleştiririm.", "Tell me the dates and I'll place the nights and the flights.")}${ask}`;
@@ -4144,8 +4150,10 @@ export function readyText(c: Creation, missing: string[] = [], askNames = false)
  */
 export function historyRows(messages: StartMsg[], closing: string, provider: "gemini" | "anthropic", tripId: string): Omit<ChatMessage, "id">[] {
   const turns: { role: "user" | "assistant"; text: string; at: number }[] = [];
+  // P8 (F43): "Hazırım, birkaç saniye içinde oluşturuyorum" said while counting is done by now: not carried over.
+  const ready = readyLine();
   for (const m of [...messages, { role: "assistant" as const, text: closing, at: (messages.at(-1)?.at ?? 0) + 1 }]) {
-    const text = m.text.trim();
+    const text = (m.role === "assistant" && m.text !== closing ? m.text.replace(ready, "") : m.text).trim();
     if (!text) continue;
     const prev = turns.at(-1);
     if (prev && prev.role === m.role) prev.text = `${prev.text}\n\n${text}`;

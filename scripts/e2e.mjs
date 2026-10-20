@@ -1224,9 +1224,10 @@ try {
   // The chat folds a run of change lines ("N değişiklik ▾", drawing ux-katmanli-arayuz); open it to read them.
   const changeFold = app.locator(".chat .ev-fold-btn").last();
   await changeFold.waitFor();
-  assert.match(await changeFold.innerText(), /\d+ değişiklik/);
+  // P8 (F29): from two lines on, and it says what they are ("2 kaydedildi, 1 güncellendi", else "N değişiklik").
+  assert.match(await changeFold.innerText(), /\d+ (değişiklik|kaydedildi|güncellendi)/);
   await app.screenshot({ path: `${out}/36d-chat-fold-closed.png` });
-  if ((await changeFold.getAttribute("aria-expanded")) !== "true") await changeFold.click();
+  for (const fold of await app.locator('.chat .ev-fold-btn[aria-expanded="false"]').all()) await fold.click();
   await app.screenshot({ path: `${out}/36e-chat-fold-open.png` });
   await app.getByText("Jardim Stay plana alındı").waitFor();
   // v82: chosen, the stay's box says "Seçildi" (sand), its side column the price, "Rezerve et ↗" and "✓ Aldım · Değiştir"; Değiştir
@@ -4936,7 +4937,9 @@ try {
   }
   await board.locator(".st-side .st-gen-btn").click();
   await board.getByRole("heading", { name: titled("Papua New Guinea") }).waitFor({ timeout: 20000 });
-  await board.locator(".chat .msg-assistant", { hasText: "Tell me their names if you like." }).waitFor();
+  // P8 (F10): who goes is known (a friend): only the names are asked, never "who's going" again.
+  await board.locator(".chat .msg-assistant", { hasText: "tell me your friends' names if you like." }).waitFor();
+  assert.equal(await board.locator(".chat .msg-assistant", { hasText: "who's going with you?" }).count(), 0, "who goes isn't asked again");
   console.log("✓ start rev 3, the second report (English): \"Papua New Gune\" asked back as Papua New Guinea, a friend, November · 3 weeks at once, where from from the trips before; \"Yes\" starts the countdown (stopped); then the day, what they want, the route; no names before the trip; the board's chat asks them once");
 
   // The Turkish equivalent: exact, taken at once.

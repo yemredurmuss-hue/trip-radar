@@ -22,7 +22,7 @@ import { ChatCard } from "./chat/ChatCard";
 import type { PlanLink } from "./chat/planLink";
 import { QuickReplies } from "./chat/QuickReplies";
 import { useChatDrawer } from "./chat/useChatDrawer";
-import { EventFold, foldRuns } from "./ChatFold";
+import { EventFold, foldLabel, foldRuns } from "./ChatFold";
 import { ChatOffers } from "./ChatOffers";
 import { ArrowUp, Back } from "./Icons";
 import { Mascot } from "./Mascot";
@@ -597,10 +597,16 @@ type ArrivalRow = ReturnType<typeof useChatArrivals>["rows"][number];
  * The rows drawn in order, a run of plain change lines folded into one ("12 değişiklik ▾"). A line that went to a card
  * (its own button), a routing note, a file's line and everything said by a person stay as they are.
  */
-function foldRows(rows: ArrivalRow[], render: (row: ArrivalRow) => ReactNode): ReactNode[] {
+function foldRows(all: ArrivalRow[], render: (row: ArrivalRow) => ReactNode): ReactNode[] {
+  // P8 (F29): the same question asked again ("… birleştirdim. Ayrı mı tutayım?" on a second save) is shown once, the last.
+  const asked = (row: ArrivalRow) => (row.kind === "msg" && row.m.role === "event" && row.m.routing ? row.m.text : null);
+  const rows = all.filter((row, i) => {
+    const q = asked(row);
+    return !q || !all.slice(i + 1).some((later) => asked(later) === q);
+  });
   return foldRuns(rows, (row) => row.kind === "msg" && row.m.role === "event" && !row.m.routing && !row.file).map((g) =>
     "fold" in g ? (
-      <EventFold key={`fold-${g.fold[0].kind === "msg" ? g.fold[0].m.id : ""}`} count={g.fold.length}>
+      <EventFold key={`fold-${g.fold[0].kind === "msg" ? g.fold[0].m.id : ""}`} count={g.fold.length} label={foldLabel(g.fold.map((r) => (r.kind === "msg" ? r.m.text : "")))}>
         {g.fold.map(render)}
       </EventFold>
     ) : (
