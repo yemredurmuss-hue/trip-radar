@@ -64,8 +64,11 @@ export function CollectionBox({ vm, color }: { vm: IntentVM; color: string }) {
     ...(env.ask ? [{ label: L("Daha fazla öner", "Suggest more"), run: () => env.ask!(askMore(vm.section, vm.head.city)) }] : []),
     ...(live.length || vm.suggestions.length ? [{ label: L("Gerek yok", "Not needed"), run: skip, danger: true }] : []),
   ];
-  // A row says how many are on the plan ("2 planda · 1 alındı"), with no tick (the prototype's many-pick chip).
-  const chip = { ...statusChip(vm), tick: false };
+  // A row says how many are on the plan ("2 planda · 1 alındı"), with no tick (the prototype's many-pick chip). 0.39.14
+  // (Emre: "çok buton text var"): Yapılacaklar' city with nothing on its plan says "Karar bekliyor" to a reader only; the
+  // category's "1 karar" and the box's dashed edge say it already.
+  const waiting = vm.status === "deciding" || vm.status === "searching";
+  const chip = { ...statusChip(vm), tick: false, quiet: vm.section === "todo" && waiting };
   return (
     <section
       className={`q-int z-int multi${folding ? " folding" : ""}`}

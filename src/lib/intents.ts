@@ -1387,7 +1387,8 @@ function lineOf(section: CatSection, intents: IntentVM[], ideas: number): string
       parts.push(n ? L(`${n} şehir için`, `for ${n} ${n === 1 ? "city" : "cities"}`) : null);
       break;
     case "todo":
-      parts.push(L("Gezilecek yerler ve restoranlar", "Places to see and restaurants"));
+      // 0.39.14: not the name again ("Gezilecek yerler ve restoranlar" under "Yapılacaklar ve restoranlar"): its cities.
+      parts.push(n ? L(`${n} şehir için`, `for ${n} ${n === 1 ? "city" : "cities"}`) : null);
       break;
     case "other":
       parts.push(counted.length ? joinAnd(uniq(counted.map((i) => lowerFirst(cardKindLabel(i.kind))))) : null);

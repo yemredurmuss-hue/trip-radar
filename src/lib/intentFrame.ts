@@ -59,6 +59,8 @@ export interface StatusChip {
   tone: "todo" | "none" | "ai" | "sel" | "ok" | "arr" | "inc";
   text: string;
   tick: boolean;
+  /** Said to a screen reader only (0.39.14: Yapılacaklar' "Karar bekliyor", which the category's "1 karar" says already). */
+  quiet?: boolean;
 }
 
 /**

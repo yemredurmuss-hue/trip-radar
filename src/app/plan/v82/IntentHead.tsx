@@ -77,7 +77,7 @@ export function IntentHead({ vm, art, chip, busy = false, chipId, pop, onPano, m
         </div>
       </div>
       <div className="q-hr">
-        <span id={chipId} className={`q-st ${chip.tone}${pop ? " pop" : ""}`}>
+        <span id={chipId} className={`q-st ${chip.tone}${pop ? " pop" : ""}${chip.quiet ? " sr-only" : ""}`}>
           {chip.tick && <Ic name="check" size={12} stroke={3.2} />}
           {busy && <SearchDots />}
           {chip.text}

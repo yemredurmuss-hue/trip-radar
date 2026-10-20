@@ -248,7 +248,8 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
       line: sum.line,
       thumbs,
       more,
-      bar: c.intents.length ? sum.bar : null,
+      // 0.39.14: Yapılacaklar' bar shows once something is on its plan (an empty bar beside "1 karar" says nothing more).
+      bar: c.intents.length && !(s.id === "todo" && !sum.counts.booked && !sum.counts.chosen && !done) ? sum.bar : null,
       parts: c.intents.length ? [...countParts(sum.counts, c.intents.some((i) => i.frame === "collection")), ...(done ? [{ text: L(`${done} yapıldı`, `${done} done`), decide: false }] : [])] : [],
       spent: sum.spent ? formatPrice(sum.spent.amount, sum.spent.currency) : null,
       allot: sum.allotted ? formatPrice(sum.allotted.amount, sum.allotted.currency) : null,

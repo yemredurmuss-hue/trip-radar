@@ -29,7 +29,7 @@ import { addOffer, chooseItem, setItemPhoto } from "../../actions";
 import { useEmptyEnv } from "../../cards/emptyEnv";
 import { useCardEnv } from "../../cards/PlanCard";
 import { useCollectEnv } from "./collectEnv";
-import { Ic } from "./icons";
+import { Ic, Mark } from "./icons";
 import { EmptySlots, OfferCard, RecordCard, SuggestCard } from "./KCard";
 import { SelfLinks } from "./OptionCompact";
 import { Searching } from "./Searching";
@@ -157,6 +157,17 @@ function useCitySights(city: string | null): Sight[] {
   return got && got.city === city ? got.list : [];
 }
 
+/** Yapılacaklar' "Kendin ara" (0.39.14): one small link, "G Haritada ara ↗", Google Maps looking for what the chips say. */
+function MapSearch({ link }: { link: SelfSearch | null }) {
+  if (!link) return null;
+  return (
+    <a className="z-pl z-msearch" href={link.url} target="_blank" rel="noopener noreferrer" title={L(`${locative(link.name)} ara · yeni sekmede açılır`, `Search ${link.name} · opens in a new tab`)}>
+      <Mark color={link.color} letter={link.letter} small />
+      <span>{L("Haritada ara", "Search the map")} ↗</span>
+    </a>
+  );
+}
+
 /** "Viator'da turlar aranıyor…": where the city's tours will land while the source is asked. */
 const ToursLooking = () => <Searching text={L("Viator'da turlar aranıyor…", "Looking for tours on Viator…")} />;
 
@@ -197,30 +208,38 @@ export function CollectionRow({ vm, onPut, onTakeOff }: CollectionRowProps) {
     return null;
   };
 
+  // 0.39.14 (Emre: "çok buton text var"): Yapılacaklar' chips only when there's a choice (places and restaurants both),
+  // over the first row shown; with nothing on its plan, Planında's line goes ("henüz planda yok" beside Öneriler' count).
+  const chips =
+    todo && row.counts.go > 0 && row.counts.food > 0 ? (
+      <>
+        <span className="q-sp" />
+        <span className="z-fchips" role="group" aria-label={L(`${city}: ne`, `${city}: what`)}>
+          {K_FILTERS.map((f) => (
+            <button key={f} type="button" className="z-fc" aria-pressed={filter === f} onClick={() => setFilter(f)}>
+              {filterWord(f)} <i>{row.counts[f]}</i>
+            </button>
+          ))}
+        </span>
+      </>
+    ) : null;
+  const bare = todo && row.plan.length === 0 && ideas.length > 0;
+
   return (
     <>
-      <div className="q-planw">
-        <div className="q-oh">
-          <b className="q-ot">{L("Planında", "On your plan")}</b>
-          <small className="q-ppn">{plans.length || ""}</small>
-          {plans.length === 0 && (
-            <small className="z-pe">
-              {ideas.length > 0 ? L("Henüz plana koymadın · önerilerden “+ Plana koy”", "Nothing on your plan yet · “+ Add to plan” from the suggestions") : L("Henüz plana koymadın", "Nothing on your plan yet")}
-            </small>
-          )}
-          {todo && row.counts.all > 0 && (
-            <>
-              <span className="q-sp" />
-              <span className="z-fchips" role="group" aria-label={L(`${city}: ne`, `${city}: what`)}>
-                {K_FILTERS.map((f) => (
-                  <button key={f} type="button" className="z-fc" aria-pressed={filter === f} onClick={() => setFilter(f)}>
-                    {filterWord(f)} <i>{row.counts[f]}</i>
-                  </button>
-                ))}
-              </span>
-            </>
-          )}
-        </div>
+      <div className={`q-planw${bare ? " bare" : ""}`}>
+        {!bare && (
+          <div className="q-oh">
+            <b className="q-ot">{L("Planında", "On your plan")}</b>
+            <small className="q-ppn">{plans.length || ""}</small>
+            {plans.length === 0 && (
+              <small className="z-pe">
+                {ideas.length > 0 ? L("Henüz plana koymadın · önerilerden “+ Plana koy”", "Nothing on your plan yet · “+ Add to plan” from the suggestions") : L("Henüz plana koymadın", "Nothing on your plan yet")}
+              </small>
+            )}
+            {chips}
+          </div>
+        )}
         <div className={`q-prow ${rowClass(vm.section)}`} data-row="plan">
           {plans.map(cardOf)}
           {/* (the last row filled to four with unseen cells; none while empty: putFly lands on the new card itself, E6) */}
@@ -246,9 +265,11 @@ export function CollectionRow({ vm, onPut, onTakeOff }: CollectionRowProps) {
             ) : (
               <small className="q-oc">{ideasCaption(ideas.length, o.shown.length)}</small>
             )}
+            {bare && <small className="z-pe">{L("henüz planda yok", "nothing on your plan yet")}</small>}
             {looking && <ToursLooking />}
+            {bare ? chips : null}
             <span className="q-sp" />
-            <SelfLinks links={links} />
+            {todo ? <MapSearch link={links[0] ?? null} /> : <SelfLinks links={links} />}
             {/* C26: the ideas fold away (the live "Öneriler ve fikirler" bar), remembered in this browser; not while the plan is empty. */}
             {!todo && plans.length > 0 && (
               <button type="button" className={`z-fold${open ? "" : " shut"}`} aria-expanded={open} onClick={() => setOpen(!open)}

@@ -30,10 +30,11 @@ describe("a suggested place: Google Maps, the city's Google sights, then Wikiped
     expect(places).not.toHaveBeenCalled();
     expect(wiki).not.toHaveBeenCalled();
     expect(found).toEqual({ photo: { url: "https://lh3.googleusercontent.com/c", page: null }, credit: "Google", rating: 4.3, reviews: null, map: null, sight: true });
-    // The card: Google's rating once, on the picture; the grey line is the why alone.
+    // The card: Google's rating once (0.39.14: on the foot's left, to the map, no count); the grey line is the why alone.
     const html = renderToStaticMarkup(<SuggestCard card={suggestionCard(s, "todo")} onPut={() => {}} onDismiss={() => {}} />);
-    expect(html.match(/★ 4,3/g)).toHaveLength(1);
-    expect(html).toContain('class="z-prate"');
+    expect(html.match(/4,3/g)).toHaveLength(1);
+    expect(html).toMatch(/class="z-krate"[^>]*>.*?4,3<\/a>/);
+    expect(html).not.toContain('class="z-prate"');
     expect(html).toContain("Fotoğraf: Google");
   });
 
@@ -44,9 +45,9 @@ describe("a suggested place: Google Maps, the city's Google sights, then Wikiped
     expect(found).toMatchObject({ credit: "Google Maps", rating: 4.4, reviews: 3210, map: maps[0].url });
     expect(found?.sight).toBeUndefined();
     const html = renderToStaticMarkup(<SuggestCard card={suggestionCard(s, "todo")} onPut={() => {}} onDismiss={() => {}} />);
-    expect(html).toContain("★ 4,4 · 3.210 yorum");
+    expect(html).toContain("4,4<small>(3.210)</small>");
     expect(html).not.toContain('class="z-prate"');
-    expect(html.match(/★/g)).toHaveLength(1);
+    expect(html.match(/4,4/g)).toHaveLength(1);
   });
 
   it("neither Maps nor a sight's photo: Wikipedia's photo with the sight's rating", async () => {

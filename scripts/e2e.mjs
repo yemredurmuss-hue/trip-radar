@@ -640,7 +640,12 @@ try {
   await openSec("todo");
   assert.deepEqual(await cardNames(sec("todo").locator(".z-k[data-item-id]")), ["Majestic Café"]);
   assert.equal(await sec("todo").locator('[data-row="plan"] > .z-k0').count(), 0);
-  assert.match(await sec("todo").locator(".q-planw .q-oh .z-pe").first().innerText(), /Henüz plana koymadın · önerilerden “\+ Plana koy”/);
+  // 0.39.14 (Emre: "çok buton text var"): nothing on Yapılacaklar' plan, no Planında line: "henüz planda yok" beside
+  // Öneriler' count; one city's restaurant alone, no chips; "Haritada ara ↗" the one search link.
+  assert.equal(await sec("todo").locator(".q-planw .q-oh").count(), 0);
+  assert.equal(flat([await sec("todo").locator(".q-opts .q-oh .z-pe").first().innerText()])[0], "henüz planda yok");
+  assert.equal(await sec("todo").locator(".z-fchips").count(), 0);
+  assert.match(flat([await sec("todo").locator(".q-opts .q-oh .z-msearch").first().innerText()])[0], /Haritada ara ↗$/);
   // No days, no check-in lines, no transfers without a plan.
   assert.equal(await app.locator(".cat-plan .tl-day, .cat-plan .leg, .cat-plan .pk-leg").count(), 0);
   // Gün gün, the Plan's third view (plan v30): ONE COMPACT ROW A DAY: the date box, the day's lines (icon, NE · HANGİSİ,
@@ -1628,7 +1633,8 @@ try {
   // v82 (C20): by city in trip order, one box each; Planında's head has Hepsi · Gezilecek · Restoranlar, with their numbers.
   const portoTodo = todos.locator('.q-int.multi[data-intent="todo:Porto"]');
   assert.deepEqual(flat(await portoTodo.locator(".z-fchips button[aria-pressed]").allInnerTexts()), ["Hepsi 4", "Gezilecek 3", "Restoranlar 1"]);
-  assert.deepEqual(flat(await todos.locator('.q-int.multi[data-intent="todo:Lizbon"] .z-fchips button').allInnerTexts()), ["Hepsi 1", "Gezilecek 0", "Restoranlar 1"]);
+  // (0.39.14: a city with restaurants alone has nothing to choose between: no chips)
+  assert.equal(await todos.locator('.q-int.multi[data-intent="todo:Lizbon"] .z-fchips').count(), 0);
   // What's on the plan first (Planında), the ideas after (Öneriler, "+ Plana koy").
   assert.deepEqual(await names(portoTodo.locator('[data-row="plan"]')), ["Bolhão pazarı"]);
   await portoTodo.locator(".z-fchips button", { hasText: "Restoranlar" }).click();
@@ -1637,7 +1643,7 @@ try {
   await portoTodo.locator(".z-fchips button", { hasText: "Hepsi" }).click();
   assert.deepEqual(await names(portoTodo), ["Bolhão pazarı", "Majestic Café", "Dom Luís köprüsünden gün batımı", "Livraria Lello, giriş bileti var"]);
   // The header counts places, restaurants and what's on the plan; no bar, no amber line.
-  assert.match(flat([await todos.locator(".q-kw").innerText()])[0], /^Gezilecek yerler ve restoranlar · \d+ fikir$/);
+  assert.match(flat([await todos.locator(".q-kw").innerText()])[0], /^\d+ şehir için · \d+ fikir$/);
   assert.match(flat([await todos.locator(".q-pl1").innerText()])[0], /^1 planda/);
   assert.equal(await todos.locator(".cat-wait").count(), 0);
   // The •••: a card's ⋯, its menu over the page (C20: Yaptım, Haritada aç, taşı, Daha fazla öner).

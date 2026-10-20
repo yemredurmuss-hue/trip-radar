@@ -4,7 +4,7 @@
 // and its "n yapıldı".
 import { describe, expect, it } from "vitest";
 import { categorize } from "../src/lib/categories";
-import { accessOf, askLike, askMore, collectionRow, doneCount, doneLine, eventPicture, familyOf, filterOf, ideasCaption, mapsSearch, nearPlaces, offerCard, pickWord, pictureChips, recordCard, rowCells, stateOf, stopCountry, suggestionCard } from "../src/lib/collectionCards";
+import { accessOf, askLike, askMore, collectionRow, doneCount, doneLine, eventPicture, familyOf, placeChips, filterOf, ideasCaption, mapsSearch, nearPlaces, offerCard, pickWord, pictureChips, recordCard, rowCells, stateOf, stopCountry, suggestionCard } from "../src/lib/collectionCards";
 import { decideTrip, makeContext } from "../src/lib/decision";
 import { isEmptyRecord } from "../src/lib/emptyCards";
 import { collectionsOf, type IntentInput } from "../src/lib/intents";
@@ -322,5 +322,16 @@ describe("0.39.10: every Etkinlik card in the approved card's language", () => {
     expect(eventPicture(offerCard({ ...tour, why: "En beğenilen" }, 2)).word).toEqual({ text: "En beğenilen", tone: "plain" });
     const s = { key: "k", kind: "add", section: "activity", title: "Fado gecesi", why: "Porto'nun sesi" } as unknown as Suggestion;
     expect(eventPicture(suggestionCard(s, "activity"))).toEqual({ word: { text: "AI fikri", tone: "plain" }, source: null });
+  });
+});
+
+describe("0.39.14: Yapılacaklar, sade", () => {
+  it("no ✨ Öneri nor Gezilecek on a place's picture; a restaurant still says so, who else added it too", () => {
+    const s = { key: "k", kind: "add", section: "todo", title: "Kinkakuji", why: "Gün batımında" } as unknown as Suggestion;
+    expect(placeChips(suggestionCard(s, "todo"))).toEqual([]);
+    const f = { ...s, key: "f", section: "food", template: "food", title: "Ippudo" } as unknown as Suggestion;
+    expect(placeChips(suggestionCard(f, "todo"))).toEqual([{ kind: "tag", text: "Restoran" }]);
+    const pin = place("Jardins", { addedBy: "Sabine" } as Partial<Item>);
+    expect(placeChips(recordCard(pin, { section: "todo", people: 2, planned: false, wanted: false, reason: false })).map((c) => c.kind)).toEqual(["source"]);
   });
 });

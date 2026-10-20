@@ -14,13 +14,13 @@
 // one button on its right ("+ Plana koy", "Rezerve et ↗", "✓ Aldım", "Bileti aç"); "Aldım" is in ⋯ when the button is another.
 import { useEffect, useState, type ReactNode } from "react";
 import { cardFacts } from "../../../lib/cardFacts";
-import { askLike, askOther, eventPicture, moreLabel, pictureChips, placePhotoCredit, placeRatingLine, type KCardVM, type KDeal } from "../../../lib/collectionCards";
+import { askLike, askOther, eventPicture, moreLabel, pictureChips, placeChips, placePhotoCredit, type KCardVM, type KDeal } from "../../../lib/collectionCards";
 import { L } from "../../../lib/i18n";
+import { num } from "../../../lib/i18nText";
 import type { AccessVM, IntentVM, OptionVM } from "../../../lib/intents";
 import { moveToBookings, setDone, setIdeaDay, setPrep } from "../../../lib/ideas";
 import type { Plan } from "../../../lib/plan";
 import { findPlace, knownPlace, placeLookupKey, type PlaceFound } from "../../../lib/placeSuggest";
-import { sightRating } from "../../../lib/citySights";
 import { citySights } from "../../../lib/offerSources";
 import type { Item, Suggestion } from "../../../lib/types";
 import { setItemStatus, setNotNeeded } from "../../actions";
@@ -78,7 +78,7 @@ function Picture({ card }: { card: KCardVM }) {
  * top left, clear of the tools; on its foot "✓ Bilet alındı" (`band`) and a place's word.
  */
 function Chips({ card, band }: { card: KCardVM; band?: ReactNode }) {
-  const chips = pictureChips(card);
+  const chips = card.family === "event" ? pictureChips(card) : placeChips(card);
   const top = chips.flatMap((c) =>
     c.kind === "reason"
       ? [
@@ -581,9 +581,19 @@ function PlaceSuggestCard({ card, onPut, onDismiss }: { card: KCardVM; onPut: (p
   const shown = photo ? { ...card, photo: photo.url } : card;
   // Maps' own page for the place once it's found there; else the card's Maps search.
   const map = found?.map ?? card.map;
-  // The rating is drawn once: Google's sights' (no review count) on the picture, Maps' with its reviews in the grey line.
-  const rating = card.rating ?? (found?.sight ? sightRating(found.rating) : null);
+  // 0.39.14 (Emre: "çok buton text var"): the rating once, on the foot's left as the way to the map ("★ 4,6 (92.763)",
+  // Google's sights' without a count), the why alone on the grey line, "+ Plana koy" the one button.
+  const stars = found?.rating ?? (card.suggestion?.payload?.from === "google" ? card.suggestion.payload.rating : null) ?? null;
+  const reviews = found?.sight ? null : (found?.reviews ?? null);
   const credit = found ? placePhotoCredit(found.credit, found.photoBy) : card.photo ? placePhotoCredit("Google") : undefined;
+  const rate =
+    stars != null && stars > 0 ? (
+      <>
+        <Ic name="star" size={12} />
+        {num(stars)}
+        {reviews != null && reviews > 0 && <small>({reviews.toLocaleString(L("tr-TR", "en-GB"))})</small>}
+      </>
+    ) : null;
   return (
     <KCard
       className="q-tile q-opt sugg z-kplace"
@@ -594,11 +604,6 @@ function PlaceSuggestCard({ card, onPut, onDismiss }: { card: KCardVM; onPut: (p
         <>
           <FallbackImg className="ph" src={shown.photo} fallback={<img className="art" src={card.art} alt="" />} title={credit} />
           <Chips card={card} />
-          {rating && (
-            <span className="z-prate" title={L("Google puanı", "Google rating")}>
-              {rating}
-            </span>
-          )}
           <span className="z-kt">
             <button type="button" className="q-rm" aria-label={L(`${card.title}: gerek yok`, `${card.title}: not needed`)} title={L("Gerek yok", "Not needed")} onClick={onDismiss}>
               <Ic name="x" size={12} stroke={2.6} />
@@ -607,19 +612,23 @@ function PlaceSuggestCard({ card, onPut, onDismiss }: { card: KCardVM; onPut: (p
         </>
       }
       title={<span className="z-tn">{card.title}</span>}
-      l2={placeRatingLine(card.line, found?.sight ? null : found?.rating, found?.reviews)}
+      l2={card.line}
       foot={
-        map ? (
-          <span className="q-act">
-            {card.canPut && <PutButton title={card.title} onPut={() => onPut(photo?.url ?? card.photo ?? null, found?.map ?? null)} />}
-            <a className="z-kmap" href={map} target="_blank" rel="noopener noreferrer" data-map="" aria-label={L(`${card.title}: haritada aç`, `${card.title}: open on the map`)} title={L("Haritada aç", "Open on the map")}>
-              <Ic name="pin" size={14} stroke={2.2} />
-              {!card.canPut && <span>{L("Haritada aç", "Open on the map")}</span>}
+        <>
+          {map ? (
+            <a className="z-krate" href={map} target="_blank" rel="noopener noreferrer" data-map="" aria-label={L(`${card.title}: haritada aç`, `${card.title}: open on the map`)} title={L("Haritada aç", "Open on the map")}>
+              {rate ?? (
+                <>
+                  <Ic name="pin" size={13} stroke={2.2} />
+                  <span>{L("Haritada aç", "Open on the map")}</span>
+                </>
+              )}
             </a>
-          </span>
-        ) : card.canPut ? (
-          <PutButton title={card.title} onPut={() => onPut(null, null)} />
-        ) : null
+          ) : (
+            rate && <span className="z-krate">{rate}</span>
+          )}
+          {card.canPut && <PutButton title={card.title} onPut={() => onPut(photo?.url ?? card.photo ?? null, found?.map ?? null)} />}
+        </>
       }
     />
   );

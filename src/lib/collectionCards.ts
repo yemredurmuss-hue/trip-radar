@@ -474,6 +474,14 @@ export function pictureChips(card: Pick<KCardVM, "reason" | "badge" | "brand" | 
 }
 
 /**
+ * Yapılacaklar' chips on a picture (0.39.14, Emre: "çok buton text var"): not "✨ Öneri" / "✨ AI önerisi" (the row says
+ * Öneriler) nor "Gezilecek" (most of the row is); a restaurant still says "Restoran", a note "Not", who else added it says so.
+ */
+export function placeChips(card: Parameters<typeof pictureChips>[0]): KChip[] {
+  return pictureChips(card).filter((c) => !(c.kind === "source" && c.tone === "ai") && !(c.kind === "tag" && card.family === "place"));
+}
+
+/**
  * A city's two rows from its intent (intents.ts collectionIntents) and the trip's records: what intents.ts put on the plan
  * and the places still to fill go to Planında (the trip's reason first), the rest to Öneriler, then the source's tours
  * that aren't saved yet, then the suggestions.

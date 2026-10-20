@@ -132,12 +132,14 @@ describe("a suggested place's card: Google Maps first, else Wikipedia", () => {
       reviews: 61234,
       map: maps[0].url,
     });
-    // The card shows them: the rating and reviews before the why, "Haritada aç" on Maps' own page.
+    // The card shows them (0.39.14): the rating and reviews on the foot's left, the way to Maps' own page; the why alone
+    // on the grey line. (placeRatingLine stays the words for a line that has them together.)
     expect(knownPlace(s)).toEqual(found);
     const html = renderToStaticMarkup(<SuggestCard card={suggestionCard(s, "todo")} onPut={() => {}} onDismiss={() => {}} />);
     expect(placeRatingLine("Canggu'ya yakın ve planda yok.", 4.6, 61234)).toBe("★ 4,6 · 61.234 yorum · Canggu'ya yakın ve planda yok.");
     expect(placeRatingLine("Neden", null, 120)).toBe("Neden");
-    expect(html).toContain("★ 4,6 · 61.234 yorum · Canggu");
+    expect(html).toMatch(/<a class="z-krate" href="[^"]+"[^>]*>.*?4,6<small>\(61\.234\)<\/small><\/a>/);
+    expect(html).toMatch(/class="z-l2">Canggu/);
     expect(html).toContain(`href="${maps[0].url.replace(/&/g, "&amp;")}"`);
     expect(html).toContain("Fotoğraf: Google Haritalar");
     // Put on the plan, the record keeps the photo and the place's own page.
