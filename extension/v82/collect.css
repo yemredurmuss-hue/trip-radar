@@ -288,3 +288,31 @@ body.still .z-k.q-opt:hover { transform: none; }
 .z-kb .z-kacc .z-kcode { flex: none; display: inline-flex; align-items: center; gap: 3px; height: 18px; padding: 0 2px 0 6px; border-radius: 6px; background: rgba(255, 255, 255, .7); border: 1px solid var(--q-ok-l); color: var(--q-ink); font-size: var(--q-fs-small); font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
 .z-kb .z-kacc .z-kcode .q-cp { all: unset; cursor: pointer; display: grid; place-items: center; width: 16px; height: 16px; color: var(--q-mut); border-radius: 4px; }
 .z-kb .z-kacc .z-kcode .q-cp:hover { color: var(--q-acc); }
+
+/* ---- 0.39.14 Yapılacaklar, sade (Emre: "çok buton text var"; docs/mockups yapilacak-sade): Planında's line goes while
+   nothing is on it, "Haritada ara ↗" one small link, a suggested place's name and why read together, its rating (to the
+   map) on the foot's left and "+ Plana koy" the one button on its right. ---- */
+.z-int .q-planw.bare { display: none; }
+.q-oh .z-msearch { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 2px; border: 0; background: none; box-shadow: none; color: var(--q-acc); font-size: var(--q-fs-small); font-weight: 700; text-decoration: none; white-space: nowrap; }
+.q-oh .z-msearch:hover { text-decoration: underline; }
+.q-oh .z-msearch:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 2px; border-radius: 6px; }
+.q-oh .z-msearch .q-logo.sm { width: 16px; height: 16px; border-radius: 4px; font-size: 10px; }
+.z-kplace .z-kb { grid-template-rows: auto 16px minmax(34px, 1fr); align-content: stretch; }
+.z-kplace .z-kf { align-self: end; justify-content: space-between; gap: 8px; }
+.z-kplace .z-kf > .q-pick { width: auto; flex: none; padding: 0 12px; height: 32px; min-height: 32px; margin-left: auto; }
+.z-krate { display: inline-flex; align-items: center; gap: 4px; min-width: 0; overflow: hidden; white-space: nowrap; font-size: var(--q-fs-small); font-weight: 750; color: var(--q-ink); text-decoration: none; border-radius: 6px; }
+.z-krate .i { flex: none; }
+.z-krate > .i:first-child { fill: var(--q-ok); stroke: var(--q-ok); }
+.z-krate small { font-size: inherit; font-weight: 500; color: var(--q-mut); }
+a.z-krate:hover { color: var(--q-acc); }
+a.z-krate:hover small { color: var(--q-acc); }
+a.z-krate:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 2px; }
+a.z-krate:has(> span) { color: var(--q-mut); }
+/* A narrow card (two across on a phone): the rating over the button, the button across. */
+@container zk (max-width: 220px) {
+  .z-kplace .z-kb { grid-template-rows: auto 16px minmax(32px, 1fr); }
+  .z-kplace .z-kf { flex-wrap: wrap; row-gap: 6px; }
+  .z-kplace .z-kf > .q-pick { flex: 1 1 100%; margin-left: 0; }
+}
+/* (narrow: the sites' names step aside, intent.css; this one link keeps its words, it's the only one) */
+.q-oh .z-pl.z-msearch > span { display: inline; }
