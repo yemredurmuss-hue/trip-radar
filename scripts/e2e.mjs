@@ -4506,14 +4506,15 @@ try {
   await board.locator(".st-msg-bot", { hasText: "15 Aralık'ı başlangıç aldım, değiştirebilirsin." }).waitFor();
   await list.getByText("15–22 Aralık · 7 gece (yaklaşık)").waitFor();
   await skipQ(); // what you want
-  await board.locator(".st-msg-bot", { hasText: "Tek durak öneriyorum: Lizbon 7 gece. Bu olsun mu?" }).waitFor();
-  await answers.getByRole("button", { name: "Bu olsun" }).click(); // the route
-  // Who is an essential (2026-10-06): skipped, then where from (skipped); the essentials are in: the countdown starts,
-  // and "Vazgeç" stops it.
+  // 0.39.15 (088fd14a, F54): one city's route is that city, never asked.
+  // Who is an essential (2026-10-06): skipped; the essentials are in: the countdown starts, and "Vazgeç" stops it.
   await board.locator(".st-msg-bot .st-q", { hasText: "Lizbon'a kimle gidiyorsun?" }).waitFor();
+  assert.equal(await board.locator(".st-msg-bot", { hasText: "Tek durak öneriyorum" }).count(), 0, "one city: the route is not asked");
   await skipQ();
-  await board.locator(".st-msg-bot", { hasText: "Lizbon'a nereden yola çıkıyorsun?" }).waitFor();
-  await skipQ(); // where from
+  // 0.39.13 (F55): where from comes from the earlier trips' first flights (the ones the sections above left on the board),
+  // never asked again: the countdown starts at once, and the list says the city.
+  const fromRow = flat([await board.locator(".st-side .st-row", { hasText: "Nereden" }).first().innerText()])[0];
+  assert.ok(fromRow.replace(/Nereden/, "").trim().length > 1, `where from is filled from the earlier trips (${fromRow})`);
   // The plan said back while it counts (2026-10-07): the route and the days; gone once stopped.
   await board.locator(".st-summary", { hasText: "Lizbon" }).waitFor();
   assert.deepEqual(await board.locator(".st-summary dt").allInnerTexts(), ["Rota", "Tarih"]);
@@ -4602,7 +4603,8 @@ try {
   // the model is late or fails).
   // v5: the step line names what the running call reads; the row the message can still fill reads too.
   await board.locator(".st-thinking[data-call=read]", { hasText: "Koh Phangan'ı tanıyorum…" }).waitFor();
-  await board.locator(".st-side .st-row.reading", { hasText: "Nereden" }).waitFor();
+  // (0.39.13, F55: where from is already the earlier trips' city, so its row has nothing left to read)
+  assert.equal(await board.locator(".st-side .st-row.reading", { hasText: "Nereden" }).count(), 0, "where from, known, doesn't read");
   // The row is its own polite status, outside the conversation's log.
   await board.locator(".st-status[role=status][aria-live=polite] .st-thinking").waitFor();
   assert.equal(await board.locator(".st-msgs .st-thinking, [role=log] [role=status]").count(), 0, "the status row is not inside the log");
@@ -4611,6 +4613,10 @@ try {
   // ... the model read it as Koh Phangan: its line is the chat's one line, and nothing asks it back.
   await board.locator(".st-msg-bot", { hasText: "palmiyeli koylar, orman şelaleleri ve dolunay sahilleri. Koh Phangan'da en çok ne yapmak istersiniz?" }).waitFor();
   assert.equal(await board.locator(".st-msg-bot", { hasText: "mı demek istedin" }).count(), 0, "a loose spelling the model read needs no asking back");
+  // 0.39.13 (F55): where from is the earlier trips' city, so where, when, where from and who are known after the first
+  // message: the countdown starts at once; stopped here to look (the 3 s could run out on a slow machine).
+  await board.locator(".st-auto").getByRole("button", { name: "Vazgeç" }).click();
+  await board.locator(".st-auto").waitFor({ state: "detached" });
   await board.locator(".st-thinking").waitFor({ state: "detached" });
   assert.equal(await board.locator(".st-side .st-row.reading").count(), 0, "the reading is over: no row reads");
   // The route's row pressed while the proposal is still on its way (rev 3): the chat says it's drawing it and goes
@@ -4653,9 +4659,8 @@ try {
   await chat.getByLabel("Mesaj").fill("İstanbul");
   await chat.getByLabel("Mesaj").press("Enter");
   await board.locator(".st-msg-bot", { hasText: "İstanbul'dan Koh Phangan'a uzun ama keyifli bir yol. Bu gezide en çok ne arıyorsunuz?" }).waitFor();
-  // Where, when, where from and who known: the trip would make itself in 3 s (2026-10-06); stopped here to look.
-  await board.locator(".st-auto").getByRole("button", { name: "Vazgeç" }).click();
-  await board.locator(".st-auto").waitFor({ state: "detached" });
+  // Stopped once (above) with the style still open: only a full list starts it again (2026-10-06/07).
+  assert.equal(await board.locator(".st-auto").count(), 0, "stopped once, the style still open: no countdown");
   await revList.getByText("Koh Phangan · Tayland").waitFor();
   assert.equal(await revList.locator(".st-row").first().innerText().then((t) => /İstanbul/.test(t)), false, "the destination is not İstanbul");
   await revList.locator(".st-row", { hasText: "Nereden" }).getByText(/^İstanbul/).first().waitFor();
@@ -4774,6 +4779,10 @@ try {
   await board.locator(".st-msg-bot .st-q", { hasText: "Sri Lanka'da en çok ne yapmak istersiniz?" }).waitFor({ timeout: CODE_LINE_MS });
   assert.ok(Date.now() - sentAt < 9000, "asked before the model answered");
   assert.equal(await board.locator(".st-msg-bot", { hasText: "Nereye gidiyoruz?" }).count(), 0, "where to isn't asked again");
+  // 0.39.13 (F55): where from is the earlier trips' city, so the essentials are known at once and the countdown starts;
+  // stopped here to go on by hand (the 3 s could run out on a slow machine).
+  await board.locator(".st-auto").getByRole("button", { name: "Vazgeç" }).click();
+  await board.locator(".st-auto").waitFor({ state: "detached" });
   // The chat goes on while the model is still reading (chips, no waiting).
   await answers.getByRole("button", { name: /Doğa/ }).click();
   await answers.getByRole("button", { name: "Tamam" }).click();
@@ -4782,11 +4791,11 @@ try {
   await lkProposal.waitFor({ timeout: 3000 });
   const drawingRow = board.locator(".st-side .st-row.drawing .st-row-drawing", { hasText: "Rotayı çiziyor…" });
   await drawingRow.waitFor();
-  // Where from by its row, while the route is still drawn; the essentials known: the countdown, stopped to go on by hand.
+  // Where from by its row, while the route is still drawn; stopped once (above) with the route still open: no countdown.
   await board.locator(".st-side .st-row", { hasText: "Nereden" }).click();
   await board.locator(".st-msg-bot .st-q", { hasText: "Sri Lanka'ya nereden yola çıkıyorsunuz?" }).last().waitFor();
   await answers.getByRole("button", { name: "İstanbul", exact: true }).click();
-  await board.locator(".st-auto").getByRole("button", { name: "Vazgeç" }).click();
+  assert.equal(await board.locator(".st-auto").count(), 0, "stopped once, the route still open: no countdown");
   await drawingRow.waitFor();
   const lkGen = board.locator(".st-side .st-gen-btn");
   assert.equal(await lkGen.isEnabled(), true, "Oluştur works while the route is drawn");
