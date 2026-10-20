@@ -267,3 +267,9 @@ body.still .q-scrim, body.still .q-scrim.leaving, body.still .q-sheetp, body.sti
 body.still .q-sheetp .q-pg:hover { transform: none; }
 /* A card lit on the way in (Planda göster), held still: a ring instead of the pulse. */
 body.still .q-sheetp .flash { outline: 3px solid var(--accent); outline-offset: -3px; }
+/* P10 (F24): side by side, the picture's row has its own height: an aspect-ratio box in a subgrid row ran over the name
+   under it (Baixa · Otel odası half hidden, the hotel's name gone). 280 px columns → 175 px (16:10); 250 px → 156 px. */
+.q-sheetp .q-col > div.q-c1:not(.lg) { aspect-ratio: auto; height: 175px; }
+@media (max-width: 640px) {
+  .q-sheetp .q-col > div.q-c1:not(.lg) { height: 156px; }
+}
