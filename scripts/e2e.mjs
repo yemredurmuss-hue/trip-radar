@@ -4916,6 +4916,9 @@ try {
   await answers.getByRole("button", { name: "Go with it" }).click(); // the route
   // Nothing left to ask (where from known); stopped once and the style still open, so no countdown again.
   await pngList.locator(".st-row.done", { hasText: "Route" }).waitFor();
+  // Nothing will build itself now, so the chat says it waits, never "I'm ready and will build it in a few seconds".
+  await board.locator(".st-msg-bot").last().filter({ hasText: "Press Generate or type 'generate' when you're ready." }).waitFor();
+  assert.doesNotMatch(await board.locator(".st-msg-bot").last().innerText(), /in a few seconds/, "no promise after a stop");
   await board.waitForTimeout(500);
   assert.equal(await board.locator(".st-msg-bot .st-q", { hasText: "Where are you setting off for Papua New Guinea from?" }).count(), 0, "where from isn't asked");
   assert.equal(await board.locator(".st-auto").count(), 0, "stopped once: only a full checklist starts it again");
