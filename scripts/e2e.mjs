@@ -3755,7 +3755,8 @@ try {
   const made = await board.evaluate(async () => {
     const database = await new Promise((resolve) => { const q = indexedDB.open("trip-radar"); q.onsuccess = () => resolve(q.result); });
     const all = (store) => new Promise((resolve) => { const q = database.transaction(store).objectStore(store).getAll(); q.onsuccess = () => resolve(q.result); });
-    const trip = (await all("trips")).find((t) => /Bali/.test(t.title));
+    // (the start's own trip: step 19's "Bali" (e2e-bali) is still there, and which comes first is up to the new one's id)
+    const trip = (await all("trips")).find((t) => /Bali/.test(t.title) && !t.id.startsWith("e2e-"));
     const items = (await all("items")).filter((i) => i.tripId === trip.id);
     return {
       dates: trip.confirmedDates,
@@ -3965,7 +3966,8 @@ try {
         request.onerror = () => reject(request.error);
       });
       const all = (store) => new Promise((resolve) => (database.transaction(store).objectStore(store).getAll().onsuccess = (e) => resolve(e.target.result)));
-      const trip = (await all("trips")).find((x) => x.title.includes(t));
+      // (the trips the app made, not the ones written here: step 19's "Bali" is e2e-bali)
+      const trip = (await all("trips")).find((x) => x.title.includes(t) && !x.id.startsWith("e2e-"));
       return { trip, items: (await all("items")).filter((i) => i.tripId === trip.id) };
     }, title);
   const bali = await tripRecords("Bali");
