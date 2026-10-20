@@ -21,6 +21,10 @@ chromium.launchPersistentContext = async (...args) => {
   ctx.on("page", settledShots);
   // The rate source is a live network call: a sandbox without outbound access would leave the hero without its rate tip.
   await ctx.route(/frankfurter/, (route) => route.fulfill({ json: { date: "2026-09-28", rates: { TRY: 40, THB: 38, USD: 1.1 } } }));
+  // The airline logos' first source (images.kiwi.com, airlines.ts) turns a HeadlessChrome user agent away (403) where the owner's
+  // Chrome gets the picture: here a logo answers with a small picture, so the cards wear the logo as they do for the owner.
+  await ctx.route(/images\.kiwi\.com\/airlines\//, (route) =>
+    route.fulfill({ status: 200, contentType: "image/png", body: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64") }));
   // E2E_OFFLINE=1 (a sandbox with no outbound network): the sources the pages ask for on their own (Wikipedia photos, the sharing
   // server's functions) answer "nothing found", as they do for a trip with no photo; a real network is used otherwise.
   if (process.env.E2E_OFFLINE) {
