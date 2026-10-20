@@ -1,5 +1,5 @@
 // The summary card under the photo (v82, v83 B9, F4, F5, C22, C30, Etsy T5; A · Kapak 2026-10-19: one white row, each
-// part a small label over its value big and a line under it): when (a "~" when guessed and the days; each city's days on
+// part its value big and a line under it, no label over it since kapak-ferah-v1: the value says what it is): when (a "~" when guessed and the days; each city's days on
 // hover; only "~ · 10 gece" while they are a guess from a month or a season, D15; the days to go are big on the photo),
 // who (the faces, the count big and the names, "Kimler gidiyor" in full on a tap), the budget (its window: booked,
 // planned, free, each person's share, by kind, what's still to come; what's left of a budget set, else "tahmini · Limit
@@ -59,13 +59,12 @@ export interface HeroNext {
 function Dates({ dates }: { dates: HeroDates }) {
   const { range } = dates;
   const days = nightsBetween(range.start, range.end) + 1;
-  // A guessed start has no days to count to: the nights alone (D15). The days to go are on the photo.
-  const small = dates.rough ? "" : nDays(days);
+  // A guessed start has no days to count to: the nights alone (D15), "tarih esnek" under them. The days to go are on the photo.
+  const small = dates.rough ? L("tarih esnek", "flexible dates") : nDays(days);
   return (
     <TipOn tip={dates.tip} below>
       {(bind) => (
         <div {...bind} className="x-seg x-s1" tabIndex={dates.tip ? 0 : undefined}>
-          <span className="x-k">{L("Ne zaman", "When")}</span>
           <span className="x-sv">
             <b>{heroDatesWords(dates)}</b>
             {small && <small>{small}</small>}
@@ -109,7 +108,6 @@ function People({ trip, who, items, onShare }: { trip: Trip; who: Who; items: It
   };
   return (
     <div className="x-seg x-s2" ref={pop.box}>
-      <span className="x-k">{L("Kim", "Who")}</span>
       <span className="x-who">
         <span className="x-avs">
           {Array.from({ length: faces }, (_, n) => face(n))}
@@ -161,11 +159,13 @@ function Ready({ counts, onFirstDecision }: { counts: HeroCounts; onFirstDecisio
   const planned = Math.max(0, (counts.plan.pct ?? 0) - booked);
   return (
     <div className="x-seg x-s4">
-      <span className="x-k">{L("Hazır", "Ready")}</span>
       {!counts.fresh && (
-        <b className="x-pct" data-count>
-          {words.pct}
-        </b>
+        <span className="x-pr">
+          <b className="x-pct" data-count>
+            {words.pct}
+          </b>
+          <span className="x-pw">{L("hazır", "ready")}</span>
+        </span>
       )}
       <TipOn tip={sentence} below>
         {(bind) => (
@@ -233,7 +233,6 @@ function NoBudget({ set }: { set: HeroBudgetSet }) {
   const pop = usePop();
   return (
     <div className="x-seg x-s3" ref={pop.box}>
-      <span className="x-k">{L("Bütçe", "Budget")}</span>
       <button ref={pop.trigger} type="button" className="x-sv x-budb set" aria-expanded={pop.open} aria-haspopup="dialog" onClick={pop.toggle}>
         <b>{L("Bütçe belirle", "Set a budget")}</b>
       </button>
@@ -260,7 +259,6 @@ function Budget({ view, bar, set }: { view: BudgetView; bar: BudgetBar; set: Her
     .join(", ");
   return (
     <div className="x-seg x-s3" ref={pop.box}>
-      <span className="x-k">{L("Bütçe", "Budget")}</span>
       <button ref={pop.trigger} type="button" className={`x-sv x-budb${view.over ? " over" : ""}`} aria-expanded={pop.open} aria-haspopup="dialog" aria-label={said} onClick={pop.toggle}>
         <b data-count>
           <Counted value={view.likely} format={(n) => `${view.sign}${money(n)}`} />

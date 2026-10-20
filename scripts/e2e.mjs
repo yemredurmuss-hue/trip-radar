@@ -234,12 +234,14 @@ try {
     assert.equal(s.bookedPct, Math.round((s.booked / s.total) * 100), `${where}: "%alındı" is what's booked of every need (${said})`);
     assert.equal(s.now, s.planPct, `${where}: the bar's value (${said})`);
     assert.equal(s.pct, `%${s.planPct}`, `${where}: "Hazır" is the planned share (${said})`);
-    assert.equal(s.words, [`%${s.bookedPct} alındı`, s.planned > s.booked ? `${s.planned - s.booked} alınacak` : null].filter(Boolean).join(" · "), `${where}: the card's words (${said})`);
+    // (kapak-ferah-v1: nothing booked with something to book says only what's to book)
+    assert.equal(s.words, [s.bookedPct || s.planned === s.booked ? `%${s.bookedPct} alındı` : null, s.planned > s.booked ? `${s.planned - s.booked} alınacak` : null].filter(Boolean).join(" · "), `${where}: the card's words (${said})`);
     assert.ok(s.booked <= s.planned && s.planned + s.open === s.total, `${where}: booked is some of planned; planned and to decide are every need (${said})`);
     return s;
   };
   assert.equal(await hero.locator(".x-big h1").innerText(), "Portekiz (örnek)");
-  assert.equal(await hero.locator(".x-big .x-where").innerText(), "Porto · Lizbon, Portekiz");
+  // kapak-ferah-v1: no line over the name when the cover says it already (Porto and Lizbon on the route, Portekiz in the name).
+  assert.equal(await hero.locator(".x-big .x-where").count(), 0, "the places are on the route, the country in the name");
   assert.equal(await hero.locator(".x-s1 b").innerText(), "8–14 Ekim");
   assert.equal(flat([await hero.locator(".x-s1 small").innerText()])[0], "7 gün");
   // A · Kapak: the days to go big on the photo; the route from home through each place (its nights, its stay's dot: Lizbon's
@@ -2518,9 +2520,11 @@ try {
   await app.locator(".trip-switch").click();
   await app.locator(".trip-card", { hasText: "Porto ve Madeira Gezisi" }).click();
   await app.getByRole("heading", { name: "Porto ve Madeira Gezisi" }).waitFor();
-  const coverCities = app.locator(".x-hero .x-big .x-where");
-  await coverCities.filter({ hasText: "Madeira" }).waitFor();
-  assert.match(await coverCities.innerText(), /^Porto · Madeira(, Portekiz)?$/, "Gaula is Madeira's on the hero, with no model");
+  // The cover's places: the line over the name and the route's stops (kapak-ferah-v1: a place on the route isn't said twice).
+  const coverPlaces = () => app.evaluate(() => [...document.querySelectorAll(".x-hero .x-big .x-where, .x-hero .x-big .x-route .x-rp")].map((e) => e.textContent).join(" | "));
+  await app.waitForFunction(() => /Madeira/.test([...document.querySelectorAll(".x-hero .x-big .x-where, .x-hero .x-big .x-route .x-rp")].map((e) => e.textContent).join(" | ")));
+  const placesSaid = await coverPlaces();
+  assert.ok(/Porto/.test(placesSaid) && /Madeira/.test(placesSaid) && !/Gaula/.test(placesSaid), `Gaula is Madeira's on the hero, with no model (${placesSaid})`);
   await app.waitForTimeout(1200); // the island's photo, when the network has one
   await app.locator(".x-hero").screenshot({ path: `${out}/2i-hero-madeira.png` });
   await madeiraItems({ ...madeira, put: false });
@@ -3181,14 +3185,17 @@ try {
   await board.getByRole("button", { name: "Gönder" }).click();
   await updated.nth(before).waitFor({ timeout: 20000 });
   await board.waitForFunction(
-    () => /^Porto · Madeira(, \S+)?$/.test(document.querySelector(".x-hero .x-big .x-where")?.textContent ?? ""),
+    () => {
+      const said = [...document.querySelectorAll(".x-hero .x-big .x-where, .x-hero .x-big .x-route .x-rp")].map((e) => e.textContent).join(" | ");
+      return /Porto/.test(said) && /Madeira/.test(said);
+    },
     null,
     { timeout: 15000 },
   );
   const stays = await bopen("stay");
   await stays.locator(".q-ints > .q-int", { hasText: "Gaula" }).first().waitFor();
   await stays.locator(".q-ints > .q-int", { hasText: "Funchal" }).first().waitFor();
-  assert.equal(await board.locator(".x-hero .x-big .x-where", { hasText: "Gaula" }).count(), 0, "a town on Madeira isn't a destination of its own");
+  assert.equal(await board.locator(".x-hero .x-big .x-where, .x-hero .x-big .x-route .x-rp", { hasText: "Gaula" }).count(), 0, "a town on Madeira isn't a destination of its own");
   assert.equal(new Set(placePrompts).size, placePrompts.length, "the main places are asked once per set of cities");
   assert.match(placePrompts.at(-1), /Porto[\s\S]*Funchal[\s\S]*Gaula/);
   const labels = await board.waitForFunction(async () => {

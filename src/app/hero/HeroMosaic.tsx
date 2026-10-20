@@ -174,7 +174,10 @@ export function HeroMosaic({ mosaic, title, where, mood, working, menu, onTile, 
       {tiles.length > 0 && (
         <div className={`x-tiles ${mosaic.kind ?? "city"} n${tiles.length}`} data-pit-children data-pit-beat>
           {tiles.map((t) => (
-            <figure key={t.key} className={`x-t${t.image ? "" : " art"}${t.target && onTile ? " go" : ""}`}>
+            // One small line on the photo (kapak-ferah-v1); the whole name and its city or nights in the tip.
+            <TipOn key={t.key} tip={t.sub ? `${t.name} · ${t.sub}` : t.name} below>
+              {(bind) => (
+            <figure {...bind} className={`x-t${t.image ? "" : " art"}${t.target && onTile ? " go" : ""}`}>
               {t.image ? (
                 <img src={t.image} alt="" loading="lazy" onError={() => fail(t.image!)} />
               ) : (
@@ -185,14 +188,13 @@ export function HeroMosaic({ mosaic, title, where, mood, working, menu, onTile, 
               )}
               {t.state && <Dot state={t.state} />}
               <figcaption>
-                <b>
-                  {t.name}
-                  {t.sub && <small> · {t.sub}</small>}
-                </b>
+                <b>{t.name}</b>
               </figcaption>
               {t.target && onTile && <button type="button" className="x-tgo" aria-label={tileGoLabel(t)} onClick={() => onTile(t.target!)} />}
               {t.credit && <Credit credit={t.credit} />}
             </figure>
+              )}
+            </TipOn>
           ))}
         </div>
       )}

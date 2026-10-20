@@ -152,7 +152,7 @@ export function Hero(props: HeroProps) {
           <HeroMosaic
             mosaic={props.mosaic}
             title={trip.title}
-            where={whereLine(props.cities, props.countries)}
+            where={whereLine(props.cities, props.countries, { title: trip.title, route: props.route?.stops.map((s) => s.name) })}
             mood={props.mood}
             working={props.working}
             menu={<TripMenu actions={props.menu} />}

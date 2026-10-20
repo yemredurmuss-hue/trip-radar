@@ -101,8 +101,11 @@ export function datesWords(d: { range: { start: string; end: string }; estimated
 /**
  * The dates as the hero's big value: the month written out within one month ("8–14 Ekim"), short across two
  * ("24 Kas – 3 Ara") so the line fits its cell beside the people (0.39.5: "24 November – 3 December" ran over it).
+ * A guess from a month or a season is its nights alone ("9 gece"; "tarih esnek" under it, kapak-ferah-v1: the lone "~ ·"
+ * read as nothing).
  */
 export function heroDatesWords(d: { range: { start: string; end: string }; estimated: boolean; rough?: boolean }): string {
+  if (d.rough) return nNights(nightsBetween(d.range.start, d.range.end));
   return datesWords(d, d.range.start.slice(0, 7) !== d.range.end.slice(0, 7));
 }
 
@@ -354,14 +357,17 @@ export function whoWords(who: { names: readonly string[]; count: number }): { co
   return { count: String(count), line: others.length === 1 ? L(`Sen ve ${list("ve")}`, `You and ${list("and")}`) : L(`Sen, ${list("ve")}`, `You, ${list("and")}`) };
 }
 
-/** "Hazır": the planned share big ("%54"), and under the bar what's booked and what's still to book ("%40 alındı · 2 alınacak"). */
+/**
+ * "Hazır": the planned share big ("%54"), and under the bar what's booked and what's still to book ("%40 alındı · 2
+ * alınacak"). Nothing booked yet with something to book: only "2 alınacak" (kapak-ferah-v1: "%0 alındı" says nothing).
+ */
 export function readyWords(c: HeroCounts): { pct: string; line: string } {
   const p = c.plan.pct ?? 0;
   const b = c.booked.pct ?? 0;
   const toBook = Math.max(0, c.plan.count - c.booked.count);
   return {
     pct: L(`%${p}`, `${p}%`),
-    line: [L(`%${b} alındı`, `${b}% booked`), toBook ? L(`${toBook} alınacak`, `${toBook} to book`) : null].filter(Boolean).join(" · "),
+    line: [b || !toBook ? L(`%${b} alındı`, `${b}% booked`) : null, toBook ? L(`${toBook} alınacak`, `${toBook} to book`) : null].filter(Boolean).join(" · "),
   };
 }
 
@@ -379,9 +385,15 @@ export function nextParts(label: string): { head: string; text: string } {
   return m ? { head: m[1], text: capitalize(m[2]) } : { head: L("Sıradaki", "Next"), text: label };
 }
 
-/** The line over the trip's name on the photo: its main places, and its country when it is one ("Tromsø · Senja, Norveç"). */
-export function whereLine(cities: readonly string[], countries: readonly string[]): string {
-  const places = cities.filter(Boolean).join(" · ");
-  const country = countries.length === 1 ? countries[0] : null;
+/**
+ * The line over the trip's name on the photo: its main places, and its country when it is one ("Tromsø · Senja, Norveç").
+ * What the cover says already is left out (kapak-ferah-v1): a place on the route under the name, the country in the name.
+ */
+export function whereLine(cities: readonly string[], countries: readonly string[], said: { title?: string; route?: readonly string[] } = {}): string {
+  const norm = (s: string) => s.trim().toLocaleLowerCase(locale());
+  const onRoute = new Set((said.route ?? []).map(norm));
+  const places = cities.filter((c) => c && !onRoute.has(norm(c))).join(" · ");
+  const one = countries.length === 1 ? countries[0] : null;
+  const country = one && !(said.title && norm(said.title).includes(norm(one))) ? one : null;
   return [places, country].filter(Boolean).join(", ");
 }

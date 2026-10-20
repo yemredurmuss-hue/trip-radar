@@ -163,6 +163,8 @@ describe("D15: a start guessed from a month or a season says only the nights", (
     // The hero's big value: the month written out within one month, short across two (it ran over the people).
     expect(heroDatesWords({ range: { start: "2026-10-08", end: "2026-10-14" }, estimated: false })).toBe("8–14 Ekim");
     expect(heroDatesWords({ range: { start: "2026-11-24", end: "2026-12-03" }, estimated: false })).toBe("24 Kas – 3 Ara");
+    // A guess from a month: the nights alone (no lone "~ ·").
+    expect(heroDatesWords({ range, estimated: false, rough: true })).toBe("10 gece");
     expect(datesWords({ range, estimated: false }, true)).toBe("1–11 Tem");
     const counts = heroCounts(of([["booked", 1]]));
     expect(heroLine({ range, estimated: false, rough: true, people: 2, counts, budget: null, short: true })).toBe("~ · 10 gece · 2 kişi");
@@ -240,6 +242,8 @@ describe("the summary card under the photo", () => {
     expect(readyWords(japan)).toEqual({ pct: "%61", line: "%33 alındı · 5 alınacak" });
     expect(withLang("en", () => readyWords(japan))).toEqual({ pct: "61%", line: "33% booked · 5 to book" });
     expect(readyWords(heroCounts(of([["booked", 3]])))).toEqual({ pct: "%100", line: "%100 alındı" });
+    // Nothing booked yet: only what's still to book ("%0 alındı" says nothing).
+    expect(readyWords(heroCounts(of([["chosen", 2], ["deciding", 9]])))).toEqual({ pct: "%18", line: "2 alınacak" });
   });
 
   it("says what's left of the budget, how much over it, or that the total is an estimate", () => {
@@ -260,5 +264,9 @@ describe("the summary card under the photo", () => {
     expect(whereLine(["Porto", "Madrid"], ["Portekiz", "İspanya"])).toBe("Porto · Madrid");
     expect(whereLine([], ["Japonya"])).toBe("Japonya");
     expect(whereLine([], [])).toBe("");
+    // What the cover says already is left out: the places on the route, the country in the name.
+    expect(whereLine(["Tokyo", "Kyoto"], ["Japonya"], { title: "10 Günlük Japonya Kültür Gezisi", route: ["Tokyo", "Kyoto"] })).toBe("");
+    expect(whereLine(["Tokyo", "Kyoto", "Nara"], ["Japonya"], { title: "Bahar gezisi", route: ["Tokyo", "Kyoto"] })).toBe("Nara, Japonya");
+    expect(whereLine(["Porto", "Lizbon"], ["Portekiz"], { title: "Portekiz (örnek)", route: [] })).toBe("Porto · Lizbon");
   });
 });
