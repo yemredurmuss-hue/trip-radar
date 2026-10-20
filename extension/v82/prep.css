@@ -158,3 +158,10 @@ body.still .q-pbody .q-bvchev, body.still .q-pbody .q-pdel, body.still .q-pbody 
   .q-pbody .q-ph1 { flex-wrap: wrap; }
   .q-pbody .q-phst { order: 4; width: 100%; justify-content: flex-start; padding-left: 30px; }
 }
+/* 0.39.8: the short list's kind label, the backup's name, the folded rest. */
+.q-pbody .q-phk { font-size: 11px; font-weight: 700; color: var(--q-mut); background: var(--q-soft); border: 1px solid var(--q-line); border-radius: 6px; padding: 0 6px; }
+.q-pbody .q-phalt { color: var(--q-mut); font-weight: 600; }
+.q-pbody .q-phmore { margin-top: 10px; display: grid; gap: 8px; }
+.q-pbody .q-phmb { all: unset; box-sizing: border-box; cursor: pointer; justify-self: start; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--q-mut); padding: 4px 2px; }
+.q-pbody .q-phmb:hover, .q-pbody .q-phmb:focus-visible { color: var(--q-acc); }
+.q-pbody .q-phmb[aria-expanded="true"] .i { transform: rotate(90deg); }
