@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useLayoutEffect } from "react";
+import { shapeOf } from "../lib/playbooks/shape";
 import { z } from "zod";
 import { requestProcessing } from "../lib/browser";
 import type { GroupDecision } from "../lib/decision";
@@ -655,9 +656,11 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   const counts = useMemo(() => heroCounts(counted), [counted]);
   // 0.38.3: the source's tours for the Etkinlik cities (the rows' own questions, answered from the source's store), with
   // their photos: the mosaic's fourth source and the Etkinlik row's small pictures.
+  // P2 (F48): a trip that is only its event (a festival, a liveaboard) is offered no tours, here or on the mosaic.
+  const onlyFocus = shapeOf(trip).focus === "only";
   const tourAsks = useMemo(
-    () => tourNeeds(plan, heroIntents.filter((i) => i.section === "activity" && i.frame === "collection").map((i) => i.head.city), who.count || null),
-    [plan, heroIntents, who.count],
+    () => (onlyFocus ? [] : tourNeeds(plan, heroIntents.filter((i) => i.section === "activity" && i.frame === "collection").map((i) => i.head.city), who.count || null)),
+    [plan, heroIntents, who.count, onlyFocus],
   );
   const tours = useTourOffers(liveSource, tourAsks);
   const tourPlaces = useMemo(() => offerTiles(tours), [tours]);

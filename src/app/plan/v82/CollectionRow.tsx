@@ -10,6 +10,7 @@
 // then Yapılacaklar' suggestions to add (Emre, 19 Ekim; Etkinlik takes none: only real tours and saved ones, 0.38.4);
 // "Kendin ara" on its right. "+ Plana koy" flies the card to its slot (E6, putFly). The box around it is CollectionBox.
 // While the source is asked, Öneriler's head says so ("Viator'da turlar aranıyor…", 0.38.8), drawn even with no idea yet.
+import { shapeOf } from "../../../lib/playbooks/shape";
 import { useEffect, useState, type ReactNode } from "react";
 import { citiesOfPlan, type SectionId } from "../../../lib/categories";
 import { askMore, collectionRow, filterWord, ideasCaption, inFilter, K_FILTERS, mapsSearch, moreLabel, nearPlaces, offerCard, ROW_CELLS, rowCells, stopCountry, type KCardVM, type KFilter } from "../../../lib/collectionCards";
@@ -86,7 +87,9 @@ function useCityOffers(city: string | null, plan: Pick<Plan, "stayBlocks"> | nul
   const words = tourWords(trip);
   const wordsKey = words.join("|");
   const stop = city && plan ? (citiesOfPlan(plan).find((c) => sameCity(c.city, city)) ?? null) : null;
-  const need: Need | null = stop ? { key: needKey("activity", stop.city, stop.start, stop.end), section: "activity", kind: "activity", city: stop.city, start: stop.start, end: stop.end, adults: travellers } : null;
+  // P2 (F48): a trip that is only its event (a festival: "Odak festival") is offered no tours of the source's.
+  const onlyFocus = shapeOf(trip).focus === "only";
+  const need: Need | null = stop && !onlyFocus ? { key: needKey("activity", stop.city, stop.start, stop.end), section: "activity", kind: "activity", city: stop.city, start: stop.start, end: stop.end, adults: travellers } : null;
   const country = stop && plan ? stopCountry(plan, stop.city) : null;
   const near = stop && plan ? nearPlaces(plan, byId.values(), stop.city, country) : [];
   const nearKey = near.map((p) => p.city).join("|");

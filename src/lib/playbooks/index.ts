@@ -82,6 +82,8 @@ const FESTIVAL = /^(festival\w*|fest|rave\w*)$/;
 /** A cruise (kruvaziyer, a ship's tour) and a road trip, in the plain words as one line ("yol gezisi", "road trip"). */
 const CRUISE = /(^| )(kruvaziyer\w*|kruvazier\w*|cruise\w*|gemi (turu|turuna|turunda|gezisi\w*))( |$)/;
 const ROAD = /(^| )(yol gezi\w*|road ?trip\w*)( |$)/;
+/** P2 (F68): a car rented to go along a coast or a route is a road trip too ("Napoli'den araç kiralayıp", "by car"). */
+const ROAD_CAR = /(^| )((arac|araba|otomobil) kirala\w*|arabayla|araba ile|rental car|rent(ing)? a car|by car|car hire)( |$)/;
 /** An event the model named that is not a festival: a race, a match, a pilgrimage, a fair or a concert. */
 const NOT_FESTIVAL = /^(grand|prix|formula|f1|gp|mac\w*|match|final\w*|cup|kupa\w*|marathon|maraton\w*|hac|hacc|umre|hajj|umrah|pilgrimage|fuar\w*|expo|fair|konferans\w*|conference|summit|konser\w*|concert\w*)$/;
 
@@ -107,8 +109,10 @@ export function playbookFor(intent: Pick<Intent, "kind" | "name"> & { id?: strin
   // Said in two words at most ("Akdeniz kruvaziyeri", "İtalya'da yol gezisi"), on the same words as the others.
   const line = (known ? said : words).join(" ");
   if (CRUISE.test(line)) return "cruise";
-  if (ROAD.test(line)) return "road";
-  if (intent?.kind === "event" && !known && !has(name, NOT_FESTIVAL)) return "festival";
+  if (ROAD.test(line) || ROAD_CAR.test(said.join(" "))) return "road";
+  // P2 (F67/F68): an event the model named that the table doesn't know is a festival only when its name or the words
+  // say so ("Napoli Festival Deneyimi" came from an Amalfi drive and asked for a ticket); else it is a classic trip.
+  if (intent?.kind === "event" && !known && !has(name, NOT_FESTIVAL) && (has(name, FESTIVAL) || has(said, FESTIVAL))) return "festival";
   if (!intent && has(said, FESTIVAL)) return "festival";
   return "classic";
 }

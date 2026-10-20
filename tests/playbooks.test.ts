@@ -297,7 +297,7 @@ describe("the trip kind's questions", () => {
     expect(typedTwo.duration).toEqual(two.duration);
     expect(creationOf(typedTwo)!.dates).toEqual(creationOf(two)!.dates);
   });
-  it("Bulgaristan'da kayak: 'orta seviye', 'bansko', 'Var': in Bansko, the school kept, no rental", () => {
+  it("Bulgaristan'da kayak: 'orta seviye', 'bansko', 'Var': in Bansko, no school (P2 F71), no rental", () => {
     let s = typed(newStart("ski", "plan", 1, "tr"), "Bulgaristan'da kayak, 10 Ocak'tan 5 gün");
     s = applyAnswer(applyAnswer(s, { q: "from", city: "İstanbul" }, 3), { q: "who", kind: "solo" }, 4);
     expect(withLang("tr", () => questionOf(s, "pb", ctx)).chips.map((c) => c.label)).toEqual(["Başlangıç", "Orta", "İleri"]);
@@ -311,7 +311,7 @@ describe("the trip kind's questions", () => {
     expect(made.items.find((i) => i.category === "stay")?.countryCode).toBe("BG");
     expect(made.items.find((i) => i.name === "Kayak pası")?.city).toBe("Bansko");
     expect(made.items.find((i) => i.plannedKind === "transfer")?.city).toBe("Bansko");
-    expect(titles(made.items.filter((i) => i.category === "activity"))).toEqual(["Kayak pası", "Kayak okulu"]);
+    expect(titles(made.items.filter((i) => i.category === "activity"))).toEqual(["Kayak pası"]);
   });
   it("ski 'İleri' drops the school; a resort said as the destination isn't asked which resort", () => {
     let s = typed(newStart("ski2", "plan", 1, "tr"), "Bansko'da kayak, 10 Ocak'tan 5 gün");

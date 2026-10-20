@@ -1393,9 +1393,15 @@ function lineOf(section: CatSection, intents: IntentVM[], ideas: number): string
     case "transport":
       parts.push(count(n, "yolculuk", "journey"), counted.length ? joinAnd(uniq(counted.map((i) => travelWord(i.kind)))) : null);
       break;
-    case "activity":
-      parts.push(n ? L(`${n} şehir için`, `for ${n} ${n === 1 ? "city" : "cities"}`) : null);
+    case "activity": {
+      // P2 (F71): its cities are the city rows' own; a trip kind's choices (ski school, gear, pass) are said apart, not as
+      // cities ("3 şehir için" on a ski trip of one resort).
+      const rows = counted.filter((i) => i.frame === "collection");
+      const cities = uniq(rows.map((i) => i.head.city?.toLocaleLowerCase("tr")).filter(nonNull)).length || rows.length;
+      const choices = counted.length - rows.length;
+      parts.push(cities ? L(`${cities} şehir için`, `for ${cities} ${cities === 1 ? "city" : "cities"}`) : null, choices ? L(`${choices} seçim`, `${choices} ${choices === 1 ? "choice" : "choices"}`) : null);
       break;
+    }
     case "todo":
       // 0.39.14: not the name again ("Gezilecek yerler ve restoranlar" under "Yapılacaklar ve restoranlar"): its cities.
       parts.push(n ? L(`${n} şehir için`, `for ${n} ${n === 1 ? "city" : "cities"}`) : null);

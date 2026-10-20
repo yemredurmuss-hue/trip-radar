@@ -46,7 +46,8 @@ export const ski: Playbook = {
       text: { tr: "Kayak seviyen ne: yeni mi başlıyorsun, orta mı, ileri mi?", en: "What's your level: beginner, intermediate or advanced?" },
       chips: [
         { value: "beginner", label: { tr: "Başlangıç", en: "Beginner" }, aliases: ["yeni", "acemi", "ilk kez", "ilk defa", "beginner", "first time", "never"], effects: [] },
-        { value: "intermediate", label: { tr: "Orta", en: "Intermediate" }, aliases: ["orta", "intermediate"], effects: [] },
+        // P2 (F71): "ikimiz de orta seviye" opened a ski school: one who already skis needs none (it can be added back).
+        { value: "intermediate", label: { tr: "Orta", en: "Intermediate" }, aliases: ["orta", "intermediate"], effects: [{ op: "dropCard", card: "school" }] },
         // An advanced skier needs no school.
         { value: "advanced", label: { tr: "İleri", en: "Advanced" }, aliases: ["ileri", "uzman", "advanced", "expert"], effects: [{ op: "dropCard", card: "school" }] },
       ],
