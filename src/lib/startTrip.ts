@@ -66,6 +66,10 @@ export interface Duration {
 export interface RouteStop {
   city: string;
   nights: number;
+  /** What was said of the stop (0.39.10): "kızıl yapraklar", "1 gece ryokan". */
+  note?: string | null;
+  /** The nights were said by the traveller (0.39.10): kept as they are when the length changes; the rest share what's left. */
+  said?: boolean;
   /** The stop's country (ISO 3166-1 alpha-2) when the route says it; else the destination's. */
   code?: string | null;
 }
@@ -787,6 +791,18 @@ export interface Extracted {
   playbook?: CustomPlaybook | null;
   /** The one place they stay the whole trip ("tek yer", "sadece Canggu", "Canggu'da kalacağız"). */
   base?: string | null;
+  /**
+   * The stops the traveller said, in order, over the whole conversation (0.39.10, Emre: "önce Tokyo'da 3 gece, sonra
+   * Kyoto'da… ve bir gece ryokan" became "Tokyo 9 gece"): their route, never proposed over. Only the model reads them.
+   */
+  stops?: SaidStop[] | null;
+}
+
+/** A stop said: its place, its nights when said, what was said of it. */
+export interface SaidStop {
+  city: string;
+  nights: number | null;
+  note: string | null;
 }
 
 /** "Kohphandan" read as Koh Phangan: kept apart until the traveller says yes ("Evet") or no ("Hayır, Kohphandan"). */
@@ -957,6 +973,10 @@ function gluedName(word: string, next: string): string | null {
 }
 
 /** Tokens of the original text: letters/digits runs, the Turkish ending after an apostrophe as its own token. */
+/** A route said in words (0.39.10): "…, sonra Kyoto", "then Kyoto", or nights said for two places. */
+const ROUTE_TALK = (text: string): boolean =>
+  /(?<![\p{L}])(sonra|ardından|ardindan|then|after that|followed by)(?![\p{L}])/iu.test(text) || (text.match(/\d+\s*(gece|night)/giu)?.length ?? 0) >= 2;
+
 function tokensOf(text: string): string[] {
   return text.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
 }
@@ -1023,9 +1043,13 @@ export function parseStartText(text: string, today: string, pending: QuestionId 
             : /^(gün|gun|günlük|günlüğüne|gunluk|day|days)$/.test(unit)
               ? "day"
               : null;
-      // "3 hafta önce döndüm", "3 days ago": a time, not the trip's length (rev 3).
-      const when = /^(önce|once|sonra|evvel|ago|before|later|earlier)$/.test(low[i + 2] ?? "");
-      if (u && !when && n >= 1 && n <= (u === "day" || u === "night" ? 120 : u === "week" ? 16 : 4)) {
+      // "3 hafta önce döndüm", "3 days ago": a time, not the trip's length (rev 3). Nights are never a time: "Tokyo'da
+      // 3 gece, sonra Kyoto" goes on to the next stop (0.39.10).
+      const when = u !== "night" && /^(önce|once|sonra|evvel|ago|before|later|earlier)$/.test(low[i + 2] ?? "");
+      // A stop's nights ("Tokyo'da 3 gece", "3 nights in Tokyo"), never the trip's length (0.39.10): the model reads the stops.
+      // (Only where a route is said: "Porto'da 10 gece" alone is the trip's length; with one, "bir gece ryokan" is a stop's.)
+      const stopNights = u === "night" && ROUTE_TALK(text);
+      if (u && !when && !stopNights && n >= 1 && n <= (u === "day" || u === "night" ? 120 : u === "week" ? 16 : 4)) {
         out.duration = { unit: u, n };
         used.add(i).add(i + 1);
         continue;
@@ -1060,7 +1084,20 @@ export function parseStartText(text: string, today: string, pending: QuestionId 
         if (low[i] === "may" && low[i - 1] !== "in") continue;
         // An English month typed in lower case is a word too ("november rain"): only with a cue ("in november").
         if (MONTHS_EN.includes(low[i]) && !MONTHS_TR.includes(low[i]) && !capital0(raw[i]) && !before) continue;
-        out.start = { date: monthStart(m, today), approx: true };
+        // Its part said with it (0.39.10): "Kasım sonunda", "ayın ortasında", "late November", "end of November".
+        // (Past the month's own endings: "Kasım'ın sonunda", "Kasım ayının sonunda".)
+        const skip = /^(ın|in|un|ün|nın|nin|ayının|ayı|ayi)$/.test(low[i + 1] ?? "") ? (low[i + 1] === "ayı" && /^(nın|nin)$/.test(low[i + 2] ?? "") ? 3 : 2) : 1;
+        const next = low[i + skip] ?? "";
+        const prev = `${low[i - 2] ?? ""} ${low[i - 1] ?? ""}`;
+        const part: MonthPart | null = /^(son|sonu|sonunda|sonuna|sonları|sonlarında|sonlarına)$/.test(next) || /(^|\s)(late|end of)$/.test(prev) || prev.endsWith("end of")
+          ? "end"
+          : /^(orta|ortası|ortasında|ortaları|ortalarında)$/.test(next) || /(^|\s)(mid|middle of)$/.test(prev) || prev.endsWith("middle of")
+            ? "mid"
+            : /^(baş|başı|başında|başları|başlarında)$/.test(next) || /(^|\s)(early|beginning of|start of)$/.test(prev) || prev.endsWith("beginning of") || prev.endsWith("start of")
+              ? "begin"
+              : null;
+        const at = part ? monthParts(monthStart(m, today), today).find((x) => x.part === part) : null;
+        out.start = at ? { date: at.date, approx: true, part: at.part } : { date: monthStart(m, today), approx: true };
         used.add(i);
         break;
       }
@@ -1290,6 +1327,10 @@ export const extractionSchema = z.object({
   choice: z.string().optional(),
   // The one place they stay the whole trip, when they say so (0.38.5; optional, like the event's).
   one_place: z.string().optional(),
+  // The stops said over the conversation, in order (0.39.10; optional, like the event's).
+  stops: z.array(z.object({ place: z.string(), nights: z.number(), note: z.string() })).optional(),
+  // The part of the month said with it ("Kasım sonunda": end; 0.39.10).
+  start_part: z.string().optional(),
 });
 export type RawExtraction = z.infer<typeof extractionSchema>;
 
@@ -1306,7 +1347,9 @@ duration_days: gün olarak süre (gece söylendiyse gece + 1); "1 ay" gibi ay s�
 "Kullanıcının cevapladığı soru" verildiyse mesaj o soruyu cevaplar: "nereden" sorusuna verilen yer adı origin'dir, destination değil. Gidilecek yer bilinirken destination yalnız kullanıcı açıkça başka yere gitmek istediğini söylerse ("aslında Bali'ye gidelim") dolar.
 event: kullanıcı bir etkinliğe, festivale ya da temaya gitmek istiyorsa onun bilinen adı ("burning man africa" → "AfrikaBurn", "kuzey ışıkları" → "Kuzey Işıkları"); yoksa "". event_kind: event | theme. event_place: yapıldığı yer (destination da o olur, ör. "Tankwa Karoo"); event_country_code: ülkesinin ISO kodu. event_start / event_end: bildiğin sıradaki tarihleri (bugünden sonraki ilk) YYYY-MM-DD, bilmiyorsan "". event_dates_sure: yalnız tarihlerden kesin eminsen true.
 choice: cevaplanan soru seçenekleriyle verildiyse ("değer = etiket"), mesajın seçtiği seçeneğin değeri; cevap vermek istemiyorsa ya da hiçbirine uymuyorsa "skip"; seçenek yoksa "".
-one_place: kullanıcı gezi boyunca tek bir yerde kalmak istediğini söylüyorsa ("sabit bir yerde", "Canggu'da sabit", "tek yer", "sadece Canggu", "Canggu'da kalacağız") o yerin adı, ek olmadan; söylemiyorsa "". Bu durumda destination gidilen ada, bölge ya da ülke kalır ("Bali"), one_place kasaba ("Canggu").`,
+one_place: kullanıcı gezi boyunca tek bir yerde kalmak istediğini söylüyorsa ("sabit bir yerde", "Canggu'da sabit", "tek yer", "sadece Canggu", "Canggu'da kalacağız") o yerin adı, ek olmadan; söylemiyorsa "". Bu durumda destination gidilen ada, bölge ya da ülke kalır ("Bali"), one_place kasaba ("Canggu").
+stops: kullanıcı birden çok durak söylediyse ("önce Tokyo'da 3 gece, sonra Kyoto"), bu sohbette şimdiye kadar söylenen bütün durakların GÜNCEL listesi, sırasıyla (önceki mesajlar dahil; yeni mesaj bir durağı değiştiriyorsa o değişmiş hâli). Her durak: place (yalnız yer adı), nights (söylendiyse gece sayısı, söylenmediyse 0), note (o durakla ilgili söylenenler, kısa: "kızıl yapraklar", "1 gece ryokan"; yoksa ""). Bir konaklama türü (ryokan, otel, kamp) ayrı bir yer adı söylenmedikçe durak değildir, ilgili durağın notuna yazılır. Mesaj rotaya hiç değinmiyorsa ve ilk mesaj değilse stops boş kalır. Birden çok şehir durak olarak söylendiyse destination ülkedir ("Japonya"), şehirler değil. Bir durağın gece sayısı gezinin toplam süresi değildir: duration_days yalnız toplam süre söylendiyse dolar.
+start_part: ayın hangi kısmı söylendiyse ("Kasım sonunda" → end, "ortasında" → mid, "başında" → begin); yoksa "".`,
     `From the user's message in a trip-planning chat, take only what is clearly said. Never invent; what isn't said stays empty ("" or 0 or []).
 destination: the place to go (a city, island, region or country), its name only; when several are said, the most specific ("Thailand, Koh Phangan" → "Koh Phangan", country Thailand), spelled correctly. destination_country: its country when known; destination_country_code: that country's ISO 3166-1 alpha-2 code ("TH").
 origin: the city they leave from. companions: solo | partner | friends | family or "". names: the people going with them (not the user).
@@ -1315,7 +1358,9 @@ duration_days: the length in days (nights said: nights + 1); a length in months 
 When "The user is answering" is given, the message answers that question: a place given to "where from" is the origin, not the destination. While the destination is known, destination is filled only when the user clearly says they want to go somewhere else ("actually, let's go to Bali").
 event: when the user wants to go to an event, a festival or a theme, its known name ("burning man africa" → "AfrikaBurn", "the northern lights" → "Northern Lights"); else "". event_kind: event | theme. event_place: where it happens (that is the destination too, e.g. "Tankwa Karoo"); event_country_code: its country's ISO code. event_start / event_end: its next dates you know (the first after today) as YYYY-MM-DD, "" if unsure. event_dates_sure: true only when you are certain of the dates.
 choice: when the question being answered comes with options ("value = label"), the value of the option the message picks; "skip" when they'd rather not say or it fits none; "" when there are no options.
-one_place: when the user says they stay in one place the whole trip ("one base", "just Canggu", "we'll stay in Canggu"), that place's name; else "". Then destination stays the island, region or country they go to ("Bali"), one_place the town ("Canggu").`,
+one_place: when the user says they stay in one place the whole trip ("one base", "just Canggu", "we'll stay in Canggu"), that place's name; else "". Then destination stays the island, region or country they go to ("Bali"), one_place the town ("Canggu").
+stops: when the user says several stops ("first 3 nights in Tokyo, then Kyoto"), the CURRENT list of every stop said in this conversation so far, in order (earlier messages included; when the new message changes a stop, its changed form). Each stop: place (the place's name only), nights (the nights when said, else 0), note (what was said of it, short: "autumn leaves", "1 night in a ryokan"; else ""). A kind of stay (ryokan, hotel, camp) is no stop unless a place of its own is named: it goes in the note of its stop. When the message doesn't touch the route and isn't the first, stops stays empty. When several cities are said as stops, destination is the country ("Japan"), not a city. A stop's nights are not the trip's length: duration_days is filled only when the whole length is said.
+start_part: the part of the month said ("late November" → end, "mid" → mid, "early" → begin); else "".`,
   );
 
 /** What each question asks, in words for the model ("where they leave from"). */
@@ -1448,6 +1493,8 @@ export function knownLines(s: StartState, ctx: StartCtx): string {
     s.who ? `${L("Kimle", "Who")}: ${whoText(s.who, ctx.myName)}` : "",
     whenText(s) ? `${L("Ne zaman", "When")}: ${whenText(s)}` : "",
     wantText(s) ? `${L("Tarz", "Style")}: ${wantText(s)}` : "",
+    // The route so far (0.39.10): the model keeps the stops said and changes only what the new message changes.
+    s.route ? `${L("Rota", "Route")}${s.route.confirmed ? "" : L(" (önerilen)", " (proposed)")}: ${routeWords(s.route)}` : "",
     // A festival, a ski trip, a honeymoon, a retreat (playbooks/): its tone, and its one tip until it's been said.
     playbookPromptLine(s),
     // Its questions answered so far ("Çadır kampı mı, karavan mı, otel mi? Otel").
@@ -1463,7 +1510,7 @@ export function knownLines(s: StartState, ctx: StartCtx): string {
  * A typed message for the model: today, what is known, the question it answers, the next question, the message. A
  * trip kind's question is given in its own words, the one answered with its options (the model picks one in `choice`).
  */
-export function turnPrompt(a: { text: string; today: string; pending: QuestionId | null; next: QuestionId | null; known: string; pbPending?: string | null; pbNext?: string | null; open?: QuestionId[] }): string {
+export function turnPrompt(a: { text: string; today: string; pending: QuestionId | null; next: QuestionId | null; known: string; pbPending?: string | null; pbNext?: string | null; open?: QuestionId[]; history?: string[] }): string {
   return [
     "<start_message>",
     `${L("Bugün", "Today")}: ${a.today}`,
@@ -1472,10 +1519,16 @@ export function turnPrompt(a: { text: string; today: string; pending: QuestionId
     `${L("Sıradaki soru", "Next question")}: ${a.next === "pb" && a.pbNext ? a.pbNext : a.next ? slotWords(a.next) : L("yok", "none")}`,
     // What else is still open, most important first: the model may ask one more of them with the next (at most two).
     a.open?.length ? `${L("Eksikler (önem sırasıyla)", "Still missing (most important first)")}: ${a.open.map(slotWords).join("; ")}` : "",
+    // What they said before in this chat (0.39.10): the stops and wishes said earlier are kept, never forgotten.
+    a.history?.length ? `${L("Kullanıcının bu sohbette önceki mesajları (eskiden yeniye)", "What the user said earlier in this chat (oldest first)")}:\n${a.history.map((m) => `- ${m}`).join("\n")}` : "",
     `${L("Mesaj", "Message")}: ${a.text}`,
     "</start_message>",
   ].filter(Boolean).join("\n");
 }
+
+/** The user's earlier lines for the model (0.39.10): the last few, short; the reading of the whole chat stays with them. */
+export const historyOf = (s: Pick<StartState, "messages">, max = 8): string[] =>
+  s.messages.filter((m) => m.role === "user").slice(-max).map((m) => m.text.replace(/\s+/g, " ").trim().slice(0, 300));
 
 const PRICE = /[€$£₺¥฿]|\d[\d.,]*\s?(tl|try|eur|euro|usd|dolar|dollars?|lira|baht|thb|gbp|pound)(?![\p{L}])/iu;
 const BOOKING = /(rezervasyon\p{L}*\s+(yap|tamam|hazır|onay)|ayırttım|ayırdım|bilet\p{L}*\s+(aldım|alındı)|booked|reserved|i'?ve (booked|reserved)|tickets? (are )?(bought|booked))/iu;
@@ -1555,7 +1608,19 @@ export function acceptExtraction(raw: RawExtraction & { plan?: RawPlan | null },
   const date = isoDate(raw.start_date);
   // A start in the past (or years away) is a misread, not a plan.
   if (date && date >= today && date <= addMonths(today, 36)) out.start = { date, approx: false };
-  else if (Number.isInteger(raw.start_month) && raw.start_month >= 1 && raw.start_month <= 12) out.start = { date: monthStart(raw.start_month, today), approx: true };
+  else if (Number.isInteger(raw.start_month) && raw.start_month >= 1 && raw.start_month <= 12) {
+    // The part of the month said ("Kasım sonunda", 0.39.10): its day, as the chip's.
+    const part = (["begin", "mid", "end"] as const).find((x) => x === raw.start_part);
+    const at = part ? monthParts(monthStart(raw.start_month, today), today).find((x) => x.part === part) : null;
+    out.start = at ? { date: at.date, approx: true, part: at.part } : { date: monthStart(raw.start_month, today), approx: true };
+  }
+  const stops = (raw.stops ?? [])
+    .map((x) => ({ city: bareName(x.place ?? ""), nights: Number.isInteger(x.nights) && x.nights >= 1 && x.nights <= 60 ? x.nights : null, note: (x.note ?? "").trim().slice(0, 60) || null }))
+    .filter((x) => x.city && looksLikePlace(x.city, PLACE_WORDS))
+    .map((x) => ({ ...x, city: placeOf(x.city).place }))
+    .filter((x, i, all) => all.findIndex((y) => samePlace(y.city, x.city)) === i)
+    .slice(0, 8);
+  if (stops.length) out.stops = stops;
   if (Number.isInteger(raw.duration_months) && raw.duration_months >= 1 && raw.duration_months <= 4) out.duration = { unit: "month", n: raw.duration_months };
   else if (Number.isInteger(raw.duration_days) && raw.duration_days >= 1 && raw.duration_days <= 120) out.duration = { unit: "day", n: raw.duration_days };
   for (const id of raw.styles ?? []) {
@@ -1611,9 +1676,13 @@ export function mergeExtracted(code: Extracted, model: Extracted | null): Extrac
   // Read from lower-case words only ("sri lankaya"): the model's, even when it has none (rev 3).
   // An event the code knows names the place itself; one only the model read, its place (rev 2026-10-06).
   const intent = code.intent ?? model.intent ?? null;
+  // Several stops said (0.39.10): the model's destination (the country) and its length; the code read one city of them.
+  const routeSaid = (model.stops?.length ?? 0) >= 2;
   const where = code.intent
     ? code.where
-    : model.intent && !code.whereSure
+    : routeSaid && model.where
+      ? model.where
+      : model.intent && !code.whereSure
       ? model.where
       : code.whereWeak
         ? model.where
@@ -1630,8 +1699,9 @@ export function mergeExtracted(code: Extracted, model: Extracted | null): Extrac
     guess: intent ? null : guess,
     from,
     who: kind || names.length || count ? { kind, names, ...(count ? { count } : {}) } : null,
-    start: code.start && !code.start.approx ? code.start : (model.start ?? code.start),
-    duration: code.duration ?? model.duration,
+    start: code.start && !code.start.approx ? code.start : code.start?.part && !model.start?.part ? code.start : (model.start ?? code.start),
+    duration: routeSaid ? (model.duration ?? code.duration) : (code.duration ?? model.duration),
+    ...(model.stops?.length ? { stops: model.stops } : {}),
     styles: [...new Set([...code.styles, ...model.styles])],
     budget: code.budget ?? model.budget,
     ...(model.choice || code.choice ? { choice: model.choice || code.choice } : {}),
@@ -1935,6 +2005,29 @@ export function askAgain(s: StartState, q: QuestionId, now: number): StartState 
  * A route made for other places or another length isn't the trip's any more; photos and suggestions prepared for
  * another destination neither (item 7: a change of place starts what's prepared anew).
  */
+/**
+ * The traveller's own stops (0.39.10): their nights as said; the nights not said share what's left of the trip's (each at
+ * least one). Without a length, a stop with no nights said gets one until the length is known.
+ */
+export function fitSaidStops(stops: readonly (RouteStop | (SaidStop & { said?: boolean }))[], total: number | null, code: string | null): RouteStop[] {
+  const said = (x: (typeof stops)[number]) => ("said" in x && x.said != null ? x.said : x.nights != null);
+  const fixed = stops.reduce((n, x) => n + (said(x) ? (x.nights ?? 0) : 0), 0);
+  const free = stops.filter((x) => !said(x)).length;
+  const left = total != null ? total - fixed : null;
+  const each = free && left != null && left > 0 ? Math.floor(left / free) : 1;
+  let extra = free && left != null && left > 0 ? left - each * free : 0;
+  return stops.map((x) => {
+    const own = said(x);
+    const nights = own ? (x.nights ?? 1) : Math.max(1, each + (extra-- > 0 ? 1 : 0));
+    return { city: x.city, nights, code: ("code" in x ? x.code : null) ?? code, note: x.note ?? null, said: own };
+  });
+}
+
+/** The stops said, as the trip's route: the traveller's own, to agree on (never proposed over). */
+export function saidRoute(s: StartState, stops: readonly SaidStop[]): StartRoute {
+  return { stops: fitSaidStops(stops, totalNights(s), s.where?.code ?? null), arrive: null, leave: null, confirmed: false, source: "user" };
+}
+
 function keepRoute(before: StartState, next: StartState): StartState {
   const after = keepPrepared(withEventDates(next));
   // One place for the whole trip (0.38.5): that stop for all the nights, as said; never a proposal to agree on.
@@ -1955,6 +2048,13 @@ function keepRoute(before: StartState, next: StartState): StartState {
   const placeChanged = before.where?.place !== after.where?.place;
   const total = totalNights(after);
   const sum = after.route.stops.reduce((a, b) => a + b.nights, 0);
+  // The traveller's own stops (0.39.10): kept while the country stays; the nights not said follow the length.
+  if (after.route.source === "user" && after.route.stops.some((x) => x.said != null)) {
+    const sameCountry = !placeChanged || (after.where?.code ?? null) === (before.where?.code ?? null) || after.route.stops.some((x) => samePlace(x.city, after.where?.place));
+    if (!sameCountry) return restoreRoute({ ...after, route: null, editingRoute: false });
+    if (total != null && sum !== total) return { ...after, route: { ...after.route, stops: fitSaidStops(after.route.stops, total, after.where?.code ?? null) } };
+    return after;
+  }
   if (placeChanged || total == null || (sum !== total && after.route.source !== "single")) return restoreRoute({ ...after, route: null, editingRoute: false });
   // A classic circuit proposed (not agreed) is made again when where they leave from changes (never a stop; rev 3).
   if (after.route.source === "circuit" && !after.route.confirmed && after.from !== before.from) {
@@ -2106,7 +2206,15 @@ export function applyExtracted(s: StartState, e: Extracted, now: number): StartS
     next.budget = e.budget ?? s.budget;
     next.wantDone = true;
   }
-  return keepRoute(s, next);
+  const kept = keepRoute(s, next);
+  // Several stops said (0.39.10): that's the route, to agree on; one stop said is the one place (base) as before.
+  if (e.stops && e.stops.length >= 2 && !kept.intent) {
+    const route = saidRoute(kept, e.stops);
+    // (Agreed before and said again the same: it stays agreed.)
+    const same = s.route?.confirmed && s.route.stops.length === route.stops.length && s.route.stops.every((x, i) => samePlace(x.city, route.stops[i].city) && x.nights === route.stops[i].nights);
+    return { ...kept, route: same ? { ...route, confirmed: true } : route, base: null, editingRoute: false };
+  }
+  return kept;
 }
 
 /**
@@ -2205,6 +2313,11 @@ export function applyText(s: StartState, text: string, read: Extracted, now: num
     const word = text.trim().toLocaleLowerCase("tr").replace(/[.!]+$/, "");
     if (/^(evet|evet o|doğru|aynen|yes|yep|yeah|right|correct|that one)$/.test(word)) return { state: applyAnswer(s, { q: "guess", accept: true }, now), understood: true };
     if (/^(hayır|hayir|no|nope)$/.test(word)) return { state: applyAnswer(s, { q: "guess", accept: false }, now), understood: true };
+  }
+  // "Evet", "olur", "bu olsun" typed to the route (0.39.10), as the chip; anything more goes on to be read.
+  if (q === "route" && s.route && !s.editingRoute) {
+    const word = text.trim().toLocaleLowerCase("tr").replace(/[.!]+$/, "");
+    if (/^(evet|olur|tamam|bu olsun|böyle olsun|uygun|güzel|süper|harika|yes|yep|ok|okay|sure|sounds good|go with it)$/.test(word)) return { state: applyAnswer(s, { q: "route", action: "accept" }, now), understood: true };
   }
   // How many go, typed to "Kaç kişi?": "4", "dört", "4 kişiyiz", "we're 4".
   if (q === "count") {
@@ -2345,6 +2458,10 @@ export const routeText = (r: StartRoute) => {
   const stops = r.stops.map((x) => `${x.city} ${x.nights}`).join(" · ");
   return `${stops} ${L("gece", r.stops.length === 1 && r.stops[0].nights === 1 ? "night" : "nights")}`;
 };
+
+/** The route in words with what was said of each stop (0.39.10): "Tokyo 3 gece → Kyoto 5 gece (kızıl yapraklar)". */
+export const routeWords = (r: StartRoute): string =>
+  r.stops.map((x) => `${x.city} ${x.nights} ${L("gece", x.nights === 1 ? "night" : "nights")}${x.note ? ` (${x.note})` : ""}`).join(" → ");
 
 /** A Turkish proper name with "to": "Bali'ye", "Porto'ya", "Paris'e", "Porto ve Madeira Gezisi'ne". */
 export function dative(name: string): string {
@@ -2562,6 +2679,19 @@ export function questionOf(s: StartState, q: QuestionId, ctx: StartCtx): Questio
         };
       }
       const many = s.route.stops.length > 1;
+      // The stops they said (0.39.10): said back as theirs; the nights worked out are marked as mine.
+      if (s.route.source === "user" && many && s.route.stops.some((x) => x.said != null)) {
+        const guessed = s.route.stops.filter((x) => x.said === false).map((x) => x.city);
+        return {
+          id: q,
+          text: L(`Rotanı şöyle aldım: ${routeWords(s.route)}. Bu olsun mu?`, `I've got your route as: ${routeWords(s.route)}. Shall we go with it?`),
+          hint: guessed.length ? L(`${andList(guessed)} için geceleri ben böldüm; değiştirmek için yaz.`, `I split the nights for ${andList(guessed)}; type to change them.`) : undefined,
+          chips: [
+            { label: L("Bu olsun", "Go with it"), answer: { q: "route", action: "accept" } },
+            { label: L("Değiştir", "Change it"), answer: { q: "route", action: "change" } },
+          ],
+        };
+      }
       return {
         id: q,
         text: many ? L(`Rota önerim: ${routeText(s.route)}. Bu olsun mu?`, `My route: ${routeText(s.route)}. Shall we go with it?`) : L(`Tek durak öneriyorum: ${routeText(s.route)}. Bu olsun mu?`, `I'd keep it to one stop: ${routeText(s.route)}. Go with it?`),

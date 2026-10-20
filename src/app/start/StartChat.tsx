@@ -29,7 +29,7 @@ import { removeDraft, saveDraft, worthKeeping } from "../../lib/startDrafts";
 import { applyLiveDates, checkingLine, datesWait, lookupFor, startLookup, type DatesLookup } from "../../lib/startEventDates";
 import { rulesPreview } from "../../lib/startHooks";
 import {
-  applyAnswer, applyExtracted, applyText, askAgain, budgetChips, budgetWord, canGenerate, checklist, autoPrint, drawingLine, isComplete, isGoCommand, knownLines, lineLink, mergeExtracted, startName,
+  applyAnswer, applyExtracted, applyText, askAgain, budgetChips, historyOf, budgetWord, canGenerate, checklist, autoPrint, drawingLine, isComplete, isGoCommand, knownLines, lineLink, mergeExtracted, startName,
   missingForGenerate, modelReplyText, modelWordsQuestion, NOT_UNDERSTOOD, nextQuestion, assumeAnswered, stillOpen, onlyEmpty, parseRouteText, parseStartText, pbCurrent, pbPromptOf, photosToFind, preparedRoute, previewOf, skipPb,
   questionOf, readingLine, readingName, readingRows, replyText, restoreRoute, routeThinkingLine, shouldAutoStart, autoHeld, memoAfterGenerate, AUTO_SECONDS, autoSeconds, waitingInstead, routeForGenerate, routeKey, routeToPrepare, rulesKey, saysSomething, singleRoute, skip, totalNights, wantsRouteAdvice,
   tentativeWhere, whereKey, withGuessTaken, withoutOverruled, withPhotos, withPreparedRoute, withTypedLang,
@@ -643,7 +643,7 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
       const pbNext = predicted === "pb" ? T(() => questionOf(first.state, "pb", ctx).text) : null;
       const controller = hasModel ? track() : null;
       const pending = controller
-        ? readAndReply({ text: line, today: today(), pending: q, next: predicted, known: T(() => knownLines(first.state, ctx)), lang: asked.lang, pbPending, pbNext, open: T(() => stillOpen(first.state)) }, READ_MS, controller.signal).finally(() => {
+        ? readAndReply({ text: line, today: today(), pending: q, next: predicted, known: T(() => knownLines(first.state, ctx)), lang: asked.lang, pbPending, pbNext, open: T(() => stillOpen(first.state)), history: historyOf(before) }, READ_MS, controller.signal).finally(() => {
             inflight.current.delete(controller);
             readingDone(mine);
           })
@@ -652,19 +652,27 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
         const opening = !before.where && !before.guess;
         setReading({ turn: mine, line: T(() => readingLine(readingName(before, first.state, code))), rows: T(() => readingRows(first.state, q, opening, ctx)) });
       }
-      const at = reply(before, first.state);
-      if (q === "pb" && counting) countAgain(true);
-      if (!pending || at == null) return;
+      // 0.39.10 (Emre: "şak diye geliyor, sonra arkasına başka şey oluyor, akışkan hissettirmiyor"): with the model on
+      // its way, the code's reading fills the list at once but the chat says one line only, the model's, once; the
+      // code's line is said instead when the model is late (REPLY_MS) or fails.
+      if (!pending) {
+        reply(before, first.state);
+        if (q === "pb" && counting) countAgain(true);
+        return;
+      }
       setStage("writing");
       // Its words are waited for REPLY_MS at most; its reading is applied whenever it lands (rev 3).
       const got = await within(pending, REPLY_MS, LATE);
       if (turn.current === mine) setStage(null);
-      if (got === LATE) {
-        void pending.then((late) => late && lateReading(late.read, code, line, q, mine, before, at, pk, late.reply, predicted));
+      if (stale()) return;
+      if (got === LATE || !got) {
+        if (turn.current !== mine) return;
+        const at = reply(before, live.current === asked ? first.state : live.current);
+        if (q === "pb" && counting) countAgain(true);
+        if (got === LATE && at != null) void pending.then((late) => late && lateReading(late.read, code, line, q, mine, before, at, pk, late.reply, predicted));
         return;
       }
-      if (!got || stale()) return;
-      if (turn.current !== mine) return lateReading(got.read, code, line, q, mine, before, at, pk);
+      if (turn.current !== mine) return lateReading(got.read, code, line, q, mine, before, null, pk);
       // What the model read that the code missed is added (bound to the same question); then its words.
       // (A lower-case reading of the code's the model reads otherwise is taken back first.)
       const merged = mergeExtracted(code, got.read);
@@ -672,11 +680,9 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
       if (base !== live.current) commit(base);
       const more = T(() => applyText(base, line, merged, Date.now(), q, pk));
       if (more.understood) commit(more.state);
-      // What it added may make the route the question now: the circuit at once, or the chat says it is drawing it.
-      const drawing = routeNow();
-      const now = live.current;
-      if (isLast(now, at)) commit(replaceLine(now, at, T(() => modelReplyText(before, now, ctx, got.reply, predicted, drawing))));
-      if (more.understood) setPicking({ styles: now.styles, budget: now.budget });
+      // The one line said: the model's words over what's now known (the route at once, or the chat says it's drawing it).
+      reply(before, live.current, (next, drawing) => modelReplyText(before, next, ctx, got.reply, predicted, drawing));
+      if (q === "pb" && counting) countAgain(true);
       return;
     }
     // A trip kind's question: what nothing came of is skipped, never "anlamadım" (after the model's try, when there is one).
@@ -689,7 +695,7 @@ export function StartChat({ initial, firstText, firstLabel, firstNote, ctx, onCl
     // answered as the next one, so its words were never used and the code's line always stood).
     const ahead = T(() => assumeAnswered(asked, q));
     const aheadQ = nextQuestion(ahead);
-    const got = await readAndReply({ text: line, today: today(), pending: q, next: aheadQ, known: T(() => knownLines(asked, ctx)), lang: asked.lang, pbPending, pbNext: aheadQ === "pb" ? T(() => questionOf(ahead, "pb", ctx).text) : null, open: T(() => stillOpen(ahead)) }, READ_MS, controller.signal);
+    const got = await readAndReply({ text: line, today: today(), pending: q, next: aheadQ, known: T(() => knownLines(asked, ctx)), lang: asked.lang, pbPending, pbNext: aheadQ === "pb" ? T(() => questionOf(ahead, "pb", ctx).text) : null, open: T(() => stillOpen(ahead)), history: historyOf(before) }, READ_MS, controller.signal);
     inflight.current.delete(controller);
     readingDone(mine);
     if (turn.current === mine) setStage(null);
