@@ -13,7 +13,7 @@ import type { Countdown } from "../../lib/countdown";
 import { initials, nPeople } from "../../lib/heroInfo";
 import { budgetAmount, budgetWords, freshWords, heroDatesWords, nextParts, readyWords, shareSentence, whoWords, type BudgetView, type HeroCounts } from "../../lib/heroStrip";
 import { L } from "../../lib/i18n";
-import { nDays } from "../../lib/i18nText";
+import { nDays, nNights } from "../../lib/i18nText";
 import type { Who } from "../../lib/tripSettings";
 import type { Item, Trip } from "../../lib/types";
 import { Counted } from "../Counted";
@@ -60,7 +60,8 @@ function Dates({ dates }: { dates: HeroDates }) {
   const { range } = dates;
   const days = nightsBetween(range.start, range.end) + 1;
   // A guessed start has no days to count to: the nights alone (D15), "tarih esnek" under them. The days to go are on the photo.
-  const small = dates.rough ? L("tarih esnek", "flexible dates") : nDays(days);
+  // P4 (T5): a guessed start says its nights and that it's a guess ("6 gece · tahmini").
+  const small = dates.rough ? L(`${nNights(days - 1)} · tahmini`, `${nNights(days - 1)} · estimated`) : nDays(days);
   return (
     <TipOn tip={dates.tip} below>
       {(bind) => (

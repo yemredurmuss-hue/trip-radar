@@ -473,7 +473,7 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
       </section>
       {need && !camp && (
         <div className="q-offers">
-          <OfferRow key={need.key} need={need} onChoose={a.choose} placeholder={placeholder} chosen={vm.chosen != null} />
+          <OfferRow key={need.key} need={need} onChoose={a.choose} placeholder={placeholder} chosen={vm.chosen != null} hasOptions={vm.options.length > 0} />
         </div>
       )}
       {others.length > 0 && (

@@ -298,7 +298,7 @@ function useRowOpen(need: Need, chosen: boolean): [boolean, (open: boolean) => v
 }
 
 /** A stay's row: the source's candidates narrowed to three for this trip (its plans there, its priorities). */
-function StayPicksRow({ need, onChoose, placeholder, chosen: hasChoice }: { need: Need; onChoose: ((item: Item) => void) | null; placeholder: Item | null; chosen: boolean }) {
+function StayPicksRow({ need, onChoose, placeholder, chosen: hasChoice, hasOptions = false }: { need: Need; onChoose: ((item: Item) => void) | null; placeholder: Item | null; chosen: boolean; hasOptions?: boolean }) {
   const { offers: source, tripId, trip, items } = useEmptyEnv();
   const available = source.available();
   const [opened, setOpen] = useRowOpen(need, hasChoice);
@@ -332,6 +332,7 @@ function StayPicksRow({ need, onChoose, placeholder, chosen: hasChoice }: { need
   if (cands && !picks.length) {
     // Every one is already in the box: nothing to add here. Some came but none fits the trip: said so, honestly.
     if (!fresh.length && cands.length) return null;
+    if (hasOptions) return null;
     return fresh.some((c) => !fitsTrip(c, ctx.fit)) ? <NoFit /> : <NoOffers />;
   }
   return (
@@ -358,8 +359,10 @@ function StayPicksRow({ need, onChoose, placeholder, chosen: hasChoice }: { need
 }
 
 /** The row for one need: a stay's three picks when the source has candidates, else its offers as they come. */
-export function OfferRow({ need, onChoose = null, placeholder = null, chosen = false }: {
+export function OfferRow({ need, onChoose = null, placeholder = null, chosen = false, hasOptions = false }: {
   need: Need;
+  /** The box shows options of its own (P4, F17): the sources having none is then not said ("seçenek çıkmadı"). */
+  hasOptions?: boolean;
   /** "Seç" on a stay's pick: the record it became (or was), chosen the way the box chooses (other picks set back). */
   onChoose?: ((item: Item) => void) | null;
   /** The start's place to fill in the box (intentFrame.placeholderOf): a pick takes its record in place. */
@@ -368,7 +371,7 @@ export function OfferRow({ need, onChoose = null, placeholder = null, chosen = f
   chosen?: boolean;
 }) {
   const { offers: source } = useEmptyEnv();
-  return need.kind === "stay" && source.candidates ? <StayPicksRow need={need} onChoose={onChoose} placeholder={placeholder} chosen={chosen} /> : <PlainOfferRow need={need} chosen={chosen} />;
+  return need.kind === "stay" && source.candidates ? <StayPicksRow need={need} onChoose={onChoose} placeholder={placeholder} chosen={chosen} hasOptions={hasOptions} /> : <PlainOfferRow need={need} chosen={chosen} hasOptions={hasOptions} />;
 }
 
 /** The source asked and nothing came back: said plainly, nothing made up (0.38.5). */
@@ -382,7 +385,7 @@ export function NoFit() {
 }
 
 /** The plain row: asks the source once per need, nothing at all while no source is connected. */
-function PlainOfferRow({ need, chosen }: { need: Need; chosen: boolean }) {
+function PlainOfferRow({ need, chosen, hasOptions = false }: { need: Need; chosen: boolean; hasOptions?: boolean }) {
   const { offers: source, tripId } = useEmptyEnv();
   const available = source.available();
   const [open, setOpen] = useRowOpen(need, chosen);
@@ -403,7 +406,7 @@ function PlainOfferRow({ need, chosen }: { need: Need; chosen: boolean }) {
   }, [available, source, need.key]);
   if (!available) return null;
   // (an eSIM's source may be away: nothing said there, as before)
-  if (done && !state.offers.length) return need.kind === "flight" ? <NoOffers /> : null;
+  if (done && !state.offers.length) return need.kind === "flight" && !hasOptions ? <NoOffers /> : null;
   return (
     <OfferRowView
       offers={shownOffers(state)}

@@ -158,7 +158,7 @@ export function Hero(props: HeroProps) {
             menu={<TripMenu actions={props.menu} />}
             onTile={props.onTile}
             count={props.dates?.count ?? null}
-            estimated={!!props.dates?.estimated}
+            estimated={!!props.dates?.estimated || !!props.dates?.rough}
             route={props.route ?? null}
           />
           <HeroStrip

@@ -3840,7 +3840,7 @@ try {
     assert.equal(await panel.locator(".cat-plan .pk-cta", { hasText: /Bileti aldım|Rezerve ettim/ }).count(), 0);
   }
   await ekOpen("flight");
-  // Uçuş (v82): İstanbul → Denpasar and back, each an Aranıyor ticket (the two cities, "Henüz seçenek yok"), no price, no
+  // Uçuş (v82): İstanbul → Denpasar and back, each an Aranıyor ticket (the two cities, "Henüz seçilmedi": P4 F31, never "no options" over the suggestions), no price, no
   // "Aldım"; "Kendin ara" (providers.ts): Skyscanner by airport, Google Uçuşlar by city, for the two who go.
   const flightBoxes = ekSec("flight").locator(".q-ints > .q-int");
   assert.equal(await flightBoxes.count(), 2, "both flights the start made are boxes still to find");
@@ -3848,7 +3848,7 @@ try {
   assert.equal(await outFlight.getAttribute("data-st"), "todo");
   assert.equal(flat([await outFlight.locator(".q-st").innerText()])[0], "Aranıyor");
   assert.match(flat([await outFlight.locator(".z-route").innerText()])[0], /^İstanbul .*Denpasar$/);
-  assert.match(flat([await outFlight.locator(".z-car").innerText()])[0], /^Henüz seçenek yok/);
+  assert.match(flat([await outFlight.locator(".z-car").innerText()])[0], /^Henüz seçilmedi/);
   assert.equal(await outFlight.locator(".z-top .q-pr, .q-got, .q-cta").count(), 0, "no price, no Aldım");
   // (a v82 box's "Kendin ara" marks: their words, where they go)
   const pis = (scope) => scope.locator(".z-pi").evaluateAll((els) => els.map((a) => [a.getAttribute("aria-label"), a.getAttribute("href"), a.getAttribute("target"), a.getAttribute("rel")]));

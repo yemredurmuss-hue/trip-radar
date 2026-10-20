@@ -155,20 +155,20 @@ describe("heroLine", () => {
   });
 });
 
-describe("D15: a start guessed from a month or a season says only the nights", () => {
+describe("D15 → P4 (T5): a start guessed from a month or a season says its dates with ~ and the nights", () => {
   const range = { start: "2027-07-01", end: "2027-07-11" };
-  it("is \"~ · 10 gece\" in the strip and in the folded line, the real dates otherwise", () => {
-    expect(datesWords({ range, estimated: false, rough: true })).toBe("~ · 10 gece");
+  it("is \"~1–11 Temmuz · 10 gece\" in the strip and the folded line, the real dates otherwise", () => {
+    expect(datesWords({ range, estimated: false, rough: true })).toBe("~1–11 Temmuz · 10 gece");
     expect(datesWords({ range, estimated: true })).toBe("~1–11 Temmuz");
     // The hero's big value: the month written out within one month, short across two (it ran over the people).
     expect(heroDatesWords({ range: { start: "2026-10-08", end: "2026-10-14" }, estimated: false })).toBe("8–14 Ekim");
     expect(heroDatesWords({ range: { start: "2026-11-24", end: "2026-12-03" }, estimated: false })).toBe("24 Kas – 3 Ara");
-    // A guess from a month: the nights alone (no lone "~ ·").
-    expect(heroDatesWords({ range, estimated: false, rough: true })).toBe("10 gece");
+    // F09: a guessed start is still said, with "~" (the nights are under it).
+    expect(heroDatesWords({ range, estimated: false, rough: true })).toBe("~1–11 Temmuz");
     expect(datesWords({ range, estimated: false }, true)).toBe("1–11 Tem");
     const counts = heroCounts(of([["booked", 1]]));
-    expect(heroLine({ range, estimated: false, rough: true, people: 2, counts, budget: null, short: true })).toBe("~ · 10 gece · 2 kişi");
-    expect(withLang("en", () => datesWords({ range, estimated: false, rough: true }))).toBe("~ · 10 nights");
+    expect(heroLine({ range, estimated: false, rough: true, people: 2, counts, budget: null, short: true })).toBe("~1–11 Tem · 10 gece · 2 kişi");
+    expect(withLang("en", () => datesWords({ range, estimated: false, rough: true }))).toMatch(/^~.* · 10 nights$/);
   });
 });
 

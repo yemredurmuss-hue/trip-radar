@@ -6,6 +6,7 @@
 // time can be set by hand and its place in the day moved (drag or ↑ ↓); a tap on it shows its card on the Plan.
 // Insurance, the eSIM and a visa aren't part of a day: they stay in Plan → Diğer. This is Kompakt, the default;
 // Liste and Kartlar (the photo, the strip of days, the day's reservations) are DayViews.tsx.
+import { heldStay } from "../../lib/plan";
 import { LegBody } from "../LegRow";
 import { createContext, Fragment, useContext, useMemo, useState, type ReactNode } from "react";
 import { dayCards, dayLinesOf, isAsideRow, isPlanRow, rowKind, stageOf, undatedStops, type DayCard, type UndatedStop } from "../../lib/dayCards";
@@ -132,7 +133,8 @@ export function NightLine({ card, stays }: { card: DayCard; stays: Map<string, S
   if (!st && !cityName) return null;
   const city = cityName ? place(cityName) : null;
   // An open night has no stay yet: it says it's still being looked for (its entry's title is only the dates).
-  const name = !st || st.block.kind === "open" ? L("konaklama aranıyor", "still looking for a stay") : simpleName(st.block.item.name, "stay");
+  const held = st ? heldStay(st.block) : null;
+  const name = !held ? L("konaklama aranıyor", "still looking for a stay") : simpleName(held.name, "stay");
   return (
     <span className="dg-n" title={[city, name].filter(Boolean).join(" · ")}>
       <Bed />

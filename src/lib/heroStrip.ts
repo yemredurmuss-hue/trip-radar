@@ -94,7 +94,8 @@ export function docsWords(n: number): { text: string; tip: string } {
  * made from a month or a season (D15): only the nights are known then, a day would be made up.
  */
 export function datesWords(d: { range: { start: string; end: string }; estimated: boolean; rough?: boolean }, short = false): string {
-  if (d.rough) return `~ · ${nNights(nightsBetween(d.range.start, d.range.end))}`;
+  // P4 (F09, T5): a guessed start is said too, with "~" before it ("~15–21 Kas"): the day was said, or is the month's own.
+  if (d.rough) return `~${short ? shortRange(d.range.start, d.range.end) : formatDateRange(d.range.start, d.range.end)} · ${nNights(nightsBetween(d.range.start, d.range.end))}`;
   return `${d.estimated ? "~" : ""}${short ? shortRange(d.range.start, d.range.end) : formatDateRange(d.range.start, d.range.end)}`;
 }
 
@@ -105,7 +106,7 @@ export function datesWords(d: { range: { start: string; end: string }; estimated
  * read as nothing).
  */
 export function heroDatesWords(d: { range: { start: string; end: string }; estimated: boolean; rough?: boolean }): string {
-  if (d.rough) return nNights(nightsBetween(d.range.start, d.range.end));
+  if (d.rough) return `~${datesWords({ ...d, rough: false, estimated: false }, d.range.start.slice(0, 7) !== d.range.end.slice(0, 7))}`;
   return datesWords(d, d.range.start.slice(0, 7) !== d.range.end.slice(0, 7));
 }
 

@@ -490,7 +490,7 @@ export function FrameTicket({ vm, form, page, links, info, detail, quiet, on, on
   const picks = picking ? wayPicks(vm, selfAt) : [];
   const carrier = (
     <>
-      <b className="z-dim">{picking ? L("Nasıl gideceğin belli değil", "How you'll go isn't decided") : L("Henüz seçenek yok", "No options yet")}</b>
+      <b className="z-dim">{picking ? L("Nasıl gideceğin belli değil", "How you'll go isn't decided") : L("Henüz seçilmedi", "Not chosen yet")}</b>
       {day ? <small>{day}</small> : <small><Editable field="date" /></small>}
     </>
   );

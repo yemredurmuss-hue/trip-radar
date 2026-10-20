@@ -70,6 +70,17 @@ export type StayBlock =
       slot?: Item;
     };
 
+/**
+ * The stay that holds a stretch of nights: its own (chosen or booked), or for open nights the one among its options the
+ * traveller chose or booked without dates (an undated page joins the city's open nights). P4 (F42): the day view says the
+ * same as the Plan's box ("Seçildi"), never "konaklama aranıyor".
+ */
+export function heldStay(b: StayBlock): Item | null {
+  if (b.kind !== "open") return b.item;
+  const all = b.groups.flatMap((g) => g.items);
+  return all.find((i) => i.status === "booked") ?? all.find((i) => i.status === "chosen") ?? null;
+}
+
 /** Transfers (between cities, to the airport...) are legs, see legs.ts. */
 export interface PlanNotice {
   kind: "conflict";

@@ -6,7 +6,7 @@ import { L } from "./i18n";
 import { count, hoursMinutes, liveLabels, lowerFirst, nOptions } from "./i18nText";
 import { formatDateRange, formatPrice, metricsOf } from "./items";
 import { addMinutes, BOOKABLE, clockOf, laterOf, legShortTitle, minutesOf, MODE_LABELS, stayTimes, type Leg } from "./legs";
-import type { StayBlock } from "./plan";
+import { heldStay, type StayBlock } from "./plan";
 import { lookWord } from "./stageWords";
 import type { Journey, RentalEntry, TimelineEntry, TimelineSection } from "./timeline";
 import { isIdea } from "./booking";
@@ -88,7 +88,7 @@ const W = liveLabels({
 });
 
 function stayItem(b: StayBlock): Item | null {
-  return b.kind === "open" ? null : b.item;
+  return heldStay(b);
 }
 
 function stayStanding(b: StayBlock): { standing: StepStanding; status: string } {

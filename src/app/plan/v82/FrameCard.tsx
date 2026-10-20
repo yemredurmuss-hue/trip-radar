@@ -345,7 +345,7 @@ export function FrameCard({ vm, form, art, page, links, hints, info, detail, qui
         </span>
       }
       photo={false}
-      l1={<span className="z-dim">{(vm.routeDraft && vm.note) || L("Henüz seçenek yok", "No options yet")}</span>}
+      l1={<span className="z-dim">{(vm.routeDraft && vm.note) || L("Henüz seçilmedi", "Not chosen yet")}</span>}
       title={emptyTitle(vm)}
       l2={line && <span className="q-est">{line}</span>}
       l3={hints.map((h) => (

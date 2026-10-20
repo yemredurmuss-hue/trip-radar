@@ -698,7 +698,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     return L(`Gece sayısı belli; başlangıç yaklaşık ${day}. Kesinleşince sohbette söylemen yeter.`, `The nights are known; the start, ${day}, is a rough guess. Say the dates in the chat once they're set.`);
   };
   const heroDates = range
-    ? { range, estimated, rough, count: rough ? null : countdown(range, today), tip: rough ? roughTip() : datesTip(places, estimated) }
+    ? { range, estimated, rough, count: countdown(range, today), tip: rough ? roughTip() : datesTip(places, estimated) }
     : null;
   const heroBudget = useMemo(() => {
     const view = budgetView(bar, who.count || facts.adults || 0);
