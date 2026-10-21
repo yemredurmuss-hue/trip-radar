@@ -2,7 +2,7 @@
 // own weights, the five slots in their fixed order with "bilinmiyor" for what the record doesn't say, the reviews' pros and
 // cons, "Neden?" and a flight's day band.
 import { describe, expect, it } from "vitest";
-import { dayBand, flightSlots, waySlots, partsWhy, placeText, prosCons, rentalSlots, reviewsHead, scoreParts, staySlots, weightShares } from "../src/lib/drawerCard";
+import { dayBand, flightSlots, priceAge, waySlots, partsWhy, placeText, prosCons, rentalSlots, reviewsHead, scoreParts, staySlots, weightShares } from "../src/lib/drawerCard";
 import { withLang } from "../src/lib/i18n";
 import { EMPTY_METRICS } from "../src/lib/items";
 import { thailand } from "./fixtures/thailand";
@@ -78,5 +78,19 @@ describe("the reviews and the day band", () => {
     expect(dayBand("2027-04-02", "2027-04-02", 3)).toEqual({ n: "2", month: "Nis", title: "2 Nisan, Cuma", note: "istenen gün · 3 seçenek", asked: true, off: 0 });
     expect(dayBand("2027-04-03", "2027-04-02", 1)).toMatchObject({ title: "3 Nisan, Cumartesi", note: "bir gün sonra · 1 seçenek", asked: false, off: 1 });
     withLang("en", () => expect(dayBand("2027-04-02", null, 2).note).toBe("2 options"));
+  });
+});
+
+describe("how fresh the price is", () => {
+  const now = Date.parse("2026-10-21T12:00:00Z");
+  const day = 86_400_000;
+  const price = (amount: number, at: number) => ({ amount, currency: "EUR", scope: "per_night" as const, taxesIncluded: "yes" as const, source: "page" as const, observedAt: at });
+  it("read two days ago: say so; fresh: nothing", () => {
+    expect(priceAge({ price: price(64, now - 2 * day - 1000), priceHistory: [] }, now)).toEqual({ ago: "2 gün önce", was: null });
+    expect(priceAge({ price: price(64, now - 3600_000), priceHistory: [] }, now)).toEqual({ ago: null, was: null });
+  });
+  it("fell since: what it was", () => {
+    expect(priceAge({ price: price(64, now - 3600_000), priceHistory: [{ amount: 71, currency: "EUR", observedAt: now - day }] }, now).was).toBe("Dün €71 idi");
+    expect(priceAge({ price: price(64, now - 3600_000), priceHistory: [{ amount: 60, currency: "EUR", observedAt: now - day }] }, now).was).toBeNull();
   });
 });

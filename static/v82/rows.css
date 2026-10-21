@@ -234,3 +234,17 @@
 }
 @media (prefers-reduced-motion: reduce) { .q-row.open .q-rp, .q-int.pop .q-rhap { animation: none; } .q-tld::before, .q-rcard { transition: none; } }
 body.still .q-row.open .q-rp, body.still .q-int.pop .q-rhap { animation: none; }
+
+/* Kaçırdıklarımız (onay paketi 2026-10-21): two stays for one night in red; a stay's hours against its flight in amber; a closed
+   category's "1 gece boş" / "1 gece çakışıyor". */
+.q-row.clash .q-tld b, .q-row.clash .q-tld small { color: var(--q-bad); }
+.q-row.clash .q-tld::before { border-color: var(--q-bad); background: var(--q-bad); }
+.q-row.clash .q-tlend { display: none; }
+.q-rcard.clash { background: color-mix(in srgb, var(--q-bad) 7%, #fff); outline: 1.5px dashed color-mix(in srgb, var(--q-bad) 55%, transparent); outline-offset: -1.5px; box-shadow: none; }
+.q-rcard.clash .q-rgi { color: var(--q-bad); font-size: 17px; }
+.q-rcard.clash .q-nm { color: var(--q-bad); }
+.q-rft .q-chg.warn { color: var(--q-warn); font-weight: 800; }
+.q-row + .q-rft.warn, .q-rft + .q-rft.warn { border-top: 1px solid color-mix(in srgb, var(--q-warn) 20%, transparent); }
+.q-alert { font-style: normal; font-weight: 800; }
+.q-alert.warn { color: var(--q-warn); }
+.q-alert.bad { color: var(--q-bad); }

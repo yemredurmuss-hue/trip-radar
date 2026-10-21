@@ -171,6 +171,9 @@
   .dr-card .dr-in { grid-template-columns: minmax(0, 1fr) auto; padding: 14px 14px 4px; }
   .dr-card .dr-r1 { grid-column: 1 / -1; }
   .dr-card .dr-pr { justify-items: start; text-align: left; }
+  /* (Seç the card's whole width, Kaçırdıklarımız 7) */
+  .dr-card .dr-in > .dr-sec, .dr-card .dr-in > .dr-chosen { grid-column: 1 / -1; width: 100%; }
+  .dr-tm > .dr-sec, .dr-tm > .dr-chosen { grid-column: 1 / -1; width: 100%; }
   /* (one row that scrolls sideways: the order stays, nothing is cut) */
   .dr-slots, .dr-slots.c { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: max-content; overflow-x: auto; scrollbar-width: none; padding: 10px 14px 4px; }
   .dr-slots.c { padding: 4px 14px 12px; }
@@ -188,3 +191,8 @@
 }
 .dr-tm .dr-m { font-size: 13px; gap: 6px; }
 .dr-tm .dr-m small.warn { color: var(--q-warn); }
+
+/* Kaçırdıklarımız 4: a price older than two days in amber with "Yenile"; one that fell since in lila ("Dün €71'di"). */
+.dr-pr .dr-age { color: var(--q-warn); font-weight: 750; }
+.dr-pr .dr-was { color: var(--q-acc-d); font-weight: 750; }
+.dr-pr .dr-rf { border: 0; background: none; padding: 2px 0; font: inherit; font-size: 12.5px; font-weight: 800; color: var(--q-acc); cursor: pointer; }

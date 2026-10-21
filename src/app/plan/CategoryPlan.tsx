@@ -46,7 +46,8 @@ import { artOf, IntentBox } from "./v82/IntentBox";
 import { PlanHeader } from "./v82/PlanHeader";
 import { Searching } from "./v82/Searching";
 import { TimelineRail } from "./v82/TimelineRail";
-import { emptyNights, isDatedSection } from "../../lib/railDates";
+import { emptyNights, isDatedSection, nightAlerts, overlapNights, type Overlap } from "../../lib/railDates";
+import { stayTimings } from "../../lib/stayTiming";
 import { intentEl, V82EnvContext, type V82Env } from "./v82/v82Env";
 import { VisaRow } from "./VisaRow";
 
@@ -68,6 +69,12 @@ function gapOf(vm: IntentVM, list: readonly IntentVM[]): { before: IntentVM | nu
   const i = stays.findIndex((v) => v.key === vm.key);
   return { before: stays[i - 1] ?? null, after: stays[i + 1] ?? null };
 }
+
+/** The red row over the stay whose record is the later of two holding the same night. */
+const overlapOf = (vm: IntentVM, clashes: ReadonlyMap<string, Overlap>): Overlap | null => {
+  for (const id of [vm.chosen?.item.id, ...vm.itemIds]) if (id && clashes.has(id)) return clashes.get(id)!;
+  return null;
+};
 
 /** Elenen in an intent's drawer: the section's ruled-out records of the same group as its options. */
 function droppedOf(vm: IntentVM, hidden: readonly HiddenThing[]): Item[] {
@@ -174,6 +181,10 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
     now: new Date(),
   };
   const collections = collectionsOf(input);
+  // Kaçırdıklarımız 2: each stay's hours against the flight either side (the legs' own notes).
+  const timings = useMemo(() => stayTimings(sections), [sections]);
+  // Kaçırdıklarımız 3: two stays chosen or booked for one night.
+  const clashes = useMemo(() => overlapNights(items), [items]);
   const collectionOf = (id: SectionId): Collection | null => collections.find((c) => c.section.id === id) ?? null;
   const drawn = sections.filter(
     (s) =>
@@ -268,7 +279,7 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
       more,
       // 0.39.14: Yapılacaklar' bar shows once something is on its plan (an empty bar beside "1 karar" says nothing more).
       bar: c.intents.length && !(s.id === "todo" && !sum.counts.booked && !sum.counts.chosen && !done) ? sum.bar : null,
-      parts: c.intents.length ? [...countParts(sum.counts, c.intents.some((i) => i.frame === "collection")), ...(done ? [{ text: L(`${done} yapıldı`, `${done} done`), decide: false }] : [])] : [],
+      parts: c.intents.length ? [...countParts(sum.counts, c.intents.some((i) => i.frame === "collection")), ...(done ? [{ text: L(`${done} yapıldı`, `${done} done`), decide: false }] : []), ...(s.id === "stay" ? nightAlerts(c.intents, items).map((n) => ({ ...n, decide: false })) : [])] : [],
       spent: sum.spent ? formatPrice(sum.spent.amount, sum.spent.currency) : null,
       allot: sum.allotted ? formatPrice(sum.allotted.amount, sum.allotted.currency) : null,
       settled,
@@ -320,7 +331,7 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
                         vm.frame === "collection" ? (
                           <CollectionBox key={vm.key} vm={vm} color={SECTION_META[s.id].color} />
                         ) : (
-                          <IntentBox key={vm.key} vm={vm} color={SECTION_META[s.id].color} onHere={s.id === "stay" ? (at) => onAdd(s.id, at) : null} gap={s.id === "stay" ? gapOf(vm, list) : null} dropped={droppedOf(vm, s.hidden)} />
+                          <IntentBox key={vm.key} vm={vm} color={SECTION_META[s.id].color} onHere={s.id === "stay" ? (at) => onAdd(s.id, at) : null} gap={s.id === "stay" ? gapOf(vm, list) : null} dropped={droppedOf(vm, s.hidden)} overlap={s.id === "stay" ? overlapOf(vm, clashes) : null} timing={vm.kind === "stay" && vm.chosen ? (timings.get(vm.chosen.item.id) ?? null) : null} />
                         ),
                       )}
                       {s.id === "activity" && <CityGaps gaps={gaps.filter((g) => !(c?.intents ?? []).some((i) => i.frame === "collection" && i.head.city != null && sameCity(i.head.city, g.city)))} section="activity" />}

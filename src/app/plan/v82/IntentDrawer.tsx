@@ -12,7 +12,7 @@ import { createPortal } from "react-dom";
 import { setItemStatus } from "../../actions";
 import { choiceOf } from "../../../lib/choice";
 import type { Part } from "../../../lib/decision";
-import { dayBand, flightSlots, waySlots, groupLabel, partsWhy, placeText, prosCons, rentalSlots, reviewsHead, scoreParts, staySlots, weightShares, type CardSlot, type SlotIcon } from "../../../lib/drawerCard";
+import { dayBand, flightSlots, priceAge, waySlots, groupLabel, partsWhy, placeText, prosCons, rentalSlots, reviewsHead, scoreParts, staySlots, weightShares, type CardSlot, type SlotIcon } from "../../../lib/drawerCard";
 import { drawerList, optionDay, optionTab, pickReason, type DrawerTab, type SortKey } from "../../../lib/drawerView";
 import { L } from "../../../lib/i18n";
 import { headName, optionPrice, type SelfSearch } from "../../../lib/intentFrame";
@@ -158,6 +158,28 @@ function Reviews({ o }: { o: OptionVM }) {
   );
 }
 
+/** Kaçırdıklarımız 4: "2 gün önce · Yenile" on a price read days ago, "Dün €71 idi" on one that fell since. */
+function Fresh({ o }: { o: OptionVM }) {
+  const env = useCardEnv();
+  const f = priceAge(o.item, Date.now());
+  if (!f.ago && !f.was) return null;
+  return (
+    <small>
+      {f.was && <span className="dr-was">{f.was}</span>}
+      {f.was && f.ago && " · "}
+      {f.ago && <span className="dr-age">{f.ago}</span>}
+      {f.ago && env.ask && (
+        <>
+          {" · "}
+          <button type="button" className="dr-rf" onClick={() => env.ask?.(L(`${o.item.name} fiyatını güncelle`, `Update the price of ${o.item.name}`))}>
+            {L("Yenile", "Refresh")}
+          </button>
+        </>
+      )}
+    </small>
+  );
+}
+
 /** A stay's or a rental's price: by the night (the day) big, the whole small; else the source's usual range; else none. */
 function CardPrice({ o, typical }: { o: OptionVM; typical: Typical | null }) {
   const p = o.price;
@@ -170,6 +192,7 @@ function CardPrice({ o, typical }: { o: OptionVM; typical: Typical | null }) {
           {L(`gece · ${p.text} toplam`, `night · ${p.text} in all`)}
           {p.provisional && <i className="z-prov"> · {L("geçici", "provisional")}</i>}
         </small>
+        <Fresh o={o} />
       </span>
     );
   }
@@ -180,6 +203,7 @@ function CardPrice({ o, typical }: { o: OptionVM; typical: Typical | null }) {
       <span className="dr-pr">
         <b>{own.amount}</b>
         {own.unit && <small>{own.unit}</small>}
+        <Fresh o={o} />
       </span>
     );
   if (usual)
@@ -262,6 +286,7 @@ function TicketOption({ o, vm, art, current, why, parts, off, solo, onPick }: { 
         <span className="dr-pr">
           <b>{o.ticket?.each ?? o.ticket?.total ?? f.price?.text ?? "–"}</b>
           {o.ticket?.each && <small>{L(`kişi başı · ${o.ticket.total} toplam`, `each · ${o.ticket.total} in all`)}</small>}
+          <Fresh o={o} />
         </span>
         <Pick o={o} current={current} onPick={onPick} />
       </div>

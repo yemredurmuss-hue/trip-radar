@@ -21,7 +21,7 @@ export interface RowView {
   /** The bar's two tones, in percent; null: no bar (nothing to count). */
   bar: { booked: number; chosen: number } | null;
   /** The state line's parts ("1 alındı", "2 karar"); Hazırlık's "2/6 hazır". */
-  parts: { text: string; decide: boolean }[];
+  parts: { text: string; decide: boolean; tone?: "warn" | "bad" }[];
   /** What's spent and the share set aside, in words ("€1.539", "€2.200"). */
   spent: string | null;
   allot: string | null;
@@ -94,6 +94,8 @@ export function CategoryRow({ row, meta, open, onToggle, onDecide, decideTip, bu
                     </button>
                   )}
                 </TipOn>
+              ) : p.tone ? (
+                <em className={`q-alert ${p.tone}`}>{p.text}</em>
               ) : (
                 p.text
               )}

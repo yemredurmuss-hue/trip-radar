@@ -54,9 +54,10 @@ import { useLooking } from "./Searching";
 import { useCrossfade, type Entry } from "./useCrossfade";
 import { useIntentActions } from "./useIntentActions";
 import { useV82Env } from "./v82Env";
-import { emptyNightText, isDatedSection, railDate } from "../../../lib/railDates";
+import { emptyNightText, isDatedSection, overlapText, railDate, type Overlap } from "../../../lib/railDates";
+import { timingAsk, type StayTiming } from "../../../lib/stayTiming";
 import { rowView } from "../../../lib/rowView";
-import { EmptyNight, StayCard, TicketRow, type SlotOn } from "./IntentRow";
+import { EmptyNight, OverlapRow, StayCard, TicketRow, type SlotOn } from "./IntentRow";
 
 /** A kind's drawing (static/illus), for a frame or an option with no photo. */
 export function artOf(kind: IntentVM["kind"], item: Item | null = null): string {
@@ -142,7 +143,7 @@ const NONE: Item[] = [];
 /** How many go, as the hero says it (the count said, else the names): never fewer than one. */
 const tripPeople = (trip: Trip): number => Math.max(1, whoGoes({ travellers: trip.travellers }).count || peopleOf(trip).length);
 
-export function IntentBox({ vm: given, color, onHere = null, gap = null, dropped = NONE }: {
+export function IntentBox({ vm: given, color, onHere = null, gap = null, dropped = NONE, overlap = null, timing = null }: {
   vm: IntentVM;
   color: string;
   /** C3: "+ Buraya ekle" under the box opens the add window at this place (null: none). */
@@ -151,6 +152,10 @@ export function IntentBox({ vm: given, color, onHere = null, gap = null, dropped
   gap?: { before: IntentVM | null; after: IntentVM | null } | null;
   /** Elenen in its drawer: this need's options that were ruled out. */
   dropped?: Item[];
+  /** Another stay holds some of its nights (railDates.overlapNights): the red row over it. */
+  overlap?: Overlap | null;
+  /** Its hours against the flight either side (stayTiming.ts): the amber strip under a stay. */
+  timing?: StayTiming | null;
 }) {
   const env = useCardEnv();
   const { byId } = useV82Env();
@@ -164,13 +169,13 @@ export function IntentBox({ vm: given, color, onHere = null, gap = null, dropped
   if (own) {
     return (
       <InlineEdit item={own} only={vm.frame === "ticket" ? [...TICKET_DRAWN] : record ? [...DRAWN] : ["name"]}>
-        <RecordBox vm={vm} color={color} record={own} onHere={onHere} gap={gap} dropped={dropped} />
+        <RecordBox vm={vm} color={color} record={own} onHere={onHere} gap={gap} dropped={dropped} overlap={overlap} timing={timing} />
       </InlineEdit>
     );
   }
   // Nothing chosen yet: a candidate saved in it can be taken off alone ("Kaldır"), not only the whole need ("Gerek yok").
   const removals = removeEntries([...vm.options, ...(vm.more ?? [])], byId, env.remove);
-  return <Box vm={vm} color={color} extra={removals} field={null} pickDoc={null} cancel={null} onHere={onHere} itemId={null} gap={gap} dropped={dropped} />;
+  return <Box vm={vm} color={color} extra={removals} field={null} pickDoc={null} cancel={null} onHere={onHere} itemId={null} gap={gap} dropped={dropped} overlap={overlap} timing={timing} />;
 }
 
 /**
@@ -199,7 +204,7 @@ function hereOf(vm: IntentVM): InsertAt | null {
 }
 
 /** A box with a record to show (our pick, the chosen one, the booking): its card's ••• entries and its file picker. */
-function RecordBox({ vm, color, record, onHere, gap, dropped }: { vm: IntentVM; color: string; record: Item; onHere: ((at: InsertAt) => void) | null; gap: { before: IntentVM | null; after: IntentVM | null } | null; dropped: Item[] }) {
+function RecordBox({ vm, color, record, onHere, gap, dropped, overlap, timing }: { vm: IntentVM; color: string; record: Item; onHere: ((at: InsertAt) => void) | null; gap: { before: IntentVM | null; after: IntentVM | null } | null; dropped: Item[]; overlap: Overlap | null; timing: StayTiming | null }) {
   const env = useCardEnv();
   const stage = useStageMenu(record);
   const who = useWhoMenu(record);
@@ -217,11 +222,11 @@ function RecordBox({ vm, color, record, onHere, gap, dropped }: { vm: IntentVM; 
   ];
   const cancel = booked ? () => cancelBooking(record).then(env.offer) : null;
   return (
-    <Box vm={vm} color={color} extra={extra} field={<>{stage.field}{doc.field}</>} pickDoc={doc.pick} cancel={cancel} askedHide={booked ? stage.hide : null} onHere={onHere} itemId={record.id} gap={gap} dropped={dropped} />
+    <Box vm={vm} color={color} extra={extra} field={<>{stage.field}{doc.field}</>} pickDoc={doc.pick} cancel={cancel} askedHide={booked ? stage.hide : null} onHere={onHere} itemId={record.id} gap={gap} dropped={dropped} overlap={overlap} timing={timing} />
   );
 }
 
-function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHere, itemId, gap = null, dropped = NONE }: {
+function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHere, itemId, gap = null, dropped = NONE, overlap = null, timing = null }: {
   vm: IntentVM;
   color: string;
   extra: MenuEntry[];
@@ -237,6 +242,10 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
   gap?: { before: IntentVM | null; after: IntentVM | null } | null;
   /** Elenen in its drawer: this need's options that were ruled out. */
   dropped?: Item[];
+  /** Another stay holds some of its nights (railDates.overlapNights): the red row over it. */
+  overlap?: Overlap | null;
+  /** Its hours against the flight either side (stayTiming.ts): the amber strip under a stay. */
+  timing?: StayTiming | null;
 }) {
   const env = useCardEnv();
   const v82 = useV82Env();
@@ -674,11 +683,25 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
             <span>{vm.note}</span>
           </div>
         ) : null;
-      inner = <StayCard vm={vm} view={view} art={art} date={date} on={slotOn} onPress={onPress} menu={menuNode} foot={foot} under={detail ? <div className="q-rdet">{detailNode}</div> : null} chipId={chipId} editable={editable} />;
+      // Kaçırdıklarımız 2: its hours against the flight either side, one amber strip with its one thing to do.
+      const hours =
+        timing && (vm.status === "chosen" || vm.status === "suggested" || vm.status === "booked") ? (
+          <div className="q-rft warn">
+            <span>{timing.text}</span>
+            <span className="q-rsp" />
+            {env.ask && (
+              <button type="button" className="q-chg warn" onClick={() => env.ask?.(timingAsk(timing, vm.chosen?.title ?? name))}>
+                {timing.act}
+              </button>
+            )}
+          </div>
+        ) : null;
+      inner = <StayCard vm={vm} view={view} art={art} date={date} on={slotOn} onPress={onPress} menu={menuNode} foot={hours ? <>{foot}{hours}</> : foot} under={detail ? <div className="q-rdet">{detailNode}</div> : null} chipId={chipId} editable={editable} />;
     }
     return (
       <>
         <section {...sectionProps}>
+          {overlap && <OverlapRow title={overlapText(overlap).title} line={overlapText(overlap).line} night={overlap.night} onFix={record ? () => env.edit(record) : null} />}
           {inner}
           {tail}
         </section>

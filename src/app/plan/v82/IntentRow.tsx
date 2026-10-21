@@ -9,7 +9,8 @@ import { createContext, useContext, useId, useState, type ReactNode } from "reac
 import { L } from "../../../lib/i18n";
 import { ratingParts, type SelfSearch } from "../../../lib/intentFrame";
 import type { IntentVM, OptionVM } from "../../../lib/intents";
-import type { RailDate } from "../../../lib/railDates";
+import { weekdayLong, type RailDate } from "../../../lib/railDates";
+import { shortDay } from "../../../lib/ideas";
 import type { RowPart, RowView } from "../../../lib/rowView";
 import { ticketFace } from "../../../lib/ticketFrame";
 import { Editable } from "../../cards/InlineEdit";
@@ -402,6 +403,34 @@ export function EmptyNight({ date, title, line, onAsk, menu }: { date: RailDate 
             )}
           </span>
           <span className="q-rmenu">{menu}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Two stays for one night (Kaçırdıklarımız 3): the empty night's opposite, red, with its one way out. */
+export function OverlapRow({ title, line, night, onFix }: { title: string; line: string; night: string; onFix: (() => void) | null }) {
+  return (
+    <div className="q-row clash" data-face="clash" role="alert">
+      <RailCol date={{ when: shortDay(night), sub: weekdayLong(night), span: null, notches: 0 }} editable={false} />
+      <div className="q-rcard clash">
+        <div className="q-rrow gap">
+          <span className="q-rgi" aria-hidden>
+            ⚠
+          </span>
+          <span className="q-rhd">
+            <h4 className="q-nm">{title}</h4>
+            <span className="q-rln">{line}</span>
+          </span>
+          <span className="q-rslot">
+            {onFix && (
+              <button type="button" className="q-got q-rbtn" onClick={onFix}>
+                {L("Birini kısalt", "Shorten one")}
+              </button>
+            )}
+          </span>
+          <span className="q-rmenu" />
         </div>
       </div>
     </div>

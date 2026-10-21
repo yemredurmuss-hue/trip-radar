@@ -7,7 +7,7 @@
 import type { Part } from "./decision";
 import { L } from "./i18n";
 import { shortDay } from "./ideas";
-import { isoDate } from "./items";
+import { formatPrice, isoDate } from "./items";
 import { dative } from "./prepDays";
 import { weekdayLong } from "./railDates";
 import { AMENITY_EN, type CriterionId, type Item } from "./types";
@@ -216,4 +216,26 @@ export function dayBand(day: string, asked: string | null, count: number): { n: 
   const off = asked ? daysApart(asked, day) : 0;
   const away = off === 0 ? L("istenen gün", "the day asked") : off === 1 ? L("bir gün sonra", "a day later") : off === -1 ? L("bir gün önce", "a day earlier") : off > 0 ? L(`${off} gün sonra`, `${off} days later`) : L(`${-off} gün önce`, `${-off} days earlier`);
   return { n: n ?? "", month: month ?? "", title: `${long}, ${weekdayLong(day)}`, note: `${asked ? `${away} · ` : ""}${L(`${count} seçenek`, `${count} option${count > 1 ? "s" : ""}`)}`, asked: asked != null && off === 0, off };
+}
+
+// --- how fresh the price is ----------------------------------------------------------------------------------------------
+
+const DAY_MS = 86_400_000;
+
+/**
+ * Kaçırdıklarımız 4: "2 gün önce" when the price was read more than two days ago (to refresh it), and what it was before when
+ * it fell since ("Dün €71'di"); nothing when it's fresh and never fell.
+ */
+export function priceAge(i: Pick<Item, "price" | "priceHistory">, now: number): { ago: string | null; was: string | null } {
+  const at = i.price?.observedAt ?? 0;
+  const days = at > 1_000_000_000_000 ? Math.floor((now - at) / DAY_MS) : 0;
+  const ago = days >= 2 ? L(`${days} gün önce`, `${days} days ago`) : null;
+  const amount = i.price?.amount;
+  const before = [...(i.priceHistory ?? [])].filter((h) => h.observedAt < at && h.currency === i.price.currency).sort((a, b) => b.observedAt - a.observedAt)[0];
+  if (amount == null || !before || before.amount <= amount) return { ago, was: null };
+  const back = Math.floor((now - before.observedAt) / DAY_MS);
+  const money = formatPrice(before.amount, before.currency);
+  const when = back <= 1 ? L("Dün", "Yesterday") : L(`${back} gün önce`, `${back} days ago`);
+  // ("€71 idi": the suffix would follow how the number is read, so the word stands apart)
+  return { ago, was: L(`${when} ${money} idi`, `${when} it was ${money}`) };
 }

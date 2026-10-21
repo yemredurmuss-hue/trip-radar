@@ -6,6 +6,7 @@
 // Pure; app/plan/v82/TimelineRail.tsx draws what it says.
 import { L, locale } from "./i18n";
 import type { IntentVM } from "./intents";
+import type { Item } from "./types";
 import { isoDate } from "./items";
 import { addDays } from "./plan";
 
@@ -105,4 +106,56 @@ export function emptyNightText(
   const out = before?.head.city && before.head.date ? L(`${before.head.city} çıkışı ${dayMonth(addDays(before.head.date, before.head.nights))}`, `${before.head.city} check-out ${dayMonth(addDays(before.head.date, before.head.nights))}`) : null;
   const into = after?.head.city && after.head.date ? L(`${after.head.city} girişi ${dayMonth(after.head.date)}`, `${after.head.city} check-in ${dayMonth(after.head.date)}`) : null;
   return { title, line: [out, into].filter(Boolean).join(", ") || null };
+}
+
+export interface Overlap {
+  /** The later of the two stays' record (the row of the intent holding it carries the warning). */
+  key: string;
+  /** The first night both hold, and how many. */
+  night: string;
+  nights: number;
+  /** Their two lines' words: "Chiang Mai (27–30 Mar)". */
+  first: string;
+  second: string;
+}
+
+type StayRecord = Pick<Item, "id" | "category" | "status" | "city" | "name" | "dates">;
+const held = (i: StayRecord) => i.category === "stay" && (i.status === "chosen" || i.status === "booked") && isoDate(i.dates.start) != null && isoDate(i.dates.end) != null && i.dates.end! > i.dates.start!;
+const stayWords = (i: StayRecord) => `${i.city ?? i.name} (${stretchText(i.dates.start!.slice(0, 10), i.dates.end!.slice(0, 10))})`;
+
+/**
+ * The empty night's opposite (onay paketi, Kaçırdıklarımız 3): two stays chosen or booked for the same night, one of them paid
+ * for nothing (the plan shows the one that wins the nights; the other still holds them). Each such pair once, keyed by the
+ * later record; nights only one of them holds aren't counted.
+ */
+export function overlapNights(items: readonly StayRecord[]): Map<string, Overlap> {
+  const stays = items.filter(held).sort((a, b) => a.dates.start!.localeCompare(b.dates.start!));
+  const out = new Map<string, Overlap>();
+  for (let i = 0; i < stays.length; i++) {
+    for (let j = i + 1; j < stays.length; j++) {
+      const a = stays[i], b = stays[j];
+      const start = b.dates.start!.slice(0, 10) > a.dates.start!.slice(0, 10) ? b.dates.start!.slice(0, 10) : a.dates.start!.slice(0, 10);
+      const end = a.dates.end!.slice(0, 10) < b.dates.end!.slice(0, 10) ? a.dates.end!.slice(0, 10) : b.dates.end!.slice(0, 10);
+      if (start >= end || out.has(b.id)) continue;
+      const nights = Math.round((Date.parse(`${end}T12:00:00Z`) - Date.parse(`${start}T12:00:00Z`)) / 86_400_000);
+      out.set(b.id, { key: b.id, night: start, nights, first: stayWords(a), second: stayWords(b) });
+    }
+  }
+  return out;
+}
+
+/** "29 Mar gecesi iki konaklama" and "Chiang Mai (27–30 Mar) ve Pai (29–31 Mar) çakışıyor · biri boşa ödenir". */
+export function overlapText(o: Overlap): { title: string; line: string } {
+  const title = o.nights === 1 ? L(`${dayMonth(o.night)} gecesi iki konaklama`, `Two stays on the night of ${dayMonth(o.night)}`) : L(`${stretchText(o.night, addDays(o.night, o.nights))} · ${o.nights} gece iki konaklama`, `Two stays for ${o.nights} nights, ${stretchText(o.night, addDays(o.night, o.nights))}`);
+  return { title, line: L(`${o.first} ve ${o.second} çakışıyor · biri boşa ödenir`, `${o.first} and ${o.second} overlap · one is paid for nothing`) };
+}
+
+/** A closed category's alerts (Kaçırdıklarımız 6): "1 gece boş" in amber, "1 gece çakışıyor" in red; none, nothing. */
+export function nightAlerts(list: readonly Pick<IntentVM, "key" | "kind" | "status" | "head" | "itemIds" | "options">[], items: readonly StayRecord[] = []): { text: string; tone: "warn" | "bad" }[] {
+  const gap = [...emptyNights(list)].reduce((n, k) => n + (list.find((v) => v.key === k)?.head.nights ?? 0), 0);
+  const clash = [...overlapNights(items).values()].reduce((n, o) => n + o.nights, 0);
+  return [
+    ...(gap ? [{ text: L(`${gap} gece boş`, `${gap} night${gap > 1 ? "s" : ""} with no bed`), tone: "warn" as const }] : []),
+    ...(clash ? [{ text: L(`${clash} gece çakışıyor`, `${clash} night${clash > 1 ? "s" : ""} overlap`), tone: "bad" as const }] : []),
+  ];
 }

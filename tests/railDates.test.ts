@@ -3,7 +3,7 @@
 import { describe, expect, it } from "vitest";
 import { withLang } from "../src/lib/i18n";
 import type { IntentVM } from "../src/lib/intents";
-import { emptyNights, emptyNightText, isDatedSection, railDate, stretchText } from "../src/lib/railDates";
+import { emptyNights, emptyNightText, isDatedSection, nightAlerts, overlapNights, overlapText, railDate, stretchText } from "../src/lib/railDates";
 import { makeItem } from "./fixtures/makeItem";
 
 type V = Pick<IntentVM, "key" | "kind" | "status" | "head" | "itemIds" | "options" | "ticket" | "chosen">;
@@ -54,5 +54,28 @@ describe("emptyNights", () => {
   it("says which night and the two stays around it", () => {
     expect(emptyNightText(gap, cnx, bkk2)).toEqual({ title: "30 Mar gecesi boş", line: "Chiang Mai çıkışı 30 Mar, Bangkok girişi 31 Mar" });
     expect(emptyNightText({ head: head({ date: "2027-03-30", nights: 2 }) }, null, null)).toEqual({ title: "30 Mar – 1 Nis · 2 gece boş", line: null });
+  });
+});
+
+describe("overlapNights", () => {
+  const rec = (id: string, city: string, start: string, end: string, status: "chosen" | "booked" | "saved" = "chosen") => makeItem({ id, category: "stay", city, name: city, status, dates: { start, end, source: "url" } });
+  const cnx = rec("b", "Chiang Mai", "2027-03-27", "2027-03-30");
+  const pai = rec("p", "Pai", "2027-03-29", "2027-03-31", "booked");
+  it("two stays chosen or booked for the same night: once, on the later", () => {
+    const m = overlapNights([pai, cnx]);
+    expect([...m.keys()]).toEqual(["p"]);
+    expect(overlapText(m.get("p")!)).toEqual({ title: "29 Mar gecesi iki konaklama", line: "Chiang Mai (27–30 Mar) ve Pai (29–31 Mar) çakışıyor · biri boşa ödenir" });
+  });
+  it("back to back is no overlap; an option only saved holds no night", () => {
+    expect(overlapNights([cnx, rec("q", "Bangkok", "2027-03-30", "2027-04-01")]).size).toBe(0);
+    expect(overlapNights([cnx, { ...pai, status: "saved" }]).size).toBe(0);
+  });
+  it("a closed category says the empty and the doubled nights", () => {
+    const bkk = stay("a", "Bangkok", "2027-03-24", 3, { status: "booked" });
+    const cnxV = stay("b", "Chiang Mai", "2027-03-27", 3);
+    const gap = stay("c", "Bangkok", "2027-03-30", 1, { status: "searching", itemIds: [] });
+    const bkk2 = stay("d", "Bangkok", "2027-03-31", 2, { status: "searching", itemIds: [] });
+    expect(nightAlerts([bkk, cnxV, gap, bkk2])).toEqual([{ text: "1 gece boş", tone: "warn" }]);
+    expect(nightAlerts([cnxV], [cnx, pai])).toEqual([{ text: "1 gece çakışıyor", tone: "bad" }]);
   });
 });
