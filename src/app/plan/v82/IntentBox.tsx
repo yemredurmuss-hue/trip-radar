@@ -552,8 +552,10 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
     const date = railDate(vm);
     const editable = itemId != null;
     const askNow = needNow && offers.available() && !camp0 ? openDrawer : a.ask;
+    // A stay's card with no source to ask still opens its drawer when there are sites to look on (its Yeni bul: the sites, the AI).
+    const askCard = view.face === "card" && askNow !== openDrawer && links.length ? openDrawer : askNow;
     const slotOn: SlotOn = {
-      ask: askNow,
+      ask: askCard,
       pick: openDrawer,
       take: () => {
         entry.current = "morph";
@@ -631,7 +633,7 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
       inner = <TicketRow vm={vm} view={view} art={art} date={date} on={slotOn} ticket={ticket} links={links} onDrawer={all.length || need ? openDrawer : null} menu={menuNode} acts={acts} chipId={chipId} editable={editable} under={detail ? <div className="q-rdet">{detailNode}</div> : null} focused={itemId != null && env.focus?.id === itemId && env.focus.field != null} openKey={itemId ?? undefined} />;
     } else {
       // A stay, a rental: pressed, its options beside the plan (Değiştir once chosen); a booking its details under it.
-      const onPress = vm.status === "booked" && record ? () => setDetail(!detail) : all.length ? openDrawer : askNow;
+      const onPress = vm.status === "booked" && record ? () => setDetail(!detail) : all.length ? openDrawer : askCard;
       const a0 = vm.access;
       const warn = vm.ticket?.chips.filter((c) => c.kind === "warn" || c.kind === "night") ?? [];
       const doc = vm.kind === "stay" ? { open: L("Onayı aç", "Open the confirmation"), add: L("Onayı ekle", "Add the confirmation") } : { open: L("Belgeyi aç", "Open the document"), add: L("Belgeyi ekle", "Add the document") };
@@ -697,7 +699,17 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
             )}
           </div>
         ) : null;
-      inner = <StayCard vm={vm} view={view} art={art} date={date} on={slotOn} onPress={onPress} menu={menuNode} foot={hours ? <>{foot}{hours}</> : foot} under={detail ? <div className="q-rdet">{detailNode}</div> : null} chipId={chipId} editable={editable} />;
+      // A stop of a route the AI proposed: still looked for as any stay, "Rotayı onayla" under it until the route is agreed.
+      const agree = vm.routeDraft ? (
+        <div className="q-rft ai">
+          <span>{L("Önerilen rotanın bir durağı", "A stop on the proposed route")}</span>
+          <span className="q-rsp" />
+          <button type="button" className="q-chg q-agree" onClick={() => void updateTrip(env.tripId, agreeRoute)}>
+            {L("Rotayı onayla", "Agree the route")}
+          </button>
+        </div>
+      ) : null;
+      inner = <StayCard vm={vm} view={view} art={art} date={date} on={slotOn} onPress={onPress} menu={menuNode} foot={hours || agree ? <>{foot}{agree}{hours}</> : foot} under={detail ? <div className="q-rdet">{detailNode}</div> : null} chipId={chipId} editable={editable} />;
     }
     return (
       <>

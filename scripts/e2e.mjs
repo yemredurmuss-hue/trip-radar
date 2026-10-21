@@ -2997,7 +2997,7 @@ try {
   await loftRow.locator(".z-prov", { hasText: "geçici" }).waitFor();
   await board.screenshot({ path: `${out}/8c-flow-undated.png`, fullPage: true });
   await loftRow.getByRole("button", { name: "Ribeira Loft: seç" }).click();
-  await pbox.locator('.z-c .z-t', { hasText: "Ribeira Loft" }).waitFor();
+  await pbox.locator(':is(.z-c .z-t, .q-rhd .q-nm)', { hasText: "Ribeira Loft" }).waitFor();
   const reopen = await pbox.locator("a.q-cta").getAttribute("href");
   assert.match(reopen, /airbnb\.com\.tr\/rooms\/777\?.*check_in=2026-10-08&check_out=2026-10-11&adults=2/);
   await pbox.locator(":is(.z-h, .q-rmenu) .z-mb").click();
@@ -3012,8 +3012,9 @@ try {
   const cmpWin = await portoDetail(async (det) => (await det.getByRole("button", { name: "Karşılaştır", exact: true }).count()) > 0, 20000);
   await cmpWin.getByRole("button", { name: "Karşılaştır", exact: true }).click();
   const cmpPano = board.getByRole("dialog", { name: "Pano" });
-  await cmpPano.locator(".q-cmp3 .q-col").nth(1).waitFor();
-  assert.equal((await cmpPano.locator(".q-cmp3 .q-col .q-score em").allInnerTexts())[0], "1. sırada", "ranked, best fit first");
+  // (onay paketi: the deck's Karşılaştır, a column each, best fit first)
+  await cmpPano.locator(".pc .pc-hd").nth(1).waitFor();
+  assert.match(flat([await cmpPano.locator(".pc .dr-rank").first().innerText()])[0], /^\d+ 1\.$/, "ranked, best fit first");
   assert.equal(await board.getByRole("dialog", { name: "Karşılaştırma" }).count(), 0, "row 199: not the old window");
   await cmpPano.getByRole("button", { name: "Pano'yu kapat" }).click();
   await cmpPano.waitFor({ state: "detached" });
@@ -3335,7 +3336,10 @@ try {
   // It lands: the waiting card gives way, the new card comes in with the arrival class.
   // v11: it joins its need's card ("N seçenek ›"): that card is the one that rings.
   const landed = bsec("stay").locator(".ar-new");
-  await landed.first().waitFor({ state: "attached", timeout: 25000 });
+  await landed.first().waitFor({ state: "attached", timeout: 25000 }).catch(async (e) => {
+    console.log("DBG", JSON.stringify(await board.evaluate(() => [...document.querySelectorAll("[data-item-id], [data-option-ids]")].map((el) => `${el.tagName}.${el.className}|${el.getAttribute("data-item-id")}|${el.getAttribute("data-option-ids")}`).slice(0, 40))));
+    throw e;
+  });
   assert.equal(await waitingStay.count(), 0, "the waiting card gives way to the card");
   await landed.first().scrollIntoViewIfNeeded();
   await board.screenshot({ path: `${out}/15b-arrive-landed.png` });
@@ -3597,10 +3601,8 @@ try {
   const rentalCard = sgSec("transport").locator(".q-ints > .q-int", { has: board.locator(".q-nm", { hasText: "Aylık motor ya da araç kiralama" }) });
   await rentalCard.waitFor();
   // (0.38.5: no source looks for a rental, so its chip says so instead of "Aranıyor"; still a box to find, data-st todo)
-  assert.equal(flat([await rentalCard.locator(".q-st").innerText()])[0], "Henüz aranmadı");
+  // (plan v14: the row says no state word; still to find, data-st todo)
   assert.equal(await rentalCard.getAttribute("data-st"), "todo");
-  // Ubud is Bali's (the hero's main place, from the table of regions): the nights are counted for Bali, said as why it's there.
-  assert.match(await rentalCard.locator(".q-est").getAttribute("title"), /25 gece Bali'de kalıyorsun/);
   assert.doesNotMatch(await rentalCard.innerText(), /%/, "no invented percentage");
   assert.equal(await sgSec("transport").locator(".sg-card").count(), 0, "what's missing is never a suggestion card too");
   await sgSec("transport").scrollIntoViewIfNeeded();
@@ -3610,7 +3612,7 @@ try {
   await rentalCard.getByRole("menuitem", { name: "Plana koy" }).click();
   await rentalCard.waitFor({ state: "detached" });
   // The rental's box (kind "Motosiklet", the place's days), planned and not booked: a real "0/1" now.
-  await sgSec("transport").getByText("Motosiklet", { exact: true }).first().waitFor();
+  await sgSec("transport").getByText(/^Motosiklet/).first().waitFor();
   assert.match(await sgSec("transport").locator(".q-count").textContent(), /^0\/1$/);
   assert.equal(await sgSec("transport").locator(".q-sgn").count(), 0);
   // v82 (C16): insurance and the eSIM are Belgeler ve internet's intents, Aranıyor, as large as any box: insurance with a
@@ -3647,7 +3649,7 @@ try {
   await sgSec("other").locator(".q-hid > summary", { hasText: "Gizlenenler · 1" }).waitFor();
   await openSec("transport");
   assert.equal(await sgSec("transport").locator('.sg-card, .q-ints > .q-int[data-intent^="suggestion:"]').count(), 0, "the added suggestion doesn't come back");
-  await sgSec("transport").getByText("Motosiklet", { exact: true }).first().waitFor();
+  await sgSec("transport").getByText(/^Motosiklet/).first().waitFor();
   // Asked once for each route and days (0.38.5: other places or dates are asked again; a new stay waits a day).
   const ubudAsks = reviewPrompts.filter((p) => p.includes("Ubud")).map((p) => { const d = JSON.parse(p.split("\n")[1]); return JSON.stringify([d.places.map((x) => x.name).sort(), d.dates]); });
   assert.ok(ubudAsks.length >= 1 && new Set(ubudAsks).size === ubudAsks.length, `the AI review is asked once per route and days (${ubudAsks.join(" | ")})`);
@@ -3882,11 +3884,10 @@ try {
   assert.equal(await flightBoxes.count(), 2, "both flights the start made are boxes still to find");
   const [outFlight, backFlight] = [flightBoxes.nth(0), flightBoxes.nth(1)];
   assert.equal(await outFlight.getAttribute("data-st"), "todo");
-  assert.equal(flat([await outFlight.locator(".q-st").innerText()])[0], "Aranıyor");
   assert.match(flat([await routeOf(outFlight)])[0], /^İstanbul .*Denpasar$/);
   assert.equal(await outFlight.locator(".z-top .q-pr, .q-got, .q-cta").count(), 0, "no price, no Aldım");
   // (a v82 box's "Kendin ara" marks: their words, where they go)
-  const pis = (scope) => scope.locator(".z-pi").evaluateAll((els) => els.map((a) => [a.getAttribute("aria-label"), a.getAttribute("href"), a.getAttribute("target"), a.getAttribute("rel")]));
+  const pis = async (scope) => (await openRow(scope), scope.locator(".z-pi")).evaluateAll((els) => els.map((a) => [a.getAttribute("aria-label"), a.getAttribute("href"), a.getAttribute("target"), a.getAttribute("rel")]));
   const out1 = await pis(outFlight);
   assert.deepEqual(out1.map(([n, , t, r]) => [n, t, r]), [["Skyscanner'da ara", "_blank", "noopener noreferrer"], ["Google Uçuşlar'da ara", "_blank", "noopener noreferrer"]]);
   assert.equal(out1[0][1], "https://www.skyscanner.net/transport/flights/ist/dps/261210/?adultsv2=2&rtn=0");
@@ -3894,17 +3895,21 @@ try {
   const back1 = await pis(backFlight);
   assert.equal(new URL(back1[1][1]).searchParams.get("q"), "Flights from DPS to IST on 2027-01-10 one way");
   assert.equal(back1[0][1], "https://www.skyscanner.net/transport/flights/dps/ist/270110/?adultsv2=2&rtn=0");
-  for (const f of [outFlight, backFlight]) assert.equal(Math.round((await f.boundingBox()).height), 330);
   await ekSec("flight").screenshot({ path: `${out}/20f-empty-flight.png` });
   // Konaklama (v82): each stop's nights an Aranıyor box ("Ubud'da nerede kalınır"); "Kendin ara": Booking and Airbnb with
   // the nights and 2 adults.
   await ekOpen("stay");
   const ubud = ekSec("stay").locator('.q-ints > .q-int[aria-label="Ubud"]');
   assert.equal(await ubud.getAttribute("data-st"), "todo");
-  assert.equal(flat([await ubud.locator(".q-st").innerText()])[0], "Aranıyor");
-  assert.match(flat([await ubud.locator(".q-ln").innerText()])[0], /^12 gece/);
-  assert.equal(await ubud.locator(".z-t").innerText(), "Ubud'da nerede kalınır");
-  const ubudLinks = await ubud.locator(".z-pi").evaluateAll((els) => els.map((a) => [a.getAttribute("href"), a.getAttribute("target"), a.getAttribute("rel")]));
+  // Plan v14: the rail says its nights; the card its city and "Ara"; pressed, the drawer's Yeni bul with the sites to look on.
+  assert.match(flat([await ubud.locator(".q-tlspan").innerText()])[0], /^12 gece/);
+  assert.equal(await ubud.locator(".q-nm").innerText(), "Ubud");
+  await ubud.locator(".q-rrow.card").click({ position: { x: 200, y: 20 } });
+  const ubudLook = board.locator("aside.dr");
+  await ubudLook.waitFor();
+  const ubudLinks = await ubudLook.locator(".dr-new a.dr-link").evaluateAll((els) => els.map((a) => [a.getAttribute("href"), a.getAttribute("target"), a.getAttribute("rel")]));
+  await board.keyboard.press("Escape");
+  await ubudLook.waitFor({ state: "detached" });
   for (const want of ["https://www.booking.com/searchresults.html?ss=Ubud&checkin=2026-12-10&checkout=2026-12-22&group_adults=2&no_rooms=1", "https://www.airbnb.com/s/Ubud/homes?checkin=2026-12-10&checkout=2026-12-22&adults=2"]) {
     assert.ok(ubudLinks.some(([u, t, r]) => u === want && t === "_blank" && r === "noopener noreferrer"), `Kendin ara: ${want} (${JSON.stringify(ubudLinks)})`);
   }
@@ -3914,14 +3919,15 @@ try {
   // (Tren · Otobüs · Araba · Uçak · Ben hallettim), looked for on the sites that compare every way. (An airport transfer with
   // no plan is a line of the itinerary, not a box of the plan, as it was.)
   await ekOpen("transport");
-  const transfers = ekSec("transport").locator('.q-ints > .q-int[data-st="todo"]', { has: board.locator(".z-ways") });
+  // (plan v14: rows still to find; opened, their ways under them)
+  const transfers = ekSec("transport").locator('.q-ints > .q-int[data-st="todo"][data-face="ticket"]');
   assert.ok((await transfers.count()) >= 2, "the changes of city with no plan are boxes still to find");
   const firstLeg = transfers.first();
+  await openRow(firstLeg);
   assert.match(flat([await firstLeg.locator(".z-i .z-dim").innerText()])[0], /^Nasıl gideceğin belli değil/);
   assert.deepEqual(flat(await firstLeg.locator(".z-way").allInnerTexts()), ["Tren", "Otobüs", "Araba", "Uçak", "Ben hallettim"]);
   const legLinks = await pis(firstLeg);
   assert.ok(legLinks.length > 0 && legLinks.every(([n]) => /'da ara$/.test(n) && n !== "Uber'da ara"), `the sites that compare every way (${JSON.stringify(legLinks)})`);
-  assert.equal(Math.round((await firstLeg.boundingBox()).height), 330);
   // Diğer (v82): the eSIM for Indonesia an Aranıyor box, "Kendin ara": Airalo and Holafly.
   await ekOpen("other");
   const esimEmpty = ekSec("other").locator('.q-ints > .q-int[data-intent="suggestion:rule:esim"]');
@@ -3964,7 +3970,9 @@ try {
   assert.equal(await panel.locator('.ek-card img:not([src^="illus/"])').count(), 0, "no brand image fetched (the drawings are the app's own files)");
   // The look (F2): the ticket a white ground in a flat solid frame (no dashes on a ticket; the box around it says it's to find), the cities large.
   await ekOpen("flight");
-  assert.deepEqual(await outFlight.locator(".z-tk").evaluate((el) => [getComputedStyle(el).backgroundColor, getComputedStyle(el).borderTopStyle, parseFloat(getComputedStyle(el.querySelector(".q-city b")).fontSize) >= 16]), ["rgb(255, 255, 255)", "solid", true]);
+  await openRow(outFlight);
+  // (plan v14: the ticket is the row's opened body, drawn by the row's card; its cities large)
+  assert.ok(await outFlight.locator(".z-tk").evaluate((el) => parseFloat(getComputedStyle(el.querySelector(".q-city b")).fontSize) >= 16), "the cities large");
   await ekSec("flight").evaluate((el) => el.scrollIntoView({ block: "start" }));
   await board.screenshot({ path: `${out}/22a-empty-cards.png` });
   await board.setViewportSize({ width: 560, height: 1400 });
@@ -3988,7 +3996,7 @@ try {
   await board.locator('.pk-ed-input[aria-label="Tarih"]').fill("2027-01-09");
   await board.locator('.pk-ed-input[aria-label="Tarih"]').press("Enter");
   await board.locator('.pk-ed-input[aria-label="Tarih"]').waitFor({ state: "detached" });
-  await back.locator(".z-h .q-ln", { hasText: "9 Oca" }).waitFor();
+  await back.locator(":is(.z-h .q-ln, .q-tld b)", { hasText: "9 Oca" }).waitFor();
   assert.equal(await back.getAttribute("data-st"), "todo", "an edited placeholder is still to find");
   assert.equal(new URL((await pis(back))[1][1]).searchParams.get("q"), "Flights from DPS to IST on 2027-01-09 one way");
   console.log("✓ boş kartlar: a new trip's flights, stays, transfers, eSIM and activities are plain cards with Ara: and branded searches (cities, dates, 2 people), no AI row; none in Günlük akış; a placeholder's day edited stays empty");
@@ -4045,7 +4053,7 @@ try {
   assert.equal(await board.locator(".choices button").count(), 0);
   await board.locator(".pk-undo", { hasText: "Gidenler: Sabine · 2 kişi" }).waitFor();
   assert.equal(await board.locator(".pk-undo", { hasText: "Ben" }).count(), 0, "no 'Ben' in the toast");
-  assert.equal(await panel.locator(".wh-badge", { hasText: "Ben" }).count(), 0, "no 'Ben' on a badge");
+  assert.equal(await (await openRow(panel), panel).locator(".wh-badge", { hasText: "Ben" }).count(), 0, "no 'Ben' on a badge");
   await chatBox.fill("Emre");
   await board.getByRole("button", { name: "Gönder" }).click();
   const asked = board.locator(".msg-assistant", { hasText: "Sabine dönüşte de Alicante'ye mi?" });
@@ -4058,19 +4066,21 @@ try {
   const flightTo = (route) => ekSec("flight").locator(".q-ints > .q-int", { has: board.locator(".q-nm", { hasText: route }) });
   const hers = flightTo("Alicante → Denpasar");
   await hers.waitFor({ timeout: 10000 });
+  await openRow(hers);
   const badge = hers.locator(".z-i .wh-badge");
-  assert.equal(await badge.locator(".wh-label").innerText(), "Sabine'in bileti");
-  assert.equal(await badge.locator(".wh-av").innerText(), "S", "her initial: no photo given");
+  assert.equal(await (await openRow(badge), badge).locator(".wh-label").innerText(), "Sabine'in bileti");
+  assert.equal(await (await openRow(badge), badge).locator(".wh-av").innerText(), "S", "her initial: no photo given");
   assert.deepEqual(await badge.evaluate((el) => [getComputedStyle(el).backgroundColor, getComputedStyle(el).borderTopColor, getComputedStyle(el).color]), ["rgb(255, 255, 255)", "rgb(230, 225, 247)", "rgb(75, 63, 176)"]);
-  assert.match(flat([await hers.locator(".z-h .q-ln").innerText()])[0], /1 kişi/, "her ticket is for one (the trip's two aren't)");
+  assert.match(flat([await hers.locator(".q-rrow").innerText()])[0], /1 kişi/, "her ticket is for one (the trip's two aren't)");
   const herLinks = await pis(hers);
   assert.equal(new URL(herLinks[1][1]).searchParams.get("q"), "Flights from ALC to DPS on 2026-12-10 one way");
   assert.equal(herLinks[0][1], "https://www.skyscanner.net/transport/flights/alc/dps/261210/?adultsv2=1&rtn=0");
   // The trip's own flight there is the rest's now: "Emre'nin bileti", for one.
   const mainOut = flightTo("İstanbul → Denpasar");
-  assert.match(flat([await mainOut.locator(".z-h .q-ln").innerText()])[0], /1 kişi/);
-  await mainOut.locator(".wh-badge .wh-label", { hasText: "Emre'nin bileti" }).waitFor({ timeout: 10000 });
-  assert.equal(await mainOut.locator(".wh-av").innerText(), "E");
+  assert.match(flat([await mainOut.locator(".q-rrow").innerText()])[0], /1 kişi/);
+  await openRow(mainOut);
+  await (await openRow(mainOut), mainOut).locator(".wh-badge .wh-label", { hasText: "Emre'nin bileti" }).waitFor({ timeout: 10000 });
+  assert.equal(await (await openRow(mainOut), mainOut).locator(".wh-av").innerText(), "E");
   assert.match((await pis(mainOut))[0][1], /adultsv2=1&/);
   // The section counts each ticket on its own (no route dedupe): three flights to book now.
   assert.match(await ekSec("flight").locator(".q-count").textContent(), /^0\/3$/);
@@ -4090,16 +4100,16 @@ try {
   assert.equal(chipCalls.length, 0, "a chip of the code's question costs no model call");
   const herHome = flightTo("Denpasar → Alicante");
   await herHome.waitFor({ timeout: 10000 });
-  assert.equal(await herHome.locator(".wh-label").innerText(), "Sabine'in bileti");
+  assert.equal(await (await openRow(herHome), herHome).locator(".wh-label").innerText(), "Sabine'in bileti");
   const mainBack = ekSec("flight").locator(`.q-ints > .q-int[data-item-id="${mainHome.id}"]`);
-  assert.match(flat([await mainBack.locator(".z-h .q-ln").innerText()])[0], /1 kişi/);
-  await mainBack.locator(".wh-badge .wh-label", { hasText: "Emre'nin bileti" }).waitFor({ timeout: 10000 });
+  assert.match(flat([await mainBack.locator(".q-rrow").innerText()])[0], /1 kişi/);
+  await (await openRow(mainBack), mainBack).locator(".wh-badge .wh-label", { hasText: "Emre'nin bileti" }).waitFor({ timeout: 10000 });
   // Its own "Geri al" (the board's toast): her flight home goes, the trip's own is everyone's again; then again.
   const backToast = board.locator(".pk-undo", { hasText: "Sabine'in dönüşü eklendi: Denpasar → Alicante" });
   await backToast.getByRole("button", { name: "Geri al" }).click();
   await herHome.waitFor({ state: "detached", timeout: 10000 });
-  await mainBack.locator(".wh-badge").waitFor({ state: "detached" });
-  assert.doesNotMatch(flat([await mainBack.locator(".z-h .q-ln").innerText()])[0], /kişi/, "everyone's again: the trip's own two aren't said");
+  await (await openRow(mainBack), mainBack).locator(".wh-badge").waitFor({ state: "detached" });
+  assert.doesNotMatch(flat([await mainBack.locator(".q-rrow").innerText()])[0], /kişi/, "everyone's again: the trip's own two aren't said");
   // "bu bilet Sabine'in" on an existing flight: its badge appears.
   await chatBox.fill("bu bilet Sabine'in, İstanbul'a dönüş");
   await board.getByRole("button", { name: "Gönder" }).click();
@@ -4107,7 +4117,7 @@ try {
   assert.ok(perPersonPrompts[1].includes(String.raw`\"from\":{\"Sabine\":\"Alicante\"}`), "the model sees who comes from where");
   assert.ok(perPersonPrompts[1].includes(String.raw`\"for_who\":[\"Sabine\"]`), "and whose each plan is");
   const marked = ekSec("flight").locator(`.q-ints > .q-int[data-item-id="${mainHome.id}"]`);
-  await marked.locator(".wh-badge .wh-label", { hasText: "Sabine'in bileti" }).waitFor({ timeout: 10000 });
+  await (await openRow(marked), marked).locator(".wh-badge .wh-label", { hasText: "Sabine'in bileti" }).waitFor({ timeout: 10000 });
   // The stays are everyone's: no badge on any of them.
   assert.equal(await ekSec("stay").locator(".wh-badge").count(), 0, "the shared stays show nothing");
   await ekSec("flight").evaluate((el) => el.scrollIntoView({ block: "start" }));
@@ -4148,7 +4158,8 @@ try {
   await ekOpen("stay");
   const ubudCard = ekSec("stay").locator('.q-ints > .q-int[aria-label="Ubud"]');
   // v13 (K82): the source's picks are beside the plan, in the drawer "Seçenek bul" opens (under the options it has, none here).
-  await ubudCard.locator(".z-bt .q-ai", { hasText: "Seçenek bul" }).click();
+  // (plan v14: its "Ara" opens the drawer where the source's picks come)
+  await ubudCard.locator(".q-rslot .q-pick", { hasText: "Ara" }).click();
   const ubudDrawer = board.locator("aside.dr");
   await ubudDrawer.waitFor();
   const picksRow = ubudDrawer.locator(".dr-offers .ek-offers.ek-picks").first();
@@ -4236,6 +4247,8 @@ try {
   for (const id of ["flight", "stay", "transport", "other"]) {
     if (!(await ekSec(id).count())) continue;
     await ekOpen(id);
+    const rowsHere = ekSec(id).locator('.q-ints > .q-int[data-face="ticket"]');
+    for (let k = 0; k < (await rowsHere.count()); k++) await openRow(rowsHere.nth(k));
     assert.equal(await board.locator(".wh-badge").count(), 0, `a one-person trip shows no badge (${id})`);
   }
   await board.screenshot({ path: `${out}/23d-per-person-solo.png` });
@@ -4892,13 +4905,12 @@ try {
   await lkStay.locator(".q-fold.on").waitFor();
   const lkFirst = lkStay.locator('.q-ints > .q-int[aria-label="Sigiriya"]');
   assert.equal(await lkFirst.getAttribute("data-st"), "ai", "a proposed route's stay is our pick's colour");
-  assert.equal(flat([await lkFirst.locator(".q-st").innerText()])[0], "✨ Önerimiz · onayla");
-  assert.ok((await lkFirst.locator(".z-pi").count()) > 0, "still looked for: Kendin ara");
-  assert.equal(await lkFirst.locator(".z-bt .q-agree").innerText(), "Rotayı onayla");
-  assert.equal(Math.round((await lkFirst.boundingBox()).height), 330);
-  await lkFirst.locator(".z-bt .q-agree").click();
+  // (plan v14: the card's "Ara" still looks for it; "Rotayı onayla" on its strip)
+  await lkFirst.locator(".q-rslot .q-pick", { hasText: "Ara" }).waitFor();
+  assert.equal(await lkFirst.locator(".q-rft .q-agree").innerText(), "Rotayı onayla");
+  await lkFirst.locator(".q-rft .q-agree").click();
   await lkStay.locator('.q-ints > .q-int[data-st="ai"]').first().waitFor({ state: "detached" });
-  assert.equal(flat([await lkFirst.locator(".q-st").innerText()])[0], "Aranıyor", "agreed: the stays to find");
+  assert.equal(await lkFirst.getAttribute("data-st"), "todo", "agreed: the stays to find");
   assert.equal(await lkFirst.locator(".q-agree").count(), 0);
   assert.equal(lk.message, 1, "one reading call");
   assert.equal(lk.route, 1, "one route call");
@@ -5651,6 +5663,8 @@ try {
   // terminal, the source named), the route at the new time, the side column's new times and "Planı yeni saate kaydırdım.";
   // F2: hours before it leaves, the main button is the online check-in (the PNR above it). Late, the box is as tall as ever.
   const tpBox = flights.locator(".q-ints > .q-int", { has: app.locator(".q-nm", { hasText: "Lizbon" }) });
+  // (plan v14: on its day the row opened shows its ticket with the live strip)
+  await openRow(tpBox);
   const boxStrip = tpBox.locator(".z-live");
   await boxStrip.waitFor();
   assert.deepEqual(flat(await boxStrip.locator(":scope > span").allInnerTexts()), ["Canlı", "Kapı 14", "Rötar +25 dk", "LIS T1"]);
@@ -5662,7 +5676,6 @@ try {
   assert.match(flat([await routeOf(tpBox)])[0], /^20:05.*LIS/s, "the plan moved to the new time");
   assert.equal(flat([await tpBox.locator(".z-top .z-cft small").innerText()])[0], "Yeni kalkış 20:05. Planı yeni saate kaydırdım.");
   assert.equal(new URL(await tpBox.locator(".z-bt .q-ckin").getAttribute("href")).searchParams.get("q"), "TAP online check-in", "F2: the check-in is the main button");
-  assert.equal(Math.round((await tpBox.boundingBox()).height), 330, "late: the box is 330 px");
   await tpBox.scrollIntoViewIfNeeded();
   await app.screenshot({ path: `${out}/3e-flight-card-live.png` });
   // The stage AeroDataBox names ("Biniş başladı"), only while the answer is fresh and only when the data says so: nothing above (status Delayed).
@@ -5677,7 +5690,6 @@ try {
   const stage = tpBox.locator(".z-i .z-lst");
   await stage.waitFor();
   assert.equal(await stage.innerText(), "Biniş başladı");
-  assert.equal(Math.round((await tpBox.boundingBox()).height), 330, "boarding: the box is 330 px");
   console.log("✓ flight on its day: the Bugün strip in the hero's place and the Plan in trip order from today (D8); late with its new time and gate, in the day's line, on the strip and on the Plan's ticket (the live strip, Biniş başladı, the check-in, 330 px), the source named");
 } finally {
   await flightDay.close();

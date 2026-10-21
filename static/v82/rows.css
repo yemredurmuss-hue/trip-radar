@@ -248,3 +248,6 @@ body.still .q-row.open .q-rp, body.still .q-int.pop .q-rhap { animation: none; }
 .q-alert { font-style: normal; font-weight: 800; }
 .q-alert.warn { color: var(--q-warn); }
 .q-alert.bad { color: var(--q-bad); }
+/* A stop of a route the AI proposed: "Rotayı onayla" on a lila strip. */
+.q-rft.ai { background: color-mix(in srgb, var(--q-acc-s) 75%, #fff); color: var(--q-acc-d); }
+.q-rft .q-chg.q-agree { color: var(--q-acc); font-weight: 800; }

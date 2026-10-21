@@ -205,7 +205,8 @@ export function rowView(vm: IntentVM): RowView {
       slot = { kind: "hap", tone: "inc", text: L("Dahil", "Included") };
       break;
     case "suggested":
-      slot = { kind: "take" };
+      // (a stop of a route the AI proposed, nothing saved for it yet: still to look for; its route is agreed under it)
+      slot = vm.chosen ? { kind: "take" } : { kind: "ask" };
       break;
     case "chosen":
       slot = { kind: "book", word: vm.kind === "stay" || mode === "car" ? L("Rezerve et", "Book") : L("Satın al", "Buy") };
