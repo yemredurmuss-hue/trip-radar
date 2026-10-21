@@ -922,6 +922,7 @@ try {
   // (the photo 4:3, as the picks' cards)
   const optRatio = await stayDrawer.locator(".dr-op .dr-ph").first().evaluate((el) => el.getBoundingClientRect().width / el.getBoundingClientRect().height);
   assert.ok(optRatio > 1.25 && optRatio < 1.9, `the drawer's option photo is wide (${optRatio.toFixed(2)})`);
+  await app.waitForTimeout(300); // (the drawer's .2 s fade)
   await app.screenshot({ path: `${out}/40b-stay-drawer.png` });
   await app.keyboard.press("Escape");
   await stayDrawer.waitFor({ state: "detached" });
@@ -955,6 +956,7 @@ try {
   assert.equal(await flightDrawer.locator(".dr-op").nth(0).locator(".dr-why").count(), 1, "ours says why");
   assert.match(flat([await flightDrawer.locator(".dr-op").nth(1).locator(".dr-tb").innerText()])[0], /05:40.*IST.*8 sa 10 dk.*1 aktarma.*12:50.*OPO/s);
   assert.equal(await flightDrawer.locator(".dr-op .dr-sec").count(), 2);
+  await app.waitForTimeout(300); // (the drawer's .2 s fade)
   await app.screenshot({ path: `${out}/32a-choice-window.png` });
   await app.keyboard.press("Escape");
   await flightDrawer.waitFor({ state: "detached" });
@@ -1909,12 +1911,9 @@ try {
   assert.equal(await douroPage.locator(".z-t").getByRole("button", { name: "Ad: düzenle" }).count(), 0, "no name to edit");
   assert.equal(await app.locator('.pk-ed[aria-label^="Ad:"]').count(), 0, "no name editable anywhere on the Plan");
   await app.screenshot({ path: `${out}/4n-page-correction.png` });
-  // A transfer's ends (F5a; v82 as the design's ticket): "Havalimanı" and "Booking.com" large, the airport's code and city
-  // and the stay's name under them.
+  // A transfer's ends (F5a; v13 a route note): the airport by its words, the stay by its name (not the site it was saved from).
   await openSec("transport");
-  assert.match(flat([await arrivalLeg.locator(".z-route").innerText()])[0], /^Havalimanı OPO · Porto .*Booking\.com Jardim Stay$/);
-  // One word isn't broken in the middle ("Booking.co / m"): the end stays on one line.
-  assert.ok(await arrivalLeg.locator(".z-route .q-city.r > b").evaluate((el) => el.getClientRects().length <= 1 && el.offsetHeight < 1.6 * parseFloat(getComputedStyle(el).fontSize)), "Booking.com on one line");
+  assert.equal(flat([await arrivalLeg.locator(".z-nt b").innerText()])[0], "Porto Havalimanı → Jardim Stay");
   // Empty nights (the trip two nights longer): ⋯ Gerek yok hides them, "Gizlenenler · n" brings them back (F3).
   await openSec("stay");
   const extra = nightsBox("2026-10-14");
@@ -2875,6 +2874,12 @@ try {
   // The new trip appears as a card on "Seyahatlerim"; opening it shows its own board.
   await board.locator(".trip-card", { hasText: "Portekiz" }).click({ timeout: 20000 });
   await board.getByRole("heading", { name: "Portekiz" }).waitFor();
+  // (B8: closed at first look; a category is held open only while a link is read into it, so open Konaklama to see it)
+  {
+    const staySec = board.locator('.q-sec[data-section="stay"]');
+    await staySec.waitFor({ timeout: 20000 });
+    if (!(await staySec.evaluate((el) => el.classList.contains("open")))) await staySec.locator(".q-tt").click();
+  }
   await board.getByText("Jardim Stay").first().waitFor();
   assert.equal(await board.locator(".crash").count(), 0, "board must not crash on real-shaped data");
   const extractionCall = geminiBodies.find((b) => b.body.generationConfig?.responseJsonSchema);
@@ -4023,11 +4028,11 @@ try {
   assert.equal(await board.evaluate(async () => (await chrome.storage.local.get("shareName")).shareName), "Emre", "saved as the profile name");
   assert.equal(await asked.locator("strong, b", { hasText: "Sabine dönüşte de Alicante'ye mi?" }).count(), 1, "the way home asked in bold");
   assert.deepEqual(await board.locator(".choices button").allInnerTexts(), ["Evet, Alicante", "Hayır, İstanbul'a", "Henüz belli değil"]);
-  // Sabine's own flight there: a ticket still to find with her badge on its carrier line, searched from Alicante for one.
+  // Sabine's own flight there: a ticket still to find with her badge on its line (v13: the info zone), searched from Alicante for one.
   const flightTo = (route) => ekSec("flight").locator(".q-ints > .q-int", { has: board.locator(".q-nm", { hasText: route }) });
   const hers = flightTo("Alicante → Denpasar");
   await hers.waitFor({ timeout: 10000 });
-  const badge = hers.locator(".z-car .wh-badge");
+  const badge = hers.locator(".z-i .wh-badge");
   assert.equal(await badge.locator(".wh-label").innerText(), "Sabine'in bileti");
   assert.equal(await badge.locator(".wh-av").innerText(), "S", "her initial: no photo given");
   assert.deepEqual(await badge.evaluate((el) => [getComputedStyle(el).backgroundColor, getComputedStyle(el).borderTopColor, getComputedStyle(el).color]), ["rgb(255, 255, 255)", "rgb(230, 225, 247)", "rgb(75, 63, 176)"]);
@@ -4265,7 +4270,7 @@ try {
   await booked27Card.locator(".z-t", { hasText: "10 GB eSIM" }).waitFor({ timeout: 10000 });
   assert.equal(await booked27Card.locator(".q-nm").innerText(), "eSIM · Portekiz");
   assert.equal(await booked27Cards.count(), 1, "one eSIM box, never a second");
-  assert.match(await booked27Card.locator(".z-l1").innerText(), /Kuruldu/, "still bought and installed");
+  assert.match(flat([await booked27Card.locator(".z-top .z-cft small").innerText()])[0], /Kuruldu/, "still bought and installed (v13: under the seal)");
   // Its head says the trip's days (no "Tarihsiz").
   assert.match(flat([await booked27Card.locator(".q-ln").innerText()])[0], /\d+–\d+ Ekim/);
   assert.doesNotMatch(await booked27Card.locator(".q-ln").innerText(), /Tarihsiz/);
@@ -5901,7 +5906,8 @@ try {
   await flightDraft.locator(".z-h .z-mb").click();
   await flightDraft.getByRole("menuitem", { name: "Gerek yok" }).click();
   await flightDraft.waitFor({ state: "detached" });
-  assert.equal(await app.locator('.q-sec[data-section="flight"] .q-ints > .q-int[data-st="ai"]').count(), 0, "a need set aside has no draft");
+  const leftDrafts = app.locator('.q-sec[data-section="flight"] .q-ints > .q-int[data-st="ai"]');
+  assert.equal(await leftDrafts.count(), 0, `a need set aside has no draft (${JSON.stringify(await leftDrafts.evaluateAll((els) => els.map((e) => [e.getAttribute("data-intent"), e.textContent.slice(0, 120)])))})`);
   console.log("✓ draft: the best real option is the card (\"Önerimiz\"), no choice (hero, Pano \"✨ Önerimiz\", Seç); \"✓ Bunu seç\" chooses, the site's link only opens it (B11); it goes with its need");
 } finally {
   await draftCtx.close();
@@ -6565,7 +6571,7 @@ try {
   await app.locator(".cat-plan").waitFor();
 
   // K29 aşama geçişi (v82, E §2.3–2.5): the booked flight taken back to Seçildi is a step back, quiet (no takeoff, no spring);
-  // booked again, the ticket's plane takes off (1.1 s), the tick by Bilet alındı is stamped (420 ms) and the chip springs (.5 s).
+  // booked again, the ticket's plane takes off (1.1 s), the seal by what was paid is stamped (420 ms, v13) and the chip springs (.5 s).
   // No glow: the ticket is in sight. (Recorded as it happens: a busy machine looks late.)
   await openCat("flight");
   await app.evaluate(() => {
@@ -6581,8 +6587,8 @@ try {
       };
       window.__stage.back ||= box.dataset.st !== "ok" && box.classList.contains("z-go");
       // (the booked frame comes in 120 ms after the chosen one fades)
-      if (!box.classList.contains("z-go") || box.dataset.st !== "ok" || !box.querySelector(".z-tk.bk .z-ok svg")) return;
-      window.__stage.booked ||= { plane: anim(".z-tk .q-mid.big img"), tick: anim(".z-tk .z-ok svg"), glow: box.classList.contains("pk-glow") || box.classList.contains("pk-stage") };
+      if (!box.classList.contains("z-go") || box.dataset.st !== "ok" || !box.querySelector(".z-tk.bk .z-seal")) return;
+      window.__stage.booked ||= { plane: anim(".z-tk .q-mid.big img"), tick: anim(".z-tk .z-seal"), glow: box.classList.contains("pk-glow") || box.classList.contains("pk-stage") };
       window.__stage.pop ||= Boolean(box.querySelector(".q-st.pop"));
     }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ["class", "data-st"], childList: true });
   });
@@ -6651,13 +6657,14 @@ try {
   await openCat("flight");
   const portoStill = app.locator('.q-sec[data-section="flight"] .q-ints > .q-int', { has: app.locator(".q-nm", { hasText: "Porto" }) }).first();
   await portoStill.evaluate((el) => el.scrollIntoView({ block: "center" }));
-  await portoStill.locator(".z-bt .q-chg").click();
-  const still = portoStill.locator(".q-row.z-r:not(.is-cur)").first();
+  await portoStill.locator(".z-m").click();
+  const still = app.locator("aside.dr .dr-op:not(.cur)").first();
   await still.waitFor();
   await still.hover({ position: { x: 60, y: 20 } });
   await app.waitForTimeout(400);
   assert.equal(await still.evaluate((el) => getComputedStyle(el).transform), "none", "duraklat: the option no longer lifts");
-  await portoStill.getByRole("button", { name: "Vazgeç" }).click();
+  await app.keyboard.press("Escape");
+  await app.locator("aside.dr").waitFor({ state: "detached" });
   await settingsTab.getByLabel("Hareketi duraklat", { exact: false }).uncheck();
   assert.equal(await settingsTab.evaluate(() => localStorage.getItem("trip-radar:still")), null);
   await settingsTab.close();

@@ -29,7 +29,10 @@ export function RouteNote({ vm, menu, onPick, onOwn, domId }: { vm: IntentVM; me
   const current = vm.ticket?.wayMode ?? null;
   const ways = wayChoices(vm.modes);
   const now = ways.find((w) => w.mode === current) ?? null;
-  const route = vm.head.route ? `${vm.head.route.from} → ${vm.head.route.to}` : headName(vm);
+  // The stay it ends at by its name ("Jardim Stay"), not the site it was saved from: the ticket's big word there is the site.
+  const toEnd = vm.ticket?.to ?? null;
+  const toName = toEnd?.place && !/^[A-Z]{3}$/.test(toEnd.place) && !/·/.test(toEnd.place) ? toEnd.place : null;
+  const route = vm.head.route ? `${vm.head.route.from} → ${toName ?? vm.head.route.to}` : headName(vm);
   const meta = [...vm.head.parts.filter((p) => !/→/.test(p)), vm.note].filter(Boolean).join(" · ");
   useEffect(() => {
     if (!open) return;

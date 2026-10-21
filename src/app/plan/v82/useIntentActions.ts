@@ -33,7 +33,9 @@ export function useIntentActions(vm: IntentVM) {
 
   /** `except`: records already gone (a booking just said cancelled). */
   const skip = async (except: readonly string[] = []) => {
-    const records = live.filter((i) => !except.includes(i.id));
+    // The one the card shows goes last (setNeedNotNeeded writes the others first): the card never flashes another option
+    // as the pick while the need is being set aside.
+    const records = live.filter((i) => !except.includes(i.id)).sort((x, y) => Number(y.id === lead?.id) - Number(x.id === lead?.id));
     if (suggestion) return v82.dismissSuggestion?.(suggestion);
     // Nights said not needed take their options with them (they come back together, from Gizlenenler); the toast's
     // "Geri al" brings the options back, and the nights with them.

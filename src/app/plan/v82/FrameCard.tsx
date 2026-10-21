@@ -350,7 +350,6 @@ export function FrameCard({ vm, form, art, page, links, hints, info, detail, qui
     <Zones
       cls=" em"
       onOpen={onOpen}
-      titleEdits={false}
       media={
         <span className="z-ph0">
           <img src={art} alt="" />

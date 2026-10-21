@@ -410,3 +410,34 @@ body.still .dr, body.still .dr-scrim { animation: none; }
 .dr-op { transition: transform 180ms var(--x-in, cubic-bezier(.2, .8, .2, 1)), box-shadow 180ms; }
 @media (hover: hover) { .dr-op:not(.cur):hover { transform: translateY(-3px); box-shadow: 0 10px 24px -14px rgba(28, 26, 51, .4); } }
 @media (prefers-reduced-motion: reduce) { .dr-op { transition: none; } }
+body.still .dr-op { transition: none; }
+body.still .dr-op:hover { transform: none; }
+
+/* K29 aşama geçişi, kept: booked, the seal is stamped (420 ms), as the old "Bilet alındı" tick was. */
+.z-int.z-go .z-f.z13 .z-seal { animation: mv-stamp 420ms cubic-bezier(.2, .9, .3, 1.3) backwards; }
+body.still .z-int.z-go .z-f.z13 .z-seal { animation: none; }
+@media (prefers-reduced-motion: reduce) { .z-int.z-go .z-f.z13 .z-seal { animation: none; } }
+
+/* The source's picks in the drawer (OfferRow): as wide as the drawer's own options, two a row, never squeezed. */
+.dr .ek-pcs.z-ocs { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+
+/* Phone (mockup v13 ≤700 / ≤440): the roof's name in two lines; a ticket's hours never cut; the info line wraps rather than
+   clipping a chip (a missing document is never half shown), the card as tall as that needs. */
+@media (max-width: 640px) {
+  .q-int.z-int:has(.z13) .z-h .q-nm { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 15px; line-height: 1.2; }
+  /* (the mockup's .lab at ≤700: the state chip smaller, so the head's line keeps its days) */
+  .q-int.z-int:has(.z13) .z-h .q-st { font-size: 11px; padding: 0 7px; gap: 3px; }
+  /* (a part of the head's line that doesn't fit goes whole to a hidden second line, never cut mid-word) */
+  .q-int.z-int:has(.z13.z-c) .z-h .q-ln { flex-wrap: wrap; white-space: nowrap; height: 18px; overflow: hidden; }
+  .z-f.z13 { height: auto; grid-template-rows: 148px minmax(64px, auto) 58px; }
+  .z-f.z13 > .z-i { padding-block: 8px; }
+  .z-f.z13 .z-l1, .z-f.z13 .z-l3 { flex-wrap: wrap; row-gap: 6px; overflow: visible; }
+  .z-f.z13 .z-l1 > *, .z-f.z13 .z-l3 > * { flex: none; white-space: nowrap; }
+  .z-f.z13.z-tk .q-tm.q-city.air b { overflow: visible; text-overflow: clip; white-space: nowrap; }
+  .z-f.z13.z-tk .q-tm.q-city.air b sup { font-size: 11px; }
+}
+@media (max-width: 440px) {
+  .q-int.z-int:has(.z13.z-tk) .z-h .q-nm { font-size: 14px; line-height: 1.15; }
+  .z-f.z13.z-tk .q-tm.q-city.air b { font-size: 26px; }
+  .z-f.z13.z-tk .z-route { grid-template-columns: auto minmax(40px, 1fr) auto; }
+}
