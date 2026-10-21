@@ -1,0 +1,94 @@
+<title>Trip Radar Uçuş Kartı Özeti</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap">
+<style>
+/* Layout: one 720 px reading column; the run's decisions as numbered cards, the drawings as a linked list. Live --q-* tokens. */
+:root { --q-ink: #1c1a33; --q-mut: #6b6886; --q-line: #e7e4ef; --q-soft: #f6f5fa; --q-acc: #5b45e0; --q-acc-s: #efecff; --q-ok: #1f7a45; --q-ok-s: #e8f6ee; --q-warn: #b5761c; --q-warn-s: #fff6e6; --page: #eeedf4; --card: #ffffff; --font: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --q-ink: #ece9f8; --q-mut: #a9a5c4; --q-line: #34304a; --q-soft: #221e33; --q-acc: #8b7bff; --q-acc-s: #2a2450; --q-ok: #3fb675; --q-ok-s: #173a27; --q-warn: #e0a84a; --q-warn-s: #3d311a; --page: #121020; --card: #1f1a33; color-scheme: dark; } }
+:root[data-theme="dark"] { --q-ink: #ece9f8; --q-mut: #a9a5c4; --q-line: #34304a; --q-soft: #221e33; --q-acc: #8b7bff; --q-acc-s: #2a2450; --q-ok: #3fb675; --q-ok-s: #173a27; --q-warn: #e0a84a; --q-warn-s: #3d311a; --page: #121020; --card: #1f1a33; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--q-ink); font-family: var(--font); font-size: 13.5px; line-height: 1.45; padding-block: 28px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); -webkit-font-smoothing: antialiased; }
+.wrap { max-width: 720px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 32px; }
+.wrap > * { min-width: 0; }
+h1, h2, p { margin: 0; }
+h1 { font-size: 30px; line-height: 1.1; font-weight: 800; letter-spacing: -.015em; text-wrap: balance; }
+h2 { font-size: 20px; font-weight: 800; letter-spacing: -.012em; }
+.eyebrow { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--q-acc); }
+.lead { color: var(--q-mut); max-width: 62ch; }
+.head, .blk { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.st { display: grid; gap: 8px; margin: 0; padding: 0; counter-reset: s; }
+.st > li { list-style: none; display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 2px 12px; padding: 12px 14px; border-radius: 14px; background: var(--card); border: 1px solid var(--q-line); }
+.st > li::before { counter-increment: s; content: counter(s); display: grid; place-items: center; width: 28px; height: 28px; border-radius: 9px; background: var(--q-acc-s); color: var(--q-acc); font-weight: 800; font-size: 13px; }
+.st > li > b, .st > li > p { grid-column: 2; }
+.st b { font-weight: 800; }
+.st p { color: var(--q-mut); max-width: 62ch; }
+.ok { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 6px; background: var(--q-ok-s); color: var(--q-ok); font-size: 10.5px; font-weight: 800; letter-spacing: .04em; margin-left: 6px; vertical-align: 1px; }
+.open { background: var(--q-warn-s); color: var(--q-warn); }
+.list { display: grid; gap: 6px; margin: 0; padding: 0; }
+.list > li { list-style: none; display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; background: var(--card); border: 1px solid var(--q-line); min-width: 0; }
+.list .n { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: var(--q-soft); color: var(--q-mut); font-weight: 800; font-size: 13px; }
+.list .n.on { background: var(--q-acc-s); color: var(--q-acc); }
+.list .t { display: grid; gap: 1px; min-width: 0; }
+.list .t b { font-size: 13.5px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.list .t span { font-size: 12px; color: var(--q-mut); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.list a { font-size: 12.5px; font-weight: 750; color: var(--q-acc); text-decoration: none; white-space: nowrap; }
+.list a:hover { text-decoration: underline; }
+.foot { font-size: 12px; color: var(--q-mut); max-width: 70ch; }
+.foot b { color: var(--q-ink); }
+code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; background: var(--q-soft); border-radius: 5px; padding: 1px 5px; }
+@media (max-width: 640px) { .list > li { grid-template-columns: 34px minmax(0, 1fr); } .list a { grid-column: 2; justify-self: start; } }
+</style>
+<div class="wrap">
+  <header class="head">
+    <span class="eyebrow">Koşu özeti · 21 Eki 2026 · dal zaman-cizgisi-cizim</span>
+    <h1>Uçuş kartı ve çekmece: kararlar</h1>
+    <p class="lead">Bir günde on üç çizim. Plan ekranında kategorinin içi zaman çizgisi oldu, uçuş kartı dört durumlu ince bir satıra indi, çekmece karar yeri olarak yeniden çizildi. Aşağıda onaylananlar, varsayımlar, açık sorular ve çizimlerin bağlantıları.</p>
+  </header>
+
+  <section class="blk">
+    <h2>Onaylanan kararlar</h2>
+    <ol class="st">
+      <li><b>Kategori içi zaman çizgisi.<span class="ok">ONAYLI</span></b><p>Açık kategoride kartlar iki sütun ızgara yerine tarih sırasıyla tek sütunda; solda ince hat, her tarihin noktası kartın yanında. Boş gün satırları yok, yalnız tarihler. Kodda <code>.q-ints</code> yerine <code>.q-tl</code> sarmalayıcısı; tarihsiz kategoriler ızgarada kalır.</p></li>
+      <li><b>Her bacak bir kart.<span class="ok">ONAYLI</span></b><p>Gidiş-dönüş bile iki tarih, iki kart; hat ne zaman ne var onu gösterir. Satın alınca iki kart birden "Alındı" olmalı (modelde bağ).</p></li>
+      <li><b>Satır: 72 px, sağda tek şey.<span class="ok">ONAYLI</span></b><p>İşaret · rota ve bir satır bilgi · tek rakam · 118 px'lik yuvada tek düğme ya da hap. Niyet "Ara", biriken "Seç" ve mini "3", seçili "Satın al", alınmış yeşil "Alındı". Ok yok, satırın kendisi basınca açılır; aynı anda bir satır açık.</p></li>
+      <li><b>Niyet kartı.<span class="ok">ONAYLI</span></b><p>Canlı gradyan üstünde uçak illüstrasyonu logonun yerinde, rota, "30 Mar Sal · sabah · 2 kişi", yaklaşık fiyat, "Ara". Açılınca: ne arandığı bir cümle, "Trip Radar arasın" ve üç site. Bağlantı yapıştırma kartta değil; sohbette ve çekmecede.</p></li>
+      <li><b>Biriken kartı.<span class="ok">ONAYLI</span></b><p>Deste: üç havayolu logosu çapraz üst üste (A biçimi), kart altında iki kart kenarı. Hap yok. Kapalıda "Seç" sağda; açılınca Seç içeri iner, yanında "Yeni bul" (Yol 2). Seçenekler kartta listelenmez, çekmecede.</p></li>
+      <li><b>Seçili kartı.<span class="ok">ONAYLI</span></b><p>Kapalıda saatler, süre, aktarma, kişi başı fiyat, "Satın al". Açılınca biniş kartı (büyük saatler, kesikli rota ve uçak, aktarma noktası), toplam, kaynak, "Değiştir", varsa amber uyarı. Karşılaştırma yok.</p></li>
+      <li><b>Alınmış kartı.<span class="ok">ONAYLI</span></b><p>Kapalıda saatler, PNR, yeşil "Alındı". Açılınca mühür, ödenen tutar, "Takvime ekle", "Bileti aç", check-in ve koltuk şeridi.</p></li>
+      <li><b>Düğmeler.<span class="ok">ONAYLI</span></b><p>Ara: çekmeceyi açar, Trip Radar arar. Seç: çekmeceyi açar, seçenekleri gösterir. Satın al: kaynağın satın alma sayfası. Değiştir: aynı çekmece, seçili işaretli. Pano'da aç: derin karşılaştırma.</p></li>
+      <li><b>Çekmece: karar yeri, standart kart.<span class="ok">ONAYLI</span></b><p>Canlı K82 çerçevesi (sağdan 600 px). Başlık üç satır: kim ve ne zaman; ölçütler (şart lila, tercih gri, + ekle); Seçenekler/Elenen ve sıralama. Kart: biniş kartı tam satır, puan çipi (34 px, sıra), her kartta aynı beş ikonlu yuva (bagaj, el bagajı, iade, terminal, kaynak), "Neden?" kartın altında açılır. Bırakma kutusu bir tık öne, "Pano'da karşılaştır" en altta.</p></li>
+      <li><b>Çekmecede tarihler.<span class="ok">ÖNERİ</span></b><p>Takvim karolu yapışkan bant: gün büyük, ay küçük, "İSTENEN GÜN" ya da "+1 GÜN" hapı, komşu günün bedeli notta. Emre'nin son notu: "önerin gayet iyi"; biçim seçimi (bant mı sol oluk mu) açık.</p></li>
+    </ol>
+  </section>
+
+  <section class="blk">
+    <h2>Açık sorular</h2>
+    <ol class="st">
+      <li><b>İç içe açılma hissi.<span class="ok open">KULLANINCA</span></b><p>Kategori, satır, çekmece: üç katman. Hafifletici kurallar çizimde; gerçek his kodda görülecek.</p></li>
+      <li><b>Seçili ama alınmamış, kapalıda yalnız düğmeyle belli.<span class="ok open">AÇIK</span></b><p>Karışık listelerde yetmezse hattaki nokta sarı-bej olabilir.</p></li>
+      <li><b>Uyarı kapalı satırda görünmüyor.<span class="ok open">AÇIK</span></b><p>Küçük amber işaret gerekir; "uyarı gizlenmez" kuralı.</p></li>
+      <li><b>Beşinci geçici durum: Aranıyor.<span class="ok open">AÇIK</span></b><p>Ara'dan sonra çekmece kapatılınca kartın hâli; nokta ve "Aranıyor…".</p></li>
+      <li><b>Fiyat tazeliği, gidiş-dönüş bağı, tarihsiz niyet, düğme içinde düğme.<span class="ok open">KODDA</span></b><p>Onuncu çizimin eleştiri listesinde; uygulama kararları.</p></li>
+    </ol>
+  </section>
+
+  <section class="blk">
+    <h2>Çizimler</h2>
+    <ol class="list">
+      <li><span class="n">1</span><div class="t"><b>Zaman çizgisi</b><span>Uçuş ve konaklama hatta, bugünkü ızgarayla karşılaştırma</span></div><a href="https://claude.ai/artifact/Aw2kLN9ya87tQoXyyXwNex">Aç</a></li>
+      <li><span class="n">2</span><div class="t"><b>İnce uçuş kartı, iki seçenek</b><span>Sabit kart ve basınca açılan satır</span></div><a href="https://claude.ai/artifact/N647PeUoGcdnEubdBwKUZN">Aç</a></li>
+      <li><span class="n">3</span><div class="t"><b>Uçuş satırı, tek dil</b><span>Aşamaya göre bilgi, karoyla</span></div><a href="https://claude.ai/artifact/ViStQEkpgyJwPNMfL2UvT2">Aç</a></li>
+      <li><span class="n">4</span><div class="t"><b>Dört durum, kendi bilgisi</b><span>Niyet yalın, seçenekler deste, Bileti al satırda</span></div><a href="https://claude.ai/artifact/VxNDFUBBNqDxzA2uNvgMvp">Aç</a></li>
+      <li><span class="n">5</span><div class="t"><b>Rota aynı yerde</b><span>Gradyan ve uçak, deste ve sayı, tek düğme</span></div><a href="https://claude.ai/artifact/EFM3GQYou6cUSYSjJxHXWt">Aç</a></li>
+      <li><span class="n on">6</span><div class="t"><b>Her bacak bir kart, sağda tek şey</b><span>Niyet, seçili ve alınmış onaylandı</span></div><a href="https://claude.ai/artifact/7nHKyBtfuX92qrgQXHUGCj">Aç</a></li>
+      <li><span class="n">7</span><div class="t"><b>Biriken: logolar nasıl birikir</b><span>Deste, sıra, satırda, sayı</span></div><a href="https://claude.ai/artifact/KFV8GQBaYjLfXrD9zb1nZL">Aç</a></li>
+      <li><span class="n">8</span><div class="t"><b>Biriken: deste ve Seç</b><span>Mini 3, üç düğme biçimi</span></div><a href="https://claude.ai/artifact/1xCzFEL2QnUShGVvZVAtRJ">Aç</a></li>
+      <li><span class="n on">9</span><div class="t"><b>Biriken: Seç ile karta basmak</b><span>Üç yol, Yol 2 onaylandı; onaylılarla aynı hatta</span></div><a href="https://claude.ai/artifact/E9CKBJyoKPXw5XFbKNGQ6G">Aç</a></li>
+      <li><span class="n">10</span><div class="t"><b>Uçuş çekmecesi</b><span>Seç ve Ara hâlleri, düğme haritası, kullanım eleştirisi</span></div><a href="https://claude.ai/artifact/RggUNu7thye55ngkhWJegJ">Aç</a></li>
+      <li><span class="n">11</span><div class="t"><b>Çekmece kartları, üç biçim</b><span>Biniş kartı, iki sütun, büyümüş satır; puan ve neden</span></div><a href="https://claude.ai/artifact/DBnJxzYWtUoLnneXSxgCZ2">Aç</a></li>
+      <li><span class="n on">12</span><div class="t"><b>Çekmece standardı</b><span>Beş ikonlu yuva, neden altta, sade başlık</span></div><a href="https://claude.ai/artifact/4s45bF1d1BENJmycPp7Arg">Aç</a></li>
+      <li><span class="n on">13</span><div class="t"><b>Çekmecede tarihler</b><span>Takvim karolu bant ya da sol oluk</span></div><a href="https://claude.ai/artifact/VgnZVxVdT7XQHyb6tmr8X1">Aç</a></li>
+    </ol>
+    <p class="foot"><b>Kaynak:</b> dal <code>zaman-cizgisi-cizim</code>, klasör <code>docs/mockups/</code>; ürün kodu değişmedi. Lila numaralar son onaylı hâlleri taşıyan çizimler. Hafta günleri 2027 takvimine göre; fiyatlar, seferler, PNR örnek.</p>
+  </section>
+</div>
