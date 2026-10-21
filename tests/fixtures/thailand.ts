@@ -39,6 +39,13 @@ export function thailand(opts: { gap?: boolean } = {}): { trip: Trip; items: Ite
   const trip: Trip = {
     id: "th", title: "10 Günlük Tayland Doğa Gezisi", confirmedDates: { start: "2027-03-24", end: "2027-04-02" }, budget: { amount: 4000, currency: "EUR" }, heroImage: null, createdAt: 1, updatedAt: 1,
     travellers: { names: [], count: 2 },
+    // The ways said on the airport legs, nothing to book (Yerinde): a taxi in, a taxi to Don Mueang, the metro on the 30th.
+    legs: {
+      "2027-03-24:arrival:bangkok": { mode: "taxi", booked: false, note: null, updatedAt: 1 },
+      "2027-03-27:departure:bangkok": { mode: "taxi", booked: false, note: null, updatedAt: 1 },
+      "2027-03-27:arrival:chiang-mai": { mode: "taxi", booked: false, note: null, updatedAt: 1 },
+      "2027-03-30:arrival:bangkok": { mode: "metro", booked: false, note: null, updatedAt: 1 },
+    },
   };
   const by: Record<string, Item> = {
     out: flight("IST", "BKK", "2027-03-23T00:35", "2027-03-23T17:05", "chosen", {

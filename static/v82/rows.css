@@ -174,6 +174,29 @@
 .q-rrow.gap .q-nm { color: var(--q-warn); font-size: var(--q-fs-info); }
 .q-rrow.gap .q-rln { white-space: normal; }
 
+/* ---- Yerinde: a way with nothing to book, quieter than a booking (no shadow, a small solid dot, a grey-blue hap) ---- */
+.q-rcard.yer { background: color-mix(in srgb, #fff 70%, var(--q-soft)); box-shadow: inset 0 0 0 1px rgba(28, 26, 51, .08); }
+.q-row.open > .q-rcard.yer { background: #fff; }
+.q-rcard.yer > .q-rrow { min-height: 64px; }
+.q-rcard.yer .q-nm { font-size: 14px; }
+.q-rmark.yer { width: 34px; height: 34px; justify-self: center; background: linear-gradient(160deg, #b5d2ff 0%, #e3edff 58%, #fff3e3 100%); }
+.q-int[data-face="yer"] .q-tld { padding-top: 18px; }
+.q-int[data-face="yer"] .q-tld b { font-size: 14px; color: var(--q-mut); }
+.q-int[data-face="yer"] .q-tld::before { width: 8px; height: 8px; right: -4px; top: 24px; border: 0; background: color-mix(in srgb, var(--k, var(--c)) 55%, #fff); }
+.q-rhap.yer { background: color-mix(in srgb, var(--k, var(--c)) 9%, #fff); color: var(--k, var(--c)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--k, var(--c)) 25%, transparent); }
+.q-yp { display: grid; gap: 6px; padding: 4px 16px 4px; }
+.q-ypt { margin: 0; padding: 8px 0 2px; font-size: var(--q-fs-badge); font-weight: 800; letter-spacing: .02em; color: var(--q-mut); }
+.q-yo { display: grid; grid-template-columns: 18px 30px minmax(0, 1fr); align-items: center; gap: 10px; padding: 8px 10px; border: 0; border-radius: 11px; background: #fff; box-shadow: inset 0 0 0 1px rgba(28, 26, 51, .07); font: inherit; text-align: left; cursor: pointer; color: var(--q-ink); }
+.q-yo:hover { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--k, var(--c)) 45%, transparent); }
+.q-yo:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 1px; }
+.q-yo.on { background: color-mix(in srgb, var(--k, var(--c)) 7%, #fff); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--k, var(--c)) 45%, transparent); }
+.q-yr { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; box-shadow: inset 0 0 0 1.5px var(--q-st-wait-dot); color: #fff; }
+.q-yo.on .q-yr { background: var(--k, var(--c)); box-shadow: none; }
+.q-yo > img, .q-yown { width: 30px; height: 30px; border-radius: 9px; object-fit: contain; background: var(--q-soft); display: grid; place-items: center; color: var(--q-ok); }
+.q-yo .q-rhd b { font-size: var(--q-fs-info); font-weight: 750; }
+.q-yo .q-rhd small { font-size: var(--q-fs-small); color: var(--q-mut); font-weight: 600; }
+.q-yp .q-racts { padding: 6px 0 12px; }
+
 /* the pop of a step forward (K29) on the hap */
 .q-int.pop .q-rhap { animation: q-pop .52s cubic-bezier(.2, .7, .2, 1.4); }
 @keyframes q-pop { 40% { transform: scale(1.08); } }

@@ -298,6 +298,11 @@ function transitSearch(from: string | null, to: string | null): SelfSearch | nul
   return { id: "maps", name: L("Google Haritalar", "Google Maps"), color: BRANDS.maps.color, letter: BRANDS.maps.letter, url: `https://www.google.com/maps/dir/?${q}` };
 }
 
+/** "Haritada aç ↗" on a way with nothing to book (Yerinde, plan v14): the map's directions between its two ends. */
+export function wayDirections(vm: Pick<IntentVM, "ticket" | "head">): SelfSearch | null {
+  return transitSearch(placeOf(vm.ticket?.from ?? null, vm.head.city), placeOf(vm.ticket?.to ?? null, vm.head.city));
+}
+
 /** Islands and countries with no passenger train between the places a traveller goes: only those known for sure. */
 const NO_RAIL_REGIONS = ["bali", "lombok", "phuket", "koh samui", "koh phangan", "koh tao", "zanzibar", "madeira", "azores"];
 const NO_RAIL_COUNTRIES = ["MV", "MT", "CY", "IS"];

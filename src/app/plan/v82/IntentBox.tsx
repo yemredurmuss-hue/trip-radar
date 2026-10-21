@@ -19,7 +19,7 @@ import type { IntentStatus, IntentVM, OptionVM } from "../../../lib/intents";
 import { addDays } from "../../../lib/plan";
 import { bookingReplaced, replaceAsk } from "../../../lib/replaceBooking";
 import { regionHints, type RegionHint } from "../../../lib/regionHints";
-import { waySearches } from "../../../lib/ticketFrame";
+import { waySearches, wayDirections } from "../../../lib/ticketFrame";
 import type { InsertAt } from "../../../lib/templates";
 import type { Item, LegChoice } from "../../../lib/types";
 import { entryDomId } from "../../../lib/progress";
@@ -41,7 +41,7 @@ import { FOLD_MS, reducedMotion } from "../../motion";
 import { CollectionRow } from "./CollectionRow";
 import { Deck } from "./Deck";
 import { IntentDrawer } from "./IntentDrawer";
-import { isRouteNote, RouteNote } from "./RouteNote";
+import { isRouteNote, RouteNote, YerindeRow } from "./RouteNote";
 import { peopleOf } from "../../../lib/whose";
 import { decisionOf, DetailLayer, focusNear } from "./DetailLayer";
 import { FrameCard } from "./FrameCard";
@@ -508,6 +508,17 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
     />
   ) : null;
   // K85: a way said with nothing to book is a line under the category's cards, its way one tap away.
+  if (leg && isRouteNote(vm) && isDatedSection(vm.section)) {
+    // Yerinde (plan v14): the same note as a quiet row on the date rail, its ways under it.
+    return (
+      <>
+        <section className="q-int z-int q-rowi" id={vm.domKeys[0] ? entryDomId(vm.domKeys[0]) : undefined} data-intent={vm.key} data-st={railState(vm.status)} data-kind={vm.kind} data-face="yer" style={{ "--k": color } as React.CSSProperties} aria-label={name}>
+          <YerindeRow vm={vm} date={railDate(vm)} menu={<IntentMenu entries={menu} name={name} />} onPick={(mode) => void onLeg({ mode })} onOwn={() => void onLeg({ booked: true })} map={wayDirections(vm)?.url ?? null} />
+        </section>
+        {asking && <AskWindow ask={asking} onClose={() => setAsking(null)} />}
+      </>
+    );
+  }
   if (leg && isRouteNote(vm)) {
     return (
       <>

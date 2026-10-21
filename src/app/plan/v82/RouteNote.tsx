@@ -9,7 +9,9 @@ import { headName } from "../../../lib/intentFrame";
 import type { IntentVM } from "../../../lib/intents";
 import { wayChoices } from "../../../lib/ticketFrame";
 import type { LegMode } from "../../../lib/types";
+import type { RailDate } from "../../../lib/railDates";
 import { Ic } from "./icons";
+import { RailCol, useRowOpen } from "./IntentRow";
 
 /** The ways that are a note (K85): a taxi, the metro, a walk, one's own car. Anything else needs a ticket or a booking. */
 const NOTE_MODES: readonly LegMode[] = ["taxi", "metro", "walk", "car"];
@@ -112,6 +114,112 @@ export function RouteNote({ vm, menu, onPick, onOwn, domId }: { vm: IntentVM; me
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Yerinde (plan v14, onay paketi 2026-10-21: Ulaşım): the same way with nothing to book on a dated category's rail. A quiet
+ * thin row: its kind's word and "yerinde" over its route, its day and note, the grey-blue "Yerinde" hap in its slot; no
+ * price is written (none is known, C19). Pressed, the ways open under it, the one said ticked ("Nasıl gidilir"), each
+ * saying whether it needs a booking (one that does makes the leg a card again), "Ben hallettim", and the map's directions.
+ */
+export function YerindeRow({ vm, date, menu, onPick, onOwn, map }: { vm: IntentVM; date: RailDate | null; menu: ReactNode; onPick: (mode: LegMode) => void; onOwn: () => void; map: string | null }) {
+  const [open, setOpen] = useRowOpen(vm.key);
+  const panelId = useId();
+  const current = vm.ticket?.wayMode ?? null;
+  const ways = wayChoices(vm.modes);
+  const now = ways.find((w) => w.mode === current) ?? null;
+  const toEnd = vm.ticket?.to ?? null;
+  const toName = toEnd?.place && !/^[A-Z]{3}$/.test(toEnd.place) && !/·/.test(toEnd.place) ? toEnd.place : null;
+  // (a stay's end by its name, never the site it was saved from: the same on both ends)
+  const fromEnd = vm.ticket?.from ?? null;
+  const fromName = fromEnd?.place && !/^[A-Z]{3}$/.test(fromEnd.place) && !/·/.test(fromEnd.place) ? fromEnd.place : null;
+  const from = fromName ?? vm.head.route?.from ?? null;
+  const to = toName ?? vm.head.route?.to ?? null;
+  const meta = [...vm.head.parts.filter((p) => !/→/.test(p) && !/\d+ [A-ZÇĞİÖŞÜa-zçğıöşü]{3}/.test(p)), vm.note].filter(Boolean).join(" · ");
+  const art = now ? `illus/${now.art}.png` : "illus/taksi-transfer.png";
+  return (
+    <div className={`q-row${open ? " open" : ""}`} data-face="yer">
+      <RailCol date={date} editable={false} />
+      <div className="q-rcard yer">
+        <div
+          className="q-rrow"
+          role="button"
+          tabIndex={0}
+          aria-expanded={open}
+          aria-controls={open ? panelId : undefined}
+          onClick={() => setOpen(!open)}
+          onKeyDown={(e) => {
+            if (e.target !== e.currentTarget || (e.key !== "Enter" && e.key !== " ")) return;
+            e.preventDefault();
+            setOpen(!open);
+          }}
+        >
+          <span className="q-rmark yer" aria-hidden>
+            <img src={art} alt="" />
+          </span>
+          <span className="q-rhd">
+            <span className="q-rlead">{[now?.label ?? L("Yol", "Way"), L("yerinde", "on the spot")].join(" · ")}</span>
+            <h4 className="q-nm" title={from && to ? `${from} → ${to}` : headName(vm)}>
+              {from && to ? (
+                <>
+                  {from} <i>→</i> {to}
+                </>
+              ) : (
+                headName(vm)
+              )}
+            </h4>
+            {meta && <span className="q-rln"><span>{meta}</span></span>}
+          </span>
+          <span className="q-rfig" />
+          <span className="q-rslot">
+            <span className="q-st q-rhap yer">{L("Yerinde", "On the spot")}</span>
+          </span>
+          <span className="q-rmenu" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+            {menu}
+          </span>
+        </div>
+        <div className="q-rp" id={panelId} hidden={!open}>
+          {open && (
+            <div className="q-yp" role="radiogroup" aria-label={L("Nasıl gidilir", "How to get there")}>
+              <p className="q-ypt">{L("Nasıl gidilir · rezervasyon gerekmez, yerinde ödenir", "How to get there · nothing to book, paid on the spot")}</p>
+              {ways.map((w) => {
+                const on = w.mode === current;
+                const booking = books(w.mode, vm.modes);
+                return (
+                  <button key={w.mode} type="button" role="radio" aria-checked={on} className={`q-yo${on ? " on" : ""}`} onClick={() => onPick(w.mode)}>
+                    <span className="q-yr" aria-hidden>{on && <Ic name="check" size={12} stroke={3} />}</span>
+                    <img src={`illus/${w.art}.png`} alt="" />
+                    <span className="q-rhd">
+                      <b>{w.label}</b>
+                      <small>{booking ? L("rezervasyon ister · kart olur", "needs a booking · becomes a card") : L("rezervasyon gerekmez", "no booking needed")}</small>
+                    </span>
+                  </button>
+                );
+              })}
+              <button type="button" role="radio" aria-checked={false} className="q-yo" onClick={onOwn}>
+                <span className="q-yr" aria-hidden />
+                <span className="q-yown" aria-hidden>
+                  <Ic name="check" size={14} stroke={2.6} />
+                </span>
+                <span className="q-rhd">
+                  <b>{L("Ben hallettim", "I've got it")}</b>
+                  <small>{L("biri alacak, kendim ayarladım", "someone picks me up, I sorted it")}</small>
+                </span>
+              </button>
+              {map && (
+                <div className="q-racts">
+                  <span className="q-rsp" />
+                  <a className="q-got" href={map} target="_blank" rel="noreferrer">
+                    <Ic name="pin" size={14} /> {L("Haritada aç ↗", "Open the map ↗")}
+                  </a>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
