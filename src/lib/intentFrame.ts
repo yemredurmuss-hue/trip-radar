@@ -70,7 +70,8 @@ export interface StatusChip {
 export function statusChip(vm: Pick<IntentVM, "status" | "word" | "own">, looking = true): StatusChip {
   switch (vm.status) {
     case "searching":
-      return { tone: "none", text: looking ? vm.word : L("Seçenek yok", "No options yet"), tick: false };
+      // K80 (plan v13): nothing looked for yet says so: "Henüz aranmadı".
+      return { tone: "none", text: looking ? vm.word : L("Henüz aranmadı", "Not searched yet"), tick: false };
     case "skipped":
       return { tone: "none", text: vm.word, tick: false };
     case "deciding":
@@ -81,7 +82,8 @@ export function statusChip(vm: Pick<IntentVM, "status" | "word" | "own">, lookin
     case "chosen":
       return { tone: "sel", text: vm.word, tick: true };
     case "booked":
-      return { tone: "ok", text: vm.word, tick: true };
+      // K80: every booking says "Rezerve" (a ticket's "Alındı" too); its foot says what was paid.
+      return { tone: "ok", text: L("Rezerve", "Booked"), tick: true };
     case "arranged":
       return { tone: "arr", text: vm.word, tick: false };
     case "included":

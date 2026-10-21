@@ -1,14 +1,17 @@
-// An intent's fixed head (76 px; plan v82): its picture (52), its name (19 px, one line; a ticket's two ends), one line of
-// what it is (in a mixed category the kind's word first, then the nights, the days; the trip's own head count never) and
-// what was asked for (a must solid, a wish dashed), and on the right its state, "Pano n" and ⋯. With a record (inside the
-// box's InlineEdit), its days edit where they stand (C2): the dates open the check-in, the nights the check-out.
+// An intent's roof (plan v13, spec 2026-10-21 K79–K81: 58 px): its picture (40; a chosen ticket its carrier's logo), its
+// name (a ticket's two ends: "İstanbul → Tromsø"), one line of what it is (a ticket's type and carrier, "Gidiş · Pegasus PC
+// 1923", "Vapur bileti · Hurtigbåt"; a stay's days), and on the right its state and ⋯. The options' count and the Pano live
+// in the card and in the drawer beside the plan (K82); what was asked for is said in the empty card and in the drawer.
+// With a record (inside the box's InlineEdit), its days edit where they stand (C2).
 import type { ReactNode } from "react";
 import { L } from "../../../lib/i18n";
 import { headName, type StatusChip } from "../../../lib/intentFrame";
 import type { IntentVM } from "../../../lib/intents";
 import type { FieldKey } from "../../../lib/inlineEdit";
+import { ticketFace } from "../../../lib/ticketFrame";
 import { Editable } from "../../cards/InlineEdit";
 import { Ic, partIcon } from "./icons";
+import { CarrierLogo } from "./OptionRow";
 import { SearchDots } from "./Searching";
 
 /** The record's field behind a part of the line: a date its start, the nights its end. */
@@ -16,6 +19,10 @@ const fieldOf = (part: string): FieldKey | null => {
   const icon = partIcon(part);
   return icon === "cal" ? "date" : icon === "moon" ? "end" : null;
 };
+
+/** A ticket's type said in its line (K84): a boat, a train, a bus say what they are; a flight says its leg. */
+export const ticketWord = (mode: string | null | undefined): string | null =>
+  mode === "ferry" ? L("Vapur bileti", "Ferry ticket") : mode === "train" ? L("Tren bileti", "Train ticket") : mode === "bus" ? L("Otobüs bileti", "Bus ticket") : null;
 
 export function IntentHead({ vm, art, chip, busy = false, chipId, pop, onPano, menu }: {
   vm: IntentVM;
@@ -33,47 +40,47 @@ export function IntentHead({ vm, art, chip, busy = false, chipId, pop, onPano, m
 }) {
   const h = vm.head;
   const shown = headName(vm);
-  const name = h.route && vm.frame === "ticket" ? (
+  const ticket = vm.frame === "ticket";
+  const face = ticket ? ticketFace(vm) : null;
+  const chosen = ticket && vm.chosen && face && face.mode !== "car" ? face : null;
+  const name = h.route && ticket ? (
     <h4 className="q-nm" title={`${h.route.from} → ${h.route.to}`}>
       {h.route.from} <i>→</i> {h.route.to}
     </h4>
   ) : (
     <h4 className="q-nm" title={shown}>{shown}</h4>
   );
+  // The line: a ticket's type (or the kind's word) and, once one is chosen, its carrier; then the days (a ticket's route
+  // part is its name already).
+  const kind = ticket ? (ticketWord(face?.mode) ?? h.kindWord) : h.kindWord;
+  const carrier = chosen ? [chosen.name, chosen.sub].filter(Boolean).join(" ") : null;
+  const parts = ticket ? h.parts.filter((p) => !/→/.test(p)) : h.parts;
   return (
     <div className="q-head z-h">
-      <div className="q-art">
-        <img className={art.photo ? undefined : "art"} src={art.src} alt="" />
+      <div className={`q-art${chosen?.mark ? " q-carr" : ""}`}>
+        {chosen?.mark ? <CarrierLogo mark={chosen.mark} art={art.src} /> : <img className={art.photo ? undefined : "art"} src={art.src} alt="" />}
       </div>
       <div className="q-hd">
         {name}
         <div className="q-ln">
-          {h.kindWord && <span className="z-kind">{h.kindWord}</span>}
+          {kind && <span className="z-kind">{kind}</span>}
+          {carrier && <span className="z-carl" title={carrier}>{carrier}</span>}
           {h.hub && (
             <span title={L(`${h.hub} havalimanı`, `${h.hub} airport`)}>
               <Ic name="plane" size={14} />
               {h.hub}
             </span>
           )}
-          {h.parts.map((p) => {
-            const field = fieldOf(p);
-            return (
-              <span key={p}>
-                <Ic name={partIcon(p)} size={14} />
-                {field ? <Editable field={field}>{p}</Editable> : p}
-              </span>
-            );
-          })}
-          {h.wants.length > 0 && (
-            <span className="q-tg">
-              {h.wants.map((w) => (
-                <i key={w.label} className={w.must ? "req" : "want"} title={w.must ? L("Şart", "A must") : L("İstek", "A wish")}>
-                  {w.must && <s />}
-                  {w.label}
-                </i>
-              ))}
-            </span>
-          )}
+          {!carrier &&
+            parts.map((p) => {
+              const field = fieldOf(p);
+              return (
+                <span key={p}>
+                  <Ic name={partIcon(p)} size={14} />
+                  {field ? <Editable field={field}>{p}</Editable> : p}
+                </span>
+              );
+            })}
         </div>
       </div>
       <div className="q-hr">
@@ -82,12 +89,6 @@ export function IntentHead({ vm, art, chip, busy = false, chipId, pop, onPano, m
           {busy && <SearchDots />}
           {chip.text}
         </span>
-        <button type="button" className="q-pano" disabled={!onPano || !vm.optionCount} onClick={onPano ?? undefined}
-          aria-label={L(`${shown}: Pano'da ${vm.optionCount} seçenek`, `${shown}: ${vm.optionCount} options on the Board`)}>
-          <Ic name="board" size={14} />
-          <span>{L("Pano", "Board")}</span>
-          <b className="q-pn">{vm.optionCount}</b>
-        </button>
         {menu}
       </div>
     </div>

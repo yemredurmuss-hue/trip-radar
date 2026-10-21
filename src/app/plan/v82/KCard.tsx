@@ -42,7 +42,7 @@ import { BrandChip } from "./OptionCompact";
 export const LEAVE_MS = 180;
 
 /** The card's frame: its picture (its chips on it) over its three lines, the same size whatever it holds. */
-export function KCard({ className, k, label, pic, title, l2, foot, extra, attrs }: {
+export function KCard({ className, k, label, pic, title, l2, foot, extra, attrs, href = null }: {
   className: string;
   /** Its key in the row (data-k): the flight to Planında (putFly) finds where it went by it. */
   k: string;
@@ -53,11 +53,18 @@ export function KCard({ className, k, label, pic, title, l2, foot, extra, attrs 
   foot: ReactNode;
   /** Over the card: Ayrıntı. */
   extra?: ReactNode;
+  /** K86 (plan v13): its source (the site to buy on, a place's map); the picture opens it in a new tab. */
+  href?: string | null;
   attrs?: Record<string, string | undefined>;
 }) {
   return (
     <article className={`z-k ${className}`} data-k={k} aria-label={label} data-new={L("Yeni", "New")} {...attrs}>
-      <div className="z-kp">{pic}</div>
+      <div className="z-kp">
+        {href && (
+          <a className="z-kpl" href={href} target="_blank" rel="noopener noreferrer" aria-label={L(`${label}: kaynağında aç`, `${label}: open at its source`)} tabIndex={-1} />
+        )}
+        {pic}
+      </div>
       <div className="z-kb">
         <h3 className="z-t" title={label}>{title}</h3>
         <span className="z-l2">{l2}</span>
@@ -397,6 +404,7 @@ function RecordFace({ card, vm, plan, search, onPut, onTakeOff }: RecordCardProp
       <KCard
         className={`q-card z-ko ${where}${look}${leaving ? " leaving" : ""}`}
         k={card.key}
+        href={card.page ?? card.map}
         label={card.title}
         attrs={{ "data-item-id": item.id, "data-st": card.state }}
         pic={<EventPic card={card} tools={tools} />}
@@ -473,6 +481,7 @@ function RecordFace({ card, vm, plan, search, onPut, onTakeOff }: RecordCardProp
       <KCard
         className={`${event ? "q-card" : "q-tile"} ${where}${look}${leaving ? " leaving" : ""}`}
         k={card.key}
+        href={card.page ?? card.map}
         label={card.title}
         attrs={{ "data-item-id": item.id, "data-st": card.state }}
         pic={
@@ -553,6 +562,7 @@ function EventSuggestCard({ card, onPut, onDismiss }: { card: KCardVM; onPut: ()
     <KCard
       className="q-card q-opt sugg z-ko"
       k={card.key}
+      href={card.page ?? card.map}
       label={card.title}
       attrs={{ "data-suggestion": card.suggestion?.key }}
       pic={
@@ -601,6 +611,7 @@ function PlaceSuggestCard({ card, onPut, onDismiss }: { card: KCardVM; onPut: (p
     <KCard
       className="q-tile q-opt sugg z-kplace"
       k={card.key}
+      href={card.page ?? card.map}
       label={card.title}
       attrs={{ "data-suggestion": card.suggestion?.key }}
       pic={
@@ -673,6 +684,7 @@ export function OfferCard({ card, onPut }: { card: KCardVM; onPut: () => void })
       <KCard
         className="q-card q-opt z-ko"
         k={card.key}
+        href={card.page ?? card.map}
         label={card.title}
         attrs={{ "data-offer": card.offer?.id }}
         pic={<EventPic card={card} />}
@@ -701,6 +713,7 @@ export function OfferCard({ card, onPut }: { card: KCardVM; onPut: () => void })
     <KCard
       className="q-card q-opt z-ko"
       k={card.key}
+      href={card.page ?? card.map}
       label={card.title}
       attrs={{ "data-offer": o?.id }}
       pic={<EventPic card={card} />}

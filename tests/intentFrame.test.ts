@@ -52,6 +52,8 @@ describe("the frame's form, the chip and the rail", () => {
     expect((["searching", "deciding", "suggested", "chosen", "booked", "arranged", "included", "skipped"] as IntentStatus[]).map(railState)).toEqual(["todo", "todo", "ai", "sel", "ok", "arr", "inc", "skip"]);
     expect(statusChip(vm("suggested", { word: "Önerimiz" }))).toEqual({ tone: "ai", text: "✨ Önerimiz · onayla", tick: false });
     expect(statusChip(vm("booked", { word: "Rezerve" }))).toEqual({ tone: "ok", text: "Rezerve", tick: true });
+    // K80: a booking says "Rezerve" whatever was booked (a ticket too, its word was "Alındı").
+    expect(statusChip(vm("booked", { word: "Alındı" }))).toEqual({ tone: "ok", text: "Rezerve", tick: true });
     expect(statusChip(vm("searching", { word: "Aranıyor" })).tone).toBe("none");
     expect(withLang("en", () => statusChip(vm("suggested", { word: "Our pick" })).text)).toBe("✨ Our pick · confirm");
   });

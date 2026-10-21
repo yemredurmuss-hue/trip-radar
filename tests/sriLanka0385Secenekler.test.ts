@@ -110,7 +110,7 @@ describe("Aranıyor says what is true", () => {
       const vm = { status: "searching" as const, word: "Aranıyor" };
       expect(statusChip(vm).text).toBe("Aranıyor");
       expect(statusChip(vm, true).text).toBe("Aranıyor");
-      expect(statusChip(vm, false).text).toBe("Seçenek yok");
+      expect(statusChip(vm, false).text).toBe("Henüz aranmadı");
       expect(statusChip({ status: "booked", word: "Rezerve" }, false).text).toBe("Rezerve");
     }));
 });

@@ -39,13 +39,16 @@ import { AskWindow, useStageMenu, type Ask } from "../../cards/stageMenu";
 import { useWhoMenu } from "../../cards/whoMenu";
 import { FOLD_MS, reducedMotion } from "../../motion";
 import { CollectionRow } from "./CollectionRow";
+import { Deck } from "./Deck";
+import { IntentDrawer } from "./IntentDrawer";
+import { isRouteNote, RouteNote } from "./RouteNote";
+import { peopleOf } from "../../../lib/whose";
 import { decisionOf, DetailLayer, focusNear } from "./DetailLayer";
 import { FrameCard } from "./FrameCard";
 import { FrameTicket } from "./FrameTicket";
 import { IntentHead } from "./IntentHead";
 import { IntentMenu } from "./IntentMenu";
-import { OptionList, type Typical } from "./OptionCompact";
-import { OptionRows } from "./OptionRow";
+import type { Typical } from "./OptionCompact";
 import { useLooking } from "./Searching";
 import { useCrossfade, type Entry } from "./useCrossfade";
 import { useIntentActions } from "./useIntentActions";
@@ -227,14 +230,26 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
   const [changing, setChanging] = useState(false);
   const [detail, setDetail] = useState(false);
   const [folding, setFolding] = useState(false);
+  // K82: a need's options open beside the plan, never inside the card.
+  const [drawer, setDrawer] = useState(false);
+  const opener = useRef<HTMLElement | null>(null);
+  const openDrawer = () => {
+    opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setDrawer(true);
+  };
+  const closeDrawer = () => {
+    setDrawer(false);
+    opener.current?.focus?.();
+  };
   // D5: an intent of the AI's route nobody agreed yet is Önerimiz with nothing chosen: it is looked for as before.
   const form = vm.routeDraft ? "searching" : frameForm(vm);
-  const showOptions = form === "options" || (changing && form != null);
+  const showOptions = form === "options";
   const chosenId = vm.chosen?.id ?? null;
   // A new pick, a booking, another state: the card is itself again (Değiştir and Ayrıntı close).
   useEffect(() => {
     setChanging(false);
     setDetail(false);
+    setDrawer(false);
   }, [vm.status, chosenId]);
   const boxRef = useRef<HTMLElement>(null);
   const pop = useStepPop(vm.status);
@@ -251,6 +266,9 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
   const hints = useRegionHints(vm, form === "searching");
   // Chosen or booked, it stands big; the need's other options wait under it (0.38.5), not while it turns back to them.
   // (Turning back to them, the box holds three; those past it stay under it, 0.39.0.)
+  // Every option of the need, the one chosen first: the drawer lists them all (K82; the old "Diğer seçenekler" fold is it now).
+  const all: OptionVM[] = [];
+  for (const o of [...(vm.chosen ? [vm.chosen] : []), ...vm.options, ...(vm.more ?? [])]) if (!all.some((x) => x.id === o.id)) all.push(o);
   const others = changing ? (vm.more ?? []).filter((o) => o.id !== vm.chosen?.id) : otherOptions(vm);
   // 0.38.9: folded to "Diğer seçenekler (n)" once something is chosen; a new pick (from here, the chat, the Pano) folds them.
   const foldKey = `${env.tripId}:${vm.key}`;
@@ -265,7 +283,7 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
     pickedWas.current = chosenId;
     showOthers(false);
   }, [chosenId]);
-  const typical = useTypical(vm, (showOptions && !searchingNow) || (others.length > 0 && othersShown));
+  const typical = useTypical(vm, drawer || (others.length > 0 && othersShown));
   const record = vm.chosen?.item ?? null;
   const decision = record ? decisionOf(env.decisions?.byGroup, record) : undefined;
   const page = record ? (datedLink(record, decision).url ?? record.url) : null;
@@ -286,17 +304,18 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
   const [asking, setAsking] = useState<Ask | null>(null);
   const pick = (o: OptionVM, then?: () => void) => {
     entry.current = "morph";
+    setDrawer(false);
     if (o.id === chosenId) return setChanging(false);
     if (booking && bookingReplaced([booking], o.item)) {
       return setAsking({ ...replaceAsk(booking, o.item), run: () => (then?.(), a.replace(o.item, booking)) });
     }
     then?.();
+    // "X yerine Y seçildi · Geri al" (K82): back to the one chosen before, or to nothing chosen.
+    const prev = vm.status === "chosen" && record?.status === "chosen" ? record : null;
     a.choose(o.item);
+    env.offer({ kind: "picked", item: o.item, prev });
   };
-  const change = () => {
-    entry.current = "flip";
-    setChanging(true);
-  };
+  const change = openDrawer;
   const cancelChange = () => {
     entry.current = "back";
     setChanging(false);
@@ -310,7 +329,9 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
   }, [changing]);
 
   const menu: MenuEntry[] = [
+    ...(all.length ? [{ label: L(`Seçenekleri gör (${Math.max(vm.optionCount, all.length)})`, `See the options (${Math.max(vm.optionCount, all.length)})`), run: openDrawer }] : []),
     ...(record && form !== "searching" ? [{ label: L("Ayrıntı", "Details"), run: () => setDetail(true) }] : []),
+    ...(a.pano && vm.optionCount ? [{ label: L(`Pano'da aç (${vm.optionCount})`, `Open on the Board (${vm.optionCount})`), run: a.pano }] : []),
     ...(a.addSuggestion ? [{ label: L("Plana koy", "Add to plan"), run: a.addSuggestion }] : []),
     ...(vm.status === "arranged" && (record || leg)
       ? [{ label: L("Ayarlandı: geri al", "Arranged: take back"), run: () => (record ? a.unarrange(record) : void onLeg(null)) }]
@@ -343,6 +364,8 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
       />
     ) : null;
 
+  const needNow = form === "searching" ? offerNeed(vm, v82.selfAt) : null;
+  const camp0 = record != null && vm.kind === "stay" && isCampStay(record);
   let body: ReactNode = null;
   if (searchingNow) {
     body = (
@@ -368,9 +391,7 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
       </div>
     );
   } else if (showOptions) {
-    const options = changing ? changeList(vm) : vm.options.slice(0, SHOWN_OPTIONS);
-    const list = { vm, options, current: changing ? currentOption(vm) : null, changing, replacing: booking != null, art, links, typical, onPick: (o: OptionVM) => pick(o), onOpen: (o: OptionVM) => env.onOpenItem(o.item), onCancel: cancelChange, onAsk: a.ask };
-    body = vm.frame === "ticket" ? <OptionRows {...list} /> : <OptionList {...list} />;
+    body = <Deck vm={vm} all={all} art={art} people={vm.people ?? Math.max(1, peopleOf(env.trip).length)} onOpen={openDrawer} />;
   } else if (form) {
     const props = {
       vm,
@@ -380,6 +401,7 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
       links,
       hints: hints.map((h) => ({ ...h, url: areaSearch(vm, v82.selfAt, h.area)?.url ?? links[0]?.url ?? null })),
       info: record && form !== "searching" ? { open: detail, toggle: () => setDetail(!detail) } : null,
+      onOpen: all.length ? openDrawer : null,
       onAgree: vm.routeDraft ? () => void updateTrip(env.tripId, agreeRoute) : null,
       detail: detailNode,
       quiet: form === "searching" && hasSearched(`intent:${vm.key}`) && !a.searching,
@@ -392,10 +414,12 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
         change: vm.optionCount > 0 || vm.options.length > 0 ? change : null,
         openDoc: docs.length ? () => void openDoc(docs[0].id) : null,
         addDoc: pickDoc ?? (() => undefined),
-        ask: a.ask,
+        ask: needNow && offers.available() && !camp0 ? openDrawer : a.ask,
         edit: () => record && env.edit(record),
         // A leg's own plan taken back: its ways again (whatever was said: "Ben hallettim", metro).
         unarrange: vm.status === "arranged" ? (record ? () => a.unarrange(record) : leg ? () => void onLeg(null) : null) : null,
+        // K87: an eSIM bought and not on the phone yet says "Kurdum" in its foot.
+        installed: vm.kind === "esim" && record && record.installedAt == null && (record.status === "booked" || record.status === "chosen") ? () => void setInstalled(record, true) : null,
       },
     };
     const cover = vm.cover;
@@ -433,6 +457,34 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
   const headArt = vm.head.image ? { src: vm.head.image, photo: true } : { src: art, photo: false };
   const camp = record != null && vm.kind === "stay" && isCampStay(record);
   const here = onHere ? hereOf(vm) : null;
+  const people = vm.people ?? Math.max(1, peopleOf(env.trip).length);
+  const drawerNode = drawer ? (
+    <IntentDrawer
+      vm={vm}
+      options={all}
+      chosenId={vm.status === "chosen" || vm.status === "booked" ? chosenId : null}
+      art={art}
+      links={links}
+      typical={typical}
+      need={need && !camp ? need : null}
+      placeholder={placeholder}
+      people={people}
+      onPick={(o) => pick(o)}
+      onClose={closeDrawer}
+      onPano={a.pano ? () => (setDrawer(false), a.pano?.()) : null}
+      onAsk={a.ask}
+      onOffer={(item) => (setDrawer(false), a.choose(item))}
+    />
+  ) : null;
+  // K85: a way said with nothing to book is a line under the category's cards, its way one tap away.
+  if (leg && isRouteNote(vm)) {
+    return (
+      <>
+        <RouteNote vm={vm} domId={vm.domKeys[0] ? entryDomId(vm.domKeys[0]) : undefined} menu={<IntentMenu entries={menu} name={name} />} onPick={(mode) => void onLeg({ mode })} onOwn={() => void onLeg({ booked: true })} />
+        {asking && <AskWindow ask={asking} onClose={() => setAsking(null)} />}
+      </>
+    );
+  }
   return (
     <>
       <section
@@ -471,21 +523,7 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
           </div>
         )}
       </section>
-      {need && !camp && (
-        <div className="q-offers">
-          <OfferRow key={need.key} need={need} onChoose={a.choose} placeholder={placeholder} chosen={vm.chosen != null} hasOptions={vm.options.length > 0} />
-        </div>
-      )}
-      {others.length > 0 && (
-        <OthersFold count={others.length} open={othersShown} onToggle={() => showOthers(!othersShown)}>
-          {(() => {
-            // "Seç" folds them at once, before the pick is saved; a switch only once it is said yes to.
-            const onPick = (o: OptionVM) => pick(o, () => showOthers(false));
-            const list = { vm: { ...vm, optionCount: others.length }, options: others, current: null, changing: false, replacing: booking != null, art, links, typical, onPick, onOpen: (o: OptionVM) => env.onOpenItem(o.item), onCancel: cancelChange, onAsk: vm.status === "booked" ? null : a.ask };
-            return vm.frame === "ticket" ? <OptionRows {...list} /> : <OptionList {...list} />;
-          })()}
-        </OthersFold>
-      )}
+      {drawerNode}
       {asking && <AskWindow ask={asking} onClose={() => setAsking(null)} />}
     </>
   );

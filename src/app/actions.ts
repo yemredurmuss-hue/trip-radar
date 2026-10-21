@@ -509,6 +509,12 @@ export async function undo(u: Undoable): Promise<void> {
     for (const other of u.others ?? []) await setItemStatus(other, "saved");
     return setItemStatus(u.item, "saved");
   }
+  // Back from "Seç" beside the plan: the one chosen is an option again, the one before it chosen again.
+  if (u.kind === "picked") {
+    await setItemStatus(u.item, "saved");
+    if (u.prev) await setItemStatus(u.prev, "chosen");
+    return;
+  }
   if (u.kind === "doc") return restoreDoc(u.doc);
   if (u.kind === "suggestion") {
     // The record "Plana ekle" made goes again (nothing of the traveller's: no trash entry), and the card is back.

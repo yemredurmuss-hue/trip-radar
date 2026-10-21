@@ -273,7 +273,6 @@ export function CollectionRow({ vm, onPut, onTakeOff }: CollectionRowProps) {
             {looking && <ToursLooking />}
             {bare ? chips : null}
             <span className="q-sp" />
-            {todo ? <MapSearch link={links[0] ?? null} /> : <SelfLinks links={links} />}
             {/* C26: the ideas fold away (the live "Öneriler ve fikirler" bar), remembered in this browser; not while the plan is empty. */}
             {!todo && plans.length > 0 && (
               <button type="button" className={`z-fold${open ? "" : " shut"}`} aria-expanded={open} onClick={() => setOpen(!open)}
@@ -286,6 +285,16 @@ export function CollectionRow({ vm, onPut, onTakeOff }: CollectionRowProps) {
           {(todo || open || plans.length === 0) && (
             <div className={`q-cards ${rowClass(vm.section)}`} data-row="ideas">
               {o.shown.map(cardOf)}
+              {/* K86 (plan v13): "Bulamadın mı?" at the row's end (a full row: a band under it), the sites to search there. */}
+              {links.length > 0 && (
+                <div className={`z-k z-self${o.shown.length % cells === 0 ? " wide" : ""}`}>
+                  <span className="z-selt">
+                    <b>{L("Bulamadın mı?", "Didn't find it?")}</b>
+                    <small>{todo ? L("Haritada kendin ara; kaydettiğin buraya düşer.", "Search the map yourself; what you save lands here.") : L("Kendin ara; beğendiğini kaydet, buraya düşer.", "Search yourself; what you save lands here.")}</small>
+                  </span>
+                  <span className="z-selb">{todo ? <MapSearch link={links[0] ?? null} /> : <SelfLinks links={links} />}</span>
+                </div>
+              )}
             </div>
           )}
         </div>

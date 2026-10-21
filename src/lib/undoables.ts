@@ -27,7 +27,9 @@ export type Undoable =
    * A card said not needed (its × , v11): back as it stood; `others`, a need's other options said not needed with it;
    * `nights`, the stay's nights hidden with them (plan v82 "Gerek yok" on a stay): they come back too.
    */
-  | { kind: "notNeeded"; item: Item; others?: Item[]; nights?: { tripId: string; key: string; label: string } };
+  | { kind: "notNeeded"; item: Item; others?: Item[]; nights?: { tripId: string; key: string; label: string } }
+  /** "Seç" in the options beside the plan (K82): `item` was chosen in place of `prev` (none: nothing was chosen); back as it was. */
+  | { kind: "picked"; item: Item; prev: Item | null };
 
 /** "Douro tekne turu silindi", "Otobüs eklendi", "Porto 14–15 Ekim gizlendi", "Para birimi: EUR". */
 export function undoText(u: Undoable): string {
@@ -48,6 +50,8 @@ export function undoText(u: Undoable): string {
       return L(`${u.item.name} iptal edildi`, `${u.item.name} cancelled`);
     case "notNeeded":
       return L(`${u.item.name}: gerek yok, gizlendi`, `${u.item.name}: not needed, hidden`);
+    case "picked":
+      return u.prev ? L(`${u.prev.name} yerine ${u.item.name} seçildi`, `${u.item.name} chosen instead of ${u.prev.name}`) : L(`${u.item.name} seçildi`, `${u.item.name} chosen`);
     case "suggestion":
       return u.state === "added"
         ? L(`${u.item?.name ?? u.suggestion.title} plana eklendi`, `${u.item?.name ?? u.suggestion.title} added to the plan`)
@@ -63,6 +67,7 @@ export function undoTrip(u: Undoable): string {
     case "added":
     case "cancelled":
     case "notNeeded":
+    case "picked":
       return u.item.tripId;
     case "doc":
       return u.doc.tripId;
