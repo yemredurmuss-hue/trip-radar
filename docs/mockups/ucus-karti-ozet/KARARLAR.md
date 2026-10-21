@@ -4,6 +4,10 @@ Bir günlük tasarım koşusunun çıktısı. Canlı sürüm 0.39.27, canlı kod
 Çizimler `docs/mockups/` altında, dal `zaman-cizgisi-cizim`, PR yemredurmuss-hue/trip-radar#4.
 Ürün kodu değişmedi; bu dosya kodlama ve konaklama çizimleri için devir notudur.
 
+## Onay paketi
+
+Uçuş ve konaklamanın son hâlleri, kararlarıyla birlikte donmuş görüntü olarak: `docs/mockups/paket-ucus-konaklama/index.html` (https://claude.ai/artifact/CiJnEFPom7nGec3J5cn1ww). Emre onaylayınca kod bu pakete göre yazılır; sonraki değişiklik yeni çizim sürümüdür. Panoda kartlar çekmece kartının kendisi (iki sütun, uçuş kendi standart kartıyla).
+
 ## Kaynaklar
 
 - Özet sayfası (kararlar ve 13 çizimin bağlantısı): https://claude.ai/artifact/QLjnt4jbdRYXbbSWnum6no
@@ -66,7 +70,7 @@ Bir günlük tasarım koşusunun çıktısı. Canlı sürüm 0.39.27, canlı kod
 1. **Siteler tek yerde.** Plan kartında yalnız "Ara". Çekmecenin en altında her hâlde "Yeni bul" kutusu: üç site `providers.ts` sırasıyla (Tayland'da Agoda, Booking.com, Airbnb), "Diğer ▾", altında bırakma alanı. Arama şehir, tarih, kişi, odayla dolu ve ortaklık bağlantısıyla açılır. Panoda grup başlığında "Yeni bul ▾"; Asistan'da "Bir link bırak" kalır.
 2. **Dönüş eklentiyle.** Otel sayfasında eklenti düğmesi ya da Alt+Shift+S: pencere şehri ve tarihi tutan niyeti kendisi seçer ("✓ şehir ve tarih tuttu"), tek düğme "Desteye ekle"; tutmazsa "Nereye?" listesi, hiçbiri değilse İlham.
 3. **Ara hâli çekmecede.** Üstte arama çizgisi (kaynak ilerlemesi, Durdur), gelen kart "Yeni geldi" ve geçici sırası, iskeletler, altta Yeni bul.
-4. **Pano = büyümüş çekmece.** İhtiyaç başına grup; grup başı çekmece başı gibi (ölçütler, ağırlık, Yeni bul, Kartlar/Karşılaştır). Kartlar çekmece kartının küçüğü (fotoğraf, puan çipi, üç parça, beş yuva, iki artı iki eksi, fiyat ve Seç), 3 sütun. Karar verilmiş grup tek satır. Karşılaştır: seçenek başına sütun, her satırda en iyisi yeşil, eksik amber; artılar, eksiler, oylar, Seç.
+4. **Pano = büyümüş çekmece.** İhtiyaç başına grup; grup başı çekmece başı gibi (ölçütler, ağırlık, Yeni bul, Kartlar/Karşılaştır). Kartlar çekmece kartının kendisi (Emre: küçüğü değil), iki sütun; uçuş grubu uçuşun standart kartıyla. Karar verilmiş grup tek satır. Karşılaştır: seçenek başına sütun, her satırda en iyisi yeşil, eksik amber; artılar, eksiler, oylar, Seç.
 5. **Kaçırdıklarımız.** Aranıyor (beşinci hâl); uçuşla saat bağı (geç giriş, erken çıkış amber şerit ve tek iş); çakışan gece (kırmızı); fiyat tazeliği ve kaynağın parası; Elenen ve "Geri al"; iptal son günü hatırlatma; rezervasyonun e-posta/onay sayfasından okunması; ortak gezide oylar; kişi/oda değişince yeniden arama; tarihsiz niyet; kapalı kategori satırında boş/çakışan gece; telefonda tam ekran çekmece.
 
 ## Kodlama sırası (öneri)

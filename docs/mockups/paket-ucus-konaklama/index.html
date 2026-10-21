@@ -1,0 +1,119 @@
+<title>Uçuş ve Konaklama Paketi</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap">
+<style>
+/* Layout: one 1080 px column; a sticky index of the twelve frozen drawings, each with its decisions above its picture. */
+:root { --ink:#1c1a33; --mut:#5d5a78; --line:#e7e4ef; --page:#eeedf4; --card:#ffffff; --acc:#5b45e0; --acc-s:#efecff; --ok:#1f7a45; --ok-s:#e8f6ee; --stay:#23998b; --shotbg:#eeedf4;
+  --font:"Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --ink:#ece9f8; --mut:#a9a5c4; --line:#34304a; --page:#121020; --card:#1f1a33; --acc:#8b7bff; --acc-s:#2a2450; --ok:#3fb675; --ok-s:#173a27; --stay:#3fc2b1; --shotbg:#d9d7e3; color-scheme:dark; } }
+:root[data-theme="dark"] { --ink:#ece9f8; --mut:#a9a5c4; --line:#34304a; --page:#121020; --card:#1f1a33; --acc:#8b7bff; --acc-s:#2a2450; --ok:#3fb675; --ok-s:#173a27; --stay:#3fc2b1; --shotbg:#d9d7e3; color-scheme:dark; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--page); color:var(--ink); font-family:var(--font); font-size:14px; line-height:1.5; padding-block:28px 64px; padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px)); -webkit-font-smoothing:antialiased; }
+.wrap { max-width:1080px; margin:0 auto; display:grid; grid-template-columns:minmax(0,1fr); gap:28px; }
+h1,h2,p { margin:0; }
+.eyebrow { font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--acc); }
+h1 { font-size:32px; line-height:1.1; font-weight:800; letter-spacing:-.015em; text-wrap:balance; margin-top:6px; }
+.lead { color:var(--mut); max-width:68ch; margin-top:10px; }
+.box { display:grid; gap:10px; padding:18px 20px; border-radius:16px; background:var(--card); border:1px solid var(--line); }
+.box h3 { margin:0; font-size:15px; font-weight:800; }
+.box ul { margin:0; padding-left:18px; display:grid; gap:4px; color:var(--mut); max-width:90ch; }
+.box ul b { color:var(--ink); }
+.cols { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+.nav { position:sticky; top:env(safe-area-inset-top, 0px); z-index:5; display:flex; gap:6px; overflow-x:auto; padding:10px 0; background:var(--page); }
+body::before { content:""; position:fixed; inset:0 0 auto; height:env(safe-area-inset-top, 0px); z-index:10; background:var(--page); }
+.nav a { flex:none; padding:6px 11px; border-radius:99px; background:var(--card); border:1px solid var(--line); color:var(--ink); font-size:12.5px; font-weight:700; text-decoration:none; white-space:nowrap; }
+.nav a:hover, .nav a:focus-visible { border-color:var(--acc); color:var(--acc); outline:none; }
+.it { display:grid; gap:12px; scroll-margin-top:64px; }
+.it-h { display:flex; align-items:center; flex-wrap:wrap; gap:8px 12px; }
+.it-h .n { display:grid; place-items:center; width:30px; height:30px; border-radius:9px; background:var(--acc-s); color:var(--acc); font-weight:800; font-size:13px; font-variant-numeric:tabular-nums; }
+.it-h h2 { font-size:21px; font-weight:800; letter-spacing:-.012em; }
+.it-h .ok { display:inline-flex; align-items:center; height:22px; padding:0 9px; border-radius:6px; background:var(--ok-s); color:var(--ok); font-size:11px; font-weight:800; letter-spacing:.03em; }
+.it-h .sp { flex:1; }
+.it-h .src { font-size:12.5px; font-weight:750; color:var(--acc); text-decoration:none; }
+.it-h code, .box code { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; color:var(--mut); }
+.pts { margin:0; padding-left:18px; display:grid; gap:4px; max-width:96ch; }
+.shot { display:block; border-radius:16px; overflow:hidden; background:var(--shotbg); border:1px solid var(--line); }
+.shot img { display:block; width:100%; height:auto; max-width:100%; }
+.foot { font-size:12.5px; color:var(--mut); max-width:80ch; }
+@media (max-width:700px) { .cols { grid-template-columns:minmax(0,1fr); } h1 { font-size:26px; } .it-h code { flex-basis:100%; } }
+</style>
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Onay paketi · 21 Eki 2026 · canlı 0.39.27 üstüne</span>
+    <h1>Uçuş ve konaklama: plan, çekmece, pano</h1>
+    <p class="lead">Bugünkü koşunun son hâlleri tek yerde, donmuş görüntü olarak. Her bölümde önce kararlar, altında çizim; çizimin kendisi bağlantıda. Emre onaylayınca kod bu pakete göre yazılır; buradan sonraki her değişiklik yeni bir çizim sürümü olur.</p>
+  </header>
+  <div class="cols">
+    <div class="box"><h3>Değişmez kurallar</h3><ul>
+      <li>Fiyat, saat, uyarı ve kaynak hiçbir durumda gizlenmez; her durum yalnız kendi aşamasının bilgisini taşır.</li>
+      <li>Durum hapta, düğmede ve alt şeritte; kategori rengi ikon, nokta ve dilimde. Yeşil alındı/rezerve, sarı-bej seçili, amber uyarı, kırmızı risk, lila öneri.</li>
+      <li>Canlı dil: Plus Jakarta Sans, <code>--q-*</code> belirteçleri, illüstrasyon seti. Em-dash yok. Hafta günleri gerçek takvim.</li>
+    </ul></div>
+    <div class="box"><h3>Düğmeler (uçuş ve konaklama aynı)</h3><ul>
+      <li><b>Ara</b>: çekmece açılır, Trip Radar arar; kapatılırsa kart "Aranıyor…".</li>
+      <li><b>Seç</b>: çekmece, seçenekler; seçili olan "✓ Seçili".</li>
+      <li><b>Satın al ↗ / Rezerve et ↗</b>: kaynağın sayfası, dolu ve ortaklık bağlantılı; dönüşte "Aldın mı?" / "Rezerve ettin mi?".</li>
+      <li><b>Alındı / Rezerve</b>: durum hapı; "Bileti aç ↗", "Rezervasyonu aç ↗" kaynağa.</li>
+      <li><b>Yeni bul</b>: çekmecenin altında ve pano grubunda üç site ve bırakma alanı; eklenti Alt+Shift+S.</li>
+    </ul></div>
+  </div>
+  <nav class="nav" aria-label="Bölümler"><a href="#ucus">Uçuş · plan satırı</a><a href="#ucus2">Uçuş · biriken açık (Yol 2)</a><a href="#ucus3">Uçuş · seçili ve alınmış açık</a><a href="#ucus4">Uçuş · çekmece standardı</a><a href="#ucus5">Uçuş · çekmecede tarihler (A)</a><a href="#ucus6">Uçuş · Ara ile açılan çekmece</a><a href="#kon">Konaklama · plan kartı</a><a href="#kon2">Konaklama · dört durum</a><a href="#kon3">Konaklama · çekmece</a><a href="#ara">Arama yönlendirmesi ve eklenti</a><a href="#pano">Pano: büyümüş çekmece</a><a href="#kac">Kaçırdıklarımız</a></nav>
+  <section class="it" id="ucus">
+  <div class="it-h"><span class="n">01</span><h2>Uçuş · plan satırı</h2><span class="ok">Onaya hazır</span><span class="sp"></span><a class="src" href="https://claude.ai/artifact/E9CKBJyoKPXw5XFbKNGQ6G" target="_blank" rel="noopener">Çizim 9 ↗</a><code>docs/mockups/biriken-kart-v9</code></div>
+  <ul class="pts"><li>Kategori içi zaman çizgisi: tarih sütunu 96 px, ince hat, nokta kategori renginde (seçili/alınmış dolu, biriken halka, niyet kesikli). Boş gün satırı yok; telefonda tarih kartın üstüne iner.</li><li>Her bacak bir kart; gidiş-dönüş iki tarih, iki kart.</li><li>Satır 72 px, sağda tek şey (118 px yuva, 36 px): niyet &quot;Ara&quot;, biriken &quot;Seç&quot; ve mini sayı, seçili &quot;Satın al ↗&quot;, alınmış yeşil &quot;✓ Alındı&quot; hapı. Ok yok; satır basınca açılır, aynı anda bir satır açık.</li><li>Biriken: deste (üç logo çapraz), en düşük ya da önerimizin fiyatı; hap yok.</li></ul>
+  <a class="shot" href="img/01-ucus-plan.webp" target="_blank" rel="noopener"><img src="img/01-ucus-plan.webp" alt="Uçuş · plan satırı" loading="lazy" style="aspect-ratio:1.0778"></a>
+</section><section class="it" id="ucus2">
+  <div class="it-h"><span class="n">02</span><h2>Uçuş · biriken açık (Yol 2)</h2><span class="ok">Onaya hazır</span><span class="sp"></span><a class="src" href="https://claude.ai/artifact/E9CKBJyoKPXw5XFbKNGQ6G" target="_blank" rel="noopener">Çizim 9 ↗</a><code>docs/mockups/biriken-kart-v9</code></div>
+  <ul class="pts"><li>Açılınca sağ yuva boşalır; alan ikiye: solda Birikenler (deste, kaynaklar, aralık, Seç), sağda Yeni bul (üç site). Seçenek listesi kartta yok, çekmecede.</li></ul>
+  <a class="shot" href="img/02-ucus-biriken-acik.webp" target="_blank" rel="noopener"><img src="img/02-ucus-biriken-acik.webp" alt="Uçuş · biriken açık (Yol 2)" loading="lazy" style="aspect-ratio:1.1514"></a>
+</section><section class="it" id="ucus3">
+  <div class="it-h"><span class="n">03</span><h2>Uçuş · seçili ve alınmış açık</h2><span class="ok">Onaya hazır</span><span class="sp"></span><a class="src" href="https://claude.ai/artifact/7nHKyBtfuX92qrgQXHUGCj" target="_blank" rel="noopener">Çizim 6 ↗</a><code>docs/mockups/ucus-karti-v6</code></div>
+  <ul class="pts"><li>Seçili açılınca biniş kartı: büyük saatler, kesikli rota ve uçak, aktarma turuncu; toplam; kaynak ve &quot;Değiştir&quot;; varsa amber alt şerit.</li><li>Alınmış açılınca mühür, PNR, ödenen, &quot;Takvime ekle&quot;, &quot;Bileti aç ↗&quot;, yeşil şerit (check-in, koltuk).</li><li>Not: bu çizimde biriken &quot;Seçenekler&quot; diyor; onaylı hâli &quot;Seç&quot; (yukarıda).</li></ul>
+  <a class="shot" href="img/03-ucus-secili-acik.webp" target="_blank" rel="noopener"><img src="img/03-ucus-secili-acik.webp" alt="Uçuş · seçili ve alınmış açık" loading="lazy" style="aspect-ratio:0.8151"></a>
+</section><section class="it" id="ucus4">
+  <div class="it-h"><span class="n">04</span><h2>Uçuş · çekmece standardı</h2><span class="ok">Onaya hazır</span><span class="sp"></span><a class="src" href="https://claude.ai/artifact/4s45bF1d1BENJmycPp7Arg" target="_blank" rel="noopener">Çizim 12 ↗</a><code>docs/mockups/cekmece-standart-v12</code></div>
+  <ul class="pts"><li>K82 çerçevesi, sağdan 600 px. Başlık üç satır: deste, rota, tarih · kişi · tek yön, kapat; ÖLÇÜTLER (şart lila, tercih gri, + ekle); Seçenekler/Elenen ve &quot;Sırala: Önerimiz&quot;.</li><li>Kart: logo, havayolu, sefer, kaynak, puan çipi (önerimiz lila, komşu gün amber); biniş kartı ve fiyat, Seç; beş yuva (bagaj, el bagajı, iade, terminal, kaynak); &quot;Neden 91?&quot; altta, önerimizde açık.</li></ul>
+  <a class="shot" href="img/04-ucus-cekmece.webp" target="_blank" rel="noopener"><img src="img/04-ucus-cekmece.webp" alt="Uçuş · çekmece standardı" loading="lazy" style="aspect-ratio:0.5182"></a>
+</section><section class="it" id="ucus5">
+  <div class="it-h"><span class="n">05</span><h2>Uçuş · çekmecede tarihler (A)</h2><span class="ok">Onaya hazır</span><span class="sp"></span><a class="src" href="https://claude.ai/artifact/VgnZVxVdT7XQHyb6tmr8X1" target="_blank" rel="noopener">Çizim 13 ↗</a><code>docs/mockups/cekmece-tarihler-v13</code></div>
+  <ul class="pts"><li>Gün grubu başında 52 px takvim karosu, tam tarih, not, &quot;İSTENEN GÜN&quot; / &quot;+1 GÜN&quot; hapı; komşu günün bedeli notta; bant yapışkan. Altta bırakma kutusu ve &quot;Pano&#x27;da karşılaştır →&quot;.</li></ul>
+  <a class="shot" href="img/05-ucus-cekmece-tarih.webp" target="_blank" rel="noopener"><img src="img/05-ucus-cekmece-tarih.webp" alt="Uçuş · çekmecede tarihler (A)" loading="lazy" style="aspect-ratio:0.4839"></a>
+</section><section class="it" id="ucus6">
+  <div class="it-h"><span class="n">06</span><h2>Uçuş · Ara ile açılan çekmece</h2><span class="ok">Onaya hazır</span><span class="sp"></span><span class="src">Çizim 10</span><code>docs/mockups/ucus-cekmecesi-v10</code></div>
+  <ul class="pts"><li>Ara → çekmece açılır, Trip Radar arar: kaynak ilerlemesi, kartlar gelir, Durdur. Kapatılırsa kart &quot;Aranıyor…&quot; (Çizim 15).</li></ul>
+  <a class="shot" href="img/06-ucus-ara.webp" target="_blank" rel="noopener"><img src="img/06-ucus-ara.webp" alt="Uçuş · Ara ile açılan çekmece" loading="lazy" style="aspect-ratio:1.0445"></a>
+</section><section class="it" id="kon">
+  <div class="it-h"><span class="n">07</span><h2>Konaklama · plan kartı</h2><span class="ok">Onaya hazır</span><span class="sp"></span><a class="src" href="https://claude.ai/artifact/Tu4oPQQh9WjTKXbscSZqUf" target="_blank" rel="noopener">Çizim 14 ↗</a><code>docs/mockups/konaklama-karti-v1</code></div>
+  <ul class="pts"><li>Katlanmaz; fotoğraf solda 84 px · üç satır · tek rakam · 118 px yuva (uçuşla aynı sağ kenar). Kart basınca çekmece; yuvadaki düğme kardeş eleman.</li><li>Tarih sütununda tek aralık ve gece sayısı: &quot;24–27 Mar · Çar → Cmt · 3 GECE&quot;. Dilim kart boyunda, gece başına çentik; boş gece amber dilim ve kendi satırı (&quot;Bangkok&#x27;u 1 gece öne al&quot;).</li><li>Seçili ve rezervede otel adının üstünde turkuaz şehir satırı: &quot;CHIANG MAI · 3 GECE&quot;.</li></ul>
+  <a class="shot" href="img/07-konaklama-plan.webp" target="_blank" rel="noopener"><img src="img/07-konaklama-plan.webp" alt="Konaklama · plan kartı" loading="lazy" style="aspect-ratio:0.8060"></a>
+</section><section class="it" id="kon2">
+  <div class="it-h"><span class="n">08</span><h2>Konaklama · dört durum</h2><span class="ok">Onaya hazır</span><span class="sp"></span><a class="src" href="https://claude.ai/artifact/Tu4oPQQh9WjTKXbscSZqUf" target="_blank" rel="noopener">Çizim 14 ↗</a><code>docs/mockups/konaklama-karti-v1</code></div>
+  <ul class="pts"><li>Niyet: nerede, kaç gece, kişi, istenenler, tahmini gece, &quot;Ara&quot;. Biriken: deste ve sayı, kaynak dağılımı, önerimizin gece fiyatı, &quot;Seç&quot; ve mini sayı.</li><li>Seçili: puan rozeti, ücretsiz iptal tarihi, gece ve toplam, &quot;Rezerve et ↗&quot;. Rezerve: mühür, rezervasyon no, yeşil hap, yeşil şerit (giriş saati, ödenen, &quot;Rezervasyonu aç ↗&quot;).</li></ul>
+  <a class="shot" href="img/08-konaklama-durumlar.webp" target="_blank" rel="noopener"><img src="img/08-konaklama-durumlar.webp" alt="Konaklama · dört durum" loading="lazy" style="aspect-ratio:0.7676"></a>
+</section><section class="it" id="kon3">
+  <div class="it-h"><span class="n">09</span><h2>Konaklama · çekmece</h2><span class="ok">Onaya hazır</span><span class="sp"></span><a class="src" href="https://claude.ai/artifact/Tu4oPQQh9WjTKXbscSZqUf" target="_blank" rel="noopener">Çizim 14 ↗</a><code>docs/mockups/konaklama-karti-v1</code></div>
+  <ul class="pts"><li>Tarih tek, başlıkta; tarih bandı ve &quot;+1 gece&quot; yok (farklı tarih ayrı niyet).</li><li>Başlıkta sıralama ağırlığı: yorumlar %40, özellikler %35, fiyat %25, &quot;Ayarla&quot;; sıralama &quot;Ağırlıklı puan&quot;.</li><li>Kart fotoğraf önde (tam genişlik 200 px, puan çipi, iki küçük ve +N); ad ve kaynak, puanın üç parçası tek satır; fiyat ve her kartta dolu, geniş &quot;Seç&quot; (seçili &quot;✓ Seçili&quot;).</li><li>Beş etiketli yuva: kahvaltı, ücretsiz iptal, eski şehre mesafe, puan, kaynak. Altında yorumlardan artılar ve eksiler, hep açık.</li></ul>
+  <a class="shot" href="img/09-konaklama-cekmece.webp" target="_blank" rel="noopener"><img src="img/09-konaklama-cekmece.webp" alt="Konaklama · çekmece" loading="lazy" style="aspect-ratio:0.3324"></a>
+</section><section class="it" id="ara">
+  <div class="it-h"><span class="n">10</span><h2>Arama yönlendirmesi ve eklenti</h2><span class="ok">Onaya hazır</span><span class="sp"></span><a class="src" href="https://claude.ai/artifact/UgbuWmb6ZaoEenuzLK5wTg" target="_blank" rel="noopener">Çizim 15 ↗</a><code>docs/mockups/arama-pano-v1</code></div>
+  <ul class="pts"><li>Plan kartında yalnız &quot;Ara&quot;. Çekmecenin en altında her hâlde &quot;Yeni bul&quot;: üç site providers.ts sırasıyla (Tayland&#x27;da Agoda, Booking.com, Airbnb), dolu arama, &quot;Diğer ▾&quot;, bırakma alanı.</li><li>Dönüş: otel sayfasında eklenti ya da Alt+Shift+S; pencere şehri ve tarihi tutan niyeti seçer, &quot;Desteye ekle&quot;; tutmazsa &quot;Nereye?&quot;, hiçbiri değilse İlham.</li></ul>
+  <a class="shot" href="img/10-arama.webp" target="_blank" rel="noopener"><img src="img/10-arama.webp" alt="Arama yönlendirmesi ve eklenti" loading="lazy" style="aspect-ratio:0.4435"></a>
+</section><section class="it" id="pano">
+  <div class="it-h"><span class="n">11</span><h2>Pano: büyümüş çekmece</h2><span class="ok">Onaya hazır</span><span class="sp"></span><a class="src" href="https://claude.ai/artifact/UgbuWmb6ZaoEenuzLK5wTg" target="_blank" rel="noopener">Çizim 15 ↗</a><code>docs/mockups/arama-pano-v1</code></div>
+  <ul class="pts"><li>İhtiyaç başına grup; grup başı çekmece başı gibi (ölçütler, ağırlık, Yeni bul, Kartlar/Karşılaştır). Kartlar çekmece kartının kendisi, iki sütun; uçuş kendi standart kartıyla aynı çerçevede.</li><li>Karar verilmiş grup tek satır. Karşılaştır: seçenek başına sütun, satırda en iyisi yeşil, eksik amber; artılar, eksiler, oylar, Seç.</li></ul>
+  <a class="shot" href="img/11-pano.webp" target="_blank" rel="noopener"><img src="img/11-pano.webp" alt="Pano: büyümüş çekmece" loading="lazy" style="aspect-ratio:0.3974"></a>
+</section><section class="it" id="kac">
+  <div class="it-h"><span class="n">12</span><h2>Kaçırdıklarımız</h2><span class="ok">Onaya hazır</span><span class="sp"></span><a class="src" href="https://claude.ai/artifact/UgbuWmb6ZaoEenuzLK5wTg" target="_blank" rel="noopener">Çizim 15 ↗</a><code>docs/mockups/arama-pano-v1</code></div>
+  <ul class="pts"><li>Aranıyor (beşinci hâl), uçuşla saat bağı (geç giriş, erken çıkış), çakışan gece (kırmızı), fiyat tazeliği ve kaynağın parası, Elenen ve Geri al.</li><li>Liste: iptal son günü hatırlatma, rezervasyonun e-postadan okunması, ortak gezide oylar, kişi/oda değişince yeniden arama, tarihsiz niyet, kapalı kategori satırında uyarılar, telefonda tam ekran çekmece.</li></ul>
+  <a class="shot" href="img/12-kacirdiklarimiz.webp" target="_blank" rel="noopener"><img src="img/12-kacirdiklarimiz.webp" alt="Kaçırdıklarımız" loading="lazy" style="aspect-ratio:0.4045"></a>
+</section>
+  <div class="box"><h3>Kodlama sırası (onaydan sonra, dal <code>ucus-satiri-kod</code>, <code>origin/plan-v82-kod</code> üstüne)</h3><ul>
+    <li><code>plan.css</code>: <code>.q-tl</code> sarmalayıcısı (tarih sütunu, nokta, hat, telefon), konaklama dilimi ve boş gece satırı; <code>Section.tsx</code> tarih sıralaması ve gece boşluğu hesabı.</li>
+    <li>Uçuş satırı (dört durum, açılır gövde) ve konaklama kartı <code>StayRow</code>, <code>IntentCard.tsx</code>'te; haplar ve düğmeler <code>intent.css</code> dilinde.</li>
+    <li>Çekmece: başlık üç satır, uçuş standart kartı, konaklama kartı (fotoğraf, üç parça, beş yuva, artı/eksi), ağırlık, Yeni bul; <code>ItemDrawer.tsx</code> ve K82 CSS.</li>
+    <li>Durum geçişleri: Ara → aranıyor → biriken → seçili → alınmış/rezerve.</li>
+    <li>Pano grupları ve Karşılaştır; eklenti penceresinde niyet eşleme; kaçırdıklarımızdaki uyarılar.</li>
+    <li>e2e: durumlar, açılma, çekmece, pano, telefon genişliği.</li>
+  </ul></div>
+  <p class="foot">Görüntüler 1280 px açık temada alındı (koyu temada da açık kalır). Ayrıntılı kararlar <code>docs/mockups/ucus-karti-ozet/KARARLAR.md</code>; ilk koşunun özeti https://claude.ai/artifact/QLjnt4jbdRYXbbSWnum6no.</p>
+</div>
