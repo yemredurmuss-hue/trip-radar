@@ -221,9 +221,9 @@ function FlightOption({ o, vm, art, current, why, onPick }: { o: OptionVM; vm: I
 }
 
 /** A flight among others on other days: what decides first (K83), the hours under it. */
-function CompareOption({ o, vm, art, current, why, won, cheapest, people, bagSaid, onPick }: { o: OptionVM; vm: IntentVM; art: string; current: boolean; why: string | null; won: ReturnType<typeof winners>; cheapest: number | null; people: number; bagSaid: boolean; onPick: () => void }) {
+function CompareOption({ o, vm, art, current, why, won, cheapest, people, nights, bagSaid, onPick }: { o: OptionVM; vm: IntentVM; art: string; current: boolean; why: string | null; won: ReturnType<typeof winners>; cheapest: number | null; people: number; nights: number | null; bagSaid: boolean; onPick: () => void }) {
   const f = rowFace(o, vm.kind);
-  const total = totalAmount(o, people);
+  const total = totalAmount(o, people, nights);
   const stops = o.item.flight?.stops;
   const bag = o.item.metrics?.checkedBagIncluded;
   const cell = (label: string, value: ReactNode, sub: ReactNode, cls: string, win: string | null) => (
@@ -324,32 +324,51 @@ export function IntentDrawer({ vm, options, chosenId, art, links, typical, need,
 }) {
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
+  const asideRef = useRef<HTMLElement>(null);
   const [tab, setTab] = useState<DrawerTab>("all");
   const [day, setDay] = useState<string | "all">("all");
   const ticketMode = vm.ticket?.mode ?? null;
+  // (a nightly price counts the need's nights when it was saved without its own)
+  const nights = vm.head.nights ?? null;
   const family: "stay" | "flight" | "ticket" = vm.frame !== "ticket" ? "stay" : vm.kind === "flight" ? "flight" : "ticket";
   const [sort, setSort] = useState<SortKey>("fit");
   useEffect(() => {
     closeRef.current?.focus();
+    // Modal for the keyboard too (review): Escape closes it before anything else hears it; Tab goes round inside it.
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        e.stopPropagation();
+        e.stopImmediatePropagation();
+        e.preventDefault();
         onClose();
+      } else if (e.key === "Tab") {
+        const box = asideRef.current;
+        if (!box) return;
+        const stops = [...box.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), select, input, [tabindex]:not([tabindex="-1"])')].filter((el) => el.offsetParent !== null);
+        if (!stops.length) return;
+        const first = stops[0], last = stops[stops.length - 1];
+        const inside = box.contains(document.activeElement);
+        if (e.shiftKey && (document.activeElement === first || !inside)) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && (document.activeElement === last || !inside)) {
+          e.preventDefault();
+          first.focus();
+        }
       }
     };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once per opening
   }, []);
   const counts = useMemo(() => ({ all: options.length, mine: options.filter((o) => optionTab(o) === "mine").length, ai: options.filter((o) => optionTab(o) === "ai").length }), [options]);
-  const inTab = drawerList(options, tab, "all", sort, people);
-  const days = family === "flight" ? optionDays(inTab, people) : [];
-  const list = drawerList(options, tab, day, sort, people);
+  const inTab = drawerList(options, tab, "all", sort, people, nights);
+  const days = family === "flight" ? optionDays(inTab, people, nights) : [];
+  const list = drawerList(options, tab, day, sort, people, nights);
   const cmp = compareMode(list, vm.kind);
-  const won = cmp ? winners(list, people) : {};
-  const cheapest = cmp ? (list.map((o) => totalAmount(o, people)).filter((n): n is number => n != null).sort((a, b) => a - b)[0] ?? null) : null;
+  const won = cmp ? winners(list, people, nights) : {};
+  const cheapest = cmp ? (list.map((o) => totalAmount(o, people, nights)).filter((n): n is number => n != null).sort((a, b) => a - b)[0] ?? null) : null;
   const bagSaid = cmp && bagAll(list);
-  const best = (k: SortKey) => drawerList(list, "all", "all", k, people)[0] ?? null;
+  const best = (k: SortKey) => drawerList(list, "all", "all", k, people, nights)[0] ?? null;
   const title = vm.head.route && vm.frame === "ticket" ? `${vm.head.route.from} → ${vm.head.route.to}` : headName(vm);
   const sub = [vm.head.kindWord, ...vm.head.parts].filter(Boolean).join(" · ");
   const pick = (o: OptionVM) => {
@@ -370,7 +389,7 @@ export function IntentDrawer({ vm, options, chosenId, art, links, typical, need,
     const why = o.ours ? reason : null;
     const props = { o, vm, art, current, why, onPick: () => pick(o) };
     if (family === "stay") return <StayOption key={o.id} o={o} art={art} current={current} typical={typical} why={why} onPick={() => pick(o)} />;
-    if (family === "flight") return cmp ? <CompareOption key={o.id} {...props} won={won} cheapest={cheapest} people={people} bagSaid={bagSaid} /> : <FlightOption key={o.id} {...props} />;
+    if (family === "flight") return cmp ? <CompareOption key={o.id} {...props} won={won} cheapest={cheapest} people={people} nights={nights} bagSaid={bagSaid} /> : <FlightOption key={o.id} {...props} />;
     return <SailingOption key={o.id} o={o} vm={vm} current={current} onPick={() => pick(o)} icon={MODE_ICON[ticketMode ?? "train"] ?? "train"} />;
   };
   const tabBtn = (k: DrawerTab, label: string, icon: IconName | null) => (
@@ -382,7 +401,7 @@ export function IntentDrawer({ vm, options, chosenId, art, links, typical, need,
   const node = (
     <>
       <div className="dr-scrim" onClick={onClose} aria-hidden />
-      <aside className="dr" role="dialog" aria-modal="true" aria-labelledby={titleId} data-kind={vm.kind} data-intent={vm.key}>
+      <aside ref={asideRef} className="dr" role="dialog" aria-modal="true" aria-labelledby={titleId} data-kind={vm.kind} data-intent={vm.key}>
         <div className="dr-h">
           <div className="dr-top">
             <span className="dr-t">
@@ -449,7 +468,7 @@ export function IntentDrawer({ vm, options, chosenId, art, links, typical, need,
                 {(["fit", "price", "mins"] as SortKey[]).map((k) => {
                   const b = best(k);
                   const label = k === "fit" ? L("Sana en uygun", "Best for you") : k === "price" ? L("En ucuz", "Cheapest") : L("En kısa", "Shortest");
-                  const said = !b ? "" : k === "fit" ? [fitText(b), rowFace(b, vm.kind).name].filter(Boolean).join(" · ") : k === "price" ? [money(b, totalAmount(b, people)), dayText(optionDay(b))].filter(Boolean).join(" · ") : [rowFace(b, vm.kind).duration, rowFace(b, vm.kind).name].filter(Boolean).join(" · ");
+                  const said = !b ? "" : k === "fit" ? [fitText(b), rowFace(b, vm.kind).name].filter(Boolean).join(" · ") : k === "price" ? [money(b, totalAmount(b, people, nights)), dayText(optionDay(b))].filter(Boolean).join(" · ") : [rowFace(b, vm.kind).duration, rowFace(b, vm.kind).name].filter(Boolean).join(" · ");
                   return (
                     <button key={k} type="button" className="dr-hlb" data-hl={k} aria-pressed={sort === k} onClick={() => setSort(k)}>
                       <small>{label}</small>

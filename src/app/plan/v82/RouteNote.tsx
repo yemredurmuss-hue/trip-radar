@@ -11,14 +11,22 @@ import { wayChoices } from "../../../lib/ticketFrame";
 import type { LegMode } from "../../../lib/types";
 import { Ic } from "./icons";
 
-/** Ways that need a booking: picking one turns the note into a card ("kart olur"). */
-const BOOKS: readonly LegMode[] = ["transfer", "flight", "ferry"];
+/** The ways that are a note (K85): a taxi, the metro, a walk, one's own car. Anything else needs a ticket or a booking. */
+const NOTE_MODES: readonly LegMode[] = ["taxi", "metro", "walk", "car"];
+/** A change of city, not a way across one: its ways include a ticket's (memory: transport booking logic). */
+const CITY_CHANGE: readonly LegMode[] = ["train", "flight", "ferry"];
+const cityChange = (modes: readonly LegMode[]) => modes.some((m) => CITY_CHANGE.includes(m));
+/** Needs a ticket or a booking: a bus between cities does, the airport bus doesn't ("bilet otobüste", K85). */
+const books = (m: LegMode, modes: readonly LegMode[]) => !(NOTE_MODES.includes(m) || (m === "bus" && !cityChange(modes)));
 
-/** A way said on the leg with nothing to book (legSaid, a rented car's): drawn as a note, not a card. */
+/**
+ * A way said on the leg with nothing to book (legSaid, a rented car's): drawn as a note, not a card. "Ben hallettim" with no
+ * way named is a note on a transfer, but stays the card it was ("Ayarlandı") on a change of city (review).
+ */
 export function isRouteNote(vm: Pick<IntentVM, "legKey" | "itemIds" | "status" | "modes" | "ticket">): boolean {
   if (vm.legKey == null || vm.itemIds.length > 0 || vm.status !== "arranged") return false;
   const mode = vm.ticket?.wayMode ?? null;
-  return mode == null ? vm.modes.length > 0 : !BOOKS.includes(mode);
+  return mode == null ? vm.modes.length > 0 && !cityChange(vm.modes) : !books(mode, vm.modes);
 }
 
 export function RouteNote({ vm, menu, onPick, onOwn, domId }: { vm: IntentVM; menu: ReactNode; onPick: (mode: LegMode) => void; onOwn: () => void; domId?: string }) {
@@ -87,9 +95,9 @@ export function RouteNote({ vm, menu, onPick, onOwn, domId }: { vm: IntentVM; me
               <img src={`illus/${w.art}.png`} alt="" />
               <span className="z-no">
                 <b>{w.label}</b>
-                <small>{BOOKS.includes(w.mode) ? L("rezervasyon ister", "needs a booking") : L("rezervasyon gerekmez", "no booking needed")}</small>
+                <small>{books(w.mode, vm.modes) ? L("rezervasyon ister", "needs a booking") : L("rezervasyon gerekmez", "no booking needed")}</small>
               </span>
-              {w.mode === current ? <Ic name="check" size={15} stroke={3} /> : BOOKS.includes(w.mode) ? <em>{L("kart olur", "becomes a card")}</em> : <i />}
+              {w.mode === current ? <Ic name="check" size={15} stroke={3} /> : books(w.mode, vm.modes) ? <em>{L("kart olur", "becomes a card")}</em> : <i />}
             </button>
           ))}
           <button type="button" role="menuitemradio" aria-checked={false} tabIndex={-1} onClick={() => (setOpen(false), onOwn())}>

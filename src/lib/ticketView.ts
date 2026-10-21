@@ -363,3 +363,17 @@ export function nightChip(item: Pick<Item, "nightStop">): TicketChip | null {
   const long = m ? L(`${h} sa ${m} dk`, `${h} h ${m} min`) : L(`${h} sa`, `${h} h`);
   return { kind: "night", text: L(`Gece aktarması · ${locative(city)} ${long} (${n.from}–${n.to})`, `Night change · ${long} in ${city} (${n.from}–${n.to})`) };
 }
+
+/** How far a departure's own clock may sit from the device's (the widest time-zone gap between two places, ~14 h). */
+const ZONE_SLACK_MS = 14 * 3_600_000;
+
+/**
+ * The travel day (plan-v29: a booking's code on the card only then): the departure's day on the device's calendar, or
+ * its local departure within the widest time-zone gap of now, so a laptop on Istanbul time still counts 00:30 on the 15th
+ * as the day of a Tromsø flight leaving 23:30 on the 14th. `departure` is the local "YYYY-MM-DDTHH:MM" of the ticket.
+ */
+export function isTravelDay(departure: string | null | undefined, day: string | null, today: string, now: number): boolean {
+  if (day != null && day === today) return true;
+  const local = departure && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(departure) ? Date.parse(departure.slice(0, 16)) : NaN;
+  return Number.isFinite(local) && Math.abs(local - now) <= ZONE_SLACK_MS;
+}

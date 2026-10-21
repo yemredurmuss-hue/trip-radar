@@ -5330,7 +5330,8 @@ try {
     for (let n = 0; n < (await faces.count()); n++) {
       await app.mouse.move(2, 2);
       await faces.nth(n).hover();
-      await app.waitForTimeout(250);
+      // (the tip comes after its hover delay; a busy machine shows it later than 250 ms: wait for it, a little)
+      await tip.waitFor({ timeout: 2000 }).catch(() => undefined);
       if (await tip.count()) said += await tip.innerText();
     }
     await app.mouse.move(2, 2);

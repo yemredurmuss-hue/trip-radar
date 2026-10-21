@@ -132,3 +132,29 @@ describe("pickReason", () => {
     expect(pickReason(null, "Loft")).toBe("İsteklerine en çok bu uyuyor.");
   });
 });
+
+describe("totalAmount over the nights (review: per-night vs total)", () => {
+  it("a nightly price counts the need's nights, so it sorts against a total for the stay", () => {
+    const nightly = opt({ price: 90, scope: "per_night" });
+    const whole = opt({ price: 400, scope: "total" });
+    expect(totalAmount(nightly, 2, 5)).toBe(450);
+    expect(drawerList([nightly, whole], "all", "all", "price", 2, 5).map((o) => o.id)).toEqual([whole.id, nightly.id]);
+  });
+  it("a nightly price with no nights known is not a total (unknown, sorted last)", () => {
+    expect(totalAmount(opt({ price: 90, scope: "per_night" }), 2)).toBeNull();
+  });
+});
+
+describe("winners ties (review)", () => {
+  it("a tie on price or length crowns nobody, as stops", () => {
+    const a = opt({ price: 100, mins: 300 });
+    const b = opt({ price: 100, mins: 300 });
+    expect(winners([a, b])).toEqual({});
+  });
+});
+
+describe("pickReason in English and with abbreviations (review)", () => {
+  it("does not cut at 'St. Moritz'", () => {
+    expect(pickReason("Önerim Loft: St. Moritz'e 5 dk. Tasarruf için 2. Ev.", "Loft")).toBe("St. Moritz'e 5 dk.");
+  });
+});

@@ -33,7 +33,8 @@ export const MODE_LABELS: Readonly<Record<LegMode, string>> = liveLabels({
 const FROM_HUB: LegMode[] = ["flight", "train", "bus", "ferry"];
 /** Modes one books ahead; the others (metro, a street taxi, walking, one's own car) only need planning. */
 /** Ways that are a reservation of their own (a ticket, a car booked to wait for you); the rest you just take. */
-export const BOOKABLE: LegMode[] = ["flight", "train", "ferry", "transfer", "taxi"];
+// (plan v13 K85: a taxi is a route note, called on the spot, nothing to book; a private transfer is booked)
+export const BOOKABLE: LegMode[] = ["flight", "train", "ferry", "transfer"];
 /** How early to be at the station: check-in and security for a flight, finding the platform for a train. */
 const HUB_BUFFER: Record<string, number> = { flight: 120, train: 20, bus: 20, ferry: 30 };
 /** A flight leaving Schengen (or to or from an airport we can't place) wants an hour more at the airport. */

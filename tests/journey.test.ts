@@ -48,20 +48,20 @@ describe("a day on the move", () => {
     const steps = journeySteps(move);
     expect(steps.map(row)).toEqual([
       "~11:00 (genelde) | Check-out · Jardim Stay | Rezerve",
-      "13:00 (en geç havalimanında) | Otel → Havalimanı · Jardim Stay → OPO havalimanı | Taksi · rezerve edilmedi",
+      "13:00 (en geç havalimanında) | Otel → Havalimanı · Jardim Stay → OPO havalimanı | Taksi · seçildi",
       "15:00 | Uçuş Porto → Madeira · TAP TP1693 · 15:00 → 16:55 · 1 sa 55 dk | Bilet alınmadı",
       "16:55 (iniş) | Havalimanı → Otel · FNC havalimanı → Quinta Vista | Planlanmadı",
       // Not before landing and getting there: the usual 15:00 check-in is past by then.
       "~17:55 (varıştan sonra) | Check-in · Quinta Vista | Rezerve",
     ]);
     expect(stepsReady(steps)).toBe(2);
-    // A taxi is a reservation (its card); the metro is only how they'll go (a line).
+    // Plan v13 K85 (Emre, v11: "taksi rezerve edilmez"): a taxi is how they'll go, a line, as the metro; nothing to book.
     const out = (t: Trip) => {
       const p = buildPlan(t, items);
       const j = buildTimeline(p, buildLegs(p, t), items).sections.find((s): s is Journey => s.kind === "journey" && s.journey.role === "move")!;
       return dayRows({ journey: j }).find((r) => r.leg?.kind === "departure")!;
     };
-    expect(out(trip)).toMatchObject({ kind: "leg", state: "pending" });
+    expect(out(trip)).toMatchObject({ kind: "leg", state: "info", line: "Taksi · seçildi" });
     const metro: Trip = { ...trip, legs: { "2026-10-10:departure:porto": { mode: "metro", booked: false, note: null, updatedAt: 1 } } };
     expect(out(metro)).toMatchObject({ kind: "leg", state: "info", line: "Metro · seçildi" });
     // The day's own card isn't among Madeira's days any more: it's this card.

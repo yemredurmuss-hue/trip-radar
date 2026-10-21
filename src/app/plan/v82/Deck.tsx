@@ -15,19 +15,38 @@ const MODE_ICON: Readonly<Record<string, IconName>> = { ferry: "ship", train: "t
 
 export function Deck({ vm, all, art, people, onOpen }: { vm: IntentVM; all: OptionVM[]; art: string; people: number; onOpen: () => void }) {
   const best = all.find((o) => o.ours) ?? all[0] ?? null;
+  const nights = vm.head.nights ?? null;
   const mine = all.filter((o) => o.source?.kind !== "ai").length;
   const count = Math.max(vm.optionCount, all.length);
-  const currency = all.find((o) => o.item.price?.currency)?.item.price?.currency ?? "EUR";
-  const totals = all.map((o) => totalAmount(o, people)).filter((n): n is number => n != null);
-  const lo = totals.length ? Math.min(...totals) : null;
-  const hi = totals.length ? Math.max(...totals) : null;
-  const range = vm.estimate?.label ?? (lo == null ? null : lo === hi ? formatPrice(lo, currency) : `${formatPrice(lo, currency)}–${formatPrice(hi!, currency).replace(/^[^\d]*/, "")}`);
   const ticket = vm.frame === "ticket";
   const mode = vm.ticket?.mode ?? null;
+  // The options' own prices, in their one money (the most common): a stay's by the night as its card says it, a ticket's
+  // for everyone going; with none priced, the estimate, its unit said (review: never a nightly figure read as a total).
+  const priced = all.filter((o) => o.item.price?.amount != null);
+  const tally = new Map<string, number>();
+  for (const o of priced) tally.set(o.item.price!.currency ?? "EUR", (tally.get(o.item.price!.currency ?? "EUR") ?? 0) + 1);
+  const currency = [...tally.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "EUR";
+  const nightly = (o: OptionVM): number | null => {
+    const p = o.item.price!;
+    if (p.scope === "per_night") return p.amount;
+    if (p.scope === "total" || p.scope === "unknown") return nights ? Math.round(p.amount! / nights) : null;
+    return null;
+  };
+  const amounts = priced.filter((o) => (o.item.price!.currency ?? "EUR") === currency).map((o) => (ticket ? totalAmount(o, people, nights) : nightly(o))).filter((n): n is number => n != null);
+  const lo = amounts.length ? Math.min(...amounts) : null;
+  const hi = amounts.length ? Math.max(...amounts) : null;
+  const span = lo != null && hi != null && lo !== hi;
+  const range = lo != null ? (span ? `${formatPrice(lo, currency)}–${formatPrice(hi!, currency).replace(/^[^\d]*/, "")}` : formatPrice(lo, currency)) : (vm.estimate?.label ?? null);
+  const caption =
+    lo != null
+      ? ticket
+        ? span ? L(`${people} kişi · seçeneklerin aralığı`, `${people} people · the options' range`) : L(`${people} kişi toplam`, `${people} people in all`)
+        : span ? L("gecelik · seçeneklerin aralığı", "a night · the options' range") : L("gecelik", "a night")
+      : vm.estimate?.unit === "night" ? L("tahmini · gecelik", "estimate · a night") : vm.estimate?.unit === "person" ? L("tahmini · kişi başı", "estimate · each") : L("tahmini", "estimate");
   const checks = best ? best.checks : [];
   const met = checks.filter((c) => c.ok).length;
   let media;
-  if (!ticket) {
+  if (!ticket || mode === "car") {
     // Our pick in front, two more behind it.
     const shown = [...all.filter((o) => o !== best).slice(0, 2), ...(best ? [best] : [])];
     media = (
@@ -44,19 +63,19 @@ export function Deck({ vm, all, art, people, onOpen }: { vm: IntentVM; all: Opti
           <span>{L("seçenek birikti", "options gathered")}</span>
           <small>
             <em><Ic name="bookmark" size={12} /> {L(`${mine} senin`, `${mine} yours`)}</em>
-            <em><Ic name="spark" size={12} /> {L(`${count - mine} AI`, `${count - mine} AI`)}</em>
+            <em><Ic name="spark" size={12} /> {L(`${all.length - mine} AI`, `${all.length - mine} AI`)}</em>
           </small>
         </span>
       </div>
     );
   } else if (mode === "flight" || mode === null) {
     const face = ticketFace(vm, null);
-    const days = optionDays(all, people);
+    const days = optionDays(all, people, nights);
     const short = all.filter((o) => o.item.metrics?.durationMinutes != null).sort((a, b) => a.item.metrics!.durationMinutes! - b.item.metrics!.durationMinutes!)[0] ?? null;
     const early = all.map((o) => rowFace(o, vm.kind).dep).filter((t): t is string => Boolean(t)).sort()[0] ?? null;
     const line = days.length > 1
       ? [L(`${days.length} farklı gün`, `${days.length} different days`), lo != null ? L(`en ucuz ${formatPrice(lo, currency)}`, `from ${formatPrice(lo, currency)}`) : null, short ? L(`en kısa ${rowFace(short, vm.kind).duration}`, `shortest ${rowFace(short, vm.kind).duration}`) : null]
-      : [early ? L(`en erken ${early}`, `earliest ${early}`) : null, lo != null ? L(`en ucuz ${formatPrice(lo, currency)}`, `from ${formatPrice(lo, currency)}`) : null];
+      : [early ? L(`en erken ${early}`, `earliest ${early}`) : null, lo != null && all.length > 1 ? L(`en ucuz ${formatPrice(lo, currency)}`, `from ${formatPrice(lo, currency)}`) : null];
     const end = (e: typeof face extends null ? never : NonNullable<typeof face>["from"], right = false) =>
       e ? (
         <span className={`q-tm big q-city${right ? " r" : ""}`}>
@@ -102,7 +121,7 @@ export function Deck({ vm, all, art, people, onOpen }: { vm: IntentVM; all: Opti
                 </i>
                 <b>{f.dep ?? "–"}</b>
                 <em>{d ? shortDay(d) : ""}</em>
-                <strong>{totalAmount(o, people) != null ? formatPrice(totalAmount(o, people)!, currency) : (f.price?.text ?? "")}</strong>
+                <strong>{totalAmount(o, people, nights) != null ? formatPrice(totalAmount(o, people, nights)!, currency) : (f.price?.text ?? "")}</strong>
               </span>
             );
           })}
@@ -120,7 +139,7 @@ export function Deck({ vm, all, art, people, onOpen }: { vm: IntentVM; all: Opti
           <>
             <small className="z-l0">{L("Sana en uygun", "Best for you")}</small>
             <span className="z-t z-best">
-              {ticket ? [rowFace(best, vm.kind).name, best.item.flight?.departure ? null : null, optionDay(best) ? shortDay(optionDay(best)!) : null, rowFace(best, vm.kind).dep].filter(Boolean).join(" · ") : best.title}
+              {ticket ? [rowFace(best, vm.kind).name, optionDay(best) ? shortDay(optionDay(best)!) : null, rowFace(best, vm.kind).dep].filter(Boolean).join(" · ") : best.title}
               {checks.length > 0 && <em className={`z-meet${met === checks.length ? "" : " part"}`}>{L(` · ${met}/${checks.length} istek`, ` · ${met}/${checks.length} asks`)}</em>}
             </span>
           </>
@@ -133,7 +152,7 @@ export function Deck({ vm, all, art, people, onOpen }: { vm: IntentVM; all: Opti
           {range && (
             <span className="q-pr big">
               <b>{range}</b>
-              <small>{range.includes("–") ? L("seçeneklerin aralığı", "the options' range") : ticket ? L(`${people} kişi toplam`, `${people} people in all`) : L("tek fiyat", "one price")}</small>
+              <small>{caption}</small>
             </span>
           )}
         </div>

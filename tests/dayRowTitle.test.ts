@@ -164,7 +164,7 @@ describe("transfers", () => {
       en: { what: "Airport transfer", which: "", detail: "Airport → Bonfim Konaklaması · not planned" },
     });
     const taxi = leg({ kind: "departure", from: point("Lisboa Loft – Yeni Tasarlanmış"), to: point("LIS havalimanı"), mode: "taxi", status: "planned", choice: { mode: "taxi", booked: false, note: null, updatedAt: 1 } });
-    expect(rowTitle(row({ kind: "leg", state: "pending", leg: taxi }))).toEqual({ what: "Havalimanı transferi", which: "Taksi", detail: "Lisboa Loft → havalimanı · rezerve edilmedi" });
+    expect(rowTitle(row({ kind: "leg", state: "pending", leg: taxi }))).toEqual({ what: "Havalimanı transferi", which: "Taksi", detail: "Lisboa Loft → havalimanı · seçildi" });
     const metro = leg({ mode: "metro", status: "planned", choice: { mode: "metro", booked: false, note: null, updatedAt: 1 } });
     expect(both(() => rowTitle(row({ kind: "leg", leg: metro })))).toEqual({
       tr: { what: "Havalimanı transferi", which: "Metro", detail: "Havalimanı → Bonfim Konaklaması · seçildi" },

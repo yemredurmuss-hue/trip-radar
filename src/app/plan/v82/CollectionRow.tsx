@@ -273,6 +273,8 @@ export function CollectionRow({ vm, onPut, onTakeOff }: CollectionRowProps) {
             {looking && <ToursLooking />}
             {bare ? chips : null}
             <span className="q-sp" />
+            {/* Kendin ara never hides (review): folded, the sites stay on the header, as they were before v13's tile. */}
+            {!todo && plans.length > 0 && !open && links.length > 0 && <SelfLinks links={links} />}
             {/* C26: the ideas fold away (the live "Öneriler ve fikirler" bar), remembered in this browser; not while the plan is empty. */}
             {!todo && plans.length > 0 && (
               <button type="button" className={`z-fold${open ? "" : " shut"}`} aria-expanded={open} onClick={() => setOpen(!open)}

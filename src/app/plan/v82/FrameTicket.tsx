@@ -21,7 +21,7 @@ import { flightDays, flightPrice } from "../../../lib/offerSources";
 import { dayBars, daysSentence, fareEach, historyDrawing, historySentence, priceAsk, verdictOf, type DayFare, type PriceInsight, type Verdict } from "../../../lib/priceVerdict";
 import type { Item } from "../../../lib/types";
 import { checkinUrl, ownEnds, ticketBookedWord, ticketBookWord, ticketCodeLabel, ticketDocWord, ticketFace, ticketPrice, wayPicks, type TicketFace } from "../../../lib/ticketFrame";
-import type { TicketChip, TicketEnd, TicketLive as Live, TicketMode } from "../../../lib/ticketView";
+import { isTravelDay, type TicketChip, type TicketEnd, type TicketLive as Live, type TicketMode } from "../../../lib/ticketView";
 import type { LegMode } from "../../../lib/types";
 import type { FieldKey } from "../../../lib/inlineEdit";
 import { Editable, useInlineEdit } from "../../cards/InlineEdit";
@@ -428,7 +428,7 @@ export function FrameTicket({ vm, form, page, links, info, detail, quiet, on, on
     const doc = ticketDocWord(face.mode);
     const checkin = a?.primary === "checkin" ? checkinUrl(o.item) : null;
     // Show when needed (plan-v29): the code on the card only on the travel day; always in the booking's details.
-    const today = vm.head.date != null && vm.head.date === env.today;
+    const today = isTravelDay(o.item.flight?.departure ?? o.item.dates?.start ?? null, vm.head.date, env.today, Date.now());
     const days = daysUntil(vm.head.date, env.today);
     const foot = (
       <span className="z-conf">

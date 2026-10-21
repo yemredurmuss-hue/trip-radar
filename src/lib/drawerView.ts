@@ -15,11 +15,27 @@ export const optionTab = (o: OptionVM): Exclude<DrawerTab, "all"> => (o.source?.
 /** The option's day ("2027-01-15", a time after it set aside); else its flight's leaving day; null when neither says. */
 export const optionDay = (o: OptionVM): string | null => isoDate(o.item.dates?.start?.slice(0, 10)) ?? isoDate(o.item.flight?.departure?.slice(0, 10));
 
-/** What it costs for everyone going: a per-person fare times the people, else its own amount; null with no price. */
-export function totalAmount(o: OptionVM, people: number): number | null {
+/** Nights between two days ("2027-01-15" → "2027-01-20": 5); null when either is missing. */
+const nightsBetween = (start: string | null | undefined, end: string | null | undefined): number | null => {
+  const a = isoDate(start?.slice(0, 10)), b = isoDate(end?.slice(0, 10));
+  if (!a || !b) return null;
+  const n = Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / 86_400_000);
+  return n > 0 ? n : null;
+};
+
+/**
+ * What it costs for everyone going, for the whole stay: a per-person fare times the people, a nightly price times the
+ * nights (its own dates', else the need's), else its own amount; null with no price, or a nightly one with no nights known.
+ */
+export function totalAmount(o: OptionVM, people: number, nights: number | null = null): number | null {
   const p = o.item.price;
   if (!p || p.amount == null) return null;
-  return p.scope === "per_person" ? p.amount * Math.max(1, people) : p.amount;
+  if (p.scope === "per_person") return p.amount * Math.max(1, people);
+  if (p.scope === "per_night") {
+    const n = nightsBetween(o.item.dates?.start, o.item.dates?.end) ?? nights;
+    return n ? p.amount * n : null;
+  }
+  return p.amount;
 }
 
 const minutesOf = (o: OptionVM): number | null => o.item.metrics?.durationMinutes ?? null;
@@ -38,29 +54,29 @@ const byNum = (f: (o: OptionVM) => number | null, desc = false) => (a: OptionVM,
   return (desc ? y - x : x - y) || a.place - b.place;
 };
 
-const SORTERS: Readonly<Record<SortKey, (people: number) => (a: OptionVM, b: OptionVM) => number>> = {
+const SORTERS: Readonly<Record<SortKey, (people: number, nights: number | null) => (a: OptionVM, b: OptionVM) => number>> = {
   fit: () => byNum((o) => o.score, true),
-  price: (people) => byNum((o) => totalAmount(o, people)),
+  price: (people, nights) => byNum((o) => totalAmount(o, people, nights)),
   mins: () => byNum(minutesOf),
   score: () => byNum(ratingOf, true),
   dist: () => byNum((o) => o.item.metrics?.distanceToCenterKm ?? null),
 };
 
 /** The drawer's list: the tab's options on the day asked for (every day: "all"), in the order asked for. */
-export function drawerList(options: readonly OptionVM[], tab: DrawerTab, day: string | "all", sort: SortKey, people = 1): OptionVM[] {
+export function drawerList(options: readonly OptionVM[], tab: DrawerTab, day: string | "all", sort: SortKey, people = 1, nights: number | null = null): OptionVM[] {
   return options
     .filter((o) => tab === "all" || optionTab(o) === tab)
     .filter((o) => day === "all" || optionDay(o) === day)
-    .sort(SORTERS[sort](people));
+    .sort(SORTERS[sort](people, nights));
 }
 
 /** The days the options are on, each with its cheapest total (unknown prices aside), earliest first. */
-export function optionDays(options: readonly OptionVM[], people = 1): { day: string; cheapest: number | null }[] {
+export function optionDays(options: readonly OptionVM[], people = 1, nights: number | null = null): { day: string; cheapest: number | null }[] {
   const by = new Map<string, number | null>();
   for (const o of options) {
     const d = optionDay(o);
     if (!d) continue;
-    const t = totalAmount(o, people);
+    const t = totalAmount(o, people, nights);
     const was = by.get(d);
     by.set(d, was == null ? t : t == null ? was : Math.min(was, t));
   }
@@ -74,8 +90,9 @@ export function compareMode(options: readonly OptionVM[], kind: string): boolean
 }
 
 /** The option that is cheapest, shortest and (only when one alone has it) fewest-stops; what isn't known never wins. */
-export function winners(options: readonly OptionVM[], people = 1): { price?: string; mins?: string; stops?: string } {
+export function winners(options: readonly OptionVM[], people = 1, nights: number | null = null): { price?: string; mins?: string; stops?: string } {
   const out: { price?: string; mins?: string; stops?: string } = {};
+  // (a tie crowns nobody: "en ucuz" on one of two equal fares would say something untrue)
   const best = (f: (o: OptionVM) => number | null): { id: string; n: number; ties: number } | null => {
     let won: { id: string; n: number; ties: number } | null = null;
     for (const o of options) {
@@ -86,10 +103,10 @@ export function winners(options: readonly OptionVM[], people = 1): { price?: str
     }
     return won;
   };
-  const p = best((o) => totalAmount(o, people));
-  if (p) out.price = p.id;
+  const p = best((o) => totalAmount(o, people, nights));
+  if (p && p.ties === 1) out.price = p.id;
   const m = best(minutesOf);
-  if (m) out.mins = m.id;
+  if (m && m.ties === 1) out.mins = m.id;
   const s = best(stopsOf);
   if (s && s.ties === 1) out.stops = s.id;
   return out;
@@ -108,8 +125,9 @@ export function pickReason(headline: string | null, name: string): string {
   const prefix = [L(`Önerim ${name}: `, `My pick is ${name}: `), `Önerim ${name}: `].find((p) => headline.startsWith(p));
   if (!prefix) return plain;
   const rest = headline.slice(prefix.length);
-  // The reasons end at the first full stop followed by a new sentence (a thousands dot has a digit after it).
-  const end = rest.search(/\.\s+\p{Lu}/u);
+  // The reasons end where the alternatives begin ("Tasarruf için 3. Casa Azul …", "For saving, #3 …"): a full stop whose
+  // next sentence reaches " için N. " (or "For …, #N") with no stop between (so "St. Moritz" and "€1.500" stay whole).
+  const end = rest.search(/\.\s+(?=[^.]* için \d+\. |For [^.]*, #\d)/u);
   const own = (end >= 0 ? rest.slice(0, end + 1) : rest).trim();
-  return own ? own.charAt(0).toLocaleUpperCase("tr") + own.slice(1) : plain;
+  return own ? own.charAt(0).toLocaleUpperCase(L("tr", "en")) + own.slice(1) : plain;
 }

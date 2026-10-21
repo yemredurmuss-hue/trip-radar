@@ -239,18 +239,36 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
   };
   const closeDrawer = () => {
     setDrawer(false);
-    opener.current?.focus?.();
   };
   // D5: an intent of the AI's route nobody agreed yet is Önerimiz with nothing chosen: it is looked for as before.
   const form = vm.routeDraft ? "searching" : frameForm(vm);
   const showOptions = form === "options";
   const chosenId = vm.chosen?.id ?? null;
   // A new pick, a booking, another state: the card is itself again (Değiştir and Ayrıntı close).
+  // (The drawer stays while options merely arrive, searching → deciding: the traveller may be reading it.)
   useEffect(() => {
     setChanging(false);
     setDetail(false);
-    setDrawer(false);
+    if (vm.status !== "searching" && vm.status !== "deciding" && vm.status !== "suggested") setDrawer(false);
   }, [vm.status, chosenId]);
+  // However the drawer closed (×, Escape, Seç, Büyük Pano, a source's pick, a new state), the focus comes back to where it
+  // was opened from, else to the box's ⋯: never left on the page's body (review).
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (drawer) {
+      wasOpen.current = true;
+      return;
+    }
+    if (!wasOpen.current) return;
+    wasOpen.current = false;
+    requestAnimationFrame(() => {
+      // (not when another window took it: a record opened from the drawer keeps its own focus)
+      const now = document.activeElement;
+      if (now && now !== document.body && now.isConnected) return;
+      const back = opener.current?.isConnected ? opener.current : boxRef.current?.querySelector<HTMLElement>(".z-h .z-mb");
+      back?.focus?.();
+    });
+  }, [drawer]);
   const boxRef = useRef<HTMLElement>(null);
   const pop = useStepPop(vm.status);
   // K29 on a ticket (hareket dili §2.3, §2.5): a step forward to Seçildi or Alındı takes its plane off (1.1 s, after the
@@ -333,6 +351,9 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
     ...(all.length ? [{ label: vm.status === "chosen" || vm.status === "booked" ? L("Değiştir", "Change") : L(`Seçenekleri gör (${Math.max(vm.optionCount, all.length)})`, `See the options (${Math.max(vm.optionCount, all.length)})`), run: openDrawer }] : []),
     ...(record && form !== "searching" ? [{ label: L("Ayrıntı", "Details"), run: () => setDetail(true) }] : []),
     ...(a.pano && vm.optionCount ? [{ label: L(`Pano'da aç (${vm.optionCount})`, `Open on the Board (${vm.optionCount})`), run: a.pano }] : []),
+    // A booking's map and its host (the old booked card's "Haritada aç ↗" and "Otele yaz ↗", kept: review).
+    ...(vm.status === "booked" && vm.access?.links.map ? [{ label: L("Haritada aç ↗", "Open the map ↗"), run: () => void window.open(vm.access!.links.map!, "_blank", "noopener") }] : []),
+    ...(vm.status === "booked" && vm.access?.links.host ? [{ label: vm.kind === "stay" ? L("Otele yaz ↗", "Write to the hotel ↗") : L("Yaz ↗", "Write ↗"), run: () => void window.open(vm.access!.links.host!, "_blank", "noopener") }] : []),
     ...(a.addSuggestion ? [{ label: L("Plana koy", "Add to plan"), run: a.addSuggestion }] : []),
     ...(vm.status === "arranged" && (record || leg)
       ? [{ label: L("Ayarlandı: geri al", "Arranged: take back"), run: () => (record ? a.unarrange(record) : void onLeg(null)) }]

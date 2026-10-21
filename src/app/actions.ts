@@ -510,10 +510,11 @@ export async function undo(u: Undoable): Promise<void> {
     return setItemStatus(u.item, "saved");
   }
   // Back from "Seç" beside the plan: the one chosen is an option again, the one before it chosen again.
+  // (chooseItem undoes it whole: the one picked back to the options, the start's places it set aside handed back to the one
+  // before; with none before, setItemStatus brings those places back.)
   if (u.kind === "picked") {
-    await setItemStatus(u.item, "saved");
-    if (u.prev) await setItemStatus(u.prev, "chosen");
-    return;
+    if (u.prev) return chooseItem(u.prev, [u.item]);
+    return setItemStatus(u.item, "saved");
   }
   if (u.kind === "doc") return restoreDoc(u.doc);
   if (u.kind === "suggestion") {
