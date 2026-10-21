@@ -22,7 +22,7 @@ describe("railDate", () => {
     expect(stretchText("2027-03-27", "2027-03-27")).toBe("27 Mar");
   });
   it("a rental: its days from pick-up to return", () => {
-    const item = makeItem({ id: "m", category: "transport", dates: { start: "2027-03-28", end: "2027-03-30" } });
+    const item = makeItem({ id: "m", category: "transport", dates: { start: "2027-03-28", end: "2027-03-30", source: "page" } });
     const d = railDate({ kind: "transport", head: head({ date: "2027-03-28" }), ticket: { rental: { line: null, pick: null, days: 3, back: null } } as IntentVM["ticket"], chosen: { item } as IntentVM["chosen"] });
     expect(d).toEqual({ when: "28–30 Mar", sub: "Paz → Sal", span: "3 gün", notches: 3 });
   });
