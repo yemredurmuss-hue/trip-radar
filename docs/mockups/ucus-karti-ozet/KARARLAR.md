@@ -48,9 +48,16 @@ Bir günlük tasarım koşusunun çıktısı. Canlı sürüm 0.39.27, canlı kod
 - Beşinci geçici durum "Aranıyor" (Ara'dan sonra çekmece kapatılınca): nokta ve "Aranıyor…".
 - Fiyat tazeliği (canlıdaki fiyat geçmişi satıra küçük not), gidiş-dönüş tek bilet bağı, tarihsiz niyet ("Tarihi yok" grubu).
 
-## Sıradaki iş: konaklama
+## Konaklama (Çizim 14, Emre'nin onayını bekliyor)
 
-Aynı tasarım anlayışı ve gün gün fikri konaklamaya uygulanacak. Emre'nin notu: konaklamada açılır-kapanır gerekmeyebilir; gün gün (gece aralıkları) fikri orada da ele alınmalı. Başlangıç: `zaman-cizgisi-v1` ikinci blok (geceler hatta kalın dilim, giriş noktada, çıkış dilimin ucunda, boş gece amber). Her durum için örnek çizilecek: niyet (nerede, kaç gece, kaç kişi, istenenler), biriken (deste, kaç tane), seçili (otel adı, puan, gece fiyatı, toplam, "Rezerve et"), rezerve (yeşil, mühür, rezervasyon no, giriş saati, "Rezervasyonu aç"). Fotoğraf/illüstrasyon kartta nerede durur (otel illüstrasyonu `otel.png`, `ev-daire.png`), ardından konaklama çekmecesi (aynı standart: puan çipi, yuvalar: kahvaltı, iptal, konum/mesafe, puan, kaynak).
+Çizim: `docs/mockups/konaklama-karti-v1/index.html` (https://claude.ai/artifact/Tu4oPQQh9WjTKXbscSZqUf). Varsayım olarak yazılan kararlar:
+
+1. **A önerildi: katlanmasız, fotoğraf solda.** Kart 120 px: fotoğraf 84 px · üç satır · tek rakam · 118 px yuva (uçuş satırıyla aynı sağ kenar). Kartın kendisi çekmeceyi açar; yuvadaki düğme kardeş eleman. Seçenekler: B (fotoğraf üstte, 196 px) ve C (uçuştaki gibi katlanmalı 72 px) çizildi.
+2. **Gün gün.** Tarih sütunu kart boyunca: giriş noktada, gece başına çentikli dilim, çıkış dilimin ucunda; dilim kategori renginde (niyette kesikli, birikende açık). Boş gece kesikli amber dilim ve kendi satırı ("30 Mar gecesi boş", tek düğme "Bangkok'u 1 gece öne al": komşu niyeti uzatır; seçili/rezerve sessizce uzatılmaz). Telefonda dilim kalkar, "● 24 Mar → 27 Mar · 3 gece".
+3. **Durumlar.** Niyet: nerede · kaç gece, kişi, istenen çipleri, tahmini gece, "Ara". Biriken: deste (üç küçük kare, sayı), kaynak dağılımı ve aralık, önerimizin gece fiyatı, "Seç" ve mini sayı. Seçili: otel adı, kaynak rozetiyle puan, iptal tarihi, gece ve toplam, "Rezerve et ↗". Rezerve: mühür, rezervasyon no rakam yerinde, yeşil hap, yeşil şerit (giriş saati, ödenen, "Rezervasyonu aç ↗").
+4. **Fotoğraf.** Kaynağın ilk fotoğrafı, yoksa illüstrasyon (otel / ev-daire) açık turkuaz gradyan üstünde; puan rozeti sol üstte, mühür sol altta.
+5. **Çekmece.** Uçuş standardı: başlık üç satır, tarih bandı iki takvim karosu (giriş, çıkış), komşu seçenek "+1 GECE" amber bant ve bedeli; kartta konaklama geçişi (fotoğraf, giriş/çıkış saati, geceler ay simgesiyle), puan çipi, beş yuva: kahvaltı, iptal, mesafe, puan, kaynak; "Neden?" altta; bırakma kutusu ve "Pano'da karşılaştır".
+6. **Düğmeler.** Ara → çekmece ve AI arama; Seç → çekmece; Rezerve et → kaynak, dönüşte "Rezerve ettin mi?"; Rezerve hap, "Rezervasyonu aç" şeritte.
 
 ## Kodlama sırası (öneri)
 
@@ -59,3 +66,4 @@ Aynı tasarım anlayışı ve gün gün fikri konaklamaya uygulanacak. Emre'nin 
 3. Çekmece: başlık üç satır, standart kart, beş yuva, "Neden?" katlaması, tarih bantları; `ItemDrawer.tsx` / K82 CSS üstüne.
 4. Durum geçişleri: Ara → aranıyor → biriken → seçili → alınmış; Seç/Değiştir/Satın al/Aldın mı akışı.
 5. e2e: dört durum, açılma, çekmece, telefon genişliği.
+6. Konaklama (onaydan sonra): `StayRow` (A), `.q-tl .span` dilimi ve boş gece satırı, `Section.tsx`'te gece boşluğu hesabı, çekmecede konaklama kartı.
