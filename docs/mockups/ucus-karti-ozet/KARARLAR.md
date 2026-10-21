@@ -6,7 +6,7 @@ Bir günlük tasarım koşusunun çıktısı. Canlı sürüm 0.39.27, canlı kod
 
 ## Onay paketi
 
-Uçuş ve konaklamanın son hâlleri, kararlarıyla birlikte donmuş görüntü olarak: `docs/mockups/paket-ucus-konaklama/index.html` (https://claude.ai/artifact/CiJnEFPom7nGec3J5cn1ww). Emre onaylayınca kod bu pakete göre yazılır; sonraki değişiklik yeni çizim sürümüdür. Panoda kartlar çekmece kartının kendisi (iki sütun, uçuş kendi standart kartıyla).
+Uçuş ve konaklamanın son hâlleri, kararlarıyla birlikte donmuş görüntü olarak: `docs/mockups/paket-ucus-konaklama/index.html` (https://claude.ai/artifact/CiJnEFPom7nGec3J5cn1ww), ulaşım dahil. Emre 21 Ekim'de hepsini (uçuş, konaklama, arama, pano, ulaşım) onayladı; kod bu pakete göre yazılır; sonraki değişiklik yeni çizim sürümüdür. Panoda kartlar çekmece kartının kendisi (iki sütun, uçuş kendi standart kartıyla).
 
 ## Kaynaklar
 
@@ -52,7 +52,7 @@ Uçuş ve konaklamanın son hâlleri, kararlarıyla birlikte donmuş görüntü 
 - Beşinci geçici durum "Aranıyor" (Ara'dan sonra çekmece kapatılınca): nokta ve "Aranıyor…".
 - Fiyat tazeliği (canlıdaki fiyat geçmişi satıra küçük not), gidiş-dönüş tek bilet bağı, tarihsiz niyet ("Tarihi yok" grubu).
 
-## Konaklama (Çizim 14; plan kartı onaylandı, çekmece v2 onay bekliyor)
+## Konaklama (Çizim 14, onaylandı)
 
 Çizim: `docs/mockups/konaklama-karti-v1/index.html` (https://claude.ai/artifact/Tu4oPQQh9WjTKXbscSZqUf). Varsayım olarak yazılan kararlar:
 
@@ -63,7 +63,7 @@ Uçuş ve konaklamanın son hâlleri, kararlarıyla birlikte donmuş görüntü 
 5. **Çekmece (Emre'nin notuyla v2).** Tarih tek ve başlıkta: niyetin tarihi net, başka tarih başka niyet kartı; tarih bandı ve "+1 gece" yok. Başlıkta sıralama ağırlığı (varsayılan yorumlar %40, özellikler %35, fiyat %25; "Ayarla", gezi başına saklanır), sıralama "Ağırlıklı puan". Kart görsel önde (v3): tepede tam genişlik 200 px fotoğraf, köşesinde puan çipi, altında iki küçük ve "+N"; altında ad, kaynak ve bölge, puanın üç parçası tek satır (yorum, özellik, fiyat; 0–100, ağırlıkla toplanır), fiyat ve her kartta dolu, geniş Seç (telefonda tam genişlik; seçili olan "✓ Seçili"). Beş yuva etiketli: kahvaltı, ücretsiz iptal, eski şehre mesafe, puan, kaynak. Altında AI'nın yorumlardan çıkardığı artılar ve eksiler hep açık (en çok üçer madde, yorum sayısıyla). Bırakma kutusu ve "Pano'da karşılaştır".
 6. **Düğmeler.** Ara → çekmece ve AI arama; Seç → çekmece; Rezerve et → kaynak, dönüşte "Rezerve ettin mi?"; Rezerve hap, "Rezervasyonu aç" şeritte.
 
-## Arama, pano ve kaçırdıklarımız (Çizim 15, onay bekliyor)
+## Arama, pano ve kaçırdıklarımız (Çizim 15, onaylandı)
 
 Çizim: `docs/mockups/arama-pano-v1/index.html` (https://claude.ai/artifact/UgbuWmb6ZaoEenuzLK5wTg). Konaklama Emre tarafından onaylandı.
 
@@ -73,7 +73,7 @@ Uçuş ve konaklamanın son hâlleri, kararlarıyla birlikte donmuş görüntü 
 4. **Pano = büyümüş çekmece.** İhtiyaç başına grup; grup başı çekmece başı gibi (ölçütler, ağırlık, Yeni bul, Kartlar/Karşılaştır). Kartlar çekmece kartının kendisi (Emre: küçüğü değil), iki sütun; uçuş grubu uçuşun standart kartıyla. Karar verilmiş grup tek satır. Karşılaştır: seçenek başına sütun, her satırda en iyisi yeşil, eksik amber; artılar, eksiler, oylar, Seç.
 5. **Kaçırdıklarımız.** Aranıyor (beşinci hâl); uçuşla saat bağı (geç giriş, erken çıkış amber şerit ve tek iş); çakışan gece (kırmızı); fiyat tazeliği ve kaynağın parası; Elenen ve "Geri al"; iptal son günü hatırlatma; rezervasyonun e-posta/onay sayfasından okunması; ortak gezide oylar; kişi/oda değişince yeniden arama; tarihsiz niyet; kapalı kategori satırında boş/çakışan gece; telefonda tam ekran çekmece.
 
-## Ulaşım (Çizim 16, onay bekliyor)
+## Ulaşım (Çizim 16, onaylandı)
 
 Çizim: `docs/mockups/ulasim-v1/index.html` (https://claude.ai/artifact/3roMJ8DCqVQNBimLZQrpoU).
 
