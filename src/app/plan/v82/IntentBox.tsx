@@ -53,6 +53,9 @@ import { useLooking } from "./Searching";
 import { useCrossfade, type Entry } from "./useCrossfade";
 import { useIntentActions } from "./useIntentActions";
 import { useV82Env } from "./v82Env";
+import { emptyNightText, isDatedSection, railDate } from "../../../lib/railDates";
+import { rowView } from "../../../lib/rowView";
+import { EmptyNight, StayCard, TicketRow, type SlotOn } from "./IntentRow";
 
 /** A kind's drawing (static/illus), for a frame or an option with no photo. */
 export function artOf(kind: IntentVM["kind"], item: Item | null = null): string {
@@ -134,11 +137,13 @@ const DRAWN = ["name", "date", "end", "price"] as const;
 /** A ticket's: its ends and its hour where they stand, its day, its price (a rental's place and return day). */
 const TICKET_DRAWN = ["from", "to", "city", "date", "end", "time", "price"] as const;
 
-export function IntentBox({ vm: given, color, onHere = null }: {
+export function IntentBox({ vm: given, color, onHere = null, gap = null }: {
   vm: IntentVM;
   color: string;
   /** C3: "+ Buraya ekle" under the box opens the add window at this place (null: none). */
   onHere?: ((at: InsertAt) => void) | null;
+  /** An empty night between two stays (railDates.emptyNights): the stays before and after it, for its line. */
+  gap?: { before: IntentVM | null; after: IntentVM | null } | null;
 }) {
   const env = useCardEnv();
   const { byId } = useV82Env();
@@ -152,13 +157,13 @@ export function IntentBox({ vm: given, color, onHere = null }: {
   if (own) {
     return (
       <InlineEdit item={own} only={vm.frame === "ticket" ? [...TICKET_DRAWN] : record ? [...DRAWN] : ["name"]}>
-        <RecordBox vm={vm} color={color} record={own} onHere={onHere} />
+        <RecordBox vm={vm} color={color} record={own} onHere={onHere} gap={gap} />
       </InlineEdit>
     );
   }
   // Nothing chosen yet: a candidate saved in it can be taken off alone ("Kaldır"), not only the whole need ("Gerek yok").
   const removals = removeEntries([...vm.options, ...(vm.more ?? [])], byId, env.remove);
-  return <Box vm={vm} color={color} extra={removals} field={null} pickDoc={null} cancel={null} onHere={onHere} itemId={null} />;
+  return <Box vm={vm} color={color} extra={removals} field={null} pickDoc={null} cancel={null} onHere={onHere} itemId={null} gap={gap} />;
 }
 
 /**
@@ -187,7 +192,7 @@ function hereOf(vm: IntentVM): InsertAt | null {
 }
 
 /** A box with a record to show (our pick, the chosen one, the booking): its card's ••• entries and its file picker. */
-function RecordBox({ vm, color, record, onHere }: { vm: IntentVM; color: string; record: Item; onHere: ((at: InsertAt) => void) | null }) {
+function RecordBox({ vm, color, record, onHere, gap }: { vm: IntentVM; color: string; record: Item; onHere: ((at: InsertAt) => void) | null; gap: { before: IntentVM | null; after: IntentVM | null } | null }) {
   const env = useCardEnv();
   const stage = useStageMenu(record);
   const who = useWhoMenu(record);
@@ -205,11 +210,11 @@ function RecordBox({ vm, color, record, onHere }: { vm: IntentVM; color: string;
   ];
   const cancel = booked ? () => cancelBooking(record).then(env.offer) : null;
   return (
-    <Box vm={vm} color={color} extra={extra} field={<>{stage.field}{doc.field}</>} pickDoc={doc.pick} cancel={cancel} askedHide={booked ? stage.hide : null} onHere={onHere} itemId={record.id} />
+    <Box vm={vm} color={color} extra={extra} field={<>{stage.field}{doc.field}</>} pickDoc={doc.pick} cancel={cancel} askedHide={booked ? stage.hide : null} onHere={onHere} itemId={record.id} gap={gap} />
   );
 }
 
-function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHere, itemId }: {
+function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHere, itemId, gap = null }: {
   vm: IntentVM;
   color: string;
   extra: MenuEntry[];
@@ -222,6 +227,7 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
   onHere: ((at: InsertAt) => void) | null;
   /** The record the box stands for (the one shown, or the bare one still to find): to-dos and arrivals find it by it. */
   itemId: string | null;
+  gap?: { before: IntentVM | null; after: IntentVM | null } | null;
 }) {
   const env = useCardEnv();
   const v82 = useV82Env();
@@ -414,10 +420,13 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
     );
   } else if (showOptions) {
     body = <Deck vm={vm} all={all} art={art} people={vm.people ?? Math.max(1, peopleOf(env.trip).length)} onOpen={openDrawer} />;
-  } else if (form) {
-    const props = {
+  }
+  // (the frame's own forms: a deck of options is drawn by Deck, or by the row's Birikenler)
+  const frameForm0 = form && form !== "options" ? form : null;
+  const props = frameForm0
+    ? {
       vm,
-      form,
+      form: frameForm0,
       art,
       page,
       links,
@@ -443,23 +452,23 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
         // K87: an eSIM bought and not on the phone yet says "Kurdum" in its foot.
         installed: vm.kind === "esim" && record && record.installedAt == null && (record.status === "booked" || record.status === "chosen") ? () => void setInstalled(record, true) : null,
       },
-    };
-    const cover = vm.cover;
-    const onCover = cover?.key && cover.section ? () => v82.goTo(cover.section!, cover.key) : null;
-    body =
-      vm.frame === "ticket" ? (
-        <FrameTicket
-          {...props}
-          onCover={onCover}
-          // By plane a change of city is a flight: it goes to Uçuş, and the plan follows it there with a flash.
-          ways={leg && vm.modes.length ? { pick: (mode) => void onLeg({ mode }).then(() => mode === "flight" && v82.goTo("flight", vm.key)), own: () => void onLeg({ booked: true }) } : null}
-          // A way said on a change of city (C15) goes back to the choice.
-          onReset={leg && (vm.status === "chosen" || vm.status === "booked") ? () => void onLeg(null) : null}
-          onLegGot={leg && vm.status === "chosen" ? () => void onLeg({ booked: true }) : null}
-        />
-      ) : (
-        <FrameCard {...props} onCover={onCover} />
-      );
+    }
+    : null;
+  const cover = vm.cover;
+  const onCover = cover?.key && cover.section ? () => v82.goTo(cover.section!, cover.key) : null;
+  const ticketProps = props && vm.frame === "ticket"
+    ? {
+        ...props,
+        onCover,
+        // By plane a change of city is a flight: it goes to Uçuş, and the plan follows it there with a flash.
+        ways: leg && vm.modes.length ? { pick: (mode: LegChoice["mode"]) => void onLeg({ mode }).then(() => mode === "flight" && v82.goTo("flight", vm.key)), own: () => void onLeg({ booked: true }) } : null,
+        // A way said on a change of city (C15) goes back to the choice.
+        onReset: leg && (vm.status === "chosen" || vm.status === "booked") ? () => void onLeg(null) : null,
+        onLegGot: leg && vm.status === "chosen" ? () => void onLeg({ booked: true }) : null,
+      }
+    : null;
+  if (!searchingNow && !showOptions && props) {
+    body = ticketProps ? <FrameTicket {...ticketProps} /> : <FrameCard {...props} onCover={onCover} />;
   }
   if (vm.frame === "collection") body = <CollectionRow vm={vm} art={art} onPut={(o) => a.choose(o.item)} onTakeOff={(o) => void setItemStatus(o.item, "saved")} />;
   const key = searchingNow ? "skel" : showOptions ? `opts:${changing ? "chg" : ""}` : `${form}:${chosenId ?? ""}`;
@@ -503,6 +512,156 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
     return (
       <>
         <RouteNote vm={vm} domId={vm.domKeys[0] ? entryDomId(vm.domKeys[0]) : undefined} menu={<IntentMenu entries={menu} name={name} />} onPick={(mode) => void onLeg({ mode })} onOwn={() => void onLeg({ booked: true })} />
+        {asking && <AskWindow ask={asking} onClose={() => setAsking(null)} />}
+      </>
+    );
+  }
+  // Plan v14 (onay paketi 2026-10-21): a dated category's intent is a row on its date rail, its frame under it or beside it.
+  if (isDatedSection(vm.section) && vm.frame !== "collection") {
+    const view = rowView(vm);
+    const date = railDate(vm);
+    const editable = itemId != null;
+    const askNow = needNow && offers.available() && !camp0 ? openDrawer : a.ask;
+    const slotOn: SlotOn = {
+      ask: askNow,
+      pick: openDrawer,
+      take: () => {
+        entry.current = "morph";
+        if (record) a.choose(record);
+      },
+      got: () => record && a.got(record),
+      page,
+      brand: vm.chosen?.brand?.label ?? null,
+    };
+    const menuNode = <IntentMenu entries={menu} name={name} />;
+    const sectionProps = {
+      ref: boxRef,
+      className: `q-int z-int q-rowi${folding ? " folding" : ""}${takeoff && vm.frame === "ticket" ? " z-go" : ""}${pop ? " pop" : ""}`,
+      id: vm.domKeys[0] ? entryDomId(vm.domKeys[0]) : undefined,
+      "data-intent": vm.key,
+      "data-st": railState(vm.status),
+      "data-kind": vm.kind,
+      "data-face": view.face,
+      "data-item-id": itemId ?? undefined,
+      "data-option-ids": vm.itemIds.join(" ") || undefined,
+      style: { "--k": color } as React.CSSProperties,
+      "aria-label": name,
+      "aria-describedby": chipId,
+      "data-new": L("Yeni", "New"),
+    };
+    const tail = (
+      <>
+        {field}
+        {vm.domKeys.slice(1).map((k) => (
+          <i key={k} className="q-anchor" id={entryDomId(k)} aria-hidden />
+        ))}
+        {here && onHere && (
+          <div className="q-here">
+            <button type="button" title={L("Buraya ekle", "Add here")} onClick={() => onHere(here)}>
+              + {L("Buraya ekle", "Add here")}
+            </button>
+          </div>
+        )}
+      </>
+    );
+    let inner: ReactNode;
+    if (gap && vm.kind === "stay") {
+      const t = emptyNightText(vm, gap.before, gap.after);
+      inner = <EmptyNight date={date} title={t.title} line={t.line} onAsk={askNow} menu={menuNode} />;
+    } else if (view.face === "ticket") {
+      const shown = vm.chosen;
+      const acts = (
+        <>
+          {shown?.brand?.label && (vm.status === "chosen" || vm.status === "suggested") && <span className="q-rsrc">{L(`${shown.brand.label}'dan`, `from ${shown.brand.label}`)}</span>}
+          <span className="q-rsp" />
+          {vm.status === "chosen" && page && (
+            <button type="button" className="q-got" onClick={() => record && a.got(record)}>
+              ✓ {L("Aldım", "Got it")}
+            </button>
+          )}
+          {all.length > 1 && (vm.status === "chosen" || vm.status === "suggested" || vm.status === "booked") && (
+            <button type="button" className="q-chg" onClick={openDrawer}>
+              {vm.status === "suggested" ? L(`Seçenekler (${Math.max(vm.optionCount, all.length)})`, `Options (${Math.max(vm.optionCount, all.length)})`) : L("Değiştir", "Change")}
+            </button>
+          )}
+        </>
+      );
+      const ticket = searchingNow ? (
+        <div className="z-skel" role="status">
+          <div className="q-oh">
+            <span className="z-pulse" aria-hidden />
+            <b className="q-ot">{L(`AI ${name} için arıyor`, `The AI is looking for ${name}`)}</b>
+            <small className="q-oc">{L("seçenekler gelince burada", "options land here")}</small>
+          </div>
+        </div>
+      ) : ticketProps ? (
+        <FrameTicket {...ticketProps} inRow />
+      ) : null;
+      inner = <TicketRow vm={vm} view={view} art={art} date={date} on={slotOn} ticket={ticket} links={links} onDrawer={all.length || need ? openDrawer : null} menu={menuNode} acts={acts} chipId={chipId} editable={editable} />;
+    } else {
+      // A stay, a rental: pressed, its options beside the plan (Değiştir once chosen); a booking its details under it.
+      const onPress = vm.status === "booked" && record ? () => setDetail(!detail) : all.length ? openDrawer : askNow;
+      const a0 = vm.access;
+      const warn = vm.ticket?.chips.filter((c) => c.kind === "warn" || c.kind === "night") ?? [];
+      const doc = vm.kind === "stay" ? { open: L("Onayı aç", "Open the confirmation"), add: L("Onayı ekle", "Add the confirmation") } : { open: L("Belgeyi aç", "Open the document"), add: L("Belgeyi ekle", "Add the document") };
+      const foot =
+        vm.status === "booked" ? (
+          <div className="q-rft ok">
+            {a0?.checkIn && <span>{L(`Giriş ${a0.checkIn}`, `Check-in ${a0.checkIn}`)}</span>}
+            {vm.paid && view.figure?.code && <span className="z-paid">{vm.paid}</span>}
+            {a0?.docMissing && (
+              <button type="button" className="z-docw" onClick={() => pickDoc?.()}>
+                ⚠ {L(`${doc.add} · eksik`, `${doc.add} · missing`)}
+              </button>
+            )}
+            <span className="q-rsp" />
+            {docs.length > 0 ? (
+              <button type="button" className="q-chg ok" onClick={() => void openDoc(docs[0].id)}>
+                {doc.open}
+              </button>
+            ) : (
+              !a0?.docMissing && pickDoc && (
+                <button type="button" className="q-chg ok" onClick={pickDoc}>
+                  {doc.add}
+                </button>
+              )
+            )}
+            {(a0?.links.page ?? page) && (
+              <a className="q-chg ok" href={(a0?.links.page ?? page)!} target="_blank" rel="noreferrer">
+                {L("Rezervasyonu aç ↗", "Open the booking ↗")}
+              </a>
+            )}
+          </div>
+        ) : vm.status === "included" && vm.cover ? (
+          <div className="q-rft">
+            <span>{vm.cover.by}</span>
+            <span className="q-rsp" />
+            {onCover && (
+              <button type="button" className="q-chg" onClick={onCover}>
+                {vm.cover.open} ›
+              </button>
+            )}
+          </div>
+        ) : warn.length ? (
+          <div className="q-rft warn">
+            {warn.map((c) => (
+              <span key={c.text}>{c.text}</span>
+            ))}
+          </div>
+        ) : vm.status === "arranged" && vm.note ? (
+          <div className="q-rft">
+            <span>{vm.note}</span>
+          </div>
+        ) : null;
+      inner = <StayCard vm={vm} view={view} art={art} date={date} on={slotOn} onPress={onPress} menu={menuNode} foot={foot} under={detail ? <div className="q-rdet">{detailNode}</div> : null} chipId={chipId} editable={editable} />;
+    }
+    return (
+      <>
+        <section {...sectionProps}>
+          {inner}
+          {tail}
+        </section>
+        {drawerNode}
         {asking && <AskWindow ask={asking} onClose={() => setAsking(null)} />}
       </>
     );

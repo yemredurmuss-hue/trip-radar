@@ -186,7 +186,7 @@ export function rowView(vm: IntentVM): RowView {
   } else if (status === "booked") {
     const label = vm.access ? codeLabel(vm.access) : null;
     if (vm.access?.code && label) figure = { big: vm.access.code.value, small: mode ? ticketCodeLabel(mode, label) : label, code: true };
-    else if (vm.paid) figure = { big: vm.paid, small: L("ödendi", "paid") };
+    else if (vm.paid) figure = { big: vm.paid.replace(/\s+(ödendi|paid)$/i, ""), small: L("ödendi", "paid") };
   }
 
   // The one thing on the right.

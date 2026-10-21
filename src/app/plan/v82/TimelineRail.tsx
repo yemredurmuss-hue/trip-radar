@@ -2,8 +2,9 @@
 // rail, each one's dot its state's colour (CSS, `data-st`); first the category's short note when the trip's form changed
 // something there (spec §1.4, CategoryInfo: only when said), then what is being read into it and its warnings, then the
 // visa (Belgeler ve internet), the intents, and last its "Gizlenenler · n".
-import type { ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { L } from "../../../lib/i18n";
+import { RowOpenContext } from "./IntentRow";
 
 /** The one-line note at a category's start (q-tinfo): drawn only with something to say. */
 export function CategoryInfo({ text }: { text: string | null | undefined }) {
@@ -16,7 +17,9 @@ export function CategoryInfo({ text }: { text: string | null | undefined }) {
   );
 }
 
-export function TimelineRail({ info, lead, children, hidden }: {
+export function TimelineRail({ info, lead, children, hidden, dated = false }: {
+  /** Uçuş, Konaklama, Ulaşım (plan v14): the intents on the date rail (.q-tl), one row open at a time. */
+  dated?: boolean;
   info?: string | null;
   /** Before the intents and off the rail's dots: a link being read, a warning. */
   lead?: ReactNode;
@@ -24,8 +27,11 @@ export function TimelineRail({ info, lead, children, hidden }: {
   /** "Gizlenenler · n", at the end. */
   hidden?: ReactNode;
 }) {
+  const [open, set] = useState<string | null>(null);
+  const rows = useMemo(() => ({ open, set }), [open]);
   return (
-    <div className="q-ints">
+    <RowOpenContext.Provider value={rows}>
+    <div className={dated ? "q-ints q-tl" : "q-ints"}>
       <CategoryInfo text={info} />
       {lead}
       {children}
@@ -36,5 +42,6 @@ export function TimelineRail({ info, lead, children, hidden }: {
       </p>
       {hidden}
     </div>
+    </RowOpenContext.Provider>
   );
 }

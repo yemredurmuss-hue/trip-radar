@@ -48,6 +48,11 @@ export interface FrameTicketProps extends FrameCardProps {
    */
   onReset: (() => void) | null;
   onLegGot: (() => void) | null;
+  /**
+   * Drawn under its plan row (plan v14): the row's slot holds Bunu seç, Satın al ↗ and Ara, so the ticket doesn't say
+   * them again; a booking's file, a pass's cover and the route's agreement stay here.
+   */
+  inRow?: boolean;
 }
 
 const NBSP = " ";
@@ -342,7 +347,7 @@ function SelfMarks({ links }: { links: SelfSearch[] }) {
   );
 }
 
-export function FrameTicket({ vm, form, page, links, info, detail, quiet, on, onCover, onAgree = null, ways, onReset, onLegGot, onOpen = null }: FrameTicketProps) {
+export function FrameTicket({ vm, form, page, links, info, detail, quiet, on, onCover, onAgree = null, ways, onReset, onLegGot, onOpen = null, inRow = false }: FrameTicketProps) {
   const o = vm.chosen;
   const edit = useInlineEdit();
   const env = useCardEnv();
@@ -415,7 +420,7 @@ export function FrameTicket({ vm, form, page, links, info, detail, quiet, on, on
         main={<TicketMain face={face} art={draw} fly={fly} />}
         line={<TicketLine face={face} live={null} badge={badge} after={pill} fields={fields} />}
         foot={<Price o={o} mode={face.mode} />}
-        primary={primary}
+        primary={inRow ? null : primary}
         layer={fareLayer ?? layer}
       />
     );
@@ -545,7 +550,7 @@ export function FrameTicket({ vm, form, page, links, info, detail, quiet, on, on
   const primary = onAgree ? (
     <AgreeRoute onAgree={onAgree} />
   ) : (
-    on.ask && (
+    on.ask && !inRow && (
       <button type="button" className="q-ai" onClick={on.ask}>
         <Ic name="search" size={15} /> {L("Seçenek bul", "Find options")}
       </button>

@@ -15,7 +15,7 @@ import { countryNames } from "../../lib/heroInfo";
 import { L } from "../../lib/i18n";
 import { doneCount } from "../../lib/collectionCards";
 import { countParts, decideCount, decisionNames, firstDecision, rowThumbs } from "../../lib/intentFrame";
-import { collectionsOf, V82_ORDER, type Collection, type IntentInput } from "../../lib/intents";
+import { collectionsOf, V82_ORDER, type Collection, type IntentInput, type IntentVM } from "../../lib/intents";
 import { formatPrice } from "../../lib/items";
 import { nightsSummary } from "../../lib/lifecycle";
 import { sameCity, type Plan } from "../../lib/plan";
@@ -46,6 +46,7 @@ import { artOf, IntentBox } from "./v82/IntentBox";
 import { PlanHeader } from "./v82/PlanHeader";
 import { Searching } from "./v82/Searching";
 import { TimelineRail } from "./v82/TimelineRail";
+import { emptyNights, isDatedSection } from "../../lib/railDates";
 import { intentEl, V82EnvContext, type V82Env } from "./v82/v82Env";
 import { VisaRow } from "./VisaRow";
 
@@ -59,6 +60,14 @@ export const V82_SECTIONS: ReadonlySet<SectionId> = new Set<SectionId>(["flight"
 const SLICE: Partial<Record<SectionId, BudgetSlice>> = { flight: "flight", stay: "stay", transport: "transport", activity: "activity", other: "other" };
 
 const NO_ENTRIES: CatEntry[] = [];
+
+/** A short open stretch between two stays (railDates.emptyNights): the stays on either side of it, for its line. */
+function gapOf(vm: IntentVM, list: readonly IntentVM[]): { before: IntentVM | null; after: IntentVM | null } | null {
+  if (!emptyNights(list).has(vm.key)) return null;
+  const stays = list.filter((v) => v.kind === "stay" && v.head.date && v.head.nights > 0).sort((a, b) => a.head.date!.localeCompare(b.head.date!));
+  const i = stays.findIndex((v) => v.key === vm.key);
+  return { before: stays[i - 1] ?? null, after: stays[i + 1] ?? null };
+}
 
 /** What sits pinned over the plan when it scrolls (the thin bar, app.css scroll-margin-top 76px). */
 const PINNED = 76;
@@ -286,6 +295,7 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
                   allotNum={allotNum} suggestions={cardSuggestions(s).filter((x) => x.kind === "add").length}>
                   {v82(s) ? (
                     <TimelineRail
+                      dated={isDatedSection(s.id)}
                       // Kısa bilgi satırı (spec §1.4): only where the trip's shape changed something in the category.
                       info={c?.summary.info?.text ?? info[s.id]}
                       lead={
@@ -298,12 +308,12 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
                       }
                       hidden={<Hidden section={s} live={items.filter((i) => i.status !== "dismissed" && planSectionOfItem(i) === s.id)} suggestions={dismissed} art={(kind) => artOf(kind)} />}
                     >
-                      {(c?.intents ?? []).filter((i) => i.status !== "skipped").map((vm) =>
+                      {(c?.intents ?? []).filter((i) => i.status !== "skipped").map((vm, _n, list) =>
                         // Etkinlik and Yapılacaklar: a city's row of cards (aşama 4); a part of the trip's shape among them (a ski pass) is one choice.
                         vm.frame === "collection" ? (
                           <CollectionBox key={vm.key} vm={vm} color={SECTION_META[s.id].color} />
                         ) : (
-                          <IntentBox key={vm.key} vm={vm} color={SECTION_META[s.id].color} onHere={s.id === "stay" ? (at) => onAdd(s.id, at) : null} />
+                          <IntentBox key={vm.key} vm={vm} color={SECTION_META[s.id].color} onHere={s.id === "stay" ? (at) => onAdd(s.id, at) : null} gap={s.id === "stay" ? gapOf(vm, list) : null} />
                         ),
                       )}
                       {s.id === "activity" && <CityGaps gaps={gaps.filter((g) => !(c?.intents ?? []).some((i) => i.frame === "collection" && i.head.city != null && sameCity(i.head.city, g.city)))} section="activity" />}
