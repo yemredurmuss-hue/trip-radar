@@ -1,0 +1,61 @@
+# Uçuş kartı, zaman çizgisi ve çekmece: kararlar ve devir (21 Eki 2026)
+
+Bir günlük tasarım koşusunun çıktısı. Canlı sürüm 0.39.27, canlı kod dalı `plan-v82-kod`.
+Çizimler `docs/mockups/` altında, dal `zaman-cizgisi-cizim`, PR yemredurmuss-hue/trip-radar#4.
+Ürün kodu değişmedi; bu dosya kodlama ve konaklama çizimleri için devir notudur.
+
+## Kaynaklar
+
+- Özet sayfası (kararlar ve 13 çizimin bağlantısı): https://claude.ai/artifact/QLjnt4jbdRYXbbSWnum6no
+- Son onaylı hâller:
+  - Plan satırları (niyet, seçili, alınmış): `docs/mockups/ucus-karti-v6/index.html` (artifact https://claude.ai/artifact/7nHKyBtfuX92qrgQXHUGCj)
+  - Biriken kart ve Seç davranışı (Yol 2), dört kart aynı hatta: `docs/mockups/biriken-kart-v9/index.html` (https://claude.ai/artifact/E9CKBJyoKPXw5XFbKNGQ6G)
+  - Çekmece standardı: `docs/mockups/cekmece-standart-v12/index.html` (https://claude.ai/artifact/4s45bF1d1BENJmycPp7Arg)
+  - Çekmecede tarihler (A, takvim karosu): `docs/mockups/cekmece-tarihler-v13/index.html` (https://claude.ai/artifact/VgnZVxVdT7XQHyb6tmr8X1)
+  - Zaman çizgisi ve konaklama dilimleri (ilk çizim, konaklama için başlangıç): `docs/mockups/zaman-cizgisi-v1/index.html` (https://claude.ai/artifact/Aw2kLN9ya87tQoXyyXwNex)
+  - Düğme haritası ve kullanım eleştirisi: `docs/mockups/ucus-cekmecesi-v10/index.html`
+- Canlı CSS: `static/v82/plan.css` (`.q-sec`, `.q-row1`, `.q-ints`), `static/v82/card13.css` (K79 kart, K82 çekmece `.dr-*`),
+  `static/v82/intent.css` (`.q-st` haplar, `.q-src`), `static/v82/ticket.css` (`.z-route`, `.q-tm`, `.q-mid`), renkler `static/app.css` (`--q-*`).
+- Kategori renkleri `src/app/plan/sectionMeta.ts` (uçuş #6a4fe0, konaklama #23998b). Bölüm `src/app/plan/Section.tsx`, kart `src/app/IntentCard.tsx`, çekmece `src/app/ItemDrawer.tsx`.
+- İllüstrasyonlar: `git show 569d414:docs/mockups/plan-v30/illus/<ad>.png` (otel, ev-daire, ucus, ...).
+
+## Değişmez kurallar
+
+- Fiyat, saat, uyarı ve kaynak bağlantısı hiçbir durumda gizlenmez; ama her durum yalnız kendi aşamasının bilgisini taşır.
+- Durum yalnız hapta/düğmede ve alt şeritte; kategori rengi ikon ve hattaki noktalarda. Yeşil rezerve/alındı, sarı-bej seçildi, amber uyarı, kırmızı risk, lila öneri ve uçuş rengi.
+- Em-dash yok. Canlı dil (Plus Jakarta Sans, `--q-*` belirteçleri, illüstrasyon seti). Yeni görsel dünya yok.
+- Hafta günleri gerçek takvime göre (2027: 20 Mar Cmt, 2 Nis Cum).
+
+## Onaylanan kararlar (uçuş)
+
+1. **Kategori içi zaman çizgisi.** Açık kategoride kartlar tarih sırasıyla tek sütun; solda ince hat (2 px, uçları yumuşak), tarih sütunu 96 px, her tarihin noktası kartın yanında (seçili/alınmış dolu, biriken halka, niyet kesikli). Boş gün satırı yok. Telefonda (390) tarih kartın üstüne iner, hat kartların arkasından akar. Kodda `plan.css`: `.q-ints` yerine `.q-tl` sarmalayıcısı; tarihsiz kategoriler (yapılacaklar, belgeler, hazırlık, ilham) ızgarada kalır; "Yolculuk sırasıyla" görünümü ile çakışmaz (o tüm kategorileri tek hatta koyar).
+2. **Her bacak bir kart.** Gidiş-dönüş bile iki tarih, iki kart. Satın alınca iki kart birden "Alındı", PNR ikisine (modelde bağ gerekir).
+3. **Satır: 72 px, sağda tek şey.** Izgara: işaret 38 px · rota ve bir satır bilgi · tek rakam · 118 px'lik yuva. Yuvada tek düğme ya da hap, hepsi 36 px: niyet "Ara", biriken "Seç" ve köşede mini "3", seçili "Satın al ↗", alınmış yeşil "✓ Alındı" (hap). Ok yok; satırın kendisi basınca açılır; aynı anda bir satır açık; açılan satır ekrana kaydırılır. Kodda satır ve sağ yuva kardeş eleman (düğme içinde düğme olmaz).
+4. **Niyet (todo).** İşaret: canlı uçuş gradyanı (`linear-gradient(160deg,#9cc4ff,#dbe9ff 60%,#fff3e3)`) üstünde uçak illüstrasyonu. Rota "Chiang Mai → Bangkok", satır "30 Mar Sal · sabah · 2 kişi", rakam "€35–60 yaklaşık", düğme "Ara". Kesikli kenar, üstte hafif lila gradyan. Açılınca: bir cümle ne arandığı, "Trip Radar arasın" ve Skyscanner · Kiwi · Google Flights düğmeleri. Bağlantı yapıştırma kartta YOK (sohbette ve çekmecede).
+5. **Biriken (dk).** Deste: üç havayolu logosu çapraz üst üste (24 px kareler, 2 px beyaz halka), kart altında iki kart kenarı (box-shadow katmanları). Satır aynı, rakam "€326 en düşük" (önerimizin fiyatı tercih edilir), düğme "Seç" ve mini "3". Hap yok, "karar bekliyor" yazmaz. Açılınca (Yol 2): sağ yuva boşalır (yalnız ok), alan ikiye: solda "Birikenler" (deste, havayolları, kaynaklar, aralık, Seç), sağda "Yeni bul" (üç site). Seçenek listesi kartta YOK; çekmecede.
+6. **Seçili (sel).** Satır: logo, rota, "00:35 → 17:05 · 12 sa 30 dk · 1 aktarma", "€276 kişi başı", "Satın al ↗". Hap yok. Açılınca biniş kartı: büyük saatler (26 px), kesikli rota ve uçak illüstrasyonu (`.q-mid` dili), aktarma noktası turuncu, süre ve aktarma; sağda toplam; aksiyon satırı: kaynak ("Skyscanner'dan"), "Değiştir"; varsa amber alt şerit ("Gezi başlangıcından 4 gün önce kalkış"). Karşılaştırma yok.
+7. **Alınmış (ok).** Satır: logo, rota, saatler ve direkt, "K7T2QX PNR", yeşil "✓ Alındı". Açılınca biniş kartı, mühür, "€76 ödendi · 2 kişi", "Takvime ekle", "Bileti aç ↗", yeşil şerit: check-in saati, koltuk.
+8. **Düğmeler.** Ara → çekmece açılır, Trip Radar arar (kaynak ilerlemesi, satırlar gelir, Durdur). Seç → çekmece, seçenekler. Satın al → kaynağın satın alma sayfası, dönüşte "Aldın mı?". Değiştir → aynı çekmece, seçili işaretli. Alındı → durum; Bileti aç → kaynak. Pano'da aç → derin karşılaştırma.
+9. **Çekmece (K82 çerçevesi, sağdan 600 px).** Başlık üç satır: (a) deste/illüstrasyon, "Bangkok → İstanbul", "2 Nis Cum · akşam varış · 2 kişi · tek yön", kapat; (b) "ÖLÇÜTLER" çipleri: şart olanlar lila, tercihler gri, "+ ekle"; (c) Seçenekler/Elenen anahtarı (sayılı) ve "Sırala: Önerimiz ▾". Gövde açık gri zemin, beyaz kartlar.
+10. **Çekmece kartı (standart).** Başlık: logo, havayolu, sefer no, kaynak; sağda puan çipi 34 px (dolu daire sayı + "1. sırada"; önerimiz lila, komşu gün amber, diğerleri mürekkep). Gövde: biniş kartı (seçili kartın açık hâliyle aynı çizim) + sağda fiyat (kişi başı, toplam) + "Seç" (önerimizde dolu lila, diğerlerinde ghost). Beş yuva hep aynı sırada, ikonlu: bagaj (çanta, "23 kg"/"Bagaj yok"), el bagajı (sırt çantası, "8 kg"), iade (geri ok, "İade yok"/"İade ücretli"/"İade var"), terminal (bina, "IST · T1"), kaynak (dış bağlantı). Yeşil var, amber yok, gri nötr, boşsa "—". "Neden 91?" satırı kartın altında açılır; önerimizde açık başlar; cümle kalıbı: istenenlerden hangileri var, artı, eksik. Önerimizin lila çerçevesi var; kart bölünmez.
+11. **Çekmecede tarihler (A).** Her gün grubu başında 52 px takvim karosu (gün büyük, ay küçük), tam tarih, not, hap "İSTENEN GÜN" / "+1 GÜN"; komşu günün bedeli notta ("konaklama 1 gece uzar, +€64"). Bant kaydırınca üstte yapışır. Altta bırakma kutusu (lila kesikli, dolu ikon: "Bulduğun uçuşun bağlantısını buraya bırak", siteler) ve "Pano'da karşılaştır →".
+
+## Açık sorular (koda geçerken karar ver)
+
+- İç içe açılma hissi (kategori, satır, çekmece): bir satır açık, kaydırma, çekmece kapanınca satır kapanır. Kullanınca değerlendir.
+- Seçili ama alınmamış, kapalı satırda yalnız düğmeyle belli; karışık listelerde hattaki nokta sarı-bej olabilir.
+- Uyarı kapalı satırda görünmüyor: küçük amber işaret gerekir.
+- Beşinci geçici durum "Aranıyor" (Ara'dan sonra çekmece kapatılınca): nokta ve "Aranıyor…".
+- Fiyat tazeliği (canlıdaki fiyat geçmişi satıra küçük not), gidiş-dönüş tek bilet bağı, tarihsiz niyet ("Tarihi yok" grubu).
+
+## Sıradaki iş: konaklama
+
+Aynı tasarım anlayışı ve gün gün fikri konaklamaya uygulanacak. Emre'nin notu: konaklamada açılır-kapanır gerekmeyebilir; gün gün (gece aralıkları) fikri orada da ele alınmalı. Başlangıç: `zaman-cizgisi-v1` ikinci blok (geceler hatta kalın dilim, giriş noktada, çıkış dilimin ucunda, boş gece amber). Her durum için örnek çizilecek: niyet (nerede, kaç gece, kaç kişi, istenenler), biriken (deste, kaç tane), seçili (otel adı, puan, gece fiyatı, toplam, "Rezerve et"), rezerve (yeşil, mühür, rezervasyon no, giriş saati, "Rezervasyonu aç"). Fotoğraf/illüstrasyon kartta nerede durur (otel illüstrasyonu `otel.png`, `ev-daire.png`), ardından konaklama çekmecesi (aynı standart: puan çipi, yuvalar: kahvaltı, iptal, konum/mesafe, puan, kaynak).
+
+## Kodlama sırası (öneri)
+
+1. `plan.css`: `.q-tl` sarmalayıcısı (tarih sütunu, nokta, hat, telefon kuralı), tarihli kategorilerde `.q-ints` yerine; `Section.tsx` tarih sıralaması.
+2. Uçuş satırı bileşeni (dört durum, açılır gövde), `IntentCard.tsx` uçuş türünde K79 yerine; haplar ve düğmeler `intent.css` dilinde.
+3. Çekmece: başlık üç satır, standart kart, beş yuva, "Neden?" katlaması, tarih bantları; `ItemDrawer.tsx` / K82 CSS üstüne.
+4. Durum geçişleri: Ara → aranıyor → biriken → seçili → alınmış; Seç/Değiştir/Satın al/Aldın mı akışı.
+5. e2e: dört durum, açılma, çekmece, telefon genişliği.
