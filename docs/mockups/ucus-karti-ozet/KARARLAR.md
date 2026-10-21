@@ -59,6 +59,16 @@ Bir günlük tasarım koşusunun çıktısı. Canlı sürüm 0.39.27, canlı kod
 5. **Çekmece (Emre'nin notuyla v2).** Tarih tek ve başlıkta: niyetin tarihi net, başka tarih başka niyet kartı; tarih bandı ve "+1 gece" yok. Başlıkta sıralama ağırlığı (varsayılan yorumlar %40, özellikler %35, fiyat %25; "Ayarla", gezi başına saklanır), sıralama "Ağırlıklı puan". Kart görsel önde (v3): tepede tam genişlik 200 px fotoğraf, köşesinde puan çipi, altında iki küçük ve "+N"; altında ad, kaynak ve bölge, puanın üç parçası tek satır (yorum, özellik, fiyat; 0–100, ağırlıkla toplanır), fiyat ve her kartta dolu, geniş Seç (telefonda tam genişlik; seçili olan "✓ Seçili"). Beş yuva etiketli: kahvaltı, ücretsiz iptal, eski şehre mesafe, puan, kaynak. Altında AI'nın yorumlardan çıkardığı artılar ve eksiler hep açık (en çok üçer madde, yorum sayısıyla). Bırakma kutusu ve "Pano'da karşılaştır".
 6. **Düğmeler.** Ara → çekmece ve AI arama; Seç → çekmece; Rezerve et → kaynak, dönüşte "Rezerve ettin mi?"; Rezerve hap, "Rezervasyonu aç" şeritte.
 
+## Arama, pano ve kaçırdıklarımız (Çizim 15, onay bekliyor)
+
+Çizim: `docs/mockups/arama-pano-v1/index.html` (https://claude.ai/artifact/UgbuWmb6ZaoEenuzLK5wTg). Konaklama Emre tarafından onaylandı.
+
+1. **Siteler tek yerde.** Plan kartında yalnız "Ara". Çekmecenin en altında her hâlde "Yeni bul" kutusu: üç site `providers.ts` sırasıyla (Tayland'da Agoda, Booking.com, Airbnb), "Diğer ▾", altında bırakma alanı. Arama şehir, tarih, kişi, odayla dolu ve ortaklık bağlantısıyla açılır. Panoda grup başlığında "Yeni bul ▾"; Asistan'da "Bir link bırak" kalır.
+2. **Dönüş eklentiyle.** Otel sayfasında eklenti düğmesi ya da Alt+Shift+S: pencere şehri ve tarihi tutan niyeti kendisi seçer ("✓ şehir ve tarih tuttu"), tek düğme "Desteye ekle"; tutmazsa "Nereye?" listesi, hiçbiri değilse İlham.
+3. **Ara hâli çekmecede.** Üstte arama çizgisi (kaynak ilerlemesi, Durdur), gelen kart "Yeni geldi" ve geçici sırası, iskeletler, altta Yeni bul.
+4. **Pano = büyümüş çekmece.** İhtiyaç başına grup; grup başı çekmece başı gibi (ölçütler, ağırlık, Yeni bul, Kartlar/Karşılaştır). Kartlar çekmece kartının küçüğü (fotoğraf, puan çipi, üç parça, beş yuva, iki artı iki eksi, fiyat ve Seç), 3 sütun. Karar verilmiş grup tek satır. Karşılaştır: seçenek başına sütun, her satırda en iyisi yeşil, eksik amber; artılar, eksiler, oylar, Seç.
+5. **Kaçırdıklarımız.** Aranıyor (beşinci hâl); uçuşla saat bağı (geç giriş, erken çıkış amber şerit ve tek iş); çakışan gece (kırmızı); fiyat tazeliği ve kaynağın parası; Elenen ve "Geri al"; iptal son günü hatırlatma; rezervasyonun e-posta/onay sayfasından okunması; ortak gezide oylar; kişi/oda değişince yeniden arama; tarihsiz niyet; kapalı kategori satırında boş/çakışan gece; telefonda tam ekran çekmece.
+
 ## Kodlama sırası (öneri)
 
 1. `plan.css`: `.q-tl` sarmalayıcısı (tarih sütunu, nokta, hat, telefon kuralı), tarihli kategorilerde `.q-ints` yerine; `Section.tsx` tarih sıralaması.
@@ -66,4 +76,5 @@ Bir günlük tasarım koşusunun çıktısı. Canlı sürüm 0.39.27, canlı kod
 3. Çekmece: başlık üç satır, standart kart, beş yuva, "Neden?" katlaması, tarih bantları; `ItemDrawer.tsx` / K82 CSS üstüne.
 4. Durum geçişleri: Ara → aranıyor → biriken → seçili → alınmış; Seç/Değiştir/Satın al/Aldın mı akışı.
 5. e2e: dört durum, açılma, çekmece, telefon genişliği.
-6. Konaklama (onaydan sonra): `StayRow` (A), `.q-tl .span` dilimi ve boş gece satırı, `Section.tsx`'te gece boşluğu hesabı, çekmecede konaklama kartı.
+6. Konaklama (onaylandı): `StayRow` (A), `.q-tl .span` dilimi ve boş gece satırı, `Section.tsx`'te gece boşluğu hesabı, çekmecede konaklama kartı.
+7. Arama ve pano (onaydan sonra): çekmecede "Yeni bul" kutusu, eklenti penceresinde niyet eşleme, pano grupları ve Karşılaştır görünümü, kaçırdıklarımızdaki uyarılar.
