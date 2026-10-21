@@ -112,14 +112,14 @@ export function Deck({ vm, all, art, people, onOpen }: { vm: IntentVM; all: Opti
   }
   return (
     <div className={`z-f z13 dk${ticket ? " z-tk" : " z-c"}`} data-mode={mode ?? undefined}>
-      <div className="z-m z-op" onClick={onOpen}>
+      <div className="z-m z-tap" onClick={onOpen}>
         {media}
       </div>
-      <div className="z-i z-op" onClick={onOpen}>
+      <div className="z-i z-tap" onClick={onOpen}>
         {best ? (
           <>
             <small className="z-l0">{L("Sana en uygun", "Best for you")}</small>
-            <span className="z-t z-tb">
+            <span className="z-t z-best">
               {ticket ? [rowFace(best, vm.kind).name, best.item.flight?.departure ? null : null, optionDay(best) ? shortDay(optionDay(best)!) : null, rowFace(best, vm.kind).dep].filter(Boolean).join(" · ") : best.title}
               {checks.length > 0 && <em className={`z-meet${met === checks.length ? "" : " part"}`}>{L(` · ${met}/${checks.length} istek`, ` · ${met}/${checks.length} asks`)}</em>}
             </span>

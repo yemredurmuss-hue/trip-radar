@@ -226,10 +226,10 @@ function Frame({ cls = "", mode, main, line, foot, primary, row = null, layer, o
   const open = onOpen ? { onClick: onOpen } : {};
   return (
     <div className={`z-f z-tk z13${cls}`} data-mode={mode}>
-      <div className={`z-m${onOpen ? " z-op" : ""}`} {...open}>
+      <div className={`z-m${onOpen ? " z-tap" : ""}`} {...open}>
         {main}
       </div>
-      <div className={`z-i${onOpen ? " z-op" : ""}`} {...open}>
+      <div className={`z-i${onOpen ? " z-tap" : ""}`} {...open}>
         {line}
       </div>
       <div className="z-s">
@@ -470,7 +470,7 @@ export function FrameTicket({ vm, form, page, links, info, detail, quiet, on, on
         ⚠ {L(`${doc.add} · eksik`, `${doc.add} · missing`)}
       </button>
     ) : days != null && !live ? (
-      <span className="z-days">
+      <span className="z-dleft">
         <Ic name="cal" size={13} /> {L(`${days} gün kaldı`, `${days} days to go`)}
       </span>
     ) : null;

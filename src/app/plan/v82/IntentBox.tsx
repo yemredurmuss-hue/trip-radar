@@ -329,7 +329,8 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
   }, [changing]);
 
   const menu: MenuEntry[] = [
-    ...(all.length ? [{ label: L(`Seçenekleri gör (${Math.max(vm.optionCount, all.length)})`, `See the options (${Math.max(vm.optionCount, all.length)})`), run: openDrawer }] : []),
+    // (mockup v13's ⋯: "Değiştir" once something is chosen; before that the options are what there is to see)
+    ...(all.length ? [{ label: vm.chosen && form !== "options" ? L("Değiştir", "Change") : L(`Seçenekleri gör (${Math.max(vm.optionCount, all.length)})`, `See the options (${Math.max(vm.optionCount, all.length)})`), run: openDrawer }] : []),
     ...(record && form !== "searching" ? [{ label: L("Ayrıntı", "Details"), run: () => setDetail(true) }] : []),
     ...(a.pano && vm.optionCount ? [{ label: L(`Pano'da aç (${vm.optionCount})`, `Open on the Board (${vm.optionCount})`), run: a.pano }] : []),
     ...(a.addSuggestion ? [{ label: L("Plana koy", "Add to plan"), run: a.addSuggestion }] : []),

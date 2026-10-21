@@ -3,6 +3,7 @@
 // something there (spec §1.4, CategoryInfo: only when said), then what is being read into it and its warnings, then the
 // visa (Belgeler ve internet), the intents, and last its "Gizlenenler · n".
 import type { ReactNode } from "react";
+import { L } from "../../../lib/i18n";
 
 /** The one-line note at a category's start (q-tinfo): drawn only with something to say. */
 export function CategoryInfo({ text }: { text: string | null | undefined }) {
@@ -28,6 +29,11 @@ export function TimelineRail({ info, lead, children, hidden }: {
       <CategoryInfo text={info} />
       {lead}
       {children}
+      {/* The route notes' heading (plan v13, K85): drawn only when the category has one (CSS :has, card13.css). */}
+      <p className="z-nh">
+        <b>{L("Yol notları", "Route notes")}</b>
+        <span>{L("Rezervasyon gerekmez · aracı değiştirmek için dokun", "Nothing to book · tap to change the way")}</span>
+      </p>
       {hidden}
     </div>
   );

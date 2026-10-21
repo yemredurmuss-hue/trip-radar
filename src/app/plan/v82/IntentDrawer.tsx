@@ -6,9 +6,10 @@
 // spread over several days are compared by what decides (K83: price, length, stops, bag) and their hours go under; a boat,
 // a train, a bus are a timetable's rows. At its end the source's picks (OfferRow), "Bulamadın mı?" (the sites, the AI) and
 // the Büyük Pano in its head. Seç chooses at once; the box says "X yerine Y seçildi · Geri al".
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { bagAll, compareMode, drawerList, optionDay, optionDays, optionTab, totalAmount, winners, type DrawerTab, type SortKey } from "../../../lib/drawerView";
+import { choiceOf } from "../../../lib/choice";
+import { bagAll, compareMode, drawerList, optionDay, optionDays, optionTab, pickReason, totalAmount, winners, type DrawerTab, type SortKey } from "../../../lib/drawerView";
 import { L } from "../../../lib/i18n";
 import { shortDay } from "../../../lib/ideas";
 import { headName, optionPrice, type SelfSearch } from "../../../lib/intentFrame";
@@ -18,6 +19,8 @@ import { rowFace } from "../../../lib/ticketFrame";
 import type { Need } from "../../../lib/offerSource";
 import type { Item } from "../../../lib/types";
 import { OfferRow } from "../../cards/OfferRow";
+import { useCardEnv } from "../../cards/PlanCard";
+import { decisionOf } from "./DetailLayer";
 import { Ic, Mark, type IconName } from "./icons";
 import { Rating, SourceBadge, type Typical } from "./OptionCompact";
 import { BagIcon, CarrierLogo } from "./OptionRow";
@@ -27,6 +30,9 @@ const SORTS: Readonly<Record<"stay" | "flight" | "ticket", [SortKey, string][]>>
   flight: [["fit", L("Sana en uygun", "Best for you")], ["price", L("En ucuz", "Cheapest")], ["mins", L("En kısa", "Shortest")]],
   ticket: [["fit", L("Sana en uygun", "Best for you")], ["price", L("En ucuz", "Cheapest")], ["mins", L("En kısa", "Shortest")]],
 };
+
+const OpenRecord = createContext<((o: OptionVM) => void) | null>(null);
+const useOpenRecord = () => useContext(OpenRecord);
 
 const fitText = (o: OptionVM) => (o.score != null ? L(`%${o.score} uyum`, `${o.score}% fit`) : null);
 const money = (o: OptionVM, n: number | null) => (n == null ? null : formatPrice(n, o.item.price?.currency ?? "EUR"));
@@ -46,6 +52,30 @@ function Pick({ o, current, onPick }: { o: OptionVM; current: boolean; onPick: (
     <button type="button" className="q-pick dr-sec" onClick={onPick} aria-label={L(`${o.title}: seç`, `Choose ${o.title}`)}>
       {L("Seç", "Choose")}
     </button>
+  );
+}
+
+/** "✨ Önerim. <why>" on our pick (mockup v13's opwhy): the pick's own reasons from the comparison. */
+function Why({ text }: { text: string | null }) {
+  return text ? (
+    <p className="dr-why">
+      <Ic name="spark" size={13} />
+      <span>
+        <b>{L("Önerim.", "Our pick.")}</b> {text}
+      </span>
+    </p>
+  ) : null;
+}
+
+/** B14: an option's name opens its record (Tüm detaylar), where the evidence behind a finding is; the drawer gives way to it. */
+function Name({ o }: { o: OptionVM }) {
+  const open = useOpenRecord();
+  return open ? (
+    <button type="button" className="dr-nm" title={o.title} onClick={() => open(o)} aria-label={L(`${o.title}: tüm detaylar`, `${o.title}: all details`)}>
+      {o.title}
+    </button>
+  ) : (
+    <b title={o.title}>{o.title}</b>
   );
 }
 
@@ -78,7 +108,7 @@ function Facts({ o }: { o: OptionVM }) {
   );
 }
 
-function StayOption({ o, art, current, typical, onPick }: { o: OptionVM; art: string; current: boolean; typical: Typical | null; onPick: () => void }) {
+function StayOption({ o, art, current, typical, why, onPick }: { o: OptionVM; art: string; current: boolean; typical: Typical | null; why: string | null; onPick: () => void }) {
   const p = optionPrice(o.price);
   const usual = p ? null : (typical?.(o) ?? null);
   return (
@@ -94,7 +124,7 @@ function StayOption({ o, art, current, typical, onPick }: { o: OptionVM; art: st
       </div>
       <div className="dr-in">
         <span className="dr-r1">
-          <b title={o.title}>{o.title}</b>
+          <Name o={o} />
           <Fit o={o} />
         </span>
         <span className="dr-r2">
@@ -103,6 +133,7 @@ function StayOption({ o, art, current, typical, onPick }: { o: OptionVM; art: st
           <SourceBadge option={{ ...o, ours: false }} />
         </span>
         <Facts o={o} />
+        <Why text={why} />
         {o.topics.length > 0 && (
           <p className="dr-rv">
             {L("Yorumlarda:", "Reviews:")}{" "}
@@ -119,7 +150,13 @@ function StayOption({ o, art, current, typical, onPick }: { o: OptionVM; art: st
         {p ? (
           <span className="q-pr">
             <b>{p.amount}</b>
-            {p.unit && <small>{p.unit}</small>}
+            {/* Saved without its dates: priced for these nights for now ("geçici"; its page opens with them). */}
+            {(p.unit || o.price?.provisional) && (
+              <small>
+                {p.unit}
+                {o.price?.provisional && <i className="z-prov">{p.unit ? " · " : ""}{L("geçici", "provisional")}</i>}
+              </small>
+            )}
           </span>
         ) : usual ? (
           <span className="q-pr" title={usual.title}>
@@ -136,14 +173,14 @@ function StayOption({ o, art, current, typical, onPick }: { o: OptionVM; art: st
 }
 
 /** A flight on one day: its ticket, the hours in front (K82). */
-function FlightOption({ o, vm, art, current, onPick }: { o: OptionVM; vm: IntentVM; art: string; current: boolean; onPick: () => void }) {
+function FlightOption({ o, vm, art, current, why, onPick }: { o: OptionVM; vm: IntentVM; art: string; current: boolean; why: string | null; onPick: () => void }) {
   const f = rowFace(o, vm.kind);
   return (
     <article className={`dr-op dr-tk${current ? " cur" : ""}`} data-item-id={o.id}>
       <header className="dr-th">
         <CarrierLogo mark={f.mark} art={art} />
         <span className="dr-tn">
-          <b title={f.name}>{f.name}</b>
+          <Name o={{ ...o, title: f.name }} />
           <small>{[dayText(optionDay(o)), f.sub].filter(Boolean).join(" · ")}</small>
         </span>
         <SourceBadge option={{ ...o, ours: false }} />
@@ -167,7 +204,7 @@ function FlightOption({ o, vm, art, current, onPick }: { o: OptionVM; vm: Intent
           {f.to && <small>{f.to}</small>}
         </span>
       </div>
-      {o.ours && <p className="dr-why">✨ {L("Önerimiz", "Our pick")}</p>}
+      <Why text={why} />
       <Facts o={o} />
       <footer className="dr-f">
         <span className="q-pr">
@@ -184,7 +221,7 @@ function FlightOption({ o, vm, art, current, onPick }: { o: OptionVM; vm: Intent
 }
 
 /** A flight among others on other days: what decides first (K83), the hours under it. */
-function CompareOption({ o, vm, art, current, won, cheapest, people, bagSaid, onPick }: { o: OptionVM; vm: IntentVM; art: string; current: boolean; won: ReturnType<typeof winners>; cheapest: number | null; people: number; bagSaid: boolean; onPick: () => void }) {
+function CompareOption({ o, vm, art, current, why, won, cheapest, people, bagSaid, onPick }: { o: OptionVM; vm: IntentVM; art: string; current: boolean; why: string | null; won: ReturnType<typeof winners>; cheapest: number | null; people: number; bagSaid: boolean; onPick: () => void }) {
   const f = rowFace(o, vm.kind);
   const total = totalAmount(o, people);
   const stops = o.item.flight?.stops;
@@ -202,7 +239,7 @@ function CompareOption({ o, vm, art, current, won, cheapest, people, bagSaid, on
       <header className="dr-th">
         <CarrierLogo mark={f.mark} art={art} />
         <span className="dr-tn">
-          <b title={f.name}>{f.name}</b>
+          <Name o={{ ...o, title: f.name }} />
           <small>
             <strong>{dayText(optionDay(o))}</strong>
             {f.sub ? ` · ${f.sub}` : ""}
@@ -217,7 +254,7 @@ function CompareOption({ o, vm, art, current, won, cheapest, people, bagSaid, on
         {cell(L("AKTARMA", "STOPS"), stops == null ? "—" : stops === 0 ? L("direkt", "direct") : L(`${stops} aktarma`, `${stops} stop${stops > 1 ? "s" : ""}`), f.from && f.to ? `${f.from} → ${f.to}` : " ", f.stops?.tone === "warn" ? "w" : "", won.stops === o.id ? L("en az", "fewest") : null)}
         {!bagSaid && cell(L("BAGAJ", "BAG"), bag == null ? "—" : bag ? L("dahil", "included") : L("ek ücretli", "extra"), f.bag ?? " ", bag === false ? "w" : "", null)}
       </div>
-      {o.ours && <p className="dr-why">✨ {L("Önerimiz", "Our pick")}</p>}
+      <Why text={why} />
       <Facts o={{ ...o, cancel: null, near: [] }} />
       <footer className="dr-f">
         <span className="dr-tl">
@@ -318,10 +355,21 @@ export function IntentDrawer({ vm, options, chosenId, art, links, typical, need,
   const pick = (o: OptionVM) => {
     onPick(o);
   };
+  // Our pick's reasons, said once on its card (choice.ts, as the details over the card say them).
+  const env = useCardEnv();
+  const ours = options.find((o) => o.ours) ?? null;
+  const reason = useMemo(() => {
+    if (!ours) return null;
+    const decision = decisionOf(env.decisions?.byGroup, ours.item);
+    const ctx = env.decisions?.ctx;
+    const choice = decision && ctx && decision.options.filter((d) => !d.excluded).length > 1 ? choiceOf(decision, ctx) : null;
+    return pickReason(choice?.headline ?? null, ours.item.name);
+  }, [ours, env.decisions]);
   const card = (o: OptionVM) => {
     const current = o.id === chosenId;
-    const props = { o, vm, art, current, onPick: () => pick(o) };
-    if (family === "stay") return <StayOption key={o.id} o={o} art={art} current={current} typical={typical} onPick={() => pick(o)} />;
+    const why = o.ours ? reason : null;
+    const props = { o, vm, art, current, why, onPick: () => pick(o) };
+    if (family === "stay") return <StayOption key={o.id} o={o} art={art} current={current} typical={typical} why={why} onPick={() => pick(o)} />;
     if (family === "flight") return cmp ? <CompareOption key={o.id} {...props} won={won} cheapest={cheapest} people={people} bagSaid={bagSaid} /> : <FlightOption key={o.id} {...props} />;
     return <SailingOption key={o.id} o={o} vm={vm} current={current} onPick={() => pick(o)} icon={MODE_ICON[ticketMode ?? "train"] ?? "train"} />;
   };
@@ -445,5 +493,9 @@ export function IntentDrawer({ vm, options, chosenId, art, links, typical, need,
       </aside>
     </>
   );
-  return createPortal(node, document.body);
+  const openRecord = (o: OptionVM) => {
+    onClose();
+    env.onOpenItem(o.item);
+  };
+  return createPortal(<OpenRecord.Provider value={openRecord}>{node}</OpenRecord.Provider>, document.body);
 }

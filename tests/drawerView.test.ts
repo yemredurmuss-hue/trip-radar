@@ -1,7 +1,7 @@
 // The options beside the plan (plan v13, spec 2026-10-21 K82–K83): which tab an option is in, its day, the order, and what
 // decides between flights on different days.
 import { describe, expect, it } from "vitest";
-import { bagAll, compareMode, drawerList, optionDay, optionDays, optionTab, totalAmount, winners } from "../src/lib/drawerView";
+import { bagAll, compareMode, drawerList, optionDay, optionDays, optionTab, totalAmount, winners, pickReason } from "../src/lib/drawerView";
 import type { OptionVM } from "../src/lib/intents";
 
 let n = 0;
@@ -116,5 +116,19 @@ describe("drawerView", () => {
     expect(bagAll([opt({ bag: true }), opt({ bag: true })])).toBe(true);
     expect(bagAll([opt({ bag: true }), opt({ bag: false })])).toBe(false);
     expect(bagAll([opt({ bag: true }), opt({ bag: null })])).toBe(false);
+  });
+});
+
+describe("pickReason", () => {
+  it("keeps the pick's own reasons, not its name or the alternatives", () => {
+    expect(pickReason("Önerim Jardim Stay: en sessiz; 2.'ye göre €45 daha ucuz, 5 Eki'ye kadar ücretsiz iptal ve daha konforlu. Tasarruf için 3. Casa Azul (1.'ye göre €45 daha ucuz).", "Jardim Stay")).toBe("En sessiz; 2.'ye göre €45 daha ucuz, 5 Eki'ye kadar ücretsiz iptal ve daha konforlu.");
+  });
+  it("keeps a thousands dot inside the reasons", () => {
+    expect(pickReason("Önerim Loft: €1.200 fazlasına merkezde.", "Loft")).toBe("€1.200 fazlasına merkezde.");
+  });
+  it("says it fits best when the sentence has no reasons or names another", () => {
+    expect(pickReason("Önerim Loft.", "Loft")).toBe("İsteklerine en çok bu uyuyor.");
+    expect(pickReason("Önerim Başka: merkezde.", "Loft")).toBe("İsteklerine en çok bu uyuyor.");
+    expect(pickReason(null, "Loft")).toBe("İsteklerine en çok bu uyuyor.");
   });
 });

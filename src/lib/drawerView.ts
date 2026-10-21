@@ -3,6 +3,7 @@
 // over several days what decides between them (the cheapest, the shortest, the fewest stops, the bag) instead of the clock.
 // Pure: app/plan/v82/IntentDrawer.tsx draws what it says.
 import type { OptionVM } from "./intents";
+import { L } from "./i18n";
 import { isoDate } from "./items";
 
 export type DrawerTab = "all" | "mine" | "ai";
@@ -96,3 +97,19 @@ export function winners(options: readonly OptionVM[], people = 1): { price?: str
 
 /** Every option has a checked bag included: said once over the list, not on each card. */
 export const bagAll = (options: readonly OptionVM[]): boolean => options.length > 0 && options.every((o) => o.item.metrics?.checkedBagIncluded === true);
+
+/**
+ * The pick's own reasons for the drawer's "Önerim." line (mockup v13): choice.ts's sentence without "Önerim <name>:" and without
+ * the alternatives after it ("Tasarruf için 3. …"); "İsteklerine en çok bu uyuyor." when it gives none or speaks of another.
+ */
+export function pickReason(headline: string | null, name: string): string {
+  const plain = L("İsteklerine en çok bu uyuyor.", "It fits what you asked best.");
+  if (!headline) return plain;
+  const prefix = [L(`Önerim ${name}: `, `My pick is ${name}: `), `Önerim ${name}: `].find((p) => headline.startsWith(p));
+  if (!prefix) return plain;
+  const rest = headline.slice(prefix.length);
+  // The reasons end at the first full stop followed by a new sentence (a thousands dot has a digit after it).
+  const end = rest.search(/\.\s+\p{Lu}/u);
+  const own = (end >= 0 ? rest.slice(0, end + 1) : rest).trim();
+  return own ? own.charAt(0).toLocaleUpperCase("tr") + own.slice(1) : plain;
+}

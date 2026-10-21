@@ -94,10 +94,10 @@ export function Zones({ cls = "", media, photo, title, meta, foot, primary, row 
   const open = onOpen ? { onClick: onOpen } : {};
   return (
     <div className={`z-f z-c z13${cls}`}>
-      <div className={`z-m${photo ? "" : " art"}${onOpen ? " z-op" : ""}`} {...open}>
+      <div className={`z-m${photo ? "" : " art"}${onOpen ? " z-tap" : ""}`} {...open}>
         {media}
       </div>
-      <div className={`z-i${onOpen ? " z-op" : ""}`} {...open}>
+      <div className={`z-i${onOpen ? " z-tap" : ""}`} {...open}>
         <h3 className="z-t" title={title}>
           {titleEdits ? <Editable field="name">{title}</Editable> : title}
         </h3>
@@ -174,7 +174,7 @@ function SiteBadge({ o, page }: { o: OptionVM; page: string | null }) {
 /** "Aldın mı? ✓ Evet · Henüz değil" once the site was opened from "Rezerve et" (K80). */
 export function GotAsk({ onYes, onNo }: { onYes: () => void; onNo: () => void }) {
   return (
-    <span className="z-ask">
+    <span className="z-gotq">
       <span>{L("Aldın mı?", "Did you book it?")}</span>
       <button type="button" className="q-got" onClick={onYes}>
         <Ic name="check" size={13} stroke={2.6} /> {L("Evet", "Yes")}
@@ -277,7 +277,7 @@ export function FrameCard({ vm, form, art, page, links, hints, info, detail, qui
           <Picture o={o} art={art}>
             <SiteBadge o={o} page={a?.links.page ?? null} />
             {days != null && (
-              <span className="z-days">
+              <span className="z-dleft">
                 <Ic name="cal" size={13} /> {vm.kind === "stay" ? L(`Girişe ${days} gün`, `${days} days to check-in`) : L(`${days} gün kaldı`, `${days} days to go`)}
               </span>
             )}

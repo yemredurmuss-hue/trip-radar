@@ -287,7 +287,7 @@ export function CollectionRow({ vm, onPut, onTakeOff }: CollectionRowProps) {
               {o.shown.map(cardOf)}
               {/* K86 (plan v13): "Bulamadın mı?" at the row's end (a full row: a band under it), the sites to search there. */}
               {links.length > 0 && (
-                <div className={`z-k z-self${o.shown.length % cells === 0 ? " wide" : ""}`}>
+                <div className={`z-selftile${o.shown.length % cells === 0 ? " wide" : ""}`}>
                   <span className="z-selt">
                     <b>{L("Bulamadın mı?", "Didn't find it?")}</b>
                     <small>{todo ? L("Haritada kendin ara; kaydettiğin buraya düşer.", "Search the map yourself; what you save lands here.") : L("Kendin ara; beğendiğini kaydet, buraya düşer.", "Search yourself; what you save lands here.")}</small>
