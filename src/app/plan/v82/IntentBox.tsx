@@ -21,7 +21,7 @@ import { bookingReplaced, replaceAsk } from "../../../lib/replaceBooking";
 import { regionHints, type RegionHint } from "../../../lib/regionHints";
 import { waySearches, wayDirections } from "../../../lib/ticketFrame";
 import type { InsertAt } from "../../../lib/templates";
-import type { Item, LegChoice } from "../../../lib/types";
+import type { Item, LegChoice, Trip } from "../../../lib/types";
 import { entryDomId } from "../../../lib/progress";
 import { withLegChoice } from "../../../lib/legs";
 import { agreeRoute } from "../../../lib/startTrip";
@@ -42,6 +42,7 @@ import { CollectionRow } from "./CollectionRow";
 import { Deck } from "./Deck";
 import { IntentDrawer } from "./IntentDrawer";
 import { isRouteNote, RouteNote, YerindeRow } from "./RouteNote";
+import { whoGoes } from "../../../lib/tripSettings";
 import { peopleOf } from "../../../lib/whose";
 import { decisionOf, DetailLayer, focusNear } from "./DetailLayer";
 import { FrameCard } from "./FrameCard";
@@ -137,13 +138,19 @@ const DRAWN = ["name", "date", "end", "price"] as const;
 /** A ticket's: its ends and its hour where they stand, its day, its price (a rental's place and return day). */
 const TICKET_DRAWN = ["from", "to", "city", "date", "end", "time", "price"] as const;
 
-export function IntentBox({ vm: given, color, onHere = null, gap = null }: {
+const NONE: Item[] = [];
+/** How many go, as the hero says it (the count said, else the names): never fewer than one. */
+const tripPeople = (trip: Trip): number => Math.max(1, whoGoes({ travellers: trip.travellers }).count || peopleOf(trip).length);
+
+export function IntentBox({ vm: given, color, onHere = null, gap = null, dropped = NONE }: {
   vm: IntentVM;
   color: string;
   /** C3: "+ Buraya ekle" under the box opens the add window at this place (null: none). */
   onHere?: ((at: InsertAt) => void) | null;
   /** An empty night between two stays (railDates.emptyNights): the stays before and after it, for its line. */
   gap?: { before: IntentVM | null; after: IntentVM | null } | null;
+  /** Elenen in its drawer: this need's options that were ruled out. */
+  dropped?: Item[];
 }) {
   const env = useCardEnv();
   const { byId } = useV82Env();
@@ -157,13 +164,13 @@ export function IntentBox({ vm: given, color, onHere = null, gap = null }: {
   if (own) {
     return (
       <InlineEdit item={own} only={vm.frame === "ticket" ? [...TICKET_DRAWN] : record ? [...DRAWN] : ["name"]}>
-        <RecordBox vm={vm} color={color} record={own} onHere={onHere} gap={gap} />
+        <RecordBox vm={vm} color={color} record={own} onHere={onHere} gap={gap} dropped={dropped} />
       </InlineEdit>
     );
   }
   // Nothing chosen yet: a candidate saved in it can be taken off alone ("Kaldır"), not only the whole need ("Gerek yok").
   const removals = removeEntries([...vm.options, ...(vm.more ?? [])], byId, env.remove);
-  return <Box vm={vm} color={color} extra={removals} field={null} pickDoc={null} cancel={null} onHere={onHere} itemId={null} gap={gap} />;
+  return <Box vm={vm} color={color} extra={removals} field={null} pickDoc={null} cancel={null} onHere={onHere} itemId={null} gap={gap} dropped={dropped} />;
 }
 
 /**
@@ -192,7 +199,7 @@ function hereOf(vm: IntentVM): InsertAt | null {
 }
 
 /** A box with a record to show (our pick, the chosen one, the booking): its card's ••• entries and its file picker. */
-function RecordBox({ vm, color, record, onHere, gap }: { vm: IntentVM; color: string; record: Item; onHere: ((at: InsertAt) => void) | null; gap: { before: IntentVM | null; after: IntentVM | null } | null }) {
+function RecordBox({ vm, color, record, onHere, gap, dropped }: { vm: IntentVM; color: string; record: Item; onHere: ((at: InsertAt) => void) | null; gap: { before: IntentVM | null; after: IntentVM | null } | null; dropped: Item[] }) {
   const env = useCardEnv();
   const stage = useStageMenu(record);
   const who = useWhoMenu(record);
@@ -210,11 +217,11 @@ function RecordBox({ vm, color, record, onHere, gap }: { vm: IntentVM; color: st
   ];
   const cancel = booked ? () => cancelBooking(record).then(env.offer) : null;
   return (
-    <Box vm={vm} color={color} extra={extra} field={<>{stage.field}{doc.field}</>} pickDoc={doc.pick} cancel={cancel} askedHide={booked ? stage.hide : null} onHere={onHere} itemId={record.id} gap={gap} />
+    <Box vm={vm} color={color} extra={extra} field={<>{stage.field}{doc.field}</>} pickDoc={doc.pick} cancel={cancel} askedHide={booked ? stage.hide : null} onHere={onHere} itemId={record.id} gap={gap} dropped={dropped} />
   );
 }
 
-function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHere, itemId, gap = null }: {
+function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHere, itemId, gap = null, dropped = NONE }: {
   vm: IntentVM;
   color: string;
   extra: MenuEntry[];
@@ -228,6 +235,8 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
   /** The record the box stands for (the one shown, or the bare one still to find): to-dos and arrivals find it by it. */
   itemId: string | null;
   gap?: { before: IntentVM | null; after: IntentVM | null } | null;
+  /** Elenen in its drawer: this need's options that were ruled out. */
+  dropped?: Item[];
 }) {
   const env = useCardEnv();
   const v82 = useV82Env();
@@ -419,7 +428,7 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
       </div>
     );
   } else if (showOptions) {
-    body = <Deck vm={vm} all={all} art={art} people={vm.people ?? Math.max(1, peopleOf(env.trip).length)} onOpen={openDrawer} />;
+    body = <Deck vm={vm} all={all} art={art} people={vm.people ?? tripPeople(env.trip)} onOpen={openDrawer} />;
   }
   // (the frame's own forms: a deck of options is drawn by Deck, or by the row's Birikenler)
   const frameForm0 = form && form !== "options" ? form : null;
@@ -488,11 +497,12 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
   const headArt = vm.head.image ? { src: vm.head.image, photo: true } : { src: art, photo: false };
   const camp = record != null && vm.kind === "stay" && isCampStay(record);
   const here = onHere ? hereOf(vm) : null;
-  const people = vm.people ?? Math.max(1, peopleOf(env.trip).length);
+  const people = vm.people ?? tripPeople(env.trip);
   const drawerNode = drawer ? (
     <IntentDrawer
       vm={vm}
       options={all}
+      dropped={dropped}
       chosenId={vm.status === "chosen" || vm.status === "booked" ? chosenId : null}
       art={art}
       links={links}

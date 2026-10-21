@@ -9,7 +9,7 @@ import { PackPrefetch } from "./prep/usePackAi";
 import { PhonePrefetch } from "./prep/PhoneApps";
 import { stayQueryOf } from "../../lib/travelWants";
 import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { isIdeaSection, planSectionOfItem, sectionProgress, type CatEntry, type CatSection, type SectionId } from "../../lib/categories";
+import { isIdeaSection, planSectionOfItem, sectionProgress, type CatEntry, type CatSection, type HiddenThing, type SectionId } from "../../lib/categories";
 import { activityGaps } from "../../lib/emptyCards";
 import { countryNames } from "../../lib/heroInfo";
 import { L } from "../../lib/i18n";
@@ -18,7 +18,7 @@ import { countParts, decideCount, decisionNames, firstDecision, rowThumbs } from
 import { collectionsOf, V82_ORDER, type Collection, type IntentInput, type IntentVM } from "../../lib/intents";
 import { formatPrice } from "../../lib/items";
 import { nightsSummary } from "../../lib/lifecycle";
-import { sameCity, type Plan } from "../../lib/plan";
+import { groupKeyOf, sameCity, type Plan } from "../../lib/plan";
 import { REVIEW_SECTIONS } from "../../lib/suggestReview";
 import { eMove, scrollBy } from "../../lib/planOpen";
 import type { BudgetSlice } from "../../lib/progress";
@@ -67,6 +67,13 @@ function gapOf(vm: IntentVM, list: readonly IntentVM[]): { before: IntentVM | nu
   const stays = list.filter((v) => v.kind === "stay" && v.head.date && v.head.nights > 0).sort((a, b) => a.head.date!.localeCompare(b.head.date!));
   const i = stays.findIndex((v) => v.key === vm.key);
   return { before: stays[i - 1] ?? null, after: stays[i + 1] ?? null };
+}
+
+/** Elenen in an intent's drawer: the section's ruled-out records of the same group as its options. */
+function droppedOf(vm: IntentVM, hidden: readonly HiddenThing[]): Item[] {
+  const keys = new Set(vm.options.map((o) => groupKeyOf(o.item)));
+  if (!keys.size) return [];
+  return hidden.flatMap((h) => (h.kind === "dismissed" && keys.has(groupKeyOf(h.item)) ? [h.item] : []));
 }
 
 /** What sits pinned over the plan when it scrolls (the thin bar, app.css scroll-margin-top 76px). */
@@ -313,7 +320,7 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
                         vm.frame === "collection" ? (
                           <CollectionBox key={vm.key} vm={vm} color={SECTION_META[s.id].color} />
                         ) : (
-                          <IntentBox key={vm.key} vm={vm} color={SECTION_META[s.id].color} onHere={s.id === "stay" ? (at) => onAdd(s.id, at) : null} gap={s.id === "stay" ? gapOf(vm, list) : null} />
+                          <IntentBox key={vm.key} vm={vm} color={SECTION_META[s.id].color} onHere={s.id === "stay" ? (at) => onAdd(s.id, at) : null} gap={s.id === "stay" ? gapOf(vm, list) : null} dropped={droppedOf(vm, s.hidden)} />
                         ),
                       )}
                       {s.id === "activity" && <CityGaps gaps={gaps.filter((g) => !(c?.intents ?? []).some((i) => i.frame === "collection" && i.head.city != null && sameCity(i.head.city, g.city)))} section="activity" />}
