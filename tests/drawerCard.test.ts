@@ -2,7 +2,7 @@
 // own weights, the five slots in their fixed order with "bilinmiyor" for what the record doesn't say, the reviews' pros and
 // cons, "Neden?" and a flight's day band.
 import { describe, expect, it } from "vitest";
-import { dayBand, flightSlots, priceAge, waySlots, partsWhy, placeText, prosCons, rentalSlots, reviewsHead, scoreParts, staySlots, weightShares } from "../src/lib/drawerCard";
+import { dayBand, extremes, flightSlots, priceAge, waySlots, partsWhy, placeText, prosCons, rentalSlots, reviewsHead, scoreParts, staySlots, weightShares } from "../src/lib/drawerCard";
 import { withLang } from "../src/lib/i18n";
 import { EMPTY_METRICS } from "../src/lib/items";
 import { thailand } from "./fixtures/thailand";
@@ -92,5 +92,16 @@ describe("how fresh the price is", () => {
   it("fell since: what it was", () => {
     expect(priceAge({ price: price(64, now - 3600_000), priceHistory: [{ amount: 71, currency: "EUR", observedAt: now - day }] }, now).was).toBe("Dün €71 idi");
     expect(priceAge({ price: price(64, now - 3600_000), priceHistory: [{ amount: 60, currency: "EUR", observedAt: now - day }] }, now).was).toBeNull();
+  });
+});
+
+describe("the comparison's best and worst", () => {
+  it("green the best, amber the worst, among the known only", () => {
+    expect(extremes([86, 91, null, 96])).toEqual({ best: new Set([3]), worst: new Set([0]) });
+    expect(extremes([192, 264, 156], false)).toEqual({ best: new Set([2]), worst: new Set([1]) });
+  });
+  it("all the same, or one known: nothing stands out", () => {
+    expect(extremes([100, 100])).toEqual({ best: new Set(), worst: new Set() });
+    expect(extremes([100, null])).toEqual({ best: new Set(), worst: new Set() });
   });
 });

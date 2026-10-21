@@ -239,3 +239,18 @@ export function priceAge(i: Pick<Item, "price" | "priceHistory">, now: number): 
   // ("€71 idi": the suffix would follow how the number is read, so the word stands apart)
   return { ago, was: L(`${when} ${money} idi`, `${when} it was ${money}`) };
 }
+
+// --- the Pano's side-by-side view ----------------------------------------------------------------------------------------
+
+/**
+ * Which columns are best (green) and worst (amber) on a row of the comparison: only among the known, only when they differ;
+ * a tie for best is green on each (they are equally good), the worst likewise.
+ */
+export function extremes(values: readonly (number | null)[], higherIsBetter = true): { best: Set<number>; worst: Set<number> } {
+  const known = values.flatMap((v, i) => (v == null ? [] : [{ v, i }]));
+  if (known.length < 2) return { best: new Set(), worst: new Set() };
+  const top = higherIsBetter ? Math.max(...known.map((k) => k.v)) : Math.min(...known.map((k) => k.v));
+  const low = higherIsBetter ? Math.min(...known.map((k) => k.v)) : Math.max(...known.map((k) => k.v));
+  if (top === low) return { best: new Set(), worst: new Set() };
+  return { best: new Set(known.filter((k) => k.v === top).map((k) => k.i)), worst: new Set(known.filter((k) => k.v === low).map((k) => k.i)) };
+}

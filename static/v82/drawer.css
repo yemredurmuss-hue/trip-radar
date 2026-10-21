@@ -31,9 +31,9 @@
 .dr-bar i { display: block; border-radius: 99px; min-width: 6px; }
 .dr-lg { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; font-weight: 700; color: var(--q-ink); }
 .dr-lg > span::before, .dr-parts > span::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 99px; margin-right: 6px; vertical-align: 1px; background: var(--g); }
-.dr .reviews { --g: var(--q-acc); }
-.dr .features { --g: #1f9a86; }
-.dr .price { --g: #c98a26; }
+.dr .reviews, .pd .reviews { --g: var(--q-acc); }
+.dr .features, .pd .features { --g: #1f9a86; }
+.dr .price, .pd .price { --g: #c98a26; }
 .dr-bar i { background: var(--g); }
 
 /* Line 3: Seçenekler/Elenen, the source, the order. */
@@ -168,26 +168,31 @@
   .dr-b { padding: 14px 16px 24px; }
   .dr-t b { font-size: 19px; }
   .dr-pano span { display: none; }
+  .dr-new { padding: 14px; gap: 12px; }
+  .dr-bar { width: 120px; }
+}
+
+/* A card narrower than the drawer's (a phone, the Pano's two columns): the name over the price and Seç, Seç the card's whole
+   width (Kaçırdıklarımız 7), the slots wrapping in their order, the pros over the cons. */
+.dr-op { container-type: inline-size; }
+@container (max-width: 600px) {
   .dr-card .dr-in { grid-template-columns: minmax(0, 1fr) auto; padding: 14px 14px 4px; }
   .dr-card .dr-r1 { grid-column: 1 / -1; }
   .dr-card .dr-pr { justify-items: start; text-align: left; }
-  /* (Seç the card's whole width, Kaçırdıklarımız 7) */
-  .dr-card .dr-in > .dr-sec, .dr-card .dr-in > .dr-chosen { grid-column: 1 / -1; width: 100%; }
-  .dr-tm > .dr-sec, .dr-tm > .dr-chosen { grid-column: 1 / -1; width: 100%; }
-  /* (one row that scrolls sideways: the order stays, nothing is cut) */
-  .dr-slots, .dr-slots.c { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: max-content; overflow-x: auto; scrollbar-width: none; padding: 10px 14px 4px; }
+  .dr-card .dr-in > .dr-sec, .dr-card .dr-in > .dr-chosen, .dr-card .dr-in > .q-pick { grid-column: 1 / -1; width: 100%; }
+  .dr-slots, .dr-slots.c { grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); padding: 10px 14px 4px; }
   .dr-slots.c { padding: 4px 14px 12px; }
-  .dr-slots::-webkit-scrollbar { display: none; }
+  .dr-slt small, .dr-slt b { white-space: normal; }
   .dr-pc { grid-template-columns: minmax(0, 1fr); margin: 8px 14px 14px; padding: 12px 14px; }
   .dr-tm { grid-template-columns: minmax(0, 1fr) auto; padding: 6px 14px 12px; }
   .dr-tm .dr-tb { grid-column: 1 / -1; border-right: 0; padding-right: 0; }
   .dr-tm .dr-e b { font-size: 30px; }
   .dr-tm .dr-pr { justify-items: start; text-align: left; }
+  .dr-tm > .dr-sec, .dr-tm > .dr-chosen, .dr-tm > .q-pick { grid-column: 1 / -1; width: 100%; }
   .dr-tk .dr-th { padding: 12px 14px 2px; }
   .dr-nd summary { padding: 12px 14px; }
   .dr-nd .dr-why, .dr-wyp { margin: -4px 14px 12px; }
-  .dr-new { padding: 14px; gap: 12px; }
-  .dr-bar { width: 120px; }
+  .dr-card > .dr-why { margin: 8px 14px 0; }
 }
 .dr-tm .dr-m { font-size: 13px; gap: 6px; }
 .dr-tm .dr-m small.warn { color: var(--q-warn); }
@@ -196,3 +201,55 @@
 .dr-pr .dr-age { color: var(--q-warn); font-weight: 750; }
 .dr-pr .dr-was { color: var(--q-acc-d); font-weight: 750; }
 .dr-pr .dr-rf { border: 0; background: none; padding: 2px 0; font: inherit; font-size: 12.5px; font-weight: 800; color: var(--q-acc); cursor: pointer; }
+
+/* ---- The Pano: the drawer grown (onay paketi 11). A deck's head, its cards two by two, Karşılaştır's rows. ---- */
+.pd { display: grid; gap: 16px; padding: 20px 22px 22px; margin-bottom: 18px; border-radius: 20px; background: #fff; box-shadow: 0 1px 2px rgba(28, 26, 51, .06), 0 10px 30px -22px rgba(28, 26, 51, .35); }
+.pd .dr-op { box-shadow: 0 1px 2px rgba(28, 26, 51, .06), 0 10px 26px -20px rgba(28, 26, 51, .4); }
+.pd-h { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px 16px; }
+.pd-t { display: grid; gap: 3px; flex: 1; min-width: 0; }
+.pd-t b { font-size: 22px; font-weight: 800; letter-spacing: -.01em; color: var(--q-ink); }
+.pd-t small { font-size: 14px; font-weight: 600; color: var(--q-mut); }
+.pd-st { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 14px; font-weight: 800; }
+.pd-st.sel { color: var(--q-sand-ink); }
+.pd-st.ok { color: var(--q-ok); }
+.pd-st.wait { color: var(--q-acc); }
+.pd-go, .pd-open { border: 0; background: none; padding: 4px 0; font: inherit; font-size: 14px; font-weight: 800; color: var(--q-acc); cursor: pointer; }
+.pd-c { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.pd-c .dr-wt { margin-left: 6px; }
+.pd-new { display: inline-flex; align-items: center; gap: 7px; height: 40px; padding: 0 14px; border-radius: 11px; border: 1px solid var(--q-line); background: #fff; font: inherit; font-size: 14px; font-weight: 800; color: var(--q-ink); cursor: pointer; }
+.pd-new:hover { border-color: var(--q-acc); color: var(--q-acc-d); }
+.pd-seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 12px; background: var(--q-soft); border: 1px solid var(--q-line); }
+.pd-seg .dr-tab { height: 36px; padding: 0 12px; border: 0; border-radius: 9px; font-size: 14px; }
+.pd-seg .dr-tab[aria-selected="true"] { background: #fff; color: var(--q-ink); box-shadow: 0 1px 2px rgba(28, 26, 51, .12); }
+.pd-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-items: start; }
+.pd-fold { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; padding: 16px 22px; }
+.pd-fold > b { font-size: 17px; font-weight: 800; color: var(--q-ink); }
+.pd-fold small { font-size: 14px; font-weight: 650; color: var(--q-mut); }
+/* (the Pano's own Seç inside the drawer's card: the card's big button) */
+.dr-in > .q-pick, .dr-tm > .q-pick { min-width: 110px; height: 46px; display: inline-flex; align-items: center; justify-content: center; border-radius: 12px; font-size: 15px; }
+.dr-in > span.q-pick, .dr-tm > span.q-pick { background: var(--q-sand); color: var(--q-sand-ink); border: 1px solid var(--q-sand-l); font-weight: 800; }
+
+/* Karşılaştır: a label column, a column each; the best green, the worst amber. */
+.pc { display: grid; grid-template-columns: 150px repeat(var(--n), minmax(170px, 1fr)); border: 1px solid var(--q-line); border-radius: 16px; overflow-x: auto; }
+.pc > * { padding: 12px 16px; border-bottom: 1px solid var(--q-line); min-width: 0; font-size: 14px; }
+.pc-l { font-weight: 700; color: var(--q-mut); }
+.pc-g::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 99px; margin-right: 6px; vertical-align: 1px; background: var(--g); }
+.pc-hd { display: grid; gap: 4px; }
+.pc-hd img { width: 100%; aspect-ratio: 2.4 / 1; object-fit: cover; border-radius: 12px; background: linear-gradient(160deg, #e6f4ef, #f6f3fb); }
+.pc-hd img.art { object-fit: contain; padding: 6px; box-sizing: border-box; }
+.pc-hd b { font-size: 16px; font-weight: 800; color: var(--q-ink); }
+.pc-hd small { font-size: 13px; color: var(--q-mut); }
+.pc-v { font-weight: 700; color: var(--q-ink); }
+.pc-v.best { color: var(--q-ok); background: color-mix(in srgb, var(--q-ok-s) 70%, transparent); }
+.pc-v.worst { color: var(--q-warn); }
+.pc-v.dim { color: var(--q-mut); font-weight: 600; }
+.pc-ls { margin: 0; padding: 12px 16px 12px 32px; display: grid; gap: 4px; }
+.pc-ls.up li::marker { color: var(--q-ok); }
+.pc-ls.dn li::marker { color: var(--q-warn); }
+.pc-pick { border-bottom: 0; }
+
+@media (max-width: 860px) {
+  .pd { padding: 16px; }
+  .pd-cards { grid-template-columns: minmax(0, 1fr); }
+  .pc { grid-template-columns: 110px repeat(var(--n), minmax(150px, 1fr)); }
+}

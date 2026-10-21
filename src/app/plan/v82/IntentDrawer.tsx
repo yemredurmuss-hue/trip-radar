@@ -11,7 +11,7 @@ import { createContext, useContext, useEffect, useId, useMemo, useRef, useState,
 import { createPortal } from "react-dom";
 import { setItemStatus } from "../../actions";
 import { choiceOf } from "../../../lib/choice";
-import type { Part } from "../../../lib/decision";
+import type { GroupDecision, Part } from "../../../lib/decision";
 import { dayBand, flightSlots, priceAge, waySlots, groupLabel, partsWhy, placeText, prosCons, rentalSlots, reviewsHead, scoreParts, staySlots, weightShares, type CardSlot, type SlotIcon } from "../../../lib/drawerCard";
 import { drawerList, optionDay, optionTab, pickReason, type DrawerTab, type SortKey } from "../../../lib/drawerView";
 import { L } from "../../../lib/i18n";
@@ -30,7 +30,7 @@ import { Ic, Mark, type IconName } from "./icons";
 import type { Typical } from "./OptionCompact";
 import { CarrierLogo } from "./OptionRow";
 
-type Family = "stay" | "rental" | "ticket";
+export type Family = "stay" | "rental" | "ticket";
 
 const SORTS: Readonly<Record<Family, [SortKey, string][]>> = {
   stay: [["fit", L("Ağırlıklı puan", "Weighted score")], ["price", L("En ucuz", "Cheapest")], ["score", L("En yüksek puan", "Top rated")], ["dist", L("Merkeze en yakın", "Closest to the centre")]],
@@ -217,7 +217,8 @@ function CardPrice({ o, typical }: { o: OptionVM; typical: Typical | null }) {
 }
 
 /** A stay or a rental: the photo first, its score on it; the name, where, the three parts; price and Seç; slots; reviews. */
-function CardOption({ o, art, current, typical, why, parts, rental, solo, onPick }: { o: OptionVM; art: string; current: boolean; typical: Typical | null; why: string | null; parts: Part[]; rental: boolean; solo: boolean; onPick: () => void }) {
+/** (exported: the Pano draws the same card, its own Seç in `pick`) */
+export function CardOption({ o, art, current, typical, why, parts, rental, solo, onPick, pick = null }: { o: OptionVM; art: string; current: boolean; typical: Typical | null; why: string | null; parts: Part[]; rental: boolean; solo: boolean; onPick: () => void; pick?: ReactNode }) {
   const split = scoreParts(parts);
   const slots = rental ? rentalSlots(o.item, o.brand?.label ?? null) : staySlots(o.item, o.brand?.label ?? null);
   return (
@@ -241,7 +242,7 @@ function CardOption({ o, art, current, typical, why, parts, rental, solo, onPick
           )}
         </span>
         <CardPrice o={o} typical={typical} />
-        <Pick o={o} current={current} onPick={onPick} big />
+        {pick ?? <Pick o={o} current={current} onPick={onPick} big />}
       </div>
       <Slots slots={slots} url={o.item.url} />
       {why && <Why text={why} />}
@@ -251,7 +252,7 @@ function CardOption({ o, art, current, typical, why, parts, rental, solo, onPick
 }
 
 /** A flight, a boat, a train: the boarding pass (the hours big, the length and stops between), price and Seç, slots, Neden. */
-function TicketOption({ o, vm, art, current, why, parts, off, solo, onPick }: { o: OptionVM; vm: IntentVM; art: string; current: boolean; why: string | null; parts: Part[]; off: boolean; solo: boolean; onPick: () => void }) {
+export function TicketOption({ o, vm, art, current, why, parts, off, solo, onPick, pick = null }: { o: OptionVM; vm: IntentVM; art: string; current: boolean; why: string | null; parts: Part[]; off: boolean; solo: boolean; onPick: () => void; pick?: ReactNode }) {
   const f = rowFace(o, vm.kind);
   const slots = (vm.kind === "flight" ? flightSlots : waySlots)(o.item, o.brand?.label ?? null);
   return (
@@ -288,7 +289,7 @@ function TicketOption({ o, vm, art, current, why, parts, off, solo, onPick }: { 
           {o.ticket?.each && <small>{L(`kişi başı · ${o.ticket.total} toplam`, `each · ${o.ticket.total} in all`)}</small>}
           <Fresh o={o} />
         </span>
-        <Pick o={o} current={current} onPick={onPick} />
+        {pick ?? <Pick o={o} current={current} onPick={onPick} />}
       </div>
       <Slots slots={slots} url={o.item.url} compact />
       {!solo && <Neden o={o} why={why} parts={parts} />}
@@ -335,6 +336,23 @@ function Dropped({ items }: { items: Item[] }) {
   );
 }
 
+/** A need's family in the drawer: a stay's card, a rental's (the same card), a ticket's boarding pass. */
+export const familyOf = (vm: IntentVM): Family => (vm.frame !== "ticket" ? "stay" : isRental(vm) ? "rental" : "ticket");
+
+/** The drawer's (and a Pano group's) head: "Chiang Mai · 3 gece" over "27–30 Mar · Cmt → Sal · 2 kişi". */
+export function drawerHead(vm: IntentVM, people: number): { title: string; sub: string } {
+  const family = familyOf(vm);
+  const date = railDate(vm);
+  const routeTitle = vm.head.route && vm.frame === "ticket" && family === "ticket" ? `${vm.head.route.from} → ${vm.head.route.to}` : null;
+  const city = vm.head.city ?? headName(vm);
+  const title = routeTitle ?? (family === "rental" ? `${city} · ${(vm.head.kindWord ?? L("Kiralama", "Rental")).toLocaleLowerCase(L("tr", "en"))}` : vm.kind === "stay" && vm.head.nights > 0 ? `${city} · ${L(`${vm.head.nights} gece`, `${vm.head.nights} night${vm.head.nights > 1 ? "s" : ""}`)}` : headName(vm));
+  const sub = [date ? [date.when, date.sub].filter(Boolean).join(" · ") : null, family === "rental" ? date?.span : null, L(`${people} kişi`, `${people} ${people > 1 ? "people" : "person"}`)].filter(Boolean).join(" · ");
+  return { title, sub };
+}
+
+/** The decision's own parts for an option (its weights, its sub-scores): the score's three parts and "Neden?". */
+export const partsFor = (byGroup: ReadonlyMap<string, GroupDecision> | undefined, item: Item): Part[] => decisionOf(byGroup, item)?.options.find((d) => d.item.id === item.id)?.parts ?? [];
+
 export function IntentDrawer({ vm, options, dropped = [], chosenId, art, links, typical, need, placeholder = null, people, onPick, onClose, onPano, onAsk, onOffer }: {
   vm: IntentVM;
   options: OptionVM[];
@@ -363,7 +381,7 @@ export function IntentDrawer({ vm, options, dropped = [], chosenId, art, links, 
   const [tab, setTab] = useState<DrawerTab>("all");
   // (a nightly price counts the need's nights when it was saved without its own)
   const nights = vm.head.nights ?? null;
-  const family: Family = vm.frame !== "ticket" ? "stay" : isRental(vm) ? "rental" : "ticket";
+  const family = familyOf(vm);
   const [sort, setSort] = useState<SortKey>("fit");
   useEffect(() => {
     closeRef.current?.focus();
@@ -398,7 +416,7 @@ export function IntentDrawer({ vm, options, dropped = [], chosenId, art, links, 
   const env = useCardEnv();
   // The decision's own parts for each option (its weights, its sub-scores): the score's three parts and "Neden?".
   const decision = options[0] ? decisionOf(env.decisions?.byGroup, options[0].item) : undefined;
-  const partsOf = (o: OptionVM): Part[] => decisionOf(env.decisions?.byGroup, o.item)?.options.find((d) => d.item.id === o.id)?.parts ?? [];
+  const partsOf = (o: OptionVM): Part[] => partsFor(env.decisions?.byGroup, o.item);
   const shares = family !== "ticket" ? weightShares(decision?.options[0]?.parts ?? []) : [];
   // Our pick's reasons, said once on its card (choice.ts, as the details over the card say them).
   const ours = options.find((o) => o.ours) ?? null;
@@ -410,11 +428,7 @@ export function IntentDrawer({ vm, options, dropped = [], chosenId, art, links, 
     return pickReason(choice?.headline ?? null, ours.item.name);
   }, [ours, env.decisions]);
   const view = rowView(vm);
-  const date = railDate(vm);
-  const routeTitle = vm.head.route && vm.frame === "ticket" && family === "ticket" ? `${vm.head.route.from} → ${vm.head.route.to}` : null;
-  const city = vm.head.city ?? headName(vm);
-  const title = routeTitle ?? (family === "rental" ? `${city} · ${(vm.head.kindWord ?? L("Kiralama", "Rental")).toLocaleLowerCase(L("tr", "en"))}` : vm.kind === "stay" && vm.head.nights > 0 ? `${city} · ${L(`${vm.head.nights} gece`, `${vm.head.nights} night${vm.head.nights > 1 ? "s" : ""}`)}` : headName(vm));
-  const sub = [date ? [date.when, date.sub].filter(Boolean).join(" · ") : null, family === "rental" ? date?.span : null, L(`${people} kişi`, `${people} ${people > 1 ? "people" : "person"}`)].filter(Boolean).join(" · ");
+  const { title, sub } = drawerHead(vm, people);
   const deck = options.slice(0, 3);
   const asked = vm.head.date ?? null;
   const solo = options.length < 2;
