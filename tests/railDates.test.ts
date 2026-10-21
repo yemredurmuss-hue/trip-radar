@@ -1,0 +1,58 @@
+// The category's date rail (lib/railDates.ts, onay paketi 2026-10-21): a day over its weekday, a stay's nights as one range
+// over its weekdays and its count, a rental's days, and the short open stretch between two stays drawn as an empty night.
+import { describe, expect, it } from "vitest";
+import { withLang } from "../src/lib/i18n";
+import type { IntentVM } from "../src/lib/intents";
+import { emptyNights, emptyNightText, isDatedSection, railDate, stretchText } from "../src/lib/railDates";
+import { makeItem } from "./fixtures/makeItem";
+
+type V = Pick<IntentVM, "key" | "kind" | "status" | "head" | "itemIds" | "options" | "ticket" | "chosen">;
+const head = (over: Partial<IntentVM["head"]>): IntentVM["head"] => ({ name: "x", route: null, parts: [], kindWord: null, word: null, wants: [], image: null, city: null, date: null, nights: 0, ...over });
+const stay = (key: string, city: string, date: string, nights: number, over: Partial<V> = {}): V => ({ key, kind: "stay", status: "chosen", head: head({ city, date, nights }), itemIds: ["i"], options: [], ticket: null, chosen: null, ...over });
+
+describe("railDate", () => {
+  it("a day: its short date over its weekday", () => {
+    expect(railDate({ kind: "flight", head: head({ date: "2027-03-20" }), ticket: null, chosen: null })).toEqual({ when: "20 Mar", sub: "Cumartesi", span: null, notches: 0 });
+  });
+  it("a stay: one range, its two weekdays and its nights, a notch a night", () => {
+    expect(railDate({ kind: "stay", head: head({ date: "2027-03-24", nights: 3 }), ticket: null, chosen: null })).toEqual({ when: "24–27 Mar", sub: "Çar → Cmt", span: "3 gece", notches: 3 });
+  });
+  it("across two months it names both", () => {
+    expect(railDate({ kind: "stay", head: head({ date: "2027-03-31", nights: 2 }), ticket: null, chosen: null })?.when).toBe("31 Mar – 2 Nis");
+    expect(stretchText("2027-03-27", "2027-03-27")).toBe("27 Mar");
+  });
+  it("a rental: its days from pick-up to return", () => {
+    const item = makeItem({ id: "m", category: "transport", dates: { start: "2027-03-28", end: "2027-03-30" } });
+    const d = railDate({ kind: "transport", head: head({ date: "2027-03-28" }), ticket: { rental: { line: null, pick: null, days: 3, back: null } } as IntentVM["ticket"], chosen: { item } as IntentVM["chosen"] });
+    expect(d).toEqual({ when: "28–30 Mar", sub: "Paz → Sal", span: "3 gün", notches: 3 });
+  });
+  it("no day: nothing to say (C19)", () => {
+    expect(railDate({ kind: "flight", head: head({}), ticket: null, chosen: null })).toBeNull();
+  });
+  it("in English", () => {
+    withLang("en", () => expect(railDate({ kind: "stay", head: head({ date: "2027-03-24", nights: 1 }), ticket: null, chosen: null })).toEqual({ when: "24–25 Mar", sub: "Wed → Thu", span: "1 night", notches: 1 }));
+  });
+  it("only flights, stays and getting around are dated", () => {
+    expect(["flight", "stay", "transport", "activity", "other"].map(isDatedSection)).toEqual([true, true, true, false, false]);
+  });
+});
+
+describe("emptyNights", () => {
+  const bkk = stay("a", "Bangkok", "2027-03-24", 3, { status: "booked" });
+  const cnx = stay("b", "Chiang Mai", "2027-03-27", 3);
+  const gap = stay("c", "Bangkok", "2027-03-30", 1, { status: "searching", itemIds: [] });
+  const bkk2 = stay("d", "Bangkok", "2027-03-31", 2, { status: "searching", itemIds: [] });
+  it("the short open stretch between two stays, nothing saved for it", () => {
+    expect([...emptyNights([bkk, cnx, gap, bkk2])]).toEqual(["c"]);
+  });
+  it("not the last stay, not one with options or a record, not a long one", () => {
+    expect(emptyNights([bkk, cnx, { ...gap, options: [{} as IntentVM["options"][number]] }, bkk2]).size).toBe(0);
+    expect(emptyNights([bkk, cnx, { ...gap, itemIds: ["x"] }, bkk2]).size).toBe(0);
+    expect(emptyNights([bkk, cnx, { ...gap, head: { ...gap.head, nights: 3 } }, bkk2]).size).toBe(0);
+    expect(emptyNights([bkk, gap]).size).toBe(0);
+  });
+  it("says which night and the two stays around it", () => {
+    expect(emptyNightText(gap, cnx, bkk2)).toEqual({ title: "30 Mar gecesi boş", line: "Chiang Mai çıkışı 30 Mar, Bangkok girişi 31 Mar" });
+    expect(emptyNightText({ head: head({ date: "2027-03-30", nights: 2 }) }, null, null)).toEqual({ title: "30 Mar – 1 Nis · 2 gece boş", line: null });
+  });
+});
