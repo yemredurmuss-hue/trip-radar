@@ -73,6 +73,17 @@ Uçuş ve konaklamanın son hâlleri, kararlarıyla birlikte donmuş görüntü 
 4. **Pano = büyümüş çekmece.** İhtiyaç başına grup; grup başı çekmece başı gibi (ölçütler, ağırlık, Yeni bul, Kartlar/Karşılaştır). Kartlar çekmece kartının kendisi (Emre: küçüğü değil), iki sütun; uçuş grubu uçuşun standart kartıyla. Karar verilmiş grup tek satır. Karşılaştır: seçenek başına sütun, her satırda en iyisi yeşil, eksik amber; artılar, eksiler, oylar, Seç.
 5. **Kaçırdıklarımız.** Aranıyor (beşinci hâl); uçuşla saat bağı (geç giriş, erken çıkış amber şerit ve tek iş); çakışan gece (kırmızı); fiyat tazeliği ve kaynağın parası; Elenen ve "Geri al"; iptal son günü hatırlatma; rezervasyonun e-posta/onay sayfasından okunması; ortak gezide oylar; kişi/oda değişince yeniden arama; tarihsiz niyet; kapalı kategori satırında boş/çakışan gece; telefonda tam ekran çekmece.
 
+## Ulaşım (Çizim 16, onay bekliyor)
+
+Çizim: `docs/mockups/ulasim-v1/index.html` (https://claude.ai/artifact/45jPAbgmACy2gQnKpzzjbs).
+
+1. **Üç aile.** Yol (tren, otobüs, biletli feribot, minibüs, transfer): uçuş satırı, açılınca bilet, dört durum. Kiralama (araç, motor/scooter, karavan, bisiklet): konaklama kartı, hatta gün dilimi (alış → bırakış), dört durum, Rezerve et ↗. Yerinde (taksi, Grab, metro/raylı, iskele teknesi, songthaew): yeni ince satır, rezervasyon yok.
+2. **Her satır önce tür, sonra rota, sonra zaman.** Üstte mavi büyük harf tür ("TREN", "VAPUR · İSKELEDE", "MOTOR KİRALAMA · 3 GÜN"), rota büyük ve oklu, ikinci satır saat · süre · kişi; tarih hatta; illüstrasyon türü tekrarlar.
+3. **Yerinde.** Ad tek kelime: "Yerinde"; alt türü üst satırda (iskelede, uygulamadan). Yaklaşık fiyat, düğme yok, sağda gri-mavi "Yerinde" hapı, hatta küçük dolu nokta. Açılınca 2–3 yol seçeneği (taksi, Airport Rail Link, Grab), biri işaretli; "Haritada aç ↗". Feribot biletliyse Yol, gişedense Yerinde.
+4. **Omurga.** "Yolculuk sırasıyla"da Yerinde satırları otel ile uçuş arasını bağlar; boşluğu Trip Radar önerir (lila halka), kabul edilince düz satır. Kategori özeti "4 yerinde", bütçede ayrı.
+5. **Çekmece yalnız Yol ve Kiralama.** Kiralama: konaklama çekmecesi (fotoğraf önde, ağırlık, artı/eksi, Seç, Yeni bul). Yol: uçuş standart kartı, tren illüstrasyonu. Yuvalar türe göre (tren: sınıf, bagaj, iade, istasyon, kaynak; motor: sigorta, depozito, teslim, kask, kaynak; araç/karavan: sigorta, depozito, teslim, km sınırı, kaynak). Siteler providers.ts: Rome2rio (Tayland için 12Go eklenmeli), DiscoverCars, BikesBooking.
+6. **Belge bağı.** Kiralamada ehliyet şartı amber şerit ve "Belgelere ekle".
+
 ## Kodlama sırası (öneri)
 
 1. `plan.css`: `.q-tl` sarmalayıcısı (tarih sütunu, nokta, hat, telefon kuralı), tarihli kategorilerde `.q-ints` yerine; `Section.tsx` tarih sıralaması.
