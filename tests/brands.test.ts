@@ -22,4 +22,9 @@ describe("brandOf", () => {
     expect(brandOf("JR East")?.label).toBe("JR");
     expect(brandOf("Fjord Cruises")?.color).toBeNull();
   });
+  it("Booking.com is not any site whose name ends in booking (BikesBooking)", () => {
+    expect(brandOf("BikesBooking", "bikesbooking.com")?.label).toBe("BikesBooking");
+    expect(brandOf(null, "www.booking.com")?.label).toBe("Booking.com");
+    expect(brandOf("Booking.com")?.label).toBe("Booking.com");
+  });
 });

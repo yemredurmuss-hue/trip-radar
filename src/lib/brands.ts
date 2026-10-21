@@ -9,7 +9,7 @@ export interface Brand {
 }
 
 const BRANDS: [RegExp, string, string][] = [
-  [/booking\.com|^booking$/i, "Booking.com", "#003b95"],
+  [/(^|[^a-z])booking\.com|^booking$/i, "Booking.com", "#003b95"],
   [/airbnb/i, "Airbnb", "#c8174f"],
   [/expedia/i, "Expedia", "#1a3a8f"],
   [/hotels\.com/i, "Hotels.com", "#c8102e"],

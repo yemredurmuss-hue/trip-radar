@@ -16,7 +16,7 @@
 
 /* the date column: the day over its weekday; a stretch its range, weekdays and nights, its slice from dot to end */
 .q-tld { position: relative; padding: 22px 24px 0 0; text-align: right; min-height: 60px; }
-.q-tld b { display: block; font-size: var(--q-fs-button); font-weight: 800; letter-spacing: -.01em; line-height: 1.15; color: var(--q-ink); white-space: nowrap; }
+.q-tld b { display: block; font-size: var(--q-fs-button); font-weight: 800; letter-spacing: -.01em; line-height: 1.15; color: var(--q-ink); text-wrap: balance; }
 .q-tld small { display: block; font-size: var(--q-fs-small); color: var(--q-mut); font-weight: 600; white-space: nowrap; }
 .q-tld .q-tlspan { display: block; margin-top: 6px; font-size: var(--q-fs-badge); font-weight: 800; letter-spacing: .02em; color: var(--k, var(--c)); }
 .q-tld::before { content: ""; position: absolute; z-index: 1; right: calc(-1 * var(--dot) / 2); top: calc(30px - var(--dot) / 2); width: var(--dot); height: var(--dot); border-radius: 50%; box-sizing: border-box; background: #fff; border: 2px dashed var(--q-st-wait-dot); box-shadow: 0 0 0 3px #fff; transition: background-color .4s ease, border-color .4s ease; }
@@ -121,6 +121,10 @@
 .q-rp .z-f.z13 > .z-s > .z-bt:empty { display: none; }
 .q-rp .z-f.z13 > .z-det { position: relative; inset: auto; grid-column: 1 / -1; border-radius: 0; }
 .q-rp .z-f.z13 .z-route { min-width: 0; }
+.q-rp .z-f.z13 > .z-i .z-fields { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px 18px; }
+.q-rp .z-dleft { position: static; height: 24px; }
+/* "+ Buraya ekle" under a stay's card, not under its date */
+.q-ints.q-tl > .q-rowi > .q-here { left: calc(var(--tlx) + 20px); }
 @media (max-width: 700px) {
   .q-rp .z-f.z13 { grid-template-columns: minmax(0, 1fr) !important; grid-template-areas: "m" "i" "s" !important; }
   .q-rp .z-f.z13 > .z-s { flex-direction: row; justify-content: space-between; align-items: center; margin: 0 14px 12px; padding: 10px 0 0; border-left: 0; border-top: 1px solid rgba(28, 26, 51, .07); }
@@ -199,6 +203,9 @@
   .q-rrow.card > .q-rph { grid-area: ph; width: 64px; height: 64px; }
   .q-rph.deck > i { width: 42px; height: 42px; left: calc(var(--n) * 11px); top: calc(var(--n) * 11px); }
   .q-rp2 { grid-template-columns: minmax(0, 1fr); }
+  .q-rp .q-tm.big b { font-size: 20px; }
+  .q-ints.q-tl > .q-rowi:has(> .q-here) { margin-bottom: 10px; }
+  .q-tld b { text-wrap: nowrap; }
   .q-rrow.gap { grid-template-columns: 36px minmax(0, 1fr) 24px; }
   .q-rrow.gap > .q-rslot { grid-column: 1 / -1; justify-content: flex-start; }
 }

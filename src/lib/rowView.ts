@@ -12,7 +12,7 @@
 import { L } from "./i18n";
 import { codeLabel, headName, optionPrice, ratingParts, sidePrice } from "./intentFrame";
 import type { IntentVM, OptionVM } from "./intents";
-import { spanText } from "./railDates";
+import { railDate, spanText } from "./railDates";
 import { ticketCodeLabel, ticketFace, ticketPrice } from "./ticketFrame";
 
 /** The face a row takes: a ticket's thin row (folds open), a stay's or a rental's card (doesn't fold). */
@@ -113,8 +113,10 @@ export function rowView(vm: IntentVM): RowView {
   if (vm.kind === "stay" && (status === "chosen" || status === "booked" || status === "suggested") && vm.head.city) {
     lead = vm.head.nights > 0 ? `${vm.head.city} · ${spanText(vm.head.nights, "night")}` : vm.head.city;
   } else if (rental) {
-    const days = vm.ticket?.rental?.days;
-    lead = [vm.head.kindWord ?? L("Kiralama", "Rental"), days ? spanText(days, "day") : null].filter(Boolean).join(" · ");
+    // (its days as the rail counts them: pick-up to return, both days)
+    const days = railDate(vm)?.notches || null;
+    const kind = vm.head.kindWord ? L(`${vm.head.kindWord} kiralama`, `${vm.head.kindWord} rental`) : L("Kiralama", "Rental");
+    lead = [kind, days ? spanText(days, "day") : null].filter(Boolean).join(" · ");
   } else if (vm.head.kindWord) {
     lead = vm.head.kindWord;
   }
