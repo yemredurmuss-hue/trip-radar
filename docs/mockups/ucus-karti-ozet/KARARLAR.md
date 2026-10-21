@@ -75,7 +75,7 @@ Uçuş ve konaklamanın son hâlleri, kararlarıyla birlikte donmuş görüntü 
 
 ## Ulaşım (Çizim 16, onay bekliyor)
 
-Çizim: `docs/mockups/ulasim-v1/index.html` (https://claude.ai/artifact/45jPAbgmACy2gQnKpzzjbs).
+Çizim: `docs/mockups/ulasim-v1/index.html` (https://claude.ai/artifact/3roMJ8DCqVQNBimLZQrpoU).
 
 1. **Üç aile.** Yol (tren, otobüs, biletli feribot, minibüs, transfer): uçuş satırı, açılınca bilet, dört durum. Kiralama (araç, motor/scooter, karavan, bisiklet): konaklama kartı, hatta gün dilimi (alış → bırakış), dört durum, Rezerve et ↗. Yerinde (taksi, Grab, metro/raylı, iskele teknesi, songthaew): yeni ince satır, rezervasyon yok.
 2. **Her satır önce tür, sonra rota, sonra zaman.** Üstte mavi büyük harf tür ("TREN", "VAPUR · İSKELEDE", "MOTOR KİRALAMA · 3 GÜN"), rota büyük ve oklu, ikinci satır saat · süre · kişi; tarih hatta; illüstrasyon türü tekrarlar.
