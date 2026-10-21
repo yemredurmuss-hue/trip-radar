@@ -48,15 +48,15 @@ Bir günlük tasarım koşusunun çıktısı. Canlı sürüm 0.39.27, canlı kod
 - Beşinci geçici durum "Aranıyor" (Ara'dan sonra çekmece kapatılınca): nokta ve "Aranıyor…".
 - Fiyat tazeliği (canlıdaki fiyat geçmişi satıra küçük not), gidiş-dönüş tek bilet bağı, tarihsiz niyet ("Tarihi yok" grubu).
 
-## Konaklama (Çizim 14, Emre'nin onayını bekliyor)
+## Konaklama (Çizim 14; plan kartı onaylandı, çekmece v2 onay bekliyor)
 
 Çizim: `docs/mockups/konaklama-karti-v1/index.html` (https://claude.ai/artifact/Tu4oPQQh9WjTKXbscSZqUf). Varsayım olarak yazılan kararlar:
 
-1. **A önerildi: katlanmasız, fotoğraf solda.** Kart 120 px: fotoğraf 84 px · üç satır · tek rakam · 118 px yuva (uçuş satırıyla aynı sağ kenar). Kartın kendisi çekmeceyi açar; yuvadaki düğme kardeş eleman. Seçenekler: B (fotoğraf üstte, 196 px) ve C (uçuştaki gibi katlanmalı 72 px) çizildi.
-2. **Gün gün.** Tarih sütunu kart boyunca: giriş noktada, gece başına çentikli dilim, çıkış dilimin ucunda; dilim kategori renginde (niyette kesikli, birikende açık). Boş gece kesikli amber dilim ve kendi satırı ("30 Mar gecesi boş", tek düğme "Bangkok'u 1 gece öne al": komşu niyeti uzatır; seçili/rezerve sessizce uzatılmaz). Telefonda dilim kalkar, "● 24 Mar → 27 Mar · 3 gece".
+1. **Onaylandı: katlanmasız, fotoğraf solda.** Kart 120 px: fotoğraf 84 px · üç satır · tek rakam · 118 px yuva (uçuş satırıyla aynı sağ kenar). Kartın kendisi çekmeceyi açar; yuvadaki düğme kardeş eleman. B (fotoğraf üstte) ve C (katlanmalı) elendi; ilk sürümü git geçmişinde.
+2. **Gün gün.** Tarih sütununda tek aralık ve gece sayısı ("24–27 Mar · Çar → Cmt · 3 GECE"), çıkış ayrıca yazılmaz. Sütun kart boyunca: giriş noktada, gece başına çentikli dilim, çıkış dilimin ucunda; dilim kategori renginde (niyette kesikli, birikende açık). Boş gece kesikli amber dilim ve kendi satırı ("30 Mar gecesi boş", tek düğme "Bangkok'u 1 gece öne al": komşu niyeti uzatır; seçili/rezerve sessizce uzatılmaz). Telefonda dilim kalkar, "● 24–27 Mar · 3 gece".
 3. **Durumlar.** Niyet: nerede · kaç gece, kişi, istenen çipleri, tahmini gece, "Ara". Biriken: deste (üç küçük kare, sayı), kaynak dağılımı ve aralık, önerimizin gece fiyatı, "Seç" ve mini sayı. Seçili: otel adı, kaynak rozetiyle puan, iptal tarihi, gece ve toplam, "Rezerve et ↗". Rezerve: mühür, rezervasyon no rakam yerinde, yeşil hap, yeşil şerit (giriş saati, ödenen, "Rezervasyonu aç ↗").
 4. **Fotoğraf.** Kaynağın ilk fotoğrafı, yoksa illüstrasyon (otel / ev-daire) açık turkuaz gradyan üstünde; puan rozeti sol üstte, mühür sol altta.
-5. **Çekmece.** Uçuş standardı: başlık üç satır, tarih bandı iki takvim karosu (giriş, çıkış), komşu seçenek "+1 GECE" amber bant ve bedeli; kartta konaklama geçişi (fotoğraf, giriş/çıkış saati, geceler ay simgesiyle), puan çipi, beş yuva: kahvaltı, iptal, mesafe, puan, kaynak; "Neden?" altta; bırakma kutusu ve "Pano'da karşılaştır".
+5. **Çekmece (Emre'nin notuyla v2).** Tarih tek ve başlıkta: niyetin tarihi net, başka tarih başka niyet kartı; tarih bandı ve "+1 gece" yok. Başlıkta sıralama ağırlığı (varsayılan yorumlar %40, özellikler %35, fiyat %25; "Ayarla", gezi başına saklanır), sıralama "Ağırlıklı puan". Kart görsel önde: 200×132 ana fotoğraf, iki küçük ve "+N"; yanında ad, puan çipi, puanın üç parçası çubukla (yorum, özellik, fiyat; 0–100, ağırlıkla toplanır), fiyat ve Seç. Beş yuva etiketli: kahvaltı, ücretsiz iptal, eski şehre mesafe, puan, kaynak. Altında AI'nın yorumlardan çıkardığı artılar ve eksiler hep açık (en çok üçer madde, yorum sayısıyla). Bırakma kutusu ve "Pano'da karşılaştır".
 6. **Düğmeler.** Ara → çekmece ve AI arama; Seç → çekmece; Rezerve et → kaynak, dönüşte "Rezerve ettin mi?"; Rezerve hap, "Rezervasyonu aç" şeritte.
 
 ## Kodlama sırası (öneri)
