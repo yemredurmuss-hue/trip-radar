@@ -273,7 +273,7 @@ try {
   // flight and the Porto stay stand as "Önerimiz" and are among the 6: our pick isn't on the plan until it's taken (B9).
   // v82: the flight a ticket box (3b), the stay an intent box, each standing as "Önerimiz" (data-st="ai").
   await openSec("flight");
-  assert.equal(await sec("flight").locator('.q-ints > .q-int[data-st="ai"] .z-tk').count(), 1, "the flight's draft on the sample's Plan");
+  assert.equal(await sec("flight").locator('.q-ints > .q-int[data-st="ai"][data-face="ticket"]').count(), 1, "the flight's draft on the sample's Plan");
   await openSec("stay");
   assert.equal(await sec("stay").locator('.q-int[data-st="ai"]').count(), 1, "the Porto stay's draft on the sample's Plan");
   // The ideas (Yapılacak şeyler, Restoranlar, İlham) have no "3/4" and are never needs (0.35.3); a category's closed row
@@ -478,9 +478,9 @@ try {
   // v82 (B6): no chips for empty kinds; one "+ Yeni ihtiyaç ekle" at the plan's end adds any kind.
   assert.equal(await app.locator(".cat-more .cat-chip").count(), 0);
   assert.equal(await app.locator(".q-addall").innerText(), "+ Yeni ihtiyaç ekle");
-  // v82: the stays one box each, on the rail in the order of their nights, the head's line saying them; no date column.
+  // Plan v14 (onay paketi): the stays one card each, on the date rail in the order of their nights, the rail saying them once.
   await openSec("stay");
-  assert.deepEqual(flat(await sec("stay").locator(".q-ints > .q-int .q-ln").allInnerTexts()).map((t) => t.match(/\d+–\d+ Ekim/)?.[0]), ["8–11 Ekim", "11–14 Ekim"]);
+  assert.deepEqual(flat(await sec("stay").locator(".q-ints > .q-int .q-tld b").allInnerTexts()), ["8–11 Eki", "11–14 Eki"]);
   assert.equal(await app.locator(".cat-plan .cat-date, .cat-plan .cat-dot").count(), 0, "no date column");
   // The page itself never scrolls past the window (Emre 2026-10-09: the chat and all went up, blank under it): what's
   // placed absolutely inside the panel stays inside it; only the panel scrolls.
@@ -872,26 +872,23 @@ try {
   // one action, no "Aldım". Its options open beside the plan (K82, the drawer): one card each, best first, "Seç" on each and
   // "✨ Önerim." with the pick's reasons on ours; the details (⋯ Ayrıntı) open over the card: the pick in a sentence and this one
   // against the next (C12), what to check before choosing, its pluses, why it's here in the traveller's own word (K6).
-  const portoDraft = sec("stay").locator('.q-ints > .q-int[data-st="ai"]', { has: app.locator(".z-t", { hasText: "Jardim Stay" }) });
+  // Plan v14 (onay paketi): the card that doesn't fold: "✨ Önerimiz · Porto · 3 gece" over its name, the site and the area, the
+  // price by the night and the nights' total, "Bunu seç" its one action; its photo with the site's mark.
+  const portoDraft = sec("stay").locator('.q-ints > .q-int[data-st="ai"]', { has: app.locator(".q-nm", { hasText: "Jardim Stay" }) });
   await portoDraft.waitFor();
-  assert.equal(flat([await portoDraft.locator(".q-st").innerText()])[0], "✨ Önerimiz · onayla");
-  assert.equal(await portoDraft.locator(".z-bt .q-take").innerText(), "Bunu seç");
+  assert.match(flat([await portoDraft.locator(".q-rlead").innerText()])[0], /^✨ Önerimiz · Porto · 3 gece$/);
+  assert.equal(await portoDraft.locator(".q-rslot .q-take").innerText(), "Bunu seç");
   assert.equal(await portoDraft.locator(".q-got").count(), 0, "no ✓ Aldım: nothing is chosen yet");
-  assert.match(flat([await portoDraft.locator(".z-top .q-pr").innerText()])[0], /^€\d+ \/ gece · €\d+$/, "its real price by the night, and the nights' total");
-  const site = portoDraft.locator(".z-m .z-site");
-  assert.equal(await site.getAttribute("target"), "_blank");
-  assert.match(await site.getAttribute("href"), /^https:\/\/www\.booking\.com\//);
-  // The fixed card (v13): the roof 58 and the three zones 148 + 64 + 58, the same at 1440; at 390 px the foot stays inside.
-  assert.equal(Math.round((await portoDraft.boundingBox()).height), 330, "the box is 330 px (roof 58, zones 148 + 64 + 58)");
+  assert.match(flat([await portoDraft.locator(".q-rfig").innerText()])[0], /^€\d+ gece · €\d+$/, "its real price by the night, and the nights' total");
   await app.setViewportSize({ width: 390, height: 844 });
   const cardBox = await portoDraft.boundingBox();
-  const priceBox = await portoDraft.locator(".z-top").boundingBox();
-  assert.ok(priceBox && cardBox && priceBox.x >= cardBox.x - 1 && priceBox.x + priceBox.width <= cardBox.x + cardBox.width + 1, "the foot stays inside its box at 390 px");
-  assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll with the box at 390 px");
+  const priceBox = await portoDraft.locator(".q-rfig").boundingBox();
+  assert.ok(priceBox && cardBox && priceBox.x >= cardBox.x - 1 && priceBox.x + priceBox.width <= cardBox.x + cardBox.width + 1, "the price stays inside its card at 390 px");
+  assert.ok(await app.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "no sideways page scroll with the card at 390 px");
   await app.setViewportSize({ width: 1440, height: 900 });
   await portoDraft.scrollIntoViewIfNeeded();
   await portoDraft.screenshot({ path: `${out}/40a-draft-stay.png` });
-  await portoDraft.locator(".z-h .z-mb").click();
+  await portoDraft.locator(".q-rmenu .z-mb").click();
   await app.getByRole("menuitem", { name: "Ayrıntı" }).click();
   const stayChoice = portoDraft.locator(".z-det");
   await stayChoice.waitFor();
@@ -904,52 +901,55 @@ try {
   assert.deepEqual(await stayChoice.locator(".q-mc.y").allInnerTexts(), ["✓ Sessiz"]);
   // K6 "neden": one line in their own word (the quiet they asked for).
   assert.equal(await stayChoice.locator(".pk-why").innerText(), "Sessiz · “Sessiz bir yer istiyoruz” dediğin için");
-  assert.equal(Math.round((await portoDraft.boundingBox()).height), 330, "the details open over the card, never making it taller");
   await app.screenshot({ path: `${out}/34a-stay-choice.png` });
   await app.keyboard.press("Escape");
   await stayChoice.waitFor({ state: "detached" });
   // The picture opens the options beside the plan: the head says the place, "Büyük Pano 3" every option of the need.
-  await portoDraft.locator(".z-m").click();
+  await portoDraft.locator(".q-rrow.card").click({ position: { x: 200, y: 20 } });
   const stayDrawer = app.locator("aside.dr");
   await stayDrawer.waitFor();
   assert.equal(await stayDrawer.getAttribute("role"), "dialog");
   assert.equal(await stayDrawer.locator(".dr-h .q-pn").innerText(), "3", "Büyük Pano 3: every option of the need");
   assert.deepEqual(await stayDrawer.locator(".dr-op .dr-r1 .dr-nm").allInnerTexts(), ["Jardim Stay", "Ribeira Rooms", "Casa Azul"], "the options best first");
-  assert.equal(flat([await stayDrawer.locator(".dr-op").first().locator(".dr-badge").innerText()])[0], "✨ Önerimiz");
-  assert.equal(flat([await stayDrawer.locator(".dr-op").first().locator(".dr-why").innerText()])[0], "Önerim. En sessiz; 2.'ye göre €45 daha ucuz, 5 Eki'ye kadar ücretsiz iptal ve daha konforlu.");
+  // (onay paketi: the score and its place on the photo, our pick's reasons under its slots)
+  assert.match(flat([await stayDrawer.locator(".dr-op").first().locator(".dr-rank").innerText()])[0], /^\d+ 1\. sırada$/);
+  assert.equal(flat([await stayDrawer.locator(".dr-op").first().locator(".dr-why").innerText()])[0], "Önerimiz. En sessiz; 2.'ye göre €45 daha ucuz, 5 Eki'ye kadar ücretsiz iptal ve daha konforlu.");
   assert.equal(await stayDrawer.locator(".dr-why").count(), 1, "the reasons on our pick alone");
   assert.equal(await stayDrawer.locator(".dr-op .dr-sec").count(), 3, "Seç on each (nothing chosen yet)");
-  // (the photo 4:3, as the picks' cards)
+  // (the photo first and wide, the card's whole width; five slots in their order)
+  assert.deepEqual(await stayDrawer.locator(".dr-op").first().locator(".dr-slt small").allInnerTexts(), ["Kahvaltı", await stayDrawer.locator(".dr-op").first().locator(".dr-slt small").nth(1).innerText(), await stayDrawer.locator(".dr-op").first().locator(".dr-slt small").nth(2).innerText(), "Puan", "Kaynak"]);
   const optRatio = await stayDrawer.locator(".dr-op .dr-ph").first().evaluate((el) => el.getBoundingClientRect().width / el.getBoundingClientRect().height);
-  assert.ok(optRatio > 1.25 && optRatio < 1.9, `the drawer's option photo is wide (${optRatio.toFixed(2)})`);
+  assert.ok(optRatio > 2 && optRatio < 2.8, `the drawer's option photo is wide (${optRatio.toFixed(2)})`);
   await app.waitForTimeout(300); // (the drawer's .2 s fade)
   await app.screenshot({ path: `${out}/40b-stay-drawer.png` });
   await app.keyboard.press("Escape");
   await stayDrawer.waitFor({ state: "detached" });
-  assert.equal(Math.round((await portoDraft.boundingBox()).height), 330, "the card is 330 px again");
   await openSec("flight");
   // Flights (v13 bilet): the need with two real priced options is our pick, the Pegasus (the engine's), drawn as the ticket:
   // the airline's mark and name on the roof, the hours big with the airport code and city under them, the length and "direkt"
   // around the plane, the bag on the line under it; "Önerimiz · onayla" on its chip, what one pays and how many go, "Bunu seç",
   // no "Aldım". Its options open beside the plan (one day: the hours in front), ours marked, the cheapest's fare.
+  // Plan v14 (onay paketi): the thin row: "✨ Önerimiz" over the two ends, the hours and the stops, what one pays, "Bunu seç";
+  // opened, the boarding pass under it (the hours big with the codes, the length and "direkt", the bag on its line).
   const outDraftKey = await sec("flight").locator('.q-ints > .q-int[data-st="ai"]', { has: app.locator(".z-carl", { hasText: "Pegasus" }) }).getAttribute("data-intent");
   const outDraft = sec("flight").locator(`.q-ints > .q-int[data-intent="${outDraftKey}"]`);
-  assert.equal(flat([await outDraft.locator(".q-st").innerText()])[0], "✨ Önerimiz · onayla");
+  assert.equal(flat([await outDraft.locator(".q-rlead").innerText()])[0], "✨ Önerimiz");
   // 0.38.7: an airline known by its code wears its logo (the flight card's files), its letters only if it won't load.
   assert.match(flat([await outDraft.locator(".z-carl").innerText()])[0], /^Pegasus PC 1201/);
-  assert.match(await outDraft.locator(".q-art img.q-air").getAttribute("src"), /\/airlines\/64\/PC\.png$/, "the airline's logo by its code");
-  assert.match(flat([await outDraft.locator(".z-route").innerText()])[0], /07:10.*IST.*4 sa 55 dk.*direkt.*10:05.*OPO/s);
-  assert.equal(await outDraft.locator(".z-i .z-chip", { hasText: "bagaj" }).first().innerText(), "1 bagaj dahil");
-  assert.match(flat([await outDraft.locator(".z-top .q-pr").innerText()])[0], /^€\d+ kişi başı · 2 kişi €\d+$/, "what one pays, how many go and the whole sum");
-  assert.equal(await outDraft.locator(".z-bt .q-take").innerText(), "Bunu seç");
+  assert.match(await outDraft.locator("img.q-air").first().getAttribute("src"), /\/airlines\/64\/PC\.png$/, "the airline's logo by its code");
+  assert.match(flat([await outDraft.locator(".q-rrow .q-rln").first().innerText()])[0], /^07:10 → 10:05 4 sa 55 dk direkt$/);
+  assert.match(flat([await outDraft.locator(".q-rfig").innerText()])[0], /^€\d+ kişi başı/, "what one pays");
+  assert.equal(await outDraft.locator(".q-rslot .q-take").innerText(), "Bunu seç");
   assert.equal(await outDraft.locator(".q-got").count(), 0, "no ✓ Aldım on our pick");
-  assert.equal(await outDraft.locator(".z-tk").evaluate((el) => getComputedStyle(el).borderTopStyle), "solid", "no dashed frame on a ticket");
   // (C16: the ticket carries no warning line; "Uçuşa 3 gün · bilet alınmadı" is Hazırlık's day now, as every rule's note.)
   assert.equal(await outDraft.locator(".tk-warn, .z-warn").count(), 0, "no warning line on the ticket");
-  assert.equal(Math.round((await outDraft.boundingBox()).height), 330, "the ticket box is 330 px");
+  await outDraft.locator(".q-rrow[role=button]").click({ position: { x: 80, y: 20 } });
+  await outDraft.locator(".q-rp .z-tk").waitFor();
+  assert.match(flat([await outDraft.locator(".z-route").innerText()])[0], /07:10.*IST.*4 sa 55 dk.*direkt.*10:05.*OPO/s);
+  assert.equal(await outDraft.locator(".z-i .z-chip", { hasText: "bagaj" }).first().innerText(), "1 bagaj dahil");
   await outDraft.scrollIntoViewIfNeeded();
   await outDraft.screenshot({ path: `${out}/32b-draft-ticket.png` });
-  await outDraft.locator(".z-m").click();
+  await outDraft.locator(".q-racts .q-chg").click();
   const flightDrawer = app.locator("aside.dr");
   await flightDrawer.waitFor();
   assert.deepEqual(await flightDrawer.locator(".dr-op .dr-tn .dr-nm").allInnerTexts(), ["Pegasus", "TAP"], "the options best first");
@@ -960,7 +960,7 @@ try {
   await app.screenshot({ path: `${out}/32a-choice-window.png` });
   await app.keyboard.press("Escape");
   await flightDrawer.waitFor({ state: "detached" });
-  assert.equal(Math.round((await outDraft.boundingBox()).height), 330, "the drawer never grows the box");
+  await outDraft.locator(".q-rrow[role=button]").click({ position: { x: 80, y: 20 } });
   // "Sıradaki" goes to the next step (F4): here the visa to get, its row in Belgeler ve internet, with a flash. (The to-do
   // list under the hero, its groups and "⏳ N", left the interface in this version: spec §1.1, C8; not checked here.)
   await app.locator(".x-hero .x-next").click();
@@ -985,19 +985,21 @@ try {
   // solid and green; while it has no file (under 14 days to go) "Bileti ekle · eksik" in amber on its line. A misclick on "Aldım"
   // is taken back from its ⋯ ("Rezervasyonu geri al") and redone.
   const home = sec("flight").locator(".q-ints > .q-int", { has: app.locator(".q-nm", { hasText: "Lizbon" }) });
-  await home.locator(".q-st", { hasText: "Rezerve" }).waitFor();
+  // Plan v14 (onay paketi): bought, the row's green "Alındı", what was paid where the price was; opened, the ticket.
+  await home.locator(".q-rhap", { hasText: "Alındı" }).waitFor();
   assert.equal(await home.getAttribute("data-st"), "ok");
-  assert.match(flat([await home.locator(".z-top .z-paid").innerText()])[0], /^€\d+ ödendi$/, "B10: what was paid");
-  assert.equal(flat([await home.locator(".z-top .z-cft small").innerText()])[0], "Bilet onaylı");
+  assert.match(flat([await home.locator(".q-rfig").innerText()])[0], /^€\d+/, "B10: what was paid");
+  await home.locator(".q-rrow[role=button]").click({ position: { x: 80, y: 20 } });
+  await home.locator(".q-rp .z-tk").waitFor();
   assert.match(flat([await home.locator(".z-route").innerText()])[0], /19:40.*LIS.*01:35.*\+1.*IST/s);
-  assert.match(flat([await home.locator(".z-i .z-docw").innerText()])[0], /Bileti ekle · eksik/);
-  assert.equal(await home.locator(".z-tk.bk").evaluate((el) => getComputedStyle(el).borderTopStyle), "solid");
-  await home.locator(".z-h .z-mb").click();
+  assert.match(flat([await home.locator(".q-rp").innerText()])[0], /Bileti ekle · eksik/);
+  await home.locator(".q-rrow[role=button]").click({ position: { x: 80, y: 20 } });
+  await home.locator(".q-rmenu .z-mb").click();
   await home.getByRole("menuitem", { name: "Rezervasyonu geri al" }).click();
   await sec("flight").locator('.q-ints > .q-int[data-st="sel"]', { has: app.locator(".q-nm", { hasText: "Lizbon" }) }).waitFor();
   // Chosen, not bought (no page to buy it on): "✓ Aldım" is its main button.
-  await home.locator(".z-bt").getByRole("button", { name: "✓ Aldım" }).click();
-  await home.locator(".q-st", { hasText: "Rezerve" }).waitFor();
+  await home.getByRole("button", { name: "✓ Aldım", exact: true }).click();
+  await home.locator(".q-rhap", { hasText: "Alındı" }).waitFor();
   // B1 (plan-v29, show when needed): a booking's code is on the card only on its day; nine days off it is in the booking's
   // details ("Bileti aç" opens them over the ticket, never making it taller), with its day and hour, where it leaves from,
   // what was paid, its files and "İptal ettim, değiştir" (a booking has no Değiştir of its own). Escape closes them.
@@ -1011,15 +1013,17 @@ try {
     await new Promise((resolve) => (tx.oncomplete = resolve));
     new BroadcastChannel("trip-radar").postMessage("changed");
   });
-  await home.locator(".z-bt .q-bopen").click();
+  // (plan v14: the booking's details from its ⋯ Ayrıntı, under the row)
+  await home.locator(".q-rmenu .z-mb").click();
+  await app.getByRole("menuitem", { name: "Ayrıntı" }).click();
   const homeDetail = home.locator(".z-det");
   await homeDetail.waitFor();
   await homeDetail.locator("text=ABC123").first().waitFor();
-  assert.equal(await home.locator(".z-top .q-code").count(), 0, "nine days off, the code is not on the card");
+  // (onay paketi: a booked ticket's row shows its code where the price was)
+  assert.equal(flat([await home.locator(".q-rfig").innerText()])[0], "ABC123 PNR");
   assert.match(flat([await homeDetail.innerText()])[0], /PNR ABC123[\s\S]*Ne zaman 14 Eki 19:40[\s\S]*Lizbon LIS[\s\S]*Ödenen €\d+ ödendi[\s\S]*Belge ekle/);
   await homeDetail.getByRole("button", { name: "İptal ettim, değiştir" }).waitFor();
-  assert.equal(await home.locator(".z-bt .q-chg, .z-row .q-chg").count(), 0, "a booking's frame has no Değiştir");
-  assert.equal(Math.round((await home.boundingBox()).height), 330, "the details open over the ticket");
+  assert.equal(await home.locator(".q-racts .q-chg", { hasText: "Değiştir" }).count(), 0, "a booking's row has no Değiştir");
   await app.screenshot({ path: `${out}/37g-peek-flight.png` });
   await app.keyboard.press("Escape");
   await homeDetail.waitFor({ state: "detached" });

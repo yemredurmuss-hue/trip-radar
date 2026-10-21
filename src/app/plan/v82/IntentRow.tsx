@@ -178,10 +178,12 @@ export interface TicketRowProps {
   acts: ReactNode;
   chipId: string;
   editable: boolean;
+  /** The details (⋯ Ayrıntı) under the row, open or not. */
+  under?: ReactNode;
 }
 
 /** A flight, a train, a bus, a boat, a transfer: one thin row; pressed, its ticket (or its search) opens under it. */
-export function TicketRow({ vm, view, art, date, on, ticket, links, onDrawer, menu, acts, chipId, editable }: TicketRowProps) {
+export function TicketRow({ vm, view, art, date, on, ticket, links, onDrawer, menu, acts, chipId, editable, under = null }: TicketRowProps) {
   const [open, setOpen] = useRowOpen(vm.key);
   const [asked, setAsked] = useState(false);
   const panelId = useId();
@@ -267,6 +269,7 @@ export function TicketRow({ vm, view, art, date, on, ticket, links, onDrawer, me
           {open && body}
           {open && acts && <div className="q-racts">{acts}</div>}
         </div>
+        {under}
       </div>
     </div>
   );

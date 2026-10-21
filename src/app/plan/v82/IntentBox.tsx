@@ -627,7 +627,7 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
       ) : ticketProps ? (
         <FrameTicket {...ticketProps} inRow />
       ) : null;
-      inner = <TicketRow vm={vm} view={view} art={art} date={date} on={slotOn} ticket={ticket} links={links} onDrawer={all.length || need ? openDrawer : null} menu={menuNode} acts={acts} chipId={chipId} editable={editable} />;
+      inner = <TicketRow vm={vm} view={view} art={art} date={date} on={slotOn} ticket={ticket} links={links} onDrawer={all.length || need ? openDrawer : null} menu={menuNode} acts={acts} chipId={chipId} editable={editable} under={detail ? <div className="q-rdet">{detailNode}</div> : null} />;
     } else {
       // A stay, a rental: pressed, its options beside the plan (Değiştir once chosen); a booking its details under it.
       const onPress = vm.status === "booked" && record ? () => setDetail(!detail) : all.length ? openDrawer : askNow;
