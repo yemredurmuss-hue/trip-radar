@@ -120,7 +120,8 @@ export function rowView(vm: IntentVM): RowView {
   } else if (vm.head.kindWord) {
     lead = vm.head.kindWord;
   }
-  if (status === "suggested" && !vm.own) lead = [`✨ ${L("Önerimiz", "Our pick")}`, lead].filter(Boolean).join(" · ");
+  // (P6, F38: the traveller's own one save says so, never our "Önerimiz")
+  if (status === "suggested") lead = [vm.own ? L("Senin kaydın", "Your save") : `✨ ${L("Önerimiz", "Our pick")}`, lead].filter(Boolean).join(" · ");
 
   // The name.
   const route = ticket && vm.head.route ? vm.head.route : null;

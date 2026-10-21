@@ -559,7 +559,8 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
         entry.current = "morph";
         if (record) a.choose(record);
       },
-      got: () => record && a.got(record),
+      // (a way said for a leg, no record yet: "Aldım" books the leg itself, as its ticket's own Aldım does)
+      got: () => (record ? a.got(record) : leg && vm.status === "chosen" ? void onLeg({ booked: true }) : undefined),
       page,
       brand: vm.chosen?.brand?.label ?? null,
     };
@@ -627,7 +628,7 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
       ) : ticketProps ? (
         <FrameTicket {...ticketProps} inRow />
       ) : null;
-      inner = <TicketRow vm={vm} view={view} art={art} date={date} on={slotOn} ticket={ticket} links={links} onDrawer={all.length || need ? openDrawer : null} menu={menuNode} acts={acts} chipId={chipId} editable={editable} under={detail ? <div className="q-rdet">{detailNode}</div> : null} />;
+      inner = <TicketRow vm={vm} view={view} art={art} date={date} on={slotOn} ticket={ticket} links={links} onDrawer={all.length || need ? openDrawer : null} menu={menuNode} acts={acts} chipId={chipId} editable={editable} under={detail ? <div className="q-rdet">{detailNode}</div> : null} focused={itemId != null && env.focus?.id === itemId && env.focus.field != null} openKey={itemId ?? undefined} />;
     } else {
       // A stay, a rental: pressed, its options beside the plan (Değiştir once chosen); a booking its details under it.
       const onPress = vm.status === "booked" && record ? () => setDetail(!detail) : all.length ? openDrawer : askNow;

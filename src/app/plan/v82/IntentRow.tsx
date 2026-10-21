@@ -5,7 +5,7 @@
 // 120 px card that doesn't fold (StayCard: its picture on the left, its city or kind over its name; pressed, the drawer
 // opens beside the plan, a booking's details under it), and a short open stretch between two stays as an amber empty night.
 // What a row says is lib/rowView.ts's; what it does stays IntentBox's (its menu, drawer, details, inline edit).
-import { createContext, useContext, useId, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useId, useState, type ReactNode } from "react";
 import { L } from "../../../lib/i18n";
 import { ratingParts, type SelfSearch } from "../../../lib/intentFrame";
 import type { IntentVM, OptionVM } from "../../../lib/intents";
@@ -64,8 +64,18 @@ function Parts({ parts, cls = "q-rln" }: { parts: RowPart[]; cls?: string }) {
 }
 
 /** The figure: the price (its own field, edited where it stands), the estimate, the code. */
-function Figure({ fig, editable }: { fig: RowView["figure"]; editable: boolean }) {
-  if (!fig) return <span className="q-rfig" />;
+function Figure({ fig, editable, blank = false }: { fig: RowView["figure"]; editable: boolean; blank?: boolean }) {
+  // (no price yet on one's own plan: "Fiyat ekle", typed where the price will stand)
+  if (!fig)
+    return blank ? (
+      <span className="q-rfig">
+        <b>
+          <Editable field="price" />
+        </b>
+      </span>
+    ) : (
+      <span className="q-rfig" />
+    );
   const big = fig.code ? <b className="q-rcode">{fig.big}</b> : <b>{editable ? <Editable field="price">{fig.big}</Editable> : fig.big}</b>;
   return (
     <span className={`q-rfig${fig.code ? " code" : ""}`}>
@@ -180,11 +190,20 @@ export interface TicketRowProps {
   editable: boolean;
   /** The details (⋯ Ayrıntı) under the row, open or not. */
   under?: ReactNode;
+  /** Opened from outside: a field of its ticket to fill in place (a plan just added, its first empty field). */
+  focused?: boolean;
+  /** What its open state follows: its record (the intent's key changes as its ends are typed), else the intent. */
+  openKey?: string;
 }
 
 /** A flight, a train, a bus, a boat, a transfer: one thin row; pressed, its ticket (or its search) opens under it. */
-export function TicketRow({ vm, view, art, date, on, ticket, links, onDrawer, menu, acts, chipId, editable, under = null }: TicketRowProps) {
-  const [open, setOpen] = useRowOpen(vm.key);
+export function TicketRow({ vm, view, art, date, on, ticket, links, onDrawer, menu, acts, chipId, editable, under = null, focused = false, openKey }: TicketRowProps) {
+  const [open, setOpen] = useRowOpen(openKey ?? vm.key);
+  // (its ends and hour edit on the ticket under it: opened when a field there is asked for)
+  useEffect(() => {
+    if (focused && !open) setOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- on being asked only
+  }, [focused]);
   const [asked, setAsked] = useState(false);
   const panelId = useId();
   const face = ticketFace(vm);
@@ -347,7 +366,7 @@ export function StayCard({ vm, view, art, date, on, onPress, menu, foot, under, 
           <span className="q-rhd">
             {view.lead && <span className="q-rlead">{view.lead}</span>}
             <h4 className="q-nm" title={view.title}>
-              {editable && vm.chosen ? <Editable field="name">{view.title}</Editable> : view.title}
+              {editable ? <Editable field="name">{view.title}</Editable> : view.title}
             </h4>
             <Parts parts={view.line} />
             {view.wants.length > 0 ? (
@@ -363,7 +382,7 @@ export function StayCard({ vm, view, art, date, on, onPress, menu, foot, under, 
               <Parts parts={view.third} cls="q-rln q-r3" />
             )}
           </span>
-          <Figure fig={view.figure} editable={editable && (vm.status === "chosen" || vm.status === "suggested")} />
+          <Figure fig={view.figure} editable={editable && (vm.status === "chosen" || vm.status === "suggested")} blank={editable && vm.status === "chosen"} />
           <span className="q-rslot" id={chipId}>
             <Slot view={view} on={on} asked={asked} setAsked={setAsked} logo={null} />
           </span>

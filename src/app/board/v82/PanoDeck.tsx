@@ -60,7 +60,7 @@ export function PanoDeck({ need: all, filter = "all", initial = "cards", fresh, 
   if (!open) {
     const more = count - 1;
     return (
-      <section className="pd pd-fold" data-need={need.key} aria-label={title}>
+      <section className="pd pd-fold" data-need={need.key} data-count={count} aria-label={title}>
         <b>{[title, sub.split(" · ")[0]].filter(Boolean).join(" · ")}</b>
         {state}
         <span className="q-sp" />
