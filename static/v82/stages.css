@@ -192,3 +192,31 @@ button.q-meter:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 3px; 
 .dr-in > span.q-pick, .dr-tm > span.q-pick { background: var(--q-acc-s); color: var(--q-acc-d); border: 1px solid color-mix(in srgb, var(--q-acc) 25%, #fff); }
 .dr-chosen { border-color: color-mix(in srgb, var(--q-acc) 25%, #fff); }
 .pd-st.sel { color: var(--q-acc-d); }
+
+/* ---- "Planın durumu" and "Sıradaki işler": beside the plan on a wide page, over it narrower ---- */
+.cat-plan { container-type: inline-size; container-name: plan; }
+.q-sheetwrap { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+.q-pstat { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 12px; align-items: start; }
+.q-psb { display: grid; gap: 8px; padding: 14px 16px; border-radius: 18px; background: #fff; box-shadow: inset 0 0 0 1px var(--q-line); }
+.q-psh { font-size: 14.5px; font-weight: 800; color: var(--q-ink); }
+.q-psbar { display: flex; gap: 3px; height: 8px; border-radius: 99px; overflow: hidden; background: #e3e0ec; }
+.q-psbar i { display: block; min-width: 6px; }
+.q-psbar i.ticket { background: var(--q-ok); }
+.q-psbar i.bought { background: color-mix(in srgb, var(--q-ok) 55%, #fff); }
+.q-psbar i.planned { background: var(--q-acc); }
+.q-psbar i.options { background: #d6d2e3; }
+.q-psl { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 8px; align-items: center; font-size: 13px; font-weight: 700; color: var(--q-ink); }
+.q-psl b { font-variant-numeric: tabular-nums; }
+.q-psn { font-size: var(--q-fs-small); color: var(--q-mut); font-weight: 600; line-height: 1.4; }
+.q-psi { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 10px; align-items: start; padding: 8px 0 2px; border: 0; border-top: 1px solid #f0eef5; background: none; font: inherit; text-align: left; color: var(--q-ink); cursor: pointer; }
+.q-psi > span { display: grid; gap: 1px; min-width: 0; }
+.q-psi b { font-size: 13.5px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.q-psi small { font-size: var(--q-fs-small); color: var(--q-mut); font-weight: 600; }
+.q-psi:hover b { color: var(--q-acc-d); text-decoration: underline; text-underline-offset: 3px; }
+.q-psi:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 2px; border-radius: 8px; }
+@container plan (min-width: 1120px) {
+  .q-sheetwrap { grid-template-columns: minmax(0, 1fr) 300px; gap: 24px; align-items: start; }
+  .q-sheetwrap > .q-sheet { grid-column: 1; grid-row: 1; }
+  .q-pstat { grid-column: 2; grid-row: 1; grid-template-columns: minmax(0, 1fr); position: sticky; top: 88px; }
+}
+@media (max-width: 700px) { .q-pstat { grid-template-columns: minmax(0, 1fr); } }

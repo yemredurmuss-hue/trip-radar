@@ -6,7 +6,7 @@ import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
 import { withLang } from "../src/lib/i18n";
 import type { IntentVM } from "../src/lib/intents";
-import { deckLead, rowFace, rowStage, rowView, sourceCounts, stageMeters } from "../src/lib/rowView";
+import { deckLead, planSteps, rowFace, rowStage, rowView, sourceCounts, stageMeters } from "../src/lib/rowView";
 import { boardOf, japan, JAPAN_TODAY, ozora, OZORA_TODAY } from "./fixtures/v82Trips";
 
 const jp = () => {
@@ -132,6 +132,21 @@ describe("stageMeters: a dated category's head (Karar, Bilet)", () => {
     const m = stageMeters(jp().filter((v) => v.section === "flight"));
     expect(m.decided[1]).toBeGreaterThan(0);
     expect(m.bought[0]).toBeGreaterThan(0);
+  });
+});
+
+describe("planSteps: Planın durumu and Sıradaki işler (web)", () => {
+  it("the dated needs by step; what's to decide first, then to buy, then the tickets to add", () => {
+    const list = jp();
+    const p = planSteps(list);
+    expect(p.counts.options + p.counts.planned + p.counts.bought + p.counts.ticket).toBe(p.total);
+    expect(p.total).toBe(list.filter((v) => v.status !== "skipped" && v.frame !== "collection" && ["flight", "stay", "transport"].includes(v.section)).length);
+    expect(p.next.length).toBeLessThanOrEqual(3);
+    const rank: Record<string, number> = { "Seç": 0, "Ara": 1, "Bileti al": 2, "Rezerve et": 2, "Bileti ekle": 3, "Onayı ekle": 3 };
+    const ranks = p.next.map((n) => rank[n.act]);
+    expect(ranks.every((r) => r != null)).toBe(true);
+    expect(ranks.every((r, i) => i === 0 || ranks[i - 1] <= r)).toBe(true);
+    expect(p.next[0].act).toBe("Seç");
   });
 });
 

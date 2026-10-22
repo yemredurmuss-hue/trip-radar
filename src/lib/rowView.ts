@@ -309,3 +309,46 @@ export function stageMeters(intents: readonly Pick<IntentVM, "status" | "access"
   const ahead = stages.filter((x) => x.st === "bought" || x.st === "ticket" || x.v.status === "chosen");
   return { decided: [decided, live.length], bought: [ahead.filter((x) => x.st !== "planned").length, ahead.length] };
 }
+
+export interface NextStep {
+  key: string;
+  section: IntentVM["section"];
+  stage: RowStage;
+  /** What to do: "Seç", "Bileti al", "Onayı ekle". */
+  act: string;
+  /** Its name: "Chiang Mai → Pai", "Rimping Village". */
+  text: string;
+  /** Its day and what it's waiting on ("27 Mar · 3 seçenek"). */
+  sub: string | null;
+}
+
+/**
+ * The plan's state by the four steps and its next things to do (onay paketi 2026-10-22, web: "Planın durumu" and
+ * "Sıradaki işler"), over the dated categories in the rail's order: first what's still to decide, then to buy, then the
+ * tickets to add. A way paid on the spot is planned and done; nothing skipped counts.
+ */
+export function planSteps(intents: readonly IntentVM[], max = 3): { counts: Record<RowStage, number>; total: number; next: NextStep[] } {
+  const live = intents.filter((v) => v.status !== "skipped" && v.frame !== "collection" && isDatedSection(v.section));
+  const counts: Record<RowStage, number> = { options: 0, planned: 0, bought: 0, ticket: 0 };
+  const todo: (NextStep & { rank: number; date: string })[] = [];
+  for (const vm of live) {
+    const view = rowView(vm);
+    counts[view.stage]++;
+    const name = view.title;
+    const day = vm.head.date ? railDate(vm)?.when ?? null : null;
+    const booking = isBooking(vm);
+    const step =
+      view.slot.kind === "pick" || view.slot.kind === "take"
+        ? { rank: 0, act: L("Seç", "Choose"), sub: [day, view.slot.kind === "pick" ? view.stageWord : L("önerimiz hazır", "our pick is ready")] }
+        : view.slot.kind === "ask" || view.slot.kind === "date"
+          ? { rank: 1, act: L("Ara", "Search"), sub: [day] }
+          : view.slot.kind === "book"
+            ? { rank: 2, act: booking ? L("Rezerve et", "Book it") : L("Bileti al", "Buy the ticket"), sub: [day, view.figure?.big ?? null] }
+            : view.slot.kind === "proof"
+              ? { rank: 3, act: booking ? L("Onayı ekle", "Add the confirmation") : L("Bileti ekle", "Add the ticket"), sub: [day] }
+              : null;
+    if (step) todo.push({ key: vm.key, section: vm.section, stage: view.stage, act: step.act, text: name, sub: step.sub.filter(Boolean).join(" · ") || null, rank: step.rank, date: isoDate(vm.head.date) ?? "9999" });
+  }
+  todo.sort((a, b) => a.rank - b.rank || a.date.localeCompare(b.date));
+  return { counts, total: live.length, next: todo.slice(0, max).map(({ rank: _r, date: _d, ...s }) => s) };
+}
