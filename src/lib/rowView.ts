@@ -153,7 +153,8 @@ export function rowView(vm: IntentVM): RowView {
   // The lead over the name.
   let lead: string | null = null;
   if (vm.kind === "stay" && (status === "chosen" || status === "booked" || status === "suggested") && vm.head.city) {
-    lead = vm.head.nights > 0 ? `${vm.head.city} · ${spanText(vm.head.nights, "night")}` : vm.head.city;
+    // (its city alone, a tag of its own: its nights are on the rail; onay paketi 2026-10-22, "şehir gözden kaçmasın")
+    lead = vm.head.city;
   } else if (rental) {
     // (its days as the rail counts them: pick-up to return, both days)
     const days = railDate(vm)?.notches || null;
@@ -298,17 +299,8 @@ export function whileSearching(view: RowView, status: IntentStatus, searching: b
   return { ...view, stageWord: L("Aranıyor", "Searching"), slot: { kind: "hap", tone: "busy", text: L("Aranıyor…", "Searching…") } };
 }
 
-/**
- * A dated category's two counts (onay paketi 2026-10-22, its head): "Karar" how many of its needs are decided (past
- * Seçenekler), "Bilet" how many of those to buy ahead are bought (a way paid on the spot isn't one). Nothing needed, nothing counted.
- */
-export function stageMeters(intents: readonly Pick<IntentVM, "status" | "access" | "selfArranged">[]): { decided: [number, number]; bought: [number, number] } {
-  const live = intents.filter((v) => v.status !== "skipped");
-  const stages = live.map((v) => ({ v, st: rowStage(v) }));
-  const decided = stages.filter((x) => x.st !== "options").length;
-  const ahead = stages.filter((x) => x.st === "bought" || x.st === "ticket" || x.v.status === "chosen");
-  return { decided: [decided, live.length], bought: [ahead.filter((x) => x.st !== "planned").length, ahead.length] };
-}
+
+export type PlanStepsTip = ReturnType<typeof planSteps>;
 
 export interface NextStep {
   key: string;

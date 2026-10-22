@@ -71,28 +71,9 @@
   .q-rrow.card > .q-rslot:has(> .q-rstub) { margin-block: 0; }
 }
 
-/* ---- a dated category's head: "Karar 3 / 4" and "Bilet 2 / 3" in place of the bar, a segment a need ---- */
+/* ---- a dated category's head icon ---- */
 .q-ic.mc { background: #f1f0f5; color: var(--q-ink); }
 .q-ic.mc .q-mi { display: block; }
-.q-meters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px 18px; }
-.q-meter { display: grid; gap: 5px; width: 124px; padding: 0; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: default; }
-button.q-meter { cursor: pointer; border-radius: 6px; }
-button.q-meter:hover .q-mt b { text-decoration: underline; text-underline-offset: 3px; }
-button.q-meter:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 3px; }
-.q-mt { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; }
-.q-mt b { font-weight: 800; color: var(--q-ink); }
-.q-mt em { font-style: normal; font-weight: 800; font-variant-numeric: tabular-nums; }
-.q-meter.acc .q-mt em { color: var(--q-acc-d); }
-.q-meter.ok .q-mt em { color: var(--q-ok); }
-.q-ms { display: flex; gap: 3px; height: 6px; }
-.q-ms i { flex: 1; border-radius: 99px; background: #e3e0ec; }
-.q-meter.acc .q-ms i.on { background: var(--q-acc); }
-.q-meter.ok .q-ms i.on { background: var(--q-ok); }
-/* (in the closed row's 180 px: side by side, the row as tall as ever, 78 px, E2) */
-.q-row1 .q-meters { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: center; }
-.q-row1 .q-meter { width: 100%; }
-.q-row1 .q-meters:not(:has(.q-meter.ok)) > .q-meter { grid-column: 1 / -1; }
-.q-meter, .q-mt { line-height: 15px; }
 
 
 /* ---- under the row: a pass (onay paketi 2026-10-22, "bilet gibi") ---- */
@@ -197,12 +178,7 @@ button.q-meter:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 3px; 
 .dr-chosen { border-color: color-mix(in srgb, var(--q-acc) 25%, #fff); }
 .pd-st.sel { color: var(--q-acc-d); }
 
-/* ---- "Planın durumu" and "Sıradaki işler": beside the plan on a wide page, over it narrower ---- */
-.cat-plan { container-type: inline-size; container-name: plan; }
-.q-sheetwrap { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
-.q-pstat { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 12px; align-items: start; }
-.q-psb { display: grid; gap: 8px; padding: 14px 16px; border-radius: 18px; background: #fff; box-shadow: inset 0 0 0 1px var(--q-line); }
-.q-psh { font-size: 14.5px; font-weight: 800; color: var(--q-ink); }
+/* the four steps' bar and lines (the hero's "Planın durumu" tip) */
 .q-psbar { display: flex; gap: 3px; height: 8px; border-radius: 99px; overflow: hidden; background: #e3e0ec; }
 .q-psbar i { display: block; min-width: 6px; }
 .q-psbar i.ticket { background: var(--q-ok); }
@@ -211,19 +187,31 @@ button.q-meter:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 3px; 
 .q-psbar i.options { background: #d6d2e3; }
 .q-psl { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 8px; align-items: center; font-size: 13px; font-weight: 700; color: var(--q-ink); }
 .q-psl b { font-variant-numeric: tabular-nums; }
-.q-psn { font-size: var(--q-fs-small); color: var(--q-mut); font-weight: 600; line-height: 1.4; }
-.q-psi { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 10px; align-items: start; padding: 8px 0 2px; border: 0; border-top: 1px solid #f0eef5; background: none; font: inherit; text-align: left; color: var(--q-ink); cursor: pointer; }
-.q-psi > span { display: grid; gap: 1px; min-width: 0; }
-.q-psi b { font-size: 13.5px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.q-psi small { font-size: var(--q-fs-small); color: var(--q-mut); font-weight: 600; }
-.q-psi:hover b { color: var(--q-acc-d); text-decoration: underline; text-underline-offset: 3px; }
-.q-psi:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 2px; border-radius: 8px; }
-@container plan (min-width: 1120px) {
-  .q-sheetwrap { grid-template-columns: minmax(0, 1fr) 300px; gap: 24px; align-items: start; }
-  .q-sheetwrap > .q-sheet { grid-column: 1; grid-row: 1; }
-  .q-pstat { grid-column: 2; grid-row: 1; grid-template-columns: minmax(0, 1fr); position: sticky; top: 88px; }
-}
-@media (max-width: 700px) { .q-pstat { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---- a stay's city: its own tag over the name, in the category's colour (its nights are on the rail) ---- */
+.q-rlead > .q-rkind.city { display: inline-flex; align-items: center; gap: 3px; height: 20px; padding: 0 8px 0 6px; border-radius: 99px; background: color-mix(in srgb, var(--k, var(--c)) 12%, #fff); font-size: 12.5px; font-weight: 800; letter-spacing: 0; }
+.q-rlead:has(> .q-rkind.city) { align-items: center; }
+.q-rlead > .q-rkind.city + .q-rstage::before { content: ""; margin-left: 8px; }
+
+/* ---- the hero's tips: "Planın durumu" over "hazır", "Sıradaki işler" over Sıradaki ---- */
+.x-steps { display: grid; gap: 7px; text-align: left; }
+.x-steps > b { font-size: 13.5px; font-weight: 800; }
+.x-steps > small { font-size: 12px; line-height: 1.4; }
+.x-steps .q-psl { grid-template-columns: 18px minmax(0, 1fr) auto; font-size: 12.5px; }
+.x-steps, .x-steps .q-psl, .x-steps b { color: inherit; }
+.x-steps > small, .x-steps .q-psl small { color: color-mix(in srgb, currentColor 68%, transparent); font-weight: 600; }
+.x-steps { min-width: 0; width: 100%; box-sizing: border-box; }
+.x-steps .q-psl.nx { grid-template-columns: 18px minmax(0, 1fr); align-items: start; }
+.x-steps .q-psl.nx > span { display: grid; gap: 1px; }
+.x-steps .q-psbar { background: rgba(255, 255, 255, .18); }
+
+/* ---- a dated category's bar in the four steps' colours ---- */
+.q-bar.q-sbar { gap: 2px; background: #ebe9f2; }
+.q-sbar i { display: block; height: 100%; min-width: 4px; }
+.q-sbar i.ticket { background: var(--q-ok); }
+.q-sbar i.bought { background: color-mix(in srgb, var(--q-ok) 55%, #fff); }
+.q-sbar i.planned { background: var(--q-acc); }
+.q-sbar i.options { background: #d6d2e3; }
 
 /* the step forward: the corner's mark springs (K29, as the hap did); the pass's big mark is stamped as the old seal was */
 .q-int.pop .q-sb { animation: q-pop .52s cubic-bezier(.2, .7, .2, 1.4); }

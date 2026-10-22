@@ -18,6 +18,7 @@ import { acceptMood, moodKey } from "../lib/heroText";
 import { getProvider, MissingKeyError } from "../lib/llm";
 import { resetConversation } from "../lib/assistant";
 import { collectionsOf, type IntentInput } from "../lib/intents";
+import { planSteps } from "../lib/rowView";
 import { journeyChapters, type StepTarget } from "../lib/journeyChapters";
 import { countedIntents, localNow, tripModeOf } from "../lib/tripPhase";
 import { timedNext, timedNextLabel, todayStrip, type TimedNext, type TodayInput } from "../lib/tripToday";
@@ -649,6 +650,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     [trip, plan, sections, items, today, decisions, docsFor, who.count, suggestions.bySection, at, prep],
   );
   const collections = useMemo(() => collectionsOf(intentInput), [intentInput]);
+  // The plan's four steps for the hero's tips (onay paketi 2026-10-22).
+  const planStepsView = useMemo(() => planSteps(collections.flatMap((c) => c.intents)), [collections]);
   const heroIntents = useMemo(() => collections.flatMap((c) => c.intents), [collections]);
   // Row 127 (D8, K17): on the trip a need left open on a day gone by is no decision, after it none is; never a night on the
   // plane. The shares, "n karar", "Sıradaki" and the first decision go by these.
@@ -974,6 +977,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           items={items}
           onShare={onShare}
           counts={counts}
+          steps={planStepsView}
           onFirstDecision={onFirstDecision}
           budget={heroBudget}
           budgetSet={budgetSet}

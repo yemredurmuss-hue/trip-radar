@@ -121,7 +121,8 @@ gelip gelmemesine ve duruma göre değişmez (v82). Plan'da her şeyin kendi kar
 ## Planlamanın dört adımı (onay paketi 2026-10-22)
 
 Tarih hattındaki her satır dört adımdan birinde durur; adım satırın resminin (ikon, logo, fotoğraf) köşesindeki işaretle
-ve türün kelimesinden sonraki sözle söylenir, renkle tek başına asla (`lib/rowView.ts` `rowStage`, `app/plan/v82/
+ve türün kelimesinden sonraki sözle söylenir (konaklamada şehir kendi etiketinde, kategori renginde ve iğneyle:
+"📍 Bangkok · Planda"; geceleri hatta), renkle tek başına asla (`lib/rowView.ts` `rowStage`, `app/plan/v82/
 modeIcons.tsx` `StageGlyph`, `static/v82/stages.css`). Onaylı çizim: tuval "Plan satırları · onay paketi".
 
 | Adım | Ne demek | İşaret | Kart | Sağdaki tek şey |
@@ -140,15 +141,15 @@ modeIcons.tsx` `StageGlyph`, `static/v82/stages.css`). Onaylı çizim: tuval "Pl
 - **Hat tarihi taşır:** noktası her adımda aynı sessiz halka; konaklamanın tarihi giriş günü tam ay adıyla ("27 Kasım") ve
   altında gece, ay değişse de iki satır; çıkış günü kartın üçüncü satırının başında ("Çıkış 1 Aralık Salı", rezervede
   saatiyle).
-- **Kategori başlığı:** çubuğun yerinde iki sayaç (`stageMeters`): "Karar 3 / 4" (seçeneklerden çıkıp plana girenler,
-  basınca ilk karara gider) ve "Bilet 2 / 3" (önceden alınacakların kaçı alındı; yerinde ödenen sayılmaz). Gecenin
-  sorunu ("1 gece boş") başlığın alt satırında.
+- **Kategori başlığı:** tek çubuk dört adımın renklerinde (koyu yeşil bilet elde, açık yeşil alındı, mor planda, gri
+  seçenek) ve tek satır: "2 alındı · 1 planda · 1 karar" ("karar" basınca ilk karara gider), gecenin sorunu ("1 gece
+  boş") aynı satırda.
 - **Türün ikonu:** MingCute dolu ikonlar (Apache-2.0, `static/licenses`), koyu, açık gri 48 px karoda: tren yandan, taksi
   önden, vapur, otobüs, minibüs, scooter; kategori başlıklarında uçak, otel, tren. Uçuşta havayolunun logosu (uygulamanın
   içinde, `static/logos/airlines`, airlogos MIT; yoksa harfleri ve markanın rengi), konaklamada otel fotoğrafı.
-- **Web:** "Planın durumu" (dört adımın sayısı, renkli çubuk) ve "Sıradaki işler" (önce seçilecekler, sonra alınacaklar,
-  sonra eklenecek biletler; basınca satırına gider; `planSteps`). Plan sütunu 1120 px'ten genişse planın yanında, daha
-  darsa üstünde iki kutu yan yana.
+- **Hero'da, yer kaplamadan:** "%71 hazır"ın üstüne gelince "Planın durumu" (dört adımın sayısı, renkli çubuk);
+  "Sıradaki"nin üstüne gelince "Sıradaki işler" (önce seçilecekler, sonra alınacaklar, sonra eklenecek biletler;
+  `planSteps`). Planın üstünde ayrı kutu yok.
 
 ## Tarih hattı: Uçuş, Konaklama, Ulaşım (plan v14, onay paketi 2026-10-21)
 

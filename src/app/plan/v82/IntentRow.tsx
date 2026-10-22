@@ -86,10 +86,15 @@ function Stub({ fig }: { fig: NonNullable<RowView["figure"]> }) {
 }
 
 /** The kind's word and the step's ("Tren · Planda"), over the name. */
-function Lead({ view }: { view: RowView }) {
+function Lead({ view, city = false }: { view: RowView; city?: boolean }) {
   return (
     <span className="q-rlead">
-      {view.lead && <span className="q-rkind">{view.lead}</span>}
+      {view.lead && (
+        <span className={`q-rkind${city ? " city" : ""}`}>
+          {city && <Ic name="pin" size={12} stroke={2.4} />}
+          {view.lead}
+        </span>
+      )}
       <span className="q-rstage">{view.stageWord}</span>
     </span>
   );
@@ -427,7 +432,7 @@ export function StayCard({ vm, view, art, date, on, onPress, menu, foot, under, 
         <div className={`q-rrow card${onPress ? " tap" : ""}`} aria-describedby={chipId} {...press}>
           <StayPhoto vm={vm} view={view} art={art} />
           <span className="q-rhd">
-            <Lead view={view} />
+            <Lead view={view} city={vm.kind === "stay" && view.lead === vm.head.city} />
             <h4 className="q-nm" title={view.title}>
               {editable ? <Editable field="name">{view.title}</Editable> : view.title}
             </h4>

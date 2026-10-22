@@ -145,7 +145,7 @@ export function useArrivals({ tripId, items, sections, openCaptures, view, isOpe
     setTimeout(() => {
       const els = placed.map((p) => findTarget({ item: p.id }));
       els.forEach((el) => (pulse(el, "ar-new", RING_MS), stampTick(el)));
-      for (const sec of new Set(placed.map((p) => p.section))) pulse(document.querySelector(`[data-section="${sec}"] :is(.cat-count, .cat-ideas, .q-pl1, .q-meters)`), "ar-pop", POP_MS);
+      for (const sec of new Set(placed.map((p) => p.section))) pulse(document.querySelector(`[data-section="${sec}"] :is(.cat-count, .cat-ideas, .q-pl1)`), "ar-pop", POP_MS);
       const seen = live.current.view === "plan" && els.some((el) => el && inView(el));
       if (opts.toast && !seen) setToast({ text: arrivedText(placed), itemId: placed[0].id, at: Date.now() });
     }, 90);

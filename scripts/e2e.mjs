@@ -559,7 +559,8 @@ try {
     await prog.hover();
     const tip = app.locator(".tipx-box");
     await tip.waitFor({ state: "visible" });
-    assert.match(await tip.innerText(), /^Omurganın %\d+'\S* planda \(\d+ ihtiyaçtan \d+'\S*\), %\d+'\S* alındı \(\d+\)\. \d+ karar bekliyor\.$/, "the bar's tip says it in a whole sentence");
+    // (onay paketi 2026-10-22: "Planın durumu" by the four steps, then the sentence)
+    assert.match(await tip.innerText(), /^Planın durumu\s+Bilet elde\s+\d+\s+Alındı\s+\d+\s+Planda\s+\d+\s+Seçenekler\s+\d+\s+Omurganın %\d+'\S* planda \(\d+ ihtiyaçtan \d+'\S*\), %\d+'\S* alındı \(\d+\)\. \d+ karar bekliyor\.$/, "the bar's tip: the four steps and a whole sentence");
     await app.waitForTimeout(350);
     await app.screenshot({ path: `${out}/37a-tip-hero-tally.png` });
     await app.mouse.move(2, 2);
@@ -570,9 +571,9 @@ try {
   assert.equal(flat([await sec("activity").locator(".q-pl1").innerText()])[0], "1 planda");
   // F7: the flight with a real priced option saved is "Önerimiz", a decision still to make, no longer "aranıyor"; the bar doesn't move.
   assert.match(await sec("flight").locator(".q-row1").innerText(), /^Uçuş\s*2 uçuş · gidiş ve dönüş · 3 fikir/);
-  // (onay paketi 2026-10-22: a dated category's two counts in place of the bar: decided of all, bought of those to buy)
-  assert.match(await sec("flight").locator(".q-row1 .q-meter.acc").getAttribute("aria-label"), /^Karar: 1 \/ 2/);
-  assert.match(await sec("flight").locator(".q-row1 .q-meter.ok").getAttribute("aria-label"), /^Bilet: 1 \/ 1/);
+  // (onay paketi 2026-10-22: a dated category's bar in the four steps' colours, its line by them)
+  assert.equal(flat([await sec("flight").locator(".q-pl1").innerText()])[0], "1 alındı · 1 karar");
+  assert.match((await sec("flight").locator(".q-row1 .q-sbar > i").evaluateAll((els) => els.map((e) => e.className))).join(","), /^(bought|ticket),options$/);
   assert.equal(await app.locator(".cat-wait").count(), 0, "no amber line: the row says it");
   assert.equal(await sec("flight").locator(".q-row1 .q-add").count(), 0, "\"+ Uçuş ekle\" is at the category's end, not in its row");
   // No page-bottom lists: what's out of the way waits at the end of its own category.
@@ -903,7 +904,7 @@ try {
   const portoDraft = sec("stay").locator('.q-ints > .q-int[data-st="ai"]', { has: app.locator(".q-nm", { hasText: "Jardim Stay" }) });
   await portoDraft.waitFor();
   // (onay paketi 2026-10-22: the kind's word, then the step's; "Seç", never "Bunu seç")
-  assert.equal(flat([await portoDraft.locator(".q-rlead .q-rkind").innerText()])[0], "Porto · 3 gece");
+  assert.equal(flat([await portoDraft.locator(".q-rlead .q-rkind").innerText()])[0], "Porto", "its city, a tag of its own");
   assert.equal(flat([await portoDraft.locator(".q-rlead .q-rstage").innerText()])[0], "✨ Önerimiz");
   assert.equal(await portoDraft.getAttribute("data-stage"), "options");
   assert.equal(await portoDraft.locator(".q-rslot .q-take").innerText(), "Seç");
@@ -1278,7 +1279,7 @@ try {
   // Plan v14: chosen, the card's lead "Porto · 3 gece", its slot "Rezerve et ↗"; the site opened, "Aldın mı?" under it.
   const jardimRow = sec("stay").locator('.q-ints > .q-int[data-st="sel"]', { has: app.locator(".q-nm", { hasText: "Jardim Stay" }) });
   await jardimRow.waitFor();
-  assert.equal(flat([await jardimRow.locator(".q-rlead .q-rkind").innerText()])[0], "Porto · 3 gece", "H1: a chosen stay says its city and nights over its name");
+  assert.equal(flat([await jardimRow.locator(".q-rlead .q-rkind").innerText()])[0], "Porto", "H1: a chosen stay says its city over its name (its nights on the rail)");
   assert.equal(flat([await jardimRow.locator(".q-rlead .q-rstage").innerText()])[0], "Planda");
   assert.match(await jardimRow.locator(".q-rslot .q-cta").innerText(), /Rezerve et/);
   assert.equal(await app.locator(".swipe-card").count(), 0);
@@ -2429,8 +2430,8 @@ try {
     counts.push(Math.round(box.x + box.width));
   }
   assert.equal(new Set(counts).size, 1, `the arrows line up on the right (${counts})`);
-  // (onay paketi 2026-10-22: the two counts in the bar's place: both stays decided, one of the two bought)
-  assert.match(flat([await sec("stay").locator(".q-row1").innerText()])[0], /^Konaklama 2 şehir · 6 gece[^€]*?Karar 2 \/ 2 Bilet 1 \/ 2 (\d+\/\d+ )?€[\d.,]+/);
+  // (onay paketi 2026-10-22: "Planda" for the chosen one)
+  assert.match(flat([await sec("stay").locator(".q-row1").innerText()])[0], /^Konaklama 2 şehir · 6 gece[^€]*?(\d+\/\d+ )?1 alındı · 1 planda €[\d.,]+/);
   await app.locator(".cat-plan").evaluate((el) => el.scrollIntoView({ block: "start" }));
   await app.screenshot({ path: `${out}/5c-collapsed.png` });
   await app.setViewportSize({ width: 560, height: 1400 });
@@ -3628,9 +3629,9 @@ try {
     await sgSec(id).locator(".q-fold.on").waitFor(); // (a page behind another has its timers held back: the fold is open, "settled" may come late)
   };
   // Only suggested: nothing of its own settled to count (no "x/y"); v82 (C16): what's missing is an intent, one to decide.
-  await sgSec("transport").locator(".q-row1 .q-meter.acc").waitFor({ timeout: 10000 });
+  await sgSec("transport").locator(".q-pl1", { hasText: "1 karar" }).waitFor({ timeout: 10000 });
   assert.equal(await sgSec("transport").locator(".q-count").count(), 0, "a suggestion is never counted as settled");
-  assert.match(await sgSec("transport").locator(".q-row1 .q-meter.acc").getAttribute("aria-label"), /^Karar: 0 \/ 1/);
+  assert.equal(flat([await sgSec("transport").locator(".q-pl1").innerText()])[0], "1 karar");
   assert.ok(!(await sgSec("transport").evaluate((el) => el.classList.contains("open"))), "a category with only suggestions stays closed");
   await openSec("transport");
   const rentalCard = sgSec("transport").locator(".q-ints > .q-int", { has: board.locator(".q-nm", { hasText: "Aylık motor ya da araç kiralama" }) });
@@ -5946,7 +5947,7 @@ try {
   // counts it as one to decide (our pick is on the plan once it's said yes to).
   const before = await heroNow();
   assert.deepEqual([before.total, before.planned, before.booked, before.open], [9, 3, 2, 6]);
-  assert.match(await app.locator('.q-sec[data-section="stay"] .q-row1 .q-meter.acc').getAttribute("aria-label"), /^Karar: 1 \/ 2/);
+  assert.equal(flat([await app.locator('.q-sec[data-section="stay"] .q-pl1').innerText()])[0], "1 alındı · 1 karar");
   // The Board (v82: the Pano window): our pick wears "✨ Önerimiz" and still says "Seç": it is not on the plan (no "Seçili", no green),
   // its intent's dot is our pick's (purple); on the plan are the two bookings and the activity only. ("Plan'da gör" and the state
   // filter are C32: not in this version, bu sürümde arayüzden düştü.)

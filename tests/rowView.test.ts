@@ -6,7 +6,7 @@ import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
 import { withLang } from "../src/lib/i18n";
 import type { IntentVM } from "../src/lib/intents";
-import { deckLead, planSteps, rowFace, rowStage, rowView, sourceCounts, stageMeters } from "../src/lib/rowView";
+import { deckLead, planSteps, rowFace, rowStage, rowView, sourceCounts } from "../src/lib/rowView";
 import { boardOf, japan, JAPAN_TODAY, ozora, OZORA_TODAY } from "./fixtures/v82Trips";
 
 const jp = () => {
@@ -81,7 +81,7 @@ describe("rowView: a stay (the card that doesn't fold)", () => {
   it("chosen: its city and nights over its name, the site and the area, by the night, Rezerve et", () => {
     const r = rowView(find(jp(), "stay:2027-04-02"));
     expect(r.face).toBe("card");
-    expect(r.lead).toBe("Tokyo · 3 gece");
+    expect(r.lead).toBe("Tokyo");
     expect(r.title).toBe("Hyatt Centric Ginza");
     expect(text(r.line)).toBe("Booking.com · Ginza");
     expect(r.figure).toEqual({ big: "€213", small: "gece · €639" });
@@ -89,7 +89,7 @@ describe("rowView: a stay (the card that doesn't fold)", () => {
   });
   it("booked with its number: Onay elde, the number on the stub", () => {
     const r = rowView(find(jp(), "stay:2027-04-09"));
-    expect(r.lead).toBe("Hakone · 3 gece");
+    expect(r.lead).toBe("Hakone");
     expect(r.stageWord).toBe("Onay elde");
     expect(r.figure).toEqual({ big: "GK-48213", small: "Rezervasyon no", code: true });
     expect(r.slot).toEqual({ kind: "none" });
@@ -115,23 +115,9 @@ describe("rowView: a stay (the card that doesn't fold)", () => {
   it("in English", () => {
     withLang("en", () => {
       const r = rowView(find(jp(), "stay:2027-04-02"));
-      expect(r.lead).toBe("Tokyo · 3 nights");
+      expect(r.lead).toBe("Tokyo");
       expect(r.slot).toEqual({ kind: "book", word: "Book" });
     });
-  });
-});
-
-describe("stageMeters: a dated category's head (Karar, Bilet)", () => {
-  it("decided of all; bought of those to buy ahead (a way paid on the spot isn't one)", () => {
-    const at = (status: IntentVM["status"], code = false) => ({ status, access: code ? ({ code: { label: "PNR", value: "X" }, doc: { count: 0, name: null } } as IntentVM["access"]) : null });
-    const m = stageMeters([at("deciding"), at("chosen"), at("arranged"), at("booked"), at("booked", true), at("skipped")]);
-    expect(m.decided).toEqual([4, 5]);
-    expect(m.bought).toEqual([2, 3]);
-  });
-  it("on the Japonya trip's flights", () => {
-    const m = stageMeters(jp().filter((v) => v.section === "flight"));
-    expect(m.decided[1]).toBeGreaterThan(0);
-    expect(m.bought[0]).toBeGreaterThan(0);
   });
 });
 

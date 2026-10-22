@@ -6,6 +6,8 @@
 // koy"; "Bütçe belirle" without a price yet, D16), ready (the planned share big, the bar green for booked and amber for
 // planned, what's booked and still to book; a tap on it goes to the first decision) and "Sıradaki", the one next step,
 // its words whole on up to two lines. A part with nothing to say isn't drawn (C19).
+import type { planSteps } from "../../lib/rowView";
+import { StageGlyph } from "../plan/v82/modeIcons";
 import { useState, type ReactNode } from "react";
 import { BUDGET_SLICES, type BudgetBar, type BudgetSlice } from "../../lib/progress";
 import { formatPrice, nightsBetween } from "../../lib/items";
@@ -153,9 +155,11 @@ function People({ trip, who, items, onShare }: { trip: Trip; who: Who; items: It
  * says it in a whole sentence, a tap on the line goes to the first decision (F5). A new backbone says how many needs
  * instead of "%0" (C19).
  */
-function Ready({ counts, onFirstDecision }: { counts: HeroCounts; onFirstDecision: (() => void) | null }) {
+function Ready({ counts, onFirstDecision, steps = null }: { counts: HeroCounts; onFirstDecision: (() => void) | null; steps?: PlanStepsView | null }) {
   const words = readyWords(counts);
-  const sentence = shareSentence(counts);
+  // (onay paketi 2026-10-22, "kompakt": the plan's four steps open over "hazır" on hover, no box over the plan)
+  const sentence = steps && steps.total ? <StepsTip steps={steps} sentence={shareSentence(counts)} /> : shareSentence(counts);
+  const label = shareSentence(counts);
   const booked = counts.booked.pct ?? 0;
   const planned = Math.max(0, (counts.plan.pct ?? 0) - booked);
   return (
@@ -171,7 +175,7 @@ function Ready({ counts, onFirstDecision }: { counts: HeroCounts; onFirstDecisio
       <TipOn tip={sentence} below>
         {(bind) => (
           <span {...bind} className="x-prog" tabIndex={0}>
-            <span className="x-bar" data-pit="bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={counts.plan.pct ?? 0} aria-label={sentence}>
+            <span className="x-bar" data-pit="bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={counts.plan.pct ?? 0} aria-label={label}>
               {booked > 0 && <i className="bk" style={{ width: `${booked}%` }} />}
               {planned > 0 && <i className="ch" style={{ width: `${planned}%` }} />}
             </span>
@@ -321,7 +325,29 @@ function Budget({ view, bar, set }: { view: BudgetView; bar: BudgetBar; set: Her
   );
 }
 
-function Next({ next }: { next: HeroNext }) {
+/** "Planın durumu" in the "hazır" tip: the dated needs by the four steps, a line each with its mark and how many. */
+function StepsTip({ steps, sentence }: { steps: PlanStepsView; sentence: string }) {
+  const order = ["ticket", "bought", "planned", "options"] as const;
+  const word = { ticket: L("Bilet elde", "Ticket in hand"), bought: L("Alındı", "Bought"), planned: L("Planda", "Planned"), options: L("Seçenekler", "Options") };
+  return (
+    <span className="x-steps">
+      <b>{L("Planın durumu", "The plan's state")}</b>
+      <span className="q-psbar" aria-hidden>
+        {order.map((st) => steps.counts[st] > 0 && <i key={st} className={st} style={{ flexGrow: steps.counts[st] }} />)}
+      </span>
+      {order.map((st) => (
+        <span key={st} className="q-psl">
+          <StageGlyph stage={st} size={18} />
+          <span>{word[st]}</span>
+          <b>{steps.counts[st]}</b>
+        </span>
+      ))}
+      <small>{sentence}</small>
+    </span>
+  );
+}
+
+function Next({ next, steps = null }: { next: HeroNext; steps?: PlanStepsView | null }) {
   if (!next.run)
     return (
       <span className="x-next ok" role="status">
@@ -332,8 +358,28 @@ function Next({ next }: { next: HeroNext }) {
       </span>
     );
   const parts = nextParts(next.label);
+  // (onay paketi 2026-10-22: "Sıradaki işler" said in its tip, after the next step itself)
+  const more = steps?.next ?? [];
+  const tip =
+    more.length > 0 ? (
+      <span className="x-steps">
+        {next.title && <span>{next.title}</span>}
+        <b>{L("Sıradaki işler", "Next up")}</b>
+        {more.map((n) => (
+          <span key={n.key} className="q-psl nx">
+            <StageGlyph stage={n.stage} size={18} />
+            <span>
+              <b>
+                {n.act} · {n.text}
+              </b>
+              {n.sub && <small>{n.sub}</small>}
+            </span>
+          </span>
+        ))}
+      </span>
+    ) : (next.title ?? null);
   return (
-    <TipOn tip={next.title ?? null} below align="right">
+    <TipOn tip={tip} below align="right">
       {(bind) => (
         <button {...bind} type="button" className="h-next x-next" aria-label={next.title ? `${next.label}: ${next.title}` : next.label} onClick={next.run!}>
           <span className="x-nw">
@@ -347,6 +393,8 @@ function Next({ next }: { next: HeroNext }) {
   );
 }
 
+type PlanStepsView = ReturnType<typeof planSteps>;
+
 export function HeroStrip(props: {
   dates: HeroDates | null;
   trip: Trip;
@@ -359,17 +407,19 @@ export function HeroStrip(props: {
   /** D16: with no budget, the way to set one (null: not known yet in which money). */
   budgetSet: HeroBudgetSet | null;
   next: HeroNext;
+  /** The dated needs by the four steps and the next things to do (lib/rowView.planSteps), for the tips. */
+  steps?: PlanStepsView | null;
 }) {
   const segs: ReactNode[] = [
     props.dates && <Dates key="dates" dates={props.dates} />,
     <People key="people" trip={props.trip} who={props.who} items={props.items} onShare={props.onShare} />,
     props.budget ? <Budget key="budget" view={props.budget.view} bar={props.budget.bar} set={props.budgetSet} /> : props.budgetSet && <NoBudget key="budget" set={props.budgetSet} />,
-    props.counts.total > 0 && <Ready key="ready" counts={props.counts} onFirstDecision={props.onFirstDecision} />,
+    props.counts.total > 0 && <Ready key="ready" counts={props.counts} onFirstDecision={props.onFirstDecision} steps={props.steps ?? null} />,
   ].filter(Boolean);
   return (
     <div className={`x-strip n${segs.length}`} data-pit-children>
       {segs}
-      <Next next={props.next} />
+      <Next next={props.next} steps={props.steps ?? null} />
     </div>
   );
 }

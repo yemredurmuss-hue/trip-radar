@@ -70,6 +70,8 @@ export interface HeroProps {
   /** B15: the bookings in their last two weeks without their file. */
   docs: HeroDocs | null;
   next: HeroNext;
+  /** The plan's four steps and its next things to do, for the strip's tips (onay paketi 2026-10-22). */
+  steps?: import("../../lib/rowView").PlanStepsTip | null;
   facts: TripFacts;
   /** The trip's countries by name. */
   countries: string[];
@@ -172,6 +174,7 @@ export function Hero(props: HeroProps) {
             budget={budget}
             budgetSet={props.budgetSet}
             next={props.next}
+            steps={props.steps ?? null}
           />
           <div className="x-info">
             <FactChips chips={chips} sky={sky?.sky ?? null} docs={props.docs} />

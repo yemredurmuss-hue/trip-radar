@@ -31,37 +31,8 @@ export interface RowView {
   allot: string | null;
   /** What's settled of all its needs, said for a screen reader (the bar shows it); none for an idea category. */
   settled: { settled: number; total: number } | null;
-  /** A dated category's two counts in place of the bar (onay paketi 2026-10-22): decided of all, bought of those to buy. */
-  meters?: { decided: [number, number]; bought: [number, number] } | null;
-}
-
-/** One count: its word, "3 / 4", and a segment a need. */
-function Meter({ label, of, tone, onClick }: { label: string; of: [number, number]; tone: "acc" | "ok"; onClick?: () => void }) {
-  const [n, total] = of;
-  const body = (
-    <>
-      <span className="q-mt">
-        <b>{label}</b>
-        <em>
-          {n} / {total}
-        </em>
-      </span>
-      <span className="q-ms" aria-hidden>
-        {Array.from({ length: Math.min(total, 12) }, (_, i) => (
-          <i key={i} className={i < Math.round((n / total) * Math.min(total, 12)) ? "on" : undefined} />
-        ))}
-      </span>
-    </>
-  );
-  return onClick ? (
-    <button type="button" className={`q-meter ${tone}`} onClick={(e) => (e.stopPropagation(), onClick())} aria-label={L(`${label}: ${n} / ${total}, ilk karara git`, `${label}: ${n} of ${total}, go to the first decision`)}>
-      {body}
-    </button>
-  ) : (
-    <span className={`q-meter ${tone}`} aria-label={L(`${label}: ${n} / ${total}`, `${label}: ${n} of ${total}`)}>
-      {body}
-    </span>
-  );
+  /** A dated category's needs by the four steps (onay paketi 2026-10-22): the bar in the steps' colours in place of the two greens. */
+  stages?: Record<"options" | "planned" | "bought" | "ticket", number> | null;
 }
 
 export function CategoryRow({ row, meta, open, onToggle, onDecide, decideTip, budgetTip, extraTip }: {
@@ -89,17 +60,6 @@ export function CategoryRow({ row, meta, open, onToggle, onDecide, decideTip, bu
         <small className="q-kw">
           {row.line}
           {extraTip && <span className="q-sgn"> · {extraTip}</span>}
-          {/* (with the two counts in the bar's place, a night's trouble is said on the line: "1 gece boş") */}
-          {row.meters &&
-            row.meters.decided[1] > 0 &&
-            row.parts
-              .filter((p) => p.tone)
-              .map((p) => (
-                <span key={p.text}>
-                  {" · "}
-                  <em className={`q-alert ${p.tone}`}>{p.text}</em>
-                </span>
-              ))}
         </small>
       </button>
       <span className="q-ths" aria-hidden>
@@ -111,20 +71,12 @@ export function CategoryRow({ row, meta, open, onToggle, onDecide, decideTip, bu
         ))}
         {row.more > 0 && <span className="q-thm">+{row.more}</span>}
       </span>
-      {row.meters && row.meters.decided[1] > 0 ? (
-        <span className="q-prog q-meters">
-          <Meter label={L("Karar", "Decided")} of={row.meters.decided} tone="acc" onClick={row.meters.decided[0] < row.meters.decided[1] ? onDecide : undefined} />
-          {row.meters.bought[1] > 0 && <Meter label={L("Bilet", "Tickets")} of={row.meters.bought} tone="ok" />}
-          {row.settled && (
-            <span className="q-count sr-only" aria-label={L(`${row.settled.settled} / ${row.settled.total} tamam`, `${row.settled.settled} of ${row.settled.total} settled`)}>
-              {row.settled.settled}
-              <i>/{row.settled.total}</i>
-            </span>
-          )}
-        </span>
-      ) : (
       <span className="q-prog">
-        {row.bar && (
+        {row.stages ? (
+          <span className="q-bar q-sbar" aria-hidden>
+            {(["ticket", "bought", "planned", "options"] as const).map((st) => row.stages![st] > 0 && <i key={st} className={st} style={{ flexGrow: row.stages![st] }} />)}
+          </span>
+        ) : row.bar && (
           <span className="q-bar" aria-hidden>
             <i className="bk" style={{ width: `${row.bar.booked}%` }} />
             <i className="ch" style={{ width: `${row.bar.chosen}%` }} />
@@ -161,7 +113,6 @@ export function CategoryRow({ row, meta, open, onToggle, onDecide, decideTip, bu
           ))}
         </small>
       </span>
-      )}
       {row.spent || row.allot ? (
         <HoverTip below align="right" className="q-bud" tip={budgetTip}>
           <b className="q-spent">{row.spent ?? ""}</b>
