@@ -2,9 +2,10 @@
 // top-left, the days left top-right, and at the bottom the title and one line (dates · days). The title shrinks with
 // its length (26, 22, 19 px) and wraps by words, three lines at most, "…" only past that; the scrim takes the photo's
 // own deep tone. A draft is the same card, dashed.
-import type { CSSProperties } from "react";
+import { useEffect, type CSSProperties } from "react";
 import { L } from "../lib/i18n";
 import { initials } from "../lib/heroInfo";
+import { COVER_W, holdPhoto, sizedPhoto } from "../lib/photoCache";
 import { FallbackImg } from "./FallbackImg";
 import { usePhotoTint } from "./useTint";
 
@@ -51,8 +52,11 @@ interface CardProps {
   tripId?: string;
 }
 
-export function TripCard({ title, info, image, photoBy, left, people, order, onOpen, tripId }: CardProps) {
-  const tint = usePhotoTint(image);
+export function TripCard({ title, info, image: stored, photoBy, left, people, order, onOpen, tripId }: CardProps) {
+  // The hero's cover itself (one address, lib/photoCache.ts), held decoded: the trip opens on it with nothing to load.
+  const image = stored && sizedPhoto(stored, COVER_W);
+  useEffect(() => void (image && holdPhoto(image)), [image]);
+  const tint = usePhotoTint(stored);
   return (
     <button type="button" className="trip-card vcard v1" data-trip-card={tripId} style={{ "--tint": tint } as CSSProperties} onClick={onOpen}>
       <span className="pic">

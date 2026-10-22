@@ -1,12 +1,10 @@
-// The hero's photos, light and kept (2026-10-22: "her seferinde yeniden yükleniyor"). We keep only their addresses on the
-// trip (Unsplash, Pexels, Wikipedia: trip.cityImages); each is asked for at the size it is drawn (sizedPhoto: the cover
-// ~1280 px, a tile ~480 px, compressed by its own server), then kept in the extension's Cache Storage the first time it
-// comes, so the next opening draws it from the disk at once, with nothing fetched. Kept: the last PHOTO_MAX photos (the
-// oldest go). A photo that can't be read (no CORS, offline) is simply drawn from its address, as before.
-
-/** How many photos are kept on the disk (a trip's hero is a cover and up to six tiles). */
-export const PHOTO_MAX = 80;
-const CACHE = "trip-radar-photos-v1";
+// The hero's photos, light and kept (2026-10-22: "her seferinde yeniden yükleniyor", "bir kere gelince tekrar download
+// etmesin"). We keep only their addresses on the trip (Unsplash, Pexels, Wikipedia: trip.cityImages); each is asked for at
+// the size it is drawn (sizedPhoto: the cover ~1280 px, also the trip card's so opening a trip finds it there, a tile ~480
+// px, compressed by its own server). Those servers send them to be kept for a year, so the browser's own cache holds them:
+// the next opening (a reload too) reads them from the disk, nothing fetched. Within a visit the photos drawn are held here
+// decoded (heldPhoto), so a hero drawn again (a trip left and opened again, a view switched back) paints them at once,
+// with no blank frame. (Kept in our own Cache Storage as blobs, 090352e, the cover waited for the disk on every opening.)
 
 /** A photo's address at the width it's drawn (2x for a sharp screen is the caller's): its server resizes and compresses it. */
 export function sizedPhoto(url: string, width: number): string {
@@ -37,50 +35,31 @@ export function sizedPhoto(url: string, width: number): string {
   return url;
 }
 
-/** This visit's photos already read: drawn again at once (a re-mounted hero, a view switched back). */
-const seen = new Map<string, string>();
+/** The cover's width: the hero's and the trip card's (one address, so the card's photo is the hero's, already loaded). */
+export const COVER_W = 1280;
 
-const cacheOf = async (): Promise<Cache | null> => {
-  try {
-    return typeof caches === "undefined" ? null : await caches.open(CACHE);
-  } catch {
-    return null;
-  }
+/** How many decoded photos a visit holds (a trip's hero is a cover and up to six tiles; a few trips' worth). */
+export const PHOTO_MAX = 40;
+
+const held = new Map<string, HTMLImageElement>();
+
+/** Holds a photo decoded for this visit (the oldest beyond PHOTO_MAX let go); one that won't load is not held. */
+export function holdPhoto(url: string): void {
+  if (typeof Image === "undefined") return;
+  const hit = held.get(url);
+  if (hit) return void (held.delete(url), held.set(url, hit));
+  const img = new Image();
+  img.src = url;
+  img.decode().catch(() => held.get(url) === img && held.delete(url));
+  held.set(url, img);
+  for (const old of [...held.keys()].slice(0, Math.max(0, held.size - PHOTO_MAX))) held.delete(old);
+}
+
+/** Whether a photo is loaded and decoded this visit: drawn again at once, with no wait. */
+export const heldPhoto = (url: string): boolean => {
+  const img = held.get(url);
+  return Boolean(img?.complete && img.naturalWidth);
 };
 
-/** The photo kept on the disk, or null (not kept yet, or no cache here). */
-export async function keptPhoto(url: string): Promise<string | null> {
-  const hit = seen.get(url);
-  if (hit) return hit;
-  const cache = await cacheOf();
-  const res = await cache?.match(url).catch(() => undefined);
-  if (!res) return null;
-  const src = URL.createObjectURL(await res.blob());
-  seen.set(url, src);
-  return src;
-}
-
-const pending = new Set<string>();
-
-/** Fetches a photo once and keeps it (the oldest beyond PHOTO_MAX go); quiet when it can't be read. */
-export async function keepPhoto(url: string): Promise<void> {
-  if (seen.has(url) || pending.has(url)) return;
-  pending.add(url);
-  try {
-    const cache = await cacheOf();
-    if (!cache) return;
-    const res = await fetch(url, { mode: "cors", credentials: "omit" });
-    if (!res.ok || !(res.headers.get("content-type") ?? "").startsWith("image/")) return;
-    await cache.put(url, res.clone());
-    seen.set(url, URL.createObjectURL(await res.blob()));
-    const keys = await cache.keys();
-    for (const old of keys.slice(0, Math.max(0, keys.length - PHOTO_MAX))) await cache.delete(old);
-  } catch {
-    // (drawn from its address, as before)
-  } finally {
-    pending.delete(url);
-  }
-}
-
-/** What's kept this visit, for a first draw with no wait. */
-export const seenPhoto = (url: string): string | null => seen.get(url) ?? null;
+// (090352e kept them in Cache Storage too: that copy is let go, once per visit)
+if (typeof caches !== "undefined") void caches.delete("trip-radar-photos-v1").catch(() => undefined);

@@ -246,9 +246,11 @@ başlığı (v82). Bileşenler `src/app/hero/`, biçim `static/v82/hero.css`, sa
 - Hero'nun üstünde, ortada sekmeler: **Plan | Pano** (Pano'da kayıt sayısı).
 
 - **Fotoğraflar hafif ve saklı** (`lib/photoCache.ts`, `hero/Photo.tsx`): gezide yalnız adresleri durur (Unsplash, Pexels,
-  Wikipedia). Her biri çizildiği boyutta istenir (kapak 1280 px, kutu 480 px; sunucusu sıkıştırır), ilk gelişinde
-  eklentinin önbelleğine (Cache Storage, son 80 fotoğraf) yazılır, sonraki açılışlarda diskten anında çizilir; okunamayan
-  (CORS, çevrimdışı) adresinden çizilir.
+  Wikipedia). Her biri çizildiği boyutta istenir (kapak 1280 px, kutu 480 px, renk tonu 64 px; sunucusu sıkıştırır). Gezi
+  kartı, kapağın aynı adresini kullanır: Seyahatlerim'de yüklenen fotoğraf, gezi açılınca hero'da hazırdır. Sunucular
+  fotoğrafı bir yıl saklanmak üzere gönderir, tarayıcının kendi önbelleği tutar; sonraki açılışta (yeniden yüklemede de)
+  hiçbir şey indirilmez. Ziyaret boyunca çizilenler çözülmüş tutulur (son 40), tekrar girişte boş kare olmadan ilk anda
+  çizilir. Fotoğraf hiçbir zaman beklenmez, adresinden hemen çizilir.
 
 ## Sağlayıcı kuralı
 
