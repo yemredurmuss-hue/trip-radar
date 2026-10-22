@@ -353,6 +353,19 @@ export function drawerHead(vm: IntentVM, people: number): { title: string; sub: 
 /** The decision's own parts for an option (its weights, its sub-scores): the score's three parts and "Neden?". */
 export const partsFor = (byGroup: ReadonlyMap<string, GroupDecision> | undefined, item: Item): Part[] => decisionOf(byGroup, item)?.options.find((d) => d.item.id === item.id)?.parts ?? [];
 
+/** Our pick's reasons, said once on its card (choice.ts, as the details over the card say them); the Pano's deck says them too. */
+export function useOursReason(options: readonly OptionVM[]): string | null {
+  const env = useCardEnv();
+  const ours = options.find((o) => o.ours) ?? null;
+  return useMemo(() => {
+    if (!ours) return null;
+    const d = decisionOf(env.decisions?.byGroup, ours.item);
+    const ctx = env.decisions?.ctx;
+    const choice = d && ctx && d.options.filter((x) => !x.excluded).length > 1 ? choiceOf(d, ctx) : null;
+    return pickReason(choice?.headline ?? null, ours.item.name);
+  }, [ours, env.decisions]);
+}
+
 export function IntentDrawer({ vm, options, dropped = [], chosenId, art, links, typical, need, placeholder = null, people, onPick, onClose, onPano, onAsk, onOffer }: {
   vm: IntentVM;
   options: OptionVM[];
@@ -419,14 +432,7 @@ export function IntentDrawer({ vm, options, dropped = [], chosenId, art, links, 
   const partsOf = (o: OptionVM): Part[] => partsFor(env.decisions?.byGroup, o.item);
   const shares = family !== "ticket" ? weightShares(decision?.options[0]?.parts ?? []) : [];
   // Our pick's reasons, said once on its card (choice.ts, as the details over the card say them).
-  const ours = options.find((o) => o.ours) ?? null;
-  const reason = useMemo(() => {
-    if (!ours) return null;
-    const d = decisionOf(env.decisions?.byGroup, ours.item);
-    const ctx = env.decisions?.ctx;
-    const choice = d && ctx && d.options.filter((x) => !x.excluded).length > 1 ? choiceOf(d, ctx) : null;
-    return pickReason(choice?.headline ?? null, ours.item.name);
-  }, [ours, env.decisions]);
+  const reason = useOursReason(options);
   const view = rowView(vm);
   const { title, sub } = drawerHead(vm, people);
   const deck = options.slice(0, 3);

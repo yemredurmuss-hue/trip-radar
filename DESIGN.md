@@ -89,7 +89,7 @@ gelip gelmemesine ve duruma göre değişmez (v82). Plan'da her şeyin kendi kar
 | Pano kartı | 220 px ızgara; tek seçenek de büyümez | `--q-pano-w` |
 | Karşılaştırma sütunu | 280 px | `--q-col-w` |
 
-- **Tekli kutu 288 px**: 1440 ve 860 px'te her durumda aynı yükseklik, iki dilde (A6). Ölçüm:
+- **Tekli kutu 288 px** (Uçuş, Konaklama ve Ulaşım'da artık tarih hattı, aşağıda): 1440 ve 860 px'te her durumda aynı yükseklik, iki dilde (A6). Ölçüm:
   `scripts/v82-shots.mjs` → `heights.json`.
 - **Çerçeve aileleri:** konaklama, eSIM ve sigorta: görsel 196 | bilgi dört satır (marka ve puan ya da durum, ad, konum
   ya da tarih, çipler) | yan sütun. Uçuş, tren ve transfer: bilet (taşıyıcı satırı, şehirler ve istasyon ya da saat,
@@ -116,6 +116,48 @@ gelip gelmemesine ve duruma göre değişmez (v82). Plan'da her şeyin kendi kar
 - Niyetin adı tek satırdır; sığmazsa "…" ile biter, tam hali ipucunda ve Ayrıntı'da.
 - 390 px'te yapı aynı kalır: görsel solda, bilgi sağda, yan sütun alta iner, istekler alt satıra kayar. Bu genişlikte
   eşit boy sonraki iştir (A8).
+
+## Tarih hattı: Uçuş, Konaklama, Ulaşım (plan v14, onay paketi 2026-10-21)
+
+Bu üç kategoride 288 px kutunun yerini tarih hattı alır (`static/v82/rows.css`, `app/plan/v82/IntentRow.tsx`, saf
+mantık `lib/railDates.ts` ve `lib/rowView.ts`). Etkinlik, Yapılacaklar ve Belgeler ve internet yukarıdaki kutuda kalır.
+
+- **Hat:** solda tarih sütunu ("24–27 Mar" üstte, "Çar → Cmt" altta, "3 gece"), her gece bir çentik, durumun rengiyle
+  nokta. Kategori renginde nokta kuralı (renk tablosundan bilinçli sapma): durumun anlamı hapta ve satırda, nokta
+  kategoriyi taşır.
+- **Yol satırı** (uçuş, tren, otobüs, feribot, transfer): ince satır; solda taşıyıcının işareti, üstte küçük tür ya da
+  "✨ Önerimiz", ad iki uç, altında saatler ve aktarma; sağda tek şey (Ara · Seç ve sayı · Bunu seç · Satın al ↗ ·
+  yeşil Alındı · gri Ayarlandı). Basınca biniş kartı altında açılır; Biriken'de "Birikenler / Yeni bul" yarıları.
+  Alınmışta fiyatın yerinde kod (PNR). Açık hâli kayda bağlıdır, uçlar yazılırken kapanmaz.
+- **Konaklama ve Kiralama kartı:** katlanmaz; fotoğraf solda, üstte şehir ve gece ("Bangkok · 3 gece") ya da tür ve gün
+  ("Motosiklet kiralama · 3 gün"), ad, site ve semt; sağda gece fiyatı ve toplam, tek düğme. Karta basmak çekmeceyi açar
+  (seçilide Değiştir), rezervede Ayrıntı açılır. Altında şeritler: yeşil rezervasyon (giriş, ödenen, onay, sayfa),
+  amber saat bağı (Geç giriş bildir / Geç çıkış sor; `lib/stayTiming.ts`, legs.ts'in notlarından), lila "Rotayı onayla".
+- **Yerinde:** rezervasyonu olmayan yol (taksi, metro) sessiz bir satır: "Taksi · yerinde", rota, "rezervasyon
+  gerekmez"; açılınca yollar (her biri "rezervasyon gerekmez" ya da "rezervasyon ister · kart olur"), Ben hallettim,
+  Haritada aç ↗.
+- **Kaçırdıklarımız:** iki konaklama arasında kısa açık gece amber "boş gece" satırı; iki kaydın aynı geceyi tutması
+  kırmızı "çakışan gece" satırı ve "Birini kısalt"; kategori kapalıyken de satır özetinde "1 gece boş" (amber),
+  "1 gece çakışıyor" (kırmızı).
+- 700 px altında tarih karta tırmanır, satır iki sıraya iner (fiyat görünür kalır).
+
+## Çekmece standardı (onay paketi 2026-10-21)
+
+`app/plan/v82/IntentDrawer.tsx`, `static/v82/drawer.css`, saf mantık `lib/drawerCard.ts`.
+
+- **Başlık üç satır:** deste ve sayı, ad ve "ne zaman · kaç kişi"; Ölçütler (lila şart, gri tercih, "+ ekle");
+  Seçenekler / Elenen anahtarı ve Sırala. Konaklama ve kiralamada sıralamanın ağırlığı tek çubuk (Yorumlar · Özellikler ·
+  Fiyat yüzdeleri, karar motorunun kendi ağırlıklarından toplanır; uydurma yok).
+- **Konaklama / kiralama kartı:** fotoğraf önde ve tam genişlik, üstünde "91 · 1. sırada"; ad, site ve semt, puanın üç
+  parçası; sağda fiyat ve büyük Seç ("✓ Seçili"); beş etiketli yuva hep aynı sırada (konaklama: Kahvaltı, İptal,
+  Merkez, Puan, Kaynak; kiralama: Sigorta, İptal, Teslim, Puan, Kaynak); yorumlardan artılar ve eksiler hep açık.
+  Kaydın söylemediği yuva gri "bilinmiyor" (C19).
+- **Bilet kartı:** biniş kartı (saatler büyük, süre ve aktarma arada), fiyat ve Seç, beş yuva (uçuş: Bagaj, El bagajı,
+  İade, Varış, Kaynak; tren ve otobüs: Kalkış, Varış, Süre, İade, Kaynak), "Neden 91?" (önerimizde açık). Birden çok
+  günde uçuşlar gün bandının altında (52 px karo, "istenen gün", "bir gün sonra"); komşu günün puanı amber.
+- Fiyat iki günden eskiyse amber "n gün önce · Yenile"; düştüyse lila "Dün €71 idi".
+- Altta "Yeni bul" kutusu (bağlantıyı buraya bırak, bakılacak siteler, AI yeniden arasın) ve "Pano'da karşılaştır →".
+- Kart iç yerleşimi kabın genişliğine göre (container query): telefonda ve dar sütunda Seç tam genişlik, yuvalar sarar.
 
 ## Hero = mozaik
 
@@ -213,7 +255,12 @@ olmalı"). "Kendin ara" simgeleri, boş şehrin "…'da ara" düğmeleri ve Haz�
   Her yerden açılır: üstteki Plan | Pano sekmesi, her niyetteki "Pano n".
 - Solda kenar menü: Tümü · Biriktirdiklerim · AI önerileri · İlham · Belgeler (sayılarıyla), altında "İhtiyaçlar"
   ağacı (kategori > niyet, durum noktası ve sayı). Vurgu kayar, içerik belirir (E9).
-- Karşılaştırma yalnız konaklama, eSIM, uçuş ve trende: 280 px sütunlar, satırlar hizalı (görsel ve kim ekledi, ad,
+- **Çekmecenin büyümüş hâli (onay paketi 11):** uçuş, konaklama ve ulaşım ihtiyaçları çekmecenin kartlarıyla iki
+  sütun (`app/board/v82/PanoDeck.tsx`); grubun başı çekmecenin başı gibi (ölçütler, ağırlık, Yeni bul, Kartlar |
+  Karşılaştır), sağda "Seçildi: X · Plan'da gör →" ya da "Karar bekliyor". Rezerve grup tek satıra iner ("Aç ▾").
+  Karşılaştır: etiket sütunu ve seçenek başına sütun; ağırlıklı puan, üç parça, fiyat, beş yuva, artılar, eksiler,
+  oylar, Seç; her satırda en iyi yeşil, en zayıf amber.
+- Karşılaştırma (eSIM gibi kalanlar): 280 px sütunlar, satırlar hizalı (görsel ve kim ekledi, ad,
   fiyat ve toplam, "Uyum puanı n/100 · n. sırada" ve ⓘ'de "AI analizi dahil" (B3), istekler, artılar, eksiler, puan,
   iptal, bagaj, ♥, kaynak ↗, Seç). Etkinlik ve yapılacaklarda kıyas yok, toplama ızgarası ("+ Plana koy" / "Planda").
 - Beğeni tek ♥; eski oylar beğeniye çevrildi (B16).

@@ -13,7 +13,7 @@ import { inView, type PanoNeed, type PanoOption } from "../../../lib/panoBoard";
 import { whoGoes } from "../../../lib/tripSettings";
 import { useCardEnv } from "../../cards/PlanCard";
 import { artOf } from "../../plan/v82/IntentBox";
-import { CardOption, drawerHead, familyOf, partsFor, TicketOption } from "../../plan/v82/IntentDrawer";
+import { CardOption, drawerHead, familyOf, partsFor, TicketOption, useOursReason } from "../../plan/v82/IntentDrawer";
 import { Ic } from "../../plan/v82/icons";
 import { PanoCard } from "./PanoGrid";
 import { Likes, PickButton } from "./parts";
@@ -38,6 +38,7 @@ export function PanoDeck({ need: all, filter = "all", initial = "cards", fresh, 
   const booked = vm.status === "booked";
   const [open, setOpen] = useState(!booked);
   const [mode, setMode] = useState<"cards" | "cmp">(initial);
+  const reason = useOursReason(vm.options);
   const art = artOf(vm.kind, vm.chosen?.item ?? vm.options[0]?.item ?? null);
   // (the chosen one is the intent's `chosen`, not always among its options)
   const byId = new Map([...(vm.chosen ? [vm.chosen] : []), ...vm.options].map((o) => [o.id, o]));
@@ -77,7 +78,7 @@ export function PanoDeck({ need: all, filter = "all", initial = "cards", fresh, 
     if (!o) return <PanoCard key={po.id} option={po} need={need} fresh={fresh.has(po.id)} />;
     const pick = <PickButton option={po} need={need} />;
     const parts = partsFor(env.decisions?.byGroup, o.item);
-    const props = { o, art, current: po.current != null, why: null, parts, solo: count < 2, onPick: () => undefined, pick };
+    const props = { o, art, current: po.current != null, why: o.ours ? reason : null, parts, solo: count < 2, onPick: () => undefined, pick };
     return family === "ticket" ? <TicketOption key={o.id} {...props} vm={vm} off={false} /> : <CardOption key={o.id} {...props} typical={null} rental={family === "rental"} />;
   };
   return (

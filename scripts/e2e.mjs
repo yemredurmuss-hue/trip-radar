@@ -18,6 +18,13 @@ async function openRow(box) {
 async function pressCard(box) {
   const card = box.locator(".q-rrow.card").first();
   if (await card.count()) return card.click({ position: { x: 200, y: 20 } });
+  // (a ticket's row: its "Seç" with the count, else opened, its Seçenekler / Değiştir)
+  if (await box.locator(".q-rrow[role=button]").count()) {
+    const pick = box.locator(".q-rslot .q-rsec");
+    if (await pick.count()) return pick.click();
+    await openRow(box);
+    return box.locator(".q-racts .q-chg").first().click();
+  }
   return box.locator(".z-m").click();
 }
 async function routeOf(box) {
@@ -5111,8 +5118,16 @@ try {
   // Town", how many (where from is known from the trips before, F55): the essentials known, "Generating… 3 · Cancel"; a typed letter stops it; a style
   // picked fills the checklist and it starts again; the trip makes itself: "AfrikaBurn 20xx", Cape Town 2 → Tankwa
   // Karoo 6 → Cape Town 2, İstanbul ⇄ Cape Town, 4 people.
-  await board.getByRole("button", { name: /Seyahatlerim/ }).first().click({ timeout: 3000 }).catch(() => undefined);
-  await board.locator(".st-hello").waitFor();
+  // (the trip map's canvas can hold the pointer a moment: the trips' button by its class, waited for)
+  for (let k = 0; k < 4 && !(await board.locator(".st-hello").count()); k++) {
+    await board.locator(".trip-switch").first().click({ timeout: 10000 }).catch(() => undefined);
+    await board.waitForTimeout(800);
+  }
+  await board.locator(".st-hello").waitFor({ timeout: 8000 }).catch(async (e) => {
+    await board.screenshot({ path: `${out}/dbg-st-hello.png` });
+    console.log("DBG", JSON.stringify((await board.locator("body").innerText()).slice(0, 800)));
+    throw e;
+  });
   await board.getByLabel("Gezi kutusu").fill("I want to go burning man africa with my friends and partner");
   await board.getByRole("button", { name: /Planlamaya başla/ }).click();
   await board.locator(".st-ask, .st-screen").first().waitFor();
@@ -5909,27 +5924,28 @@ try {
   // filter are C32: not in this version, bu sürümde arayüzden düştü.)
   await app.getByRole("tab", { name: "Pano", exact: true }).click();
   const draftPano = app.getByRole("dialog", { name: "Pano" });
-  const panoFlight = draftPano.locator('.q-pg[aria-label="Pegasus · direkt"]');
+  // (onay paketi 11: the drawer's cards; our pick says "Önerimiz." with its reasons, Seç on it, not marked chosen)
+  await draftPano.locator('.q-sgh[data-cat="flight"]').click();
+  const panoFlight = draftPano.locator(".pd .dr-op", { has: app.locator(".dr-nm", { hasText: "Pegasus" }) }).first();
   await panoFlight.waitFor();
-  assert.match(await panoFlight.locator(".q-src.best").innerText(), /Önerimiz/);
+  assert.match(await panoFlight.locator(".dr-why").innerText(), /^Önerimiz\./);
   assert.equal(await panoFlight.locator("button.q-pick").innerText(), "Seç");
   assert.equal(await panoFlight.evaluate((el) => el.classList.contains("cur")), false, "not 'Seçili'");
-  assert.equal(await panoFlight.locator(".q-stc").count(), 0);
-  const panoStay = draftPano.locator('.q-pg[aria-label="Jardim Stay"]');
-  assert.match(await panoStay.locator(".q-src.best").innerText(), /Önerimiz/);
-  assert.equal(await panoStay.locator(".q-stc").count(), 0);
+  await draftPano.locator('.q-sgh[data-cat="stay"]').click();
+  const panoStay = draftPano.locator(".pd .dr-op", { has: app.locator(".dr-nm", { hasText: "Jardim Stay" }) }).first();
+  await panoStay.waitFor();
+  assert.match(await panoStay.locator(".dr-why").innerText(), /^Önerimiz\./);
+  assert.equal(await panoStay.evaluate((el) => el.classList.contains("cur")), false);
   assert.ok((await draftPano.locator(".q-si .q-sd.ai").count()) >= 2, "the drafts' intents wear our pick's dot");
-  const onPlan = await draftPano.locator(".q-pg.cur").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")));
-  assert.equal(onPlan.length, 3, `the draft is not counted as on the plan (${onPlan})`);
+  await draftPano.locator('.q-st1[data-v="all"]').click();
+  const onPlan = (await draftPano.locator(".q-pg.cur, .pd .dr-op.cur").count()) + (await draftPano.locator(".pd-fold .pd-st.ok").count());
+  assert.equal(onPlan, 3, `the draft is not counted as on the plan (${onPlan})`);
   await app.screenshot({ path: `${out}/40c-draft-pano.png` });
   await app.keyboard.press("Escape");
   await draftPano.waitFor({ state: "detached" });
   await openCat("stay");
-  // v82 (B11, in place of S1): the site's link on our pick only opens its page (here the navigation is held back): still Önerimiz.
-  await stayDraft.locator(".z-m .z-site").evaluate((a) => a.addEventListener("click", (e) => e.preventDefault()));
-  await stayDraft.locator(".z-m .z-site").click();
-  await app.waitForTimeout(400);
-  assert.equal(await stayDraft.count(), 1, "the site's link is no choice");
+  // (plan v14: our pick's card carries no site link of its own; its site is in the drawer's card. Nothing chose it yet.)
+  assert.equal(await stayDraft.count(), 1);
   const still = await heroNow();
   assert.deepEqual([still.total, still.planned, still.booked, still.open], [before.total, before.planned, before.booked, before.open], "the hero didn't move");
   // "Bunu seç" chooses: the box is Seçildi, "Rezerve et ↗" on it (v13: "Aldın mı?" once its site was opened).
@@ -6026,6 +6042,7 @@ try {
   // rt-fly (D9): a flight's plane glided to its route when the ticket was first drawn (.9 s, from 18 px left); it is on the
   // sample's flights (v82: read while the flights are open the first time; drawn again they don't fly again).
   await openCat("flight");
+  await openRow(app.locator('.q-sec[data-section="flight"] .q-ints > .q-int[data-face="ticket"]').first());
   const glide = await app.locator('.q-sec[data-section="flight"] .z-tk .q-mid.big img.z-fly').first().evaluate((el) => {
     const cs = getComputedStyle(el);
     return [cs.animationName, cs.animationDuration, cs.animationTimingFunction, el.getAnimations()[0]?.effect.getKeyframes()[0].marginLeft];
@@ -6223,7 +6240,9 @@ try {
   // them, and a box out of sight rightly doesn't glow)
   await app.locator(".h-mini.on").getByRole("button", { name: "Pano" }).click();
   await motionPano.locator('.q-sgh[data-cat="stay"]').click();
-  await motionPano.locator(".q-pg").first().waitFor();
+  await motionPano.locator(".q-pg, .pd").first().waitFor();
+  // (a deck folded to its line opens; its cards are the drawer's)
+  while (await motionPano.locator(".pd-fold .pd-open").count()) await motionPano.locator(".pd-fold .pd-open").first().click();
   // (one of the box's options that can still be chosen here)
   const pickId = await motionPano.evaluate((el, [ids, cur]) => ids.find((id) => id !== cur && el.querySelector(`[data-item-id="${CSS.escape(id)}"] button.q-pick`)) ?? null, [stayIds, stayCur]);
   assert.ok(pickId, `a stay of that box to choose in the Pano (${stayIds})`);
