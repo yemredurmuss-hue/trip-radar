@@ -10,6 +10,10 @@ import { HoverTip, TipOn } from "../../HoverTip";
 import { KindIcon } from "../../cards/Silhouettes";
 import type { SectionMeta } from "../sectionMeta";
 import { Ic } from "./icons";
+import { ModeIcon, type ModeIconName } from "./modeIcons";
+
+/** The dated categories' heads take the rows' icons (MingCute): a plane, a hotel, a train. */
+const MODE_OF: Partial<Record<SectionId, ModeIconName>> = { flight: "plane", stay: "hotel", transport: "train" };
 
 export interface RowView {
   id: SectionId;
@@ -27,6 +31,37 @@ export interface RowView {
   allot: string | null;
   /** What's settled of all its needs, said for a screen reader (the bar shows it); none for an idea category. */
   settled: { settled: number; total: number } | null;
+  /** A dated category's two counts in place of the bar (onay paketi 2026-10-22): decided of all, bought of those to buy. */
+  meters?: { decided: [number, number]; bought: [number, number] } | null;
+}
+
+/** One count: its word, "3 / 4", and a segment a need. */
+function Meter({ label, of, tone, onClick }: { label: string; of: [number, number]; tone: "acc" | "ok"; onClick?: () => void }) {
+  const [n, total] = of;
+  const body = (
+    <>
+      <span className="q-mt">
+        <b>{label}</b>
+        <em>
+          {n} / {total}
+        </em>
+      </span>
+      <span className="q-ms" aria-hidden>
+        {Array.from({ length: Math.min(total, 12) }, (_, i) => (
+          <i key={i} className={i < Math.round((n / total) * Math.min(total, 12)) ? "on" : undefined} />
+        ))}
+      </span>
+    </>
+  );
+  return onClick ? (
+    <button type="button" className={`q-meter ${tone}`} onClick={(e) => (e.stopPropagation(), onClick())} aria-label={L(`${label}: ${n} / ${total}, ilk karara git`, `${label}: ${n} of ${total}, go to the first decision`)}>
+      {body}
+    </button>
+  ) : (
+    <span className={`q-meter ${tone}`} aria-label={L(`${label}: ${n} / ${total}`, `${label}: ${n} of ${total}`)}>
+      {body}
+    </span>
+  );
 }
 
 export function CategoryRow({ row, meta, open, onToggle, onDecide, decideTip, budgetTip, extraTip }: {
@@ -46,8 +81,8 @@ export function CategoryRow({ row, meta, open, onToggle, onDecide, decideTip, bu
   const [failed, setFailed] = useState<ReadonlySet<string>>(() => new Set());
   return (
     <div className="q-row1" onClick={onToggle}>
-      <span className="q-ic" aria-hidden>
-        <KindIcon kind={meta.icon} size={20} />
+      <span className={`q-ic${MODE_OF[row.id] ? " mc" : ""}`} aria-hidden>
+        {MODE_OF[row.id] ? <ModeIcon name={MODE_OF[row.id]!} size={24} /> : <KindIcon kind={meta.icon} size={20} />}
       </span>
       <button type="button" className="q-tt" aria-expanded={open} onClick={(e) => (e.stopPropagation(), onToggle())}>
         <b>{row.name}</b>
@@ -65,6 +100,21 @@ export function CategoryRow({ row, meta, open, onToggle, onDecide, decideTip, bu
         ))}
         {row.more > 0 && <span className="q-thm">+{row.more}</span>}
       </span>
+      {row.meters && row.meters.decided[1] > 0 ? (
+        <span className="q-prog q-meters">
+          <Meter label={L("Karar", "Decided")} of={row.meters.decided} tone="acc" onClick={row.meters.decided[0] < row.meters.decided[1] ? onDecide : undefined} />
+          {row.meters.bought[1] > 0 && <Meter label={L("Bilet", "Tickets")} of={row.meters.bought} tone="ok" />}
+          {row.parts.some((p) => p.tone) && (
+            <small className="q-pl1 q-malerts">
+              {row.parts.filter((p) => p.tone).map((p) => (
+                <em key={p.text} className={`q-alert ${p.tone}`}>
+                  {p.text}
+                </em>
+              ))}
+            </small>
+          )}
+        </span>
+      ) : (
       <span className="q-prog">
         {row.bar && (
           <span className="q-bar" aria-hidden>
@@ -103,6 +153,7 @@ export function CategoryRow({ row, meta, open, onToggle, onDecide, decideTip, bu
           ))}
         </small>
       </span>
+      )}
       {row.spent || row.allot ? (
         <HoverTip below align="right" className="q-bud" tip={budgetTip}>
           <b className="q-spent">{row.spent ?? ""}</b>

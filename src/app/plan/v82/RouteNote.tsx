@@ -11,6 +11,7 @@ import { wayChoices } from "../../../lib/ticketFrame";
 import type { LegMode } from "../../../lib/types";
 import type { RailDate } from "../../../lib/railDates";
 import { Ic } from "./icons";
+import { ModeIcon, modeIconOf, StageBadge } from "./modeIcons";
 import { RailCol, useRowOpen } from "./IntentRow";
 
 /** The ways that are a note (K85): a taxi, the metro, a walk, one's own car. Anything else needs a ticket or a booking. */
@@ -138,7 +139,6 @@ export function YerindeRow({ vm, date, menu, onPick, onOwn, map }: { vm: IntentV
   const from = fromName ?? vm.head.route?.from ?? null;
   const to = toName ?? vm.head.route?.to ?? null;
   const meta = [...vm.head.parts.filter((p) => !/→/.test(p) && !/\d+ [A-ZÇĞİÖŞÜa-zçğıöşü]{3}/.test(p)), vm.note].filter(Boolean).join(" · ");
-  const art = now ? `illus/${now.art}.png` : "illus/taksi-transfer.png";
   return (
     <div className={`q-row${open ? " open" : ""}`} data-face="yer">
       <RailCol date={date} editable={false} />
@@ -156,11 +156,15 @@ export function YerindeRow({ vm, date, menu, onPick, onOwn, map }: { vm: IntentV
             setOpen(!open);
           }}
         >
-          <span className="q-rmark yer" aria-hidden>
-            <img src={art} alt="" />
+          <span className="q-rmark ic" aria-hidden>
+            <ModeIcon name={modeIconOf(now?.mode ?? "taxi")} />
+            <StageBadge stage="planned" />
           </span>
           <span className="q-rhd">
-            <span className="q-rlead">{[now?.label ?? L("Yol", "Way"), L("yerinde", "on the spot")].join(" · ")}</span>
+            <span className="q-rlead">
+              <span className="q-rkind">{now?.label ?? L("Yol", "Way")}</span>
+              <span className="q-rstage">{L("Planda", "Planned")}</span>
+            </span>
             <h4 className="q-nm" title={from && to ? `${from} → ${to}` : headName(vm)}>
               {from && to ? (
                 <>
@@ -174,7 +178,10 @@ export function YerindeRow({ vm, date, menu, onPick, onOwn, map }: { vm: IntentV
           </span>
           <span className="q-rfig" />
           <span className="q-rslot">
-            <span className="q-st q-rhap yer">{L("Yerinde", "On the spot")}</span>
+            <span className="q-onsite q-rhap">
+              <Ic name="pin" size={14} />
+              {now?.mode === "ferry" ? L("İskelede alınır", "At the pier") : L("Yerinde alınır", "Paid on the spot")}
+            </span>
           </span>
           <span className="q-rmenu" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
             {menu}

@@ -16,6 +16,7 @@ import { ticketFace } from "../../../lib/ticketFrame";
 import { Editable } from "../../cards/InlineEdit";
 import { GotAsk } from "./FrameCard";
 import { Ic, Mark } from "./icons";
+import { ModeIcon, modeIconOf, StageBadge } from "./modeIcons";
 import { SelfLinks } from "./OptionCompact";
 import { CarrierLogo } from "./OptionRow";
 
@@ -75,6 +76,26 @@ function Parts({ parts, cls = "q-rln" }: { parts: RowPart[]; cls?: string }) {
   );
 }
 
+/** A ticket in hand (onay paketi 2026-10-22): its code on a stub at the row's end, a dashed tear and two notches. */
+function Stub({ fig }: { fig: NonNullable<RowView["figure"]> }) {
+  return (
+    <span className="q-rstub">
+      <b className="q-rcode">{fig.big}</b>
+      {fig.small && <small>{fig.small}</small>}
+    </span>
+  );
+}
+
+/** The kind's word and the step's ("Tren · Planda"), over the name. */
+function Lead({ view }: { view: RowView }) {
+  return (
+    <span className="q-rlead">
+      {view.lead && <span className="q-rkind">{view.lead}</span>}
+      <span className="q-rstage">{view.stageWord}</span>
+    </span>
+  );
+}
+
 /** The figure: the price (its own field, edited where it stands), the estimate, the code. */
 function Figure({ fig, editable, blank = false }: { fig: RowView["figure"]; editable: boolean; blank?: boolean }) {
   // (no price yet on one's own plan: "Fiyat ekle", typed where the price will stand)
@@ -108,6 +129,8 @@ export interface SlotOn {
   brand: string | null;
   /** "Tarih ver": its day typed where the rail says it (the record's own date), else asked in the chat. */
   date?: (() => void) | null;
+  /** "Bileti ekle" / "Onayı ekle": its file picked (and read), the last step once bought. */
+  proof?: (() => void) | null;
 }
 
 /** The one thing on the right (118 px): Ara · Seç and the count · Bunu seç · Satın al ↗ / Rezerve et ↗ · the state's hap. */
@@ -135,9 +158,10 @@ function Slot({ view, on, asked, setAsked, logo }: { view: RowView; on: SlotOn; 
         </button>
       );
     case "take":
+      // (one option waiting for a yes: picked, it's in the plan; "Bunu seç" no more, onay paketi 2026-10-22)
       return (
         <button type="button" className="q-pick q-take q-rbtn" onClick={(e) => (stop(e), on.take())}>
-          {L("Bunu seç", "Pick this")}
+          {L("Seç", "Choose")}
         </button>
       );
     case "book":
@@ -158,6 +182,27 @@ function Slot({ view, on, asked, setAsked, logo }: { view: RowView; on: SlotOn; 
           ✓ {L("Aldım", "Got it")}
         </button>
       );
+    case "proof":
+      return on.proof ? (
+        <button type="button" className="q-proof q-rbtn" onClick={(e) => (stop(e), on.proof?.())}>
+          <Ic name="clip" size={14} stroke={2.2} />
+          {s.word}
+        </button>
+      ) : (
+        <span className="q-st q-rhap ok">
+          <Ic name="check" size={12} stroke={3.2} />
+          {view.stageWord}
+        </span>
+      );
+    case "onsite":
+      return (
+        <span className="q-onsite q-rhap">
+          <Ic name="pin" size={14} />
+          {s.text}
+        </span>
+      );
+    case "none":
+      return view.figure?.code ? <Stub fig={view.figure} /> : null;
     case "hap":
       return (
         <span className={`q-st q-rhap ${s.tone}`}>
@@ -168,14 +213,17 @@ function Slot({ view, on, asked, setAsked, logo }: { view: RowView; on: SlotOn; 
   }
 }
 
-/** The mark on a row's left: the carrier's logo once one is known, else the kind's drawing on its ground; a deck's count. */
-function TicketMark({ vm, art, count }: { vm: IntentVM; art: string; count: number }) {
+/**
+ * The mark on a row's left: the carrier's logo once one is known, else the kind's icon (MingCute, dark on a soft tile: a train
+ * from the side, a taxi from the front); the step's mark on its corner (onay paketi 2026-10-22).
+ */
+function TicketMark({ vm, view, art }: { vm: IntentVM; view: RowView; art: string }) {
   const face = ticketFace(vm);
   const known = vm.chosen && face?.mark && face.mode !== "car";
   return (
-    <span className={`q-rmark${known ? " carr" : ""}`} aria-hidden>
-      {known ? <CarrierLogo mark={face!.mark} art={art} /> : <img src={art} alt="" />}
-      {count > 1 && !vm.chosen && <b className="q-rcnt">{count}</b>}
+    <span className={`q-rmark${known ? " carr" : " ic"}`} aria-hidden>
+      {known ? <CarrierLogo mark={face!.mark} art={art} /> : <ModeIcon name={modeIconOf(vm.kind, vm.ticket?.mode ?? null)} />}
+      <StageBadge stage={view.stage} />
     </span>
   );
 }
@@ -276,9 +324,9 @@ export function TicketRow({ vm, view, art, date, on, ticket, links, onDrawer, me
             setOpen(!open);
           }}
         >
-          <TicketMark vm={vm} art={art} count={view.count} />
+          <TicketMark vm={vm} view={view} art={art} />
           <span className="q-rhd">
-            {view.lead && <span className="q-rlead">{view.lead}</span>}
+            <Lead view={view} />
             <h4 className="q-nm" title={view.title}>
               {view.route ? (
                 <>
@@ -291,7 +339,7 @@ export function TicketRow({ vm, view, art, date, on, ticket, links, onDrawer, me
             {face?.name && vm.chosen && face.mode !== "car" && <span className="z-carl sr-only">{[face.name, face.sub].filter(Boolean).join(" ")}</span>}
             <Parts parts={view.line} />
           </span>
-          <Figure fig={view.figure} editable={editable && (vm.status === "chosen" || vm.status === "suggested")} />
+          <Figure fig={view.slot.kind === "none" ? null : view.figure} editable={editable && (vm.status === "chosen" || vm.status === "suggested" || vm.status === "arranged")} blank={editable && vm.status === "arranged" && !vm.selfArranged} />
           <span className="q-rslot" id={chipId}>
             <Slot view={view} on={on} asked={asked} setAsked={setAsked} logo={logo} />
           </span>
@@ -329,7 +377,7 @@ function StayPhoto({ vm, view, art }: { vm: IntentVM; view: RowView; art: string
             {x.image ? <img src={x.image} alt="" /> : <img className="art" src={art} alt="" />}
           </i>
         ))}
-        <b className="q-rcnt">{view.count}</b>
+        <StageBadge stage={view.stage} />
       </span>
     );
   }
@@ -337,11 +385,7 @@ function StayPhoto({ vm, view, art }: { vm: IntentVM; view: RowView; art: string
     <span className={`q-rph${photo ? " photo" : ""}${vm.status === "searching" ? " todo" : ""}`} aria-hidden>
       {photo ? <img src={photo} alt="" /> : <img className="art" src={art} alt="" />}
       {rating && <b className={`q-rb${rating.star ? " star" : ""}`}>{rating.score}</b>}
-      {vm.status === "booked" && (
-        <span className="z-seal">
-          <Ic name="check" size={13} stroke={3} />
-        </span>
-      )}
+      <StageBadge stage={view.stage} />
     </span>
   );
 }
@@ -384,7 +428,7 @@ export function StayCard({ vm, view, art, date, on, onPress, menu, foot, under, 
         <div className={`q-rrow card${onPress ? " tap" : ""}`} aria-describedby={chipId} {...press}>
           <StayPhoto vm={vm} view={view} art={art} />
           <span className="q-rhd">
-            {view.lead && <span className="q-rlead">{view.lead}</span>}
+            <Lead view={view} />
             <h4 className="q-nm" title={view.title}>
               {editable ? <Editable field="name">{view.title}</Editable> : view.title}
             </h4>
@@ -402,7 +446,7 @@ export function StayCard({ vm, view, art, date, on, onPress, menu, foot, under, 
               <Parts parts={view.third} cls="q-rln q-r3" />
             )}
           </span>
-          <Figure fig={view.figure} editable={editable && (vm.status === "chosen" || vm.status === "suggested")} blank={editable && vm.status === "chosen"} />
+          <Figure fig={view.slot.kind === "none" ? null : view.figure} editable={editable && (vm.status === "chosen" || vm.status === "suggested")} blank={editable && vm.status === "chosen"} />
           <span className="q-rslot" id={chipId}>
             <Slot view={view} on={on} asked={asked} setAsked={setAsked} logo={null} />
           </span>

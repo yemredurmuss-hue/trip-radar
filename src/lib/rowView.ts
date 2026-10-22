@@ -6,6 +6,11 @@
 //   Seçili    the carrier or the place, its hours or its rating, its price; "Satın al ↗" / "Rezerve et ↗"
 //   Alınmış   its code; the green "✓ Alındı" / "✓ Rezerve"
 //   Ayarlandı, Dahil  a grey hap; nothing to do
+// Onay paketi 2026-10-22 ("planlamanın dört adımı"): every row stands on one of four steps, said by a mark on its picture's
+// corner and a word after the kind's, never by the rail (the rail keeps the date): Seçenekler (nothing decided: a dashed
+// card, "Seç" and the count) → Planda (decided; bought ahead or paid on the spot) → Alındı (paid, its ticket still to add:
+// "Bileti ekle") → Bilet elde (its code or its file: a ticket's stub). Yellow is for trouble only: the paid sum is said
+// only once a ticket or a code backs it, never guessed from the listing.
 // The kind's word leads a mixed category's row ("Tren", "Transfer"), a chosen stay's its city and nights ("Chiang Mai · 3
 // gece"); never in capitals (DESIGN.md: Türkçe büyük harf etiket yok). It reads intents.ts's view model and decides nothing:
 // the states are intents.ts's, the words intentFrame.ts's and ticketFrame.ts's. Pure; app/plan/v82/IntentRow.tsx draws it.
@@ -19,6 +24,9 @@ import { ticketCodeLabel, ticketFace, ticketPrice } from "./ticketFrame";
 /** The face a row takes: a ticket's thin row (folds open), a stay's or a rental's card (doesn't fold). */
 export type RowFace = "ticket" | "card";
 
+/** The four steps of planning (onay paketi 2026-10-22). */
+export type RowStage = "options" | "planned" | "bought" | "ticket";
+
 /** The one thing on the row's right, in its 118 px slot. */
 export type RowSlot =
   | { kind: "ask" }
@@ -28,7 +36,13 @@ export type RowSlot =
   | { kind: "got" }
   /** Kaçırdıklarımız (tarihsiz niyet): a need on the date rail with no day yet: "Tarih ver" before anything is looked for. */
   | { kind: "date" }
-  | { kind: "hap"; tone: "ok" | "arr" | "inc" | "busy"; text: string };
+  | { kind: "hap"; tone: "ok" | "arr" | "inc" | "busy"; text: string }
+  /** Bought, nothing to show for it yet: its ticket's (a stay's confirmation's) last step. */
+  | { kind: "proof"; word: string }
+  /** Planned with nothing to book ahead: where its ticket is bought ("İskelede alınır"). */
+  | { kind: "onsite"; text: string }
+  /** Its ticket is in hand: the stub says it (the figure's code), nothing to press. */
+  | { kind: "none" };
 
 export interface RowPart {
   text: string;
@@ -37,8 +51,11 @@ export interface RowPart {
 
 export interface RowView {
   face: RowFace;
-  /** Small over the name, in the category's colour: the kind's word, a chosen stay's city and nights, "✨ Önerimiz". */
+  /** Small over the name, in the category's colour: the kind's word, a chosen stay's city and nights. */
   lead: string | null;
+  /** The step it stands on, and its word after the lead ("Planda", "3 seçenek", "Bilet elde"). */
+  stage: RowStage;
+  stageWord: string;
   /** The name: a ticket's two ends, a chosen place's name, the city. */
   title: string;
   route: { from: string; to: string } | null;
@@ -61,6 +78,28 @@ export const isRental = (vm: Pick<IntentVM, "ticket">): boolean => vm.ticket?.re
 export function rowFace(vm: Pick<IntentVM, "frame" | "kind" | "ticket">): RowFace {
   return vm.frame === "ticket" && !isRental(vm) ? "ticket" : "card";
 }
+
+/** A booking backed by something: its code, or a file of it. */
+export const hasProof = (vm: Pick<IntentVM, "access">): boolean => Boolean(vm.access?.code || (vm.access?.doc.count ?? 0) > 0);
+
+/** Which of the four steps an intent stands on: "Ben hallettim" and a cover count as bought, a way with nothing to book as planned. */
+export function rowStage(vm: Pick<IntentVM, "status" | "access" | "selfArranged">): RowStage {
+  switch (vm.status) {
+    case "booked":
+      return hasProof(vm) ? "ticket" : "bought";
+    case "included":
+      return "bought";
+    case "arranged":
+      return vm.selfArranged ? "bought" : "planned";
+    case "chosen":
+      return "planned";
+    default:
+      return "options";
+  }
+}
+
+/** A booking's word: a stay's and a rented car's are booked, the rest bought. */
+const isBooking = (vm: Pick<IntentVM, "kind" | "ticket">): boolean => vm.kind === "stay" || vm.ticket?.mode === "car" || isRental(vm);
 
 /** The option whose price a deck shows: our pick, else the first (the best fit), else the cheapest. */
 export function deckLead(options: readonly OptionVM[]): OptionVM | null {
@@ -123,8 +162,21 @@ export function rowView(vm: IntentVM): RowView {
   } else if (vm.head.kindWord) {
     lead = vm.head.kindWord;
   }
+  const stage = rowStage(vm);
+  const booking = isBooking(vm);
   // (P6, F38: the traveller's own one save says so, never our "Önerimiz")
-  if (status === "suggested") lead = [vm.own ? L("Senin kaydın", "Your save") : `✨ ${L("Önerimiz", "Our pick")}`, lead].filter(Boolean).join(" · ");
+  const stageWord =
+    stage === "ticket"
+      ? booking ? L("Onay elde", "Confirmed") : L("Bilet elde", "Ticket in hand")
+      : stage === "bought"
+        ? status === "included" ? L("Dahil", "Included") : vm.selfArranged ? L("Sen hallettin", "You sorted it") : booking ? L("Rezerve", "Booked") : L("Alındı", "Bought")
+        : stage === "planned"
+          ? L("Planda", "Planned")
+          : status === "suggested"
+            ? vm.own ? L("Senin kaydın", "Your save") : `✨ ${L("Önerimiz", "Our pick")}`
+            : deciding
+              ? L(`${count} seçenek`, count === 1 ? "1 option" : `${count} options`)
+              : L("Aranacak", "To find");
 
   // The name.
   const route = ticket && vm.head.route ? vm.head.route : null;
@@ -190,19 +242,26 @@ export function rowView(vm: IntentVM): RowView {
     const p = priceOf(vm, chosen);
     if (p) figure = { big: p.big, small: ticket ? (p.small?.split(" · ")[0] ?? null) : p.small };
   } else if (status === "booked") {
+    // (the paid sum is never the listing's guess: a code or a file stands on the stub, else nothing until its ticket comes)
     const label = vm.access ? codeLabel(vm.access) : null;
     if (vm.access?.code && label) figure = { big: vm.access.code.value, small: mode ? ticketCodeLabel(mode, label) : label, code: true };
-    else if (vm.paid) figure = { big: vm.paid.replace(/\s+(ödendi|paid)$/i, ""), small: L("ödendi", "paid") };
+    else if (stage === "ticket") figure = { big: L("Ekli", "On file"), small: booking ? L("onay", "confirmation") : L("bilet", "ticket"), code: true };
+  } else if (status === "arranged" && !vm.selfArranged && chosen) {
+    // (nothing to book: what it costs is the page's or one's own guess, said so)
+    const p = priceOf(vm, chosen);
+    if (p) figure = { big: p.big, small: L("tahmini", "about") };
   }
 
   // The one thing on the right.
   let slot: RowSlot;
   switch (status) {
     case "booked":
-      slot = { kind: "hap", tone: "ok", text: vm.kind === "stay" || mode === "car" ? L("Rezerve", "Booked") : L("Alındı", "Bought") };
+      slot = stage === "ticket" ? { kind: "none" } : { kind: "proof", word: booking ? L("Onayı ekle", "Add the confirmation") : L("Bileti ekle", "Add the ticket") };
       break;
     case "arranged":
-      slot = { kind: "hap", tone: "arr", text: L("Ayarlandı", "Arranged") };
+      slot = vm.selfArranged
+        ? { kind: "proof", word: booking ? L("Onayı ekle", "Add the confirmation") : L("Bileti ekle", "Add the ticket") }
+        : { kind: "onsite", text: vm.kind === "ferry" || mode === "ferry" ? L("İskelede alınır", "At the pier") : L("Yerinde alınır", "Paid on the spot") };
       break;
     case "included":
       slot = { kind: "hap", tone: "inc", text: L("Dahil", "Included") };
@@ -218,7 +277,7 @@ export function rowView(vm: IntentVM): RowView {
       slot = deciding ? { kind: "pick", count } : isDatedSection(vm.section) && !isoDate(vm.head.date) ? { kind: "date" } : { kind: "ask" };
   }
 
-  return { face, lead, title, route, line, third, wants, figure, slot, count };
+  return { face, lead, stage, stageWord, title, route, line, third, wants, figure, slot, count };
 }
 
 /**
@@ -227,5 +286,17 @@ export function rowView(vm: IntentVM): RowView {
  */
 export function whileSearching(view: RowView, status: IntentStatus, searching: boolean): RowView {
   if (!searching || (status !== "searching" && status !== "deciding")) return view;
-  return { ...view, slot: { kind: "hap", tone: "busy", text: L("Aranıyor…", "Searching…") } };
+  return { ...view, stageWord: L("Aranıyor", "Searching"), slot: { kind: "hap", tone: "busy", text: L("Aranıyor…", "Searching…") } };
+}
+
+/**
+ * A dated category's two counts (onay paketi 2026-10-22, its head): "Karar" how many of its needs are decided (past
+ * Seçenekler), "Bilet" how many of those to buy ahead are bought (a way paid on the spot isn't one). Nothing needed, nothing counted.
+ */
+export function stageMeters(intents: readonly Pick<IntentVM, "status" | "access" | "selfArranged">[]): { decided: [number, number]; bought: [number, number] } {
+  const live = intents.filter((v) => v.status !== "skipped");
+  const stages = live.map((v) => ({ v, st: rowStage(v) }));
+  const decided = stages.filter((x) => x.st !== "options").length;
+  const ahead = stages.filter((x) => x.st === "bought" || x.st === "ticket" || x.v.status === "chosen");
+  return { decided: [decided, live.length], bought: [ahead.filter((x) => x.st !== "planned").length, ahead.length] };
 }

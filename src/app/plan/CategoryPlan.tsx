@@ -47,6 +47,7 @@ import { PlanHeader } from "./v82/PlanHeader";
 import { Searching } from "./v82/Searching";
 import { TimelineRail } from "./v82/TimelineRail";
 import { emptyNights, isDatedSection, nightAlerts, overlapNights, undatedLast, type Overlap } from "../../lib/railDates";
+import { stageMeters } from "../../lib/rowView";
 import { stayTimings } from "../../lib/stayTiming";
 import { intentEl, V82EnvContext, type V82Env } from "./v82/v82Env";
 import { VisaRow } from "./VisaRow";
@@ -286,6 +287,7 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
       spent: sum.spent ? formatPrice(sum.spent.amount, sum.spent.currency) : null,
       allot: sum.allotted ? formatPrice(sum.allotted.amount, sum.allotted.currency) : null,
       settled,
+      meters: isDatedSection(s.id) ? stageMeters(c.intents.filter((v) => v.frame !== "collection")) : null,
     };
   };
 

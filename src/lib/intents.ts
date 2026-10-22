@@ -310,6 +310,8 @@ export interface IntentVM {
   word: string;
   /** The pick waiting for a yes is the traveller's own save, not ours (P6, F38): "Senin kaydın", never "Önerimiz". */
   own?: boolean;
+  /** "Ben hallettim" (the traveller sorted it outside the tool), not a way with nothing to book: its row counts it bought. */
+  selfArranged?: boolean;
   head: IntentHead;
   /** The options to pick from, best fit first: three for one choice, four for a row of cards; the rest are on the Pano. */
   options: OptionVM[];
@@ -878,6 +880,7 @@ function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
     status: draftRoute ? "suggested" : status,
     word: ownDraft ? L("Senin kaydın", "Your save") : statusWord(draftRoute ? "suggested" : status, kind),
     ...(ownDraft ? { own: true } : {}),
+    ...(status === "arranged" && (farOwn || Boolean(settled?.arranged && settled.noBooking != null)) ? { selfArranged: true } : {}),
     head,
     options: top,
     more: rest,

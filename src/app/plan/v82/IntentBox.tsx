@@ -546,7 +546,7 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
     // Yerinde (plan v14): the same note as a quiet row on the date rail, its ways under it.
     return (
       <>
-        <section className="q-int z-int q-rowi" id={vm.domKeys[0] ? entryDomId(vm.domKeys[0]) : undefined} data-intent={vm.key} data-st={railState(vm.status)} data-kind={vm.kind} data-face="yer" style={{ "--k": color } as React.CSSProperties} aria-label={name}>
+        <section className="q-int z-int q-rowi" id={vm.domKeys[0] ? entryDomId(vm.domKeys[0]) : undefined} data-intent={vm.key} data-st={railState(vm.status)} data-stage="planned" data-kind={vm.kind} data-face="yer" style={{ "--k": color } as React.CSSProperties} aria-label={name}>
           <YerindeRow vm={vm} date={railDate(vm)} menu={<IntentMenu entries={menu} name={name} />} onPick={(mode) => void onLeg({ mode })} onOwn={() => void onLeg({ booked: true })} map={wayDirections(vm)?.url ?? null} />
         </section>
         {asking && <AskWindow ask={asking} onClose={() => setAsking(null)} />}
@@ -581,6 +581,7 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
       page,
       brand: vm.chosen?.brand?.label ?? null,
       date: itemId ? () => env.setFocus({ id: itemId, field: "date", scroll: false }) : a.ask,
+      proof: record && pickDoc ? pickDoc : null,
     };
     const menuNode = <IntentMenu entries={menu} name={name} />;
     const sectionProps = {
@@ -589,6 +590,7 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
       id: vm.domKeys[0] ? entryDomId(vm.domKeys[0]) : undefined,
       "data-intent": vm.key,
       "data-st": railState(vm.status),
+      "data-stage": view.stage,
       "data-kind": vm.kind,
       "data-face": view.face,
       "data-item-id": itemId ?? undefined,
@@ -669,7 +671,7 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
               </button>
             )}
             {vm.paid && view.figure?.code && <span className="z-paid">{vm.paid}</span>}
-            {a0?.docMissing && (
+            {a0?.docMissing && view.slot.kind !== "proof" && (
               <button type="button" className="z-docw" onClick={() => pickDoc?.()}>
                 ⚠ {L(`${doc.add} · eksik`, `${doc.add} · missing`)}
               </button>
@@ -680,7 +682,7 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
                 {doc.open}
               </button>
             ) : (
-              !a0?.docMissing && pickDoc && (
+              !a0?.docMissing && pickDoc && view.slot.kind !== "proof" && (
                 <button type="button" className="q-chg ok" onClick={pickDoc}>
                   {doc.add}
                 </button>
