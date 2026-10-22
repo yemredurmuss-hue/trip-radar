@@ -6219,7 +6219,9 @@ try {
   // the choice changed glows where it stands (pk-glow, 1.1 s). (A stay box with two or more options, on screen; put back as it was after.)
   await openCat("stay");
   const manyStay = app.locator('.q-sec[data-section="stay"] .q-int[data-option-ids*=" "]').first();
-  await manyStay.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  // (plan v14's rows are short: the box brought near the top, so the hero is scrolled away and the thin bar is there)
+  await manyStay.evaluate((el) => el.scrollIntoView({ block: "start" }));
+  await app.locator(".h-mini.on").waitFor({ timeout: 3000 }).catch(() => manyStay.evaluate((el) => el.scrollIntoView({ block: "center" })));
   const stayIds = (await manyStay.getAttribute("data-option-ids")).split(" ");
   const stayCur = await manyStay.getAttribute("data-item-id");
   const statusesOf = (ids) => app.evaluate(async (ids) => {
@@ -6647,12 +6649,15 @@ try {
       // (the booked frame comes in 120 ms after the chosen one fades)
       if (!box.classList.contains("z-go") || box.dataset.st !== "ok" || !box.querySelector(".z-tk.bk .z-seal")) return;
       window.__stage.booked ||= { plane: anim(".z-tk .q-mid.big img"), tick: anim(".z-tk .z-seal"), glow: box.classList.contains("pk-glow") || box.classList.contains("pk-stage") };
-      window.__stage.pop ||= Boolean(box.querySelector(".q-st.pop"));
+      // (plan v14: the row's hap springs with its box's pop)
+      window.__stage.pop ||= Boolean(box.querySelector(".q-st.pop") || (box.classList.contains("pop") && box.querySelector(".q-rhap")));
     }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ["class", "data-st"], childList: true });
   });
   const TAP_OUT = "TAP · Lizbon → İstanbul";
   const tapOut = app.locator('.q-sec[data-section="flight"] .q-ints > .q-int', { has: app.locator(".q-nm", { hasText: "Lizbon" }) }).first();
   await idb("status", [TAP_OUT, "chosen"]);
+  // (plan v14: the moment is the ticket's, seen with the row open)
+  await openRow(tapOut);
   await tapOut.locator(".z-tk:not(.bk)").waitFor({ timeout: 5000 });
   await app.waitForTimeout(400);
   await idb("status", [TAP_OUT, "booked"]);
