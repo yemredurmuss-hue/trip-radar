@@ -65,8 +65,8 @@ export interface RowView {
   third: RowPart[];
   /** Niyet's wants as chips (a must solid, a wish dashed). */
   wants: { label: string; must: boolean }[];
-  /** The one figure: the price, the estimate, the code. */
-  figure: { big: string; small: string | null; code?: boolean } | null;
+  /** The one figure: the price, the estimate, the code; on a stub, a word over it ("giriş") and plain type for an hour. */
+  figure: { big: string; small: string | null; code?: boolean; top?: string; plain?: boolean } | null;
   slot: RowSlot;
   /** How many options the deck holds (its corner). */
   count: number;
@@ -152,9 +152,9 @@ export function rowView(vm: IntentVM): RowView {
 
   // The lead over the name.
   let lead: string | null = null;
-  if (vm.kind === "stay" && (status === "chosen" || status === "booked" || status === "suggested") && vm.head.city) {
-    // (its city alone, a tag of its own: its nights are on the rail; onay paketi 2026-10-22, "şehir gözden kaçmasın")
-    lead = vm.head.city;
+  if (vm.kind === "stay") {
+    // (its city is the rail's, said where the city changes, its nights there too: onay paketi 2026-10-22, "şehir hatta")
+    lead = null;
   } else if (rental) {
     // (its days as the rail counts them: pick-up to return, both days)
     const days = railDate(vm)?.notches || null;
@@ -254,7 +254,15 @@ export function rowView(vm: IntentVM): RowView {
   } else if (status === "booked") {
     // (the paid sum is never the listing's guess: a code or a file stands on the stub, else nothing until its ticket comes)
     const label = vm.access ? codeLabel(vm.access) : null;
-    if (vm.access?.code && label) figure = { big: vm.access.code.value, small: mode ? ticketCodeLabel(mode, label) : label, code: true };
+    // (a stay's stub: its check-in hour and what was paid, not a number nobody reads there; the number is in its details)
+    const paid = vm.paid?.replace(/\s+(ödendi|paid)$/i, "") ?? null;
+    if (vm.kind === "stay" && stage === "ticket")
+      figure = vm.access?.checkIn
+        ? { top: L("giriş", "check-in"), big: vm.access.checkIn, small: vm.paid, code: true, plain: true }
+        : paid
+          ? { big: paid, small: L("ödendi", "paid"), code: true, plain: true }
+          : { big: L("Onaylı", "Confirmed"), small: null, code: true, plain: true };
+    else if (vm.access?.code && label) figure = { big: vm.access.code.value, small: mode ? ticketCodeLabel(mode, label) : label, code: true };
     else if (stage === "ticket") figure = { big: L("Ekli", "On file"), small: booking ? L("onay", "confirmation") : L("bilet", "ticket"), code: true };
   } else if (status === "arranged" && !vm.selfArranged && chosen) {
     // (nothing to book: what it costs is the page's or one's own guess, said so)

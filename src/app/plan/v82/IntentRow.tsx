@@ -78,23 +78,19 @@ function Parts({ parts, cls = "q-rln" }: { parts: RowPart[]; cls?: string }) {
 /** A ticket in hand (onay paketi 2026-10-22): its code on a stub at the row's end, a dashed tear and two notches. */
 function Stub({ fig }: { fig: NonNullable<RowView["figure"]> }) {
   return (
-    <span className="q-rstub">
-      <b className="q-rcode">{fig.big}</b>
+    <span className={`q-rstub${fig.plain ? " plain" : ""}`}>
+      {fig.top && <small>{fig.top}</small>}
+      <b className={fig.plain ? "q-rbig" : "q-rcode"}>{fig.big}</b>
       {fig.small && <small>{fig.small}</small>}
     </span>
   );
 }
 
 /** The kind's word and the step's ("Tren · Planda"), over the name. */
-function Lead({ view, city = false }: { view: RowView; city?: boolean }) {
+function Lead({ view }: { view: RowView }) {
   return (
     <span className="q-rlead">
-      {view.lead && (
-        <span className={`q-rkind${city ? " city" : ""}`}>
-          {city && <Ic name="pin" size={12} stroke={2.4} />}
-          {view.lead}
-        </span>
-      )}
+      {view.lead && <span className="q-rkind">{view.lead}</span>}
       <span className="q-rstage">{view.stageWord}</span>
     </span>
   );
@@ -432,7 +428,7 @@ export function StayCard({ vm, view, art, date, on, onPress, menu, foot, under, 
         <div className={`q-rrow card${onPress ? " tap" : ""}`} aria-describedby={chipId} {...press}>
           <StayPhoto vm={vm} view={view} art={art} />
           <span className="q-rhd">
-            <Lead view={view} city={vm.kind === "stay" && view.lead === vm.head.city} />
+            <Lead view={view} />
             <h4 className="q-nm" title={view.title}>
               {editable ? <Editable field="name">{view.title}</Editable> : view.title}
             </h4>

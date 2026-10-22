@@ -121,8 +121,8 @@ gelip gelmemesine ve duruma göre değişmez (v82). Plan'da her şeyin kendi kar
 ## Planlamanın dört adımı (onay paketi 2026-10-22)
 
 Tarih hattındaki her satır dört adımdan birinde durur; adım satırın resminin (ikon, logo, fotoğraf) köşesindeki işaretle
-ve türün kelimesinden sonraki sözle söylenir (konaklamada şehir kendi etiketinde, kategori renginde ve iğneyle:
-"📍 Bangkok · Planda"; geceleri hatta), renkle tek başına asla (`lib/rowView.ts` `rowStage`, `app/plan/v82/
+ve türün kelimesinden sonraki sözle söylenir (konaklamada şehir kartta değil hatta: şehir değiştiği yerde iğneli bir
+nokta ve şehrin adı, tarihsiz; tarih ve gece soldaki sütunda), renkle tek başına asla (`lib/rowView.ts` `rowStage`, `app/plan/v82/
 modeIcons.tsx` `StageGlyph`, `static/v82/stages.css`). Onaylı çizim: tuval "Plan satırları · onay paketi".
 
 | Adım | Ne demek | İşaret | Kart | Sağdaki tek şey |
@@ -130,7 +130,7 @@ modeIcons.tsx` `StageGlyph`, `static/v82/stages.css`). Onaylı çizim: tuval "Pl
 | Seçenekler | Düşünülüyor, karar yok | kesik halka | kesik kenar, soluk zemin | Seç ve sayı (tek önerimizde "Seç", "Bunu seç" yok), Ara |
 | Planda | Karar verildi; önceden alınacak ya da yerinde ödenecek | mor halka, ortası dolu | düz beyaz kart | Satın al ↗ / Rezerve et ↗; rezervasyon gerekmeyende "Yerinde alınır" ("İskelede alınır"), fiyat tahmini ya da "Fiyat yaz" |
 | Alındı (konaklamada Rezerve, "Ben hallettim"de Sen hallettin) | Ödendi; geriye yalnız bilet kaldı | yeşil halka içinde tik | düz beyaz kart | sakin yeşil "Bileti ekle" / "Onayı ekle" |
-| Bilet elde (konaklamada Onay elde) | Kodu ya da belgesi var | dolu yeşil tik | ince yeşil çizgi | satırın ucunda bilet koçanı: kod ve adı, kesik yırtık ve iki çentik |
+| Bilet elde (konaklamada Onay elde) | Kodu ya da belgesi var | dolu yeşil tik | ince yeşil çizgi | satırın ucunda bilet koçanı: kod ve adı (konaklamada kod değil: "giriş 15:00 · €210 ödendi"; numara Ayrıntı'da), kesik yırtık ve iki çentik |
 
 - **Sarı yalnız sorun için.** Normal ilerlemede kum ya da amber yok; "belge yok, yolculuğa az kaldı" gibi gerçek sorun
   amber kalır. Ödenen tutar bir kod ya da belge desteklemeden yazılmaz (sayfanın fiyatı "ödendi" diye gösterilmez).
@@ -244,6 +244,11 @@ başlığı (v82). Bileşenler `src/app/hero/`, biçim `static/v82/hero.css`, sa
   soluk, her satırda tek eylem, altta yarının ilk işi (D8). Uçuş günü alınmış biletin çip satırı canlı şeride döner
   (kapı, biniş, rötar; C4).
 - Hero'nun üstünde, ortada sekmeler: **Plan | Pano** (Pano'da kayıt sayısı).
+
+- **Fotoğraflar hafif ve saklı** (`lib/photoCache.ts`, `hero/Photo.tsx`): gezide yalnız adresleri durur (Unsplash, Pexels,
+  Wikipedia). Her biri çizildiği boyutta istenir (kapak 1280 px, kutu 480 px; sunucusu sıkıştırır), ilk gelişinde
+  eklentinin önbelleğine (Cache Storage, son 80 fotoğraf) yazılır, sonraki açılışlarda diskten anında çizilir; okunamayan
+  (CORS, çevrimdışı) adresinden çizilir.
 
 ## Sağlayıcı kuralı
 

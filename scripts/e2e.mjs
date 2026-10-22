@@ -904,7 +904,10 @@ try {
   const portoDraft = sec("stay").locator('.q-ints > .q-int[data-st="ai"]', { has: app.locator(".q-nm", { hasText: "Jardim Stay" }) });
   await portoDraft.waitFor();
   // (onay paketi 2026-10-22: the kind's word, then the step's; "Seç", never "Bunu seç")
-  assert.equal(flat([await portoDraft.locator(".q-rlead .q-rkind").innerText()])[0], "Porto", "its city, a tag of its own");
+  // (its city on the rail where the city changes, onay paketi 2026-10-22; no city over its name)
+  assert.equal(await portoDraft.getAttribute("data-city"), "Porto");
+  assert.equal(await portoDraft.locator(".q-rlead .q-rkind").count(), 0);
+  assert.ok((await sec("stay").locator(".q-tlcity", { hasText: "Porto" }).count()) > 0, "Porto on the rail");
   assert.equal(flat([await portoDraft.locator(".q-rlead .q-rstage").innerText()])[0], "✨ Önerimiz");
   assert.equal(await portoDraft.getAttribute("data-stage"), "options");
   assert.equal(await portoDraft.locator(".q-rslot .q-take").innerText(), "Seç");
@@ -1096,7 +1099,7 @@ try {
   // longer needs checking before choosing (the details over the card say what to check, C12).
   const porto = async () => {
     await openSec("stay");
-    const box = sec("stay").locator(".q-ints > .q-int", { has: app.locator(".q-rlead", { hasText: "Porto" }) });
+    const box = sec("stay").locator('.q-ints > .q-int[data-city="Porto"]');
     await box.waitFor();
     return box;
   };
@@ -1279,7 +1282,7 @@ try {
   // Plan v14: chosen, the card's lead "Porto · 3 gece", its slot "Rezerve et ↗"; the site opened, "Aldın mı?" under it.
   const jardimRow = sec("stay").locator('.q-ints > .q-int[data-st="sel"]', { has: app.locator(".q-nm", { hasText: "Jardim Stay" }) });
   await jardimRow.waitFor();
-  assert.equal(flat([await jardimRow.locator(".q-rlead .q-rkind").innerText()])[0], "Porto", "H1: a chosen stay says its city over its name (its nights on the rail)");
+  assert.equal(await jardimRow.getAttribute("data-city"), "Porto", "H1: a chosen stay's city is on the rail, its row carries it");
   assert.equal(flat([await jardimRow.locator(".q-rlead .q-rstage").innerText()])[0], "Planda");
   assert.match(await jardimRow.locator(".q-rslot .q-cta").innerText(), /Rezerve et/);
   assert.equal(await app.locator(".swipe-card").count(), 0);
@@ -2967,7 +2970,7 @@ try {
   };
   const portoB = async () => {
     await bopen("stay");
-    const box = bsec("stay").locator(".q-ints > .q-int", { has: board.locator(":is(.z-h .q-nm, .q-rhd .q-nm, .q-rlead)", { hasText: "Porto" }) });
+    const box = bsec("stay").locator('.q-ints > .q-int[data-city="Porto"]').or(bsec("stay").locator(".q-ints > .q-int", { has: board.locator(":is(.z-h .q-nm, .q-rhd .q-nm, .q-rlead)", { hasText: "Porto" }) })).first();
     await box.waitFor({ timeout: 20000 });
     return box;
   };

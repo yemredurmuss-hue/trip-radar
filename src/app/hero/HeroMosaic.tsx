@@ -5,6 +5,7 @@
 // hover or focus; one that fails to load is left out as if it never was (no tile, or the plain cover). The pieces join
 // the trip's first opening (opening.ts: each tile 80 ms after the one before). A tile of a thing on the plan is a button to
 // its card (0.38.9: the ATV tour's photo goes to the ATV tour in Etkinlik); a city's or a moment's is only a picture.
+import { Photo } from "./Photo";
 import { Fragment, useState, type ReactNode } from "react";
 import { creditLine, type CreditPart } from "../../lib/cityImages";
 import { countdownText, type Countdown } from "../../lib/countdown";
@@ -144,7 +145,7 @@ export function HeroMosaic({ mosaic, title, where, mood, working, menu, onTile, 
     <div className={`x-mos${tiles.length ? "" : " solo"}`}>
       <figure className={`x-big${cover ? "" : " empty"}`} data-pit data-pit-photo>
         {cover ? (
-          <img key={cover.image} src={cover.image} alt="" onError={() => fail(cover.image)} />
+          <Photo key={cover.image} src={cover.image} width={1280} priority onError={() => fail(cover.image)} />
         ) : (
           <span className="x-ph" aria-hidden>
             <XIcon name="image" size={34} stroke={1.6} />
@@ -179,7 +180,7 @@ export function HeroMosaic({ mosaic, title, where, mood, working, menu, onTile, 
               {(bind) => (
             <figure {...bind} className={`x-t${t.image ? "" : " art"}${t.target && onTile ? " go" : ""}`}>
               {t.image ? (
-                <img src={t.image} alt="" loading="lazy" onError={() => fail(t.image!)} />
+                <Photo src={t.image} width={480} onError={() => fail(t.image!)} />
               ) : (
                 // A city with no photo yet, drawn (the trip's own art, never a stock picture).
                 <span className="x-art" aria-hidden>

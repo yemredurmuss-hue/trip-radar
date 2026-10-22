@@ -78,20 +78,26 @@ describe("rowView: a flight, a train, a way of travel (the thin row)", () => {
 });
 
 describe("rowView: a stay (the card that doesn't fold)", () => {
-  it("chosen: its city and nights over its name, the site and the area, by the night, Rezerve et", () => {
+  it("chosen: its name (its city and nights on the rail), the site and the area, by the night, Rezerve et", () => {
     const r = rowView(find(jp(), "stay:2027-04-02"));
     expect(r.face).toBe("card");
-    expect(r.lead).toBe("Tokyo");
+    expect(r.lead).toBeNull();
     expect(r.title).toBe("Hyatt Centric Ginza");
     expect(text(r.line)).toBe("Booking.com · Ginza");
     expect(r.figure).toEqual({ big: "€213", small: "gece · €639" });
     expect(r.slot).toEqual({ kind: "book", word: "Rezerve et" });
   });
-  it("booked with its number: Onay elde, the number on the stub", () => {
-    const r = rowView(find(jp(), "stay:2027-04-09"));
-    expect(r.lead).toBe("Hakone");
+  it("booked with its number: Onay elde, its check-in hour and what was paid on the stub (the number in its details)", () => {
+    const vm = find(jp(), "stay:2027-04-09");
+    const r = rowView(vm);
+    expect(r.lead).toBeNull();
     expect(r.stageWord).toBe("Onay elde");
-    expect(r.figure).toEqual({ big: "GK-48213", small: "Rezervasyon no", code: true });
+    expect(r.figure?.code).toBe(true);
+    expect(r.figure?.plain).toBe(true);
+    const at15 = rowView({ ...vm, access: { ...vm.access!, checkIn: "15:00" }, paid: "€639 ödendi" });
+    expect(at15.figure).toEqual({ top: "giriş", big: "15:00", small: "€639 ödendi", code: true, plain: true });
+    const noHour = rowView({ ...vm, access: { ...vm.access!, checkIn: null }, paid: "€639 ödendi" });
+    expect(noHour.figure).toEqual({ big: "€639", small: "ödendi", code: true, plain: true });
     expect(r.slot).toEqual({ kind: "none" });
   });
   it("still to find: the city, no dates twice (the rail says them), Ara", () => {
@@ -115,7 +121,7 @@ describe("rowView: a stay (the card that doesn't fold)", () => {
   it("in English", () => {
     withLang("en", () => {
       const r = rowView(find(jp(), "stay:2027-04-02"));
-      expect(r.lead).toBe("Tokyo");
+      expect(r.lead).toBeNull();
       expect(r.slot).toEqual({ kind: "book", word: "Book" });
     });
   });

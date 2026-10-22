@@ -611,6 +611,8 @@ function Box({ vm, color, extra, field, pickDoc, dropDoc = null, cancel, askedHi
       "data-intent": vm.key,
       "data-st": railState(vm.status),
       "data-stage": view.stage,
+      // (a stay's city, said on the rail where it changes: its row carries it once something is picked for it)
+      "data-city": vm.kind === "stay" && vm.chosen ? (vm.head.city ?? undefined) : undefined,
       "data-kind": vm.kind,
       "data-face": view.face,
       "data-item-id": itemId ?? undefined,
@@ -690,7 +692,7 @@ function Box({ vm, color, extra, field, pickDoc, dropDoc = null, cancel, askedHi
                 {L("Takvime ekle", "Add to calendar")}
               </button>
             )}
-            {vm.paid && view.figure?.code && <span className="z-paid">{vm.paid}</span>}
+            {vm.paid && view.figure?.code && view.slot.kind !== "none" && <span className="z-paid">{vm.paid}</span>}
             {/* (soon and still no file: trouble, said in amber even beside "Onayı ekle") */}
             {a0?.docMissing && (
               <button type="button" className="z-docw" onClick={() => pickDoc?.()}>

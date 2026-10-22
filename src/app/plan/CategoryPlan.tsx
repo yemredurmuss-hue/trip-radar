@@ -48,6 +48,7 @@ import { Searching } from "./v82/Searching";
 import { TimelineRail } from "./v82/TimelineRail";
 import { emptyNights, isDatedSection, nightAlerts, overlapNights, undatedLast, type Overlap } from "../../lib/railDates";
 import { planSteps } from "../../lib/rowView";
+import { Ic } from "./v82/icons";
 import { stayTimings } from "../../lib/stayTiming";
 import { intentEl, V82EnvContext, type V82Env } from "./v82/v82Env";
 import { VisaRow } from "./VisaRow";
@@ -254,6 +255,13 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
   const first = firstDecision(collections);
   const collectEnv = useMemo(() => ({ plan }), [plan]);
 
+  // Konaklama (onay paketi 2026-10-22, "şehir hatta"): a stay's city on the rail where the city changes, its name only.
+  const cityChange = (vm: IntentVM, list: readonly IntentVM[]): boolean => {
+    if (!vm.head.city || vm.frame === "collection") return false;
+    const at = list.indexOf(vm);
+    const before = list.slice(0, at).reverse().find((v) => v.kind === "stay" && v.head.city);
+    return !before || before.head.city!.toLocaleLowerCase("tr") !== vm.head.city.toLocaleLowerCase("tr");
+  };
   // A dated category (onay paketi 2026-10-22): one bar in the four steps' colours and "2 alındı · 1 planda · 1 karar".
   const datedRow = (intents: Collection["intents"], alerts: { text: string; tone?: "warn" | "bad" }[]): Pick<RowView, "stages" | "bar" | "parts"> => {
     const { counts } = planSteps(intents);
@@ -355,6 +363,14 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
                           {railOrder(s.id, list).first === vm.key && (
                             <div className="q-tlnone" role="separator">
                               {L("Tarihi yok", "No date yet")}
+                            </div>
+                          )}
+                          {s.id === "stay" && cityChange(vm, list) && (
+                            <div className="q-tlcity" role="separator" aria-label={vm.head.city!}>
+                              <i aria-hidden>
+                                <Ic name="pin" size={13} stroke={2.6} />
+                              </i>
+                              <b>{vm.head.city}</b>
                             </div>
                           )}
                           <IntentBox key={vm.key} vm={vm} color={SECTION_META[s.id].color} onHere={s.id === "stay" ? (at) => onAdd(s.id, at) : null} gap={s.id === "stay" ? gapOf(vm, list) : null} dropped={droppedOf(vm, s.hidden)} overlap={s.id === "stay" ? overlapOf(vm, clashes) : null} timing={vm.kind === "stay" && vm.chosen ? (timings.get(vm.chosen.item.id) ?? null) : null} />
