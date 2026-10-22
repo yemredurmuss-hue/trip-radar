@@ -27,7 +27,7 @@ export const BUMP_MS = 380;
 export const BUMP_SCALE = 1.35;
 
 /** The mark a section's header counts by (its number, else its icon); plan v82's row: its state line, else its icon. */
-export const SECTION_MARKS = [".cat-head .cat-n", ".cat-head .cat-ic", ".q-row1 .q-pl1", ".q-row1 .q-ic"] as const;
+export const SECTION_MARKS = [".cat-head .cat-n", ".cat-head .cat-ic", ".q-row1 .q-pl1", ".q-row1 .q-meters", ".q-row1 .q-ic"] as const;
 
 /** True for a box with a size that lies inside the window (a header scrolled out of sight is no target). Pure on the rect. */
 export const onScreen = (r: { top: number; bottom: number; width: number; height: number }, viewHeight: number) => r.width > 0 && r.height > 0 && r.top >= 0 && r.bottom <= viewHeight;

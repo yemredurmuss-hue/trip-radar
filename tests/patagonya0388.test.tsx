@@ -185,7 +185,7 @@ describe("Emre's Patagonya: each flight one box, the offers its options", () => 
     const cta = html.slice(html.indexOf('class="q-cta"'));
     const button = cta.slice(0, cta.indexOf("</a>"));
     expect(button).toContain("Bileti al");
-    expect(button).toContain('class="q-logo sm q-air" src="https://images.kiwi.com/airlines/64/TK.png"');
+    expect(button).toContain('class="q-logo sm q-air" src="logos/airlines/TK.png"');
     // The journey's step for it: its "Satın al" carries the airline (its logo), not the site's letter.
     const { input, timeline } = inputOf(trip, items);
     const steps = journeyChapters({ input, timeline, collections: collectionsOf(input) }).chapters.flatMap((c) => c.steps);

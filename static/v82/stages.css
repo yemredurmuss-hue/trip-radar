@@ -88,8 +88,12 @@ button.q-meter:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 3px; 
 .q-ms i { flex: 1; border-radius: 99px; background: #e3e0ec; }
 .q-meter.acc .q-ms i.on { background: var(--q-acc); }
 .q-meter.ok .q-ms i.on { background: var(--q-ok); }
-.q-malerts { flex-basis: 100%; }
-@media (max-width: 700px) { .q-meter { width: 104px; } }
+/* (in the closed row's 180 px: side by side, the row as tall as ever, 78 px, E2) */
+.q-row1 .q-meters { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: center; }
+.q-row1 .q-meter { width: 100%; }
+.q-row1 .q-meters > .q-meter:only-child { grid-column: 1 / -1; }
+.q-meter, .q-mt { line-height: 15px; }
+
 
 /* ---- under the row: a pass (onay paketi 2026-10-22, "bilet gibi") ---- */
 .q-rcard { container-type: inline-size; }
@@ -220,3 +224,9 @@ button.q-meter:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 3px; 
   .q-pstat { grid-column: 2; grid-row: 1; grid-template-columns: minmax(0, 1fr); position: sticky; top: 88px; }
 }
 @media (max-width: 700px) { .q-pstat { grid-template-columns: minmax(0, 1fr); } }
+
+/* the step forward: the corner's mark springs (K29, as the hap did); the pass's big mark is stamped as the old seal was */
+.q-int.pop .q-sb { animation: q-pop .52s cubic-bezier(.2, .7, .2, 1.4); }
+.z-int.z-go .z-f.z13 .z-step .q-sg { animation: mv-stamp 420ms cubic-bezier(.2, .9, .3, 1.3) backwards; }
+body.still .q-int.pop .q-sb, body.still .z-int.z-go .z-f.z13 .z-step .q-sg { animation: none; }
+@media (prefers-reduced-motion: reduce) { .q-int.pop .q-sb, .z-int.z-go .z-f.z13 .z-step .q-sg { animation: none; } }

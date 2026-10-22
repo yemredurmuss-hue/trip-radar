@@ -89,6 +89,17 @@ export function CategoryRow({ row, meta, open, onToggle, onDecide, decideTip, bu
         <small className="q-kw">
           {row.line}
           {extraTip && <span className="q-sgn"> · {extraTip}</span>}
+          {/* (with the two counts in the bar's place, a night's trouble is said on the line: "1 gece boş") */}
+          {row.meters &&
+            row.meters.decided[1] > 0 &&
+            row.parts
+              .filter((p) => p.tone)
+              .map((p) => (
+                <span key={p.text}>
+                  {" · "}
+                  <em className={`q-alert ${p.tone}`}>{p.text}</em>
+                </span>
+              ))}
         </small>
       </button>
       <span className="q-ths" aria-hidden>
@@ -104,15 +115,6 @@ export function CategoryRow({ row, meta, open, onToggle, onDecide, decideTip, bu
         <span className="q-prog q-meters">
           <Meter label={L("Karar", "Decided")} of={row.meters.decided} tone="acc" onClick={row.meters.decided[0] < row.meters.decided[1] ? onDecide : undefined} />
           {row.meters.bought[1] > 0 && <Meter label={L("Bilet", "Tickets")} of={row.meters.bought} tone="ok" />}
-          {row.parts.some((p) => p.tone) && (
-            <small className="q-pl1 q-malerts">
-              {row.parts.filter((p) => p.tone).map((p) => (
-                <em key={p.text} className={`q-alert ${p.tone}`}>
-                  {p.text}
-                </em>
-              ))}
-            </small>
-          )}
         </span>
       ) : (
       <span className="q-prog">

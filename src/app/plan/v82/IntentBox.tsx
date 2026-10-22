@@ -691,7 +691,8 @@ function Box({ vm, color, extra, field, pickDoc, dropDoc = null, cancel, askedHi
               </button>
             )}
             {vm.paid && view.figure?.code && <span className="z-paid">{vm.paid}</span>}
-            {a0?.docMissing && view.slot.kind !== "proof" && (
+            {/* (soon and still no file: trouble, said in amber even beside "Onayı ekle") */}
+            {a0?.docMissing && (
               <button type="button" className="z-docw" onClick={() => pickDoc?.()}>
                 ⚠ {L(`${doc.add} · eksik`, `${doc.add} · missing`)}
               </button>

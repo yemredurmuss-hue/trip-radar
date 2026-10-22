@@ -34,7 +34,7 @@ Her rengin bir anlamı var; durum hiçbir yerde yalnız renkle anlatılmaz, yan�
 | Renk | Anlamı | Değişkenler | Nerede |
 | --- | --- | --- | --- |
 | Mor | Eylem ve bizim önerimiz | `--q-acc`, `--q-acc-d`, `--q-acc-s`; kutu `--q-st-pick-bg`, `--q-st-pick-line` | Bunu seç, Rezerve et, AI'dan öner, Plana koy; "Önerimiz" çipi ve kutusu; Değiştir gibi metin düğmeleri |
-| Kum | **Seçildi**: karar verildi, henüz alınmadı (B7) | `--q-sand`, `--q-sand-l`, `--q-sand-ink`; kutu `--q-st-chosen-bg`, `--q-st-chosen-line`, nokta `--q-st-chosen-dot` | Seçili kutunun zemini ve çizgisi, "Seçildi" ve "Planda" çipleri, kart sırasının "Planında" kartı |
+| Kum | **Seçildi**: karar verildi, henüz alınmadı (B7). Tarih hattında (Uçuş, Konaklama, Ulaşım) ve çekmecede artık kullanılmaz: orada karar mor, "Planda" (onay paketi 2026-10-22) | `--q-sand`, `--q-sand-l`, `--q-sand-ink`; kutu `--q-st-chosen-bg`, `--q-st-chosen-line`, nokta `--q-st-chosen-dot` | Seçili kutunun zemini ve çizgisi, "Seçildi" ve "Planda" çipleri, kart sırasının "Planında" kartı |
 | Yeşil | Alındı: rezerve edildi, bilet alındı; artı | `--q-ok`, `--q-ok-s`, `--q-ok-l`; kutu `--q-st-booked-bg` | Alındı kutusu, mühür (✓), "Belgeyi aç", "E-bilet aç", istekte ✓ |
 | Yeşilin iki tonu | Yalnız hazırlık çubuğunda: koyu ton alındı, açık ton planda (B9) | `--q-ok`, `--q-ok-l` | Hero şeridi, ince şerit, kategori satırının çubuğu |
 | Gri, kesikli çizgi | Karar bekliyor ya da aranıyor | `--q-st-wait-bg`, `--q-st-wait-line`, `--q-st-wait-dot` | Seçeneği olmayan ya da seçilmemiş kutu |
@@ -45,7 +45,8 @@ Her rengin bir anlamı var; durum hiçbir yerde yalnız renkle anlatılmaz, yan�
 | Tür renkleri | Yalnız hangi tür | `cardKindColor` (`src/lib/cardKinds.ts`): tren `#2563c9`, otobüs `#d9480f`, minibüs `#e8890c`, vapur `#0e8fb0`, taksi `#d29a00`, araç `#475467`, motosiklet `#c0256b`, karavan `#8a6534`, bisiklet `#5d8a1c`, eSIM `#3b6fd1`, sigorta `#0f8a6a` | Tür ikonu, siluet çizgisi, ekleme penceresinin kutuları |
 
 - Açık kategoride niyetler soldaki dikey çizgiye bağlıdır; noktanın rengi durumdur: kesikli gri karar, mor önerimiz,
-  kum seçildi, yeşil alındı, gri ayarlandı. Kutunun zemini durumun açık rengi, içindeki çerçeve beyazdır.
+  kum seçildi, yeşil alındı, gri ayarlandı. Kutunun zemini durumun açık rengi, içindeki çerçeve beyazdır. (Tarih hattında
+  nokta yalnız tarihi taşır; durum resmin köşesindeki işarettedir: aşağıda "Planlamanın dört adımı".)
 - Gezginin istekleri kutunun başlığında: ✓ var (yeşil), ✕ yok (kırmızı). Sayfanın söylemediği ("?") gösterilmez, veride
   kalır (B5). Varsayılanlar bu satıra girmez; yalnız söylediği, ayarladığı ya da sezilen öncelik.
 - Satırlar somut yazar (kaç dakika, kaç puan, hangi saat); "Yakın", "Zor saat" gibi tek kelime yetmez. Bulgu kendi
@@ -117,24 +118,58 @@ gelip gelmemesine ve duruma göre değişmez (v82). Plan'da her şeyin kendi kar
 - 390 px'te yapı aynı kalır: görsel solda, bilgi sağda, yan sütun alta iner, istekler alt satıra kayar. Bu genişlikte
   eşit boy sonraki iştir (A8).
 
+## Planlamanın dört adımı (onay paketi 2026-10-22)
+
+Tarih hattındaki her satır dört adımdan birinde durur; adım satırın resminin (ikon, logo, fotoğraf) köşesindeki işaretle
+ve türün kelimesinden sonraki sözle söylenir, renkle tek başına asla (`lib/rowView.ts` `rowStage`, `app/plan/v82/
+modeIcons.tsx` `StageGlyph`, `static/v82/stages.css`). Onaylı çizim: tuval "Plan satırları · onay paketi".
+
+| Adım | Ne demek | İşaret | Kart | Sağdaki tek şey |
+| --- | --- | --- | --- | --- |
+| Seçenekler | Düşünülüyor, karar yok | kesik halka | kesik kenar, soluk zemin | Seç ve sayı (tek önerimizde "Seç", "Bunu seç" yok), Ara |
+| Planda | Karar verildi; önceden alınacak ya da yerinde ödenecek | mor halka, ortası dolu | düz beyaz kart | Satın al ↗ / Rezerve et ↗; rezervasyon gerekmeyende "Yerinde alınır" ("İskelede alınır"), fiyat tahmini ya da "Fiyat yaz" |
+| Alındı (konaklamada Rezerve, "Ben hallettim"de Sen hallettin) | Ödendi; geriye yalnız bilet kaldı | yeşil halka içinde tik | düz beyaz kart | sakin yeşil "Bileti ekle" / "Onayı ekle" |
+| Bilet elde (konaklamada Onay elde) | Kodu ya da belgesi var | dolu yeşil tik | ince yeşil çizgi | satırın ucunda bilet koçanı: kod ve adı, kesik yırtık ve iki çentik |
+
+- **Sarı yalnız sorun için.** Normal ilerlemede kum ya da amber yok; "belge yok, yolculuğa az kaldı" gibi gerçek sorun
+  amber kalır. Ödenen tutar bir kod ya da belge desteklemeden yazılmaz (sayfanın fiyatı "ödendi" diye gösterilmez).
+- **Aldım bir kutu açar** (`ProofAsk.tsx`): beyaz, satırın altında; "Güzel, alındı. Bileti de ekleyelim mi?", PNR ya da
+  rezervasyon no, "PDF ya da e-postayı bırak", "Bileti ekle", "Şimdilik yalnız işaretle", "Vazgeç". Sitenin Satın al ↗
+  düğmesinden sonra "Aldın mı? Aldıysan bileti de ekleyelim." ve "Henüz almadım". Kod büyük harfle kayda yazılır,
+  bırakılan belge okunur (`docReader`).
+- **Hat tarihi taşır:** noktası her adımda aynı sessiz halka; konaklamanın tarihi giriş günü tam ay adıyla ("27 Kasım") ve
+  altında gece, ay değişse de iki satır; çıkış günü kartın üçüncü satırının başında ("Çıkış 1 Aralık Salı", rezervede
+  saatiyle).
+- **Kategori başlığı:** çubuğun yerinde iki sayaç (`stageMeters`): "Karar 3 / 4" (seçeneklerden çıkıp plana girenler,
+  basınca ilk karara gider) ve "Bilet 2 / 3" (önceden alınacakların kaçı alındı; yerinde ödenen sayılmaz). Gecenin
+  sorunu ("1 gece boş") başlığın alt satırında.
+- **Türün ikonu:** MingCute dolu ikonlar (Apache-2.0, `static/licenses`), koyu, açık gri 48 px karoda: tren yandan, taksi
+  önden, vapur, otobüs, minibüs, scooter; kategori başlıklarında uçak, otel, tren. Uçuşta havayolunun logosu (uygulamanın
+  içinde, `static/logos/airlines`, airlogos MIT; yoksa harfleri ve markanın rengi), konaklamada otel fotoğrafı.
+- **Web:** "Planın durumu" (dört adımın sayısı, renkli çubuk) ve "Sıradaki işler" (önce seçilecekler, sonra alınacaklar,
+  sonra eklenecek biletler; basınca satırına gider; `planSteps`). Plan sütunu 1120 px'ten genişse planın yanında, daha
+  darsa üstünde iki kutu yan yana.
+
 ## Tarih hattı: Uçuş, Konaklama, Ulaşım (plan v14, onay paketi 2026-10-21)
 
 Bu üç kategoride 288 px kutunun yerini tarih hattı alır (`static/v82/rows.css`, `app/plan/v82/IntentRow.tsx`, saf
 mantık `lib/railDates.ts` ve `lib/rowView.ts`). Etkinlik, Yapılacaklar ve Belgeler ve internet yukarıdaki kutuda kalır.
 
-- **Hat:** solda tarih sütunu ("24–27 Mar" üstte, "Çar → Cmt" altta, "3 gece"), her gece bir çentik, durumun rengiyle
-  nokta. Kategori renginde nokta kuralı (renk tablosundan bilinçli sapma): durumun anlamı hapta ve satırda, nokta
-  kategoriyi taşır.
-- **Yol satırı** (uçuş, tren, otobüs, feribot, transfer): ince satır; solda taşıyıcının işareti, üstte küçük tür ya da
-  "✨ Önerimiz", ad iki uç, altında saatler ve aktarma; sağda tek şey (Ara · Seç ve sayı · Bunu seç · Satın al ↗ ·
-  yeşil Alındı · gri Ayarlandı). Basınca biniş kartı altında açılır; Biriken'de "Birikenler / Yeni bul" yarıları.
-  Alınmışta fiyatın yerinde kod (PNR). Açık hâli kayda bağlıdır, uçlar yazılırken kapanmaz.
+- **Hat:** solda tarih sütunu (yolda gün ve haftanın günü; konaklamada "27 Kasım" ve "4 gece"), her gece bir çentik,
+  sessiz nokta. Durum noktada değil, satırın resminin köşesinde (yukarıda "Planlamanın dört adımı").
+- **Yol satırı** (uçuş, tren, otobüs, feribot, transfer): ince satır; solda taşıyıcının logosu ya da türün ikonu,
+  üstte küçük tür ve adımın sözü ("Tren · Planda", "✨ Önerimiz"), ad iki uç, altında saatler ve aktarma; sağda tek şey
+  (Ara · Seç ve sayı · Satın al ↗ · Bileti ekle · koçan). Basınca altında bilet gibi açılır: solda yolun çizimi büyük
+  (dar kartta yok), kalkışta saat büyük ve şehir ile istasyon altında, arada kesik çizgide türün ikonu, varış; sağda
+  adım büyük (Bilet elde ve belgesi, ya da Alındı); alındıysa altında "Son adım: bileti buraya bırak" alanı (dosya
+  sürüklenip bırakılır ya da seçilir); yerinde alınacaksa "Biletini Krabi iskelesinde alırsın", fiyat ve Aldım. Gün,
+  süre ve aktarma satırın kendisinde, açılınca tekrar edilmez. Açık hâli kayda bağlıdır, uçlar yazılırken kapanmaz.
 - **Konaklama ve Kiralama kartı:** katlanmaz; fotoğraf solda, üstte şehir ve gece ("Bangkok · 3 gece") ya da tür ve gün
   ("Motosiklet kiralama · 3 gün"), ad, site ve semt; sağda gece fiyatı ve toplam, tek düğme. Karta basmak çekmeceyi açar
   (seçilide Değiştir), rezervede Ayrıntı açılır. Altında şeritler: yeşil rezervasyon (giriş, ödenen, onay, sayfa),
   amber saat bağı (Geç giriş bildir / Geç çıkış sor; `lib/stayTiming.ts`, legs.ts'in notlarından), lila "Rotayı onayla".
-- **Yerinde:** rezervasyonu olmayan yol (taksi, metro) sessiz bir satır: "Taksi · yerinde", rota, "rezervasyon
-  gerekmez"; açılınca yollar (her biri "rezervasyon gerekmez" ya da "rezervasyon ister · kart olur"), Ben hallettim,
+- **Yerinde:** rezervasyonu olmayan yol (taksi, metro) sade bir satır: "Taksi · Planda", rota, "rezervasyon
+  gerekmez", sağda "Yerinde alınır"; açılınca yollar (her biri "rezervasyon gerekmez" ya da "rezervasyon ister · kart olur"), Ben hallettim,
   Haritada aç ↗.
 - **Kaçırdıklarımız:** iki konaklama arasında kısa açık gece amber "boş gece" satırı; iki kaydın aynı geceyi tutması
   kırmızı "çakışan gece" satırı ve "Birini kısalt"; kategori kapalıyken de satır özetinde "1 gece boş" (amber),
@@ -153,8 +188,12 @@ mantık `lib/railDates.ts` ve `lib/rowView.ts`). Etkinlik, Yapılacaklar ve Belg
 
 - **Başlık üç satır:** deste ve sayı, ad ve "ne zaman · kaç kişi"; Ölçütler (lila şart, gri tercih, "+ ekle");
   Seçenekler / Elenen anahtarı ve Sırala. Konaklama ve kiralamada sıralamanın ağırlığı tek çubuk (Yorumlar · Özellikler ·
-  Fiyat yüzdeleri, karar motorunun kendi ağırlıklarından toplanır; uydurma yok).
-- **Konaklama / kiralama kartı:** fotoğraf önde ve tam genişlik, üstünde "91 · 1. sırada"; ad, site ve semt, puanın üç
+  Fiyat yüzdeleri, karar motorunun kendi ağırlıklarından toplanır; uydurma yok) ve yanında "Ayarla" (`WeightTuner.tsx`):
+  "Neye göre sıralayalım?", Dengeli · Fiyat önce · Yorumlar önce · Konum önce ve üç kadran (0–4, 2 varsayılan); kadran
+  grubunun ölçütlerini bu kategori için gezide değiştirir (`decision.withPriorities`), kartlar hemen yeniden sıralanır.
+- **Konaklama / kiralama kartı:** fotoğraf önde ve tam genişlik, üstünde "91 · 1. sırada", köşesinde sayfanın iki fotoğrafı
+  daha ve "+n" (galeri: sayfa kaydedilirken ilk sekiz fotoğrafın yalnız adresi saklanır, `items.galleryOf`; basınca
+  büyük görünüm, ← → ve Esc); "✓ Seçili" mor; ad, site ve semt, puanın üç
   parçası; sağda fiyat ve büyük Seç ("✓ Seçili"); beş etiketli yuva hep aynı sırada (konaklama: Kahvaltı, İptal,
   Merkez, Puan, Kaynak; kiralama: Sigorta, İptal, Teslim, Puan, Kaynak); yorumlardan artılar ve eksiler hep açık.
   Kaydın söylemediği yuva gri "bilinmiyor" (C19).
