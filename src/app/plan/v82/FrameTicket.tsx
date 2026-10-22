@@ -162,7 +162,7 @@ function TicketMain({ face, art, route, fly = false, inRow = false }: { face: Ti
         <span className="q-mid big">
           <small>{face.mid.top ?? NBSP}</small>
           <i className={pass ? "z-mic" : undefined}>
-            {pass ? <ModeIcon name={modeIconOf(face.mode)} size={26} /> : <img className={fly ? "z-fly" : undefined} src={art} alt="" />}
+            {pass ? <span className="z-micc"><ModeIcon name={modeIconOf(face.mode)} size={38} /></span> : <img className={fly ? "z-fly" : undefined} src={art} alt="" />}
           </i>
           <small className={face.mid.tone ?? undefined}>{face.mid.bottom ?? NBSP}</small>
         </span>
