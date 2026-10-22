@@ -106,7 +106,7 @@ describe("rowView: a stay (the card that doesn't fold)", () => {
     const kyoto = find(jp(), "stay:2027-04-05");
     const r = rowView({ ...kyoto, status: "deciding", chosen: null });
     expect(r.slot.kind).toBe("pick");
-    expect(text(r.third)).toMatch(/^Booking\.com \d/);
+    expect(text(r.third)).toMatch(/^Çıkış \d+ Nisan \S+ · Booking\.com \d/);
   });
   it("a rental is a card, its kind and days over its name", () => {
     expect(rowFace({ frame: "ticket", kind: "transport", ticket: { rental: { line: null, pick: null, days: 3, back: null } } as IntentVM["ticket"] })).toBe("card");

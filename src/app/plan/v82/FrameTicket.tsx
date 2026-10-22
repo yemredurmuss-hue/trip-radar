@@ -13,6 +13,10 @@
 //   Aranıyor   the two ends, the estimate, "Kendin ara" (two sites) and "Seçenek bul"; a change of city nobody planned
 //              draws its ways (C15, ModePicker) in the route's place, the road from another city's airport Önerimiz's two.
 // Only what the record says is drawn (C19); the frame is as tall in every state, live or late.
+// Under its plan row (onay paketi 2026-10-22, "bilet gibi"): the way's illustration big on the left, the pass (the hour and
+// the city big at each end, the kind's icon on the dashed line between), and the step said big on the right: "Bilet elde"
+// with its file; "Alındı" with its last step under the pass (a zone the ticket is dropped on); "Planda" with where its
+// ticket is bought, its price to write and "Aldım". The day, the length and the stops are the row's; they aren't said twice.
 import { useEffect, useState, type ReactNode } from "react";
 import { L } from "../../../lib/i18n";
 import { codeLabel, emptyLine, type SelfSearch } from "../../../lib/intentFrame";
@@ -31,6 +35,7 @@ import { flysIn } from "../../motion";
 import { CopyCode } from "./DetailLayer";
 import { AgreeRoute, daysUntil, GotAsk, type FrameCardProps } from "./FrameCard";
 import { Ic, Mark } from "./icons";
+import { ModeIcon, modeIconOf, StageGlyph, type Stage } from "./modeIcons";
 import { ModePicker, WayPicks } from "./ModePicker";
 import { useV82Env } from "./v82Env";
 import { BagIcon, CarrierLogo } from "./OptionRow";
@@ -62,7 +67,7 @@ const NBSP = " ";
  * under it ("07:40" · "SAW İstanbul"); a boat's, a train's, a bus's in cities, its pier or station under it. A record's own
  * end and hour edit where they stand (C2: "Nereden", "Nereye", "Saat"); an end not known yet is the field's faint prompt.
  */
-function End({ end, right = false, field = null, timed = false, air = false }: { end: TicketEnd | null; right?: boolean; field?: FieldKey | null; timed?: boolean; air?: boolean }) {
+function End({ end, right = false, field = null, timed = false, air = false, hourFirst = false }: { end: TicketEnd | null; right?: boolean; field?: FieldKey | null; timed?: boolean; air?: boolean; hourFirst?: boolean }) {
   const edit = useInlineEdit();
   const can = (f: FieldKey | null) => f != null && Boolean(edit?.fields.includes(f));
   const cls = `q-tm big q-city${right ? " r" : ""}`;
@@ -80,6 +85,19 @@ function End({ end, right = false, field = null, timed = false, air = false }: {
           {hour && code && <span className="q-tplace">{code}</span>}
           {(hour || code) && <span className="z-cty">{city}</span>}
           {!hour && !code && end?.place && <span className="q-tplace">{end.place}</span>}
+        </small>
+      </span>
+    );
+  }
+  // (a pass under its row: the hour big, the city and its station or pier under it, as a flight's)
+  if (hourFirst && end?.time) {
+    const h = <>{end.time}{end.plus ? <sup>+{end.plus}</sup> : null}</>;
+    return (
+      <span className={`${cls} air pass`}>
+        <b title={end.city}>{clock ? <Editable field="time">{h}</Editable> : h}</b>
+        <small>
+          <span className="z-cty">{city}</span>
+          {end.place && end.place !== end.city && <span className="q-tplace" title={end.place}>{end.place}</span>}
         </small>
       </span>
     );
@@ -120,8 +138,10 @@ function Chip({ chip }: { chip: TicketChip }) {
 }
 
 /** The ticket's picture zone: its two ends and the way between them (or C15's ways in the route's place). */
-function TicketMain({ face, art, route, fly = false }: { face: TicketFace; art: string; route?: ReactNode; fly?: boolean }) {
+function TicketMain({ face, art, route, fly = false, inRow = false }: { face: TicketFace; art: string; route?: ReactNode; fly?: boolean; inRow?: boolean }) {
   if (route) return <div className="z-tm z-tmw">{route}</div>;
+  // (under its row a train, a boat, a bus is a pass: its drawing big beside it, its kind's icon on the line)
+  const pass = inRow && face.mode !== "flight" && face.mode !== "car";
   if (face.mode === "car") {
     // A rented car is its car (K84): the drawing, as a stay's picture.
     return (
@@ -131,17 +151,22 @@ function TicketMain({ face, art, route, fly = false }: { face: TicketFace; art: 
     );
   }
   return (
-    <div className="z-tm">
+    <div className={`z-tm${pass ? " z-pass" : ""}`}>
+      {pass && (
+        <span className="z-tart" aria-hidden>
+          <img src={art} alt="" />
+        </span>
+      )}
       <div className="q-route z-route">
-        <End end={face.from} field={endFields(face).from} timed={face.mode !== "pass" && !face.stubs.length} air={face.mode === "flight"} />
+        <End end={face.from} field={endFields(face).from} timed={face.mode !== "pass" && !face.stubs.length} air={face.mode === "flight"} hourFirst={pass} />
         <span className="q-mid big">
           <small>{face.mid.top ?? NBSP}</small>
-          <i>
-            <img className={fly ? "z-fly" : undefined} src={art} alt="" />
+          <i className={pass ? "z-mic" : undefined}>
+            {pass ? <ModeIcon name={modeIconOf(face.mode)} size={26} /> : <img className={fly ? "z-fly" : undefined} src={art} alt="" />}
           </i>
           <small className={face.mid.tone ?? undefined}>{face.mid.bottom ?? NBSP}</small>
         </span>
-        <End end={face.to} field={endFields(face).to} right air={face.mode === "flight"} />
+        <End end={face.to} field={endFields(face).to} right air={face.mode === "flight"} hourFirst={pass} />
       </div>
     </div>
   );
@@ -169,7 +194,7 @@ function TicketLine({ face, live, line = null, badge = null, after = null, field
       <span className="z-fields">
         {face.from && (
           <span>
-            <small>{L("ALIŞ", "PICK-UP")}</small>
+            <small>{L("Alış", "Pick-up")}</small>
             <b>
               <Editable field={endFields(face).from ?? "city"}>{face.from.city}</Editable>
               {face.from.time ? ` · ${face.from.time}` : ""}
@@ -178,7 +203,7 @@ function TicketLine({ face, live, line = null, badge = null, after = null, field
         )}
         {face.to && (
           <span>
-            <small>{L("BIRAKIŞ", "RETURN")}</small>
+            <small>{L("Bırakış", "Return")}</small>
             <b>{face.to.city}{face.to.time ? ` · ${face.to.time}` : ""}</b>
           </span>
         )}
@@ -347,6 +372,61 @@ function SelfMarks({ links }: { links: SelfSearch[] }) {
   );
 }
 
+/** The step said big on the pass's right (onay paketi 2026-10-22): its mark, its word, what backs it. */
+function StepSeal({ stage, word, sub }: { stage: Stage; word: string; sub?: ReactNode }) {
+  return (
+    <span className={`z-step ${stage}`}>
+      <StageGlyph stage={stage} size={stage === "ticket" ? 42 : 34} />
+      <b>{word}</b>
+      {sub && <small>{sub}</small>}
+    </span>
+  );
+}
+
+/** Bought, its ticket not here yet: the last step, a zone a file is dropped on (or picked from). */
+function DropZone({ word, onPick, onDrop }: { word: string; onPick: () => void; onDrop: ((files: File[]) => Promise<void> | void) | null }) {
+  const [over, setOver] = useState(false);
+  const drag = onDrop
+    ? {
+        onDragOver: (e: React.DragEvent) => (e.preventDefault(), setOver(true)),
+        onDragLeave: () => setOver(false),
+        onDrop: (e: React.DragEvent) => {
+          e.preventDefault();
+          setOver(false);
+          const files = [...e.dataTransfer.files];
+          if (files.length) onDrop(files);
+        },
+      }
+    : {};
+  return (
+    <div className={`z-drop${over ? " over" : ""}`} {...drag}>
+      <Ic name="clip" size={22} stroke={2} />
+      <span className="z-dropt">
+        <b>{onDrop ? L("Son adım: bileti buraya bırak", "Last step: drop the ticket here") : L("Son adım: bileti ekle", "Last step: add the ticket")}</b>
+        <small>{L("PDF, ekran görüntüsü ya da e-posta; kod, koltuk ve ödenen okunur.", "A PDF, a screenshot or the email; its code, seat and what was paid are read.")}</small>
+      </span>
+      <button type="button" className="q-got ok" onClick={(e) => (e.stopPropagation(), onPick())}>
+        {word}
+      </button>
+    </div>
+  );
+}
+
+/** Planned with nothing to book ahead: where its ticket is bought, said where the pass begins. */
+function OnSite({ face }: { face: TicketFace }) {
+  const at = face.from?.place && !/^[A-Z]{3}$/.test(face.from.place) ? face.from.place : (face.from?.city ?? null);
+  const pier = face.mode === "ferry";
+  return (
+    <div className="z-onsite">
+      <Ic name="pin" size={18} />
+      <span>
+        <b>{at ? (pier ? L(`Biletini ${at} iskelesinde alırsın`, `You buy the ticket at the ${at} pier`) : L(`Biletini ${at}'da yerinde alırsın`, `You buy the ticket on the spot in ${at}`)) : L("Bileti yerinde alırsın", "You buy the ticket on the spot")}</b>
+        <small>{L("Önceden almak gerekmez; kalkıştan biraz önce gişede ol.", "Nothing to book ahead; be at the counter a little before it leaves.")}</small>
+      </span>
+    </div>
+  );
+}
+
 export function FrameTicket({ vm, form, page, links, info, detail, quiet, on, onCover, onAgree = null, ways, onReset, onLegGot, onOpen = null, inRow = false }: FrameTicketProps) {
   const o = vm.chosen;
   const edit = useInlineEdit();
@@ -370,10 +450,11 @@ export function FrameTicket({ vm, form, page, links, info, detail, quiet, on, on
   const layer = info?.open ? detail : null;
   const day = vm.head.parts.find((p) => !/→/.test(p) && !/gece|night/i.test(p)) ?? null;
   const people = vm.people ?? null;
+  // (its day and length are its row's own under it; never in capitals, DESIGN.md)
   const fields: [string, string][] = [
-    ...(day ? [[L("TARİH", "DATE"), day] as [string, string]] : []),
-    ...(people ? [[L("YOLCU", "TRAVELLERS"), L(`${people} kişi`, `${people}`)] as [string, string]] : []),
-    ...(face.mid.top ? [[L("SÜRE", "LENGTH"), face.mid.top] as [string, string]] : []),
+    ...(day && !inRow ? [[L("Tarih", "Date"), day] as [string, string]] : []),
+    ...(people ? [[L("Yolcu", "Travellers"), L(`${people} kişi`, `${people}`)] as [string, string]] : []),
+    ...(face.mid.top && !inRow ? [[L("Süre", "Length"), face.mid.top] as [string, string]] : []),
   ];
   if ((form === "suggested" || form === "chosen") && o) {
     const brand = o.brand?.label ?? null;
@@ -417,7 +498,7 @@ export function FrameTicket({ vm, form, page, links, info, detail, quiet, on, on
         cls={form === "suggested" ? " sg" : " ch"}
         mode={face.mode}
         onOpen={onOpen}
-        main={<TicketMain face={face} art={draw} fly={fly} />}
+        main={<TicketMain face={face} art={draw} fly={fly} inRow={inRow} />}
         line={<TicketLine face={face} live={null} badge={badge} after={pill} fields={fields} />}
         foot={<Price o={o} mode={face.mode} />}
         primary={inRow ? null : primary}
@@ -479,6 +560,19 @@ export function FrameTicket({ vm, form, page, links, info, detail, quiet, on, on
         <Ic name="cal" size={13} /> {L(`${days} gün kaldı`, `${days} days to go`)}
       </span>
     ) : null;
+    if (inRow) {
+      // Bilet elde (its code or its file) or Alındı (its ticket the last step, dropped under the pass); the paid sum only once backed.
+      const proof = Boolean(a?.code || (a?.doc.count ?? 0) > 0);
+      const seal = proof ? (
+        <StepSeal stage="ticket" word={L("Bilet elde", "Ticket in hand")} sub={vm.paid ?? (a?.doc.name ? a.doc.name : null)} />
+      ) : (
+        <StepSeal stage="bought" word={L("Alındı", "Bought")} sub={L("bileti eklenmedi", "no ticket yet")} />
+      );
+      const after = proof ? (a?.docMissing ? missing : null) : <DropZone word={doc.add} onPick={on.addDoc} onDrop={on.dropDoc ?? null} />;
+      return (
+        <Frame cls=" bk" mode={face.mode} onOpen={onOpen} main={<TicketMain face={face} art={draw} fly={fly} inRow />} line={<TicketLine face={face} live={live} badge={badge} after={after} fields={fields} />} foot={seal} primary={proof ? primary : null} row={face.note ? <small className="z-note">{face.note}</small> : null} layer={layer} />
+      );
+    }
     return (
       <Frame cls=" bk" mode={face.mode} onOpen={onOpen} main={<TicketMain face={face} art={draw} fly={fly} />} line={<TicketLine face={face} live={live} badge={badge} after={missing} fields={fields} />} foot={foot} primary={primary} row={face.note ? <small className="z-note">{face.note}</small> : null} layer={layer} />
     );
@@ -522,6 +616,30 @@ export function FrameTicket({ vm, form, page, links, info, detail, quiet, on, on
       then();
     };
     const route = rechoose && reways ? <ModePicker modes={vm.modes} current={vm.ticket?.wayMode ?? null} onPick={(mode) => done(() => ways.pick(mode))()} onOwn={done(ways.own)} /> : undefined;
+    if (inRow && !inc) {
+      // Planda with nothing to book (where its ticket is bought, its price to write, Aldım) or sorted out by the traveller.
+      const own = Boolean(vm.selfArranged) || form === "booked";
+      const got = o ? on.got : (ways?.own ?? null);
+      const seal = own ? <StepSeal stage="bought" word={L("Sen hallettin", "You sorted it")} sub={why} /> : <StepSeal stage="planned" word={L("Planda", "Planned")} sub={face.mode === "ferry" ? L("iskelede alınır", "bought at the pier") : L("yerinde alınır", "paid on the spot")} />;
+      const price = o && (o.price || edit?.fields.includes("price")) ? (
+        <span className="z-wp">
+          <small>{L("Fiyat", "Price")}</small>
+          <b><Editable field="price">{o.price?.text}</Editable></b>
+        </span>
+      ) : null;
+      const line = own ? (o ? <DropZone word={ticketDocWord(face.mode).add} onPick={on.addDoc} onDrop={on.dropDoc ?? null} /> : null) : (
+        <>
+          <OnSite face={face} />
+          {price}
+          {got && (
+            <button type="button" className="q-pick z-got" onClick={(e) => (e.stopPropagation(), got())}>
+              ✓ {L("Aldım", "Got it")}
+            </button>
+          )}
+        </>
+      );
+      return <Frame cls=" ar" mode={face.mode} onOpen={onOpen} main={<TicketMain face={face} art={draw} fly={fly} route={route} inRow />} line={<TicketLine face={face} live={null} badge={badge} after={line} fields={fields} />} foot={seal} primary={null} row={row} layer={layer} />;
+    }
     return <Frame cls={inc ? " ar inc" : " ar"} mode={face.mode} onOpen={onOpen} main={<TicketMain face={face} art={draw} fly={fly} route={route} />} line={<TicketLine face={face} live={null} badge={badge} fields={fields} />} foot={foot} primary={primary} row={row} layer={layer} />;
   }
   // Aranıyor: nothing to choose yet. Only what is known is written (C19); a record still being filled in shows what it says.

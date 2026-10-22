@@ -56,5 +56,12 @@ export function airlineCode(name: string | null | undefined, flightNumber: strin
 
 export const airlineColor = (code: string | null): string | null => (code ? (COLORS[code] ?? null) : null);
 
+/**
+ * The logos in the extension itself (onay paketi 2026-10-22: "her logo gelsin"; airlogos, MIT, static/licenses): the
+ * airlines on our routes and the table above, read with nothing fetched. Any other is read from Kiwi, else Aviasales.
+ */
+const BUNDLED: ReadonlySet<string> = new Set("3U 6E A3 AF AI AK AT AY AZ BA BR CA CI CX CZ DD DY EI EK EW EY FD FR FZ G9 GA GF HV HY IB ID J9 JL JT KC KE KL KU LH LO LX LY ME MH MS MU NH OS OZ PC PG PS QF QR RJ SK SL SN SQ SV TG TK TO TP U2 UL UX VF VJ VY VZ W6 WY XQ".split(" "));
+
 /** Where the airline's logo is read, first and the one to try when it won't load. */
-export const airlineLogos = (code: string): [string, string] => [`https://images.kiwi.com/airlines/64/${code}.png`, `https://pics.avs.io/128/128/${code}.png`];
+export const airlineLogos = (code: string): [string, string] =>
+  BUNDLED.has(code) ? [`logos/airlines/${code}.png`, `https://images.kiwi.com/airlines/64/${code}.png`] : [`https://images.kiwi.com/airlines/64/${code}.png`, `https://pics.avs.io/128/128/${code}.png`];

@@ -25,7 +25,8 @@ import type { Item, LegChoice, Trip } from "../../../lib/types";
 import { entryDomId } from "../../../lib/progress";
 import { withLegChoice } from "../../../lib/legs";
 import { agreeRoute } from "../../../lib/startTrip";
-import { setHidden, setInstalled, setItemStatus, cancelBooking, updateTrip } from "../../actions";
+import { setHidden, setInstalled, setItemStatus, cancelBooking, markBooked, updateTrip } from "../../actions";
+import { ProofAsk } from "./ProofAsk";
 import type { MenuEntry } from "../../cards/CardShell";
 import { openDoc, useDocPick } from "../../cards/DocAccess";
 import { useEmptyEnv } from "../../cards/emptyEnv";
@@ -237,16 +238,17 @@ function RecordBox({ vm, color, record, onHere, gap, dropped, overlap, timing }:
   ];
   const cancel = booked ? () => cancelBooking(record).then(env.offer) : null;
   return (
-    <Box vm={vm} color={color} extra={extra} field={<>{stage.field}{doc.field}</>} pickDoc={doc.pick} cancel={cancel} askedHide={booked ? stage.hide : null} onHere={onHere} itemId={record.id} gap={gap} dropped={dropped} overlap={overlap} timing={timing} />
+    <Box vm={vm} color={color} extra={extra} field={<>{stage.field}{doc.field}</>} pickDoc={doc.pick} dropDoc={doc.drop} cancel={cancel} askedHide={booked ? stage.hide : null} onHere={onHere} itemId={record.id} gap={gap} dropped={dropped} overlap={overlap} timing={timing} />
   );
 }
 
-function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHere, itemId, gap = null, dropped = NONE, overlap = null, timing = null }: {
+function Box({ vm, color, extra, field, pickDoc, dropDoc = null, cancel, askedHide = null, onHere, itemId, gap = null, dropped = NONE, overlap = null, timing = null }: {
   vm: IntentVM;
   color: string;
   extra: MenuEntry[];
   field: ReactNode;
   pickDoc: (() => void) | null;
+  dropDoc?: ((files: File[]) => void) | null;
   /** "İptal ettim" on a booking (it's kept as cancelled, its need to find again). */
   cancel: (() => Promise<void>) | null;
   /** A booking's "Gerek yok" asks first whether it was cancelled (stageMenu.hide). */
@@ -268,6 +270,8 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
   const a = useIntentActions(vm);
   const [changing, setChanging] = useState(false);
   const [detail, setDetail] = useState(false);
+  // "Aldım"'s box (onay paketi 2026-10-22): opened by Aldım ("got") or after the site's Satın al ↗ ("asked").
+  const [proofAsk, setProofAsk] = useState<null | "got" | "asked">(null);
   const [folding, setFolding] = useState(false);
   // K82: a need's options open beside the plan, never inside the card.
   const [drawer, setDrawer] = useState(false);
@@ -474,10 +478,12 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
           entry.current = "morph";
           if (record) a.choose(record);
         },
-        got: () => record && a.got(record),
+        // (on a dated category's row "Aldım" asks for what backs it, ProofAsk under the row)
+        got: () => record && (isDatedSection(vm.section) && vm.frame !== "collection" ? setProofAsk("got") : a.got(record)),
         change: vm.optionCount > 0 || vm.options.length > 0 ? change : null,
         openDoc: docs.length ? () => void openDoc(docs[0].id) : null,
         addDoc: pickDoc ?? (() => undefined),
+        dropDoc,
         ask: needNow && offers.available() && !camp0 ? openDrawer : a.ask,
         edit: () => record && env.edit(record),
         // A leg's own plan taken back: its ways again (whatever was said: "Ben hallettim", metro).
@@ -576,14 +582,28 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
         entry.current = "morph";
         if (record) a.choose(record);
       },
-      // (a way said for a leg, no record yet: "Aldım" books the leg itself, as its ticket's own Aldım does)
-      got: () => (record ? a.got(record) : leg && vm.status === "chosen" ? void onLeg({ booked: true }) : undefined),
+      // (a way said for a leg, no record yet: "Aldım" books the leg itself, as its ticket's own Aldım does; a record asks for
+      // what backs it first, ProofAsk)
+      got: () => (record ? setProofAsk("got") : leg && vm.status === "chosen" ? void onLeg({ booked: true }) : undefined),
+      asked: record ? () => setProofAsk("asked") : null,
       page,
       brand: vm.chosen?.brand?.label ?? null,
       date: itemId ? () => env.setFocus({ id: itemId, field: "date", scroll: false }) : a.ask,
       proof: record && pickDoc ? pickDoc : null,
     };
     const menuNode = <IntentMenu entries={menu} name={name} />;
+    const booked0 = (ref: string | null) => record && (setProofAsk(null), markBooked(record, ref));
+    const askNode =
+      proofAsk && record && (vm.status === "chosen" || vm.status === "suggested" || vm.status === "arranged") ? (
+        <ProofAsk
+          booking={vm.kind === "stay" || vm.ticket?.mode === "car" || vm.ticket?.rental != null}
+          asked={proofAsk === "asked"}
+          onRef={(code) => void booked0(code)}
+          onFiles={dropDoc ? (files) => void Promise.resolve(booked0(null)).then(() => dropDoc(files)) : null}
+          onJust={() => void booked0(null)}
+          onCancel={() => setProofAsk(null)}
+        />
+      ) : null;
     const sectionProps = {
       ref: boxRef,
       className: `q-int z-int q-rowi${folding ? " folding" : ""}${takeoff && vm.frame === "ticket" ? " z-go" : ""}${pop ? " pop" : ""}`,
@@ -631,7 +651,7 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
             </button>
           )}
           {vm.status === "chosen" && page && (
-            <button type="button" className="q-got" onClick={() => record && a.got(record)}>
+            <button type="button" className="q-got" onClick={() => record && setProofAsk("got")}>
               ✓ {L("Aldım", "Got it")}
             </button>
           )}
@@ -653,7 +673,7 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
       ) : ticketProps ? (
         <FrameTicket {...ticketProps} inRow />
       ) : null;
-      inner = <TicketRow vm={vm} view={view} art={art} date={date} on={slotOn} ticket={ticket} links={links} onDrawer={all.length || need ? openDrawer : null} menu={menuNode} acts={acts} chipId={chipId} editable={editable} under={detail ? <div className="q-rdet">{detailNode}</div> : null} focused={itemId != null && env.focus?.id === itemId && env.focus.field != null} openKey={itemId ?? undefined} />;
+      inner = <TicketRow vm={vm} view={view} art={art} date={date} on={slotOn} ticket={ticket} links={links} onDrawer={all.length || need ? openDrawer : null} menu={menuNode} acts={acts} chipId={chipId} editable={editable} under={detail ? <div className="q-rdet">{detailNode}</div> : null} focused={itemId != null && env.focus?.id === itemId && env.focus.field != null} openKey={itemId ?? undefined} ask={askNode} />;
     } else {
       // A stay, a rental: pressed, its options beside the plan (Değiştir once chosen); a booking its details under it.
       const onPress = vm.status === "booked" && record ? () => setDetail(!detail) : all.length ? openDrawer : askCard;
@@ -751,7 +771,7 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
           )}
         </div>
       ) : null;
-      inner = <StayCard vm={vm} view={view} art={art} date={date} on={slotOn} onPress={onPress} menu={menuNode} foot={hours || agree || party ? <>{foot}{agree}{party}{hours}</> : foot} under={detail ? <div className="q-rdet">{detailNode}</div> : null} chipId={chipId} editable={editable} />;
+      inner = <StayCard vm={vm} view={view} art={art} date={date} on={slotOn} onPress={onPress} menu={menuNode} foot={hours || agree || party ? <>{foot}{agree}{party}{hours}</> : foot} under={detail ? <div className="q-rdet">{detailNode}</div> : null} chipId={chipId} editable={editable} ask={askNode} />;
     }
     return (
       <>

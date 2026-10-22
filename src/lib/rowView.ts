@@ -18,7 +18,7 @@ import { L } from "./i18n";
 import { isoDate } from "./items";
 import { codeLabel, headName, optionPrice, ratingParts, sidePrice } from "./intentFrame";
 import type { IntentStatus, IntentVM, OptionVM } from "./intents";
-import { isDatedSection, railDate, spanText } from "./railDates";
+import { isDatedSection, railDate, spanText, stayCheckOut } from "./railDates";
 import { ticketCodeLabel, ticketFace, ticketPrice } from "./ticketFrame";
 
 /** The face a row takes: a ticket's thin row (folds open), a stay's or a rental's card (doesn't fold). */
@@ -224,6 +224,15 @@ export function rowView(vm: IntentVM): RowView {
       const r = ratingParts(chosen.rating);
       if (!third.length && r?.reviews) third.push({ text: r.reviews });
     }
+  }
+  // (a stay's check-out day leads its third line: the rail says only its check-in and its nights)
+  const out = stayCheckOut(vm);
+  if (out && !searching && !(deciding && vm.head.wants.length)) {
+    // (a booking's check-out hour joins its day: "Çıkış 1 Aralık Salı 11:00")
+    const hour = status === "booked" && vm.access?.checkOut ? vm.access.checkOut : null;
+    const at = hour ? third.findIndex((p) => p.text.includes(hour) && !/Giriş|Check-in/.test(p.text)) : -1;
+    if (at >= 0) third.splice(at, 1);
+    third.unshift({ text: hour ? `${out} ${hour}` : out });
   }
   const wants = searching || deciding ? vm.head.wants : [];
 

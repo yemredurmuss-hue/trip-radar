@@ -104,7 +104,8 @@ describe("Emre's Bali: one flight out, the offers its options", () => {
     const qatar = r.out[0].options.find((o) => o.id === qr.id)!;
     expect(carrierMark(qatar.carrier, qatar.item)?.code).toBe("QR");
     const html = renderToStaticMarkup(<CarrierLogo mark={carrierMark(row.carrier, row.item)} art="illus/ucus.png" />);
-    expect(html).toContain('src="https://images.kiwi.com/airlines/64/TK.png"');
+    // (from the extension itself: the logo is bundled, onay paketi 2026-10-22)
+    expect(html).toContain('src="logos/airlines/TK.png"');
   });
 
   it("the dates moved to 10 Aralık – 10 Ocak: the offers said as Bali, Denpasar and BJV → DPS are one box; choosing one leaves one", async () => {

@@ -29,6 +29,8 @@ const at = (date: string) => new Date(`${date}T12:00:00Z`);
 const dayMonth = (date: string) => at(date).toLocaleDateString(locale(), { day: "numeric", month: "short", timeZone: "UTC" });
 const dayOnly = (date: string) => at(date).toLocaleDateString(locale(), { day: "numeric", timeZone: "UTC" });
 const sameMonth = (a: string, b: string) => a.slice(0, 7) === b.slice(0, 7);
+/** "27 Kasım": a stay's check-in on its rail, the month in full (onay paketi 2026-10-22). */
+export const dayMonthLong = (date: string) => at(date).toLocaleDateString(locale(), { day: "numeric", month: "long", timeZone: "UTC" });
 export const weekdayLong = (date: string) => at(date).toLocaleDateString(locale(), { weekday: "long", timeZone: "UTC" });
 export const weekdayShort = (date: string) => at(date).toLocaleDateString(locale(), { weekday: "short", timeZone: "UTC" }).replace(/\.$/, "");
 
@@ -62,15 +64,24 @@ function rentalStretch(vm: Pick<IntentVM, "ticket" | "head" | "chosen">): { star
 export function railDate(vm: Pick<IntentVM, "kind" | "head" | "ticket" | "chosen">): RailDate | null {
   const start = isoDate(vm.head.date);
   if (!start) return null;
+  // A stay: its check-in in full and its nights, always two lines, a month changing or not (onay paketi 2026-10-22, "B · giriş
+  // ve gece"); its check-out day is its card's third line (stayCheckOut).
   if (vm.kind === "stay" && vm.head.nights > 0) {
-    const end = addDays(start, vm.head.nights);
-    return { when: stretchText(start, end), sub: `${weekdayShort(start)} → ${weekdayShort(end)}`, span: spanText(vm.head.nights, "night"), notches: vm.head.nights };
+    return { when: dayMonthLong(start), sub: null, span: spanText(vm.head.nights, "night"), notches: vm.head.nights };
   }
   const rental = rentalStretch(vm);
   if (rental) {
     return { when: stretchText(rental.start, rental.end), sub: `${weekdayShort(rental.start)} → ${weekdayShort(rental.end)}`, span: spanText(rental.days, "day"), notches: rental.days };
   }
   return { when: dayMonth(start), sub: weekdayLong(start), span: null, notches: 0 };
+}
+
+/** A stay's check-out in words for its card's third line: "Çıkış 1 Aralık Salı". */
+export function stayCheckOut(vm: Pick<IntentVM, "kind" | "head">): string | null {
+  const start = isoDate(vm.head.date);
+  if (vm.kind !== "stay" || !start || vm.head.nights <= 0) return null;
+  const end = addDays(start, vm.head.nights);
+  return L(`Çıkış ${dayMonthLong(end)} ${weekdayLong(end)}`, `Check-out ${weekdayLong(end)} ${dayMonthLong(end)}`);
 }
 
 /** A stretch the rail draws as a slice (its dot at the start, the slice's end at the last night or day). */

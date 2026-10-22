@@ -3,7 +3,7 @@
 import { describe, expect, it } from "vitest";
 import { withLang } from "../src/lib/i18n";
 import type { IntentVM } from "../src/lib/intents";
-import { emptyNights, emptyNightText, isDatedSection, nightAlerts, overlapNights, overlapText, railDate, stretchText } from "../src/lib/railDates";
+import { emptyNights, emptyNightText, isDatedSection, nightAlerts, overlapNights, overlapText, railDate, stayCheckOut, stretchText } from "../src/lib/railDates";
 import { makeItem } from "./fixtures/makeItem";
 
 type V = Pick<IntentVM, "key" | "kind" | "status" | "head" | "itemIds" | "options" | "ticket" | "chosen">;
@@ -14,11 +14,14 @@ describe("railDate", () => {
   it("a day: its short date over its weekday", () => {
     expect(railDate({ kind: "flight", head: head({ date: "2027-03-20" }), ticket: null, chosen: null })).toEqual({ when: "20 Mar", sub: "Cumartesi", span: null, notches: 0 });
   });
-  it("a stay: one range, its two weekdays and its nights, a notch a night", () => {
-    expect(railDate({ kind: "stay", head: head({ date: "2027-03-24", nights: 3 }), ticket: null, chosen: null })).toEqual({ when: "24–27 Mar", sub: "Çar → Cmt", span: "3 gece", notches: 3 });
+  it("a stay: its check-in in full and its nights, a notch a night; its check-out on its card (onay paketi 2026-10-22)", () => {
+    expect(railDate({ kind: "stay", head: head({ date: "2027-03-24", nights: 3 }), ticket: null, chosen: null })).toEqual({ when: "24 Mart", sub: null, span: "3 gece", notches: 3 });
+    expect(stayCheckOut({ kind: "stay", head: head({ date: "2027-03-24", nights: 3 }) })).toBe("Çıkış 27 Mart Cumartesi");
   });
-  it("across two months it names both", () => {
-    expect(railDate({ kind: "stay", head: head({ date: "2027-03-31", nights: 2 }), ticket: null, chosen: null })?.when).toBe("31 Mar – 2 Nis");
+  it("across two months: still two lines", () => {
+    expect(railDate({ kind: "stay", head: head({ date: "2026-11-27", nights: 4 }), ticket: null, chosen: null })?.when).toBe("27 Kasım");
+    expect(stayCheckOut({ kind: "stay", head: head({ date: "2026-11-27", nights: 4 }) })).toBe("Çıkış 1 Aralık Salı");
+    expect(stretchText("2027-03-31", "2027-04-02")).toBe("31 Mar – 2 Nis");
     expect(stretchText("2027-03-27", "2027-03-27")).toBe("27 Mar");
   });
   it("a rental: its days from pick-up to return", () => {
@@ -30,7 +33,7 @@ describe("railDate", () => {
     expect(railDate({ kind: "flight", head: head({}), ticket: null, chosen: null })).toBeNull();
   });
   it("in English", () => {
-    withLang("en", () => expect(railDate({ kind: "stay", head: head({ date: "2027-03-24", nights: 1 }), ticket: null, chosen: null })).toEqual({ when: "24–25 Mar", sub: "Wed → Thu", span: "1 night", notches: 1 }));
+    withLang("en", () => expect(railDate({ kind: "stay", head: head({ date: "2027-03-24", nights: 1 }), ticket: null, chosen: null })).toEqual({ when: "24 March", sub: null, span: "1 night", notches: 1 }));
   });
   it("only flights, stays and getting around are dated", () => {
     expect(["flight", "stay", "transport", "activity", "other"].map(isDatedSection)).toEqual([true, true, true, false, false]);

@@ -46,6 +46,8 @@ export interface FrameCardProps {
     change: (() => void) | null;
     openDoc: (() => void) | null;
     addDoc: () => void;
+    /** A file dropped on the ticket's last-step zone (its booking's confirmation, its e-ticket). */
+    dropDoc?: ((files: File[]) => Promise<void> | void) | null;
     ask: (() => void) | null;
     edit: () => void;
     unarrange: (() => void) | null;

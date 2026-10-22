@@ -1,0 +1,3 @@
+The travel icons (src/app/plan/v82/modeIcons.tsx) are MingCute Icon's filled set (https://www.mingcute.com,
+https://github.com/Richard9394/MingCute), version 2.9 via @iconify-json/mingcute 1.2.8, under the Apache License 2.0:
+https://www.apache.org/licenses/LICENSE-2.0

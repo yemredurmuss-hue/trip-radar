@@ -49,6 +49,20 @@ export async function setItemStatus(item: Item, status: ItemStatus): Promise<voi
   notifyChanged();
 }
 
+/**
+ * "Aldım" (onay paketi 2026-10-22): bought, with the code typed in its box if one was (a PNR, a booking number); its file,
+ * when one is dropped, is added and read after (DocAccess), onto the booking.
+ */
+export async function markBooked(item: Item, ref: string | null = null): Promise<void> {
+  const code = ref?.replace(/\s+/g, " ").trim() || null;
+  if (code) {
+    const d = await db();
+    const found = (await d.get("items", item.id)) ?? item;
+    await d.put("items", { ...found, bookingRef: /^[a-z0-9]+$/i.test(code) ? code.toUpperCase() : code, updatedAt: Date.now() });
+  }
+  await setItemStatus(item, "booked");
+}
+
 /** The places set aside for `item` (chooseItem: "Yerine X geldi"), brought back as they were. */
 async function restoreReplaced(item: Item): Promise<void> {
   const d = await db();

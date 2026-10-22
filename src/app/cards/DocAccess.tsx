@@ -24,36 +24,41 @@ export async function openDoc(id: string): Promise<void> {
  * The file picker for a card's documents: `pick` opens it (a button, the ••• menu's "Belge ekle"), `field` is the
  * hidden input and the error line to put next to it.
  */
-export function useDocPick(item: Pick<Item, "id" | "tripId">, opts: { read?: boolean } = {}): { pick: () => void; field: ReactNode } {
+export function useDocPick(item: Pick<Item, "id" | "tripId">, opts: { read?: boolean } = {}): { pick: () => void; drop: (files: File[]) => Promise<void>; field: ReactNode } {
   const input = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const pick = () => {
     setError(null);
     input.current?.click();
   };
+  const take = async (files: File[]) => {
+    setError(null);
+    for (const file of files) {
+      try {
+        const doc = await addDoc(item, file);
+        // Kaçırdıklarımız (rezervasyonun kendiliğinden okunması): a confirmation added on its booking is read as one dropped
+        // in the chat is (docReader): its reference, what was paid, the check-in fill the card; unread, it stays on it.
+        if (opts.read) {
+          await readDocument(item.tripId, doc.id).catch((err: Error) => setError(L(`Belge karta eklendi; okunamadı: ${err.message}`, `The file is on the card; couldn't read it: ${err.message}`)));
+        }
+      } catch (err) {
+        setError((err as Error).message);
+      }
+    }
+  };
   const field = (
     <>
       <input ref={input} className="pk-file" type="file" accept={DOC_ACCEPT} multiple hidden
-        onChange={async (e) => {
+        onChange={(e) => {
           const files = [...(e.target.files ?? [])];
           e.target.value = "";
-          for (const file of files) {
-            try {
-              const doc = await addDoc(item, file);
-              // Kaçırdıklarımız (rezervasyonun kendiliğinden okunması): a confirmation added on its booking is read as one dropped
-              // in the chat is (docReader): its reference, what was paid, the check-in fill the card; unread, it stays on it.
-              if (opts.read) {
-                await readDocument(item.tripId, doc.id).catch((err: Error) => setError(L(`Belge karta eklendi; okunamadı: ${err.message}`, `The file is on the card; couldn't read it: ${err.message}`)));
-              }
-            } catch (err) {
-              setError((err as Error).message);
-            }
-          }
+          void take(files);
         }} />
       {error && <span className="pk-doc-error" role="alert">{error}</span>}
     </>
   );
-  return { pick, field };
+  // (a file dropped on its ticket's "bırak" zone: the same as one picked)
+  return { pick, drop: take, field };
 }
 
 export function DocPickButton({ item, className, title, children }: { item: Pick<Item, "id" | "tripId">; className?: string; title?: string; children: ReactNode }) {

@@ -14,7 +14,6 @@ import { shortDay } from "../../../lib/ideas";
 import type { RowPart, RowView } from "../../../lib/rowView";
 import { ticketFace } from "../../../lib/ticketFrame";
 import { Editable } from "../../cards/InlineEdit";
-import { GotAsk } from "./FrameCard";
 import { Ic, Mark } from "./icons";
 import { ModeIcon, modeIconOf, StageBadge } from "./modeIcons";
 import { SelfLinks } from "./OptionCompact";
@@ -131,10 +130,12 @@ export interface SlotOn {
   date?: (() => void) | null;
   /** "Bileti ekle" / "Onayı ekle": its file picked (and read), the last step once bought. */
   proof?: (() => void) | null;
+  /** The site's "Satın al ↗" pressed: "Aldın mı?" asked under the row (its proof box). */
+  asked?: (() => void) | null;
 }
 
 /** The one thing on the right (118 px): Ara · Seç and the count · Bunu seç · Satın al ↗ / Rezerve et ↗ · the state's hap. */
-function Slot({ view, on, asked, setAsked, logo }: { view: RowView; on: SlotOn; asked: boolean; setAsked: (v: boolean) => void; logo: ReactNode }) {
+function Slot({ view, on, logo }: { view: RowView; on: SlotOn; logo: ReactNode }) {
   const s = view.slot;
   const stop = (e: React.MouseEvent) => e.stopPropagation();
   switch (s.kind) {
@@ -166,7 +167,7 @@ function Slot({ view, on, asked, setAsked, logo }: { view: RowView; on: SlotOn; 
       );
     case "book":
       return on.page ? (
-        <a className="q-cta q-rbtn" href={on.page} target="_blank" rel="noreferrer" onClick={(e) => (stop(e), setAsked(true))} title={on.brand ? L(`${on.brand} sitesinde aç`, `Open on ${on.brand}`) : undefined} aria-pressed={asked || undefined}>
+        <a className="q-cta q-rbtn" href={on.page} target="_blank" rel="noreferrer" onClick={(e) => (stop(e), on.asked?.())} title={on.brand ? L(`${on.brand} sitesinde aç`, `Open on ${on.brand}`) : undefined}>
           {logo}
           <span>{s.word}</span>
           <span className="q-ext">↗</span>
@@ -260,19 +261,20 @@ export interface TicketRowProps {
   under?: ReactNode;
   /** Opened from outside: a field of its ticket to fill in place (a plan just added, its first empty field). */
   focused?: boolean;
+  /** "Aldım"'s box under the row (ProofAsk): its code or its file, or marked without. */
+  ask?: ReactNode;
   /** What its open state follows: its record (the intent's key changes as its ends are typed), else the intent. */
   openKey?: string;
 }
 
 /** A flight, a train, a bus, a boat, a transfer: one thin row; pressed, its ticket (or its search) opens under it. */
-export function TicketRow({ vm, view, art, date, on, ticket, links, onDrawer, menu, acts, chipId, editable, under = null, focused = false, openKey }: TicketRowProps) {
+export function TicketRow({ vm, view, art, date, on, ticket, links, onDrawer, menu, acts, chipId, editable, under = null, focused = false, openKey, ask = null }: TicketRowProps) {
   const [open, setOpen] = useRowOpen(openKey ?? vm.key);
   // (its ends and hour edit on the ticket under it: opened when a field there is asked for)
   useEffect(() => {
     if (focused && !open) setOpen(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- on being asked only
   }, [focused]);
-  const [asked, setAsked] = useState(false);
   const panelId = useId();
   const face = ticketFace(vm);
   const logo = face?.mark && face.mode !== "car" ? <CarrierLogo mark={face.mark} art={art} small /> : null;
@@ -341,17 +343,13 @@ export function TicketRow({ vm, view, art, date, on, ticket, links, onDrawer, me
           </span>
           <Figure fig={view.slot.kind === "none" ? null : view.figure} editable={editable && (vm.status === "chosen" || vm.status === "suggested" || vm.status === "arranged")} blank={editable && vm.status === "arranged" && !vm.selfArranged} />
           <span className="q-rslot" id={chipId}>
-            <Slot view={view} on={on} asked={asked} setAsked={setAsked} logo={logo} />
+            <Slot view={view} on={on} logo={logo} />
           </span>
           <span className="q-rmenu" onClick={(e) => e.stopPropagation()}>
             {menu}
           </span>
         </div>
-        {asked && view.slot.kind === "book" && (
-          <div className="q-rft ask">
-            <GotAsk onYes={() => (setAsked(false), on.got())} onNo={() => setAsked(false)} />
-          </div>
-        )}
+        {ask}
         <div className="q-rp" id={panelId} hidden={!open}>
           {open && body}
           {open && acts && <div className="q-racts">{acts}</div>}
@@ -404,11 +402,12 @@ export interface StayCardProps {
   under: ReactNode;
   chipId: string;
   editable: boolean;
+  /** "Aldım"'s box under the card, in its foot's place (ProofAsk). */
+  ask?: ReactNode;
 }
 
 /** A stay or a rental: a card that doesn't fold; its picture on the left, three lines, one figure, one thing on the right. */
-export function StayCard({ vm, view, art, date, on, onPress, menu, foot, under, chipId, editable }: StayCardProps) {
-  const [asked, setAsked] = useState(false);
+export function StayCard({ vm, view, art, date, on, onPress, menu, foot, under, chipId, editable, ask = null }: StayCardProps) {
   const press = onPress
     ? {
         role: "button" as const,
@@ -448,19 +447,13 @@ export function StayCard({ vm, view, art, date, on, onPress, menu, foot, under, 
           </span>
           <Figure fig={view.slot.kind === "none" ? null : view.figure} editable={editable && (vm.status === "chosen" || vm.status === "suggested")} blank={editable && vm.status === "chosen"} />
           <span className="q-rslot" id={chipId}>
-            <Slot view={view} on={on} asked={asked} setAsked={setAsked} logo={null} />
+            <Slot view={view} on={on} logo={null} />
           </span>
           <span className="q-rmenu" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
             {menu}
           </span>
         </div>
-        {asked && view.slot.kind === "book" ? (
-          <div className="q-rft ask">
-            <GotAsk onYes={() => (setAsked(false), on.got())} onNo={() => setAsked(false)} />
-          </div>
-        ) : (
-          foot
-        )}
+        {ask ?? foot}
         {under}
       </div>
     </div>

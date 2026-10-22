@@ -90,3 +90,68 @@ button.q-meter:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 3px; 
 .q-meter.ok .q-ms i.on { background: var(--q-ok); }
 .q-malerts { flex-basis: 100%; }
 @media (max-width: 700px) { .q-meter { width: 104px; } }
+
+/* ---- under the row: a pass (onay paketi 2026-10-22, "bilet gibi") ---- */
+.q-rcard { container-type: inline-size; }
+.q-rp .z-tm.z-pass { display: grid; grid-template-columns: 168px minmax(0, 1fr); gap: 22px; align-items: center; }
+.z-tart { display: grid; place-items: center; height: 116px; border-radius: 14px; background: linear-gradient(160deg, #e7effc, #f3f6fd); overflow: hidden; }
+.q-int[data-kind="ferry"] .z-tart { background: linear-gradient(160deg, #e2f4f8, #f2fafc); }
+.z-tart img { width: 92%; height: 92%; object-fit: contain; mix-blend-mode: multiply; }
+.q-mid.big > i.z-mic { width: 46px; height: 46px; border-radius: 99px; background: #fff; display: grid; place-items: center; color: var(--q-ink); box-shadow: 0 0 0 1px var(--q-line), 0 4px 10px -6px rgba(28, 26, 51, .4); }
+.q-mid.big > i.z-mic .q-mi { display: block; }
+@container (max-width: 720px) {
+  .q-rp .z-tm.z-pass { grid-template-columns: minmax(0, 1fr); }
+  .z-tart { display: none; }
+}
+/* the step said big on the right */
+.z-step { display: grid; justify-items: center; gap: 4px; text-align: center; min-width: 124px; }
+.z-step b { font-size: 15px; font-weight: 800; }
+.z-step small { font-size: var(--q-fs-badge); color: var(--q-mut); font-weight: 650; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.z-step.ticket b, .z-step.bought b { color: var(--q-ok); }
+.z-step.planned b { color: var(--q-acc-d); }
+.q-rp .z-f.z13.bk:has(.z-step.ticket) > .z-s { background: var(--q-stub); border-left: 2px dashed var(--q-stub-line); margin: 0; padding: 14px 18px; }
+/* bought: the last step, a zone the ticket is dropped on */
+.z-drop { flex: 1 1 100%; display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: 14px; border: 1.5px dashed color-mix(in srgb, var(--q-ok) 40%, #fff); background: var(--q-stub); color: var(--q-ok); }
+.z-drop.over { background: color-mix(in srgb, var(--q-ok-s) 100%, #fff); border-style: solid; }
+.z-dropt { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.z-dropt b { font-size: 14px; font-weight: 800; color: var(--q-ink); }
+.z-dropt small { font-size: var(--q-fs-small); color: var(--q-mut); font-weight: 600; }
+.z-drop .q-got.ok { background: var(--q-ok); color: #fff; border-color: var(--q-ok); height: 36px; min-height: 36px; padding: 0 14px; }
+/* planned on the spot: where its ticket is bought, its price, Aldım */
+.z-onsite { flex: 1 1 100%; display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; background: #f2fafc; color: #0e7f9c; }
+.z-onsite > span { display: grid; gap: 2px; }
+.z-onsite b { font-size: 14px; font-weight: 800; color: var(--q-ink); }
+.z-onsite small { font-size: var(--q-fs-small); color: var(--q-mut); font-weight: 600; }
+.z-wp { display: inline-flex; align-items: baseline; gap: 8px; padding: 8px 12px; border-radius: 11px; box-shadow: inset 0 0 0 1.5px #d9d4e8; }
+.z-wp small { font-size: var(--q-fs-small); color: var(--q-mut); font-weight: 700; }
+.z-wp b { font-size: 14px; font-weight: 800; }
+.q-pick.z-got { height: 36px; min-height: 36px; padding: 0 14px; }
+.q-rp .z-f.z13 > .z-i .z-l3:has(.z-drop, .z-onsite) { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.q-city.pass small { display: flex; flex-direction: column; gap: 1px; }
+.q-city.pass.r small { align-items: flex-end; }
+.q-city.pass .z-cty { color: var(--q-ink); font-weight: 750; }
+/* open, its last step is under the pass: not said twice on the row */
+.q-row.open .q-rslot > .q-proof { visibility: hidden; }
+
+/* ---- "Aldım": a white box under the row asks for what backs it (never a yellow warning) ---- */
+.q-proofq { display: grid; gap: 14px; margin: 0 14px 14px; padding: 16px 18px; border-radius: 16px; background: #fff; box-shadow: 0 0 0 1px var(--q-line), 0 18px 40px -24px rgba(28, 26, 51, .45); animation: q-rp-in .26s cubic-bezier(.2, .7, .2, 1); }
+.q-pqh { display: flex; gap: 12px; align-items: flex-start; }
+.q-pqh > span { display: grid; gap: 3px; }
+.q-pqh b { font-size: 15px; font-weight: 800; color: var(--q-ink); }
+.q-pqh small { font-size: var(--q-fs-small); color: var(--q-mut); font-weight: 600; line-height: 1.45; }
+.q-pqf { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.q-pqc, .q-pqd-w { display: grid; gap: 5px; min-width: 0; }
+.q-pqc small, .q-pqd-w small { font-size: var(--q-fs-badge); color: var(--q-mut); font-weight: 700; }
+.q-pqc input { height: 40px; box-sizing: border-box; padding: 0 12px; border-radius: 11px; border: 1.5px solid #d9d4e8; font: inherit; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 15px; letter-spacing: .04em; color: var(--q-ink); background: #fff; }
+.q-pqc input:focus { outline: none; border-color: var(--q-acc); box-shadow: 0 0 0 3px var(--q-acc-s); }
+.q-pqd { display: flex; align-items: center; gap: 8px; height: 40px; box-sizing: border-box; padding: 0 12px; border-radius: 11px; border: 1.5px dashed #c9c4d9; background: #fbfafd; color: var(--q-acc); font: inherit; font-size: 13px; font-weight: 800; cursor: pointer; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.q-pqd.over, .q-pqd:hover { border-color: var(--q-acc); background: var(--q-acc-s); }
+.q-pqa { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.q-pqa .q-got.ok { height: 38px; min-height: 38px; padding: 0 16px; background: var(--q-ok); border-color: var(--q-ok); color: #fff; }
+.q-pqa .q-got.ok:disabled { opacity: .45; cursor: default; }
+@media (max-width: 700px) { .q-pqf { grid-template-columns: minmax(0, 1fr); } .q-proofq { margin: 0 8px 10px; } }
+@media (prefers-reduced-motion: reduce) { .q-proofq { animation: none; } }
+
+/* ---- a stay's date: its check-in in full and its nights, two lines, a month changing or not ---- */
+.q-int[data-kind="stay"] .q-tld b { font-size: 14px; white-space: nowrap; text-wrap: nowrap; }
+.q-int[data-kind="stay"] .q-tld .q-tlspan { margin-top: 2px; font-size: var(--q-fs-small); letter-spacing: 0; }
