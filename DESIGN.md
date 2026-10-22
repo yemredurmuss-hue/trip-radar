@@ -139,6 +139,12 @@ mantık `lib/railDates.ts` ve `lib/rowView.ts`). Etkinlik, Yapılacaklar ve Belg
 - **Kaçırdıklarımız:** iki konaklama arasında kısa açık gece amber "boş gece" satırı; iki kaydın aynı geceyi tutması
   kırmızı "çakışan gece" satırı ve "Birini kısalt"; kategori kapalıyken de satır özetinde "1 gece boş" (amber),
   "1 gece çakışıyor" (kırmızı).
+- **Kaçırdıklarımız, 2. tur:** AI ararken sağdaki yuva lila "Aranıyor…" der (ilk seçenek gelince deste olur).
+  Tarihi olmayan niyetler hattın sonunda "Tarihi yok" çizgisinin altında, yuvalarında "Tarih ver" (kendi kaydında tarih
+  orada yazılır). Seçili oda sayfadaki kişi sayısından farklı sayıda kişi için seçilmişse amber "Bu oda 3 kişiye uygun
+  mu?", çekmecede "fiyat 2 kişi için, yeniden ara". Rezervede "Ücretsiz iptal … dek" ve "Takvime ekle" (`lib/ics.ts`:
+  geceler ya da saat, iptalin son günü 3 gün önce alarmla). Karttan eklenen onay okunur (`docReader`): numara, ödenen,
+  giriş. Ortak gezide beğenenler çekmece kartının fotoğrafında; ağırlıklı puanı değiştirmez.
 - 700 px altında tarih karta tırmanır, satır iki sıraya iner (fiyat görünür kalır).
 
 ## Çekmece standardı (onay paketi 2026-10-21)

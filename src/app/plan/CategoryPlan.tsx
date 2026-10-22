@@ -8,7 +8,7 @@
 import { PackPrefetch } from "./prep/usePackAi";
 import { PhonePrefetch } from "./prep/PhoneApps";
 import { stayQueryOf } from "../../lib/travelWants";
-import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { isIdeaSection, planSectionOfItem, sectionProgress, type CatEntry, type CatSection, type HiddenThing, type SectionId } from "../../lib/categories";
 import { activityGaps } from "../../lib/emptyCards";
 import { countryNames } from "../../lib/heroInfo";
@@ -46,7 +46,7 @@ import { artOf, IntentBox } from "./v82/IntentBox";
 import { PlanHeader } from "./v82/PlanHeader";
 import { Searching } from "./v82/Searching";
 import { TimelineRail } from "./v82/TimelineRail";
-import { emptyNights, isDatedSection, nightAlerts, overlapNights, type Overlap } from "../../lib/railDates";
+import { emptyNights, isDatedSection, nightAlerts, overlapNights, undatedLast, type Overlap } from "../../lib/railDates";
 import { stayTimings } from "../../lib/stayTiming";
 import { intentEl, V82EnvContext, type V82Env } from "./v82/v82Env";
 import { VisaRow } from "./VisaRow";
@@ -75,6 +75,9 @@ const overlapOf = (vm: IntentVM, clashes: ReadonlyMap<string, Overlap>): Overlap
   for (const id of [vm.chosen?.item.id, ...vm.itemIds]) if (id && clashes.has(id)) return clashes.get(id)!;
   return null;
 };
+
+/** On the date rail the needs with no day go last, under "Tarihi yok" (railDates.undatedLast); elsewhere as they are. */
+const railOrder = (id: SectionId, list: IntentVM[]): { list: IntentVM[]; first: string | null } => (isDatedSection(id) ? undatedLast(list) : { list, first: null });
 
 /** Elenen in an intent's drawer: the section's ruled-out records of the same group as its options. */
 function droppedOf(vm: IntentVM, hidden: readonly HiddenThing[]): Item[] {
@@ -326,12 +329,19 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
                       }
                       hidden={<Hidden section={s} live={items.filter((i) => i.status !== "dismissed" && planSectionOfItem(i) === s.id)} suggestions={dismissed} art={(kind) => artOf(kind)} />}
                     >
-                      {(c?.intents ?? []).filter((i) => i.status !== "skipped").map((vm, _n, list) =>
+                      {railOrder(s.id, (c?.intents ?? []).filter((i) => i.status !== "skipped")).list.map((vm, _n, list) =>
                         // Etkinlik and Yapılacaklar: a city's row of cards (aşama 4); a part of the trip's shape among them (a ski pass) is one choice.
                         vm.frame === "collection" ? (
                           <CollectionBox key={vm.key} vm={vm} color={SECTION_META[s.id].color} />
                         ) : (
+                          <Fragment key={vm.key}>
+                          {railOrder(s.id, list).first === vm.key && (
+                            <div className="q-tlnone" role="separator">
+                              {L("Tarihi yok", "No date yet")}
+                            </div>
+                          )}
                           <IntentBox key={vm.key} vm={vm} color={SECTION_META[s.id].color} onHere={s.id === "stay" ? (at) => onAdd(s.id, at) : null} gap={s.id === "stay" ? gapOf(vm, list) : null} dropped={droppedOf(vm, s.hidden)} overlap={s.id === "stay" ? overlapOf(vm, clashes) : null} timing={vm.kind === "stay" && vm.chosen ? (timings.get(vm.chosen.item.id) ?? null) : null} />
+                          </Fragment>
                         ),
                       )}
                       {s.id === "activity" && <CityGaps gaps={gaps.filter((g) => !(c?.intents ?? []).some((i) => i.frame === "collection" && i.head.city != null && sameCity(i.head.city, g.city)))} section="activity" />}

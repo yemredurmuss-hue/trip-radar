@@ -251,3 +251,14 @@ body.still .q-row.open .q-rp, body.still .q-int.pop .q-rhap { animation: none; }
 /* A stop of a route the AI proposed: "Rotayı onayla" on a lila strip. */
 .q-rft.ai { background: color-mix(in srgb, var(--q-acc-s) 75%, #fff); color: var(--q-acc-d); }
 .q-rft .q-chg.q-agree { color: var(--q-acc); font-weight: 800; }
+/* Kaçırdıklarımız 1: Aranıyor… while the AI looks (a lila hap, its dot breathing). */
+.q-rhap.busy { background: var(--q-acc-s); color: var(--q-acc-d); gap: 8px; }
+.q-rhap.busy::before { content: ""; width: 8px; height: 8px; border-radius: 99px; background: var(--q-acc); animation: q-busy 1.2s ease-in-out infinite; }
+@keyframes q-busy { 50% { opacity: .35; transform: scale(.8); } }
+@media (prefers-reduced-motion: reduce) { .q-rhap.busy::before { animation: none; } }
+body.still .q-rhap.busy::before { animation: none; }
+/* Kaçırdıklarımız (tarihsiz niyet): the needs with no day under one quiet line at the rail's end; "Tarih ver" on each. */
+.q-tlnone { margin: 6px 0 2px var(--tlx); padding: 6px 0; font-size: var(--q-fs-small, 12px); font-weight: 800; color: var(--q-mut); border-top: 1px dashed var(--q-line); }
+.q-tld.none b { font-size: 13px; }
+.q-tld.none small { color: var(--q-mut); }
+@media (max-width: 700px) { .q-tlnone { margin-left: 0; } }

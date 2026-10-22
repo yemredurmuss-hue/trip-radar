@@ -3,6 +3,7 @@
 // single file can be deleted). Files stay on this computer (see lib/docs.ts).
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { onChanged } from "../../lib/db";
+import { readDocument } from "../../lib/docReader";
 import { addDoc, DOC_ACCEPT, docPill, getDoc, listDocMeta, needsDoc, sizeText, takeDoc } from "../../lib/docs";
 import { L } from "../../lib/i18n";
 import { revokeTracked, trackObjectUrl } from "../../lib/objectUrls";
@@ -23,7 +24,7 @@ export async function openDoc(id: string): Promise<void> {
  * The file picker for a card's documents: `pick` opens it (a button, the ••• menu's "Belge ekle"), `field` is the
  * hidden input and the error line to put next to it.
  */
-export function useDocPick(item: Pick<Item, "id" | "tripId">): { pick: () => void; field: ReactNode } {
+export function useDocPick(item: Pick<Item, "id" | "tripId">, opts: { read?: boolean } = {}): { pick: () => void; field: ReactNode } {
   const input = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const pick = () => {
@@ -38,7 +39,12 @@ export function useDocPick(item: Pick<Item, "id" | "tripId">): { pick: () => voi
           e.target.value = "";
           for (const file of files) {
             try {
-              await addDoc(item, file);
+              const doc = await addDoc(item, file);
+              // Kaçırdıklarımız (rezervasyonun kendiliğinden okunması): a confirmation added on its booking is read as one dropped
+              // in the chat is (docReader): its reference, what was paid, the check-in fill the card; unread, it stays on it.
+              if (opts.read) {
+                await readDocument(item.tripId, doc.id).catch((err: Error) => setError(L(`Belge karta eklendi; okunamadı: ${err.message}`, `The file is on the card; couldn't read it: ${err.message}`)));
+              }
             } catch (err) {
               setError((err as Error).message);
             }

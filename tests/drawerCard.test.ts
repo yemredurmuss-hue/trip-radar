@@ -105,3 +105,24 @@ describe("the comparison's best and worst", () => {
     expect(extremes([100, null])).toEqual({ best: new Set(), worst: new Set() });
   });
 });
+
+describe("people or rooms changed", () => {
+  it("an option priced for another count says so; matching or unsaid, nothing", async () => {
+    const { guestGap, guestGapText } = await import("../src/lib/drawerCard");
+    const { by } = thailand();
+    expect(guestGap(by.rimping, 3)).toEqual({ was: 2, now: 3 });
+    expect(guestGap(by.rimping, 2)).toBeNull();
+    expect(guestGap({ ...by.rimping, guests: { adults: null, children: null, rooms: null } }, 3)).toBeNull();
+    expect(guestGapText({ was: 2, now: 3 }, true)).toBe("Bu oda 3 kişiye uygun mu? Sayfada 2 kişi");
+    expect(guestGapText({ was: 2, now: 3 }, false)).toBe("fiyat 2 kişi için, yeniden ara");
+  });
+});
+
+describe("freeCancelText", () => {
+  it("while it can still be cancelled for free", async () => {
+    const { freeCancelText } = await import("../src/lib/drawerCard");
+    const { by } = thailand();
+    expect(freeCancelText(by.rimping, "2026-10-21")).toBe("Ücretsiz iptal 20 Mar'a dek");
+    expect(freeCancelText(by.rimping, "2027-03-21")).toBeNull();
+  });
+});

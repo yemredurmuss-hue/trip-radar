@@ -159,3 +159,13 @@ export function nightAlerts(list: readonly Pick<IntentVM, "key" | "kind" | "stat
     ...(clash ? [{ text: L(`${clash} gece çakışıyor`, `${clash} night${clash > 1 ? "s" : ""} overlap`), tone: "bad" as const }] : []),
   ];
 }
+
+/**
+ * Kaçırdıklarımız (tarihsiz niyet): on the date rail the needs with no day yet go under it, in the order they had, after a
+ * "Tarihi yok" line; the rest keep theirs. `first`: the key the line goes over (null: every one has its day).
+ */
+export function undatedLast<T extends Pick<IntentVM, "key" | "head">>(list: readonly T[]): { list: T[]; first: string | null } {
+  const dated = list.filter((v) => isoDate(v.head.date) != null);
+  const undated = list.filter((v) => isoDate(v.head.date) == null);
+  return { list: [...dated, ...undated], first: undated[0]?.key ?? null };
+}

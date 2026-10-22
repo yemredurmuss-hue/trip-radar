@@ -12,7 +12,7 @@ import { createPortal } from "react-dom";
 import { setItemStatus } from "../../actions";
 import { choiceOf } from "../../../lib/choice";
 import type { GroupDecision, Part } from "../../../lib/decision";
-import { dayBand, flightSlots, priceAge, waySlots, groupLabel, partsWhy, placeText, prosCons, rentalSlots, reviewsHead, scoreParts, staySlots, weightShares, type CardSlot, type SlotIcon } from "../../../lib/drawerCard";
+import { dayBand, flightSlots, guestGap, guestGapText, priceAge, waySlots, groupLabel, partsWhy, placeText, prosCons, rentalSlots, reviewsHead, scoreParts, staySlots, weightShares, type CardSlot, type SlotIcon } from "../../../lib/drawerCard";
 import { drawerList, optionDay, optionTab, pickReason, type DrawerTab, type SortKey } from "../../../lib/drawerView";
 import { L } from "../../../lib/i18n";
 import { headName, optionPrice, type SelfSearch } from "../../../lib/intentFrame";
@@ -23,7 +23,10 @@ import { isRental, rowView } from "../../../lib/rowView";
 import { rowFace } from "../../../lib/ticketFrame";
 import type { Need } from "../../../lib/offerSource";
 import type { Item } from "../../../lib/types";
+import { likersOf, withLoves } from "../../../lib/pano";
 import { OfferRow } from "../../cards/OfferRow";
+import { useMyName } from "../../Profile";
+import { useShare } from "../../Share";
 import { useCardEnv } from "../../cards/PlanCard";
 import { decisionOf } from "./DetailLayer";
 import { Ic, Mark, type IconName } from "./icons";
@@ -180,8 +183,21 @@ function Fresh({ o }: { o: OptionVM }) {
   );
 }
 
+/** Kaçırdıklarımız (ortak gezide oylar): who liked it, a heart and their names on the photo's corner; it moves no score. */
+function Hearts({ item }: { item: Item }) {
+  const share = useShare();
+  const me = useMyName();
+  const names = likersOf(share ? withLoves(item, share.votes) : item).map((n) => (n === "me" ? me || L("Sen", "You") : n));
+  if (!names.length) return null;
+  return (
+    <span className="dr-hearts" title={L(`${names.join(", ")} beğendi`, `Liked by ${names.join(", ")}`)}>
+      <span aria-hidden>♥</span> {names.join(", ")}
+    </span>
+  );
+}
+
 /** A stay's or a rental's price: by the night (the day) big, the whole small; else the source's usual range; else none. */
-function CardPrice({ o, typical }: { o: OptionVM; typical: Typical | null }) {
+function CardPrice({ o, typical, gap = null }: { o: OptionVM; typical: Typical | null; gap?: { was: number; now: number } | null }) {
   const p = o.price;
   if (p?.perNight) {
     const [each] = p.perNight.split(" / ");
@@ -193,6 +209,7 @@ function CardPrice({ o, typical }: { o: OptionVM; typical: Typical | null }) {
           {p.provisional && <i className="z-prov"> · {L("geçici", "provisional")}</i>}
         </small>
         <Fresh o={o} />
+        {gap && <small className="dr-age">{guestGapText(gap, false)}</small>}
       </span>
     );
   }
@@ -204,6 +221,7 @@ function CardPrice({ o, typical }: { o: OptionVM; typical: Typical | null }) {
         <b>{own.amount}</b>
         {own.unit && <small>{own.unit}</small>}
         <Fresh o={o} />
+        {gap && <small className="dr-age">{guestGapText(gap, false)}</small>}
       </span>
     );
   if (usual)
@@ -218,7 +236,7 @@ function CardPrice({ o, typical }: { o: OptionVM; typical: Typical | null }) {
 
 /** A stay or a rental: the photo first, its score on it; the name, where, the three parts; price and Seç; slots; reviews. */
 /** (exported: the Pano draws the same card, its own Seç in `pick`) */
-export function CardOption({ o, art, current, typical, why, parts, rental, solo, onPick, pick = null }: { o: OptionVM; art: string; current: boolean; typical: Typical | null; why: string | null; parts: Part[]; rental: boolean; solo: boolean; onPick: () => void; pick?: ReactNode }) {
+export function CardOption({ o, art, current, typical, why, parts, rental, solo, onPick, pick = null, people = 0 }: { o: OptionVM; art: string; current: boolean; typical: Typical | null; why: string | null; parts: Part[]; rental: boolean; solo: boolean; onPick: () => void; pick?: ReactNode; people?: number }) {
   const split = scoreParts(parts);
   const slots = rental ? rentalSlots(o.item, o.brand?.label ?? null) : staySlots(o.item, o.brand?.label ?? null);
   return (
@@ -226,6 +244,7 @@ export function CardOption({ o, art, current, typical, why, parts, rental, solo,
       <div className="dr-ph">
         <img className={o.image ? "ph" : "art"} src={o.image ?? art} alt="" />
         <Rank o={o} solo={solo} />
+        <Hearts item={o.item} />
       </div>
       <div className="dr-in">
         <span className="dr-r1">
@@ -241,7 +260,7 @@ export function CardOption({ o, art, current, typical, why, parts, rental, solo,
             </span>
           )}
         </span>
-        <CardPrice o={o} typical={typical} />
+        <CardPrice o={o} typical={typical} gap={rental ? null : guestGap(o.item, people)} />
         {pick ?? <Pick o={o} current={current} onPick={onPick} big />}
       </div>
       <Slots slots={slots} url={o.item.url} />
@@ -442,7 +461,7 @@ export function IntentDrawer({ vm, options, dropped = [], chosenId, art, links, 
     const current = o.id === chosenId;
     const why = o.ours ? reason : null;
     const parts = partsOf(o);
-    if (family !== "ticket") return <CardOption key={o.id} o={o} art={art} current={current} typical={typical} why={why} parts={parts} rental={family === "rental"} solo={solo} onPick={() => onPick(o)} />;
+    if (family !== "ticket") return <CardOption key={o.id} o={o} art={art} current={current} typical={typical} why={why} parts={parts} rental={family === "rental"} solo={solo} people={people} onPick={() => onPick(o)} />;
     const day = optionDay(o);
     return <TicketOption key={o.id} o={o} vm={vm} art={art} current={current} why={why} parts={parts} solo={solo} off={vm.kind === "flight" && asked != null && day != null && day !== asked} onPick={() => onPick(o)} />;
   };

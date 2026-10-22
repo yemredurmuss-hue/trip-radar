@@ -253,3 +253,6 @@
   .pd-cards { grid-template-columns: minmax(0, 1fr); }
   .pc { grid-template-columns: 110px repeat(var(--n), minmax(150px, 1fr)); }
 }
+/* Who liked it (a shared trip's hearts): on the photo's corner, never in the score. */
+.dr-hearts { position: absolute; right: 14px; top: 14px; display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: 99px; background: color-mix(in srgb, #fff 92%, transparent); box-shadow: 0 1px 3px rgba(28, 26, 51, .12); font-size: 13px; font-weight: 800; color: var(--q-ink); max-width: 60%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dr-hearts > span { color: #e0457b; }

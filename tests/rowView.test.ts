@@ -109,3 +109,13 @@ describe("rowView's helpers", () => {
     expect(sourceCounts([])).toBeNull();
   });
 });
+
+describe("whileSearching (Kaçırdıklarımız 1)", () => {
+  it("Aranıyor… in the slot while the AI looks, for a need still to find or decide only", async () => {
+    const { whileSearching } = await import("../src/lib/rowView");
+    const r = rowView(find(jp(), "stay:2027-04-12"));
+    expect(whileSearching(r, "searching", true).slot).toEqual({ kind: "hap", tone: "busy", text: "Aranıyor…" });
+    expect(whileSearching(r, "searching", false).slot).toEqual({ kind: "ask" });
+    expect(whileSearching(r, "chosen", true)).toBe(r);
+  });
+});

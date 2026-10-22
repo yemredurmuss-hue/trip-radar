@@ -79,3 +79,12 @@ describe("overlapNights", () => {
     expect(nightAlerts([cnxV], [cnx, pai])).toEqual([{ text: "1 gece çakışıyor", tone: "bad" }]);
   });
 });
+
+describe("undatedLast", () => {
+  it("the needs with no day go last, after a line; the rest keep their order", async () => {
+    const { undatedLast } = await import("../src/lib/railDates");
+    const a = stay("a", "Bangkok", "2027-03-24", 3), b = { ...stay("b", "Chiang Mai", "", 0), head: head({ city: "Chiang Mai" }) }, c = stay("c", "Pai", "2027-03-29", 2);
+    expect(undatedLast([a, b, c])).toEqual({ list: [a, c, b], first: "b" });
+    expect(undatedLast([a, c]).first).toBeNull();
+  });
+});

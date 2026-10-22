@@ -56,7 +56,9 @@ import { useIntentActions } from "./useIntentActions";
 import { useV82Env } from "./v82Env";
 import { emptyNightText, isDatedSection, overlapText, railDate, type Overlap } from "../../../lib/railDates";
 import { timingAsk, type StayTiming } from "../../../lib/stayTiming";
-import { rowView } from "../../../lib/rowView";
+import { freeCancelText, guestGap, guestGapText } from "../../../lib/drawerCard";
+import { bookingIcs, icsName } from "../../../lib/ics";
+import { rowView, whileSearching } from "../../../lib/rowView";
 import { EmptyNight, OverlapRow, StayCard, TicketRow, type SlotOn } from "./IntentRow";
 
 /** A kind's drawing (static/illus), for a frame or an option with no photo. */
@@ -140,6 +142,18 @@ const DRAWN = ["name", "date", "end", "price"] as const;
 const TICKET_DRAWN = ["from", "to", "city", "date", "end", "time", "price"] as const;
 
 const NONE: Item[] = [];
+
+/** "Takvime ekle": the booking as a calendar file (lib/ics.ts) the traveller's calendar opens. */
+function saveIcs(item: Item) {
+  const ics = bookingIcs(item);
+  if (!ics) return;
+  const url = URL.createObjectURL(new Blob([ics], { type: "text/calendar" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = icsName(item);
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 /** How many go, as the hero says it (the count said, else the names): never fewer than one. */
 const tripPeople = (trip: Trip): number => Math.max(1, whoGoes({ travellers: trip.travellers }).count || peopleOf(trip).length);
 
@@ -208,7 +222,8 @@ function RecordBox({ vm, color, record, onHere, gap, dropped, overlap, timing }:
   const env = useCardEnv();
   const stage = useStageMenu(record);
   const who = useWhoMenu(record);
-  const doc = useDocPick(record);
+  // (a booking's confirmation added here is read: its number, what was paid, the check-in)
+  const doc = useDocPick(record, { read: record.status === "booked" || record.status === "chosen" });
   const booked = record.status === "booked";
   // C21: what the old card's ••• did for it, beside Ayrıntı and Gerek yok.
   const extra: MenuEntry[] = [
@@ -548,7 +563,7 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
   }
   // Plan v14 (onay paketi 2026-10-21): a dated category's intent is a row on its date rail, its frame under it or beside it.
   if (isDatedSection(vm.section) && vm.frame !== "collection") {
-    const view = rowView(vm);
+    const view = whileSearching(rowView(vm), vm.status, a.searching);
     const date = railDate(vm);
     const editable = itemId != null;
     const askNow = needNow && offers.available() && !camp0 ? openDrawer : a.ask;
@@ -565,6 +580,7 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
       got: () => (record ? a.got(record) : leg && vm.status === "chosen" ? void onLeg({ booked: true }) : undefined),
       page,
       brand: vm.chosen?.brand?.label ?? null,
+      date: itemId ? () => env.setFocus({ id: itemId, field: "date", scroll: false }) : a.ask,
     };
     const menuNode = <IntentMenu entries={menu} name={name} />;
     const sectionProps = {
@@ -607,6 +623,11 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
         <>
           {shown?.brand?.label && (vm.status === "chosen" || vm.status === "suggested") && <span className="q-rsrc">{L(`${shown.brand.label}'dan`, `from ${shown.brand.label}`)}</span>}
           <span className="q-rsp" />
+          {vm.status === "booked" && record && (
+            <button type="button" className="q-chg" onClick={() => saveIcs(record)}>
+              {L("Takvime ekle", "Add to calendar")}
+            </button>
+          )}
           {vm.status === "chosen" && page && (
             <button type="button" className="q-got" onClick={() => record && a.got(record)}>
               ✓ {L("Aldım", "Got it")}
@@ -641,6 +662,12 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
         vm.status === "booked" ? (
           <div className="q-rft ok">
             {a0?.checkIn && <span>{L(`Giriş ${a0.checkIn}`, `Check-in ${a0.checkIn}`)}</span>}
+            {record && freeCancelText(record, env.today) && <span>{freeCancelText(record, env.today)}</span>}
+            {record && (
+              <button type="button" className="q-chg ok" onClick={() => saveIcs(record)}>
+                {L("Takvime ekle", "Add to calendar")}
+              </button>
+            )}
             {vm.paid && view.figure?.code && <span className="z-paid">{vm.paid}</span>}
             {a0?.docMissing && (
               <button type="button" className="z-docw" onClick={() => pickDoc?.()}>
@@ -709,7 +736,20 @@ function Box({ vm, color, extra, field, pickDoc, cancel, askedHide = null, onHer
           </button>
         </div>
       ) : null;
-      inner = <StayCard vm={vm} view={view} art={art} date={date} on={slotOn} onPress={onPress} menu={menuNode} foot={hours || agree ? <>{foot}{agree}{hours}</> : foot} under={detail ? <div className="q-rdet">{detailNode}</div> : null} chipId={chipId} editable={editable} />;
+      // Kaçırdıklarımız (kişi ya da oda değişince): the chosen room was priced for fewer or more than go now.
+      const gapNow = vm.kind === "stay" && (vm.status === "chosen" || vm.status === "suggested") && record ? guestGap(record, people) : null;
+      const party = gapNow ? (
+        <div className="q-rft warn">
+          <span>{guestGapText(gapNow, true)}</span>
+          <span className="q-rsp" />
+          {all.length > 0 && (
+            <button type="button" className="q-chg warn" onClick={openDrawer}>
+              {L("Seçenekler", "Options")}
+            </button>
+          )}
+        </div>
+      ) : null;
+      inner = <StayCard vm={vm} view={view} art={art} date={date} on={slotOn} onPress={onPress} menu={menuNode} foot={hours || agree || party ? <>{foot}{agree}{party}{hours}</> : foot} under={detail ? <div className="q-rdet">{detailNode}</div> : null} chipId={chipId} editable={editable} />;
     }
     return (
       <>

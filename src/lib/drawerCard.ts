@@ -254,3 +254,26 @@ export function extremes(values: readonly (number | null)[], higherIsBetter = tr
   if (top === low) return { best: new Set(), worst: new Set() };
   return { best: new Set(known.filter((k) => k.v === top).map((k) => k.i)), worst: new Set(known.filter((k) => k.v === low).map((k) => k.i)) };
 }
+
+// --- people or rooms changed -------------------------------------------------------------------------------------------
+
+/**
+ * Kaçırdıklarımız (kişi ya da oda değişince): an option priced for a different number of people than now go (its page said
+ * 2, the trip is 3 now): its price is for them, not for today's party; null when it matches or the page didn't say.
+ */
+export function guestGap(item: Pick<Item, "guests" | "price">, people: number): { was: number; now: number } | null {
+  const was = item.guests?.adults;
+  if (was == null || was <= 0 || people <= 0 || was === people || item.price?.amount == null) return null;
+  return { was, now: people };
+}
+
+/** "2 kişi için fiyat" (an option's), "Bu oda 3 kişiye uygun mu?" (the chosen stay's). */
+export const guestGapText = (g: { was: number; now: number }, chosen: boolean): string =>
+  chosen ? L(`Bu oda ${g.now} kişiye uygun mu? Sayfada ${g.was} kişi`, `Does this room fit ${g.now}? The page says ${g.was}`) : L(`fiyat ${g.was} kişi için, yeniden ara`, `priced for ${g.was}, search again`);
+
+/** "Ücretsiz iptal 20 Mar'a dek" on a booking still free to cancel (its strip, beside Takvime ekle); null once past or unsaid. */
+export function freeCancelText(item: Pick<Item, "cancellation">, today: string): string | null {
+  const free = isoDate(item.cancellation?.freeUntil?.slice(0, 10));
+  if (!free || free < today) return null;
+  return L(`Ücretsiz iptal ${dayUntil(free)}`, `Free cancellation ${dayUntil(free)}`);
+}

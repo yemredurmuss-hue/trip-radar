@@ -10,9 +10,10 @@
 // gece"); never in capitals (DESIGN.md: Türkçe büyük harf etiket yok). It reads intents.ts's view model and decides nothing:
 // the states are intents.ts's, the words intentFrame.ts's and ticketFrame.ts's. Pure; app/plan/v82/IntentRow.tsx draws it.
 import { L } from "./i18n";
+import { isoDate } from "./items";
 import { codeLabel, headName, optionPrice, ratingParts, sidePrice } from "./intentFrame";
-import type { IntentVM, OptionVM } from "./intents";
-import { railDate, spanText } from "./railDates";
+import type { IntentStatus, IntentVM, OptionVM } from "./intents";
+import { isDatedSection, railDate, spanText } from "./railDates";
 import { ticketCodeLabel, ticketFace, ticketPrice } from "./ticketFrame";
 
 /** The face a row takes: a ticket's thin row (folds open), a stay's or a rental's card (doesn't fold). */
@@ -25,7 +26,9 @@ export type RowSlot =
   | { kind: "take" }
   | { kind: "book"; word: string }
   | { kind: "got" }
-  | { kind: "hap"; tone: "ok" | "arr" | "inc"; text: string };
+  /** Kaçırdıklarımız (tarihsiz niyet): a need on the date rail with no day yet: "Tarih ver" before anything is looked for. */
+  | { kind: "date" }
+  | { kind: "hap"; tone: "ok" | "arr" | "inc" | "busy"; text: string };
 
 export interface RowPart {
   text: string;
@@ -212,8 +215,17 @@ export function rowView(vm: IntentVM): RowView {
       slot = { kind: "book", word: vm.kind === "stay" || mode === "car" ? L("Rezerve et", "Book") : L("Satın al", "Buy") };
       break;
     default:
-      slot = deciding ? { kind: "pick", count } : { kind: "ask" };
+      slot = deciding ? { kind: "pick", count } : isDatedSection(vm.section) && !isoDate(vm.head.date) ? { kind: "date" } : { kind: "ask" };
   }
 
   return { face, lead, title, route, line, third, wants, figure, slot, count };
+}
+
+/**
+ * Kaçırdıklarımız 1 (Aranıyor): while the AI looks for a need still to find or decide (Ara pressed, the drawer closed), the
+ * slot says so ("Aranıyor…") instead of Ara or Seç; the first option in turns it back into a deck.
+ */
+export function whileSearching(view: RowView, status: IntentStatus, searching: boolean): RowView {
+  if (!searching || (status !== "searching" && status !== "deciding")) return view;
+  return { ...view, slot: { kind: "hap", tone: "busy", text: L("Aranıyor…", "Searching…") } };
 }

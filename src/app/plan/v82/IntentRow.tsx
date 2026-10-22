@@ -30,8 +30,20 @@ export function useRowOpen(key: string): [boolean, (open: boolean) => void] {
 }
 
 /** The date column beside an intent: its day over its weekday, or a stay's range, weekdays and nights on a slice. */
-export function RailCol({ date, editable }: { date: RailDate | null; editable: boolean }) {
-  if (!date) return <div className="q-tld none" aria-hidden />;
+export function RailCol({ date, editable, blank = false }: { date: RailDate | null; editable: boolean; blank?: boolean }) {
+  // (no day yet: on its own plan the day is typed here; else the rail is quiet)
+  // (a ticket's own day is typed on its ticket under the row: only a card asks for it here)
+  if (!date)
+    return editable && blank ? (
+      <div className="q-tld none">
+        <b>
+          <Editable field="date" />
+        </b>
+        <small>{L("tarihi yok", "no date")}</small>
+      </div>
+    ) : (
+      <div className="q-tld none" aria-hidden />
+    );
   const when = editable ? <Editable field="date">{date.when}</Editable> : date.when;
   return (
     <div className={`q-tld${date.notches ? " span" : ""}`}>
@@ -94,6 +106,8 @@ export interface SlotOn {
   page: string | null;
   /** The page's site, for its title. */
   brand: string | null;
+  /** "Tarih ver": its day typed where the rail says it (the record's own date), else asked in the chat. */
+  date?: (() => void) | null;
 }
 
 /** The one thing on the right (118 px): Ara · Seç and the count · Bunu seç · Satın al ↗ / Rezerve et ↗ · the state's hap. */
@@ -101,6 +115,12 @@ function Slot({ view, on, asked, setAsked, logo }: { view: RowView; on: SlotOn; 
   const s = view.slot;
   const stop = (e: React.MouseEvent) => e.stopPropagation();
   switch (s.kind) {
+    case "date":
+      return (
+        <button type="button" className="q-pick q-rbtn" onClick={(e) => (stop(e), (on.date ?? on.ask)?.())}>
+          {L("Tarih ver", "Set a date")}
+        </button>
+      );
     case "ask":
       return on.ask ? (
         <button type="button" className="q-pick q-rbtn" onClick={(e) => (stop(e), on.ask?.())}>
@@ -359,7 +379,7 @@ export function StayCard({ vm, view, art, date, on, onPress, menu, foot, under, 
     : {};
   return (
     <div className="q-row" data-face="card">
-      <RailCol date={date} editable={editable} />
+      <RailCol date={date} editable={editable} blank />
       <div className="q-rcard">
         <div className={`q-rrow card${onPress ? " tap" : ""}`} aria-describedby={chipId} {...press}>
           <StayPhoto vm={vm} view={view} art={art} />
