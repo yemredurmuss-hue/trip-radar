@@ -563,14 +563,18 @@ export function FrameTicket({ vm, form, page, links, info, detail, quiet, on, on
     if (inRow) {
       // Bilet elde (its code or its file) or Alındı (its ticket the last step, dropped under the pass); the paid sum only once backed.
       const proof = Boolean(a?.code || (a?.doc.count ?? 0) > 0);
-      const seal = proof ? (
+      // (on its day, or live, the seal's own foot speaks: its code to copy, "Yeni kalkış 20:05")
+      const now = Boolean(today || live || checkin);
+      const seal = now ? (
+        foot
+      ) : proof ? (
         <StepSeal stage="ticket" word={L("Bilet elde", "Ticket in hand")} sub={vm.paid ?? (a?.doc.name ? a.doc.name : null)} />
       ) : (
         <StepSeal stage="bought" word={L("Alındı", "Bought")} sub={L("bileti eklenmedi", "no ticket yet")} />
       );
-      const after = proof ? (a?.docMissing ? missing : null) : <DropZone word={doc.add} onPick={on.addDoc} onDrop={on.dropDoc ?? null} />;
+      const after = proof || now ? (a?.docMissing ? missing : null) : <DropZone word={doc.add} onPick={on.addDoc} onDrop={on.dropDoc ?? null} />;
       return (
-        <Frame cls=" bk" mode={face.mode} onOpen={onOpen} main={<TicketMain face={face} art={draw} fly={fly} inRow />} line={<TicketLine face={face} live={live} badge={badge} after={after} fields={fields} />} foot={seal} primary={proof ? primary : null} row={face.note ? <small className="z-note">{face.note}</small> : null} layer={layer} />
+        <Frame cls=" bk" mode={face.mode} onOpen={onOpen} main={<TicketMain face={face} art={draw} fly={fly} inRow />} line={<TicketLine face={face} live={live} badge={badge} after={after} fields={fields} />} foot={seal} primary={proof || now ? primary : null} row={face.note ? <small className="z-note">{face.note}</small> : null} layer={layer} />
       );
     }
     return (

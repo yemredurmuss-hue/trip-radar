@@ -115,6 +115,12 @@ export function CategoryRow({ row, meta, open, onToggle, onDecide, decideTip, bu
         <span className="q-prog q-meters">
           <Meter label={L("Karar", "Decided")} of={row.meters.decided} tone="acc" onClick={row.meters.decided[0] < row.meters.decided[1] ? onDecide : undefined} />
           {row.meters.bought[1] > 0 && <Meter label={L("Bilet", "Tickets")} of={row.meters.bought} tone="ok" />}
+          {row.settled && (
+            <span className="q-count sr-only" aria-label={L(`${row.settled.settled} / ${row.settled.total} tamam`, `${row.settled.settled} of ${row.settled.total} settled`)}>
+              {row.settled.settled}
+              <i>/{row.settled.total}</i>
+            </span>
+          )}
         </span>
       ) : (
       <span className="q-prog">

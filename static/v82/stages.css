@@ -91,7 +91,7 @@ button.q-meter:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 3px; 
 /* (in the closed row's 180 px: side by side, the row as tall as ever, 78 px, E2) */
 .q-row1 .q-meters { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: center; }
 .q-row1 .q-meter { width: 100%; }
-.q-row1 .q-meters > .q-meter:only-child { grid-column: 1 / -1; }
+.q-row1 .q-meters:not(:has(.q-meter.ok)) > .q-meter { grid-column: 1 / -1; }
 .q-meter, .q-mt { line-height: 15px; }
 
 

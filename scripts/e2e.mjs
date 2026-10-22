@@ -2429,7 +2429,8 @@ try {
     counts.push(Math.round(box.x + box.width));
   }
   assert.equal(new Set(counts).size, 1, `the arrows line up on the right (${counts})`);
-  assert.match(flat([await sec("stay").locator(".q-row1").innerText()])[0], /^Konaklama 2 şehir · 6 gece[^€]*?(\d+\/\d+ )?1 alındı · 1 seçildi €[\d.,]+/);
+  // (onay paketi 2026-10-22: the two counts in the bar's place: both stays decided, one of the two bought)
+  assert.match(flat([await sec("stay").locator(".q-row1").innerText()])[0], /^Konaklama 2 şehir · 6 gece[^€]*?Karar 2 \/ 2 Bilet 1 \/ 2 (\d+\/\d+ )?€[\d.,]+/);
   await app.locator(".cat-plan").evaluate((el) => el.scrollIntoView({ block: "start" }));
   await app.screenshot({ path: `${out}/5c-collapsed.png` });
   await app.setViewportSize({ width: 560, height: 1400 });
