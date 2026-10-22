@@ -132,6 +132,11 @@ kaydederiz. Her bilgi en güvenilir kaynaktan alınır:
 - [ ] Sonra: vibe (ışık, teras, yeşillik; fotoğraftan), kısmi konaklama kombinasyonları (2+3 gece = tam plan),
       gerçek kayıtlarla altın set ölçümü
 - [ ] Sonra: "farka değer mi?" (pahalı seçenek neyi fazladan veriyor), gerçek kayıtlarla altın set ölçümü
+- [ ] Sonra: benle gezen eklenti (Emre'nin backlog'u, tuval "Karar Masası": Final 3 · Chrome'da ve Kartlar ·
+      Kaynağa git). Arama sayfası plandaki rotayı tanır ("Bangkok → İstanbul, 2 Nis planında"); sonuç listesinde her
+      uçuşun yanına "+" ve desteye göre yeri ("direktlerin en ucuzu", "desten de var"); adayları rotanın adıyla bir
+      Chrome sekme grubunda açar, her sekmede "aday 2/3" şeridi, orada "Buna karar ver" ve "Burada satın al"; tek uçuş
+      sayfasında "Bu zaten desten de". Sonuç listesine "+" koymak site başına iş: önce Skyscanner, Kiwi, Booking, Agoda.
 - [ ] Sonraki öneriler (onay bekliyor): 7 sade karşılaştırma, 8 zaman çizelgesinde tekrarların kalkması,
       9 sohbet ↔ pano bağlantısı, 10 sırayla karar ver modu
 - [ ] 0.17: ciddi adaylar için daha çok yorum toplama (süre/yorum sınırlı, kaldığı yerden devam),
