@@ -30,7 +30,7 @@ import type { IntentStatus, IntentVM, OptionVM } from "../src/lib/intents";
 import { makeItem } from "./fixtures/makeItem";
 
 const opt = (id: string, place: number, over: Partial<OptionVM> = {}): OptionVM => ({
-  id, item: makeItem({ id, url: `https://www.booking.com/hotel/${id}.html` }), title: id, brand: null, source: null, image: null, price: null, ticket: null,
+  id, item: makeItem({ id, url: `https://www.booking.com/hotel/${id}.html` }), title: id, brand: null, source: null, image: null, gallery: [], price: null, ticket: null,
   score: null, place, rating: null, where: null, cancel: null, checks: [], badges: [], ours: false, leg: null, current: false, carrier: null, near: [], topics: [], ...over,
 });
 

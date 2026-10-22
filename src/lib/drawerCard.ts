@@ -4,13 +4,13 @@
 // Puan, Kaynak; a flight: Bagaj, El bagajı, İade, Varış, Kaynak; a rental: Sigorta, İptal, Teslim, Puan, Kaynak), what its
 // reviews praise and fault, "Neden 91?" from the parts, and a flight's day band (istenen gün, a day later). A fact the
 // record doesn't hold reads "bilinmiyor" in grey (C19). Pure: app/plan/v82/IntentDrawer.tsx draws it.
-import type { Part } from "./decision";
+import { DEFAULT_LEVELS, levelFor, type Part } from "./decision";
 import { L } from "./i18n";
 import { shortDay } from "./ideas";
 import { formatPrice, isoDate } from "./items";
 import { dative } from "./prepDays";
 import { weekdayLong } from "./railDates";
-import { AMENITY_EN, type CriterionId, type Item } from "./types";
+import { AMENITY_EN, type Category, type CriterionId, type Item, type PriorityLevel, type Trip } from "./types";
 
 export type ScoreGroup = "reviews" | "features" | "price";
 
@@ -277,3 +277,39 @@ export function freeCancelText(item: Pick<Item, "cancellation">, today: string):
   if (!free || free < today) return null;
   return L(`Ücretsiz iptal ${dayUntil(free)}`, `Free cancellation ${dayUntil(free)}`);
 }
+
+/**
+ * "Ayarla" (onay paketi 2026-10-22, Kalan öneriler): the sort's three weights as dials, 0–4, 2 each group's own default.
+ * A dial sets the levels of its group's criteria for this category (the decision's own: decision.withPriorities), each
+ * scaled from its default, so the order on the cards changes at once and is kept for the trip.
+ */
+export const DIAL_MAX = 4;
+
+const groupCriteria = (category: Category, group: ScoreGroup): [CriterionId, number][] =>
+  (Object.entries(DEFAULT_LEVELS[category]) as [CriterionId, number][]).filter(([c, d]) => d > 0 && GROUP_OF[c] === group);
+
+/** Where a group's dial stands for a trip: its criteria's levels against their defaults (2 = as they are by default). */
+export function groupDial(trip: Trip, category: Category, group: ScoreGroup): number {
+  const cs = groupCriteria(category, group);
+  if (!cs.length) return 0;
+  // (the dial whose levels are nearest the trip's own, its default on a tie)
+  const off = (dial: number) => cs.reduce((n, [c, d]) => n + Math.abs(Math.max(0, Math.min(4, Math.round((d * dial) / 2))) - levelFor(trip, category, c)), 0);
+  return [2, 0, 1, 3, 4].reduce((best, dial) => (off(dial) < off(best) ? dial : best), 2);
+}
+
+/** The levels a group's dial sets on its criteria. */
+export function dialLevels(category: Category, group: ScoreGroup, dial: number): { criterion: CriterionId; level: PriorityLevel; category: Category }[] {
+  return groupCriteria(category, group).map(([criterion, d]) => ({ criterion, level: Math.max(0, Math.min(4, Math.round((d * dial) / 2))) as PriorityLevel, category }));
+}
+
+export type WeightPreset = "balanced" | "price" | "reviews" | "location";
+
+/** A preset's levels ("Fiyat önce": price at the top), null for "Dengeli" (back to the defaults). */
+export function presetLevels(category: Category, preset: WeightPreset): { criterion: CriterionId; level: PriorityLevel; category: Category }[] | null {
+  if (preset === "balanced") return null;
+  const top: CriterionId[] = preset === "price" ? ["price"] : preset === "reviews" ? ["rating", "comfort", "details"] : ["location"];
+  return top.filter((c) => DEFAULT_LEVELS[category][c] !== undefined).map((criterion) => ({ criterion, level: 4 as PriorityLevel, category }));
+}
+
+export const presetLabel = (p: WeightPreset): string =>
+  p === "balanced" ? L("Dengeli", "Balanced") : p === "price" ? L("Fiyat önce", "Price first") : p === "reviews" ? L("Yorumlar önce", "Reviews first") : L("Konum önce", "Location first");

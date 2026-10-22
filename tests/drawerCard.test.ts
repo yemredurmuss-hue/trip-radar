@@ -126,3 +126,27 @@ describe("freeCancelText", () => {
     expect(freeCancelText(by.rimping, "2027-03-21")).toBeNull();
   });
 });
+
+describe("Ayarla: the sort's weights as dials and presets (onay paketi 2026-10-22)", async () => {
+  const { dialLevels, groupDial, presetLevels } = await import("../src/lib/drawerCard");
+  const { levelFor, resetPriorities, withPriorities } = await import("../src/lib/decision");
+  const { trip } = thailand();
+  it("a dial at 2 is the defaults; turned up or down, its group's criteria scale from theirs", () => {
+    expect(groupDial(trip, "stay", "price")).toBe(2);
+    const up = withPriorities(trip, dialLevels("stay", "price", 4));
+    expect(levelFor(up, "stay", "price")).toBe(4);
+    // (3 and 4 both put price at the top: either reads back)
+    expect(groupDial(up, "stay", "price")).toBeGreaterThanOrEqual(3);
+    const off = withPriorities(trip, dialLevels("stay", "reviews", 0));
+    expect(levelFor(off, "stay", "rating")).toBe(0);
+    expect(levelFor(off, "stay", "price")).toBe(levelFor(trip, "stay", "price"));
+  });
+  it("presets: one thing at the top; Dengeli back to the defaults", () => {
+    expect(presetLevels("stay", "price")).toEqual([{ criterion: "price", level: 4, category: "stay" }]);
+    expect(presetLevels("stay", "location")?.map((c) => c.criterion)).toEqual(["location"]);
+    expect(presetLevels("stay", "balanced")).toBeNull();
+    const t = withPriorities(trip, presetLevels("stay", "location")!);
+    expect(levelFor(t, "stay", "location")).toBe(4);
+    expect(levelFor(resetPriorities(t, "stay"), "stay", "location")).toBe(levelFor(trip, "stay", "location"));
+  });
+});

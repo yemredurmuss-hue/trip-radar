@@ -697,6 +697,11 @@ export interface Item {
   optionDetail: string | null;
   url: string | null;
   imageUrl: string | null;
+  /**
+   * A stay's other photos as its page showed them (onay paketi 2026-10-22, galeri): their addresses only, never the files,
+   * read where they are; the first is never the card's own photo.
+   */
+  gallery?: string[];
   city: string | null;
   country: string | null;
   /** ISO 3166-1 alpha-2; used to keep trips apart. */

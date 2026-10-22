@@ -189,6 +189,8 @@ export interface OptionVM {
   brand: Brand | null;
   source: OptionSource | null;
   image: string | null;
+  /** A stay's other photos from its page (galeri), the card's own first photo apart. */
+  gallery: string[];
   /** cardFacts' price: the total (a stay: its nights), per night, one person's share. */
   price: CardFacts["price"];
   /** A ticket's price per person and in all (cardTicket.ticketPrices). */
@@ -516,6 +518,7 @@ function optionVM(item: Item, env: Env, at: { place: number; frame: FrameFamily;
     brand: brandOf(facts.source?.label, facts.source?.host),
     source: sourceOf(item),
     image: facts.image,
+    gallery: item.gallery?.filter((g) => g !== facts.image) ?? [],
     price: facts.price,
     ticket: at.frame === "ticket" ? ticketPrices(item, facts.price, env.people) : null,
     score: facts.score,

@@ -146,6 +146,24 @@ export function tooLowForATour(x: Pick<Extraction, "category" | "name" | "price"
   return x.category === "activity" && amount != null && amount > 0 && amount < 5 && ["EUR", "USD", "GBP", "CHF", "€", "$", "£"].includes(money) && TOUR_WORDS.test(x.name ?? "");
 }
 
+/** How many of a stay's page photos its card keeps beside its own (their addresses only). */
+export const GALLERY_MAX = 8;
+
+/** A stay's page photos past its own, in view first (pagecapture.ts), each once, the web's only. */
+export function galleryOf(category: Item["category"], capture: Pick<Capture, "images" | "url">, own: string | null): { gallery?: string[] } {
+  if (category !== "stay" || !capture.url) return {};
+  const seen = new Set(own ? [own] : []);
+  const out: string[] = [];
+  for (const im of capture.images ?? []) {
+    const src = httpUrl(im.src);
+    if (!src || seen.has(src) || /\.svg(\?|$)|sprite|logo|icon|avatar|map/i.test(src)) continue;
+    seen.add(src);
+    out.push(src);
+    if (out.length >= GALLERY_MAX) break;
+  }
+  return out.length ? { gallery: out } : {};
+}
+
 export function buildItem(
   extraction: Extraction,
   capture: Capture,
@@ -188,6 +206,7 @@ export function buildItem(
     url: capture.url,
     // A web address only from a page (a screenshot alone has none to give; its photo is cut out, see process.ts).
     imageUrl: capture.url ? (httpUrl(x.image_url) ?? httpUrl(capture.meta["og:image"])) : null,
+    ...galleryOf(x.category, capture, capture.url ? (httpUrl(x.image_url) ?? httpUrl(capture.meta["og:image"])) : null),
     // P5 (F13): a stay, a sight or a table is where its page's address says, before the model's reading.
     city: (["stay", "activity", "food"].includes(x.category) ? pageLocality(capture) : null) ?? x.city,
     country: x.country,
@@ -337,6 +356,7 @@ export function mergeItem(existing: Item, incoming: Item, placeOnly = false): It
     optionDetail: pick(incoming.optionDetail, existing.optionDetail),
     url: pick(incoming.url, existing.url),
     imageUrl: pick(incoming.imageUrl, existing.imageUrl),
+    ...(incoming.gallery?.length || existing.gallery?.length ? { gallery: incoming.gallery?.length ? incoming.gallery : existing.gallery } : {}),
     city: pick(incoming.city, existing.city),
     country: pick(incoming.country, existing.country),
     countryCode: pick(incoming.countryCode, existing.countryCode),

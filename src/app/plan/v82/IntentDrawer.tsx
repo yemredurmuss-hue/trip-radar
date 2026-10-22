@@ -29,6 +29,8 @@ import { useMyName } from "../../Profile";
 import { useShare } from "../../Share";
 import { useCardEnv } from "../../cards/PlanCard";
 import { decisionOf } from "./DetailLayer";
+import { GalleryThumbs } from "./Gallery";
+import { WeightTuner } from "./WeightTuner";
 import { Ic, Mark, type IconName } from "./icons";
 import type { Typical } from "./OptionCompact";
 import { CarrierLogo } from "./OptionRow";
@@ -245,6 +247,7 @@ export function CardOption({ o, art, current, typical, why, parts, rental, solo,
         <img className={o.image ? "ph" : "art"} src={o.image ?? art} alt="" />
         <Rank o={o} solo={solo} />
         <Hearts item={o.item} />
+        {o.gallery.length > 0 && <GalleryThumbs own={o.image} photos={o.gallery} name={o.title} />}
       </div>
       <div className="dr-in">
         <span className="dr-r1">
@@ -536,6 +539,7 @@ export function IntentDrawer({ vm, options, dropped = [], chosenId, art, links, 
                   </span>
                 ))}
               </span>
+              {options[0] && <WeightTuner trip={env.trip} category={options[0].item.category} shares={shares} />}
             </div>
           )}
           <div className="dr-ctl">
