@@ -27,7 +27,7 @@ async function open(url, fixture) {
       { id: "bali", title: "Bali", when: "Ocak", match: false, photos: [dot] },
       { id: "dk", title: "Kopenhag ve Amsterdam", when: "8 – 18 Eki", match: false, photos: [] },
     ] };
-    const pocket = { trip: { id: "pt", title: "Portekiz", when: "12 – 19 Kas", count: 7, photo: dot }, key: false, waiting: 2, rows: [
+    const pocket = { trip: { id: "pt", title: "Portekiz", when: "12 – 19 Kas", count: 7, decks: { stay: 4, flight: 2, activity: 1 }, photo: dot }, key: false, waiting: 2, rows: [
       { id: "c:r", title: "Lumiares Hotel", sub: "Booking.com", photo: null, state: "reading" },
       { id: "c:f", title: "Casa do Bairro", sub: "Airbnb", photo: null, state: "failed" },
       { id: "i:a", title: "Memmo Príncipe Real", sub: "Konaklama", photo: dot, state: "in" },
@@ -49,12 +49,12 @@ const inShadow = (page, fn) => page.evaluate(fn);
 const hotel = await open("https://www.booking.com/hotel/pt/memmo-alfama.html?checkin=2026-11-12&checkout=2026-11-16", "booking-hotel.html");
 const shadow = (page, fn) => page.evaluate(`(${fn})(document.getElementById("trip-radar-companion").shadowRoot)`);
 assert.equal(await shadow(hotel, (r) => r.querySelector(".pill")), null, "no bottom-right pill any more");
-assert.equal(await shadow(hotel, (r) => r.querySelector(".tab")?.textContent), "7+", "the tab: the trip's count and a + on a place's own page");
+assert.equal(await shadow(hotel, (r) => r.querySelector(".tab")?.textContent), "4otel+", "the tab: the trip's hotels on a hotel site, and a + on a place's own page");
 await hotel.screenshot({ path: `${out}/stay-1-tab.png` });
 await shadow(hotel, (r) => r.querySelector(".tab").click());
 await hotel.waitForTimeout(150);
 const cep = await shadow(hotel, (r) => r.querySelector(".cep")?.innerText ?? "");
-assert.match(cep, /Portekiz[\s\S]*12 – 19 Kas · 7 kayıt[\s\S]*Bu sayfa[\s\S]*\+ Konaklama destesine ekle[\s\S]*Son eklenenler[\s\S]*Lumiares Hotel[\s\S]*okunuyor[\s\S]*okunamadı[\s\S]*tekrar[\s\S]*AI bağlı değil: 2 kayıt bekliyor[\s\S]*Portekiz panosunu aç/);
+assert.match(cep, /Portekiz[\s\S]*12 – 19 Kas · Konaklama 4 · toplam 7[\s\S]*Bu sayfa[\s\S]*\+ Konaklama destesine ekle[\s\S]*Son eklenenler[\s\S]*Lumiares Hotel[\s\S]*okunuyor[\s\S]*okunamadı[\s\S]*tekrar[\s\S]*AI bağlı değil: 2 kayıt bekliyor[\s\S]*Portekiz panosunu aç/);
 await hotel.screenshot({ path: `${out}/stay-1-pocket.png` });
 await shadow(hotel, (r) => [...r.querySelectorAll(".cep .lnk")].find((b) => b.textContent === "tekrar").click());
 await shadow(hotel, (r) => r.querySelector('.cep .x[aria-label="Lumiares Hotel kaldır"]').click());
@@ -105,7 +105,19 @@ await list.screenshot({ path: `${out}/stay-4a-pocket.png` });
 await list.keyboard.press("Escape");
 await list.waitForTimeout(50);
 assert.equal(await shadow(list, (r) => r.querySelector(".cep")), null, "Escape closes it");
-// Pinterest's: a small "+" on the card's top edge, "+ Ekle" while the mouse is over the card.
+// 0.44.1: each "+" outside its card by the right edge (nothing of the result covered), fixed to the page: scrolling moves
+// it with its card, never after it.
+const gap = () => list.evaluate(() => {
+  const pins = [...document.getElementById("trip-radar-companion").shadowRoot.querySelectorAll(".pin")].map((p) => p.getBoundingClientRect());
+  return [...document.querySelectorAll(".card")].slice(0, 3).map((c, i) => { const r = c.getBoundingClientRect(); return [Math.round(pins[i].left - r.right), Math.round(pins[i].top - r.top)]; });
+});
+const before = await gap();
+assert.ok(before.every(([dx]) => dx >= 8), `outside the card's right edge: ${JSON.stringify(before)}`);
+await list.evaluate(() => ((document.body.style.paddingBottom = "1600px"), window.scrollBy(0, 120)));
+assert.equal(await list.evaluate(() => scrollY), 120);
+assert.deepEqual(await gap(), before, "scrolled at once with its card (no frame behind)");
+await list.evaluate(() => window.scrollTo(0, 0));
+// Pinterest's: a small "+" by the card, "+ Ekle" while the mouse is over the card.
 const card2 = list.locator(".card").nth(1);
 await card2.hover({ position: { x: 300, y: 90 } });
 await list.waitForTimeout(250);

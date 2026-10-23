@@ -40,10 +40,10 @@ assert.ok(asked.includes("desk:route"), "it asked which row this search is for")
 const seen = await page.evaluate(() => window.__asked.filter((m) => m.type === "desk:seen"));
 assert.equal(seen.length, 1, "the chosen flight's price on the site asked about once");
 assert.equal(seen[0].price, 288);
-// The "+" pins sit on the cards' top edge: press the second card's (its top right corner, where the pin stands).
+// The "+" pins sit outside the cards, by their right edge (0.44.1): press the second card's.
 const card = page.locator(".card").nth(1);
 const box = await card.boundingBox();
-await page.mouse.click(box.x + box.width - 23, box.y);
+await page.mouse.click(box.x + box.width + 10 + 15, box.y + 10 + 15);
 await page.waitForTimeout(400);
 const adds = await page.evaluate(() => window.__asked.filter((m) => m.type === "desk:add"));
 assert.equal(adds.length, 1, "one + pressed, one result added");

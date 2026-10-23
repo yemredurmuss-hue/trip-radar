@@ -71,8 +71,10 @@ const CSS = `
 .strip button { font: 750 12.5px/1 inherit; border: 0; border-radius: 99px; padding: 8px 12px; cursor: pointer; background: #5b45e0; color: #fff; white-space: nowrap; }
 .strip button.q { background: transparent; color: #c9c2f5; padding: 8px; }
 button:focus-visible, .plus:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 1px; }
-.layer { position: fixed; inset: 0; z-index: 2147483645; pointer-events: none; }
-.pin { position: fixed; display: flex; align-items: center; gap: 6px; pointer-events: auto; }
+.layer { position: absolute; top: 0; left: 0; width: 0; height: 0; z-index: 2147483645; pointer-events: none; }
+.pin { position: absolute; display: flex; align-items: center; gap: 6px; pointer-events: auto; }
+.pin.out { flex-direction: column-reverse; align-items: flex-start; }
+.pin.out .tag { max-width: var(--room, 120px); white-space: normal; border-radius: 10px; }
 .plus { width: 30px; height: 30px; border-radius: 99px; border: 0; background: #5b45e0; color: #fff; font: 800 18px/1 system-ui, sans-serif; cursor: pointer;
   box-shadow: 0 4px 12px -4px rgba(91,69,224,.7); }
 .plus { width: auto; min-width: 30px; padding: 0 9px; display: inline-flex; align-items: center; justify-content: center; gap: 0; transition: padding 160ms ease, gap 160ms ease; }
@@ -91,6 +93,7 @@ button:focus-visible, .plus:focus-visible { outline: 3px solid #cfc7ff; outline-
 .tab .th { width: 30px; height: 30px; border-radius: 8px; overflow: hidden; display: grid; place-items: center; background: #3b2f7a; color: #fff; font-size: 13px; }
 .tab .th img { width: 100%; height: 100%; object-fit: cover; }
 .tab .n { min-width: 20px; padding: 3px 5px; border-radius: 99px; background: #5b45e0; text-align: center; }
+.tab .w { margin-top: -2px; font-size: 9.5px; font-weight: 700; color: #cfc8f5; }
 .tab .n.bump { animation: bump 380ms cubic-bezier(.3,.7,.2,1.4); }
 .tab .add { width: 22px; height: 22px; border-radius: 99px; background: #fff; color: #5b45e0; display: grid; place-items: center; font-size: 15px; }
 @keyframes bump { 0% { transform: scale(1); } 40% { transform: scale(1.45); background: #1f7a45; } 100% { transform: scale(1); } }
@@ -648,6 +651,12 @@ function start() {
     b.onclick = onclick;
     return b;
   };
+  const DECK_OF: Partial<Record<SiteKind, { cat: "stay" | "flight" | "activity" | "transport"; word: () => string }>> = {
+    stay: { cat: "stay", word: () => L("otel", "stays") },
+    flight: { cat: "flight", word: () => L("uçuş", "flights") },
+    activity: { cat: "activity", word: () => L("tur", "tours") },
+    transport: { cat: "transport", word: () => L("yol", "rides") },
+  };
   const STATE_WORD: Record<PocketRow["state"], () => string> = {
     in: () => L("destede", "in the deck"),
     reading: () => L("okunuyor", "being read"),
@@ -684,17 +693,25 @@ function start() {
     const listy = !single && !route && cards.length > 0;
     if (!trip && !single && !listy) return;
     const inDeck = pageState === "done" || (pageState === "idle" && Boolean(where?.saved));
+    // (the number on the tab: this site's deck on the trip, the hotels on a hotel site; the whole trip elsewhere)
+    const deck = trip && DECK_OF[kind] ? { n: trip.decks?.[DECK_OF[kind]!.cat] ?? 0, word: DECK_OF[kind]!.word() } : null;
     if (!sideOpen) {
       const tab = document.createElement("button");
       tab.type = "button";
       tab.className = "tab";
-      tab.setAttribute("aria-label", trip ? L(`Gezi cebi: ${trip.title}, ${trip.count} kayıt`, `Trip pocket: ${trip.title}, ${trip.count} saved`) : L("Gezi cebi", "Trip pocket"));
+      tab.setAttribute("aria-label", trip ? (deck ? L(`Gezi cebi: ${trip.title}, ${deckWord(kind)} destesinde ${deck.n}`, `Trip pocket: ${trip.title}, ${deck.n} in ${deckWord(kind)}`) : L(`Gezi cebi: ${trip.title}, ${trip.count} kayıt`, `Trip pocket: ${trip.title}, ${trip.count} saved`)) : L("Gezi cebi", "Trip pocket"));
       tab.append(thumb(trip?.photo, trip?.title ?? "+"));
       if (trip) {
         const n = document.createElement("span");
         n.className = `n${bump ? " bump" : ""}`;
-        n.textContent = String(trip.count);
+        n.textContent = String(deck ? deck.n : trip.count);
         tab.append(n);
+        if (deck) {
+          const w = document.createElement("span");
+          w.className = "w";
+          w.textContent = deck.word;
+          tab.append(w);
+        }
       }
       if (single && !inDeck) {
         const add = document.createElement("span");
@@ -719,7 +736,7 @@ function start() {
     const tp = document.createElement("button");
     tp.type = "button";
     tp.className = "tp";
-    tp.append(thumb(trip?.photo, trip?.title ?? "+"), twoLines(trip?.title ?? L("Henüz gezi yok", "No trip yet"), trip ? [trip.when, L(`${trip.count} kayıt`, `${trip.count} saved`)].filter(Boolean).join(" · ") : L("İlk ekleme geziyi açar", "The first add starts one")));
+    tp.append(thumb(trip?.photo, trip?.title ?? "+"), twoLines(trip?.title ?? L("Henüz gezi yok", "No trip yet"), trip ? [trip.when, deck ? L(`${deckWord(kind)} ${deck.n} · toplam ${trip.count}`, `${deckWord(kind)} ${deck.n} · ${trip.count} in all`) : L(`${trip.count} kayıt`, `${trip.count} saved`)].filter(Boolean).join(" · ") : L("İlk ekleme geziyi açar", "The first add starts one")));
     if (where?.trips.length) {
       const em = document.createElement("em");
       em.textContent = "▾";
@@ -917,20 +934,36 @@ function start() {
     return list.filter((el) => !list.some((o) => o !== el && el.contains(o)));
   };
 
+  /**
+   * Each "+" beside its card, in the page's own coordinates (0.44.1): it scrolls with the page as the site's own parts do,
+   * never chasing it. Outside the card, by its right edge, so nothing of the result is covered (never its left: a site's
+   * filters sit there); with no room there on the card's top edge, stepping left of the site's own button.
+   */
+  const OUT = 52;
   const place = () => {
+    const x0 = scrollX, y0 = scrollY;
     for (const c of cards) {
       const r = c.el.getBoundingClientRect();
-      const shown = r.bottom > 0 && r.top < innerHeight && r.width > 0;
+      const shown = r.width > 0 && r.height > 0;
       c.pin.style.display = shown ? "flex" : "none";
-      if (shown) {
-        // (on the card's top edge, half over it: never over the result's own price or button)
-        const top = Math.max(4, r.top - 15);
+      if (!shown) continue;
+      const room = innerWidth - r.right - 18;
+      const out = room >= OUT - 18;
+      c.pin.classList.toggle("out", out);
+      if (out) {
+        c.pin.style.setProperty("--room", `${room}px`);
+        c.pin.style.top = `${r.top + y0 + 10}px`;
+        c.pin.style.left = `${r.right + x0 + 10}px`;
+        c.pin.style.transform = "none";
+      } else {
         let right = Math.min(innerWidth - 40, r.right - 8);
         // (the site's own button under the "+" (a heart, a share): the "+" steps left of it)
-        const under = document.elementsFromPoint(right - 15, Math.max(1, r.top + 6)).find((x) => x !== host && !host.contains(x));
-        if (under && c.el.contains(under) && under.closest("button, [role='button'], input, select")) right -= 44;
-        c.pin.style.top = `${top}px`;
-        c.pin.style.left = `${right}px`;
+        if (r.top > 0 && r.top < innerHeight) {
+          const under = document.elementsFromPoint(right - 15, r.top + 6).find((x) => x !== host && !host.contains(x));
+          if (under && c.el.contains(under) && under.closest("button, [role='button'], input, select")) right -= 44;
+        }
+        c.pin.style.top = `${Math.max(4, r.top - 15) + y0}px`;
+        c.pin.style.left = `${right + x0}px`;
         c.pin.style.transform = "translateX(-100%)";
       }
     }

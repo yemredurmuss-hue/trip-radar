@@ -491,7 +491,11 @@ yukarıdaki tablodadır (Seçildi kum, Alındı yeşil).
 - Cep simgede ve sayfanın sağ kenarında aynı içerik (`lib/pocket.ts`): üstte şu anki gezi (kapak, günler, kaç kayıt; ▾
   başka gezi), "Bu sayfa", son 5 eklenen ve durumu (destede, okunuyor, okunamadı · tekrar) ile ×, AI
   bağlı değilse tek satır ("3 kayıt bekliyor, toplamaya devam"), altta "Bali panosunu aç ↗".
-- Kapalıyken sağ kenarda küçük sekme: gezinin kapağı, kayıt sayısı (eklenince zıplar), yerin kendi sayfasında "+". Hop
+- Kapalıyken sağ kenarda küçük sekme: gezinin kapağı, bu sitenin destesindeki sayı ("4 otel"; uçuş sitesinde uçuş, tur
+  sitesinde tur; başka sitede gezinin toplamı; eklenince zıplar), yerin kendi sayfasında "+". Cebin başında "Konaklama 4
+  · toplam 29".
+- Sonuçlardaki "+" (0.44.1) kartın sağ dışında, sayfaya yapışık (kaydırınca kartla birlikte gider, peşinden koşmaz); sağda
+  yer yoksa kartın üst kenarında. Hiçbir zaman sonucun puanının, fiyatının ya da düğmesinin üstünde değil. Hop
   hareketi sekmeye uçar. "Bu sitede gizle" o sitede kapatır. Sağ alttaki "Desteye ekle" hapı kalktı, cebe girdi.
 - Yerin kendi sayfası: "+ Konaklama destesine ekle". Liste: "Sonuçlardan seç" (liste tek kayıt olmaz), sonuç bulunamazsa
   "Ekrandakini ekle". Eklenemeyen sayfa (yeni sekme) çıkmaz sokak değil: gezi ve son eklenenler yine görünür.

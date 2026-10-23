@@ -12,7 +12,7 @@ import { deleteItem } from "./removal";
 import { isDemoTrip, profileTrips } from "./trips";
 import { loadCurrent } from "./tripRules";
 import { undoSave } from "./saveUndo";
-import type { Capture, Item, Trip } from "./types";
+import type { Capture, Category, Item, Trip } from "./types";
 
 export const POCKET_ROWS = 5;
 /** A save not yet given a trip (the model picks it) shows in every pocket this long. */
@@ -29,7 +29,8 @@ export interface PocketRow {
 }
 
 export interface Pocket {
-  trip: { id: string; title: string; when: string | null; count: number; photo: string | null } | null;
+  /** count: everything on the trip; decks: each category's own (the tab on a hotel site says the stays). */
+  trip: { id: string; title: string; when: string | null; count: number; decks: Partial<Record<Category, number>>; photo: string | null } | null;
   rows: PocketRow[];
   /** Saves waiting for a key to be read (no key connected: they wait on this device). */
   waiting: number;
@@ -80,6 +81,13 @@ export function pocketTrip(trips: readonly Trip[], items: readonly Item[], curre
   return [...live].sort((a, b) => last(b) - last(a))[0] ?? null;
 }
 
+/** How many in each category's deck (what the board's Pano counts). */
+export function deckCounts(items: readonly Item[]): Partial<Record<Category, number>> {
+  const out: Partial<Record<Category, number>> = {};
+  for (const i of items) if (i.status !== "dismissed") out[i.category] = (out[i.category] ?? 0) + 1;
+  return out;
+}
+
 /** The pocket for that trip (null: the current one, else the last saved into). */
 export async function pocketFor(tripId: string | null): Promise<Pocket> {
   const d = await db();
@@ -92,7 +100,7 @@ export async function pocketFor(tripId: string | null): Promise<Pocket> {
   const range = trip ? (trip.confirmedDates ?? profileTrips([trip], items)[0]?.range ?? null) : null;
   const photo = trip ? ([trip.heroImage, ...mine.sort((a, b) => b.createdAt - a.createdAt).map((i) => i.imageUrl)].find(photoOk) ?? null) : null;
   return {
-    trip: trip ? { id: trip.id, title: trip.title, when: range ? formatDateRange(range.start, range.end) : null, count: mine.length, photo } : null,
+    trip: trip ? { id: trip.id, title: trip.title, when: range ? formatDateRange(range.start, range.end) : null, count: mine.length, decks: deckCounts(mine), photo } : null,
     rows: pocketRows(trip?.id ?? null, captures, items),
     waiting: key ? 0 : captures.filter((c) => c.status === "pending" || c.status === "processing").length,
     key,
