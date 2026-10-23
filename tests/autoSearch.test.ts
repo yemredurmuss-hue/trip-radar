@@ -8,7 +8,7 @@ import type { Item, Trip } from "../src/lib/types";
 
 const hotel = { sleep: "hotel", movingBase: false, preset: "classic", closes: {} } as const;
 const van = { sleep: "vehicle", movingBase: true, preset: "road", closes: {} } as const;
-const free = { ownStay: false, routeDraft: false, covered: false };
+const free = { ownStay: false, covered: false };
 const stay = { kind: "stay", section: "stay" } as const;
 const transfer = { kind: "transfer", section: "transport" } as const;
 const flight = { kind: "flight", section: "flight" } as const;
@@ -30,10 +30,7 @@ describe("autoSearchBlock: never against what the trip already says", () => {
     expect(autoSearchBlock(transfer, { ...hotel, preset: "road" }, free)).toBe("drives");
     expect(autoSearchBlock(flight, van, free)).toBeNull();
   });
-  it("a route still to agree: its nights and ways wait; a covered need and a closed category never", () => {
-    expect(autoSearchBlock(stay, hotel, { ...free, routeDraft: true })).toBe("route");
-    expect(autoSearchBlock(transfer, hotel, { ...free, routeDraft: true })).toBe("route");
-    expect(autoSearchBlock(flight, hotel, { ...free, routeDraft: true })).toBeNull();
+  it("a covered need and a closed category never (a proposed route's stops are looked for: 0.40.5)", () => {
     expect(autoSearchBlock(stay, hotel, { ...free, covered: true })).toBe("covered");
     expect(autoSearchBlock(flight, { ...hotel, closes: { flight: "trenle" } }, free)).toBe("closed");
   });

@@ -572,9 +572,10 @@ function StayPhoto({ vm, view, art }: { vm: IntentVM; view: RowView; art: string
   const o = vm.chosen ?? null;
   const photo = o?.image ?? vm.head.image ?? null;
   const rating = ratingParts(o?.rating ?? null);
-  const deck = !o && view.slot.kind === "pick";
+  // (a deck: nothing chosen yet, or our pick among several in front of it, 0.40.5)
+  const deck = view.slot.kind === "pick" && (!o || vm.status === "suggested");
   if (deck) {
-    const all = [...vm.options, ...(vm.more ?? [])].slice(0, 3);
+    const all = [...(o ? [o] : []), ...vm.options, ...(vm.more ?? [])].filter((x, i, list) => list.findIndex((y) => y.id === x.id) === i).slice(0, 3);
     return (
       <span className="q-rph deck" aria-hidden>
         {all.map((x, i) => (
@@ -627,8 +628,10 @@ export function StayCard({ vm, view, art, date, on, onPress, menu, foot, under, 
         },
       }
     : {};
+  // (chosen among several: the deck stays under it, "↩ 2 seçenek daha" opens the drawer, as a flight's: 0.40.5)
+  const rest = onPress ? (view.rest ?? 0) : 0;
   return (
-    <div className="q-row" data-face="card">
+    <div className={`q-row${rest ? " rest" : ""}`} data-face="card">
       <RailCol date={date} editable={editable} blank />
       <div className="q-rcard">
         <div className={`q-rrow card${onPress ? " tap" : ""}`} aria-describedby={chipId} {...press}>
@@ -662,6 +665,11 @@ export function StayCard({ vm, view, art, date, on, onPress, menu, foot, under, 
         </div>
         {ask ?? foot}
         {under}
+        {rest > 0 && onPress && (
+          <button type="button" className="q-more" onClick={onPress} aria-label={L(`Öteki ${rest} seçenek`, `The other ${rest} options`)}>
+            {L(`↩ ${rest} seçenek daha`, `↩ ${rest} more ${rest === 1 ? "option" : "options"}`)}
+          </button>
+        )}
       </div>
     </div>
   );

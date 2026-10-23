@@ -1,31 +1,28 @@
 // Kendiliğinden arama (0.40.1, karar 3: "hepsi kendiliğinden aranır") and what the trip's shape says against it (0.40.3,
 // Emre: a camper van trip got a hotel for its 14 nights). A need is looked for by itself only when nothing about the trip
 // already answers it: nights spent in the van, the camp, the boat; a day trip; a way the van or the car drives; a need a
-// package covers; a route still to agree (its nights and ways change with it). Pure, tested.
+// package covers. (0.40.5: a proposed route's stops are looked for too, each has its own nights: Emre, "öneri bulduğu halde
+// boş gözüküyor".) Pure, tested.
 import { EMPTY_METRICS } from "./items";
 import type { Need } from "./offerSource";
 import type { TripShape } from "./playbooks/shape";
 import type { Item, StayKind } from "./types";
 
 /** Why a need isn't looked for by itself; null when it may be. */
-export type AutoSearchBlock = "covered" | "closed" | "ownStay" | "sleep" | "drives" | "route";
+export type AutoSearchBlock = "covered" | "closed" | "ownStay" | "sleep" | "drives";
 
 export function autoSearchBlock(
   need: Pick<Need, "kind" | "section">,
   shape: Pick<TripShape, "sleep" | "movingBase" | "preset" | "closes">,
-  at: { ownStay: boolean; routeDraft: boolean; covered: boolean },
+  at: { ownStay: boolean; covered: boolean },
 ): AutoSearchBlock | null {
   if (at.covered) return "covered";
   if (shape.closes[need.section]) return "closed";
   if (need.kind === "stay") {
     if (at.ownStay) return "ownStay";
     if (shape.sleep !== "hotel") return "sleep";
-    if (at.routeDraft) return "route";
   }
-  if (need.kind === "transfer") {
-    if (shape.sleep === "vehicle" || shape.movingBase || shape.preset === "road") return "drives";
-    if (at.routeDraft) return "route";
-  }
+  if (need.kind === "transfer" && (shape.sleep === "vehicle" || shape.movingBase || shape.preset === "road")) return "drives";
   return null;
 }
 

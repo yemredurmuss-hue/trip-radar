@@ -176,7 +176,7 @@ export function rowView(vm: IntentVM): RowView {
   const desk = isDeskRow(vm);
   // (Karar Masası: a search that found several is a deck, our pick in front of it, "3 seçenek" and "Seç 3"; one alone is
   // still "Önerimiz", as the traveller's own one save is "Senin kaydın")
-  const pickDeck = desk && status === "suggested" && chosen != null && !vm.own && count > 1;
+  const pickDeck = (desk || vm.kind === "stay") && status === "suggested" && chosen != null && !vm.own && count > 1;
   const deciding = ((status === "searching" || status === "deciding") && hasOptions) || pickDeck;
   const searching = status === "searching" && !hasOptions;
 
@@ -211,7 +211,7 @@ export function rowView(vm: IntentVM): RowView {
 
   // The name.
   const route = ticket && vm.head.route ? vm.head.route : null;
-  const title = route ? `${route.from} → ${route.to}` : !ticket && chosen && (status === "chosen" || status === "booked" || status === "suggested") ? chosen.title : headName(vm);
+  const title = route ? `${route.from} → ${route.to}` : !ticket && chosen && (status === "chosen" || status === "booked" || (status === "suggested" && !pickDeck)) ? chosen.title : headName(vm);
 
   // The line under it.
   const line: RowPart[] = [];
@@ -230,6 +230,8 @@ export function rowView(vm: IntentVM): RowView {
     if (vm.people) line.push({ text: L(`${vm.people} kişi`, `${vm.people} people`) });
     if (rental && vm.ticket?.rental?.line) line.push({ text: vm.ticket.rental.line });
   } else if (!ticket) {
+    // (a stay's deck: our pick named first, as a flight's deck names its carrier)
+    if (pickDeck && chosen) line.push({ text: `✨ ${L("önerimiz", "our pick")} ${chosen.title}` });
     for (const p of dayParts) if (!isDayPart(p)) line.push({ text: p });
     if (vm.people) line.push({ text: L(`${vm.people} kişi`, `${vm.people} people`) });
     if (!line.length && vm.head.word) line.push({ text: vm.head.word });
@@ -342,7 +344,7 @@ export function rowView(vm: IntentVM): RowView {
   // (Karar Masası: bought, the stamp says so on the stub, with the day it was marked; never on a cover)
   const stamp = desk && stage === "bought" && status !== "included" ? { word: vm.selfArranged ? L("Senin", "Yours") : L("Alındı", "Bought"), day: markedDay(chosen?.item.statusAt) } : null;
   // (Karar Masası: chosen, not bought yet, the deck stays under it: the other options, "↩ 6 seçenek daha")
-  const rest = desk && status === "chosen" && chosen ? [...vm.options, ...(vm.more ?? [])].filter((o) => o.id !== chosen.id).length : 0;
+  const rest = (desk || vm.kind === "stay") && status === "chosen" && chosen ? [...vm.options, ...(vm.more ?? [])].filter((o) => o.id !== chosen.id).length : 0;
 
   return { face, lead, stage, stageWord, title, route, line, third, wants, figure, slot, count, desk, stamp, rest };
 }

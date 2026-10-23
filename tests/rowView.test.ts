@@ -39,6 +39,16 @@ describe("rowView: a flight, a train, a way of travel (the thin row)", () => {
     expect(r.slot).toEqual({ kind: "pick", count: 2 });
     expect(r.rest).toBe(0);
   });
+  it("a stay: our pick among several is a deck too (0.40.5): the city's name, n seçenek, our pick named, Seç n", () => {
+    const st = jp().find((v) => v.kind === "stay" && v.status === "suggested" && v.chosen && v.optionCount > 1)!;
+    expect(st).toBeTruthy();
+    const r = rowView(st);
+    expect(r.stageWord).toBe(`${r.count} seçenek`);
+    expect(r.title).not.toBe(st.chosen!.title);
+    expect(r.line[0].text).toBe(`✨ önerimiz ${st.chosen!.title}`);
+    expect(r.slot).toEqual({ kind: "pick", count: r.count });
+    expect(r.figure?.small).toMatch(/önerimiz$/);
+  });
   it("chosen among several: the deck stays under it, rest counts the others; one alone, none", () => {
     const f = find(jp(), "flight:ist-hnd");
     expect(rowView({ ...f, status: "chosen" }).rest).toBe(1);

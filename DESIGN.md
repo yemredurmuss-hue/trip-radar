@@ -158,8 +158,9 @@ Kararlar `docs/superpowers/specs/2026-10-22-karar-masasi-kararlar.md`, geçiş p
 `docs/superpowers/plans/2026-10-23-karar-masasi-gecis.md`; tuval "Karar Masası", sayfa "Onaylananlar". Önce Uçuş
 (`lib/rowView.ts` `isDeskRow`, `static/v82/desk.css`, `.q-int[data-desk]`); 0.40.5'ten beri Ulaşım'da önceden alınan
 biletler de (tren, otobüs, feribot) aynı dili konuşur: deste, Seçtin, damga, "↩ n seçenek daha"; rotada uçağın yerinde
-kendi simgesi (dönmez). Yerinde alınan yollar (taksi, metro) ve Konaklama aşağıdaki dört adımın bugünkü sözleriyle
-kalır, aynı dil onlara ayrı bir adımda geçer.
+kendi simgesi (dönmez). Konaklama kartı boyunu ve yüzünü korur, desteyi alır: arama bulunca "3 seçenek", fotoğraf
+destesi, önerimiz önde ("✨ önerimiz …"), "Seç 3"; seçilince altında iki lila kat ve "↩ n seçenek daha". Yerinde alınan
+yollar (taksi, metro) aşağıdaki dört adımın bugünkü sözleriyle kalır.
 
 - **Rota uçakla:** "Bangkok ✈ İstanbul": iki ucun arasında 15 px uçak (çekmecede 22 px); ekran okuyucu ve arama için
   arkasında görünmeyen "→" durur, düz metinlerde (ipucu, hero, Sıradaki işler) "→" kalır.
@@ -177,7 +178,9 @@ kalır, aynı dil onlara ayrı bir adımda geçer.
   önerileri ve siteler) ve yıldızla "AI ara".
   Gezinin söylediğine karşı hiç aranmaz (`lib/autoSearch.ts`): geceler karavanda, kampta ya da teknede geçiyorsa otel;
   karavan ya da yol gezisinin arabası şehirler arasını sürüyorsa tren ve otobüs; günübirlik gezide konaklama; kara yoluyla
-  gidiliyorsa uçuş; bir paketin kapsadığı ihtiyaç; rota henüz onaylanmamışsa konaklama ve yollar (geceler değişecek).
+  gidiliyorsa uçuş; bir paketin kapsadığı ihtiyaç. Önerilen rotanın durakları da aranır (her birinin kendi geceleri var).
+  Konaklamada satıra giren üç seçenek çekmecenin "Senin için 3 öneri"siyle aynıdır (Sana en uygun, Daha ekonomik, Daha
+  konforlu) ve yalnız o geceler için fiyatı olan oteller arasından seçilir.
   Gezinin kendi gecesi (karavan, kamp, tekne) asla bir teklifle doldurulacak yer sayılmaz; kaydı yoksa çizimi de onun.
 - **Deste:** beyaz kart, ince lila çerçeve ve altında iki ince lila kat; işaretin yerinde üç logolu yelpaze (en iyisi
   önde); söz "7 seçenek", satırda en iyisinin taşıyıcısı, saatleri ve aktarması, fiyatın altında "en iyisi"; sağda

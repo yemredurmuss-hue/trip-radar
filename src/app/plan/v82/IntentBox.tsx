@@ -25,7 +25,8 @@ import type { InsertAt } from "../../../lib/templates";
 import type { Item, LegChoice, Trip } from "../../../lib/types";
 import { entryDomId } from "../../../lib/progress";
 import { withLegChoice } from "../../../lib/legs";
-import { agreeRoute, isRouteDraft } from "../../../lib/startTrip";
+import { agreeRoute } from "../../../lib/startTrip";
+import { candidateOffer, pickList, pickThree, picksContext, savedAlready } from "../../../lib/stayPicks";
 import { shapeOf } from "../../../lib/playbooks/shape";
 import { autoSearchBlock, restoredOwnStay } from "../../../lib/autoSearch";
 import { addOffer, fillOffer, putItem, setHidden, setInstalled, setItemStatus, cancelBooking, markBooked, updateTrip } from "../../actions";
@@ -121,7 +122,9 @@ const autoDone = (key: string): boolean => {
   }
 };
 function useAutoSearch(vm: IntentVM, tripId: string, on: boolean, placeholder: Item | null): void {
-  const { offers: source } = useEmptyEnv();
+  const { offers: source, trip, items } = useEmptyEnv();
+  const at = useRef({ trip, items });
+  at.current = { trip, items };
   const { selfAt } = useV82Env();
   const need = on ? offerNeed(vm, selfAt) : null;
   const hold = useRef(placeholder);
@@ -131,8 +134,17 @@ function useAutoSearch(vm: IntentVM, tripId: string, on: boolean, placeholder: I
     const key = AUTO_KEY(tripId, need.key);
     if (autoGoing.has(key) || autoDone(key)) return;
     autoGoing.add(key);
+    // (a stay: the drawer's own three, "Sana en uygun · Daha ekonomik · Daha konforlu", priced for these nights; the
+    // source's row of offers when it has no candidates)
+    const stayPicks = async (): Promise<unknown> => {
+      const cands = need.kind === "stay" && source.candidates ? await source.candidates(need).catch(() => []) : [];
+      const list = Array.isArray(cands) ? cands : [];
+      const mine = at.current.items ?? [];
+      const picks = pickList(pickThree(list.filter((c) => !savedAlready(c, mine)), picksContext(need, at.current.trip, mine)));
+      return picks.length ? picks.map(({ kind, pick }) => candidateOffer(pick.cand, kind, pick.why)) : source.offers(need);
+    };
     void offersLooking
-      .track(need.key, source.offers(need))
+      .track(need.key, need.kind === "stay" ? stayPicks() : source.offers(need))
       .then(
         async (list) => {
           const found = validOffers(list, need).slice(0, MAX_OFFERS);
@@ -639,8 +651,9 @@ function Box({ vm, color, extra, field, pickDoc, dropDoc = null, cancel, askedHi
   const placeholder = need?.kind === "stay" ? placeholderOf(vm.itemIds.map((id) => v82.byId.get(id)).filter((i): i is Item => i != null), env.trip, "stay") : null;
   // (never against what the trip already says: the van's nights, a day trip, the car's drives, a route still to agree: 0.40.3)
   const ownStay = vm.kind === "stay" && vm.itemIds.some((id) => isCampStay(v82.byId.get(id)));
-  const autoBlock = need ? autoSearchBlock(need, shape, { ownStay, routeDraft: isRouteDraft(env.trip), covered: vm.cover != null }) : "covered";
-  useAutoSearch(vm, env.tripId, form === "searching" && !vm.routeDraft && autoBlock == null && (vm.options.length === 0 || placeholder != null) && !(vm.more?.length), placeholder);
+  const autoBlock = need ? autoSearchBlock(need, shape, { ownStay, covered: vm.cover != null }) : "covered";
+  // (0.40.5: a stop of a proposed route too, it has its own nights: found, its row is a deck, "Seç 3")
+  useAutoSearch(vm, env.tripId, form === "searching" && autoBlock == null && (vm.options.length === 0 || placeholder != null) && !(vm.more?.length), placeholder);
   // (0.40.3: a hotel 0.40.1's search put in the van's place goes back to being the van's night, once)
   useEffect(() => {
     if (vm.kind !== "stay" || shape.sleep === "hotel") return;
