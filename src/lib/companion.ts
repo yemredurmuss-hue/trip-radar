@@ -15,6 +15,16 @@ export const COMPANION_SITES = [
   "https://www.skyscanner.co.uk/*",
   "https://www.skyscanner.co.th/*",
   "https://www.kiwi.com/*",
+  // (0.41.0: hotels and activities too: a "+" on each result of a list, "Desteye ekle" on a hotel's or a tour's own page)
+  "https://www.booking.com/*",
+  "https://www.airbnb.com/*",
+  "https://www.airbnb.com.tr/*",
+  "https://www.airbnb.co.uk/*",
+  "https://www.airbnb.de/*",
+  "https://www.getyourguide.com/*",
+  "https://www.getyourguide.de/*",
+  "https://www.getyourguide.co.uk/*",
+  "https://www.viator.com/*",
 ] as const;
 
 /** The site's pattern a page belongs to ("https://www.skyscanner.com.tr/*"), else null. */
@@ -31,8 +41,39 @@ export function companionSiteOf(url: string | null | undefined): string | null {
   return COMPANION_SITES.find((p) => new URL(p.replace("/*", "/")).hostname === host) ?? null;
 }
 
-/** The site's name for its button ("Skyscanner", "Kiwi.com"). */
-export const companionName = (site: string): string => (/kiwi/.test(site) ? "Kiwi.com" : "Skyscanner");
+/** The site's name for its button ("Skyscanner", "Kiwi.com", "Booking.com"). */
+export const companionName = (site: string): string =>
+  /kiwi/.test(site) ? "Kiwi.com" : /booking/.test(site) ? "Booking.com" : /airbnb/.test(site) ? "Airbnb" : /getyourguide/.test(site) ? "GetYourGuide" : /viator/.test(site) ? "Viator" : "Skyscanner";
+
+/** What a site sells, and so which deck its results join. */
+export type SiteKind = "flight" | "stay" | "activity";
+export const siteKindOf = (site: string): SiteKind => (/booking|airbnb/.test(site) ? "stay" : /getyourguide|viator/.test(site) ? "activity" : "flight");
+
+/** The deck's name in the plan for a kind ("Konaklama destesine girer"). */
+export const deckWord = (kind: SiteKind): string =>
+  kind === "stay" ? L("Konaklama", "Stays") : kind === "activity" ? L("Etkinlikler", "Activities") : L("Uçuş", "Flights");
+
+/**
+ * One thing's own page (a hotel, a stay, a tour), not a list: what "Desteye ekle" is for. From its address on the sites
+ * it knows, or what the page says it is (its JSON-LD types). Null: a list, a search, or anything else.
+ */
+export function offerPageKind(url: string, ldTypes: readonly string[] = []): SiteKind | null {
+  let u: URL;
+  try {
+    u = new URL(url);
+  } catch {
+    return null;
+  }
+  const host = u.hostname, path = u.pathname;
+  if (/booking\.com$/.test(host)) return /^\/hotel\/[a-z]{2}\//.test(path) ? "stay" : null;
+  if (/airbnb\./.test(host)) return /^\/rooms\/\d+/.test(path) ? "stay" : null;
+  if (/getyourguide\./.test(host)) return /-t\d+\/?$/.test(path) ? "activity" : null;
+  if (/viator\.com$/.test(host)) return /^\/(?:[a-z]{2}-[A-Z]{2}\/)?tours\//.test(path) ? "activity" : null;
+  const types = ldTypes.map((t) => t.toLowerCase());
+  if (types.some((t) => ["hotel", "lodgingbusiness", "resort", "hostel", "vacationrental"].includes(t))) return "stay";
+  if (types.some((t) => ["touristtrip", "touristattraction", "event"].includes(t))) return "activity";
+  return null;
+}
 
 /** What a result's own text says: its hours, its price and its stops. */
 export interface CardFacts {
@@ -106,6 +147,19 @@ export const isResultText = (text: string): boolean => {
   return f.dep != null && f.arr != null && f.price != null;
 };
 
+/** A hotel's or a tour's result in a list: a price and enough words to be one result, not the whole list. */
+export const isOfferText = (text: string): boolean => text.length >= 25 && text.length <= 900 && cardFacts(text).price != null;
+
+/** The same thing by its name, as the deck has it ("Memmo Alfama Hotel" and "Memmo Alfama"): "Destende var". */
+export function inDeckByName(text: string, names: readonly string[]): boolean {
+  const fold = (x: string) => x.toLocaleLowerCase("tr").normalize("NFKD").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  const t = ` ${fold(text)} `;
+  return names.some((n) => {
+    const f = fold(n).replace(/\b(hotel|otel|hostel|apartments?|by|the)\b/g, " ").replace(/\s+/g, " ").trim();
+    return f.length >= 5 && t.includes(` ${f} `);
+  });
+}
+
 /**
  * Where a result stands against the deck, only from what both say: already in it (its hours), cheaper than the deck's best
  * (the same currency), or the cheapest of the direct ones in view. Null when there is nothing worth saying.
@@ -125,8 +179,10 @@ export function cardLabel(card: CardFacts, deck: readonly DeckBrief[], visible: 
 /** What the companion asks the extension (content script → service worker); the worker checks who asks. */
 export type CompanionAsk =
   | { type: "desk:route"; url: string }
-  | { type: "desk:add"; url: string; title: string; text: string }
-  | { type: "desk:shot"; url: string; title: string; text: string }
+  | { type: "desk:where"; url: string; title: string }
+  | ({ type: "desk:add"; url: string; title: string; text: string } & TripPick)
+  | ({ type: "desk:shot"; url: string; title: string; text: string } & TripPick)
+  | ({ type: "desk:page"; url: string; snapshot: unknown } & TripPick)
   | { type: "desk:open"; tripId: string }
   | { type: "desk:seen"; url: string; price: number; currency: string | null };
 
@@ -139,4 +195,28 @@ export interface CompanionRoute {
   deck: DeckBrief[];
   /** The flight chosen for it, not bought yet (fiyat izleme: seen on the site, its price there is read). */
   chosen?: DeckBrief | null;
+}
+
+/**
+ * Hangi gezi on the site (0.41.0, lib/tripRules.ts): the trip picked in the page's own question (or a new one for the
+ * country), and whether to keep it as that country's trip. None: the route's trip, or the remembered one.
+ */
+export interface TripPick {
+  tripId?: string;
+  newTrip?: boolean;
+  remember?: boolean;
+}
+
+/** What the extension says of a page on an allowed site before anything is added: where it would go, else the trips to ask. */
+export interface CompanionWhere {
+  /** Its trip: the remembered one for the page's country (null: asked at the first "+"). */
+  trip: { id: string; title: string } | null;
+  /** The page's country as the code reads it from the address and title ("Portekiz"), when it can. */
+  country: string | null;
+  /** The trips to ask among: the country's first (match), at most six. */
+  trips: { id: string; title: string; when: string | null; match: boolean }[];
+  /** This very page is on the plan already. */
+  saved: boolean;
+  /** The names of that trip's options of this kind ("Destende var" on a hotel list). */
+  names: string[];
 }

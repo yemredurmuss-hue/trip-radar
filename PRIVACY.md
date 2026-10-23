@@ -1,6 +1,6 @@
 # Trip Radar · Gizlilik politikası / Privacy policy
 
-Son güncelleme / Last updated: 2026-10-23 · Sürüm / Version: 0.40.6
+Son güncelleme / Last updated: 2026-10-23 · Sürüm / Version: 0.41.0
 
 ---
 
@@ -288,6 +288,14 @@ Pratikte:
 Eklenti kendini otomatik günceller. Bu politika değişirse üstteki tarih ve sürüm güncellenir.
 Önemli bir değişiklik (yeni bir veri türü ya da yeni bir alıcı gibi), değişikliği getiren sürümle birlikte bu
 sayfada açıkça yazılır.
+
+0.41.0'da eklenenler: "Sitede benle gel" artık otel ve etkinlik sitelerinde de (Booking.com, Airbnb, GetYourGuide,
+Viator), yine yalnız senin site site izin verdiğin yerlerde: listede her sonuca "+", bir otelin ya da turun kendi
+sayfasında sağ altta "Desteye ekle". Basılana kadar sayfadan hiçbir şey okunup gönderilmez; basınca yalnız o sonucun ya da
+o sayfanın metni kaydedilir (araç çubuğundaki "Kaydet" gibi). Sağ tık menüsünde "Trip Radar'a ekle" (`contextMenus`
+izni): yalnız tıkladığın sayfa ya da bağlantı kaydedilir. "Hangi gezi": bir ülke için ilk kaydedişte hangi geziye
+koyacağın sorulur, cevabın (ülke kodu ve gezi) yalnız bu bilgisayarda saklanır, Ayarlar'dan silinir. Fiyat düşünce eklenti
+simgesinde küçük bir rozet görünür; plan açılınca gider.
 
 0.40.6'da eklenenler: fiyat izleme. Planında olup henüz almadığın uçuş ve oteller için, günde en çok bir kez, önerilerin
 geldiği aynı sunucu fonksiyonuna yalnız rota, gün, şehir, geceler ve kişi sayısı sorulur (bölüm 8'deki aramalarla
@@ -592,6 +600,15 @@ In practice:
 The extension updates itself. When this policy changes, the date and version at the top are updated.
 A significant change (a new kind of data or a new recipient, say) is stated plainly on this page with the version
 that brings it.
+
+Added in 0.41.0: "Come along on the site" now also on hotel and activity sites (Booking.com, Airbnb, GetYourGuide,
+Viator), still only where you allow it site by site: a "+" on each result of a list, and "Add to the deck" at the bottom
+right of a hotel's or a tour's own page. Nothing is read from the page or sent until you press it; then only that
+result's or that page's text is saved (as the toolbar's "Save" does). "Add to Trip Radar" in the right-click menu (the
+`contextMenus` permission): only the page or link you clicked is saved. "Which trip": the first time you save something
+for a country you're asked which trip it goes to; the answer (the country code and the trip) is kept only on this
+computer and can be forgotten in Settings. When a price drops, a small badge shows on the extension's icon until the plan
+is opened.
 
 Added in 0.40.6: price watching. For the flights and stays on your plan that you haven't bought yet, at most once a day,
 the same server function the suggestions come from is asked only the route, the day, the city, the nights and the

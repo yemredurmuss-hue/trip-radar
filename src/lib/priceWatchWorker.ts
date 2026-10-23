@@ -2,6 +2,7 @@
 // the offers source again; the same flight or hotel found cheaper is written on its record and said in a notification
 // (pressed: the trip's plan). And from "Sitede benle gel": the chosen flight seen cheaper on the site the traveller has open.
 import { openBoard } from "./browser";
+import { clearPriceBadge, showPriceBadge } from "./priceBadge";
 import { addEvent, db, notifyChanged } from "./db";
 import { L } from "./i18n";
 import { formatPrice } from "./items";
@@ -18,20 +19,24 @@ const todayIso = (now: number) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
-/** A drop said once: a Chrome notification that opens the trip's plan. */
-function tell(trip: Pick<Trip, "id" | "title">, title: string, message: string): void {
+/**
+ * A drop said once: a Chrome notification that opens the trip's plan, and the icon's badge ("−40", 0.41.0) until the plan
+ * is opened, for a notification missed; the popup says it again ("Fiyatı düştü") with the plan a press away.
+ */
+function tell(trip: Pick<Trip, "id" | "title">, title: string, message: string, save: number): void {
   try {
     chrome.notifications?.create(`price:${trip.id}:${Date.now()}`, { type: "basic", iconUrl: "icons/icon-128.png", title, message, priority: 1 });
   } catch {
     // (no notifications: the trip's history still says it)
   }
+  void showPriceBadge({ tripId: trip.id, title, said: message, save });
 }
 
 /** Pressed, a price notification opens its trip's plan. */
 export function listenPriceNotices(): void {
   chrome.notifications?.onClicked.addListener((id) => {
     const m = id.match(/^price:([^:]+):/);
-    if (m) void openBoard(`#trip=${encodeURIComponent(m[1])}`);
+    if (m) void openBoard(`#trip=${encodeURIComponent(m[1])}`).then(() => clearPriceBadge());
     chrome.notifications.clear(id);
   });
 }
@@ -84,7 +89,7 @@ export async function checkPrices(source: WatchSource, now = Date.now()): Promis
     drops++;
     const said = L(`${item.name}: fiyat ${formatPrice(drop.was, drop.currency)} → ${formatPrice(drop.now, drop.currency)} (${formatPrice(drop.save, drop.currency)} düştü)`, `${item.name}: price ${formatPrice(drop.was, drop.currency)} → ${formatPrice(drop.now, drop.currency)} (${formatPrice(drop.save, drop.currency)} less)`);
     await addEvent(trip.id, said);
-    tell(trip, L(`${trip.title}: fiyat düştü`, `${trip.title}: a price dropped`), said);
+    tell(trip, L(`${trip.title}: fiyat düştü`, `${trip.title}: a price dropped`), said, drop.save);
   }
   if (list.length) notifyChanged();
   return drops;
@@ -109,7 +114,7 @@ export async function seenCheaper(itemId: string, price: number, currency: strin
   await chrome.storage.local.set({ [key]: Date.now() });
   const said = L(`${item.name}: ${site}'da kişi başı ${formatPrice(price, currency)}, planındakinden ${formatPrice(save, currency)} ucuz`, `${item.name}: ${formatPrice(price, currency)} each on ${site}, ${formatPrice(save, currency)} less than your plan's`);
   await addEvent(item.tripId, said);
-  if (trip) tell(trip, L(`${trip.title}: daha ucuzu var`, `${trip.title}: cheaper now`), said);
+  if (trip) tell(trip, L(`${trip.title}: daha ucuzu var`, `${trip.title}: cheaper now`), said, save);
   notifyChanged();
   return save;
 }

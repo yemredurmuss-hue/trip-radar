@@ -1,3 +1,4 @@
+import "fake-indexeddb/auto";
 // Fiyat izleme (lib/priceWatch.ts, 0.40.6): the same flight or hotel only; a drop worth saying; the old price kept.
 import { describe, expect, it } from "vitest";
 import { plannedItem } from "../src/lib/planned";
@@ -55,7 +56,6 @@ describe("priceDrop and withPrice", () => {
 
 describe("checkPrices: the daily look, the same flight found cheaper", () => {
   it("written on the record with its old price kept; another flight or a dearer one says nothing", async () => {
-    await import("fake-indexeddb/auto");
     const { db } = await import("../src/lib/db");
     const { checkPrices } = await import("../src/lib/priceWatchWorker");
     const d = await db();

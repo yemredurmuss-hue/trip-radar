@@ -29,6 +29,7 @@ import { useMyName } from "./Profile";
 import { guessOrigin, originFromTrips, newStart, type StartCtx } from "../lib/startTrip";
 import { OfflineNotice } from "./OfflineNotice";
 import { UpdateBanner } from "./UpdateBanner";
+import { clearPriceBadge, priceBadge } from "../lib/priceBadge";
 import { readSelectedTrip, useBoard } from "./useBoard";
 import { useDecisions } from "./useDecisions";
 
@@ -53,6 +54,11 @@ export function App() {
   /** A word about deleting or bringing back a trip (a failure, a copy apart from the sharing), until closed. */
   const [safetyNote, setSafetyNote] = useState<string | null>(null);
   const decisions = useDecisions(board.trip, board.items);
+  // Fiyat izleme's badge (lib/priceBadge.ts): the trip it was for opened, it goes.
+  const shownTripId = board.trip?.id ?? null;
+  useEffect(() => {
+    if (shownTripId) void priceBadge().then((b) => (b?.tripId === shownTripId ? clearPriceBadge() : undefined));
+  }, [shownTripId]);
   // C34: the Plan's boxes and its "Planda göster" / "Bunu seç", handed up by the Plan for the chat beside it.
   const [planLink, setPlanLink] = useState<PlanLink | null>(null);
   const intake = useBoardIntake(board.trip?.id ?? null);

@@ -15,6 +15,7 @@ import { homeFromFlights } from "./suggestions";
 import type { PageSnapshot } from "./pagecapture";
 import type { Capture, Geo, HeldCapture, Item, Trip } from "./types";
 import { parseUrl, type UrlFacts } from "./url";
+import { loadRules, rememberTrip, ruleFor, type TripRule } from "./tripRules";
 
 export type Extractor = (capture: Capture, facts: UrlFacts, trips: Trip[]) => Promise<Extraction>;
 
@@ -28,6 +29,8 @@ export interface Deps {
   crop?: (dataUrl: string, box: Box) => Promise<string | null>;
   /** The traveller's home country when set (Settings → Pasaport): always a trip's own (placeCheck.ts). */
   home?: () => Promise<string | null>;
+  /** Hangi gezi (tripRules.ts): the trips remembered per country; null where there is no storage (nothing asked then). */
+  rules?: () => Promise<TripRule[] | null>;
 }
 
 const defaultDeps: Deps = {
@@ -237,10 +240,29 @@ async function readCapture(capture: Capture, deps: Deps, commit: () => Promise<b
     // Saved from the toolbar with more than one trip it could be and nothing that says which (two India trips, an undated
     // page; 0.39.4): asked under the button (popup) and in Bekleyen kayıtlar, never put in one by a guess. A page saved
     // before (merged) stays where it is; a chat's or a board's capture has its own trip.
-    const candidates = "tripId" in choice && !duplicate && !anchor && !capture.sharedAt && capture.kind === "extension" ? (choice.candidates ?? []) : [];
-    const route: Route = capture.sharedAt
+    const fromToolbar = !duplicate && !anchor && !capture.sharedAt && capture.kind === "extension";
+    let candidates = "tripId" in choice && fromToolbar ? (choice.candidates ?? []) : [];
+    // Hangi gezi (0.41.0, tripRules.ts): this country's trip remembered → there, nothing asked; never answered for this
+    // country yet → asked once which trip (its trips first), the answer remembered (routing.ts answerHeld).
+    let remembered: Trip | null = null;
+    const rules = fromToolbar ? await (deps.rules ?? loadRules)() : null;
+    if (rules) {
+      const codes = placeCodes(item);
+      remembered = ruleFor(rules, codes, trips, allItems, item.dates.start, item.dates.end, today());
+      if (remembered) {
+        item = { ...item, tripId: remembered.id, dates: datesIn(item, remembered, allItems) };
+        candidates = [];
+      } else if (codes.length) {
+        const ownTrips = trips.filter((t) => !isDemoTrip(t));
+        const same = ownTrips.filter((t) => codes.some((c) => tripPlaceCodes(t.id, allItems).has(c) || titleCodes(t.title).has(c)));
+        const byRecent = (list: Trip[]) => [...list].sort((a, b) => b.updatedAt - a.updatedAt).map((t) => t.id);
+        const first = "tripId" in choice && ownTrips.some((t) => t.id === choice.tripId) ? [choice.tripId] : [];
+        candidates = [...new Set([...first, ...candidates, ...byRecent(same), ...byRecent(ownTrips)])].slice(0, 4);
+      }
+    }
+    const route: Route = capture.sharedAt || remembered
       ? { kind: "keep" }
-      : candidates.length > 1
+      : candidates.length > 1 || (rules && candidates.length === 1)
         ? { kind: "ask", reason: "trip", askIn: null, candidates }
         : routeCapture({
           item,
@@ -279,6 +301,8 @@ async function readCapture(capture: Capture, deps: Deps, commit: () => Promise<b
         updatedAt: now,
       };
       await d.put("trips", made);
+      // (nothing to choose from: the country's first trip, remembered as its own)
+      if (rules) await rememberTrip(placeCodes(item)[0], made.id);
     }
     // Who saved it (v11 Pano's faces): a link a fellow traveller shared is theirs; the board's own owner otherwise (absent).
     if (!duplicate && capture.sharedBy) item = { ...item, addedBy: capture.sharedBy };

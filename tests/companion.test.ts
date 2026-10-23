@@ -56,3 +56,40 @@ describe("the manifest asks for exactly these sites, each one optional", () => {
     expect(m.permissions).not.toContain("tabs");
   });
 });
+
+describe("0.41.0: hotels and tours, their own pages and their lists", async () => {
+  const { offerPageKind, isOfferText, inDeckByName, siteKindOf, companionName } = await import("../src/lib/companion");
+  it("a place's own page is told from a list by its address (or what its JSON-LD says)", () => {
+    expect(offerPageKind("https://www.booking.com/hotel/pt/memmo-alfama.html?checkin=2026-11-12")).toBe("stay");
+    expect(offerPageKind("https://www.booking.com/searchresults.html?ss=Lisbon")).toBeNull();
+    expect(offerPageKind("https://www.airbnb.com.tr/rooms/123456")).toBe("stay");
+    expect(offerPageKind("https://www.airbnb.com/s/Lisbon/homes")).toBeNull();
+    expect(offerPageKind("https://www.getyourguide.com/lisbon-l42/sintra-day-trip-t12345/")).toBe("activity");
+    expect(offerPageKind("https://www.getyourguide.com/lisbon-l42/")).toBeNull();
+    expect(offerPageKind("https://www.viator.com/tours/Lisbon/Sintra/d538-5528P12")).toBe("activity");
+    expect(offerPageKind("https://www.viator.com/Lisbon/d538-ttd")).toBeNull();
+    expect(offerPageKind("https://www.skyscanner.com.tr/x", ["Hotel"])).toBe("stay");
+  });
+  it("a list's result: a price and a result's worth of words; the deck's own by its name", () => {
+    expect(isOfferText("Memmo Alfama Hotel · Lizbon · 9,1 Harika · 4 gece, 2 yetişkin € 912")).toBe(true);
+    expect(isOfferText("Memmo Alfama Hotel · Lizbon · 9,1 Harika")).toBe(false);
+    expect(inDeckByName("Memmo Alfama Hotel Lizbon € 912", ["Memmo Alfama"])).toBe(true);
+    expect(inDeckByName("Memmo Príncipe Real € 700", ["Memmo Alfama"])).toBe(false);
+  });
+  it("what each site sells, and its name", () => {
+    expect(siteKindOf("https://www.booking.com/*")).toBe("stay");
+    expect(siteKindOf("https://www.viator.com/*")).toBe("activity");
+    expect(siteKindOf("https://www.kiwi.com/*")).toBe("flight");
+    expect(companionName("https://www.getyourguide.de/*")).toBe("GetYourGuide");
+  });
+});
+
+describe("pageCountry: the page's country before any model reads it", async () => {
+  const { pageCountry } = await import("../src/lib/companionWorker");
+  it("a Booking hotel's address, a flight search's arrival, a place the address or title names", () => {
+    expect(pageCountry("https://www.booking.com/hotel/pt/memmo-alfama.html", "Memmo")).toBe("PT");
+    expect(pageCountry("https://www.skyscanner.com.tr/transport/flights/ist/lis/261112/", "")).toBe("PT");
+    expect(pageCountry("https://www.airbnb.com/rooms/1", "Ubud'da villa · Bali")).toBe("ID");
+    expect(pageCountry("https://www.viator.com/x", "")).toBeNull();
+  });
+});

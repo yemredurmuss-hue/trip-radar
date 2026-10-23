@@ -2,6 +2,7 @@
 import { checkPricesDaily, listenPriceNotices } from "./lib/priceWatchWorker";
 import { candidateClosed, candidateOf, showBadge } from "./lib/candidateTabs";
 import { companionAnswer, syncCompanion } from "./lib/companionWorker";
+import { listenContextMenu, setupContextMenu } from "./lib/contextSave";
 import { analyzeStale, isAnalyzing } from "./lib/analysis";
 import { loadLang, setLang } from "./lib/i18n";
 import {
@@ -107,18 +108,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   void answer.then(sendResponse, () => sendResponse(null));
   return true;
 });
+// Sağ tık "Trip Radar'a ekle" (lib/contextSave.ts): the page or the link saved as the toolbar saves it.
+listenContextMenu(() => void run());
 chrome.tabs.onUpdated.addListener((tabId, info) => {
   if (info.status !== "complete") return;
   void candidateOf(tabId).then((c) => c && showBadge(c));
 });
 
-chrome.runtime.onStartup.addListener(() => (void run(), void syncCompanion()));
+chrome.runtime.onStartup.addListener(() => (void run(), void syncCompanion(), void langReady.then(setupContextMenu)));
 chrome.runtime.onInstalled.addListener((details) => {
   // First install: the board, one tab (P10, F01): its first card's step 1 opens the free Gemini key's setup.
   if (details.reason === "install") void chrome.tabs.create({ url: chrome.runtime.getURL("app.html") });
   // Updated from the board: bring the board back where it was.
   if (details.reason === "update") void reopenBoard();
   void syncCompanion();
+  void langReady.then(setupContextMenu);
   void run();
 });
 

@@ -10,12 +10,14 @@ import { saveSnapshot } from "./lib/process";
 import { planFlightFor, type PlannedFlight } from "./lib/bring";
 import { badgeOf, candidateOf, markBuying, type CandidateTab } from "./lib/candidateTabs";
 import { flightSearchOf } from "./lib/url";
-import { companionName, companionSiteOf } from "./lib/companion";
+import { companionName, companionSiteOf, siteKindOf } from "./lib/companion";
 import { chooseItem } from "./app/actions";
 import { answerHeld, moveToTrip } from "./lib/routing";
-import { isDemoTrip } from "./lib/trips";
+import { countryName, isDemoTrip } from "./lib/trips";
+import { placeCodes, titleCodes, tripPlaceCodes } from "./lib/placeCheck";
 import type { Item, Trip } from "./lib/types";
 import { reloadIfStale } from "./lib/update";
+import { clearPriceBadge, priceBadge, type PriceBadge } from "./lib/priceBadge";
 
 type State =
   | { step: "saving" }
@@ -25,7 +27,7 @@ type State =
    * Read, not added (placeCheck.ts): the same question the trip's chat asks; reason trip (0.39.4): which of the trips it
    * could be (`candidates`, the most likely first), under the button.
    */
-  | { step: "held"; captureId: string; text: string; reason: "place" | "travel" | "trip"; newTitle: string; tripTitle: string | null; candidates?: TripPick[] }
+  | { step: "held"; captureId: string; text: string; reason: "place" | "travel" | "trip"; newTitle: string; tripTitle: string | null; candidates?: TripPick[]; country?: string | null }
   | { step: "skipped" }
   | { step: "error"; text: string }
   | { step: "hint"; text: string };
@@ -37,6 +39,8 @@ interface TripPick {
   id: string;
   title: string;
   when: string | null;
+  /** Hangi gezi: it goes to the country of what was saved (its places or its title). */
+  match?: boolean;
 }
 const pickOf = (t: Trip): TripPick => ({ id: t.id, title: t.title, when: t.confirmedDates ? formatDateRange(t.confirmedDates.start, t.confirmedDates.end) : null });
 const pickLabel = (t: TripPick) => (t.when ? `${t.title} · ${t.when}` : t.title);
@@ -127,8 +131,12 @@ function Popup() {
       // Asked (a record already saved stays on its trip while asked, so it has an itemId too).
       if (capture?.status === "done" && held && !held.answer) {
         const trip = held.tripId ? await d.get("trips", held.tripId) : undefined;
-        const candidates = (await Promise.all((held.candidates ?? []).map((id) => d.get("trips", id)))).filter((t): t is Trip => t != null).map(pickOf);
-        setState({ step: "held", captureId: capture.id, text: held.question ?? held.item.name, reason: held.reason, newTitle: held.newTitle, tripTitle: trip?.title ?? null, ...(candidates.length ? { candidates } : {}) });
+        const codes = placeCodes(held.item);
+        const items = held.reason === "trip" ? await d.getAll("items") : [];
+        const matches = (t: Trip) => codes.some((c) => tripPlaceCodes(t.id, items).has(c) || titleCodes(t.title).has(c));
+        const candidates = (await Promise.all((held.candidates ?? []).map((id) => d.get("trips", id)))).filter((t): t is Trip => t != null).map((t) => ({ ...pickOf(t), match: matches(t) }));
+        const country = codes[0] ? countryName(codes[0]) : null;
+        setState({ step: "held", captureId: capture.id, text: held.question ?? held.item.name, reason: held.reason, newTitle: held.newTitle, tripTitle: trip?.title ?? null, country, ...(candidates.length ? { candidates } : {}) });
       } else if (capture?.status === "done" && capture.itemId) {
         const item = await d.get("items", capture.itemId);
         const trip = item ? await d.get("trips", item.tripId) : undefined;
@@ -145,6 +153,7 @@ function Popup() {
   return (
     <div className="popup-card">
       <div className="popup-title">Trip Radar</div>
+      <PriceBox />
       {desk && (desk.candidate || desk.planned) && <DeskBox desk={desk} />}
       {desk?.site && desk.tabId != null && <AlongBox site={desk.site} tabId={desk.tabId} along={desk.along} />}
       {state.step === "saving" && <p>{L("Sayfa kaydediliyor…", "Saving the page…")}</p>}
@@ -219,10 +228,11 @@ function MoveTrip({ itemId, tripId, onDone }: { itemId: string; tripId: string; 
 /** The question the trip's chat asks too; answered here, it's answered there. */
 function HeldQuestion({ state, onDone }: { state: Extract<State, { step: "held" }>; onDone: (next: State) => void }) {
   const [busy, setBusy] = useState(false);
+  const [remember, setRemember] = useState(true);
   async function answer(a: "here" | "there" | "new" | "skip", picked?: string) {
     setBusy(true);
     try {
-      const tripId = await answerHeld(state.captureId, a, picked);
+      const tripId = await answerHeld(state.captureId, a, picked, remember);
       if (!tripId) return onDone({ step: "skipped" });
       const d = await db();
       const trip = await d.get("trips", tripId);
@@ -231,20 +241,38 @@ function HeldQuestion({ state, onDone }: { state: Extract<State, { step: "held" 
       onDone({ step: "error", text: error instanceof Error ? error.message : String(error) });
     }
   }
-  // Which trip (two India trips): each one a button, the most likely first and said so, then a new trip, or none.
+  // Which trip (Hangi gezi, 0.41.0): the trips of the saved thing's country first (the most likely picked), then the
+  // others, a new trip, or none; asked once a country: the answer is remembered unless the switch is turned off.
   if (state.reason === "trip" && state.candidates?.length) {
+    const own = state.candidates.filter((t) => t.match);
+    const others = state.candidates.filter((t) => !t.match);
+    const button = (t: TripPick, first: boolean) => (
+      <button key={t.id} type="button" className="small-btn" disabled={busy} aria-current={first ? "true" : undefined} onClick={() => void answer("there", t.id)}>
+        {first ? L(`${pickLabel(t)} (en olası)`, `${pickLabel(t)} (most likely)`) : pickLabel(t)}
+      </button>
+    );
+    const fresh = (
+      <button type="button" className="small-btn" disabled={busy} onClick={() => void answer("new")}>{L(`Yeni gezi: ${state.newTitle}`, `New trip: ${state.newTitle}`)}</button>
+    );
     return (
       <div className="popup-held">
         <p>{state.text}</p>
+        {own.length > 0 && state.country && <small className="muted">{L(`${state.country} gezilerin`, `Your trips to ${state.country}`)}</small>}
         <div className="popup-held-actions">
-          {state.candidates.map((t, n) => (
-            <button key={t.id} type="button" className="small-btn" disabled={busy} aria-current={n === 0 ? "true" : undefined} onClick={() => void answer("there", t.id)}>
-              {n === 0 ? L(`${pickLabel(t)} (en olası)`, `${pickLabel(t)} (most likely)`) : pickLabel(t)}
-            </button>
-          ))}
-          <button type="button" className="small-btn" disabled={busy} onClick={() => void answer("new")}>{L(`Yeni gezi: ${state.newTitle}`, `New trip: ${state.newTitle}`)}</button>
+          {own.length ? own.map((t, n) => button(t, n === 0)) : fresh}
+        </div>
+        {others.length > 0 && <small className="muted">{own.length ? L("Diğerleri", "Others") : L("Ya da", "Or")}</small>}
+        <div className="popup-held-actions">
+          {others.map((t) => button(t, false))}
+          {own.length > 0 && fresh}
           <button type="button" className="small-btn" disabled={busy} onClick={() => void answer("skip")}>{L("Ekleme", "Don't add")}</button>
         </div>
+        {state.country && (
+          <label className="popup-remember">
+            <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+            {L(`${state.country} için bundan sonra hep buraya koy`, `Put ${state.country} here from now on`)}
+          </label>
+        )}
       </div>
     );
   }
@@ -352,12 +380,17 @@ function AlongBox({ site, tabId, along }: { site: string; tabId: number; along: 
   const [on, setOn] = useState(along);
   const [said, setSaid] = useState<string | null>(null);
   const name = companionName(site);
+  const flights = siteKindOf(site) === "flight";
   async function allow() {
     const granted = await chrome.permissions.request({ origins: [site] }).catch(() => false);
     if (!granted) return setSaid(L("İzin verilmedi; yine de simgeye basınca kaydederim.", "Not allowed; pressing the icon still saves the page."));
     setOn(true);
     await chrome.scripting.executeScript({ target: { tabId }, files: ["companion.js"] }).catch(() => undefined);
-    setSaid(L(`Artık ${name}'da yanındayım: planındaki uçuşun aramasında şerit ve sonuçlarda + görürsün.`, `I'm with you on ${name} now: on a search for a planned flight you'll see the strip and a + on each result.`));
+    setSaid(
+      flights
+        ? L(`Artık ${name}'da yanındayım: sonuçlarda + görürsün, planındaki uçuşun aramasında üstte şerit de.`, `I'm with you on ${name} now: a + on each result, and on a search for a planned flight the strip too.`)
+        : L(`Artık ${name}'da yanındayım: listelerde her sonuçta +, bir otelin ya da turun kendi sayfasında sağ altta "Desteye ekle".`, `I'm with you on ${name} now: a + on each result of a list, and "Add to the deck" at the bottom right of a place's own page.`),
+    );
   }
   async function stop() {
     await chrome.permissions.remove({ origins: [site] }).catch(() => false);
@@ -375,10 +408,33 @@ function AlongBox({ site, tabId, along }: { site: string; tabId: number; along: 
           <button type="button" className="small-btn" onClick={() => void allow()}>
             {L(`${name}'da benle gel`, `Come along on ${name}`)}
           </button>
-          <span className="muted">{L("Yalnız bu sitede, yalnız planındaki bir uçuşun aramasında; + basmadan hiçbir şey kaydedilmez.", "Only on this site, only on a search for a planned flight; nothing is saved until you press +.")}</span>
+          <span className="muted">{L("Yalnız bu sitede; + ya da Desteye ekle basmadan hiçbir şey kaydedilmez. İlk eklemede hangi gezi diye bir kez sorarım.", "Only on this site; nothing is saved until you press + or Add to the deck. The first time I ask once which trip.")}</span>
         </>
       )}
       {said && <span className="popup-desk-said">{said}</span>}
+    </div>
+  );
+}
+
+/** Fiyat izleme (0.41.0): the drop the icon's badge stands for, said again with its plan a press away; seen, the badge goes. */
+function PriceBox() {
+  const [badge, setBadge] = useState<PriceBadge | null>(null);
+  useEffect(() => {
+    void priceBadge().then(setBadge);
+  }, []);
+  if (!badge) return null;
+  return (
+    <div className="popup-price">
+      <small>{badge.title}</small>
+      <b>{badge.said}</b>
+      <span className="popup-held-actions">
+        <button type="button" className="small-btn" onClick={() => void openBoard(`#trip=${encodeURIComponent(badge.tripId)}`).then(() => clearPriceBadge())}>
+          {L("Planı aç", "Open the plan")}
+        </button>
+        <button type="button" className="btn-link" onClick={() => void clearPriceBadge().then(() => setBadge(null))}>
+          {L("Tamam", "OK")}
+        </button>
+      </span>
     </div>
   );
 }

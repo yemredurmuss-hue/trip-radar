@@ -485,6 +485,23 @@ yukarıdaki tablodadır (Seçildi kum, Alındı yeşil).
 - Bilet gibi: ne → ne ("Havalimanı → Otel"), adlar ve saat alt satırda, notlar Ayrıntı'da.
 - Artı ve eksi birkaç kelimedir; sayfada okunan somut şey kendi sözleriyle yazılır ("Karşısında genelev var").
 
+## Benle gezen eklenti: sitede ekleme ve hangi gezi (0.41.0)
+
+Sayfayı okuma iki türlüdür: sitede bakarken (etiketler, "Seçtiğin uçuş", "Destende var") kod okur, cihazda, AI yok;
+desteye eklenince o sonucun ya da sayfanın metni AI'ya okutulur (araç çubuğundaki "Kaydet" gibi).
+
+- "Sitede benle gel" uçuş sitelerine ek olarak Booking.com, Airbnb, GetYourGuide, Viator'da da; yine site site izinle.
+  Liste sayfasında her sonucun üst kenarında "+" (+ → ··· okunuyor → ✓ destede), destedekinin adı tutarsa "Destende var".
+  Bir otelin ya da turun kendi sayfasında (`offerPageKind`: adres ya da JSON-LD) sağ altta "Desteye ekle" hapı; üstünde
+  nereye gideceği yazar ("Portekiz gezisi · Konaklama destesine girer"); × o sitede gizler. Listede hap yok.
+- Sağ tık "Trip Radar'a ekle": sayfa ya da bağlantı, araç çubuğunun kaydı gibi; simgede ··· → ✓, sorulursa bildirim.
+- Hangi gezi (`lib/tripRules.ts`): bir ülke için ilk kayıt bir kez sorar; o ülkenin gezileri önce, tarihi tutan
+  seçili, sonra diğerleri, "Yeni gezi: Portekiz". "Bundan sonra hep buraya koy" açıksa cevap o ülkenin gezisi olur; sonra
+  o ülkeye ve gezinin günlerine (±3 gün) düşen her şey sormadan gider. Başka ülke, gezinin günleri dışı, bitmiş gezi:
+  yine sorar. "Başka geziye taşı" kuralı da taşır. Ayarlar → Hatırlanan geziler → Unut. Hiç gezi yoksa sorulmaz, açılan
+  gezi o ülkenin olur. Sitede soru sayfanın içinde (sağ altta), araç çubuğunda açılır pencerede sorulur.
+- Fiyat düşünce simgede yeşil rozet ("−40"); açılır pencere "Fiyatı düştü" satırını gösterir; o gezinin planı açılınca gider.
+
 ## Fiyat izleme (0.40.6)
 
 Planında olup henüz alınmamış uçuş ve oteller günde bir kez yeniden sorulur (`lib/priceWatch.ts`,

@@ -2,7 +2,9 @@ import { AiGateSettings } from "./AiGateSettings";
 import { ProfileSettings } from "./Profile";
 import { useEffect, useState } from "react";
 import { requestProcessing } from "../lib/browser";
-import { DEFAULT_GEMINI_MODEL, DEFAULT_MODEL, exportAll, exportDiagnostics, getSettings, saveSettings } from "../lib/db";
+import { DEFAULT_GEMINI_MODEL, DEFAULT_MODEL, exportAll, exportDiagnostics, getSettings, listTrips, saveSettings } from "../lib/db";
+import { forgetRule, loadRules } from "../lib/tripRules";
+import { countryName } from "../lib/trips";
 import { L, lang, saveLang, type Lang } from "../lib/i18n";
 import { describeError } from "../lib/llm";
 import { listGeminiModels } from "../lib/llm/gemini";
@@ -230,6 +232,7 @@ export function Settings({ onClose }: { onClose: () => void }) {
           {L("Hareketi duraklat (animasyonlar kapalı)", "Pause motion (animations off)")}
         </label>
         <ShareSettings />
+        <TripRulesSettings />
         <p className="muted small">
           <button className="btn-link" style={{ fontSize: "var(--q-fs-info)", padding: 0 }} onClick={() => void download("diagnostics")}>
             {L("Tanı dosyası indir", "Download diagnostics file")}
@@ -248,6 +251,39 @@ export function Settings({ onClose }: { onClose: () => void }) {
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Hangi gezi (lib/tripRules.ts): the trips remembered per country, each forgotten here (the next save asks again). */
+function TripRulesSettings() {
+  const [rules, setRules] = useState<{ country: string; title: string }[]>([]);
+  useEffect(() => {
+    void (async () => {
+      const list = (await loadRules()) ?? [];
+      const trips = await listTrips();
+      setRules(list.map((r) => ({ country: r.country, title: trips.find((t) => t.id === r.tripId)?.title ?? "" })).filter((r) => r.title));
+    })();
+  }, []);
+  if (!rules.length) return null;
+  return (
+    <div className="field">
+      {L("Hatırlanan geziler", "Remembered trips")}
+      <span className="muted small">{L("Eklentiden kaydettiklerin bu ülkeler için sormadan bu gezilere gider.", "What you save from the extension goes to these trips for these countries without asking.")}</span>
+      {rules.map((r) => (
+        <span key={r.country} className="row-inline" style={{ alignItems: "center", gap: 8 }}>
+          <span>
+            {countryName(r.country) ?? r.country} → {r.title}
+          </span>
+          <button
+            className="btn-link"
+            style={{ fontSize: "var(--q-fs-info)", padding: 0 }}
+            onClick={() => void forgetRule(r.country).then(() => setRules((all) => all.filter((x) => x.country !== r.country)))}
+          >
+            {L("Unut", "Forget")}
+          </button>
+        </span>
+      ))}
     </div>
   );
 }

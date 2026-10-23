@@ -3,7 +3,8 @@
 // Used by a trip's chat and by the popup.
 import { addEvent, db, listTrips, newId, notifyChanged } from "./db";
 import { moveDocsToTrip } from "./docs";
-import { datesIn, isWayThere } from "./placeCheck";
+import { datesIn, isWayThere, placeCodes } from "./placeCheck";
+import { loadRules, rememberTrip } from "./tripRules";
 import { announceRemoved, deleteItem } from "./removal";
 import { L } from "./i18n";
 import { destinationImage, savedLine } from "./process";
@@ -22,7 +23,7 @@ const NO_DATES: Item["dates"] = { start: null, end: null, source: "none" };
  * record already saved goes to the trash (Geri al, Çöp kutusu). Returns the trip it is in (null for skip, or
  * when it was answered already).
  */
-export async function answerHeld(captureId: string, answer: HeldAnswer, pickedTripId?: string): Promise<string | null> {
+export async function answerHeld(captureId: string, answer: HeldAnswer, pickedTripId?: string, remember = true): Promise<string | null> {
   const d = await db();
   const capture = await d.get("captures", captureId);
   const held = capture?.held;
@@ -68,6 +69,8 @@ export async function answerHeld(captureId: string, answer: HeldAnswer, pickedTr
     const current = (await d.get("trips", target.id)) ?? target;
     await d.put("trips", { ...current, heroImage: current.heroImage ?? item.imageUrl, updatedAt: Date.now() });
     tripId = target.id;
+    // Hangi gezi (tripRules.ts): asked which trip, the answer is this country's trip from now on (unless said not to).
+    if (held.reason === "trip" && remember) await rememberTrip(placeCodes(item)[0], target.id);
   }
   await d.put("captures", { ...capture, itemId: tripId ? held.item.id : null, held: { ...held, answer, answeredAt: Date.now() } });
   const lines = (await d.getAllFromIndex("messages", "tripId", held.tripId ?? "")) as ChatMessage[];
@@ -95,6 +98,9 @@ export async function moveToTrip(itemId: string, toTripId: string): Promise<void
   await moveDocsToTrip(item.id, to.id);
   await addEvent(to.id, L(`${item.name} bu geziye taşındı`, `${item.name} moved to this trip`));
   await addEvent(from, L(`${item.name} → ${to.title} gezisine taşındı`, `${item.name} moved to ${to.title}`));
+  // (the country remembered for the trip it left: the trip it was moved to from now on; tripRules.ts)
+  const country = placeCodes(item)[0];
+  if (country && (await loadRules())?.some((r) => r.country === country && r.tripId === from)) await rememberTrip(country, to.id);
   await d.put("trips", { ...to, heroImage: to.heroImage ?? item.imageUrl, updatedAt: Date.now() });
   notifyChanged();
 }
