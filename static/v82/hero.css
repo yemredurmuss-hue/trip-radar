@@ -299,6 +299,13 @@ ul.hm-pop { list-style: none; margin: 0; padding: 6px; }
 @container panel (max-width: 700px) { .h-mb, .h-tabs { display: none; } }
 @container panel (max-width: 460px) { .h-mp, .h-mt { display: none; } .h-next.sm { max-width: none; margin-left: auto; } }
 
+/* 0.46.0 (Emre: "satır olarak inmesin"): wide, the style and Tercihler stay on the facts' line; the facts wrap in their own room */
+@container panel (min-width: 901px) {
+  .x-info { flex-wrap: nowrap; }
+  .x-info > .x-chips { flex: 1 1 auto; }
+  .x-info > .x-prow { flex: none; flex-wrap: nowrap; }
+}
+
 /* ---- narrow (the board under 900 px): the cover 480 px, the tiles three by two, the card two by two with "Sıradaki" the full width ---- */
 @container panel (max-width: 900px) {
   .x-big { height: 480px; }
