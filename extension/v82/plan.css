@@ -24,7 +24,7 @@
 .q-sec:has(.ch-back) { z-index: 30; }
 
 /* The closed row (K0): 78 px, the same open or closed (E2). */
-.q-row1 { box-sizing: border-box; width: 100%; min-height: 78px; display: grid; grid-template-columns: 42px minmax(0, 1fr) 112px 180px 100px 18px; grid-template-areas: "ic tt ths prog bud chev"; align-items: center; gap: 16px; padding: 16px 20px; cursor: pointer; border-radius: 18px; }
+.q-row1 { box-sizing: border-box; width: 100%; min-height: 78px; display: grid; grid-template-columns: 42px minmax(0, 1fr) 112px 100px 44px; grid-template-areas: "ic tt ths bud prog"; align-items: center; gap: 16px; padding: 16px 20px; cursor: pointer; border-radius: 18px; }
 .q-row1:hover { background: var(--q-soft); }
 .q-sec.open > .q-row1 { border-radius: 18px 18px 0 0; }
 .q-row1:has(.q-tt:focus-visible) { outline: 3px solid #cfc7ff; outline-offset: 2px; }
@@ -40,7 +40,19 @@
 .q-th img { width: 84%; height: 84%; object-fit: contain; mix-blend-mode: multiply; }
 .q-th img.ph { width: 100%; height: 100%; object-fit: cover; mix-blend-mode: normal; }
 .q-thm { font-size: var(--q-fs-small); font-weight: 700; color: var(--q-mut); margin-left: 6px; min-width: 22px; }
-.q-prog { grid-area: prog; display: grid; gap: 5px; min-width: 0; }
+.q-prog { grid-area: prog; display: grid; place-items: center; min-width: 0; position: relative; }
+/* Bitti ve yaklaştı (lib/planRing.ts): a part a plan; dark green bought, light green chosen, empty to decide */
+.q-ring { all: unset; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; }
+button.q-ring { cursor: pointer; }
+button.q-ring:hover .q-ringsvg { transform: scale(1.08); }
+button.q-ring:focus-visible { outline: 2px solid var(--q-acc); outline-offset: 2px; }
+.q-ringsvg { display: block; transition: transform 160ms var(--e-out); }
+.q-ringsvg .q-rp-done { stroke: var(--q-ok); }
+.q-ringsvg .q-rp-near { stroke: #9fd6b4; }
+.q-ringsvg .q-rp-open { stroke: #e9e6f1; }
+.q-ringsvg .q-ridea { stroke: #d6d2e4; }
+.q-ringsvg .q-rdisc { fill: var(--q-ok); }
+.q-kw .q-alert { font-style: normal; font-weight: 700; }
 .q-bar { position: relative; display: flex; height: 6px; border-radius: 99px; background: #ebe9f2; overflow: hidden; }
 .q-bar i { display: block; height: 100%; transition: width .3s var(--e-out); }
 .q-bar .bk { background: var(--q-ok); }
@@ -125,14 +137,14 @@
 .q-hid .cat-hidden-row { font-size: var(--q-fs-info); }
 
 @media (max-width: 980px) {
-  .q-row1 { grid-template-columns: 42px minmax(0, 1fr) 150px 92px 18px; grid-template-areas: "ic tt prog bud chev"; }
+  .q-row1 { grid-template-columns: 42px minmax(0, 1fr) 92px 44px; grid-template-areas: "ic tt bud prog"; }
   .q-ths { display: none; }
 }
 @media (max-width: 640px) {
   .q-planbar { flex-wrap: wrap; gap: 10px; }
   .plan-order.q-seg { margin-left: 0; width: 100%; }
   .plan-order.q-seg button { flex: 1; padding: 8px 6px; font-size: var(--q-fs-small); }
-  .q-row1 { grid-template-columns: 40px minmax(0, 1fr) auto 16px; grid-template-areas: "ic tt bud chev" "ic prog prog prog"; gap: 8px 12px; padding: 12px 14px; }
+  .q-row1 { grid-template-columns: 40px minmax(0, 1fr) auto 44px; grid-template-areas: "ic tt bud prog"; gap: 8px 12px; padding: 12px 14px; }
   .q-foldb { padding: 4px 10px 16px; }
   .q-ints { padding-left: 24px; }
   .q-ints::before { left: 9px; }
