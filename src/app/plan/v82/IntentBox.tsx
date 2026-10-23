@@ -14,7 +14,7 @@ import { areaSearch, changeList, currentOption, frameForm, headName, offerNeed, 
 import { offersLooking } from "../../../lib/looking";
 import { othersLabel, othersOpen, rememberOthers } from "../../../lib/othersFold";
 import { queryOf, type StayCandidate } from "../../../lib/offerSources";
-import { MAX_OFFERS, validOffers } from "../../../lib/offerSource";
+import { MAX_OFFERS, validOffers, type Offer } from "../../../lib/offerSource";
 import { typicalNight } from "../../../lib/stayPicks";
 import type { IntentStatus, IntentVM, OptionVM } from "../../../lib/intents";
 import { addDays } from "../../../lib/plan";
@@ -136,18 +136,22 @@ function useAutoSearch(vm: IntentVM, tripId: string, on: boolean, placeholder: I
     autoGoing.add(key);
     // (a stay: the drawer's own three, "Sana en uygun · Daha ekonomik · Daha konforlu", priced for these nights; the
     // source's row of offers when it has no candidates)
+    // (the picks are ours, built from the source's candidates whole: their reviews and usual range kept, not re-read)
+    let own: Offer[] | null = null;
     const stayPicks = async (): Promise<unknown> => {
       const cands = need.kind === "stay" && source.candidates ? await source.candidates(need).catch(() => []) : [];
       const list = Array.isArray(cands) ? cands : [];
       const mine = at.current.items ?? [];
       const picks = pickList(pickThree(list.filter((c) => !savedAlready(c, mine)), picksContext(need, at.current.trip, mine)));
-      return picks.length ? picks.map(({ kind, pick }) => candidateOffer(pick.cand, kind, pick.why)) : source.offers(need);
+      if (!picks.length) return source.offers(need);
+      own = picks.map(({ kind, pick }) => candidateOffer(pick.cand, kind, pick.why));
+      return own;
     };
     void offersLooking
       .track(need.key, need.kind === "stay" ? stayPicks() : source.offers(need))
       .then(
         async (list) => {
-          const found = validOffers(list, need).slice(0, MAX_OFFERS);
+          const found = (own ?? validOffers(list, need)).slice(0, MAX_OFFERS);
           // (nothing found: asked again next time it's drawn, the source keeps its answer for hours)
           if (!found.length) return;
           try {
