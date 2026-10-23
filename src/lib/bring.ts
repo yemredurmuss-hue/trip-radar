@@ -18,7 +18,10 @@ import type { Item } from "./types";
  */
 export function bringKey(vm: Pick<IntentVM, "kind" | "head">): string | null {
   const route = vm.head.route;
-  if (vm.kind !== "flight" || !route?.from || !route.to) return null;
+  if (!route?.from || !route.to) return null;
+  // (a train's, a bus's, a boat's: the source's ways between the cities, intentFrame.offerNeed's key)
+  if (vm.kind === "train" || vm.kind === "bus" || vm.kind === "minibus" || vm.kind === "ferry") return needKey("transfer", route.from, route.to, isoDate(vm.head.date) ?? "");
+  if (vm.kind !== "flight") return null;
   return needKey("flight", route.from, route.to, isoDate(vm.head.date) ?? "");
 }
 

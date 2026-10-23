@@ -156,8 +156,10 @@ modeIcons.tsx` `StageGlyph`, `static/v82/stages.css`). Onaylı çizim: tuval "Pl
 
 Kararlar `docs/superpowers/specs/2026-10-22-karar-masasi-kararlar.md`, geçiş planı
 `docs/superpowers/plans/2026-10-23-karar-masasi-gecis.md`; tuval "Karar Masası", sayfa "Onaylananlar". Önce Uçuş
-(`lib/rowView.ts` `isDeskRow`, `static/v82/desk.css`, `.q-int[data-desk]`); Ulaşım ve Konaklama aşağıdaki dört adımın
-bugünkü sözleriyle kalır, aynı dil onlara ayrı bir adımda geçer.
+(`lib/rowView.ts` `isDeskRow`, `static/v82/desk.css`, `.q-int[data-desk]`); 0.40.5'ten beri Ulaşım'da önceden alınan
+biletler de (tren, otobüs, feribot) aynı dili konuşur: deste, Seçtin, damga, "↩ n seçenek daha"; rotada uçağın yerinde
+kendi simgesi (dönmez). Yerinde alınan yollar (taksi, metro) ve Konaklama aşağıdaki dört adımın bugünkü sözleriyle
+kalır, aynı dil onlara ayrı bir adımda geçer.
 
 - **Rota uçakla:** "Bangkok ✈ İstanbul": iki ucun arasında 15 px uçak (çekmecede 22 px); ekran okuyucu ve arama için
   arkasında görünmeyen "→" durur, düz metinlerde (ipucu, hero, Sıradaki işler) "→" kalır.

@@ -120,8 +120,9 @@ export function markedDay(at: number | null | undefined): string | null {
   return shortDay(iso);
 }
 
-/** Karar Masası's rows (Uçuş first): a flight drawn as its thin row. */
-export const isDeskRow = (vm: Pick<IntentVM, "kind" | "frame" | "ticket">): boolean => vm.kind === "flight" && rowFace(vm) === "ticket";
+/** Karar Masası's rows: a flight, and (0.40.5) a train, a bus, a boat: a ticket bought ahead, drawn as its thin row. */
+const DESK_KINDS: ReadonlySet<string> = new Set(["flight", "train", "bus", "minibus", "ferry"]);
+export const isDeskRow = (vm: Pick<IntentVM, "kind" | "frame" | "ticket">): boolean => DESK_KINDS.has(vm.kind) && rowFace(vm) === "ticket";
 
 /** A booking's word: a stay's and a rented car's are booked, the rest bought. */
 const isBooking = (vm: Pick<IntentVM, "kind" | "ticket">): boolean => vm.kind === "stay" || vm.ticket?.mode === "car" || isRental(vm);

@@ -511,8 +511,8 @@ export function TicketRow({ vm, view, art, date, on, ticket, links, onDrawer, me
               {view.route && view.desk ? (
                 <>
                   {view.route.from}{" "}
-                  <i className="q-rpl">
-                    <ModeIcon name="plane" size={15} />
+                  <i className={`q-rpl${modeIconOf(vm.kind, face?.mode ?? null) === "plane" ? " fly" : ""}`}>
+                    <ModeIcon name={modeIconOf(vm.kind, face?.mode ?? null)} size={15} />
                     {/* (said as the arrow it stands for: a screen reader's and a search's "Porto → Lizbon") */}
                     <span className="sr-only">→</span>
                   </i>{" "}

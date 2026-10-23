@@ -69,10 +69,10 @@ describe("rowView: a flight, a train, a way of travel (the thin row)", () => {
     // (a file is as good as a code)
     expect(rowStage({ status: "booked", access: { ...vm.access!, code: null, doc: { count: 1, name: "e-bilet.pdf" } } })).toBe("ticket");
   });
-  it("in Ulaşım the kind's word leads; chosen: Satın al", () => {
+  it("in Ulaşım the kind's word leads; chosen: Seçtin (0.40.5: a train speaks as a flight), Satın al", () => {
     const train = rowView(find(jp(), "transport:hakone-osaka"));
     expect(train.lead).toBe("Tren");
-    expect(train.stageWord).toBe("Planda");
+    expect(train.stageWord).toBe("Seçtin");
     expect(train.slot).toEqual({ kind: "book", word: "Satın al" });
     expect(train.figure?.big).toBe("€98");
     expect(rowView(find(jp(), "transport:kyoto-hakone")).figure).toEqual({ big: "OD-7721", small: "Bilet", code: true });
@@ -193,12 +193,14 @@ describe("whileSearching (Kaçırdıklarımız 1)", () => {
 
 describe("Karar Masası: the flight row's language (Uçuş first)", () => {
   const flights = () => jp().filter((v) => v.section === "flight" && v.frame !== "collection");
-  it("chosen: Seçtin; bought: Bilet alındı; a train keeps Planda and Alındı", () => {
+  it("chosen: Seçtin; bought: Bilet alındı; a train the same (0.40.5), a taxi on the spot keeps Planda", () => {
     const f = flights().find((v) => v.chosen)!;
     expect(rowView({ ...f, status: "chosen" }).stageWord).toBe("Seçtin");
     const train = find(jp(), "transport:hakone-osaka");
-    expect(rowView(train).desk).toBe(false);
-    expect(rowView({ ...train, status: "chosen" }).stageWord).toBe("Planda");
+    expect(rowView(train).desk).toBe(true);
+    expect(rowView({ ...train, status: "chosen" }).stageWord).toBe("Seçtin");
+    const own = find(jp(), "leg:2027-04-01:arrival:?");
+    expect(rowView({ ...own, selfArranged: undefined }).stageWord).toBe("Planda");
   });
   it("nothing found yet: Kendin ara ↗ (self); a stay keeps Ara", () => {
     const f = flights()[0];

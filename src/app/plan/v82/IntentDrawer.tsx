@@ -19,7 +19,7 @@ import { headName, optionPrice, type SelfSearch } from "../../../lib/intentFrame
 import type { IntentVM, OptionVM } from "../../../lib/intents";
 import { formatPrice } from "../../../lib/items";
 import { railDate } from "../../../lib/railDates";
-import { isRental, rowView } from "../../../lib/rowView";
+import { isDeskRow, isRental, rowView } from "../../../lib/rowView";
 import { rowFace } from "../../../lib/ticketFrame";
 import type { Need } from "../../../lib/offerSource";
 import type { Item } from "../../../lib/types";
@@ -37,7 +37,7 @@ import { CarrierLogo } from "./OptionRow";
 import { broughtOf, type Brought } from "./IntentRow";
 import { carriesArrival } from "../../arrive/useDropZone";
 import { canGroupTabs, CANDIDATES_MAX, openCandidates } from "../../../lib/candidateTabs";
-import { ModeIcon } from "./modeIcons";
+import { ModeIcon, modeIconOf } from "./modeIcons";
 
 export type Family = "stay" | "rental" | "ticket";
 
@@ -330,9 +330,9 @@ export function TicketOption({ o, vm, art, current, why, parts, off, solo, onPic
           <Fresh o={o} />
         </span>
         {/* (Karar Masası: a flight chosen, the others say "Buna geç"; the one given up goes back among them) */}
-        {pick ?? <Pick o={o} current={current} onPick={onPick} swap={vm.kind === "flight" && vm.status === "chosen"} />}
+        {pick ?? <Pick o={o} current={current} onPick={onPick} swap={isDeskRow(vm) && vm.status === "chosen"} />}
       </div>
-      <Slots slots={slots} url={o.item.url} compact go={vm.kind === "flight"} />
+      <Slots slots={slots} url={o.item.url} compact go={isDeskRow(vm)} />
       {!solo && <Neden o={o} why={why} parts={parts} />}
     </article>
   );
@@ -566,11 +566,11 @@ export function IntentDrawer({ vm, options, dropped = [], chosenId, art, links, 
             </span>
             <span className="dr-t">
               <b id={titleId}>
-                {vm.kind === "flight" && family === "ticket" && vm.head.route ? (
+                {isDeskRow(vm) && family === "ticket" && vm.head.route ? (
                   <>
                     {vm.head.route.from}{" "}
-                    <i className="q-rpl">
-                      <ModeIcon name="plane" size={22} />
+                    <i className={`q-rpl${modeIconOf(vm.kind, vm.ticket?.mode ?? null) === "plane" ? " fly" : ""}`}>
+                      <ModeIcon name={modeIconOf(vm.kind, vm.ticket?.mode ?? null)} size={22} />
                       <span className="sr-only">→</span>
                     </i>{" "}
                     {vm.head.route.to}
@@ -675,7 +675,7 @@ export function IntentDrawer({ vm, options, dropped = [], chosenId, art, links, 
                 <Ic name="link" size={20} />
               </span>
               <span className="dr-nt">
-                {vm.kind === "flight" ? (
+                {isDeskRow(vm) ? (
                   <>
                     {/* (Karar Masası: "+ Seninkini ekle", a link or a screenshot) */}
                     <b>+ {L("Seninkini ekle", "Add yours")}</b>
