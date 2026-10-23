@@ -54,7 +54,9 @@ await hotel.screenshot({ path: `${out}/stay-1-tab.png` });
 await shadow(hotel, (r) => r.querySelector(".tab").click());
 await hotel.waitForTimeout(150);
 const cep = await shadow(hotel, (r) => r.querySelector(".cep")?.innerText ?? "");
-assert.match(cep, /Portekiz[\s\S]*12 – 19 Kas · Konaklama 4 · toplam 7[\s\S]*Bu sayfa[\s\S]*\+ Konaklama destesine ekle[\s\S]*Son eklenenler[\s\S]*Lumiares Hotel[\s\S]*okunuyor[\s\S]*okunamadı[\s\S]*tekrar[\s\S]*AI bağlı değil: 2 kayıt bekliyor[\s\S]*Portekiz panosunu aç/);
+// 0.44.2 (sade): the trip and one number, one button, the last three by name (a state only when not fine), the board.
+assert.match(cep, /^Portekiz\n4 otel[\s\S]*\+ Konaklama destesine ekle\nSon eklenenler\n[\s\S]*Lumiares Hotel[\s\S]*okunuyor[\s\S]*Casa do Bairro[\s\S]*okunamadı[\s\S]*tekrar[\s\S]*Memmo Príncipe Real[\s\S]*AI bağlı değil · 2 kayıt bekliyor\nPanoyu aç ↗[\s\S]*Bu sitede gösterme/);
+assert.doesNotMatch(cep, /destede|Bu sayfa|Booking\.com|Airbnb/, "no state on a fine one, no page line, no source line");
 await hotel.screenshot({ path: `${out}/stay-1-pocket.png` });
 await shadow(hotel, (r) => [...r.querySelectorAll(".cep .lnk")].find((b) => b.textContent === "tekrar").click());
 await shadow(hotel, (r) => r.querySelector('.cep .x[aria-label="Lumiares Hotel kaldır"]').click());
@@ -99,7 +101,7 @@ assert.deepEqual(tags, ["Destende var"], "Casa Balthazar is in the deck");
 // The pocket on a list: "Sonuçlardan seç", never the whole list as one record.
 await shadow(list, (r) => r.querySelector(".tab").click());
 await list.waitForTimeout(100);
-assert.match(await shadow(list, (r) => r.querySelector(".cep .bd").innerText), /3 sonuç görünüyor[\s\S]*Sonuçlardan seç[\s\S]*Listenin tamamı tek kayıt olmaz/);
+assert.match(await shadow(list, (r) => r.querySelector(".cep .bd").innerText), /^Sonuçlardan seç\n/);
 assert.equal(await shadow(list, (r) => [...r.querySelectorAll(".cep .go")].some((b) => /destesine ekle/.test(b.textContent))), false);
 await list.screenshot({ path: `${out}/stay-4a-pocket.png` });
 await list.keyboard.press("Escape");

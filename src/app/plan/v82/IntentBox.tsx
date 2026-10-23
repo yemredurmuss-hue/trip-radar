@@ -943,12 +943,6 @@ function Box({ vm, color, extra, field, pickDoc, dropDoc = null, cancel, askedHi
               </button>
             )}
           </div>
-        ) : warn.length ? (
-          <div className="q-rft warn">
-            {warn.map((c) => (
-              <span key={c.text}>{c.text}</span>
-            ))}
-          </div>
         ) : vm.status === "arranged" && vm.note ? (
           <div className="q-rft">
             <span>{vm.note}</span>
@@ -990,7 +984,28 @@ function Box({ vm, color, extra, field, pickDoc, dropDoc = null, cancel, askedHi
           )}
         </div>
       ) : null;
-      inner = <StayCard vm={vm} view={view} art={art} date={date} on={slotOn} onPress={onPress} menu={menuNode} foot={hours || agree || party ? <>{foot}{agree}{party}{hours}</> : foot} under={detail ? <div className="q-rdet">{detailNode}</div> : null} chipId={chipId} editable={editable} ask={askNode} />;
+      const warnStrip =
+        warn.length && vm.status !== "booked" && !(vm.status === "included" && vm.cover) ? (
+          <div className="q-rft warn">
+            {warn.map((c) => (
+              <span key={c.text}>{c.text}</span>
+            ))}
+          </div>
+        ) : null;
+      // (0.44.2, Emre: "kart açılmadan çok göze batıyor"): closed, the notes are one small line in the card ("⏱ Giriş saati");
+      // pressed, the card opens and each says its whole sentence with its one thing to do.
+      const notes = [hours, party, warnStrip].filter(Boolean);
+      const canOpen = Boolean(record && form !== "searching");
+      const folded = canOpen && !detail && notes.length > 0;
+      const noteWord = hours && timing ? (timing.end === "in" ? L("Giriş saati", "Check-in time") : L("Çıkış saati", "Check-out time")) : party ? L("Kişi sayısı", "Party size") : L("Bir not", "A note");
+      const hint = folded ? (
+        <button type="button" className="q-hint" onClick={(e) => (e.stopPropagation(), setDetail(true))} onKeyDown={(e) => e.stopPropagation()}>
+          <span aria-hidden>⏱</span> {noteWord}
+          {notes.length > 1 ? ` · +${notes.length - 1}` : ""}
+        </button>
+      ) : null;
+      const shown = folded ? null : notes;
+      inner = <StayCard vm={vm} view={view} art={art} date={date} on={slotOn} onPress={onPress} menu={menuNode} foot={agree || shown?.length ? <>{foot}{agree}{shown}</> : foot} hint={hint} under={detail ? <div className="q-rdet">{detailNode}</div> : null} chipId={chipId} editable={editable} ask={askNode} />;
     }
     return (
       <>

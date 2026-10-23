@@ -13,7 +13,7 @@
 import { shapeOf } from "../../../lib/playbooks/shape";
 import { useEffect, useState, type ReactNode } from "react";
 import { citiesOfPlan, type SectionId } from "../../../lib/categories";
-import { askMore, collectionRow, filterWord, ideasCaption, inFilter, K_FILTERS, mapsSearch, moreLabel, nearPlaces, offerCard, ROW_CELLS, rowCells, stopCountry, type KCardVM, type KFilter } from "../../../lib/collectionCards";
+import { askMore, collectionRow, filterWord, ideasCaption, inFilter, K_FILTERS, mapsSearch, moreLabel, nearPlaces, offerCard, offerHidden, offerKey, ROW_CELLS, rowCells, stopCountry, type KCardVM, type KFilter } from "../../../lib/collectionCards";
 import { needKey, type ActivityGap } from "../../../lib/emptyCards";
 import { L } from "../../../lib/i18n";
 import { selfSearches, type SelfSearch } from "../../../lib/intentFrame";
@@ -216,12 +216,16 @@ export function CollectionRow({ vm, onPut, onTakeOff }: CollectionRowProps) {
   const cx = useCollectEnv();
   const plan = cx?.plan ?? null;
   const records = vm.itemIds.map((id) => v82.byId.get(id)).filter((i): i is Item => i != null && i.status !== "dismissed");
-  const { offers, events, put, looking } = useCityOffers(vm.section === "activity" ? vm.head.city : null, plan, records, env.tripId);
+  const { offers: found, events: foundEvents, put, looking } = useCityOffers(vm.section === "activity" ? vm.head.city : null, plan, records, env.tripId);
   const sightCity = vm.section === "todo" ? vm.head.city : null;
   const sightList = useCitySights(sightCity);
   // A sight put on the plan or said "Gerek yok" to stays away (its key in the trip's suggestions, not open).
   const gone = new Set((env.trip.suggestions ?? []).filter((s) => s.state !== "open").map((s) => s.key));
   const sights = sightCity ? sightList.map((s) => sightSuggestion(sightCity, s, 0)).filter((s) => !gone.has(s.key)) : [];
+  // A tour or an event said "Gerek yok" to (its ×) stays away the same way, under its own key.
+  const offers = found.filter((o) => !gone.has(offerKey(o)));
+  const events = foundEvents.filter((o) => !gone.has(offerKey(o)));
+  const hideOffer = (o: Offer) => v82.dismissSuggestion?.(offerHidden(o));
   const said = (env.trip.suggestions ?? []).filter((s) => s.state === "added");
   const row = collectionRow(vm, v82.byId, { trip: env.trip, people: v82.selfAt.adults, ctx: env.decisions?.ctx, offers, sights, said });
   const todo = vm.section === "todo";
@@ -243,7 +247,7 @@ export function CollectionRow({ vm, onPut, onTakeOff }: CollectionRowProps) {
     }
     if (c.offer) {
       const offer = c.offer;
-      return <OfferCard key={c.key} card={c} onPut={() => void put(offer)} />;
+      return <OfferCard key={c.key} card={c} onPut={() => void put(offer)} onDismiss={v82.dismissSuggestion ? () => hideOffer(offer) : null} />;
     }
     return null;
   };
@@ -348,7 +352,7 @@ export function CollectionRow({ vm, onPut, onTakeOff }: CollectionRowProps) {
           <div className={`q-cards ${rowClass(vm.section)}`}>
             {events.map((e) => {
               const c = offerCard(e, v82.selfAt.adults);
-              return <OfferCard key={c.key} card={c} onPut={() => void put(e)} />;
+              return <OfferCard key={c.key} card={c} onPut={() => void put(e)} onDismiss={v82.dismissSuggestion ? () => hideOffer(e) : null} />;
             })}
           </div>
         </div>

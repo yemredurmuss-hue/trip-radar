@@ -162,6 +162,10 @@
 .q-rrow.card .q-rhd { gap: 4px; }
 .q-rrow.card .q-rhd .q-nm { font-size: 15.5px; }
 .q-r3 { font-size: var(--q-fs-small); }
+/* 0.44.2: a stay's notes, folded while the card is closed: one small amber line, the card opens on it */
+.q-hint { all: unset; justify-self: start; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; margin-top: 1px; font-size: var(--q-fs-small); font-weight: 700; color: var(--q-warn); }
+.q-hint:hover { text-decoration: underline; }
+.q-hint:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; border-radius: 4px; }
 .q-rwants { display: flex; gap: 6px; min-width: 0; overflow: hidden; white-space: nowrap; }
 .q-rwants > span { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 99px; border: 1px dashed var(--q-st-wait-line); font-size: 11.5px; font-weight: 650; color: var(--q-mut); background: #fff; }
 .q-rwants > span.must { border: 1px solid color-mix(in srgb, var(--q-acc) 35%, var(--q-line)); color: var(--q-acc); background: var(--q-acc-s); }

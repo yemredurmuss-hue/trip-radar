@@ -52,6 +52,11 @@ interface Props {
 export function Chat({ trip, messages, onBack, items, trips, openCaptures, pending, onPendingTaken, plan }: Props) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
+  // Art arda yazmak (0.44.2, Emre: "beni bekletmesin"): what's sent while the answer is still coming waits here, shown as
+  // its own bubble ("Sırada", ×); once the answer is in, all of it goes as the next turn, together, so the AI reads them all.
+  const [queued, setQueued] = useState<string[]>([]);
+  const queue = useRef<string[]>([]);
+  const answering = useRef(false);
   // What the answer is waiting on beyond thinking: a web search ("Web'de arıyorum…"), prices ("Fiyatlara bakıyorum…").
   // A search can run on after its turn's reply (10-30 s): its line stays while the traveller writes on.
   const [status, setStatus] = useState<ChatStatus>(() => chatStatusOf(trip.id));
@@ -148,11 +153,17 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
     const box = bottom.current?.closest(".messages");
     if (box) box.scrollTop = box.scrollHeight;
     // Each step of the turn as it comes (it's what the traveller watches while the board changes).
-  }, [arrivals.rows.length, busy, steps.length]);
+  }, [arrivals.rows.length, busy, steps.length, queued.length]);
 
   async function submit(value = text) {
     const input = value.trim();
-    if (!input || busy) return;
+    if (!input) return;
+    if (answering.current) {
+      queue.current = [...queue.current, input];
+      setQueued(queue.current);
+      setText("");
+      return;
+    }
     clearError();
     // A link alone, or links inside a line ("Bu hosteli ekle https://…"): saved as candidates, the line their note; a
     // line that also asks something ("… merkeze yakın mı?") goes on to the chat as well.
@@ -162,6 +173,7 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
       return;
     }
     setText("");
+    answering.current = true;
     setBusy(true);
     // Under 860 px the reply is worth seeing: the drawer opens for it.
     drawer.reveal();
@@ -173,12 +185,22 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
       failed = true;
       fail(e);
     } finally {
+      answering.current = false;
       setBusy(false);
+      // (what was written meanwhile: the next turn, all of it at once)
+      const next = queue.current;
+      queue.current = [];
+      setQueued([]);
+      if (next.length) void submit(next.join("\n"));
       // "Türkçeye geç": the reply is saved; the board opens again in the new language, with its "Geri al". Not after
       // an error: the error stays on screen (the language switched is there on the next load all the same).
-      if (!failed) reloadIfLangChanged(trip.id, langBefore);
+      else if (!failed) reloadIfLangChanged(trip.id, langBefore);
     }
   }
+  const unqueue = (n: number) => {
+    queue.current = queue.current.filter((_, i) => i !== n);
+    setQueued(queue.current);
+  };
 
   // A line handed over from the home goes through submit() like a typed one (busy, "Düşünüyor…", the language reload).
   const taken = useRef<string | null>(null);
@@ -350,6 +372,17 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
               <span key={thinkingLine(status, waitedLong ? LONG_WAIT : 0)} className="th-line">{thinkingLine(status, waitedLong ? LONG_WAIT : 0)}</span>
             </div>
           )}
+          {queued.map((q, n) => (
+            <div key={`${n}:${q}`} className="msg-user msg-queued">
+              <RichText text={q} />
+              <span className="msg-q">
+                {L("Sırada · cevap bitince gider", "Queued · goes once the answer is in")}
+                <button type="button" className="btn-link" aria-label={L("Sıradan çıkar", "Take it out of the queue")} onClick={() => unqueue(n)}>
+                  ×
+                </button>
+              </span>
+            </div>
+          ))}
           {error && !errKind && <div className="chat-error" role="alert">{error}</div>}
           <div ref={bottom} />
         </div>
@@ -380,7 +413,7 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
             onChange={(e) => setText(e.target.value)}
             onPaste={onPaste}
           />
-          <button type="submit" className="send-btn" disabled={!text.trim() || busy} aria-label={L("Gönder", "Send")}>
+          <button type="submit" className="send-btn" disabled={!text.trim()} aria-label={busy ? L("Sıraya ekle", "Add to the queue") : L("Gönder", "Send")}>
             <ArrowUp />
           </button>
         </form>

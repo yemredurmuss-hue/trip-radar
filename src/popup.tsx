@@ -199,7 +199,7 @@ const STATE_WORD: Record<PocketRow["state"], () => string> = {
 /** Son eklenenler: the trip's last five, how each stands; × takes a wrong one back, "tekrar" reads a failed one again. */
 function Recent({ pocket, onChanged }: { pocket: Pocket | null; onChanged: () => void }) {
   const [gone, setGone] = useState<ReadonlySet<string>>(() => new Set());
-  const rows = (pocket?.rows ?? []).filter((r) => !gone.has(r.id));
+  const rows = (pocket?.rows ?? []).filter((r) => !gone.has(r.id)).slice(0, 3);
   if (!rows.length) return null;
   const act = (type: "popup:remove" | "popup:retry", id: string) => {
     if (type === "popup:remove") setGone((g) => new Set(g).add(id));
@@ -211,11 +211,9 @@ function Recent({ pocket, onChanged }: { pocket: Pocket | null; onChanged: () =>
       {rows.map((r) => (
         <div key={r.id} className="cep-row">
           <Cover photos={r.photo ? [r.photo] : []} title={r.title} />
-          <span>
-            <b>{r.title}</b>
-            <small>{r.sub}</small>
-          </span>
-          <em className={`cep-st ${r.state}`}>{STATE_WORD[r.state]()}</em>
+          <b>{r.title}</b>
+          {/* (only what isn't fine says so; a record in its deck is just its name) */}
+          {r.state !== "in" && <em className={`cep-st ${r.state}`}>{STATE_WORD[r.state]()}</em>}
           {r.state === "failed" && (
             <button type="button" className="btn-link" onClick={() => act("popup:retry", r.id)}>
               {L("tekrar", "retry")}

@@ -615,10 +615,12 @@ export interface StayCardProps {
   editable: boolean;
   /** "Aldım"'s box under the card, in its foot's place (ProofAsk). */
   ask?: ReactNode;
+  /** Its notes folded to one small line while the card is closed ("⏱ Giriş saati"); pressed, the card opens. */
+  hint?: ReactNode;
 }
 
 /** A stay or a rental: a card that doesn't fold; its picture on the left, three lines, one figure, one thing on the right. */
-export function StayCard({ vm, view, art, date, on, onPress, menu, foot, under, chipId, editable, ask = null }: StayCardProps) {
+export function StayCard({ vm, view, art, date, on, onPress, menu, foot, under, chipId, editable, ask = null, hint = null }: StayCardProps) {
   const press = onPress
     ? {
         role: "button" as const,
@@ -657,6 +659,7 @@ export function StayCard({ vm, view, art, date, on, onPress, menu, foot, under, 
             ) : (
               <Parts parts={view.third} cls="q-rln q-r3" />
             )}
+            {hint}
           </span>
           <Figure fig={view.slot.kind === "none" ? null : view.figure} editable={editable && (vm.status === "chosen" || vm.status === "suggested")} blank={editable && vm.status === "chosen"} />
           <span className="q-rslot" id={chipId}>

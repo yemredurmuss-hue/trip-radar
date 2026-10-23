@@ -485,6 +485,17 @@ yukarıdaki tablodadır (Seçildi kum, Alındı yeşil).
 - Bilet gibi: ne → ne ("Havalimanı → Otel"), adlar ve saat alt satırda, notlar Ayrıntı'da.
 - Artı ve eksi birkaç kelimedir; sayfada okunan somut şey kendi sözleriyle yazılır ("Karşısında genelev var").
 
+## Sade cep, katlanan notlar, önerilerde ×, art arda yazmak (0.44.2)
+
+- Cep: başlıkta gezi ve tek sayı ("4 otel"), tek düğme, son 3 eklenenin yalnız adı (durum yalnız yolunda değilse:
+  okunuyor, okunamadı · tekrar; × üstüne gelince), "Panoyu aç ↗" · "Bu sitede gösterme". Açıklama satırı yok.
+- Konaklama kartının amber notları (giriş/çıkış saati, kişi sayısı, gece uyarısı) kart kapalıyken kartın içinde tek küçük
+  satır: "⏱ Giriş saati" (birden çoksa "· +1"); basınca kart açılır, her not tam cümlesi ve tek işiyle görünür.
+- Etkinlik: Viator/GetYourGuide turları, "O tarihlerde" etkinlikleri ve plana alınmamış kayıtlı fikirler üstüne gelince ×
+  (Gerek yok); tur `offer:<id>` anahtarıyla gezinin önerilerinde gizlenir, Gizlenenler'den geri gelir.
+- Sohbet: cevap sürerken yazılan "Sırada · cevap bitince gider" balonu olur (× ile çıkar); cevap bitince sıradakilerin
+  hepsi tek tur olarak birlikte gider.
+
 ## Gezi cebi (0.44.0, tuval 12 · Plan 3)
 
 - Dört iş, iki yüzey: kartta "+" ve kenarda cep. Topla, gör, seç, git; gerisi panoda (karşılaştırma tablosu, oy, not yok).

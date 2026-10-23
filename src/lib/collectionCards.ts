@@ -399,6 +399,17 @@ export function nearPlaces(plan: Pick<Plan, "stayBlocks">, items: Iterable<Item>
   return out;
 }
 
+/** The key a tour or an event said "Gerek yok" to is kept under, among the trip's suggestions (0.44.2). */
+export const offerKey = (o: Pick<Offer, "id">): string => `offer:${o.id}`;
+
+/**
+ * What its × stores: a suggestion of the rules' kind (never shown back from storage, suggestions.shownSuggestions), said
+ * not needed; Gizlenenler's "Geri getir" opens it again and the tour comes back.
+ */
+export function offerHidden(o: Pick<Offer, "id" | "title">): Suggestion {
+  return { key: offerKey(o), section: "activity", kind: "add", title: o.title, why: "", source: "rule", createdAt: Date.now(), state: "open" };
+}
+
 /** A tour the connected source offers for the city (its page, its photo, how long, its price a person). */
 export function offerCard(o: Offer, people: number | null): KCardVM {
   const each = o.price != null && o.price > 0 ? (people && people > 1 ? o.price / people : o.price) : null;

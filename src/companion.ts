@@ -98,7 +98,7 @@ button:focus-visible, .plus:focus-visible { outline: 3px solid #cfc7ff; outline-
 .tab .add { width: 22px; height: 22px; border-radius: 99px; background: #fff; color: #5b45e0; display: grid; place-items: center; font-size: 15px; }
 @keyframes bump { 0% { transform: scale(1); } 40% { transform: scale(1.45); background: #1f7a45; } 100% { transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) { .tab .n.bump { animation: none; } }
-.cep { position: fixed; z-index: 2147483646; right: 0; top: 64px; width: 304px; max-height: calc(100vh - 96px); overflow: auto; border-radius: 14px 0 0 14px; background: #fff;
+.cep { position: fixed; z-index: 2147483646; right: 0; top: 64px; width: 280px; max-height: calc(100vh - 96px); overflow: auto; border-radius: 14px 0 0 14px; background: #fff;
   box-shadow: -8px 0 28px rgba(28,26,51,.22), 0 0 0 1px #dcd8e8; display: flex; flex-direction: column; font: 600 12.5px/1.4 "Plus Jakarta Sans", system-ui, sans-serif; color: #1c1a33; }
 .cep .hd { display: flex; align-items: center; gap: 4px; padding: 8px 6px 8px 12px; background: linear-gradient(90deg,#1c1a33,#3b2f7a); color: #fff; }
 .cep .hd .tp { all: unset; flex: 1; min-width: 0; display: flex; align-items: center; gap: 9px; cursor: pointer; border-radius: 8px; }
@@ -110,7 +110,12 @@ button:focus-visible, .plus:focus-visible { outline: 3px solid #cfc7ff; outline-
 .cep .hd b { font-size: 13px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cep .hd small { font-size: 11px; color: #cfc8f5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cep .hd em { margin-left: auto; font-style: normal; color: #cfc8f5; }
-.cep .bd { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.cep .bd { padding: 12px; display: flex; flex-direction: column; gap: 9px; }
+.cep .go.ghost { background: #fff; color: #4a36c9; box-shadow: inset 0 0 0 1.5px #c9bffa; }
+.cep .r > b { flex: 1; min-width: 0; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cep .r .x { opacity: 0; transition: opacity 120ms; }
+.cep .r:hover .x, .cep .r .x:focus-visible { opacity: 1; }
+@media (hover: none) { .cep .r .x { opacity: 1; } }
 .cep .k { font-size: 10.5px; font-weight: 800; color: #8e8aa6; }
 .cep .pg { font-size: 13px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .cep .go { font: 800 13px/1.2 "Plus Jakarta Sans", system-ui, sans-serif; border: 0; border-radius: 10px; padding: 10px; background: #5b45e0; color: #fff; cursor: pointer; }
@@ -736,7 +741,9 @@ function start() {
     const tp = document.createElement("button");
     tp.type = "button";
     tp.className = "tp";
-    tp.append(thumb(trip?.photo, trip?.title ?? "+"), twoLines(trip?.title ?? L("Henüz gezi yok", "No trip yet"), trip ? [trip.when, deck ? L(`${deckWord(kind)} ${deck.n} · toplam ${trip.count}`, `${deckWord(kind)} ${deck.n} · ${trip.count} in all`) : L(`${trip.count} kayıt`, `${trip.count} saved`)].filter(Boolean).join(" · ") : L("İlk ekleme geziyi açar", "The first add starts one")));
+    // (0.44.2, Emre: "çok karışık, çok daha sade"): the trip and one number; one button; the last three by name; the board.
+    const many = deck ? `${deck.n} ${deck.word}` : trip ? L(`${trip.count} kayıt`, `${trip.count} saved`) : L("İlk ekleme geziyi açar", "The first add starts one");
+    tp.append(thumb(trip?.photo, trip?.title ?? "+"), twoLines(trip?.title ?? L("Henüz gezi yok", "No trip yet"), many));
     if (where?.trips.length) {
       const em = document.createElement("em");
       em.textContent = "▾";
@@ -754,26 +761,11 @@ function start() {
     hd.lastElementChild!.setAttribute("aria-label", L("Kapat", "Close"));
     const bd = document.createElement("div");
     bd.className = "bd";
-    const k = (text: string) => {
-      const e = document.createElement("span");
-      e.className = "k";
-      e.textContent = text;
-      return e;
-    };
-    const pg = (text: string) => {
-      const e = document.createElement("span");
-      e.className = "pg";
-      e.textContent = text;
-      return e;
-    };
-    bd.append(k(L("Bu sayfa", "This page")));
     if (single) {
-      bd.append(pg((document.querySelector("h1")?.textContent ?? document.title).replace(/\s+/g, " ").trim()));
       const go = button(`go${inDeck ? " done" : ""}`, inDeck ? L("✓ Destede", "✓ In the deck") : pageState === "busy" ? L("Okunuyor…", "Reading…") : L(`+ ${deckWord(single)} destesine ekle`, `+ Add to ${deckWord(single)}`), addPage);
       go.disabled = inDeck || pageState === "busy";
       bd.append(go);
     } else if (listy) {
-      bd.append(pg(L(`${cards.length} sonuç görünüyor`, `${cards.length} results in view`)));
       bd.append(
         button("go", L("Sonuçlardan seç", "Pick from the results"), () => {
           selecting = true;
@@ -784,23 +776,28 @@ function start() {
           drawSide();
         }),
       );
-      const note = document.createElement("span");
-      note.className = "note";
-      note.textContent = L("Ya da her sonucun + düğmesine bas. Listenin tamamı tek kayıt olmaz.", "Or press a result's +. The whole list never becomes one record.");
-      bd.append(note);
     } else {
-      bd.append(pg(document.title), button("lnk", L("Ekrandakini ekle", "Add what's on screen"), addView));
+      bd.append(button("go ghost", L("Ekrandakini ekle", "Add what's on screen"), addView));
     }
-    const rows = pocket?.rows ?? [];
+    const rows = (pocket?.rows ?? []).slice(0, 3);
     if (rows.length) {
-      bd.append(k(L("Son eklenenler", "Added last")));
+      const k = document.createElement("span");
+      k.className = "k";
+      k.textContent = L("Son eklenenler", "Added last");
+      bd.append(k);
       for (const r of rows) {
         const row = document.createElement("div");
         row.className = "r";
-        const st = document.createElement("span");
-        st.className = `st ${r.state}`;
-        st.textContent = STATE_WORD[r.state]();
-        row.append(thumb(r.photo, r.title), twoLines(r.title, r.sub), st);
+        const name = document.createElement("b");
+        name.textContent = r.title;
+        row.append(thumb(r.photo, r.title), name);
+        // (only what isn't fine says so; a record in its deck is just its name)
+        if (r.state !== "in") {
+          const st = document.createElement("span");
+          st.className = `st ${r.state}`;
+          st.textContent = STATE_WORD[r.state]();
+          row.append(st);
+        }
         if (r.state === "failed") row.append(button("lnk", L("tekrar", "retry"), () => void ask({ type: "desk:retry", id: r.id }).then(() => loadPocket())));
         const x = button("x", "×", () => {
           row.remove();
@@ -814,14 +811,14 @@ function start() {
     if (pocket && !pocket.key) {
       const w = document.createElement("div");
       w.className = "warn";
-      w.textContent = pocket.waiting ? L(`AI bağlı değil: ${pocket.waiting} kayıt bekliyor, toplamaya devam. Anahtarı Trip Radar'ın ayarlarında bağla.`, `AI not connected: ${pocket.waiting} saves waiting, keep collecting. Connect the key in Trip Radar's settings.`) : L("AI bağlı değil: eklediklerin bu bilgisayarda bekler.", "AI not connected: what you add waits on this computer.");
+      w.textContent = pocket.waiting ? L(`AI bağlı değil · ${pocket.waiting} kayıt bekliyor`, `AI not connected · ${pocket.waiting} waiting`) : L("AI bağlı değil · eklediklerin bekler", "AI not connected · saves wait");
       bd.append(w);
     }
     const ft = document.createElement("div");
     ft.className = "ft";
     ft.append(
-      button("", trip ? L(`${trip.title} panosunu aç ↗`, `Open the ${trip.title} board ↗`) : L("Planı aç ↗", "Open the plan ↗"), () => void ask({ type: "desk:open", tripId: trip?.id ?? "" })),
-      button("q", L("Bu sitede gizle", "Hide on this site"), () => {
+      button("", L("Panoyu aç ↗", "Open the board ↗"), () => void ask({ type: "desk:open", tripId: trip?.id ?? "" })),
+      button("q", L("Bu sitede gösterme", "Not on this site"), () => {
         sideHidden = true;
         sideOpen = false;
         void chrome.storage.local.set({ [HIDE]: true }).catch(() => undefined);
