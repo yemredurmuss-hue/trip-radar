@@ -1129,20 +1129,16 @@ try {
   assert.equal(await stayWin.locator(".q-dverify li", { hasText: "Yan binada inşaat" }).count(), 0, "accepted: nothing to check before choosing");
   await app.keyboard.press("Escape");
   await stayWin.waitFor({ state: "detached" });
-  // How it understood the traveller so far: what they said (incl. "sorun değil"); a pattern in the saved
-  // stays is asked about, and counts only after a yes.
-  // On the hero it's "Tercihler": a few tags and the question's "1"; a tap opens "Seni böyle anladım" under it.
+  // How it understood the traveller so far: what they said (incl. "sorun değil").
+  // On the hero it's "Tercihler" and how many; the mouse over it opens "Seni böyle anladım", only to read (0.46.0, Emre:
+  // "buradan bana soru sormasın, chatte konuştukça şekillenecek"): no question, no ×, the chat changes it.
   const intent = app.locator(".x-hero .x-prefs");
-  await intent.locator(".x-prefb", { has: app.locator(".x-q") }).click();
-  const guess = intent.locator(".x-pref-pop .x-ask", { hasText: "İptal esnekliği senin için daha mı önemli?" });
-  await guess.waitFor();
-  await guess.getByRole("button", { name: "Evet" }).click();
-  await guess.waitFor({ state: "detached" });
-  await intent.locator(".x-pref-pop li", { hasText: "ücretsiz iptalli" }).waitFor();
+  await intent.locator(".x-prefb").hover();
   await intent.locator(".x-pref-pop li", { hasText: "Sorun değil: Yan binada inşaat gürültüsü" }).waitFor();
-  await intent.page().mouse.move(5, 5); // 0.46.0: the mouse leaving closes it
+  assert.equal(await intent.locator(".x-pref-pop button").count(), 0, "nothing to answer or remove here");
+  await intent.locator(".x-pref-pop .x-edit", { hasText: "sohbette söylemen yeter" }).waitFor();
+  await intent.page().mouse.move(5, 5); // the mouse leaving closes it
   await intent.locator(".x-pref-pop").waitFor({ state: "detached" });
-  assert.equal(await intent.locator(".x-q").count(), 0, "the question answered: no \"1\" left");
   assert.ok(Number(await intent.locator(".x-pn").innerText()) >= 1, "what was understood, counted");
   await app.screenshot({ path: `${out}/3b-card.png` });
 
@@ -2550,7 +2546,7 @@ try {
   await firstSheet.waitFor();
   await firstSheet.getByRole("button", { name: "Kapat" }).click();
   await firstSheet.waitFor({ state: "detached" });
-  // What was understood arrives (it fades in) and × takes one back.
+  // What was understood arrives (it fades in); the window only says it.
   await putTrip({ ...blank, priorities: { price: 4, location: 4 }, updatedAt: Date.now() });
   const prefs = bare.locator(".x-prefs");
   await bare.locator(".x-prefs.hx-appear").waitFor();
@@ -2558,11 +2554,9 @@ try {
   await prefs.locator(".x-pref-pop li", { hasText: "Fiyat" }).waitFor();
   await prefs.locator(".x-pref-pop li", { hasText: "Konum" }).waitFor();
   await app.screenshot({ path: `${out}/2g-hero-prefs.png` });
-  await prefs.locator(".x-pref-pop").getByRole("button", { name: "Konum: Çok önemli kaldır" }).click();
-  await prefs.locator(".x-pref-pop li", { hasText: "Konum" }).waitFor({ state: "detached" });
   await app.mouse.click(5, 5); // outside: the window closes
   await prefs.locator(".x-pref-pop").waitFor({ state: "detached" });
-  assert.equal(await prefs.locator(".x-pn").innerText(), "1", "one left");
+  assert.equal(await prefs.locator(".x-pn").innerText(), "2", "two understood");
   // "Özeti küçült" folds it to one line (E11), remembered for the trip after a reload; "Özeti aç" brings it back.
   await bare.locator(".x-fold").click();
   await bare.locator(".x-slim:not([hidden])", { hasText: "Yeni gezi" }).waitFor();
@@ -2573,7 +2567,7 @@ try {
   await app.locator(".x-hero .x-unfold").click();
   await app.locator(".x-hero:not(.fold) .x-mos").waitFor();
   assert.equal(await app.locator(".x-hero .x-slim").isVisible(), false, "unfolded: the line is away");
-  console.log('✓ hero v82: a new trip\'s hero shows only what is known (the plain cover, who goes, "İlk kaydı ekle" opening the sheet), Tercihler fades in when understood (window, ×), "Özeti küçült" folds it to one line, remembered, "Özeti aç" brings it back');
+  console.log('✓ hero v82: a new trip\'s hero shows only what is known (the plain cover, who goes, "İlk kaydı ekle" opening the sheet), Tercihler fades in when understood (its window only to read), "Özeti küçült" folds it to one line, remembered, "Özeti aç" brings it back');
 
   // Hero fix 2: a stay in Gaula, a parish on Madeira, is Madeira's on the hero with no model to ask (no key here):
   // a Porto stay and a campervan picked up in Gaula show "Porto | Madeira", never "Porto | Gaula".

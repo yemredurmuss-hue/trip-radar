@@ -312,10 +312,9 @@ başlığı (v82). Bileşenler `src/app/hero/`, biçim `static/v82/hero.css`, sa
   kur, priz uyumu, "Sende 12:00 iken orada 18:00", vize ayrıntısı).
 - **Bayrak ülkenindir (0.46.0):** ülke yerin şehrinden okunur (Santiago Şili'dir), AI'nın verdiği kod yalnız şehir
   tabloda yoksa kullanılır. Kapaktaki rotada her ülkenin ilk durağının önünde küçük bayrağı durur.
-- **Tercihler** satırda tek düğmedir, yanında sayısı; üzerine gelince açılır (sohbet başındaki istekler dahil, × ile
-  kaldırılır), çıkınca kapanır.
-- **Küçük pencereler** (180/120 ms, E12): Tercihler "Seni böyle anladım" (kapsam etiketi, kaynak, × kaldır, AI'nın
-  sorusu Evet/Hayır), Bütçe (Rezerve · Planlanan · Boşta, kategori dağılımı, iki ve daha çok kişide "Kişi başı ~€3.450 ·
+- **Tercihler** satırda tek düğmedir, yanında sayısı; üzerine gelince açılır (sohbet başındaki istekler dahil), çıkınca
+  kapanır. Pencere yalnız okunur: soru sorulmaz, × yok; tercihler sohbette konuştukça şekillenir (0.46.0).
+- **Küçük pencereler** (180/120 ms, E12): Tercihler "Seni böyle anladım" (kapsam etiketi, kaynak), Bütçe (Rezerve · Planlanan · Boşta, kategori dağılımı, iki ve daha çok kişide "Kişi başı ~€3.450 ·
   2 kişi", T5), Kimler gidiyor (yetişkin, çocuk, oda; davet, son hareket; D12).
 - **Ana yerler** (revizyon 1): hero'nun şehirleri gezginin gittiği ana yerlerdir (şehir, ada, bölge), gecelediği her
   kasaba değil. Madeira'daki bir köy (Gaula) Madeira'nın içine katlanır. Hangi yerin hangisinin içinde olduğunu
