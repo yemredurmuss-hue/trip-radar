@@ -901,18 +901,20 @@ try {
   // against the next (C12), what to check before choosing, its pluses, why it's here in the traveller's own word (K6).
   // Plan v14 (onay paketi): the card that doesn't fold: "✨ Önerimiz · Porto · 3 gece" over its name, the site and the area, the
   // price by the night and the nights' total, "Bunu seç" its one action; its photo with the site's mark.
-  const portoDraft = sec("stay").locator('.q-ints > .q-int[data-st="ai"]', { has: app.locator(".q-nm", { hasText: "Jardim Stay" }) });
+  // (0.40.5: our pick among three is a deck, the city's name over it and our pick named on its line)
+  const portoDraft = sec("stay").locator('.q-ints > .q-int[data-st="ai"]', { has: app.locator(".q-rhd", { hasText: "Jardim Stay" }) });
   await portoDraft.waitFor();
   // (onay paketi 2026-10-22: the kind's word, then the step's; "Seç", never "Bunu seç")
   // (its city on the rail where the city changes, onay paketi 2026-10-22; no city over its name)
   assert.equal(await portoDraft.getAttribute("data-city"), "Porto");
   assert.equal(await portoDraft.locator(".q-rlead .q-rkind").count(), 0);
   assert.ok((await sec("stay").locator(".q-tlcity", { hasText: "Porto" }).count()) > 0, "Porto on the rail");
-  assert.equal(flat([await portoDraft.locator(".q-rlead .q-rstage").innerText()])[0], "✨ Önerimiz");
+  assert.equal(flat([await portoDraft.locator(".q-rlead .q-rstage").innerText()])[0], "3 seçenek");
   assert.equal(await portoDraft.getAttribute("data-stage"), "options");
-  assert.equal(await portoDraft.locator(".q-rslot .q-take").innerText(), "Seç");
+  assert.equal(flat([await portoDraft.locator(".q-rln").first().innerText()])[0].startsWith("✨ önerimiz Jardim Stay"), true);
+  assert.equal(flat([await portoDraft.locator(".q-rslot .q-rsec .q-rmini").innerText()])[0], "3");
   assert.equal(await portoDraft.locator(".q-got").count(), 0, "no ✓ Aldım: nothing is chosen yet");
-  assert.match(flat([await portoDraft.locator(".q-rfig").innerText()])[0], /^€\d+ gece · €\d+$/, "its real price by the night, and the nights' total");
+  assert.match(flat([await portoDraft.locator(".q-rfig").innerText()])[0], /^€\d+ gece, önerimiz$/, "our pick's real price by the night");
   await app.setViewportSize({ width: 390, height: 844 });
   const cardBox = await portoDraft.boundingBox();
   const priceBox = await portoDraft.locator(".q-rfig").boundingBox();
@@ -5950,7 +5952,7 @@ try {
     if (!(await sec.evaluate((el) => el.classList.contains("open")))) await sec.locator(".q-tt").click();
     await sec.locator(".q-fold.settled").waitFor();
   };
-  const stayDraft = app.locator('.q-sec[data-section="stay"] .q-ints > .q-int[data-st="ai"]', { has: app.locator(":is(.z-t, .q-nm)", { hasText: "Jardim Stay" }) });
+  const stayDraft = app.locator('.q-sec[data-section="stay"] .q-ints > .q-int[data-st="ai"]', { has: app.locator(":is(.z-t, .q-rhd)", { hasText: "Jardim Stay" }) });
   const flightDraft = app.locator('.q-sec[data-section="flight"] .q-ints > .q-int[data-st="ai"]', { has: app.locator(".z-carl", { hasText: "Pegasus" }) });
   await openCat("flight");
   await flightDraft.waitFor();
@@ -5991,7 +5993,9 @@ try {
   const still = await heroNow();
   assert.deepEqual([still.total, still.planned, still.booked, still.open], [before.total, before.planned, before.booked, before.open], "the hero didn't move");
   // "Bunu seç" chooses: the box is Seçildi, "Rezerve et ↗" on it (v13: "Aldın mı?" once its site was opened).
-  await stayDraft.locator(".q-take", { hasText: /^(Bunu seç|Seç)$/ }).click();
+  // (0.40.5: a deck: "Seç 3" opens the drawer, Jardim Stay's Seç chooses it)
+  await stayDraft.locator(".q-rslot .q-rsec").click();
+  await app.locator("aside.dr .dr-op", { has: app.locator(".dr-nm", { hasText: "Jardim Stay" }) }).locator(".dr-sec").click();
   const stayChosen = app.locator('.q-sec[data-section="stay"] .q-ints > .q-int[data-st="sel"]', { has: app.locator(":is(.z-t, .q-nm)", { hasText: "Jardim Stay" }) });
   await stayChosen.locator(":is(.z-bt, .q-rslot) .q-cta", { hasText: "Rezerve et" }).waitFor();
   assert.equal(await app.locator('.q-sec[data-section="stay"] .q-int[data-st="ai"]').count(), 0, "chosen: the draft is gone");
