@@ -2908,33 +2908,60 @@ body.still .hm-plane { display: none; }
 .pk-in { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 12px; background: #eef8f2; color: #1f7a45; font-weight: 800; font-size: 13px; }
 .pk-sel { justify-self: start; font-size: 12.5px; }
 .pk-open { justify-self: start; font-size: 12.5px; }
-/* Gezi cebi (0.44.0): the trip on top, this page, what was added last with how each stands, the board a press away */
-.cep-trip { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 10px; min-width: 0; padding: 9px 12px; border-radius: 12px; background: linear-gradient(90deg, #1c1a33, #3b2f7a); color: #fff; }
-button.cep-trip { cursor: pointer; }
-.cep-trip .pk-th { width: 36px; height: 36px; background: rgba(255, 255, 255, .14); color: #fff; }
-.cep-trip > span:nth-child(2) { min-width: 0; display: grid; gap: 1px; }
-.cep-trip b { font-size: 13.5px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cep-trip small { font-size: 11.5px; color: #cfc8f5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cep-trip em { margin-left: auto; font-style: normal; color: #cfc8f5; font-weight: 700; }
-.cep-sec { display: grid; gap: 8px; }
-.cep-k { font-size: 11px; font-weight: 800; color: #8e8aa6; }
-.cep-say { margin: 0; font-size: 12.5px; line-height: 1.5; color: #3d3a55; }
-.cep-note { font-size: 11.5px; line-height: 1.45; }
-.cep-row { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 12.5px; }
-.cep-row .pk-th { width: 30px; height: 30px; border-radius: 8px; font-size: 12px; }
-.cep-row > b { min-width: 0; flex: 1; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cep-row .btn-link { font-size: 11.5px; padding: 0; }
-.cep-st { flex: none; font-style: normal; font-size: 10.5px; font-weight: 800; padding: 2px 7px; border-radius: 999px; background: #e7f5ec; color: #1f7a45; }
-.cep-st.reading { background: #efecff; color: #4a36c9; }
-.cep-st.failed { background: #fde8e4; color: #b23a1d; }
-.cep-x { all: unset; cursor: pointer; flex: none; width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; color: #8e8aa6; font-weight: 800; font-size: 15px; }
-.cep-x:hover, .cep-x:focus-visible { background: #f4f2ff; color: #b23a1d; }
-.cep-row .cep-x { opacity: 0; transition: opacity 120ms; }
-.cep-row:hover .cep-x, .cep-row .cep-x:focus-visible { opacity: 1; }
-.cep-key { margin: 0; padding: 8px 10px; border-radius: 10px; background: #fff7e8; color: #8a5a00; font-size: 12px; font-weight: 650; line-height: 1.45; }
-.cep-key .btn-link { padding: 0; font-size: 12px; font-weight: 800; }
-.cep-foot { display: flex; justify-content: space-between; gap: 10px; padding-top: 8px; border-top: 1px solid #efedf5; }
-.cep-foot .btn-link { padding: 0; font-size: 12.5px; font-weight: 800; }
+/* Tek bakış (0.45.0): one card at a time; a picture or a sign, one sentence, one big button, one quiet line */
+body.popup:has(.tb) { width: 380px; }
+.popup-card.tb { display: grid; gap: 0; padding: 0; overflow: hidden; }
+.tb > .popup-price { margin: 12px 14px 0; }
+.tb-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 12px 0 14px; }
+.tb-brand { font-size: 13px; font-weight: 800; color: #8e8aa6; }
+.tb-chip { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; max-width: 280px; padding: 4px 12px 4px 4px; border-radius: 999px; background: #f7f6fb; box-shadow: inset 0 0 0 1px #e7e4ef; font-size: 14px; font-weight: 800; color: #1c1a33; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tb-chip:disabled { cursor: default; }
+.tb-chip .pk-th { width: 26px; height: 26px; border-radius: 50%; font-size: 11px; }
+.tb-chip em { font-style: normal; color: #8e8aa6; }
+.tb-chip:focus-visible, .tb-go:focus-visible, .tb-opt:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 2px; }
+.tb-x { all: unset; cursor: pointer; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: #f7f6fb; color: #5d5a78; font-weight: 700; font-size: 16px; }
+.tb-main { display: grid; gap: 12px; padding: 14px 16px 16px; }
+.tb-say { display: grid; gap: 3px; }
+.tb-say b { font-size: 18px; font-weight: 800; letter-spacing: -.01em; line-height: 1.25; }
+.tb-say span { font-size: 14px; line-height: 1.45; color: #5d5a78; font-weight: 600; }
+.tb-eye { font-size: 12.5px; font-weight: 800; color: #8e8aa6; }
+.tb-sign { width: 56px; height: 56px; border-radius: 16px; display: grid; place-items: center; font-size: 26px; font-weight: 800; }
+.tb-sign.ok { background: #e8f6ee; color: #1f7a45; }
+.tb-sign.bad { background: #fde8e4; color: #c0392b; }
+.tb-sign.warn { background: #fff3df; color: #8a5a00; }
+.tb-sign.acc { background: #efecff; color: #4a36c9; }
+.tb-sign.mute { background: #f7f6fb; color: #5d5a78; }
+.tb-hero { position: relative; display: block; height: 150px; border-radius: 16px; overflow: hidden; background: #f1eff7; }
+.tb-hero.small { height: 104px; }
+.tb-hero img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.tb-hero.video::after { content: ""; position: absolute; left: 50%; top: 50%; width: 0; height: 0; margin: -14px 0 0 -9px; border-left: 24px solid #fff; border-top: 14px solid transparent; border-bottom: 14px solid transparent; filter: drop-shadow(0 2px 6px rgba(0,0,0,.4)); }
+.tb-go { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px; padding: 0 14px; border-radius: 16px; background: #5b45e0; color: #fff; font-weight: 800; font-size: 16px; text-align: center; }
+.tb-go:disabled { opacity: .7; cursor: default; }
+.tb-go.ok { background: #1f7a45; }
+.tb-go.ghost { background: #fff; color: #4a36c9; box-shadow: inset 0 0 0 1.5px #c9bffa; }
+.tb-go kbd { font: 700 11px/1 inherit; padding: 3px 6px; border-radius: 5px; background: rgba(255, 255, 255, .2); }
+.tb-quiet { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 16px; border-top: 1px solid #efedf5; font-size: 13.5px; font-weight: 700; color: #5d5a78; }
+.tb-quiet b { color: #1c1a33; }
+.tb-quiet .btn-link { padding: 0; font-size: 13.5px; font-weight: 800; }
+.tb-quiet.warn { background: #fff7e8; color: #8a5a00; }
+.tb-conf { display: grid; gap: 4px; padding: 12px 14px; border-radius: 14px; background: #e8f6ee; box-shadow: inset 0 0 0 1px #bfe3c9; }
+.tb-conf b { font-size: 15px; color: #1f7a45; }
+.tb-conf span { font-size: 13.5px; font-weight: 650; }
+.tb-conf code { font: 800 13.5px/1 ui-monospace, monospace; letter-spacing: .04em; }
+.tb-opts { display: grid; gap: 8px; }
+.tb-opt { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 14px; box-shadow: inset 0 0 0 1.5px #e7e4ef; }
+.tb-opt.best { box-shadow: inset 0 0 0 2px #5b45e0; background: #f7f5ff; }
+.tb-opt .pk-th { width: 42px; height: 42px; border-radius: 12px; }
+.tb-opt > span { min-width: 0; display: grid; }
+.tb-opt b { font-size: 15px; font-weight: 800; }
+.tb-opt small { font-size: 12.5px; color: #5d5a78; font-weight: 600; }
+.tb-opt em { margin-left: auto; font-style: normal; font-size: 11.5px; font-weight: 800; color: #4a36c9; background: #efecff; padding: 3px 8px; border-radius: 999px; }
+.tb-new { justify-self: center; font-size: 14px; font-weight: 800; }
+.tb .pk-qp { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.tb .pk-pick { padding: 14px 16px 16px; }
+.tb .popup-desk { margin: 0; }
+.tb .pk-done { background: none; padding: 14px 16px 16px; }
+.tb .pk-done .pk-fly { top: 20px; }
 .pk-done { position: relative; display: grid; gap: 4px; padding: 14px 12px; border-radius: 12px; background: #eef8f2; overflow: hidden; }
 .pk-done b { color: #1f7a45; font-size: 14px; }
 /* "hop": a small card rises from where the page was and lands in the trip */

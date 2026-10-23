@@ -1,6 +1,6 @@
 # Trip Radar · Gizlilik politikası / Privacy policy
 
-Son güncelleme / Last updated: 2026-10-23 · Sürüm / Version: 0.44.2
+Son güncelleme / Last updated: 2026-10-23 · Sürüm / Version: 0.45.0
 
 ---
 
@@ -288,6 +288,10 @@ Pratikte:
 Eklenti kendini otomatik günceller. Bu politika değişirse üstteki tarih ve sürüm güncellenir.
 Önemli bir değişiklik (yeni bir veri türü ya da yeni bir alıcı gibi), değişikliği getiren sürümle birlikte bu
 sayfada açıkça yazılır.
+
+0.45.0'da değişenler: simge penceresi açıldığında (ve izin verdiğin seyahat sitelerinde) sayfanın bir rezervasyon onayı
+olup olmadığına bu bilgisayarda bakılır (onay sözü ve onay numarası); bulunursa yalnız sorar, sen "Kaydet" demeden hiçbir şey
+kaydedilmez ve hiçbir yere gönderilmez. YouTube videosu ve diğer siteler "İlham'a ekle" ile kaydedilebilir. Yeni izin yok.
 
 0.44.0'da değişenler: "Gezi cebi" (simgede ve izin verdiğin sitelerde sağ kenarda) gezinin son eklediklerini gösterir;
 bu bilgiler bu bilgisayardaki veritabanından okunur, siteye ya da başka bir yere gönderilmez. Cep, sitenin sayfasının
@@ -616,6 +620,11 @@ In practice:
 The extension updates itself. When this policy changes, the date and version at the top are updated.
 A significant change (a new kind of data or a new recipient, say) is stated plainly on this page with the version
 that brings it.
+
+Changed in 0.45.0: when you open the toolbar window (and on the travel sites you allowed), the extension checks on this
+computer whether the page is a booking confirmation (a confirming phrase and a confirmation number); if so it only asks,
+nothing is saved until you press "Save", and nothing is sent anywhere. YouTube videos and any other site can be saved with
+"Add to Inspiration". No new permission.
 
 Changed in 0.44.0: the "trip pocket" (in the toolbar window, and on the right edge of the sites you allowed) shows what
 you added to the trip last; it is read from the database on this computer and never sent to the site or anywhere else.
