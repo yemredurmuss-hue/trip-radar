@@ -37,6 +37,11 @@ describe("the card's rows", () => {
     expect(embassy.link?.url).toBe(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent("Türkiye Büyükelçiliği Portekiz")}`);
   });
 
+  it("a passport said \"Diğer\" (XX): no embassy row, never \"Embassy of XX\"", () => {
+    expect(knowRows(input({ passport: "XX" })).some((r) => r.id === "embassy")).toBe(false);
+    expect(withLang("en", () => knowRows(input({ passport: "XX" }))).some((r) => /XX/.test(r.label))).toBe(false);
+  });
+
   it("what isn't known isn't drawn: no rate, the traveller's own money, at home", () => {
     expect(knowRows(input({ money: { name: "Euro", rate: null, own: false } }))[1].text).toBe("Euro");
     expect(knowRows(input({ money: { name: "Euro", rate: null, own: true } })).some((r) => r.id === "money")).toBe(false);

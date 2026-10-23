@@ -160,8 +160,9 @@ export function knowRows(k: KnowInput): KnowRow[] {
   if (abroad && plugs?.length && k.plug)
     rows.push({ id: "plug", icon: "plug", label: L("Priz", "Plugs"), text: L(`${plugs.join(" ve ")} tipi · ${plugFitText(k.plug)}`, `Type ${plugs.join(" and ")} · ${plugFitText(k.plug)}`), link: null, ai: false });
   k.tips.forEach((t, i) => rows.push({ id: `tip:${i}`, icon: tipIcon(t), label: t.label, text: t.text, link: null, ai: true }));
-  if (abroad) {
-    const own = countryName(k.passport.toUpperCase());
+  // (a passport said "Diğer": no embassy to name, never "XX Büyükelçiliği")
+  const own = countryName(k.passport.toUpperCase());
+  if (abroad && own !== k.passport.toUpperCase()) {
     const label = L(`${own} Büyükelçiliği`, `Embassy of ${own}`);
     const there = countryName(main);
     rows.push({
