@@ -99,12 +99,159 @@ yazar.
 
 ## Aşamalar
 
-(aşağıda)
+Her aşama ayrı commit. "Koruma" satırları o aşamanın bozmaması gerekenler; testleri aşama 0'da yazılır.
+
+### Aşama 0: koruma testleri (kod değişmeden)
+
+- `rowView` için Ulaşım (tren, otobüs, feribot, transfer, kiralama) ve Konaklama'nın her hâlinde söz, sağdaki şey ve
+  rakam bugünkü değerleriyle sabitlenir. Uçuş'a dokunan her değişiklik bunları kırmamalı.
+- Uçuş'ta "kalır" yazan hâller sabitlenir: Tarih ver, Önerimiz ve Senin kaydın, Sen hallettin, Dahil, ödenen tutarın
+  yalnız kod ya da belgeyle yazılması.
+- ⋯ menüsünün her hâldeki girdileri bir listeyle sabitlenir (Değiştir, Ayrıntı, Pano'da aç, Ben hallettim, Gerek yok...).
+- `FrameTicket` için: 48 saat kala "Online check-in", uçuş günü kod, canlı durum, "n gün kaldı", "Bileti ekle · eksik".
+- `ProofAsk` için: kod, belge, "Şimdilik yalnız işaretle", "Henüz almadım" yolları.
+- Çekmece için: sekmeler, Elenen ve Geri al, kaynağın kendi araması, siteler, "AI yeniden arasın", "Pano'da karşılaştır".
+- Bugün bu sözlere bağlı testlerin listesi aşağıda "Değişecek testler"de; her biri hangi aşamada güncellenecekse orada.
+
+### Aşama 1: satırın dili (yalnız Uçuş)
+
+- `lib/rowView.ts`: Uçuş'ta sözler "Seçtin", "Bilet alındı", "Bilet elde"; destede satır en iyisinin taşıyıcısı ve
+  saatleri, rakamın altı "en iyisi"; aranacakta sağdaki şey "Kendin ara ↗" (yeni slot `self`), köşede "+".
+  `planSteps` ve hero aynı adımları sayar, değişmez.
+- `app/plan/v82/IntentRow.tsx`: adda ok yerine 15 px uçak simgesi (`ModeIcon plane`); düz metinler "→" ile kalır.
+- `app/plan/v82/modeIcons.tsx`: "Seçtin" için yarım dolu işaret (yeni biçim; Ulaşım ve Konaklama eski halkayla kalır).
+- `app/plan/CategoryPlan.tsx` `datedRow`: Uçuş'ta "1 planda" yerine "1 seçildi"; çubuk renkleri yeşil, mor, lila.
+- `static/v82/stages.css`, `rows.css`: Seçtin'in mor 1,5 px çerçevesi; aranacağın kesik kartı; kurallar
+  `[data-kind="flight"]` altında.
+- Koruma: Ulaşım ve Konaklama'nın sözleri, Tarih ver, Önerimiz, Sen hallettin, Dahil, fiyat ve tarih düzenleme.
+
+### Aşama 2: deste ve çekmece
+
+- `IntentRow.tsx`: destede köşede üç logolu yelpaze (bugünkü `CarrierDeck` büyür ve döner), iki ince lila kat, "Seç 7"
+  (sayı beyaz kutuda). Satıra basmak da çekmeceyi açar; altındaki "Birikenler · Yeni bul" yarımları Uçuş'ta çizilmez.
+- `IntentDrawer.tsx`: başlıkta 22 px uçak; gezginin kendi kaydı (`OptionVM.yours`) altın çerçeveli, "Senin · Kiwi'den
+  kaydettin"; alt kutu "+ Seninkini ekle" ve "Bağlantıyı bırak ya da ekran görüntüsünü sürükle" (siteler ve "AI yeniden
+  arasın" aynı kutuda kalır). Bağlamak aşama 5'te: bugün bu kutuya bırakılan bağlantı geziye gider ve yapay zekâ
+  yerini tahmin eder, resim Belgeler'e gider; çekmece açıkken yapıştırma hiç alınmaz.
+- `lib/drawerCard.ts`: Kaynak yuvası kaydın adresine "↗" ile bağlanır (bugün adı yazar, `tone: "link"`).
+- Koruma: ölçütler, ağırlıklar, sekmeler, gün bantları, Neden n?, yorumlar, tazelik, oylar, olağan fiyat farkı, kaynağın
+  kendi araması, Elenen ve Geri al, Pano'da karşılaştır, kapanınca odağın dönmesi.
+
+### Aşama 3: Seçtin ve Alındı
+
+- `IntentBox.tsx` `pick`: çekmeceden seçince çekmece kapanır ve satır açılır (`RowOpenContext`); bugünkü "X yerine Y
+  seçildi · Geri al" kalır.
+- `acts`: tek satır bağlantı "Skyscanner'dan · Değiştir · 7 · ✓ Aldım"; gövdede ikinci "Satın al" yok. Değiştir aynı
+  çekmeceyi seçili olan işaretli açar (bugün de "Seçili" yazıyor).
+- Alındı: sağdaki "Bileti ekle" düğmesi gider, yerine yeşil koçan; koçanda dik, çift halkalı damga ("Alındı" ve gün),
+  altında "Bileti ekle" bağlantısı ve ödenen (yalnız kod ya da belge varsa). Yeni bileşen `Stamp` (`modeIcons.tsx`
+  yanında), hareket `mv-stamp` (`static/app.css:3532`), azaltılmış harekette durur.
+- `ProofAsk` kaydedince satır açık gelir; açıkken `StepSeal` yerine 96 px damga, "Son adım: bileti buraya bırak" kalır.
+- Bilet elde: koçanda kod ve koltuk (`ticketFace().note`); açıkken "Bileti aç ↗" ve "Takvime ekle".
+- Koruma: Aldım kutusunun bütün yolları, Online check-in, uçuş günü, canlı durum, n gün kaldı, eksik belge uyarısı,
+  rezervasyon değiştirirken soru, kalkış hareketi.
+- e2e ve 390 ile 1440 ekran görüntüleri bu aşamanın sonunda.
+
+### Aşama 4: bağlanan hat (yalnız Uçuş)
+
+- `lib/railDates.ts`: yeni saf işlev `railLinks(list)`: her satır için adımı ve bir öncekiyle kenetli olup olmadığı.
+  Testli.
+- `CategoryPlan.tsx`: Uçuş satırlarına `data-joined`; `rows.css`: her satır kendi parçasını çizer (alınan yeşil 4 px,
+  seçilen düz mor uçları açık, seçenek kesik lila, aranan noktalı gri), nokta dolu, yarım, kesik ya da noktalı.
+- "Aldım" deyince çizgi uçlara akar ve kenetlenir; azaltılmış harekette ve `body.still`'de hareket yok.
+- DESIGN.md: "Hat tarihi taşır" maddesi Uçuş için değişir (karar 10); Konaklama ve Ulaşım için aynen kalır.
+- Koruma: tarih sütunu, tarihsizlerin en altta olması, Konaklama'nın gece çentikleri, şehir iğneleri, boş gece, çakışma.
+
+### Aşama 5: getirme anları
+
+Bugün var olan: Plan'a bağlantı yapıştırma ve bırakma (`useBoardIntake`, geziye bağlar), resim ve belge bırakma, belge
+okuyucunun rezervasyonu doğru kayda eşlemesi (`docReader.matchDoc`), bir kutudan eklenen teklifin o kutunun rotasına
+katılması (`forNeed`), soru bekleyen kayıtlar (sohbette ve açılır pencerede, gezisiz olanlar ana sayfada "Bekleyen
+kayıtlar"). Bunların hepsi **kalır**. Yeni olanlar:
+
+- Satıra ve çekmeceye bırakma: bir satırın ya da açık çekmecenin üstüne bırakılan veya çekmecede yapıştırılan bağlantı
+  ve resim o satıra gider (`forNeed = vm.key`). Bugün resim Belgeler'e gidip rezervasyon gibi okunuyor; satıra
+  bırakılan resim önce okunur, bir bilet ya da onaysa bugünkü yol (`docReader.matchDoc`, satır "Bilet alındı" olur),
+  değilse desteye aday olur. Sürüklerken
+  satır parlar: "Bırak: bu satıra". (Tarayıcı dosyanın içini bırakmadan göstermez; çizimdeki "Görüntüyü okuyorum"
+  bırakınca gelir.)
+- Plan'da her yerde yapıştırma bugünkü gibi; okununca hangi satıra gittiği söylenir: "Kiwi bağlantısı okundu → Bangkok
+  ✈ İstanbul, 2 Nis. 5. aday oldu." ve "Başka satıra", "Geri al".
+- Söz: yeni saf işlev `verdictOf(option, deck)` (`lib/`), yalnız bilinenle: "önerimizden €86 pahalı ve aktarmalı",
+  "önerimizden €38 ucuz, bagaj dahil". Fiyat ya da önerimiz yoksa söz yok. Seninki öne geçerse söylenir.
+- Gelenler: Plan'ın başında, bu gezinin yerini bulamadığımız kayıtları (bugün sohbette soruları duran kayıtlar) tek
+  yerde gösteren ince bant, "Nereye koyalım?" ve satır seçenekleri. Sohbetteki soru kalır; biri cevaplanınca ikisi de
+  kapanır.
+
+### Aşama 6: doğrulama
+
+`npx tsc --noEmit -p .`, vitest, `npm run build`, e2e (61 adım), 390 ve 1440 ekran görüntüleri (Uçuş'un her hâli
+kapalı ve açık, çekmece, Ulaşım ve Konaklama'nın değişmediğini gösteren karşılaştırma), DESIGN.md'nin "Planlamanın dört
+adımı" ve "Tarih hattı" bölümleri.
+
+### Aşama 7: sürüm
+
+`static/manifest.json`, `package.json`, `PRIVACY.md` sürümü; `scripts/release.sh` yalnız "yayınla" deyince.
 
 ## Benle gezen eklenti: nasıl çalışacak
 
-(aşağıda)
+### Bugün eklenti ne yapıyor
+
+- Sayfayı yalnız simgesine (ya da Alt+Shift+S'ye) basınca, o anda ve o sekmede okur: metni, görünen kısmı,
+  ekran görüntüsünü (`popup.tsx` `captureActiveTab`, `lib/pagecapture.ts`). Hiçbir sitede kendiliğinden çalışan bir
+  parçası yok, sayfaya bir şey eklemiyor.
+- Siteye özgü okuyucu yok; sayfadan anlamı yapay zekâ çıkarıyor. Siteye özgü olan yalnız adres okuma (`lib/url.ts`:
+  Booking, Airbnb, Skyscanner, Kayak, Google Flights).
+- Sekme grubu izni yok (`tabGroups`), sekmeleri okuma izni yok (`tabs`).
+- PRIVACY.md §4 bunu söz olarak yazıyor: "Eklenti yalnız 'Kaydet'e bastığın sekmeyi, yalnız o anda okur. Arka planda
+  sayfa okumaz." §8: "Eklenti ziyaret ettiğin sitelerdeki bağlantıları değiştirmez."
+
+Bu yüzden eklentiyi iki seviyede öneriyorum. Birincisi bu sözü hiç değiştirmez; ikincisi açık izinle ve site site gelir.
+
+### Seviye 1: sözü bozmadan (önerim, önce bu)
+
+1. **Adayları sekmelerde aç.** Çekmecede ve destede "Adayları aç (3)": ilk üç aday rotanın adıyla bir Chrome sekme
+   grubunda açılır ("Bangkok ✈ İstanbul", mor). Yalnız `tabGroups` izni eklenir; sayfa okunmaz.
+2. **Her sekmede "aday 2/3".** Açtığımız sekmeleri biz biliyoruz; eklentinin simgesinde o sekmeye özel "2/3" yazar
+   (`chrome.action.setBadgeText`). Sayfaya bir şey eklenmez.
+3. **Simgeye basınca (bugünkü kaydetme anı), ne olduğunu bilir:**
+   - Bizim açtığımız bir aday sekmesinde: "Aday 2/3 · Qatar Airways €354", "Buna karar ver" (plandaki seçim olur),
+     "Burada satın al" (sekme kapanınca plan "Aldın mı?" diye sorar), "Fiyatı tazele" (sayfayı bugünkü gibi yeniden okur).
+   - Kendi bulduğun bir arama sayfasında: adresinden rotayı ve günü tanır ("Bu arama planında: Bangkok ✈ İstanbul,
+     2 Nis · desten de 7 seçenek"), "Ekrandakileri desteye ekle" (görünen sonuçları bugünkü okuma ile okur, her uçuş
+     bir aday olur) ya da "Yalnız bunu ekle".
+   - Tek uçuşun sayfasında: "Bu zaten desten de" (bugünkü eşleştirme, `findDuplicate`).
+4. **Satın aldıktan sonra.** "Satın al ↗" ile açtığımız sekme kapanınca satır "Aldın mı?" kutusunu açık bekler.
+   `tabs.onRemoved` yalnız bizim açtığımız sekmeye bakar; izin gerekmez.
+
+Gerekenler: `tabGroups` izni (Chrome bu izin için kurulumda uyarı göstermiyor; kodlarken doğrulanır), Kiwi ve Google
+Flights adres okuyucusu (`lib/url.ts`), okumanın çok sonucu ayrı aday yapması (`extract.ts`), açılır pencerede yeni üç
+görünüm. PRIVACY.md §4 doğru kalır; yalnız "sekme grubu" cümlesi eklenir.
+
+### Seviye 2: "Sitede benle gel" (açık izinle, site site)
+
+1. Açılır pencerede bir kez "Skyscanner'da benle gel": Chrome o site için izin sorar (`optional_host_permissions`,
+   `chrome.permissions.request`). İstersen kapatırsın; kapatınca izin geri verilir.
+2. O sitede, yalnız adres plandaki bir rotaya uyduğunda: sayfanın üstünde ince şerit ("Bangkok ✈ İstanbul, 2 Nis
+   planında · 7 seçenek"), her sonucun yanında "+" ve desteye göre yeri ("direktlerin en ucuzu", "desten de var").
+   "+" basmadan hiçbir şey kaydedilmez.
+3. Her site için ayrı okuyucu (önce Skyscanner, sonra Kiwi, Booking, Agoda), kayıtlı sayfa örnekleriyle testli. Site
+   değişip okuyucu bozulursa "+" görünmez, şerit adresle çalışmaya devam eder.
+4. İçerik betiği planı kendisi okuyamaz; servis çalışanına sorar, yalnız o rotanın özetini alır. Servis çalışanı
+   mesajın kimden geldiğine bakar (bugün bakmıyor; bu eklenir).
+5. Gizlilik: §4 yeniden yazılır ("İzin verdiğin sitelerde, plandaki bir rotanın arama sayfasındayken sonuç listesini
+   okur..."), mağaza açıklaması güncellenir. §8 aynen kalır: sitelerdeki bağlantılar değiştirilmez; "Burada satın al"
+   sitenin kendi düğmesidir.
+
+Seviye 2 site başına iş ve gizlilik sözünü değiştirir; Seviye 1 kullanılıp beğenilince başlamayı öneriyorum.
 
 ## Açık sorular
 
-(aşağıda)
+1. **"Ara" nereye gider?** Bugün aranacak satırın düğmesi AI'ya ya da kaynağa sorar. Önerim: sağda "Kendin ara ↗";
+   köşedeki "+" çekmeceyi açar, kaynak orada bugünkü gibi kendiliğinden arar, "AI yeniden arasın" da orada; ⋯ menüsüne
+   "AI arasın" eklenir. Böylece AI'ya sorma işi kaybolmaz.
+2. **"Kendin ara ↗" tek düğme hangi siteyi açsın?** Önerim: rotayla ve günle dolu ilk site (Uçuş'ta Skyscanner,
+   adresi kurulamıyorsa Google Flights); öteki siteler çekmecenin "+ Seninkini ekle" kutusunda.
+3. **"Aranıyor" ne zaman yazsın?** Kimse aramıyorken "Aranıyor" yazmak doğru olmaz (uydurma yok kuralı). Önerim: söz
+   "Aranacak" ve halka durgun; AI ya da kaynak gerçekten ararken "Aranıyor" ve halka döner.
+4. **Eklenti:** Seviye 1 ile başlayalım mı, Seviye 2 için gizlilik metnini değiştirmeye razı mısın?
