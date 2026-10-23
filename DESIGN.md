@@ -499,7 +499,8 @@ desteye eklenince o sonucun ya da sayfanın metni AI'ya okutulur (araç çubuğu
   seçili, sonra diğerleri, "Yeni gezi: Portekiz". "Bundan sonra hep buraya koy" açıksa cevap o ülkenin gezisi olur; sonra
   o ülkeye ve gezinin günlerine (±3 gün) düşen her şey sormadan gider. Başka ülke, gezinin günleri dışı, bitmiş gezi:
   yine sorar. "Başka geziye taşı" kuralı da taşır. Ayarlar → Hatırlanan geziler → Unut. Hiç gezi yoksa sorulmaz, açılan
-  gezi o ülkenin olur. Sitede soru sayfanın içinde (sağ altta), araç çubuğunda açılır pencerede sorulur.
+  gezi o ülkenin olur. Sitede soru sayfanın içinde (sağ altta), araç çubuğunda açılır pencerede sorulur: 0.41.1'den beri
+  kaydetmeden önce (ülke sayfanın adresinden ve başlığından kodla okunur), seçilince kaydedilir; AI okuduktan sonra değil.
 - Fiyat düşünce simgede yeşil rozet ("−40"); açılır pencere "Fiyatı düştü" satırını gösterir; o gezinin planı açılınca gider.
 
 ## Fiyat izleme (0.40.6)

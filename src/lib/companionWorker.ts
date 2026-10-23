@@ -118,7 +118,7 @@ export async function whereFor(url: string, title: string): Promise<CompanionWhe
  * picked in the page's own question (remembered as the country's when said so), a new trip for the country, or the
  * remembered one. None of these (no trip at all yet): the capture goes as the toolbar's does, its trip made from it.
  */
-async function bindFor(url: string, title: string, pick: TripPick): Promise<{ forTripId?: string; forNeed?: string }> {
+export async function bindFor(url: string, title: string, pick: TripPick): Promise<{ forTripId?: string; forNeed?: string }> {
   const route = await routeFor(url);
   if (route) return { forTripId: route.tripId, forNeed: route.forNeed };
   const code = pageCountry(url, title);

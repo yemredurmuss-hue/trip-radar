@@ -10,7 +10,9 @@ import { saveSnapshot } from "./lib/process";
 import { planFlightFor, type PlannedFlight } from "./lib/bring";
 import { badgeOf, candidateOf, markBuying, type CandidateTab } from "./lib/candidateTabs";
 import { flightSearchOf } from "./lib/url";
-import { companionName, companionSiteOf, siteKindOf } from "./lib/companion";
+import { companionName, companionSiteOf, siteKindOf, type CompanionWhere, type TripPick as SitePick } from "./lib/companion";
+import { bindFor, whereFor } from "./lib/companionWorker";
+import type { PageSnapshot } from "./lib/pagecapture";
 import { chooseItem } from "./app/actions";
 import { answerHeld, moveToTrip } from "./lib/routing";
 import { countryName, isDemoTrip } from "./lib/trips";
@@ -28,6 +30,7 @@ type State =
    * could be (`candidates`, the most likely first), under the button.
    */
   | { step: "held"; captureId: string; text: string; reason: "place" | "travel" | "trip"; newTitle: string; tripTitle: string | null; candidates?: TripPick[]; country?: string | null }
+  | { step: "pick"; pick: PickFirst }
   | { step: "skipped" }
   | { step: "error"; text: string }
   | { step: "hint"; text: string };
@@ -72,7 +75,14 @@ async function deskOf(tab: chrome.tabs.Tab | undefined): Promise<Desk> {
   return { ...none, candidate, planned: planned && trip ? { ...planned, title: trip.title } : null };
 }
 
-async function captureActiveTab(onDesk: (desk: Desk) => void): Promise<string> {
+/** Read, not saved yet: asked first which trip (Hangi gezi, 0.41.0), saved once picked. */
+interface PickFirst {
+  where: CompanionWhere;
+  snapshot: PageSnapshot;
+  screenshot: string | null;
+}
+
+async function captureActiveTab(onDesk: (desk: Desk) => void): Promise<string | PickFirst> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const desk = await deskOf(tab);
   onDesk(desk);
@@ -97,7 +107,14 @@ async function captureActiveTab(onDesk: (desk: Desk) => void): Promise<string> {
   } catch {
     // Some pages block capture; the page text is still enough.
   }
-  const bind = desk.candidate ? { forTripId: desk.candidate.tripId } : desk.planned ? { forTripId: desk.planned.tripId, forNeed: desk.planned.forNeed } : {};
+  let bind: { forTripId?: string; forNeed?: string } = desk.candidate ? { forTripId: desk.candidate.tripId } : desk.planned ? { forTripId: desk.planned.tripId, forNeed: desk.planned.forNeed } : {};
+  // Hangi gezi (0.41.0): the page's country read from its address and title (code, no model); its remembered trip takes
+  // it at once, else, with trips to choose from, it is asked here first and saved once picked (never into a guess).
+  if (!bind.forTripId) {
+    const where = await whereFor(tab.url, tab.title ?? "");
+    if (where.trip) bind = { forTripId: where.trip.id };
+    else if (where.trips.length) return { where, snapshot: result.result, screenshot };
+  }
   const capture = await saveSnapshot(result.result, screenshot, bind);
   requestProcessing();
   return capture.id;
@@ -111,7 +128,7 @@ function Popup() {
   useEffect(() => {
     void hasActiveKey().then(setHasKey);
     captureActiveTab(setDesk)
-      .then((captureId) => setState({ step: "working", captureId }))
+      .then((got) => setState(typeof got === "string" ? { step: "working", captureId: got } : { step: "pick", pick: got }))
       .catch((error: unknown) =>
         setState(
           error instanceof HintError
@@ -157,6 +174,7 @@ function Popup() {
       {desk && (desk.candidate || desk.planned) && <DeskBox desk={desk} />}
       {desk?.site && desk.tabId != null && <AlongBox site={desk.site} tabId={desk.tabId} along={desk.along} />}
       {state.step === "saving" && <p>{L("Sayfa kaydediliyor…", "Saving the page…")}</p>}
+      {state.step === "pick" && <PickTrip pick={state.pick} onSaved={(captureId) => setState({ step: "working", captureId })} />}
       {state.step === "working" && (
         <p>
           {L("✓ Kaydedildi. AI inceliyor…", "✓ Saved. AI is reading it…")}
@@ -435,6 +453,51 @@ function PriceBox() {
           {L("Tamam", "OK")}
         </button>
       </span>
+    </div>
+  );
+}
+
+/**
+ * Hangi gezi before the save (0.41.0, board E5): the page's country's trips first, the most likely picked, the others, a
+ * new trip for the country; "bundan sonra hep buraya koy" keeps the answer as the country's trip. Nothing is saved until
+ * one is pressed.
+ */
+function PickTrip({ pick, onSaved }: { pick: PickFirst; onSaved: (captureId: string) => void }) {
+  const { where } = pick;
+  const [busy, setBusy] = useState(false);
+  const [remember, setRemember] = useState(true);
+  async function save(p: SitePick) {
+    setBusy(true);
+    const bind = await bindFor(pick.snapshot.url, pick.snapshot.title, { ...p, remember: Boolean(where.country) && remember });
+    const capture = await saveSnapshot(pick.snapshot, pick.screenshot, bind);
+    requestProcessing();
+    onSaved(capture.id);
+  }
+  const own = where.trips.filter((t) => t.match);
+  const others = where.trips.filter((t) => !t.match);
+  const button = (t: CompanionWhere["trips"][number], first: boolean) => (
+    <button key={t.id} type="button" className="small-btn" disabled={busy} aria-current={first ? "true" : undefined} onClick={() => void save({ tripId: t.id })}>
+      {t.when ? `${t.title} · ${t.when}` : t.title}
+    </button>
+  );
+  return (
+    <div className="popup-held">
+      <p>{L("Hangi geziye koyalım?", "Which trip should it go to?")}</p>
+      {own.length > 0 && where.country && <small className="muted">{L(`${where.country} gezilerin`, `Your trips to ${where.country}`)}</small>}
+      {own.length > 0 && <div className="popup-held-actions">{own.map((t, n) => button(t, n === 0))}</div>}
+      {others.length > 0 && <small className="muted">{own.length ? L("Diğerleri", "Others") : L("Gezilerin", "Your trips")}</small>}
+      <div className="popup-held-actions">
+        {others.map((t) => button(t, false))}
+        <button type="button" className="small-btn" disabled={busy} onClick={() => void save({ newTrip: true })}>
+          {where.country ? L(`Yeni gezi: ${where.country}`, `New trip: ${where.country}`) : L("Yeni gezi", "New trip")}
+        </button>
+      </div>
+      {where.country && (
+        <label className="popup-remember">
+          <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+          {L(`${where.country} için bundan sonra hep buraya koy`, `Put ${where.country} here from now on`)}
+        </label>
+      )}
     </div>
   );
 }
