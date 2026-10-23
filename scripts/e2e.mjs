@@ -1140,7 +1140,7 @@ try {
   await guess.waitFor({ state: "detached" });
   await intent.locator(".x-pref-pop li", { hasText: "ücretsiz iptalli" }).waitFor();
   await intent.locator(".x-pref-pop li", { hasText: "Sorun değil: Yan binada inşaat gürültüsü" }).waitFor();
-  await intent.locator(".x-prefb").click();
+  await intent.page().mouse.move(5, 5); // 0.46.0: the mouse leaving closes it
   await intent.locator(".x-pref-pop").waitFor({ state: "detached" });
   assert.equal(await intent.locator(".x-q").count(), 0, "the question answered: no \"1\" left");
   assert.ok(Number(await intent.locator(".x-pn").innerText()) >= 1, "what was understood, counted");
