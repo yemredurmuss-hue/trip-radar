@@ -11,6 +11,9 @@
 // card, "Seç" and the count) → Planda (decided; bought ahead or paid on the spot) → Alındı (paid, its ticket still to add:
 // "Bileti ekle") → Bilet elde (its code or its file: a ticket's stub). Yellow is for trouble only: the paid sum is said
 // only once a ticket or a code backs it, never guessed from the listing.
+// Karar Masası (docs/superpowers/specs/2026-10-22-karar-masasi-kararlar.md, Uçuş first): a flight's row says "Seçtin" once
+// chosen and "Bilet alındı" once bought; nothing looked for yet, its one thing on the right is "Kendin ara ↗" (a site with
+// the route and the day) and the "+" on its mark's corner opens the drawer; a deck shows its best one's carrier and hours.
 // The kind's word leads a mixed category's row ("Tren", "Transfer"), a chosen stay's its city and nights ("Chiang Mai · 3
 // gece"); never in capitals (DESIGN.md: Türkçe büyük harf etiket yok). It reads intents.ts's view model and decides nothing:
 // the states are intents.ts's, the words intentFrame.ts's and ticketFrame.ts's. Pure; app/plan/v82/IntentRow.tsx draws it.
@@ -39,6 +42,8 @@ export type RowSlot =
   | { kind: "hap"; tone: "ok" | "arr" | "inc" | "busy"; text: string }
   /** Bought, nothing to show for it yet: its ticket's (a stay's confirmation's) last step. */
   | { kind: "proof"; word: string }
+  /** Karar Masası: a flight nothing is looked for yet: "Kendin ara ↗" (the first site, filled with the route and the day). */
+  | { kind: "self" }
   /** Planned with nothing to book ahead: where its ticket is bought ("İskelede alınır"). */
   | { kind: "onsite"; text: string }
   /** Its ticket is in hand: the stub says it (the figure's code), nothing to press. */
@@ -70,6 +75,10 @@ export interface RowView {
   slot: RowSlot;
   /** How many options the deck holds (its corner). */
   count: number;
+  /** Karar Masası's language (a flight's row, Uçuş first): the plane between the ends, Seçtin, Bilet alındı, Kendin ara ↗. */
+  desk: boolean;
+  /** Karar Masası: the AI or the source is looking right now (the ring turns, the hours and the price load). */
+  busy?: boolean;
 }
 
 /** A rental (a car, a scooter, a camper, a bike) is drawn as a stay's card, its days on the rail (onay paketi, Ulaşım). */
@@ -97,6 +106,9 @@ export function rowStage(vm: Pick<IntentVM, "status" | "access" | "selfArranged"
       return "options";
   }
 }
+
+/** Karar Masası's rows (Uçuş first): a flight drawn as its thin row. */
+export const isDeskRow = (vm: Pick<IntentVM, "kind" | "frame" | "ticket">): boolean => vm.kind === "flight" && rowFace(vm) === "ticket";
 
 /** A booking's word: a stay's and a rented car's are booked, the rest bought. */
 const isBooking = (vm: Pick<IntentVM, "kind" | "ticket">): boolean => vm.kind === "stay" || vm.ticket?.mode === "car" || isRental(vm);
@@ -149,6 +161,7 @@ export function rowView(vm: IntentVM): RowView {
   const count = Math.max(vm.optionCount, vm.options.length + (vm.more?.length ?? 0));
   const rental = isRental(vm);
   const mode = vm.ticket?.mode ?? null;
+  const desk = isDeskRow(vm);
 
   // The lead over the name.
   let lead: string | null = null;
@@ -170,9 +183,9 @@ export function rowView(vm: IntentVM): RowView {
     stage === "ticket"
       ? booking ? L("Onay elde", "Confirmed") : L("Bilet elde", "Ticket in hand")
       : stage === "bought"
-        ? status === "included" ? L("Dahil", "Included") : vm.selfArranged ? L("Sen hallettin", "You sorted it") : booking ? L("Rezerve", "Booked") : L("Alındı", "Bought")
+        ? status === "included" ? L("Dahil", "Included") : vm.selfArranged ? L("Sen hallettin", "You sorted it") : booking ? L("Rezerve", "Booked") : desk ? L("Bilet alındı", "Ticket bought") : L("Alındı", "Bought")
         : stage === "planned"
-          ? L("Planda", "Planned")
+          ? desk && status === "chosen" ? L("Seçtin", "You chose") : L("Planda", "Planned")
           : status === "suggested"
             ? vm.own ? L("Senin kaydın", "Your save") : `✨ ${L("Önerimiz", "Our pick")}`
             : deciding
@@ -203,6 +216,15 @@ export function rowView(vm: IntentVM): RowView {
     for (const p of dayParts) if (!isDayPart(p)) line.push({ text: p });
     if (vm.people) line.push({ text: L(`${vm.people} kişi`, `${vm.people} people`) });
     if (!line.length && vm.head.word) line.push({ text: vm.head.word });
+  } else if (desk && deciding) {
+    // (a deck: its best one's carrier, hours and stops, as the drawer's first card says them)
+    const best = deckLead([...vm.options, ...(vm.more ?? [])]);
+    const leg = best?.leg ?? null;
+    const name = best?.carrier?.name ?? best?.brand?.label ?? null;
+    if (name) line.push({ text: name });
+    if (leg?.dep || leg?.arr) line.push({ text: [leg.dep, leg.arr].filter(Boolean).join(" → "), tone: "bold" });
+    if (leg?.stops) line.push({ text: leg.stops.text.toLocaleLowerCase(L("tr", "en")), tone: leg.stops.direct ? "ok" : "warn" });
+    if (!line.length) for (const p of dayParts) line.push({ text: p });
   } else {
     for (const p of dayParts) line.push({ text: p });
     if (vm.people) line.push({ text: L(`${vm.people} kişi`, `${vm.people} people`) });
@@ -245,7 +267,7 @@ export function rowView(vm: IntentVM): RowView {
     const o = deckLead([...vm.options, ...(vm.more ?? [])]);
     const p = o ? priceOf(vm, o) : null;
     if (p) {
-      const which = o?.ours ? L("önerimiz", "our pick") : L("ilk sırada", "top pick");
+      const which = desk ? L("en iyisi", "the best") : o?.ours ? L("önerimiz", "our pick") : L("ilk sırada", "top pick");
       figure = { big: p.big, small: ticket ? which : [p.small?.split(" · ")[0], which].filter(Boolean).join(", ") };
     }
   } else if ((status === "chosen" || status === "suggested") && chosen) {
@@ -286,16 +308,16 @@ export function rowView(vm: IntentVM): RowView {
       break;
     case "suggested":
       // (a stop of a route the AI proposed, nothing saved for it yet: still to look for; its route is agreed under it)
-      slot = vm.chosen ? { kind: "take" } : { kind: "ask" };
+      slot = vm.chosen ? { kind: "take" } : desk ? { kind: "self" } : { kind: "ask" };
       break;
     case "chosen":
       slot = { kind: "book", word: vm.kind === "stay" || mode === "car" ? L("Rezerve et", "Book") : L("Satın al", "Buy") };
       break;
     default:
-      slot = deciding ? { kind: "pick", count } : isDatedSection(vm.section) && !isoDate(vm.head.date) ? { kind: "date" } : { kind: "ask" };
+      slot = deciding ? { kind: "pick", count } : isDatedSection(vm.section) && !isoDate(vm.head.date) ? { kind: "date" } : desk ? { kind: "self" } : { kind: "ask" };
   }
 
-  return { face, lead, stage, stageWord, title, route, line, third, wants, figure, slot, count };
+  return { face, lead, stage, stageWord, title, route, line, third, wants, figure, slot, count, desk };
 }
 
 /**
@@ -304,9 +326,24 @@ export function rowView(vm: IntentVM): RowView {
  */
 export function whileSearching(view: RowView, status: IntentStatus, searching: boolean): RowView {
   if (!searching || (status !== "searching" && status !== "deciding")) return view;
+  // (Karar Masası: the ring turns and the hours and the price load; "Kendin ara ↗" stays, a deck keeps its Seç)
+  if (view.desk) return { ...view, stageWord: view.slot.kind === "pick" ? view.stageWord : L("Aranıyor", "Searching"), busy: true };
   return { ...view, stageWord: L("Aranıyor", "Searching"), slot: { kind: "hap", tone: "busy", text: L("Aranıyor…", "Searching…") } };
 }
 
+
+/**
+ * A dated category's state line by the four steps (onay paketi 2026-10-22): "2 alındı · 1 planda · 1 karar"; Karar Masası's
+ * Uçuş says what was chosen as chosen ("1 seçildi"). "karar" opens the first decision (F5).
+ */
+export function stepParts(counts: Record<RowStage, number>, desk: boolean): { text: string; decide: boolean }[] {
+  const done = counts.bought + counts.ticket;
+  return [
+    ...(done ? [{ text: L(`${done} alındı`, `${done} bought`), decide: false }] : []),
+    ...(counts.planned ? [{ text: desk ? L(`${counts.planned} seçildi`, `${counts.planned} chosen`) : L(`${counts.planned} planda`, `${counts.planned} planned`), decide: false }] : []),
+    ...(counts.options ? [{ text: L(`${counts.options} karar`, `${counts.options} to decide`), decide: true }] : []),
+  ];
+}
 
 export type PlanStepsTip = ReturnType<typeof planSteps>;
 
@@ -340,7 +377,7 @@ export function planSteps(intents: readonly IntentVM[], max = 3): { counts: Reco
     const step =
       view.slot.kind === "pick" || view.slot.kind === "take"
         ? { rank: 0, act: L("Seç", "Choose"), sub: [day, view.slot.kind === "pick" ? view.stageWord : L("önerimiz hazır", "our pick is ready")] }
-        : view.slot.kind === "ask" || view.slot.kind === "date"
+        : view.slot.kind === "ask" || view.slot.kind === "date" || view.slot.kind === "self"
           ? { rank: 1, act: L("Ara", "Search"), sub: [day] }
           : view.slot.kind === "book"
             ? { rank: 2, act: booking ? L("Rezerve et", "Book it") : L("Bileti al", "Buy the ticket"), sub: [day, view.figure?.big ?? null] }

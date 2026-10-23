@@ -1,0 +1,53 @@
+/* Karar Masası (docs/superpowers/specs/2026-10-22-karar-masasi-kararlar.md; tuval "Karar Masası", sayfa "Onaylananlar"): the
+   flight row's language, Uçuş first (`.q-int[data-desk]`, lib/rowView.ts isDeskRow). Sizes are the live rows' own
+   (rows.css, stages.css); what is said here is only what the decisions change:
+     1  the plane between the two ends ("Bangkok ✈ İstanbul")
+     3  nothing found yet: a dashed tile, a "+" on its corner (bring what you found), "Kendin ara ↗"; while the AI or the
+        source looks the ring turns and the hours and the price load where they will stand
+     6  Seçtin: a violet 1.5 px frame, the corner's mark half full */
+
+/* the mark's inside is laid out by the mark itself (a "+" may stand beside it) */
+.q-rmi { display: contents; }
+
+/* ---- 1 · the plane between the ends ---- */
+.q-nm .q-rpl { display: inline-flex; vertical-align: -2px; margin: 0 1px; color: var(--q-ink); font-style: normal; }
+.q-nm .q-rpl .q-mi { width: 15px; height: 15px; transform: rotate(45deg); }
+.q-int[data-desk][data-stage="options"] .q-nm .q-rpl { color: #8e8aa6; }
+
+/* ---- 3 · nothing found yet: Aranacak, Aranıyor ---- */
+.q-int[data-desk] .q-rmark.ic:has(> .q-sadd) { background: #fff; box-shadow: inset 0 0 0 2px #dcd7e8; }
+.q-int[data-desk] .q-rmark.ic:has(> .q-sadd) .q-mi { color: #8e8aa6; }
+.q-sadd {
+  position: absolute; right: -8px; top: -8px; bottom: auto; z-index: 2; width: 22px; height: 22px; padding: 0; border-radius: 99px;
+  border: 1.5px dashed #9c90ee; background: #fff; color: var(--q-acc-d); font: 800 13px/1 inherit; display: grid; place-items: center;
+  box-shadow: none; cursor: pointer;
+}
+.q-sadd:hover { background: var(--q-acc-s); border-style: solid; }
+.q-sadd:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 1px; }
+/* the ring that turns while something looks (the tile's icon gives way to it) */
+.q-rmark.busy .q-rmi { visibility: hidden; }
+.q-rmark.busy::after {
+  content: ""; position: absolute; inset: 13px; border-radius: 99px; border: 2.6px solid #8e8aa6; border-right-color: transparent;
+  animation: q-turn 900ms linear infinite;
+}
+@keyframes q-turn { to { transform: rotate(360deg); } }
+/* the hours and the price load where they will stand */
+.q-rsk {
+  display: block; height: 12px; border-radius: 5px; margin-top: 4px;
+  background: linear-gradient(90deg, #ebe8f2 0%, #f6f4fa 50%, #ebe8f2 100%) 0 0 / 160px 100%; animation: q-shim 1.4s linear infinite;
+}
+.q-rsk.w64 { width: 120px; }
+.q-rfig .q-rsk.w52 { width: 52px; height: 16px; margin: 0 0 0 auto; }
+@keyframes q-shim { 0% { background-position: -160px 0; } 100% { background-position: 160px 0; } }
+@media (prefers-reduced-motion: reduce) { .q-rmark.busy::after, .q-rsk { animation: none; } }
+body.still .q-rmark.busy::after, body.still .q-rsk { animation: none; }
+
+/* "Kendin ara ↗": the site filled with the route and the day, a quiet outlined button (the AI's search is in ⋯ and the drawer) */
+.q-pick.q-self { background: #fff; color: var(--q-acc-d); box-shadow: inset 0 0 0 1px #dcd6fb; gap: 4px; text-decoration: none; }
+.q-pick.q-self:hover { background: var(--q-acc-s); }
+.q-pick.q-self .q-ext { font-size: 12px; }
+
+/* ---- 6 · Seçtin: decided, not bought ---- */
+.q-int[data-desk][data-stage="planned"][data-st="sel"] .q-rcard {
+  box-shadow: 0 2px 6px rgba(28, 26, 51, .05), 0 16px 34px -16px rgba(91, 69, 224, .45), inset 0 0 0 1.5px var(--q-acc);
+}

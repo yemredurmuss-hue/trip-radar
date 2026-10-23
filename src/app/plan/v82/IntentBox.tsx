@@ -59,7 +59,7 @@ import { emptyNightText, isDatedSection, overlapText, railDate, type Overlap } f
 import { timingAsk, type StayTiming } from "../../../lib/stayTiming";
 import { freeCancelText, guestGap, guestGapText } from "../../../lib/drawerCard";
 import { bookingIcs, icsName } from "../../../lib/ics";
-import { rowView, whileSearching } from "../../../lib/rowView";
+import { isDeskRow, rowView, whileSearching } from "../../../lib/rowView";
 import { EmptyNight, OverlapRow, StayCard, TicketRow, type SlotOn } from "./IntentRow";
 
 /** A kind's drawing (static/illus), for a frame or an option with no photo. */
@@ -389,6 +389,7 @@ function Box({ vm, color, extra, field, pickDoc, dropDoc = null, cancel, askedHi
     return () => document.removeEventListener("keydown", onKey);
   }, [changing]);
 
+  const desk = isDeskRow(vm);
   const menu: MenuEntry[] = [
     // (mockup v13's ⋯: "Değiştir" once something is chosen; before that the options are what there is to see)
     ...(all.length ? [{ label: vm.status === "chosen" || vm.status === "booked" ? L("Değiştir", "Change") : L(`Seçenekleri gör (${Math.max(vm.optionCount, all.length)})`, `See the options (${Math.max(vm.optionCount, all.length)})`), run: openDrawer }] : []),
@@ -398,6 +399,8 @@ function Box({ vm, color, extra, field, pickDoc, dropDoc = null, cancel, askedHi
     ...(vm.status === "booked" && vm.access?.links.map ? [{ label: L("Haritada aç ↗", "Open the map ↗"), run: () => void window.open(vm.access!.links.map!, "_blank", "noopener") }] : []),
     ...(vm.status === "booked" && vm.access?.links.host ? [{ label: vm.kind === "stay" ? L("Otele yaz ↗", "Write to the hotel ↗") : L("Yaz ↗", "Write ↗"), run: () => void window.open(vm.access!.links.host!, "_blank", "noopener") }] : []),
     ...(a.addSuggestion ? [{ label: L("Plana koy", "Add to plan"), run: a.addSuggestion }] : []),
+    // (Karar Masası: the row's "Ara" became "Kendin ara ↗"; asking the AI stays one tap away)
+    ...(desk && a.ask && (form === "searching" || form === "options") ? [{ label: L("AI arasın", "Ask the AI"), run: a.ask }] : []),
     ...(vm.status === "arranged" && (record || leg)
       ? [{ label: L("Ayarlandı: geri al", "Arranged: take back"), run: () => (record ? a.unarrange(record) : void onLeg(null)) }]
       : vm.status !== "booked" && vm.status !== "included"
@@ -569,7 +572,9 @@ function Box({ vm, color, extra, field, pickDoc, dropDoc = null, cancel, askedHi
   }
   // Plan v14 (onay paketi 2026-10-21): a dated category's intent is a row on its date rail, its frame under it or beside it.
   if (isDatedSection(vm.section) && vm.frame !== "collection") {
-    const view = whileSearching(rowView(vm), vm.status, a.searching);
+    const view0 = rowView(vm);
+    // (Karar Masası: the ring turns while the chat or the source looks now, as the old card's three dots did)
+    const view = whileSearching(view0, vm.status, view0.desk ? a.searching || busy : a.searching);
     const date = railDate(vm);
     const editable = itemId != null;
     const askNow = needNow && offers.available() && !camp0 ? openDrawer : a.ask;
@@ -590,6 +595,9 @@ function Box({ vm, color, extra, field, pickDoc, dropDoc = null, cancel, askedHi
       brand: vm.chosen?.brand?.label ?? null,
       date: itemId ? () => env.setFocus({ id: itemId, field: "date", scroll: false }) : a.ask,
       proof: record && pickDoc ? pickDoc : null,
+      // (Karar Masası: "Kendin ara ↗" is the first site; the "+" opens the drawer, its "+ Seninkini ekle" and the source)
+      self: links[0] ?? null,
+      add: view.desk ? openDrawer : null,
     };
     const menuNode = <IntentMenu entries={menu} name={name} />;
     const booked0 = (ref: string | null) => record && (setProofAsk(null), markBooked(record, ref));
@@ -611,6 +619,7 @@ function Box({ vm, color, extra, field, pickDoc, dropDoc = null, cancel, askedHi
       "data-intent": vm.key,
       "data-st": railState(vm.status),
       "data-stage": view.stage,
+      "data-desk": view.desk ? "" : undefined,
       // (a stay's city, said on the rail where it changes: its row carries it once something is picked for it)
       "data-city": vm.kind === "stay" && vm.chosen ? (vm.head.city ?? undefined) : undefined,
       "data-kind": vm.kind,

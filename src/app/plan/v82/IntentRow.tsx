@@ -133,6 +133,10 @@ export interface SlotOn {
   proof?: (() => void) | null;
   /** The site's "Satın al ↗" pressed: "Aldın mı?" asked under the row (its proof box). */
   asked?: (() => void) | null;
+  /** Karar Masası: "Kendin ara ↗", the first site filled with the route and the day (else "Ara" stays). */
+  self?: SelfSearch | null;
+  /** Karar Masası: the "+" on the mark's corner, what one found brought here (the drawer, its "+ Seninkini ekle"). */
+  add?: (() => void) | null;
 }
 
 /** The one thing on the right (118 px): Ara · Seç and the count · Bunu seç · Satın al ↗ / Rezerve et ↗ · the state's hap. */
@@ -146,6 +150,19 @@ function Slot({ view, on, logo }: { view: RowView; on: SlotOn; logo: ReactNode }
           {L("Tarih ver", "Set a date")}
         </button>
       );
+    case "self":
+      if (on.self)
+        return (
+          <a className="q-pick q-rbtn q-self" href={on.self.url} target="_blank" rel="noreferrer" onClick={stop} title={L(`${on.self.name} sitesinde ara`, `Search on ${on.self.name}`)}>
+            <span>{L("Kendin ara", "Search yourself")}</span>
+            <span className="q-ext">↗</span>
+          </a>
+        );
+      return on.ask ? (
+        <button type="button" className="q-pick q-rbtn" onClick={(e) => (stop(e), on.ask?.())}>
+          {L("Ara", "Search")}
+        </button>
+      ) : null;
     case "ask":
       return on.ask ? (
         <button type="button" className="q-pick q-rbtn" onClick={(e) => (stop(e), on.ask?.())}>
@@ -219,13 +236,30 @@ function Slot({ view, on, logo }: { view: RowView; on: SlotOn; logo: ReactNode }
  * The mark on a row's left: the carrier's logo once one is known, else the kind's icon (MingCute, dark on a soft tile: a train
  * from the side, a taxi from the front); the step's mark on its corner (onay paketi 2026-10-22).
  */
-function TicketMark({ vm, view, art }: { vm: IntentVM; view: RowView; art: string }) {
+function TicketMark({ vm, view, art, add = null }: { vm: IntentVM; view: RowView; art: string; add?: (() => void) | null }) {
   const face = ticketFace(vm);
   const known = vm.chosen && face?.mark && face.mode !== "car";
+  // (Karar Masası: nothing found yet, the corner is a "+" to bring what one found; chosen, its mark half full)
+  const plus = view.desk && view.slot.kind === "self" && add;
   return (
-    <span className={`q-rmark${known ? " carr" : " ic"}`} aria-hidden>
-      {known ? <CarrierLogo mark={face!.mark} art={art} /> : <ModeIcon name={modeIconOf(vm.kind, vm.ticket?.mode ?? null)} />}
-      <StageBadge stage={view.stage} />
+    <span className={`q-rmark${known ? " carr" : " ic"}${view.busy ? " busy" : ""}`}>
+      <span className="q-rmi" aria-hidden>
+        {known ? <CarrierLogo mark={face!.mark} art={art} /> : <ModeIcon name={modeIconOf(vm.kind, vm.ticket?.mode ?? null)} />}
+      </span>
+      {plus ? (
+        <button
+          type="button"
+          className="q-sb q-sadd"
+          aria-label={L("Bulduğunu ekle", "Add what you found")}
+          title={L("Bulduğunu ekle: bağlantı ya da ekran görüntüsü", "Add what you found: a link or a screenshot")}
+          onClick={(e) => (e.stopPropagation(), add())}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
+          +
+        </button>
+      ) : (
+        <StageBadge stage={view.stage} half={view.desk && view.stage === "planned" && vm.status === "chosen"} />
+      )}
     </span>
   );
 }
@@ -280,6 +314,8 @@ export function TicketRow({ vm, view, art, date, on, ticket, links, onDrawer, me
   const face = ticketFace(vm);
   const logo = face?.mark && face.mode !== "car" ? <CarrierLogo mark={face.mark} art={art} small /> : null;
   const deciding = view.slot.kind === "pick";
+  // (Karar Masası: while the AI or the source looks, the hours and the price load where they will stand)
+  const loading = Boolean(view.busy) && !deciding;
   const all = [...(vm.chosen ? [vm.chosen] : []), ...vm.options, ...(vm.more ?? [])];
   const body = deciding ? (
     <div className="q-rp2">
@@ -327,11 +363,19 @@ export function TicketRow({ vm, view, art, date, on, ticket, links, onDrawer, me
             setOpen(!open);
           }}
         >
-          <TicketMark vm={vm} view={view} art={art} />
+          <TicketMark vm={vm} view={view} art={art} add={on.add} />
           <span className="q-rhd">
             <Lead view={view} />
             <h4 className="q-nm" title={view.title}>
-              {view.route ? (
+              {view.route && view.desk ? (
+                <>
+                  {view.route.from}{" "}
+                  <i className="q-rpl" aria-label="→">
+                    <ModeIcon name="plane" size={15} />
+                  </i>{" "}
+                  {view.route.to}
+                </>
+              ) : view.route ? (
                 <>
                   {view.route.from} <i>→</i> {view.route.to}
                 </>
@@ -341,8 +385,15 @@ export function TicketRow({ vm, view, art, date, on, ticket, links, onDrawer, me
             </h4>
             {face?.name && vm.chosen && face.mode !== "car" && <span className="z-carl sr-only">{[face.name, face.sub].filter(Boolean).join(" ")}</span>}
             <Parts parts={view.line} />
+            {loading && <i className="q-rsk w64" aria-hidden />}
           </span>
-          <Figure fig={view.slot.kind === "none" ? null : view.figure} editable={editable && (vm.status === "chosen" || vm.status === "suggested" || vm.status === "arranged")} blank={editable && vm.status === "arranged" && !vm.selfArranged} />
+          {loading ? (
+            <span className="q-rfig" aria-hidden>
+              <i className="q-rsk w52" />
+            </span>
+          ) : (
+            <Figure fig={view.slot.kind === "none" ? null : view.figure} editable={editable && (vm.status === "chosen" || vm.status === "suggested" || vm.status === "arranged")} blank={editable && vm.status === "arranged" && !vm.selfArranged} />
+          )}
           <span className="q-rslot" id={chipId}>
             <Slot view={view} on={on} logo={logo} />
           </span>

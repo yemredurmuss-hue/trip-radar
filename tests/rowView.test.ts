@@ -37,11 +37,11 @@ describe("rowView: a flight, a train, a way of travel (the thin row)", () => {
     expect(r.stageWord).toBe("Bilet elde");
     expect(r.slot).toEqual({ kind: "none" });
   });
-  it("bought with nothing to show: Alındı, its ticket the last step, no paid sum guessed", () => {
+  it("bought with nothing to show: Bilet alındı (Karar Masası), its ticket the last step, no paid sum guessed", () => {
     const vm = find(jp(), "flight:kix-ist");
     const r = rowView({ ...vm, access: vm.access && { ...vm.access, code: null, doc: { count: 0, name: null } } });
     expect(r.stage).toBe("bought");
-    expect(r.stageWord).toBe("Alındı");
+    expect(r.stageWord).toBe("Bilet alındı");
     expect(r.figure).toBeNull();
     expect(r.slot).toEqual({ kind: "proof", word: "Bileti ekle" });
     // (a file is as good as a code)
@@ -73,7 +73,9 @@ describe("rowView: a flight, a train, a way of travel (the thin row)", () => {
     expect(r.stage).toBe("options");
     expect(r.stageWord).toBe("2 seçenek");
     expect(r.count).toBe(2);
-    expect(r.figure?.small).toMatch(/önerimiz|ilk sırada/);
+    // (Karar Masası: the best one's carrier and hours on the row, its price "en iyisi")
+    expect(r.figure?.small).toBe("en iyisi");
+    expect(r.desk).toBe(true);
   });
 });
 
@@ -164,5 +166,48 @@ describe("whileSearching (Kaçırdıklarımız 1)", () => {
     expect(whileSearching(r, "searching", true).stageWord).toBe("Aranıyor");
     expect(whileSearching(r, "searching", false).slot).toEqual({ kind: "ask" });
     expect(whileSearching(r, "chosen", true)).toBe(r);
+  });
+});
+
+describe("Karar Masası: the flight row's language (Uçuş first)", () => {
+  const flights = () => jp().filter((v) => v.section === "flight" && v.frame !== "collection");
+  it("chosen: Seçtin; bought: Bilet alındı; a train keeps Planda and Alındı", () => {
+    const f = flights().find((v) => v.chosen)!;
+    expect(rowView({ ...f, status: "chosen" }).stageWord).toBe("Seçtin");
+    const train = find(jp(), "transport:hakone-osaka");
+    expect(rowView(train).desk).toBe(false);
+    expect(rowView({ ...train, status: "chosen" }).stageWord).toBe("Planda");
+  });
+  it("nothing found yet: Kendin ara ↗ (self); a stay keeps Ara", () => {
+    const f = flights()[0];
+    const r = rowView({ ...f, status: "searching", options: [], more: [], optionCount: 0, chosen: null });
+    expect(r.stageWord).toBe("Aranacak");
+    expect(r.slot).toEqual({ kind: "self" });
+    expect(rowView(find(jp(), "stay:2027-04-12")).slot).toEqual({ kind: "ask" });
+  });
+  it("while the AI looks: Aranıyor and busy, Kendin ara ↗ stays; a deck keeps its count and Seç", async () => {
+    const { whileSearching } = await import("../src/lib/rowView");
+    const f = flights()[0];
+    const r = rowView({ ...f, status: "searching", options: [], more: [], optionCount: 0, chosen: null });
+    const busy = whileSearching(r, "searching", true);
+    expect(busy).toMatchObject({ stageWord: "Aranıyor", busy: true, slot: { kind: "self" } });
+    const { trip, items } = ozora();
+    const out = boardOf(trip, items, OZORA_TODAY).intents.find((v) => v.section === "flight" && v.head.route?.to === "Budapeşte")!;
+    const deck = whileSearching(rowView({ ...out, status: "deciding", chosen: null }), "deciding", true);
+    expect(deck).toMatchObject({ stageWord: "2 seçenek", busy: true, slot: { kind: "pick", count: 2 } });
+  });
+  it("a deck's line: its best one's carrier, hours and stops", () => {
+    const { trip, items } = ozora();
+    const out = boardOf(trip, items, OZORA_TODAY).intents.find((v) => v.section === "flight" && v.head.route?.to === "Budapeşte")!;
+    const r = rowView({ ...out, status: "deciding", chosen: null });
+    const best = out.options.find((o) => o.ours) ?? out.options[0];
+    expect(text(r.line)).toContain(`${best.leg!.dep} → ${best.leg!.arr}`);
+  });
+  it("the category's line: seçildi in Uçuş, planda elsewhere", async () => {
+    const { stepParts } = await import("../src/lib/rowView");
+    const counts = { options: 2, planned: 1, bought: 1, ticket: 1 };
+    expect(stepParts(counts, true).map((p) => p.text)).toEqual(["2 alındı", "1 seçildi", "2 karar"]);
+    expect(stepParts(counts, false).map((p) => p.text)).toEqual(["2 alındı", "1 planda", "2 karar"]);
+    expect(stepParts(counts, true)[2].decide).toBe(true);
   });
 });

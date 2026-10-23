@@ -61,12 +61,19 @@ export type Stage = "options" | "planned" | "bought" | "ticket";
  * The four steps' mark (onay paketi 2026-10-22, "planlamanın dört adımı"): a dashed ring (options), a ring with its dot
  * (planned), a ring with its tick (bought), a filled tick (its ticket in hand). The shape says it as much as the colour.
  */
-export function StageGlyph({ stage, size = 18 }: { stage: Stage; size?: number }) {
+export function StageGlyph({ stage, size = 18, half = false }: { stage: Stage; size?: number; half?: boolean }) {
   const tick = (c: string) => <path d="M6.4 10.3l2.4 2.4 4.8-5" fill="none" stroke={c} strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />;
   return (
     <svg className={`q-sg ${stage}`} width={size} height={size} viewBox="0 0 20 20" aria-hidden>
       {stage === "options" && <circle cx="10" cy="10" r="7.6" fill="#fff" stroke="var(--q-sg-opt)" strokeWidth="2" strokeDasharray="3 2.4" />}
-      {stage === "planned" && (
+      {stage === "planned" && half && (
+        <>
+          {/* (Karar Masası: chosen, not bought: the ring half full, its left side the step done) */}
+          <circle cx="10" cy="10" r="7.6" fill="#fff" stroke="var(--q-acc)" strokeWidth="2" />
+          <path d="M10 2.4a7.6 7.6 0 0 0 0 15.2z" fill="var(--q-acc)" />
+        </>
+      )}
+      {stage === "planned" && !half && (
         <>
           <circle cx="10" cy="10" r="7.6" fill="#fff" stroke="var(--q-acc)" strokeWidth="2" />
           <circle cx="10" cy="10" r="3.3" fill="var(--q-acc)" />
@@ -89,8 +96,8 @@ export function StageGlyph({ stage, size = 18 }: { stage: Stage; size?: number }
 }
 
 /** The mark on a row's picture's corner. */
-export const StageBadge = ({ stage }: { stage: Stage }) => (
+export const StageBadge = ({ stage, half = false }: { stage: Stage; half?: boolean }) => (
   <span className="q-sb" aria-hidden>
-    <StageGlyph stage={stage} size={19} />
+    <StageGlyph stage={stage} size={19} half={half} />
   </span>
 );

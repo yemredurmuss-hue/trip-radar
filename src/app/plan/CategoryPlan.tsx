@@ -47,7 +47,7 @@ import { PlanHeader } from "./v82/PlanHeader";
 import { Searching } from "./v82/Searching";
 import { TimelineRail } from "./v82/TimelineRail";
 import { emptyNights, isDatedSection, nightAlerts, overlapNights, undatedLast, type Overlap } from "../../lib/railDates";
-import { planSteps } from "../../lib/rowView";
+import { planSteps, stepParts } from "../../lib/rowView";
 import { Ic } from "./v82/icons";
 import { stayTimings } from "../../lib/stayTiming";
 import { intentEl, V82EnvContext, type V82Env } from "./v82/v82Env";
@@ -262,20 +262,11 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
     const before = list.slice(0, at).reverse().find((v) => v.kind === "stay" && v.head.city);
     return !before || before.head.city!.toLocaleLowerCase("tr") !== vm.head.city.toLocaleLowerCase("tr");
   };
-  // A dated category (onay paketi 2026-10-22): one bar in the four steps' colours and "2 alındı · 1 planda · 1 karar".
-  const datedRow = (intents: Collection["intents"], alerts: { text: string; tone?: "warn" | "bad" }[]): Pick<RowView, "stages" | "bar" | "parts"> => {
+  // A dated category (onay paketi 2026-10-22): one bar in the four steps' colours and "2 alındı · 1 planda · 1 karar"
+  // (Karar Masası's Uçuş: "1 seçildi").
+  const datedRow = (intents: Collection["intents"], alerts: { text: string; tone?: "warn" | "bad" }[], desk: boolean): Pick<RowView, "stages" | "bar" | "parts"> => {
     const { counts } = planSteps(intents);
-    const done = counts.bought + counts.ticket;
-    return {
-      stages: counts,
-      bar: null,
-      parts: [
-        ...(done ? [{ text: L(`${done} alındı`, `${done} bought`), decide: false }] : []),
-        ...(counts.planned ? [{ text: L(`${counts.planned} planda`, `${counts.planned} planned`), decide: false }] : []),
-        ...(counts.options ? [{ text: L(`${counts.options} karar`, `${counts.options} to decide`), decide: true }] : []),
-        ...alerts.map((a) => ({ ...a, decide: false })),
-      ],
-    };
+    return { stages: counts, bar: null, parts: [...stepParts(counts, desk), ...alerts.map((a) => ({ ...a, decide: false }))] };
   };
   const rowOf = (s: CatSection): RowView => {
     const meta = SECTION_META[s.id];
@@ -310,7 +301,7 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
       spent: sum.spent ? formatPrice(sum.spent.amount, sum.spent.currency) : null,
       allot: sum.allotted ? formatPrice(sum.allotted.amount, sum.allotted.currency) : null,
       settled,
-      ...(isDatedSection(s.id) && c.intents.length ? datedRow(c.intents, s.id === "stay" ? nightAlerts(c.intents, items) : []) : {}),
+      ...(isDatedSection(s.id) && c.intents.length ? datedRow(c.intents, s.id === "stay" ? nightAlerts(c.intents, items) : [], s.id === "flight") : {}),
     };
   };
 
