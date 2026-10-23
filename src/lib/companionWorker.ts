@@ -4,12 +4,13 @@
 // message is answered only from our own content script on one of those sites (who asks is checked, never just trusted).
 import { downscale, openBoard } from "./browser";
 import { planFlightFor } from "./bring";
-import { COMPANION_SITES, companionSiteOf, type CompanionAsk, type CompanionRoute, type DeckBrief } from "./companion";
+import { COMPANION_SITES, companionName, companionSiteOf, type CompanionAsk, type CompanionRoute, type DeckBrief } from "./companion";
 import { db } from "./db";
 import type { PageSnapshot } from "./pagecapture";
 import { saveSnapshot } from "./process";
 import type { Item } from "./types";
 import { flightSearchOf } from "./url";
+import { seenCheaper } from "./priceWatchWorker";
 
 const SCRIPT_ID = "trip-radar-companion";
 
@@ -35,7 +36,7 @@ const brief = (i: Item): DeckBrief => ({
 });
 
 /** The planned flight a search's address is for, and its deck (nothing else of the plan leaves the extension). */
-export async function routeFor(url: string): Promise<(CompanionRoute & { forNeed: string }) | null> {
+export async function routeFor(url: string): Promise<(CompanionRoute & { forNeed: string; chosenId: string | null }) | null> {
   const search = flightSearchOf(url);
   if (!search) return null;
   const d = await db();
@@ -44,8 +45,9 @@ export async function routeFor(url: string): Promise<(CompanionRoute & { forNeed
   if (!planned) return null;
   const trip = await d.get("trips", planned.tripId);
   if (!trip) return null;
-  const deck = planned.ids.map((id) => items.find((i) => i.id === id)).filter((i): i is Item => i != null).map(brief);
-  return { tripId: planned.tripId, title: trip.title, from: planned.from, to: planned.to, day: planned.day, deck, forNeed: planned.forNeed };
+  const records = planned.ids.map((id) => items.find((i) => i.id === id)).filter((i): i is Item => i != null);
+  const chosen = records.find((i) => i.status === "chosen") ?? null;
+  return { tripId: planned.tripId, title: trip.title, from: planned.from, to: planned.to, day: planned.day, deck: records.map(brief), chosen: chosen ? brief(chosen) : null, chosenId: chosen?.id ?? null, forNeed: planned.forNeed };
 }
 
 const snapshotOf = (url: string, title: string, text: string): PageSnapshot => ({
@@ -72,7 +74,13 @@ export function companionAnswer(message: CompanionAsk | { type?: unknown }, send
   const text = (s: unknown, max: number) => (typeof s === "string" ? s.slice(0, max) : "");
   switch (m.type) {
     case "desk:route":
-      return routeFor(url).then((r) => (r ? { tripId: r.tripId, title: r.title, from: r.from, to: r.to, day: r.day, deck: r.deck } : null));
+      return routeFor(url).then((r) => (r ? { tripId: r.tripId, title: r.title, from: r.from, to: r.to, day: r.day, deck: r.deck, chosen: r.chosen ?? null } : null));
+    case "desk:seen":
+      // (fiyat izleme: the chosen flight's price on the site, read as the traveller sees it; said when it's less)
+      return routeFor(url).then(async (r) => {
+        if (!r?.chosenId || typeof m.price !== "number" || !(m.price > 0)) return { save: null };
+        return { save: await seenCheaper(r.chosenId, m.price, typeof m.currency === "string" ? m.currency : null, companionName(companionSiteOf(url) ?? "")) };
+      });
     case "desk:add":
       return routeFor(url).then(async (r) => {
         if (!r) return { ok: false };

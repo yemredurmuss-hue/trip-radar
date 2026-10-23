@@ -127,7 +127,8 @@ export type CompanionAsk =
   | { type: "desk:route"; url: string }
   | { type: "desk:add"; url: string; title: string; text: string }
   | { type: "desk:shot"; url: string; title: string; text: string }
-  | { type: "desk:open"; tripId: string };
+  | { type: "desk:open"; tripId: string }
+  | { type: "desk:seen"; url: string; price: number; currency: string | null };
 
 export interface CompanionRoute {
   tripId: string;
@@ -136,4 +137,6 @@ export interface CompanionRoute {
   to: string;
   day: string;
   deck: DeckBrief[];
+  /** The flight chosen for it, not bought yet (fiyat izleme: seen on the site, its price there is read). */
+  chosen?: DeckBrief | null;
 }

@@ -4,6 +4,7 @@
 // stands against the deck. Everything it draws is in its own closed shadow root, over the page, never inside the site's
 // own elements; nothing is saved until "+" (or "Ekrandakileri desteye ekle") is pressed; no link on the site is changed.
 import { cardFacts, cardLabel, isResultText, type CardFacts, type CompanionAsk, type CompanionRoute } from "./lib/companion";
+import { formatPrice } from "./lib/items";
 import { L, loadLang } from "./lib/i18n";
 
 declare global {
@@ -62,6 +63,8 @@ function start() {
   let closed = false;
   let cards: { el: Element; facts: CardFacts; pin: HTMLDivElement }[] = [];
   const added = new WeakSet<Element>();
+  // (fiyat izleme: the chosen flight's price here, asked once a page; its answer, what it saves)
+  let seen: { href: string; save: number | null } | null = null;
 
   const drawStrip = () => {
     strip.replaceChildren();
@@ -152,10 +155,24 @@ function start() {
     els.forEach((el, i) => {
       const pin = document.createElement("div");
       pin.className = "pin";
-      const label = cardLabel(facts[i], route!.deck, facts);
+      const c = route!.chosen;
+      const mine = c && c.dep && facts[i].dep === c.dep && facts[i].arr === c.arr && facts[i].price != null;
+      let label = cardLabel(facts[i], route!.deck, facts);
+      if (mine) {
+        label = seen?.href === href && seen.save ? L(`Seçtiğin uçuş · ${formatPrice(seen.save, facts[i].currency)} ucuz`, `Your flight · ${formatPrice(seen.save, facts[i].currency)} less`) : L("Seçtiğin uçuş", "Your flight");
+        if (seen?.href !== href) {
+          seen = { href, save: null };
+          void ask<{ save: number | null }>({ type: "desk:seen", url: location.href, price: facts[i].price!, currency: facts[i].currency }).then((r) => {
+            if (r?.save && seen?.href === href) {
+              seen.save = r.save;
+              drawCards();
+            }
+          });
+        }
+      }
       if (label) {
         const tag = document.createElement("span");
-        tag.className = `tag${/Destende|In your deck/.test(label) ? " in" : ""}`;
+        tag.className = `tag${/Destende|In your deck|Seçtiğin|Your flight/.test(label) ? " in" : ""}`;
         tag.textContent = label;
         pin.append(tag);
       }

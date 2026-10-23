@@ -18,9 +18,9 @@ await page.addInitScript(() => {
   const route = { tripId: "th", title: "Tayland", from: "Bangkok", to: "İstanbul", day: "2027-04-02", deck: [
     { name: "Turkish Airlines TK69", dep: "15:15", arr: "22:30", price: 326, currency: "EUR", stops: 0 },
     { name: "Qatar Airways QR833", dep: "20:05", arr: "06:40", price: 354, currency: "EUR", stops: 1 },
-  ] };
+  ], chosen: { name: "Emirates EK123", dep: "09:40", arr: "19:55", price: 330, currency: "EUR", stops: 1 } };
   window.chrome = {
-    runtime: { lastError: undefined, sendMessage: (m, cb) => (window.__asked.push(m), setTimeout(() => cb(m.type === "desk:route" ? route : { ok: true }), 10)) },
+    runtime: { lastError: undefined, sendMessage: (m, cb) => (window.__asked.push(m), setTimeout(() => cb(m.type === "desk:route" ? route : m.type === "desk:seen" ? { save: 42 } : { ok: true }), 10)) },
     storage: { local: { get: async () => ({ lang: "tr" }) } },
   };
 });
@@ -36,6 +36,10 @@ await page.screenshot({ path: `${out}/1-strip-and-plus.png` });
 // (closed shadow root: what it drew is checked by its effects, the screenshot, and its questions)
 const asked = await page.evaluate(() => window.__asked.map((m) => m.type));
 assert.ok(asked.includes("desk:route"), "it asked which row this search is for");
+// (fiyat izleme: the chosen flight seen on the page, its price there sent once)
+const seen = await page.evaluate(() => window.__asked.filter((m) => m.type === "desk:seen"));
+assert.equal(seen.length, 1, "the chosen flight's price on the site asked about once");
+assert.equal(seen[0].price, 288);
 // The "+" pins sit on the cards' top edge: press the second card's (its top right corner, where the pin stands).
 const card = page.locator(".card").nth(1);
 const box = await card.boundingBox();

@@ -484,3 +484,12 @@ yukarıdaki tablodadır (Seçildi kum, Alındı yeşil).
 - Kısa ve şehirlerle: "Porto → Lizbon", "3 karar bekliyor", "Ücretsiz iptal".
 - Bilet gibi: ne → ne ("Havalimanı → Otel"), adlar ve saat alt satırda, notlar Ayrıntı'da.
 - Artı ve eksi birkaç kelimedir; sayfada okunan somut şey kendi sözleriyle yazılır ("Karşısında genelev var").
+
+## Fiyat izleme (0.40.6)
+
+Planında olup henüz alınmamış uçuş ve oteller günde bir kez yeniden sorulur (`lib/priceWatch.ts`,
+`lib/priceWatchWorker.ts`): uçuş paylaşılan canlı uçuş aramasına (Kiwi bulur, Google Flights doğrular), otel o geceler için
+fiyatlı adaylara. Yalnız aynı uçuş (saati ve havayolu) ya da aynı otel (adı ya da sayfası); başkasından fiyat uydurulmaz.
+€5 ve %3'ten büyük düşüş kayda yazılır (çekmecede "Dün €364 idi"), gezinin geçmişine düşer ve bir Chrome bildirimiyle
+söylenir; basınca gezinin planı açılır. "Sitede benle gel"in sitelerinde seçtiğin uçuş görünürse orada "Seçtiğin uçuş"
+yazar, kişi başı fiyatı planındakinden ucuzsa "Seçtiğin uçuş · €42 ucuz" ve günde bir bildirim. Arayüzde yeni düğme yok.

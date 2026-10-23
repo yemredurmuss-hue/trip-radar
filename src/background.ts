@@ -1,4 +1,5 @@
 // Service worker: runs the capture queue and the decision analyses so they continue after the popup closes.
+import { checkPricesDaily, listenPriceNotices } from "./lib/priceWatchWorker";
 import { candidateClosed, candidateOf, showBadge } from "./lib/candidateTabs";
 import { companionAnswer, syncCompanion } from "./lib/companionWorker";
 import { analyzeStale, isAnalyzing } from "./lib/analysis";
@@ -148,7 +149,11 @@ chrome.alarms.create("update-check", { periodInMinutes: 1 });
 chrome.alarms.create("retry-failed", { periodInMinutes: 10 });
 // Shared trips: the other traveller's captures and votes arrive within a minute.
 chrome.alarms.create("share-sync", { periodInMinutes: 1 });
+// Fiyat izleme (lib/priceWatch.ts): what's on the plan and not bought, asked again once a day; a drop said in a notification.
+chrome.alarms.create("price-watch", { delayInMinutes: 2, periodInMinutes: 6 * 60 });
+listenPriceNotices();
 chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === "price-watch") void checkPricesDaily().catch(() => undefined);
   if (alarm.name === "update-check") void applyUpdateIfIdle();
   if (alarm.name === "share-sync") void syncShared();
   if (alarm.name === "retry-failed") {
