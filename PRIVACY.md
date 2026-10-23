@@ -1,6 +1,6 @@
 # Trip Radar · Gizlilik politikası / Privacy policy
 
-Son güncelleme / Last updated: 2026-10-23 · Sürüm / Version: 0.40.5
+Son güncelleme / Last updated: 2026-10-23 · Sürüm / Version: 0.40.6
 
 ---
 
@@ -288,6 +288,12 @@ Pratikte:
 Eklenti kendini otomatik günceller. Bu politika değişirse üstteki tarih ve sürüm güncellenir.
 Önemli bir değişiklik (yeni bir veri türü ya da yeni bir alıcı gibi), değişikliği getiren sürümle birlikte bu
 sayfada açıkça yazılır.
+
+0.40.6'da eklenenler: fiyat izleme. Planında olup henüz almadığın uçuş ve oteller için, günde en çok bir kez, önerilerin
+geldiği aynı sunucu fonksiyonuna yalnız rota, gün, şehir, geceler ve kişi sayısı sorulur (bölüm 8'deki aramalarla
+aynı); kim olduğun, adın ya da planının geri kalanı gitmez. Aynı uçuş ya da otel daha ucuzsa bilgisayarındaki kayda
+yazılır ve bir Chrome bildirimiyle söylenir (`notifications` izni). İzin verdiğin uçuş sitelerinde seçtiğin uçuş
+görünürse oradaki fiyatı okunur ve karşılaştırılır; bu da bilgisayarında kalır.
 
 0.40.0'da eklenenler: sekme grubu ("Adayları sekmelerde aç", `tabGroups` izni) ve izin verdiğin uçuş sitelerinde
 "Sitede benle gel" (bölüm 4). Yeni bir sunucu ya da yeni bir alıcı yok; sitelerde okunan sonuçlar bilgisayarında kalır.
@@ -586,6 +592,13 @@ In practice:
 The extension updates itself. When this policy changes, the date and version at the top are updated.
 A significant change (a new kind of data or a new recipient, say) is stated plainly on this page with the version
 that brings it.
+
+Added in 0.40.6: price watching. For the flights and stays on your plan that you haven't bought yet, at most once a day,
+the same server function the suggestions come from is asked only the route, the day, the city, the nights and the
+number of people (the same as the searches in section 8); nothing about who you are or the rest of your plan is sent.
+When the same flight or hotel is cheaper, it is written on the record on your computer and said in a Chrome
+notification (the `notifications` permission). On the flight sites you allow, when your chosen flight shows up its price
+there is read and compared; that stays on your computer too.
 
 Added in 0.40.0: the tab group ("Open the candidates in tabs", the `tabGroups` permission) and "Come along on this
 site" on the flight sites you allow (section 4). No new server and no new recipient; the results read on those sites
