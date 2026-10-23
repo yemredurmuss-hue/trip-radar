@@ -72,3 +72,50 @@ export function worthRemembering(code: string | null, day: string | null, own: T
   if (day) return true;
   return own.filter((t) => tripPlaceCodes(t.id, items).has(code) || titleCodes(t.title).has(code)).length <= 1;
 }
+
+/**
+ * Şu anki gezi (0.43.0, Emre: "bir kere seçtikten sonra tekrar seyahati sormaması gerek"): the trip picked or saved into
+ * last. What comes next goes there without asking, until a page of another country comes (then the country's own trip,
+ * or the question). Kept a day; this device only.
+ */
+export interface CurrentTrip {
+  tripId: string;
+  /** The country it was picked for, when the page said one. */
+  country: string | null;
+  at: number;
+}
+export const CURRENT_KEY = "currentTrip";
+export const CURRENT_MS = 24 * 3600_000;
+
+export async function loadCurrent(): Promise<CurrentTrip | null> {
+  try {
+    if (!globalThis.chrome?.storage?.local) return null;
+    const v = (await chrome.storage.local.get(CURRENT_KEY))[CURRENT_KEY] as CurrentTrip | undefined;
+    return v && typeof v.tripId === "string" ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function setCurrent(tripId: string, country: string | null): Promise<void> {
+  try {
+    if (!globalThis.chrome?.storage?.local) return;
+    await chrome.storage.local.set({ [CURRENT_KEY]: { tripId, country, at: Date.now() } satisfies CurrentTrip });
+  } catch {
+    // (nothing kept: the next save asks)
+  }
+}
+
+/**
+ * The current trip for a page of this country, when it still holds: the trip there, not a sample, not over, kept within a
+ * day, and the page of the same country (or of none it could tell, or a country that trip has).
+ */
+export function currentFor(cur: CurrentTrip | null, code: string | null, trips: Trip[], items: Item[], today: string, now = Date.now()): Trip | null {
+  if (!cur || now - cur.at > CURRENT_MS) return null;
+  const trip = trips.find((t) => t.id === cur.tripId);
+  if (!trip || isDemoTrip(trip)) return null;
+  const range = profileTrips([trip], items)[0]?.range ?? (trip.confirmedDates ? { start: trip.confirmedDates.start, end: trip.confirmedDates.end } : null);
+  if (range && range.end < today) return null;
+  if (!code || !cur.country || cur.country === code) return trip;
+  return tripPlaceCodes(trip.id, items).has(code) || titleCodes(trip.title).has(code) ? trip : null;
+}

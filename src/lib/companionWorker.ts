@@ -12,9 +12,10 @@ import { formatDateRange } from "./items";
 import type { PageSnapshot } from "./pagecapture";
 import { titleCodes, tripPlaceCodes } from "./placeCheck";
 import { saveSnapshot } from "./process";
+import { moveSave, readingCount, undoSave } from "./saveUndo";
 import { countryName, gapDays, isDemoTrip, profileTrips, uniqueTitle } from "./trips";
 import { loadHome } from "./passport";
-import { loadRules, rememberTrip, ruleFor, RULE_SLACK_DAYS, worthRemembering } from "./tripRules";
+import { currentFor, loadCurrent, loadRules, rememberTrip, ruleFor, RULE_SLACK_DAYS, setCurrent, worthRemembering } from "./tripRules";
 import type { Item, Trip } from "./types";
 import { flightSearchOf, parseUrl } from "./url";
 import { seenCheaper } from "./priceWatchWorker";
@@ -158,7 +159,11 @@ export async function whereFor(url: string, title: string): Promise<CompanionWhe
   const day = flightSearchOf(url)?.day ?? parseUrl(url).checkIn ?? null;
   const end = parseUrl(url).checkOut ?? null;
   const rules = route || !code ? null : await loadRules();
-  const trip: Trip | null = route ? (own.find((t) => t.id === route.tripId) ?? null) : rules && code ? ruleFor(rules, [code], own, items, day, end, today()) : null;
+  // (the route's row, else the country's remembered trip on its days, else the current trip: picked last, a page of the
+  // same country or of none it can tell; only then asked)
+  const trip: Trip | null = route
+    ? (own.find((t) => t.id === route.tripId) ?? null)
+    : ((rules && code ? ruleFor(rules, [code], own, items, day, end, today()) : null) ?? currentFor(await loadCurrent(), code, own, items, today()));
   const profiles = profileTrips(own, items);
   const match = (t: Trip) => Boolean(code && (tripPlaceCodes(t.id, items).has(code) || titleCodes(t.title).has(code)));
   const whenOf = (t: Trip) => {
@@ -187,6 +192,13 @@ export async function whereFor(url: string, title: string): Promise<CompanionWhe
  * remembered one. None of these (no trip at all yet): the capture goes as the toolbar's does, its trip made from it.
  */
 export async function bindFor(url: string, title: string, pick: TripPick): Promise<{ forTripId?: string; forNeed?: string }> {
+  const bind = await bindOnce(url, title, pick);
+  // (Şu anki gezi: what was just saved into is the trip of what comes next)
+  if (bind.forTripId) await setCurrent(bind.forTripId, pageCountry(url, title, await loadHome().catch(() => null)));
+  return bind;
+}
+
+async function bindOnce(url: string, title: string, pick: TripPick): Promise<{ forTripId?: string; forNeed?: string }> {
   const route = await routeFor(url);
   if (route) return { forTripId: route.tripId, forNeed: route.forNeed };
   const d = await db();
@@ -223,6 +235,19 @@ function pageSnapshot(raw: unknown, url: string): PageSnapshot | null {
   const coords = Array.isArray(r.coords) ? r.coords.filter((c): c is { lat: number; lng: number; source: string } => typeof c?.lat === "number" && typeof c?.lng === "number").slice(0, 10).map((c) => ({ lat: c.lat, lng: c.lng, source: str(c.source, 40) })) : [];
   const images = Array.isArray(r.images) ? r.images.filter((i): i is { src: string; alt: string; inView: boolean } => typeof i?.src === "string").slice(0, 20).map((i) => ({ src: i.src.slice(0, 2000), alt: str(i.alt, 200), inView: i.inView === true })) : [];
   return { url, title: str(r.title, 300), pageText: str(r.pageText, 60_000), viewportText: str(r.viewportText, 12_000), selection: str(r.selection, 4000), jsonLd: strings(r.jsonLd, 20, 40_000), meta, coords, images };
+}
+
+/** Saved on the site: "+1" on the icon a moment (on that tab), and what the note says. */
+async function savedOn(tabId: number, captureId: string, tripId: string | null): Promise<{ ok: true; tripId: string | null; tripTitle: string | null; captureId: string; reading: number }> {
+  try {
+    await chrome.action.setBadgeBackgroundColor({ tabId, color: "#1f7a45" });
+    await chrome.action.setBadgeText({ tabId, text: "+1" });
+    setTimeout(() => void chrome.action.setBadgeText({ tabId, text: "" }).catch(() => undefined), 2500);
+  } catch {
+    // (no badge: the page's own ✓ says it)
+  }
+  const trip = tripId ? await (await db()).get("trips", tripId) : undefined;
+  return { ok: true, tripId, tripTitle: trip?.title ?? null, captureId, reading: await readingCount() };
 }
 
 async function shotOf(windowId: number): Promise<string | null> {
@@ -272,16 +297,16 @@ function answerOn(m: CompanionAsk, url: string, sender: chrome.runtime.MessageSe
       return whereFor(url, text(m.title, 300));
     case "desk:add":
       return bindFor(url, text(m.title, 300), pickOf(m)).then(async (bind) => {
-        await saveSnapshot(snapshotOf(url, text(m.title, 300), text(m.text, 1500)), null, bind);
+        const capture = await saveSnapshot(snapshotOf(url, text(m.title, 300), text(m.text, 1500)), null, bind);
         process();
-        return { ok: true, tripId: bind.forTripId ?? null };
+        return savedOn(sender.tab!.id!, capture.id, bind.forTripId ?? null);
       });
     case "desk:shot":
       return bindFor(url, text(m.title, 300), pickOf(m)).then(async (bind) => {
         const shot = await shotOf(sender.tab!.windowId);
-        await saveSnapshot(snapshotOf(url, text(m.title, 300), text(m.text, 12_000)), shot, bind);
+        const capture = await saveSnapshot(snapshotOf(url, text(m.title, 300), text(m.text, 12_000)), shot, bind);
         process();
-        return { ok: true, tripId: bind.forTripId ?? null };
+        return savedOn(sender.tab!.id!, capture.id, bind.forTripId ?? null);
       });
     case "desk:page": {
       // ("Desteye ekle" on a hotel's or a tour's own page: the page as the toolbar's save reads it, its screenshot too)
@@ -289,11 +314,25 @@ function answerOn(m: CompanionAsk, url: string, sender: chrome.runtime.MessageSe
       if (!snap) return Promise.resolve({ ok: false });
       return bindFor(url, snap.title, pickOf(m)).then(async (bind) => {
         const shot = await shotOf(sender.tab!.windowId);
-        await saveSnapshot(snap, shot, bind);
+        const capture = await saveSnapshot(snap, shot, bind);
         process();
-        return { ok: true, tripId: bind.forTripId ?? null };
+        return savedOn(sender.tab!.id!, capture.id, bind.forTripId ?? null);
       });
     }
+    case "desk:undo":
+      return undoSave(text(m.captureId, 80)).then((ok) => ({ ok }));
+    case "desk:move":
+      // ("Değiştir" on the note: that trip, or a new one for the page's country; the current trip from now on)
+      return (async () => {
+        const pick = pickOf(m);
+        const d = await db();
+        let tripId = pick.tripId && (await d.get("trips", pick.tripId.slice(0, 80))) ? pick.tripId.slice(0, 80) : null;
+        if (!tripId && pick.newTrip) tripId = (await bindFor(url, "", { newTrip: true, remember: false })).forTripId ?? null;
+        if (!tripId) return { ok: false, tripId: null };
+        const ok = await moveSave(text(m.captureId, 80), tripId);
+        await setCurrent(tripId, pageCountry(url, "", await loadHome().catch(() => null)));
+        return { ok, tripId };
+      })();
     case "desk:open":
       return openBoard(`#trip=${encodeURIComponent(text(m.tripId, 80))}`).then(() => ({ ok: true }));
     default:

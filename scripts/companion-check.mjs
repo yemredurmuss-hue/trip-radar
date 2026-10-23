@@ -20,7 +20,7 @@ await page.addInitScript(() => {
     { name: "Qatar Airways QR833", dep: "20:05", arr: "06:40", price: 354, currency: "EUR", stops: 1 },
   ], chosen: { name: "Emirates EK123", dep: "09:40", arr: "19:55", price: 330, currency: "EUR", stops: 1 } };
   window.chrome = {
-    runtime: { lastError: undefined, sendMessage: (m, cb) => (window.__asked.push(m), setTimeout(() => cb(m.type === "desk:route" ? route : m.type === "desk:seen" ? { save: 42 } : { ok: true }), 10)) },
+    runtime: { lastError: undefined, onMessage: { addListener: () => undefined }, sendMessage: (m, cb) => (window.__asked.push(m), setTimeout(() => cb(m.type === "desk:route" ? route : m.type === "desk:seen" ? { save: 42 } : { ok: true }), 10)) },
     storage: { local: { get: async () => ({ lang: "tr" }) } },
   };
 });

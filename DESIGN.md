@@ -485,6 +485,19 @@ yukarıdaki tablodadır (Seçildi kum, Alındı yeşil).
 - Bilet gibi: ne → ne ("Havalimanı → Otel"), adlar ve saat alt satırda, notlar Ayrıntı'da.
 - Artı ve eksi birkaç kelimedir; sayfada okunan somut şey kendi sözleriyle yazılır ("Karşısında genelev var").
 
+## Simgeye basınca (0.43.0)
+
+- Simge kendiliğinden kaydetmez; açılır pencere anında açılır (iskelet), işi arka plan yapar (`lib/popupWorker.ts`), paket
+  hafif (244 KB). Sayfanın metni ve ekran görüntüsü yalnız "Desteye ekle"ye (ya da Enter) basınca.
+- Dört hal: gezi belli ("Portekiz · Konaklama ▾" çipi + "+ Desteye ekle"), gezi belli değil (seçici; bir kutuya basmak
+  seçer ve ekler), zaten destede ("✓ … destesinde", "Fiyatı yenile"), seyahat sayfası değil ("+ Fikir olarak ekle",
+  Capture.idea: soru sorulmaz). Ekledikten sonra "✓ Eklendi · Geri al", pencere 1,8 sn sonra kendisi kapanır.
+- Şu anki gezi (`tripRules.currentFor`): son seçilen ya da eklenen gezi, bir gün; aynı ülke ya da ülkesi okunamayan sayfa
+  sormadan oraya. Sıra: satırın araması → ülkenin hatırlanan gezisi → şu anki gezi → seçici.
+- Sitede: eklenince kartın küçük kopyası (fotoğraf, ad) sağ üste uçar (420 ms, azaltılmış harekette yok), simgede "+1";
+  not "Portekiz · Konaklama destesine girdi · 2 okunuyor · Değiştir · Geri al". Reklam/sponsorlu kartlara + yok; +'nın
+  altında sitenin düğmesi varsa sola kayar. Simgeden "Bu sayfadan seç": +'lar işarete döner, hepsi birden eklenir.
+
 ## Benle gezen eklenti: Pinterest gibi kaydetme (0.42.0)
 
 - Tek anahtar: "Seyahat sitelerinde benle gel" (Ayarlar ve araç çubuğu), `COMPANION_SITES` 30 kadar seyahat sitesi, tek

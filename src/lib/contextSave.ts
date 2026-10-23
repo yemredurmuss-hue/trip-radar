@@ -60,7 +60,7 @@ export function listenContextMenu(process: () => void): void {
 }
 
 /** Up to two minutes: read (✓, gone after a while), asked (a notification), or failed (!). */
-async function watch(captureId: string, tabId: number): Promise<void> {
+export async function watch(captureId: string, tabId: number): Promise<void> {
   const d = await db();
   for (let n = 0; n < 80; n++) {
     await new Promise((r) => setTimeout(r, 1500));

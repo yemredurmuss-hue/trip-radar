@@ -77,3 +77,38 @@ describe("from the toolbar: asked once a country, then put there", () => {
     expect((await loadRules())?.find((r) => r.country === "ES")?.tripId).toBe("pt2");
   });
 });
+
+describe("Şu anki gezi: picked once, then nothing asked until another country", async () => {
+  const { currentFor } = await import("../src/lib/tripRules");
+  const trips = [trip("pt", "Portekiz", "2026-11-12", "2026-11-19"), trip("old", "Lizbon", "2025-05-01", "2025-05-05")];
+  const now = Date.parse("2026-10-23T12:00:00Z");
+  it("the same country, or a page whose country can't be told: the current trip", () => {
+    expect(currentFor({ tripId: "pt", country: "PT", at: now }, "PT", trips, [], "2026-10-23", now)?.id).toBe("pt");
+    expect(currentFor({ tripId: "pt", country: "PT", at: now }, null, trips, [], "2026-10-23", now)?.id).toBe("pt");
+  });
+  it("another country, a day old, a trip over or gone: asked again", () => {
+    expect(currentFor({ tripId: "pt", country: "PT", at: now }, "ID", trips, [], "2026-10-23", now)).toBeNull();
+    expect(currentFor({ tripId: "pt", country: "PT", at: now - 25 * 3600_000 }, "PT", trips, [], "2026-10-23", now)).toBeNull();
+    expect(currentFor({ tripId: "old", country: "PT", at: now }, "PT", trips, [], "2026-10-23", now)).toBeNull();
+    expect(currentFor({ tripId: "gone", country: "PT", at: now }, "PT", trips, [], "2026-10-23", now)).toBeNull();
+    expect(currentFor(null, "PT", trips, [], "2026-10-23", now)).toBeNull();
+  });
+});
+
+describe("the note's Geri al and Değiştir", () => {
+  it("Değiştir while still being read: the capture waits with its new trip; Geri al: gone, its record too", async () => {
+    const { moveSave, undoSave, readingCount } = await import("../src/lib/saveUndo");
+    const d = await db();
+    await d.put("trips", trip("es", "İspanya"));
+    const c = await saveSnapshot(page("https://www.booking.com/hotel/es/x.html"), null, { forTripId: "pt2" });
+    expect(await readingCount()).toBeGreaterThan(0);
+    expect(await moveSave(c.id, "es")).toBe(true);
+    expect((await d.get("captures", c.id))?.forTripId).toBe("es");
+    await processPending(deps({ name: "Hotel X", city: "Madrid", country: "İspanya", country_code: "ES" }));
+    const itemId = (await d.get("captures", c.id))!.itemId!;
+    expect((await d.get("items", itemId))?.tripId).toBe("es");
+    expect(await undoSave(c.id)).toBe(true);
+    expect(await d.get("captures", c.id)).toBeUndefined();
+    expect(await d.get("items", itemId)).toBeUndefined();
+  });
+});

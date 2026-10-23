@@ -27,7 +27,7 @@ async function open(url, fixture) {
       { id: "dk", title: "Kopenhag ve Amsterdam", when: "8 – 18 Eki", match: false, photos: [] },
     ] };
     window.chrome = {
-      runtime: { lastError: undefined, sendMessage: (m, cb) => (window.__asked.push(m), setTimeout(() => cb(m.type === "desk:where" ? where : m.type === "desk:route" ? null : { ok: true, tripId: m.tripId ?? null }), 10)) },
+      runtime: { lastError: undefined, onMessage: { addListener: (f) => (window.__onMessage = f) }, sendMessage: (m, cb) => (window.__asked.push(m), setTimeout(() => cb(m.type === "desk:where" ? where : m.type === "desk:route" ? null : { ok: true, tripId: m.tripId ?? null, captureId: `c${window.__asked.length}`, reading: 2 }), 10)) },
       storage: { local: { get: async () => ({ lang: "tr" }), set: async () => undefined } },
     };
   });
@@ -83,7 +83,10 @@ await list.waitForTimeout(200);
 await inShadow(list, () => document.getElementById("trip-radar-companion").shadowRoot.querySelector(".qp button.best").click());
 await list.waitForTimeout(400);
 await inShadow(list, () => document.getElementById("trip-radar-companion").shadowRoot.querySelectorAll(".pin .plus")[0].click());
-await list.waitForTimeout(400);
+await list.waitForTimeout(60);
+assert.equal(await inShadow(list, () => document.getElementById("trip-radar-companion").shadowRoot.querySelectorAll(".hop").length), 1, "hop: the card's small copy flies to the icon");
+await list.waitForTimeout(500);
+assert.equal(await inShadow(list, () => document.getElementById("trip-radar-companion").shadowRoot.querySelectorAll(".hop").length), 0, "and is gone once it lands");
 const adds = await list.evaluate(() => window.__asked.filter((m) => m.type === "desk:add"));
 assert.equal(adds.length, 2);
 assert.match(adds[0].text, /Lumiares.*€ 1\.040/, "only that result's own text");
@@ -92,5 +95,25 @@ assert.equal(adds[1].tripId, undefined, "the second goes to the remembered trip,
 const asks = await inShadow(list, () => document.getElementById("trip-radar-companion").shadowRoot.querySelector(".ask"));
 assert.equal(asks, null);
 await list.screenshot({ path: `${out}/stay-5-added.png` });
+// The note: "Değiştir" and "Geri al"; Geri al takes the last one back.
+const note = await inShadow(list, () => document.getElementById("trip-radar-companion").shadowRoot.querySelector(".toast")?.textContent ?? "");
+assert.match(note, /Portekiz · Konaklama destesine girdi · 2 okunuyor/);
+assert.match(note, /Değiştir/);
+await inShadow(list, () => [...document.getElementById("trip-radar-companion").shadowRoot.querySelectorAll(".toast button")].find((b) => b.textContent === "Geri al").click());
+await list.waitForTimeout(200);
+assert.equal((await list.evaluate(() => window.__asked.filter((m) => m.type === "desk:undo"))).length, 1, "Geri al asked");
+const plusAfter = await inShadow(list, () => [...document.getElementById("trip-radar-companion").shadowRoot.querySelectorAll(".pin .plus")].map((b) => b.classList.contains("done")));
+assert.deepEqual(plusAfter, [false, true, false], "the one taken back has its + again");
+// Bu sayfadan seç (from the toolbar): ticks, then all added at once into the known trip.
+await list.evaluate(() => window.__onMessage({ type: "desk:select" }));
+await list.waitForTimeout(150);
+const ticks = await inShadow(list, () => document.getElementById("trip-radar-companion").shadowRoot.querySelectorAll(".plus.tick").length);
+assert.ok(ticks >= 1, "the results not added yet become ticks");
+await inShadow(list, () => document.getElementById("trip-radar-companion").shadowRoot.querySelector(".plus.tick").click());
+await list.waitForTimeout(100);
+await list.screenshot({ path: `${out}/stay-6-select.png` });
+await inShadow(list, () => document.getElementById("trip-radar-companion").shadowRoot.querySelector(".toast.sel .go").click());
+await list.waitForTimeout(500);
+assert.equal((await list.evaluate(() => window.__asked.filter((m) => m.type === "desk:add"))).length, 3, "the ticked one added too");
 console.log(JSON.stringify({ ok: true }));
 await browser.close();

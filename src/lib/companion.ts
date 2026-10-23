@@ -241,6 +241,8 @@ export type CompanionAsk =
   | ({ type: "desk:add"; url: string; title: string; text: string } & TripPick)
   | ({ type: "desk:shot"; url: string; title: string; text: string } & TripPick)
   | ({ type: "desk:page"; url: string; snapshot: unknown } & TripPick)
+  | { type: "desk:undo"; captureId: string }
+  | ({ type: "desk:move"; captureId: string } & TripPick)
   | { type: "desk:open"; tripId: string }
   | { type: "desk:seen"; url: string; price: number; currency: string | null };
 
@@ -282,4 +284,13 @@ export interface CompanionWhere {
   saved: boolean;
   /** The names of that trip's options of this kind ("Destende var" on a hotel list). */
   names: string[];
+}
+
+/** What a save on the site answers: where it went, and how many are still being read. */
+export interface SavedOnSite {
+  ok: boolean;
+  tripId: string | null;
+  tripTitle?: string | null;
+  captureId?: string;
+  reading?: number;
 }

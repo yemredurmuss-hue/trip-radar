@@ -100,8 +100,8 @@ function baseCapture(kind: Capture["kind"]): Capture {
  * `bind` (benle gezen eklenti): saved from a page the plan knows (a candidate's tab, a search for a planned flight): it goes
  * into that trip and that need's deck.
  */
-export async function saveSnapshot(snapshot: PageSnapshot, screenshot: string | null, bind: { forTripId?: string; forNeed?: string } = {}): Promise<Capture> {
-  const capture: Capture = { ...baseCapture("extension"), ...snapshot, screenshot, ...(bind.forTripId ? { forTripId: bind.forTripId } : {}), ...(bind.forNeed ? { forNeed: bind.forNeed } : {}) };
+export async function saveSnapshot(snapshot: PageSnapshot, screenshot: string | null, bind: { forTripId?: string; forNeed?: string; idea?: boolean } = {}): Promise<Capture> {
+  const capture: Capture = { ...baseCapture("extension"), ...snapshot, screenshot, ...(bind.forTripId ? { forTripId: bind.forTripId } : {}), ...(bind.forNeed ? { forNeed: bind.forNeed } : {}), ...(bind.idea ? { idea: true } : {}) };
   await (await db()).put("captures", capture);
   notifyChanged();
   return capture;
@@ -271,7 +271,7 @@ async function readCapture(capture: Capture, deps: Deps, commit: () => Promise<b
           anchorId: anchor?.id ?? null,
           board: Boolean(forced),
           home,
-          travel: looksLikeTravel(extraction),
+          travel: Boolean(capture.idea) || looksLikeTravel(extraction),
           trips,
           items: allItems,
         });

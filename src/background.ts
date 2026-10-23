@@ -3,6 +3,7 @@ import { checkPricesDaily, listenPriceNotices } from "./lib/priceWatchWorker";
 import { candidateClosed, candidateOf, showBadge } from "./lib/candidateTabs";
 import { companionAnswer, syncCompanion } from "./lib/companionWorker";
 import { listenContextMenu, setupContextMenu } from "./lib/contextSave";
+import { popupAnswer } from "./lib/popupWorker";
 import { analyzeStale, isAnalyzing } from "./lib/analysis";
 import { loadLang, setLang } from "./lib/i18n";
 import {
@@ -102,6 +103,13 @@ chrome.tabs.onRemoved.addListener((tabId) => void candidateClosed(tabId));
 // Benle gezen eklenti (seviye 2, lib/companionWorker.ts): the content script only on the sites allowed, and its questions.
 chrome.permissions.onAdded.addListener(() => void syncCompanion());
 chrome.permissions.onRemoved.addListener(() => void syncCompanion());
+// Simgeye basınca (lib/popupWorker.ts): the popup only asks; the page is read and saved here.
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  const answer = popupAnswer(message, sender, () => void run());
+  if (!answer) return undefined;
+  void answer.then(sendResponse, () => sendResponse(null));
+  return true;
+});
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const answer = companionAnswer(message, sender, () => void run());
   if (!answer) return undefined;

@@ -619,6 +619,8 @@ export interface Capture {
    * that need's option (Item.forNeed), whatever its own codes say.
    */
   forNeed?: string;
+  /** "Fikir olarak ekle" (0.43.0): a page that isn't a booking (a blog post, a map), kept as an idea, never asked about. */
+  idea?: boolean;
   /** Who saved it, when someone else did (a shared trip's other traveller). */
   sharedBy?: string;
   /** When it reached the sharing server (or arrived from it): never uploaded again. */

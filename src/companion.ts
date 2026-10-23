@@ -21,6 +21,7 @@ import {
   type CompanionAsk,
   type CompanionRoute,
   type CompanionWhere,
+  type SavedOnSite,
   type SiteKind,
   type TripPick,
 } from "./lib/companion";
@@ -110,6 +111,15 @@ button:focus-visible, .plus:focus-visible { outline: 3px solid #cfc7ff; outline-
   box-shadow: 0 10px 24px rgba(0,0,0,.25); }
 .toast i { font-style: normal; flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 99px; background: #1f7a45; font-size: 12px; font-weight: 800; }
 .toast button { border: 0; background: none; color: #c9c2f5; font: 800 12px/1 inherit; cursor: pointer; padding: 0; white-space: nowrap; }
+.toast.sel { gap: 12px; }
+.toast.sel .go { padding: 8px 12px; border-radius: 99px; background: #5b45e0; color: #fff; }
+.toast.sel .go:disabled { opacity: .5; cursor: default; }
+.plus.tick { background: #fff; color: #5b45e0; box-shadow: inset 0 0 0 2px #5b45e0; font-size: 14px; }
+.plus.tick.on { background: #5b45e0; color: #fff; }
+.hop { position: fixed; z-index: 2147483647; display: flex; align-items: center; gap: 8px; padding: 6px 10px 6px 6px; border-radius: 12px; background: #fff;
+  box-shadow: 0 0 0 1.5px #c9bffa, 0 10px 26px rgba(28,26,51,.25); pointer-events: none; font: 800 12.5px/1.2 "Plus Jakarta Sans", system-ui, sans-serif; color: #1c1a33; }
+.hop img { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; flex: none; }
+.hop b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 `;
 
 /** What the question asks about ("Bu konaklama hangi geziye?"). */
@@ -197,13 +207,83 @@ function start() {
     drawDock();
   };
 
-  const said = (tripTitle: string | null) => {
-    toast = tripTitle ? L(`${tripTitle} · ${deckWord(kind)} destesine girdi, okunuyor`, `${tripTitle} · in the ${deckWord(kind)} deck, being read`) : L("Desteye girdi, okunuyor", "In the deck, being read");
+  // The note after a save: where it went, how many are still being read, "Değiştir" and "Geri al" (0.43.0).
+  let last: { captureId: string; tripId: string | null; el: Element | null } | null = null;
+  let lastEl: Element | null = null;
+  let toastTimer = 0;
+  const said = (r: SavedOnSite, n = 1) => {
+    const title = r.tripTitle ?? where?.trips.find((t) => t.id === r.tripId)?.title ?? knownTrip()?.title ?? null;
+    const what = n > 1 ? L(`${n} sonuç`, `${n} results`) : "";
+    toast = [
+      title ? L(`${what ? `${what} · ` : ""}${title} · ${deckWord(kind)} destesine girdi`, `${what ? `${what} · ` : ""}in ${title} · ${deckWord(kind)}`) : L("Desteye girdi", "In the deck"),
+      r.reading && r.reading > 1 ? L(`${r.reading} okunuyor`, `${r.reading} being read`) : L("okunuyor", "being read"),
+    ].join(" · ");
+    last = r.captureId ? { captureId: r.captureId, tripId: r.tripId, el: lastEl } : null;
+    lastEl = null;
+    // (the trip it went to is the one the next "+" goes to, without asking)
+    if (where && r.tripId && title && !where.trip) where = { ...where, trip: { id: r.tripId, title } };
     drawDock();
-    setTimeout(() => {
+    clearTimeout(toastTimer);
+    toastTimer = window.setTimeout(() => {
       toast = null;
       drawDock();
-    }, 6000);
+    }, 6500);
+  };
+
+  /** "Hop": a small copy of what was added (its photo, its name) flies to the icon's corner; none when motion is off. */
+  const fly = (from: DOMRect, photo: string | null, label: string) => {
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const chip = document.createElement("div");
+    chip.className = "hop";
+    if (photo) {
+      const img = document.createElement("img");
+      img.src = photo;
+      img.alt = "";
+      chip.append(img);
+    }
+    const b = document.createElement("b");
+    b.textContent = label.slice(0, 40);
+    chip.append(b);
+    const w = Math.min(220, Math.max(120, from.width * 0.5));
+    chip.style.left = `${from.left + from.width / 2 - w / 2}px`;
+    chip.style.top = `${Math.max(0, from.top + from.height / 2 - 28)}px`;
+    chip.style.width = `${w}px`;
+    root.append(chip);
+    const dx = innerWidth - 36 - (from.left + from.width / 2);
+    const dy = -(from.top + from.height / 2) + 4;
+    chip
+      .animate(
+        [
+          { transform: "translate(0, 0) scale(1)", opacity: 1 },
+          { transform: `translate(${dx * 0.55}px, ${dy * 0.35 - 30}px) scale(.7)`, opacity: 1, offset: 0.45 },
+          { transform: `translate(${dx}px, ${dy}px) scale(.12)`, opacity: 0.2 },
+        ],
+        { duration: 420, easing: "cubic-bezier(.3,.7,.2,1)" },
+      )
+      .finished.catch(() => undefined)
+      .then(() => chip.remove());
+  };
+  const photoOf = (el: Element): string | null => {
+    const img = el.querySelector("img");
+    const src = img?.currentSrc || img?.src || "";
+    return /^https:\/\//.test(src) ? src : null;
+  };
+  const nameOf = (el: Element): string => (el.querySelector("h1,h2,h3,h4,b,strong,a")?.textContent ?? (el as HTMLElement).innerText ?? "").replace(/\s+/g, " ").trim();
+
+  // Bu sayfadan seç (0.43.0, from the toolbar): the results' "+" become ticks; the dock says how many, and adds them all.
+  let selecting = false;
+  const chosen = new Set<Element>();
+  const addCard = async (el: Element, pick: TripPick): Promise<SavedOnSite | null> => {
+    reading.add(el);
+    drawCards();
+    const r = await ask<SavedOnSite>({ type: "desk:add", url: location.href, title: document.title, text: (el as HTMLElement).innerText.replace(/\s+/g, " ").trim().slice(0, 1500), ...pick });
+    reading.delete(el);
+    if (r?.ok) {
+      added.add(el);
+      lastEl = el;
+      fly(el.getBoundingClientRect(), photoOf(el), nameOf(el));
+    }
+    return r?.ok ? r : null;
   };
 
   const drawDock = () => {
@@ -317,7 +397,40 @@ function start() {
       dock.append(box);
       return;
     }
-    if (toast) {
+    if (selecting) {
+      const bar = document.createElement("div");
+      bar.className = "toast sel";
+      const words = document.createElement("span");
+      words.textContent = chosen.size ? L(`${chosen.size} seçili`, `${chosen.size} picked`) : L("Eklemek istediklerini işaretle", "Tick what to add");
+      const go = document.createElement("button");
+      go.type = "button";
+      go.className = "go";
+      go.textContent = L("Desteye ekle", "Add to the deck");
+      go.disabled = !chosen.size;
+      go.onclick = () =>
+        withTrip(L("Bu sonuçlar", "These results"), async (pick) => {
+          const list = [...chosen];
+          selecting = false;
+          chosen.clear();
+          let lastOk: SavedOnSite | null = null;
+          for (const el of list) lastOk = (await addCard(el, pick)) ?? lastOk;
+          drawCards();
+          if (lastOk) said(lastOk, list.length);
+          else drawDock();
+          return Boolean(lastOk);
+        });
+      const no = document.createElement("button");
+      no.type = "button";
+      no.textContent = L("Vazgeç", "Cancel");
+      no.onclick = () => {
+        selecting = false;
+        chosen.clear();
+        drawCards();
+        drawDock();
+      };
+      bar.append(words, go, no);
+      dock.append(bar);
+    } else if (toast) {
       const t = document.createElement("div");
       t.className = "toast";
       t.setAttribute("role", "status");
@@ -325,15 +438,41 @@ function start() {
       i.textContent = "✓";
       const words = document.createElement("span");
       words.textContent = toast;
-      const open = document.createElement("button");
-      open.type = "button";
-      open.textContent = L("Planı aç", "Open the plan");
-      open.onclick = () => {
-        const trip = knownTrip();
-        if (trip) void ask({ type: "desk:open", tripId: trip.id });
-      };
       t.append(i, words);
-      if (knownTrip()) t.append(open);
+      const done = last;
+      if (done) {
+        const change = document.createElement("button");
+        change.type = "button";
+        change.textContent = L("Değiştir", "Change");
+        change.onclick = () => {
+          if (!where?.trips.length) return;
+          asking = {
+            what: L("Bunu", "This"),
+            then: (pick) => {
+              asking = null;
+              void ask<{ ok: boolean; tripId: string | null }>({ type: "desk:move", captureId: done.captureId, ...pick }).then((r) => {
+                lastEl = done.el;
+                if (r?.ok && r.tripId) said({ ok: true, tripId: r.tripId, tripTitle: where?.trips.find((x) => x.id === r.tripId)?.title ?? null, captureId: done.captureId });
+                else drawDock();
+              });
+            },
+          };
+          drawDock();
+        };
+        const undo = document.createElement("button");
+        undo.type = "button";
+        undo.textContent = L("Geri al", "Undo");
+        undo.onclick = () =>
+          void ask({ type: "desk:undo", captureId: done.captureId }).then(() => {
+            toast = L("Geri alındı", "Taken back");
+            if (done.el) added.delete(done.el);
+            last = null;
+            if (single) pillState = "idle";
+            drawCards();
+            drawDock();
+          });
+        t.append(change, undo);
+      }
       dock.append(t);
     }
     if (!single || pillHidden) return;
@@ -358,10 +497,13 @@ function start() {
       withTrip(whatOf(single!), async (pick) => {
         pillState = "busy";
         drawDock();
-        const ok = await ask<{ ok: boolean; tripId: string | null }>({ type: "desk:page", url: location.href, snapshot: collectPage(), ...pick });
+        const ok = await ask<SavedOnSite>({ type: "desk:page", url: location.href, snapshot: collectPage(), ...pick });
         pillState = ok?.ok ? "done" : "idle";
-        if (ok?.ok) said(where?.trips.find((t) => t.id === ok.tripId)?.title ?? knownTrip()?.title ?? null);
-        else drawDock();
+        if (ok?.ok) {
+          const h = document.querySelector("h1");
+          fly((h ?? document.body).getBoundingClientRect(), photoOf(document.body), document.title);
+          said(ok);
+        } else drawDock();
         return Boolean(ok?.ok);
       });
     const x = document.createElement("button");
@@ -431,9 +573,12 @@ function start() {
    * page's text read once, each price climbing to its card; never every element's whole text (that froze big pages).
    */
   const PRICE = /(?:€|£|₺|\$|฿|\b(?:TL|EUR|USD|GBP|TRY|THB)\b)\s?\d|\d\s?(?:€|£|₺|\$|฿|\b(?:TL|EUR|USD|GBP|TRY|THB)\b)/;
+  const AD = /\b(?:Sponsorlu|Sponsored|Reklam|Promoted|Anzeige|Gesponsert|Publicidad)\b/i;
   const fits = (el: HTMLElement): boolean => {
     const loose = el.textContent ?? "";
     if (loose.length < 20 || loose.length > 900) return false;
+    // (an ad or a sponsored result gets no "+")
+    if (AD.test(loose)) return false;
     if (timed) {
       if (!/\d[:.][0-5]\d/.test(loose) || !isResultText(el.innerText ?? "")) return false;
       const r = el.getBoundingClientRect();
@@ -484,8 +629,13 @@ function start() {
       c.pin.style.display = shown ? "flex" : "none";
       if (shown) {
         // (on the card's top edge, half over it: never over the result's own price or button)
-        c.pin.style.top = `${Math.max(4, r.top - 15)}px`;
-        c.pin.style.left = `${Math.min(innerWidth - 40, r.right - 8)}px`;
+        const top = Math.max(4, r.top - 15);
+        let right = Math.min(innerWidth - 40, r.right - 8);
+        // (the site's own button under the "+" (a heart, a share): the "+" steps left of it)
+        const under = document.elementsFromPoint(right - 15, Math.max(1, r.top + 6)).find((x) => x !== host && !host.contains(x));
+        if (under && c.el.contains(under) && under.closest("button, [role='button'], input, select")) right -= 44;
+        c.pin.style.top = `${top}px`;
+        c.pin.style.left = `${right}px`;
         c.pin.style.transform = "translateX(-100%)";
       }
     }
@@ -544,21 +694,27 @@ function start() {
         plus.append(lbl);
       }
       plus.title = isIn ? L("Desteye girdi; okunuyor", "In the deck; being read") : L("Bunu desteye ekle", "Add this one to the deck");
+      if (selecting && !isIn) {
+        plus.className = `plus tick${chosen.has(el) ? " on" : ""}`;
+        plus.textContent = chosen.has(el) ? "✓" : "";
+        plus.title = L("Seç", "Pick");
+      }
       plus.onclick = (e) => {
         e.preventDefault();
         e.stopPropagation();
         if (added.has(el) || reading.has(el)) return;
+        if (selecting) {
+          if (chosen.has(el)) chosen.delete(el);
+          else chosen.add(el);
+          drawCards();
+          drawDock();
+          return;
+        }
         withTrip(whatOf(kind), async (pick) => {
-          reading.add(el);
+          const r = await addCard(el, pick);
           drawCards();
-          const ok = await ask<{ ok: boolean; tripId: string | null }>({ type: "desk:add", url: location.href, title: document.title, text: (el as HTMLElement).innerText.replace(/\s+/g, " ").trim().slice(0, 1500), ...pick });
-          reading.delete(el);
-          if (ok?.ok) {
-            added.add(el);
-            if (!route) said(where?.trips.find((t) => t.id === ok.tripId)?.title ?? knownTrip()?.title ?? null);
-          }
-          drawCards();
-          return Boolean(ok?.ok);
+          if (r && !route) said(r);
+          return Boolean(r);
         });
       };
       pin.append(plus);
@@ -620,6 +776,13 @@ function start() {
     { passive: true, capture: true },
   );
   addEventListener("resize", follow, { passive: true });
+  chrome.runtime.onMessage?.addListener((m: { type?: unknown }) => {
+    if (m?.type !== "desk:select" || single) return;
+    selecting = true;
+    chosen.clear();
+    drawCards();
+    drawDock();
+  });
   // (a search page changes its address without loading: the way or the day changed)
   setInterval(() => void refresh(), 1500);
   void chrome.storage.local
