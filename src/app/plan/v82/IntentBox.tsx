@@ -465,7 +465,8 @@ function Box({ vm, color, extra, field, pickDoc, dropDoc = null, cancel, askedHi
   const pick = (o: OptionVM, then?: () => void) => {
     entry.current = "morph";
     setDrawer(false);
-    if (o.id === chosenId) return setChanging(false);
+    // (our pick waiting for a yes is not chosen yet: its Seç in the deck's drawer chooses it)
+    if (o.id === chosenId && vm.status !== "suggested") return setChanging(false);
     if (booking && bookingReplaced([booking], o.item)) {
       return setAsking({ ...replaceAsk(booking, o.item), run: () => (then?.(), a.replace(o.item, booking)) });
     }
