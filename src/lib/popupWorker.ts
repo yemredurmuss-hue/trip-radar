@@ -268,7 +268,9 @@ export function popupAnswer(message: PopupAsk | { type?: unknown }, sender: chro
       return (async () => {
         const tripId = typeof m.pick?.tripId === "string" ? m.pick.tripId.slice(0, 80) : null;
         if (!tripId || !(await moveSave(m.captureId, tripId))) return null;
-        await setCurrent(tripId, null);
+        // (the trip of that page's country from now on, never of every country)
+        const moved = await (await db()).get("captures", m.captureId);
+        await setCurrent(tripId, moved?.url ? pageCountry(moved.url, moved.title ?? "", await loadHome().catch(() => null)) : null);
         return { tripId, tripTitle: (await (await db()).get("trips", tripId))?.title ?? null };
       })();
     case "popup:pocket":

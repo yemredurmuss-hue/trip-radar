@@ -497,6 +497,8 @@ yukarıdaki tablodadır (Seçildi kum, Alındı yeşil).
   yazı, her site: "+ İlham'a ekle", Item.inspo) → yerin sayfası ("+ Konaklama destesine ekle") → eklenecek yok (yeni sekme,
   pano): gezinin sıradaki işi ("İstanbul → Porto karar bekliyor · Karar ver", lib/tripGlance.ts).
 - Biriktirdiklerim: Pano'nun kendi sayısı (panoBoardOf counts.mine), aynı hesapla.
+- Yerin kendi sayfasında (0.45.1) listedeki "+" adın hemen yanında, açık: "+ Konaklama destesine ekle"; tek basış ekler,
+  eklenince ✓. Sayfayla birlikte kayar.
 - Sayfadaki kenar sekmesine basınca simgenin penceresi açılır (chrome.action.openPopup); açılamazsa cep sayfada açılır.
 - Onay sayfası (izinli sitelerde): köşede "Bu bir rezervasyon onayı · … kaydedeyim mi? · Kaydet · Şimdi değil", simgede
   yeşil ✓. Emin değilse sormaz. Kaydedince AI okur; numara sayfada yoksa alındı yazılmaz.

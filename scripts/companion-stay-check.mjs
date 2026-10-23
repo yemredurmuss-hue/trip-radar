@@ -50,6 +50,17 @@ const hotel = await open("https://www.booking.com/hotel/pt/memmo-alfama.html?che
 const shadow = (page, fn) => page.evaluate(`(${fn})(document.getElementById("trip-radar-companion").shadowRoot)`);
 assert.equal(await shadow(hotel, (r) => r.querySelector(".pill")), null, "no bottom-right pill any more");
 assert.equal(await shadow(hotel, (r) => r.querySelector(".tab")?.textContent), "4otel+", "the tab: the trip's hotels on a hotel site, and a + on a place's own page");
+// 0.45.1: the list's "+" beside the place's own name, open: "+ Konaklama destesine ekle", right after the name.
+const title = await hotel.evaluate(() => {
+  const pin = document.getElementById("trip-radar-companion").shadowRoot.querySelector(".pin.open");
+  const h = document.querySelector("h1").getBoundingClientRect(), p = pin?.getBoundingClientRect();
+  const range = document.createRange();
+  range.selectNodeContents(document.querySelector("h1"));
+  const end = [...range.getClientRects()].pop();
+  return pin ? { text: pin.textContent, gap: Math.round(p.left - end.right), mid: Math.abs(p.top + p.height / 2 - (h.top + h.height / 2)) < 12 } : null;
+});
+assert.equal(title?.text, "+Konaklama destesine ekle");
+assert.ok(title.gap >= 8 && title.gap <= 20 && title.mid, `beside the name: ${JSON.stringify(title)}`);
 await hotel.screenshot({ path: `${out}/stay-1-tab.png` });
 await shadow(hotel, (r) => r.querySelector(".tab").click());
 await hotel.waitForTimeout(150);
@@ -84,6 +95,7 @@ assert.match(page.snapshot.pageText, /Memmo Alfama/, "the whole page goes, as th
 const done = await inShadow(hotel, () => document.getElementById("trip-radar-companion").shadowRoot.textContent);
 assert.match(done, /Portekiz · Konaklama destesine girdi/);
 assert.equal(await shadow(hotel, (r) => r.querySelector(".tab .add")), null, "added: the tab's + goes");
+assert.equal(await shadow(hotel, (r) => r.querySelector(".pin.open .plus")?.textContent), "✓", "and the name's + is a ✓");
 await hotel.screenshot({ path: `${out}/stay-3-done.png` });
 // An update while the page was open: the old script is cut off; a press says so, never breaks in silence.
 await hotel.evaluate(() => (window.chrome.runtime.id = undefined));
@@ -165,6 +177,13 @@ await list.screenshot({ path: `${out}/stay-6-select.png` });
 await inShadow(list, () => document.getElementById("trip-radar-companion").shadowRoot.querySelector(".toast.sel .go").click());
 await list.waitForTimeout(500);
 assert.equal((await list.evaluate(() => window.__asked.filter((m) => m.type === "desk:add"))).length, 3, "the ticked one added too");
+// 0.45.1: the name's "+" adds the page in one press (which trip asked first here: none known yet).
+const hotel2 = await open("https://www.booking.com/hotel/pt/memmo-alfama.html?checkin=2026-11-12&checkout=2026-11-16", "booking-hotel.html");
+await shadow(hotel2, (r) => r.querySelector(".pin.open .plus").click());
+await hotel2.waitForTimeout(150);
+await shadow(hotel2, (r) => r.querySelector(".qp button.best").click());
+await hotel2.waitForTimeout(300);
+assert.equal((await hotel2.evaluate(() => window.__asked.filter((m) => m.type === "desk:page"))).length, 1, "the name's + saved the page");
 // 0.45.0: a booking's confirmation on the page: asked once in the corner (the icon's ✓ beside it), "Kaydet" saves the page.
 const conf = await open("https://www.booking.com/confirmation.html?aid=1", "<!doctype html><html><head><meta charset=\"utf-8\"><title>Booking.com: Onay</title></head><body><h1>Rezervasyonunuz onaylandı</h1><p>Visesa Ubud Resort · 12 – 16 May</p><p>Onay numarası: 4821 993 107</p><p>Toplam: €378</p></body></html>");
 assert.match(await shadow(conf, (r) => r.querySelector(".ask.conf")?.innerText ?? ""), /Bu bir rezervasyon onayı\nOnay kodu 4821 993 107 · €378\n[\s\S]*[Rr]ezervasyon olarak kaydedeyim mi\?\nKaydet\nŞimdi değil/);

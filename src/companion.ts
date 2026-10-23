@@ -81,6 +81,8 @@ button:focus-visible, .plus:focus-visible { outline: 3px solid #cfc7ff; outline-
 .plus { width: auto; min-width: 30px; padding: 0 9px; display: inline-flex; align-items: center; justify-content: center; gap: 0; transition: padding 160ms ease, gap 160ms ease; }
 .plus .lbl { display: inline-block; max-width: 0; overflow: hidden; white-space: nowrap; font: 800 13px/1 "Plus Jakarta Sans", system-ui, sans-serif; transition: max-width 160ms ease; }
 .pin.hot .plus .lbl, .plus:hover .lbl, .plus:focus-visible .lbl { max-width: 60px; }
+.pin.open .plus .lbl { max-width: 260px; }
+.pin.open .plus { padding: 0 14px 0 11px; gap: 6px; height: 34px; }
 .pin.hot .plus, .plus:hover, .plus:focus-visible { padding: 0 12px 0 10px; gap: 5px; }
 .plus.done { background: #1f7a45; font-size: 14px; }
 .plus.read { background: #fff; color: #5b45e0; box-shadow: inset 0 0 0 2px #5b45e0; font-size: 12px; }
@@ -267,6 +269,8 @@ function start() {
   let stale = false;
   // Rezervasyon onayı (0.45.0): the page is a booking's confirmation; asked once a page whether to save it to the trip.
   let confirmAsk: Confirmation | null = null;
+  // A place's own page (0.45.1, Emre: "detay sayfasındayken artıya basmak kolayca basılır olsun"): the list's "+" beside its name.
+  let titlePin: HTMLDivElement | null = null;
   let confirmTries = 0;
   let toast: string | null = null;
   let asking: { what: string; then: (pick: TripPick) => void } | null = null;
@@ -672,9 +676,11 @@ function start() {
     withTrip(whatOf(single ?? kind), async (pick) => {
       pageState = "busy";
       drawSide();
+      drawTitlePin();
       const ok = await ask<SavedOnSite>({ type: "desk:page", url: location.href, snapshot: collectPage(), ...pick });
       pageState = ok?.ok ? "done" : "idle";
       drawSide();
+      drawTitlePin();
       if (ok?.ok) {
         const h = document.querySelector("h1");
         fly((h ?? document.body).getBoundingClientRect(), photoOf(document.body), document.title);
@@ -1006,8 +1012,55 @@ function start() {
    * filters sit there); with no room there on the card's top edge, stepping left of the site's own button.
    */
   const OUT = 52;
+  /** The page's own name: its first visible h1 with words. */
+  const titleEl = (): HTMLElement | null => Array.from(document.querySelectorAll<HTMLElement>("h1")).find((h) => (h.textContent ?? "").trim().length > 1 && h.getBoundingClientRect().width > 0) ?? null;
+  /** The "+" beside a place's own name: the same as a result's, one press adds the page; ✓ once it's in the deck. */
+  const drawTitlePin = () => {
+    titlePin?.remove();
+    titlePin = null;
+    if (!single || closed || stale || !titleEl()) return;
+    const inDeck = pageState === "done" || (pageState === "idle" && Boolean(where?.saved));
+    const pin = document.createElement("div");
+    // (always open on a place's own page: "+ Konaklama destesine ekle", one big target)
+    pin.className = "pin open";
+    const plus = document.createElement("button");
+    plus.type = "button";
+    plus.className = `plus${inDeck ? " done" : pageState === "busy" ? " read" : ""}`;
+    plus.textContent = inDeck ? "✓" : pageState === "busy" ? "···" : "+";
+    if (!inDeck && pageState !== "busy") {
+      const lbl = document.createElement("span");
+      lbl.className = "lbl";
+      lbl.textContent = L(`${deckWord(single)} destesine ekle`, `Add to ${deckWord(single)}`);
+      plus.append(lbl);
+    }
+    plus.title = inDeck ? L("Destende", "In your deck") : L("Bu sayfayı desteye ekle", "Add this page to the deck");
+    plus.setAttribute("aria-label", plus.title);
+    plus.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (inDeck || pageState === "busy") return;
+      addPage();
+    };
+    pin.append(plus);
+    layer.append(pin);
+    titlePin = pin;
+    place();
+  };
+  const placeTitle = (x0: number, y0: number) => {
+    const h = titlePin && titleEl();
+    if (!titlePin || !h) return;
+    // (right after the name's last line, not the h1's whole width)
+    const range = document.createRange();
+    range.selectNodeContents(h);
+    const lines = Array.from(range.getClientRects()).filter((r) => r.width > 0);
+    const last = lines[lines.length - 1] ?? h.getBoundingClientRect();
+    titlePin.style.top = `${last.top + y0 + last.height / 2 - 15}px`;
+    titlePin.style.left = `${Math.min(last.right + 12, innerWidth - 200) + x0}px`;
+    titlePin.style.transform = "none";
+  };
   const place = () => {
     const x0 = scrollX, y0 = scrollY;
+    placeTitle(x0, y0);
     for (const c of cards) {
       const r = c.el.getBoundingClientRect();
       const shown = r.width > 0 && r.height > 0;
@@ -1040,6 +1093,8 @@ function start() {
     if (closed || single || (!route && !where)) {
       layer.replaceChildren();
       cards = [];
+      titlePin = null;
+      if (single) drawTitlePin();
       return;
     }
     const had = cards.length;
@@ -1161,7 +1216,9 @@ function start() {
       // (only while the page is in view; the page's own work first)
       if (document.hidden) return;
       // (a hotel's page often says what it is only once its scripts ran)
-      if (!single && (single = offerPageKind(location.href, ldTypes()))) drawSide();
+      if (!single && (single = offerPageKind(location.href, ldTypes()))) (drawSide(), drawCards());
+      // (the name comes in late on some pages: its "+" then)
+      if (single && !titlePin) drawTitlePin();
       drawCards(false);
       // (a confirmation page often writes its number once its scripts ran)
       if (!confirmAsk && confirmTries < 3) checkConfirm();
@@ -1182,7 +1239,8 @@ function start() {
     (e) => {
       const t = e.target as Node | null;
       const c = t ? cards.find((x) => x.el.contains(t)) : undefined;
-      const pin = c?.pin ?? null;
+      const h = titlePin && t ? titleEl() : null;
+      const pin = c?.pin ?? (h && (h.contains(t) || titlePin!.contains(t)) ? titlePin : null);
       if (pin === hot) return;
       hot?.classList.remove("hot");
       hot = pin;
