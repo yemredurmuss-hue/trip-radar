@@ -115,7 +115,7 @@ function Name({ o }: { o: OptionVM }) {
 }
 
 /** The five slots, always in the same order so the cards compare; the source opens its page. */
-function Slots({ slots, url, compact = false }: { slots: CardSlot[]; url: string | null; compact?: boolean }) {
+function Slots({ slots, url, compact = false, go = false }: { slots: CardSlot[]; url: string | null; compact?: boolean; go?: boolean }) {
   return (
     <ul className={`dr-slots${compact ? " c" : ""}`}>
       {slots.map((s) => {
@@ -131,12 +131,14 @@ function Slots({ slots, url, compact = false }: { slots: CardSlot[]; url: string
         return (
           <li key={s.key} className={`dr-slt ${s.tone}`} title={compact ? `${s.label}: ${s.value}` : undefined}>
             {s.key === "source" && url ? (
-              <a href={url} target="_blank" rel="noreferrer" title={L(`${s.value} sayfasında aç`, `Open on ${s.value}`)}>
+              <a href={url} target="_blank" rel="noreferrer" title={go ? L(`${s.value} sayfasında aç`, `Open on ${s.value}`) : undefined}>
                 {body}
-                {/* (Karar Masası: the source goes to its page) */}
-                <span className="q-ext" aria-hidden>
-                  ↗
-                </span>
+                {/* (Karar Masası, Uçuş first: the source says it goes to its page) */}
+                {go && (
+                  <span className="q-ext" aria-hidden>
+                    ↗
+                  </span>
+                )}
               </a>
             ) : (
               body
@@ -329,7 +331,7 @@ export function TicketOption({ o, vm, art, current, why, parts, off, solo, onPic
         </span>
         {pick ?? <Pick o={o} current={current} onPick={onPick} />}
       </div>
-      <Slots slots={slots} url={o.item.url} compact />
+      <Slots slots={slots} url={o.item.url} compact go={vm.kind === "flight"} />
       {!solo && <Neden o={o} why={why} parts={parts} />}
     </article>
   );
@@ -706,14 +708,14 @@ export function IntentDrawer({ vm, options, dropped = [], chosenId, art, links, 
           <div className="dr-foot">
             <small>{pane === "options" && dropped.length > 0 ? L(`Elenen ${dropped.length}: ${dropped.map((i) => i.name).join(", ")}`, `Ruled out ${dropped.length}: ${dropped.map((i) => i.name).join(", ")}`) : view.third.map((p) => p.text).join(" · ")}</small>
             {/* (benle gezen eklenti, seviye 1: the best ones side by side in Chrome, one tab group named for the route) */}
-            {tabbed.length > 1 && canGroupTabs() && (
+            {vm.kind === "flight" && tabbed.length > 1 && canGroupTabs() && (
               <button
                 type="button"
                 className="dr-cmpb dr-tabs"
                 title={L("Sekmeleri sıralarıyla açar; eklentinin simgesi her sekmede kaçıncı aday olduğunu söyler", "Opens the tabs in their order; the extension's icon says which candidate each one is")}
                 onClick={() =>
                   void openCandidates(
-                    { tripId: env.trip.id, intentKey: vm.key, route: vm.kind === "flight" && vm.head.route ? `${vm.head.route.from} ✈ ${vm.head.route.to}` : title },
+                    { tripId: env.trip.id, intentKey: vm.key, route: vm.head.route ? `${vm.head.route.from} ✈ ${vm.head.route.to}` : title },
                     tabbed.map((o) => ({ itemId: o.item.id, url: o.item.url!, name: o.title, price: o.ticket?.each ?? o.ticket?.total ?? o.price?.text ?? null })),
                   )
                 }

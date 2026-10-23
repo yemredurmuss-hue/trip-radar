@@ -78,9 +78,9 @@ body.still .q-rmark.busy::after, body.still .q-rsk { animation: none; }
 /* ---- 5 · the drawer: the plane in its title, the source to its page, what the traveller brought in gold ---- */
 .dr-t .q-rpl { display: inline-flex; vertical-align: -3px; margin: 0 2px; color: var(--q-ink); font-style: normal; }
 .dr-t .q-rpl .q-mi { width: 22px; height: 22px; transform: rotate(45deg); }
-.dr-slt a { display: inline-flex; align-items: center; gap: 6px; color: inherit; text-decoration: none; }
+.dr-slt a:has(.q-ext) { display: inline-flex; align-items: center; gap: 6px; color: inherit; text-decoration: none; }
 .dr-slt a .q-ext { font-size: 12px; font-weight: 800; color: var(--q-acc-d); }
-.dr-slt a:hover b { text-decoration: underline; }
+.dr-slt a:has(.q-ext):hover b { text-decoration: underline; }
 .dr-op.own { box-shadow: inset 0 0 0 2px #e2b65a, 0 10px 26px -20px rgba(166, 116, 18, .55); background: linear-gradient(180deg, #fffaf0, #fff 120px); }
 .dr-op.own.cur { box-shadow: inset 0 0 0 2px var(--q-acc), 0 0 0 3px #f3dca8; }
 .dr-own { color: #8a5a12; font-weight: 700; }
