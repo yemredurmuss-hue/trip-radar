@@ -39,7 +39,8 @@ const hash = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >
  */
 export function carrierMark(carrier: Pick<TicketCarrier, "brand" | "name"> | null, item: Pick<Item, "flight"> | null = null): CarrierMark | null {
   const label = (carrier?.brand?.label ?? carrier?.name ?? "").trim();
-  const code = airlineCode(carrier ? label || carrier.name : null, item?.flight?.flightNumber);
+  // (the library's names for a flight's carrier only: a train's or a ferry's operator is never read as an airline)
+  const code = airlineCode(carrier ? label || carrier.name : null, item?.flight?.flightNumber, Boolean(item?.flight));
   if (!carrier || (!carrier.brand && !code)) return null;
   const words = label.split(/[\s·+/-]+/).filter(Boolean);
   const letters = code ?? (label.length <= 3 ? label : words.length > 1 && words[1].length > 2 ? `${words[0][0]}${words[1][0]}` : [...label][0] ?? "");

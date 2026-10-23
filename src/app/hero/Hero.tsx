@@ -78,6 +78,8 @@ export interface HeroProps {
   countries: string[];
   /** With several countries, each one's own facts in the same order (D9). */
   perCountry: CountryFacts[];
+  /** The countries' codes, in the order of `countries` (their flags). */
+  countryCodes?: string[];
   /** Each city's days, for its weather. */
   places: { city: string; start: string; end: string }[];
   /** The traveller's passport country. */
@@ -104,7 +106,7 @@ export function Hero(props: HeroProps) {
   const month = props.dates ? new Date(`${props.dates.range.start}T12:00:00Z`).toLocaleDateString(locale(), { month: "long", timeZone: "UTC" }) : "";
   const sky = weatherChip(weather, month);
   // One country is said on the photo, over the trip's name; several keep "n ülke" and its table in the facts' row (D9).
-  const chips = factChips({ facts: props.facts, countries: props.countries, cities: props.cities, weather: sky, home: props.home, visaDone: visaDoneOf(trip), perCountry: props.perCountry }).filter(
+  const chips = factChips({ facts: props.facts, countries: props.countries, cities: props.cities, weather: sky, home: props.home, visaDone: visaDoneOf(trip), perCountry: props.perCountry, codes: props.countryCodes }).filter(
     (c) => c.key !== "country" || props.countries.length > 1,
   );
 

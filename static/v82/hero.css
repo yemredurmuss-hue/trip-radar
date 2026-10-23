@@ -244,6 +244,7 @@ button.x-chip:focus-visible { outline: 2px solid var(--q-acc); outline-offset: 2
 .x-prefb b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 650; color: var(--q-ink); }
 .x-prefb .x-ptag.strong { font-weight: 800; }
 .x-prefb em { flex: none; font-style: normal; font-weight: 750; color: var(--q-acc); }
+.x-prefb .x-pn { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 99px; background: var(--q-acc-s); font-size: 12px; font-weight: 800; }
 .x-prefb svg { flex: none; }
 .x-q { flex: none; font-style: normal; display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--q-acc); color: #fff; font-size: var(--q-fs-badge); font-weight: 800; }
 .x-prefs .x-pop { left: auto; right: 0; }
@@ -357,3 +358,5 @@ body.still .x-hero *, body.still .x-hero, body.still .h-mini, body.still .h-mini
 @media (prefers-reduced-motion: reduce) {
   .x-hero *, .x-hero, .h-mini, .h-mini * { animation: none !important; transition: none !important; }
 }
+/* 0.46.0: a country's flag before its first stop on the route */
+.x-rflag { font-size: 13px; line-height: 1; margin-right: -2px; }

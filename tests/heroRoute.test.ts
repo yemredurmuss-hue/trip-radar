@@ -8,6 +8,18 @@ const stay = (city: string, nights: number, kind = "booked") => ({ kind, nights,
 const move = (from: string, to: string, mode: LegMode | null, travel: LegMode | null = null) => ({ kind: "move", from: { city: from }, to: { city: to }, mode, travel: { mode: travel } });
 
 describe("heroRoute", () => {
+  it("0.46.0: a country's flag on its first stop, the next country's on its own", () => {
+    const of: Record<string, string> = { "Buenos Aires": "AR", "El Calafate": "AR", "Puerto Natales": "CL", Santiago: "CL" };
+    const r = heroRoute({
+      places: ["Buenos Aires", "El Calafate", "Puerto Natales", "Santiago"],
+      stays: [stay("Buenos Aires", 3), stay("El Calafate", 2), stay("Puerto Natales", 2), stay("Santiago", 2)],
+      legs: [],
+      flights: [],
+      countryOf: (p) => of[p] ?? null,
+    });
+    expect(r?.stops.map((s) => s.flag ?? null)).toEqual(["AR", null, "CL", null]);
+  });
+
   it("goes from home through each place with its nights and back, by plane at the ends", () => {
     const r = heroRoute({
       places: ["Tromsø", "Senja"],

@@ -12,6 +12,7 @@ import { creditLine, type CreditPart } from "../../lib/cityImages";
 import { countdownText, type Countdown } from "../../lib/countdown";
 import { shownTiles, tileGoLabel, type Mosaic, type TileState, type TileTarget } from "../../lib/heroMosaic";
 import type { HeroRoute, RouteWay } from "../../lib/heroRoute";
+import { countryNames, flagEmoji } from "../../lib/heroInfo";
 import { L } from "../../lib/i18n";
 import { nNights } from "../../lib/i18nText";
 import { MODE_LABELS } from "../../lib/legs";
@@ -102,13 +103,18 @@ function Way({ way }: { way: RouteWay }) {
 
 /** Home, each main place with its nights and its stay's dot, home again (lib/heroRoute.ts). */
 function Route({ route }: { route: HeroRoute }) {
-  const points: { name: string; nights?: number | null; booked?: boolean }[] = [...(route.from ? [{ name: route.from }] : []), ...route.stops, ...(route.to ? [{ name: route.to }] : [])];
+  const points: { name: string; nights?: number | null; booked?: boolean; flag?: string }[] = [...(route.from ? [{ name: route.from }] : []), ...route.stops, ...(route.to ? [{ name: route.to }] : [])];
   return (
     <p className="x-route">
       {points.map((p, n) => (
         <Fragment key={`${n}:${p.name}`}>
           {n > 0 && <Way way={route.ways[n - 1] ?? null} />}
           <span className="x-rp">
+            {p.flag && flagEmoji(p.flag) && (
+              <span className="x-rflag" aria-label={countryNames([p.flag])[0]}>
+                {flagEmoji(p.flag)}
+              </span>
+            )}
             {p.booked != null && <Dot state={p.booked ? "booked" : "planned"} />}
             {p.nights ? `${p.name} ${nNights(p.nights)}` : p.name}
           </span>

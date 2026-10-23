@@ -283,6 +283,8 @@ mantık `lib/railDates.ts` ve `lib/rowView.ts`). Etkinlik, Yapılacaklar ve Belg
 - Fiyat iki günden eskiyse amber "n gün önce · Yenile"; düştüyse lila "Dün €71 idi".
 - Altta "Yeni bul" kutusu (bağlantıyı buraya bırak, bakılacak siteler, AI yeniden arasın) ve "Pano'da karşılaştır →".
 - Kart iç yerleşimi kabın genişliğine göre (container query): telefonda ve dar sütunda Seç tam genişlik, yuvalar sarar.
+- Aynı kart Pano'da: fotoğrafa ya da ada basınca seçeneğin kendi sayfası yeni sekmede açılır (0.46.0); çekmecede ad
+  kaydın tüm detaylarını açar.
 
 ## Hero = mozaik
 
@@ -304,9 +306,14 @@ başlığı (v82). Bileşenler `src/app/hero/`, biçim `static/v82/hero.css`, sa
   çubuğu ("%61 planda · %33 alındı", B9) | bütçe (bütçe yoksa "Bütçe belirle", D16) | koyu "Sıradaki" düğmesi (önce
   vize, sonra Önerimiz onayı, sonra karar bekleyen; C30). Sayıya basınca ilk karara gider, üzerine gelince hangileri
   olduğunu söyler (F5).
-- **Çipler:** ülke (çok ülkede "n ülke" ve ülke tablosu, D9), hava, para, priz, saat farkı, dil, vize; uyarı çipleri
+- **Çipler:** ülke bayrağıyla ("🇦🇷 Arjantin · 🇨🇱 Şili", üç ülkeye kadar adıyla, daha çoğunda "n ülke"; üzerine gelince
+  ülke tablosu, D9), hava, para, priz, saat farkı, dil (bayraksız: dil bir ülkenin değil), vize; uyarı çipleri
   amber ("Schengen vizesi gerekiyor", "2 belge yok"). Üzerine gelince ya da basınca ayrıntılar açılır (şehir şehir hava,
   kur, priz uyumu, "Sende 12:00 iken orada 18:00", vize ayrıntısı).
+- **Bayrak ülkenindir (0.46.0):** ülke yerin şehrinden okunur (Santiago Şili'dir), AI'nın verdiği kod yalnız şehir
+  tabloda yoksa kullanılır. Kapaktaki rotada her ülkenin ilk durağının önünde küçük bayrağı durur.
+- **Tercihler** satırda tek düğmedir, yanında sayısı; üzerine gelince açılır (sohbet başındaki istekler dahil, × ile
+  kaldırılır), çıkınca kapanır.
 - **Küçük pencereler** (180/120 ms, E12): Tercihler "Seni böyle anladım" (kapsam etiketi, kaynak, × kaldır, AI'nın
   sorusu Evet/Hayır), Bütçe (Rezerve · Planlanan · Boşta, kategori dağılımı, iki ve daha çok kişide "Kişi başı ~€3.450 ·
   2 kişi", T5), Kimler gidiyor (yetişkin, çocuk, oda; davet, son hareket; D12).

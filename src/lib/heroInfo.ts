@@ -1,6 +1,7 @@
 // What the hero's one-line tally and its facts column say beyond tripFacts: how many flights, stays,
 // transport and experiences the plan holds, the countries by name, whether a plug fits, and the time
 // difference in short. Pure.
+import { countryOfCity } from "./airports";
 import type { CatSection, SectionId } from "./categories";
 import { countryInfo } from "./countries";
 import { cityKeyOf, type Plan } from "./plan";
@@ -120,12 +121,21 @@ export function initials(name: string): string {
     .join("");
 }
 
+/**
+ * A record's country as its place says it (0.46.0, Emre: "İspanyolca sayfa İspanya oldu"): its city's, when the code knows
+ * the city (El Calafate → AR), else the code the record was read with.
+ */
+export function placeCountryOf(item: Pick<Item, "city" | "countryCode">): string | null {
+  const own = item.countryCode?.trim().toUpperCase() ?? "";
+  return countryOfCity(item.city) ?? (/^[A-Z]{2}$/.test(own) ? own : null);
+}
+
 /** The trip's country codes in the order its places come (by date), each once; flights left out: they start at home. */
 export function countryCodesOf(items: Item[]): string[] {
   const placed = items
-    .filter((i) => i.status !== "dismissed" && i.category !== "flight" && i.countryCode)
+    .filter((i) => i.status !== "dismissed" && i.category !== "flight")
     .sort((a, b) => (a.dates.start ?? "9").localeCompare(b.dates.start ?? "9"));
-  return [...new Set(placed.map((i) => i.countryCode!.toUpperCase()).filter((c) => /^[A-Z]{2}$/.test(c)))];
+  return [...new Set(placed.map(placeCountryOf).filter((c): c is string => c != null))];
 }
 
 /** The same countries by name, in the board's language. */

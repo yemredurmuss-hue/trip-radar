@@ -25,7 +25,7 @@ import { timedNext, timedNextLabel, todayStrip, type TimedNext, type TodayInput 
 import type { PlanTarget } from "../lib/chatCards";
 import { linksOf, momentsOf, mosaicOf, offerTiles, placesOfIntents, tileSelectors, tourNeeds, type TileTarget } from "../lib/heroMosaic";
 import { heroRoute } from "../lib/heroRoute";
-import { cityOfAirport } from "../lib/airports";
+import { cityOfAirport, countryOfCity } from "../lib/airports";
 import { budgetView, datesTip, docsMissing, heroCounts, heroLine } from "../lib/heroStrip";
 import { allSet, nextLabel, nextShort, nextStep, type NextIntent, type NextStep } from "../lib/nextStep";
 import { nNights } from "../lib/i18nText";
@@ -58,7 +58,7 @@ import { SilhouetteDefs } from "./cards/Silhouettes";
 import { UndoToast } from "./cards/UndoToast";
 import { isIdea } from "../lib/booking";
 import { findTarget, show, TodoList } from "./Progress";
-import { cityRanges, countryCodesOf, countryNames, sectionTally } from "../lib/heroInfo";
+import { cityRanges, countryCodesOf, countryNames, placeCountryOf, sectionTally } from "../lib/heroInfo";
 import { answerParents, answersAny, heroCityPhotos, mainPlaceOf, mainPlaces, placesKey, placesPrompt, placesSystemPrompt, resolveParents, tripCities } from "../lib/destinations";
 import { acceptNoteLabel, type Pref } from "../lib/preferences";
 import { acceptStyle, budgetLevel, styleChips, styleKey, stylePrompt } from "../lib/tripStyle";
@@ -675,7 +675,9 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       .filter((i) => i.status !== "dismissed" && i.category === "flight" && (i.flight?.from || i.flight?.to))
       .sort((a, b) => (a.flight?.departure ?? a.dates.start ?? "9").localeCompare(b.flight?.departure ?? b.dates.start ?? "9"))
       .map((f) => ({ from: end(f.flight?.from), to: end(f.flight?.to) }));
-    return heroRoute({ places: mains, stays: plan.stayBlocks, legs, flights });
+    // (a place's country: its city's, else its records')
+    const countryOf = (place: string) => countryOfCity(place) ?? items.map((i) => (i.status !== "dismissed" && i.category !== "flight" && sameCity(i.city, place) ? placeCountryOf(i) : null)).find(Boolean) ?? null;
+    return heroRoute({ places: mains, stays: plan.stayBlocks, legs, flights, countryOf });
   }, [mains, plan.stayBlocks, legs, items]);
   const mosaic = useMemo(
     () =>
@@ -986,6 +988,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           next={heroNext}
           facts={heroFacts}
           countries={countryNames(countries)}
+          countryCodes={countries}
           places={places}
           home={passport}
           now={today}

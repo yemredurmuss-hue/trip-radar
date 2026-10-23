@@ -325,9 +325,9 @@ try {
   assert.equal(await hero.locator(".x-s2 .x-sl").innerText(), "kişi");
   // The style (C23, at the start of Tercihler's row): no model key here, so only the budget's word (€1.500 for 2 people, 7 days ≈ €107 a day each).
   assert.deepEqual(await hero.locator(".x-styles .x-style").allInnerTexts(), ["Orta bütçe"]);
-  // The facts: the money, the plug (its socket drawn), the time, the language (its flag) and the visa (the weather too where the
+  // The facts: the money, the plug (its socket drawn), the time, the language (no flag: a language is no country's, 0.46.0) and the visa (the weather too where the
   // network has it); the one country is on the photo.
-  assert.deepEqual(flat(await hero.locator(".x-chips .x-chip:not(.c-weather):not(.c-docs)").allInnerTexts()), ["Euro", "C/F priz", "−2 sa", "🇵🇹 Portekizce", "Schengen vizesi gerekiyor"]);
+  assert.deepEqual(flat(await hero.locator(".x-chips .x-chip:not(.c-weather):not(.c-docs)").allInnerTexts()), ["Euro", "C/F priz", "−2 sa", "Portekizce", "Schengen vizesi gerekiyor"]);
   assert.equal(await hero.locator(".x-chip.c-plug svg.x-plug").count(), 1, "the plug's own socket");
   assert.equal(await hero.locator(".x-chip.c-visa.warn").count(), 1, "the visa to get is amber");
   // B15: beside it, in the same amber, the bookings in their last two weeks still without their file (the Lizbon stay and
@@ -356,16 +356,13 @@ try {
       new BroadcastChannel("trip-radar").postMessage("changed");
     }, text);
   await putNote("Odada mutlaka bir çalışma masası olsun çünkü ikimiz de gezinin birkaç gününde uzaktan çalışacağız ve iyi internet şart");
-  // 0.35.4: a few tags, one topic each, never wider than the hero; the level on hover, the details in the window.
-  const prefTags = hero.locator(".x-prefb .x-ptag");
-  await prefTags.filter({ hasText: "Odada mutlaka bir…" }).waitFor();
-  assert.deepEqual(flat(await prefTags.allInnerTexts()).sort(), ["Odada mutlaka bir…", "Sessizlik"]);
-  assert.equal(await prefTags.filter({ hasText: "Sessizlik" }).getAttribute("title"), "Sessizlik · Önemli");
-  const heroRect = await hero.boundingBox();
-  for (const b of await prefTags.evaluateAll((els) => els.map((e) => e.getBoundingClientRect().right))) assert.ok(b <= heroRect.x + heroRect.width, "a tag stays inside the hero");
-  await hero.locator(".x-prefb").click();
+  // 0.46.0 (Emre: "görünür yapma, üstüne gelince görünür olsun"): only the word and how many; the mouse over it opens the window.
+  await hero.locator(".x-prefb .x-pn").filter({ hasText: /^[2-9]$/ }).waitFor();
+  assert.equal(await hero.locator(".x-prefb .x-ptag").count(), 0, "no tags written on the hero");
+  await hero.locator(".x-prefb").hover();
   await hero.locator(".x-pref-pop li", { hasText: "uzaktan çalışacağız ve iyi internet şart" }).waitFor(); // the full text stays in the window
-  await app.mouse.click(5, 5);
+  await hero.locator(".x-pref-pop li", { hasText: "Sessiz" }).first().waitFor();
+  await app.mouse.move(5, 5);
   await hero.locator(".x-pref-pop").waitFor({ state: "detached" });
   await hero.scrollIntoViewIfNeeded();
   await app.waitForTimeout(1500); // the city photos come from Wikipedia
@@ -478,7 +475,7 @@ try {
   assert.ok(row1440.oneRow && row1440.barUnder, `1440: ${JSON.stringify(row1440)}`);
   assert.deepEqual(await spilled(), [], "1440 px: every chip stays inside the hero");
   await putNote(null);
-  await prefTags.filter({ hasText: "Odada mutlaka bir…" }).waitFor({ state: "detached" });
+  await hero.locator(".x-prefb .x-pn").filter({ hasText: /^1$/ }).waitFor(); // the note's understanding gone, Sessizlik left
   await app.getByText("Jardim Stay").first().waitFor();
   // 0.34: the Plan by category — a section per kind in this order (the empty ones are chips at the bottom),
   // each a timeline of its blocks: the day on the left, the cards on the right.
@@ -1146,7 +1143,7 @@ try {
   await intent.locator(".x-prefb").click();
   await intent.locator(".x-pref-pop").waitFor({ state: "detached" });
   assert.equal(await intent.locator(".x-q").count(), 0, "the question answered: no \"1\" left");
-  assert.ok((await intent.locator(".x-ptag").count()) >= 1, "what was understood, in short tags");
+  assert.ok(Number(await intent.locator(".x-pn").innerText()) >= 1, "what was understood, counted");
   await app.screenshot({ path: `${out}/3b-card.png` });
 
   // Comparison (the details' "Karşılaştır", C12). v82, B12: the comparison is the Pano's; the old window (its Kartlar, the table,
@@ -2330,6 +2327,13 @@ try {
   await pano.locator(".q-ph2 b", { hasText: "Konaklama" }).waitFor();
   assert.ok((await pano.locator(".pd").count()) >= 1, "stays grouped by intent");
   await app.screenshot({ path: `${out}/30b-pano-stays.png` });
+  // 0.46.0 (Emre: "panodaki şeyin üstüne basınca kaynağa gitsin"): a card's photo and name open its own page in a new tab.
+  const goCard = pano.locator(".pd .dr-card", { has: app.locator("a.dr-phgo") }).first();
+  await goCard.waitFor();
+  const goHref = await goCard.locator("a.dr-phgo").getAttribute("href");
+  assert.match(goHref, /^https?:\/\//, "the photo goes to the option's page");
+  assert.equal(await goCard.locator("a.dr-phgo").getAttribute("target"), "_blank");
+  assert.equal(await goCard.locator("a.dr-nm").getAttribute("href"), goHref, "the name goes to the same page");
   const deck = pano.locator(".pd:not(.pd-fold)", { has: app.locator(".pd-seg") }).first();
   await deck.locator(".pd-seg .dr-tab", { hasText: "Karşılaştır" }).click();
   const table = deck.locator(".pc");
@@ -2550,14 +2554,15 @@ try {
   await putTrip({ ...blank, priorities: { price: 4, location: 4 }, updatedAt: Date.now() });
   const prefs = bare.locator(".x-prefs");
   await bare.locator(".x-prefs.hx-appear").waitFor();
-  assert.deepEqual(flat(await prefs.locator(".x-ptag.strong").allInnerTexts()), ["Fiyat", "Konum"]);
   await prefs.locator(".x-prefb").click();
+  await prefs.locator(".x-pref-pop li", { hasText: "Fiyat" }).waitFor();
+  await prefs.locator(".x-pref-pop li", { hasText: "Konum" }).waitFor();
   await app.screenshot({ path: `${out}/2g-hero-prefs.png` });
   await prefs.locator(".x-pref-pop").getByRole("button", { name: "Konum: Çok önemli kaldır" }).click();
   await prefs.locator(".x-pref-pop li", { hasText: "Konum" }).waitFor({ state: "detached" });
   await app.mouse.click(5, 5); // outside: the window closes
   await prefs.locator(".x-pref-pop").waitFor({ state: "detached" });
-  assert.deepEqual(flat(await prefs.locator(".x-ptag.strong").allInnerTexts()), ["Fiyat"]);
+  assert.equal(await prefs.locator(".x-pn").innerText(), "1", "one left");
   // "Özeti küçült" folds it to one line (E11), remembered for the trip after a reload; "Özeti aç" brings it back.
   await bare.locator(".x-fold").click();
   await bare.locator(".x-slim:not([hidden])", { hasText: "Yeni gezi" }).waitFor();

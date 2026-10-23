@@ -159,6 +159,18 @@ const BUDGET: Record<BudgetLevel, () => string> = { low: () => L("ekonomik", "bu
  * The intent as one line for a model's prompt ("Gezginin niyeti: bütçe ekonomik; arkadaşlarla; istenen konaklama: hostel;
  * yer: city centre."), or null when nothing is known. In the current language.
  */
+/** What the start chat understood, one entry each (the hero's Tercihler): its words and the wants without it (its ×). */
+export function wantsEntries(wants: TripWants | null | undefined): { key: string; text: string; without: (w: TripWants) => TripWants }[] {
+  const w = wants ?? {};
+  const out: { key: string; text: string; without: (w: TripWants) => TripWants }[] = [];
+  if (w.budget) out.push({ key: "budget", text: L(`Bütçe: ${BUDGET[w.budget]()}`, `Budget: ${BUDGET[w.budget]()}`), without: (x) => ({ ...x, budget: null }) });
+  if (w.company) out.push({ key: "company", text: COMPANY[w.company](), without: (x) => ({ ...x, company: null }) });
+  for (const s of w.stays ?? []) out.push({ key: `stay:${s}`, text: L(`Konaklama: ${s}`, `Stay: ${s}`), without: (x) => ({ ...x, stays: (x.stays ?? []).filter((y) => y !== s) }) });
+  for (const s of w.avoid ?? []) out.push({ key: `avoid:${s}`, text: L(`${s} olmasın`, `No ${s}`), without: (x) => ({ ...x, avoid: (x.avoid ?? []).filter((y) => y !== s) }) });
+  for (const s of w.near ?? []) out.push({ key: `near:${s}`, text: L(`Yer: ${s}`, `Where: ${s}`), without: (x) => ({ ...x, near: (x.near ?? []).filter((y) => y !== s) }) });
+  return out;
+}
+
 export function wantsLine(wants: TripWants | null | undefined): string | null {
   const w = wants ?? {};
   const parts = [
