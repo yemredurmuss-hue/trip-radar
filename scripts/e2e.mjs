@@ -515,7 +515,7 @@ try {
   assert.equal(await sec("activity").evaluate((el) => getComputedStyle(el).borderTopLeftRadius), "18px");
   assert.equal(await app.locator(".cat-tile, .cat-state").count(), 0, "no icon tiles, no status pills");
   // v82: the closed row (78 px): the name and its one line, the bar and where its needs stand, what's spent of its share.
-  assert.match(await sec("activity").locator(".q-row1").innerText(), /^Etkinlik ve turlar\s*1 şehir için · 4 fikir\s*(\d+\/\d+\s*)?1 planda\s*€25\s*€[\d.,]+ ayrıldı/);
+  assert.match(await sec("activity").locator(".q-row1").innerText(), /^Etkinlik ve turlar\s*1 şehir için · 4 fikir\s*€25\s*€[\d.,]+ ayrıldı\s*(\d+\/\d+\s*)?1 planda/);
   assert.equal(Math.round(await sec("activity").locator(".q-row1").evaluate((el) => el.getBoundingClientRect().height)), 78, "the closed row is 78 px");
   assert.match(await sec("stay").locator(".q-allot").innerText(), /^€[\d.,]+ ayrıldı$/);
   // The layered interface (drawing: ux-katmanli-arayuz): the header's money box on hover, nothing hidden meanwhile; the

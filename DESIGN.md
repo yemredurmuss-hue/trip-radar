@@ -485,6 +485,15 @@ yukarıdaki tablodadır (Seçildi kum, Alındı yeşil).
 - Bilet gibi: ne → ne ("Havalimanı → Otel"), adlar ve saat alt satırda, notlar Ayrıntı'da.
 - Artı ve eksi birkaç kelimedir; sayfada okunan somut şey kendi sözleriyle yazılır ("Karşısında genelev var").
 
+## Kategori satırı: Bitti ve yaklaştı halkası (0.41.2)
+
+Kapalı kategori satırının sonunda, okun yerinde 44 px bir halka (`lib/planRing.ts`, tuval "Kategori satırı" 7. tur D2).
+Ölçü plan, seçenek değil: Uçuş'ta gidiş ve dönüş iki yarım, Ulaşım'da üç yolculuk üç parça; 8 seçenek halkayı doldurmaz.
+Alınan (ya da ayarlanan) parça koyu yeşil, seçilip alınmayan açık yeşil, karar bekleyen boş; hepsi alınınca dolu yeşil
+daire ve ✓. Yalnız fikir olan kategoride kesik boş halka. Halkanın yanında yazı yok; "1 alındı · 1 karar" ekran okuyucu
+için gizli durur. Karar bekleyen varsa halka bir düğmedir: üstünde hangileri, basınca ilk karara. Uyarılar (gece eksik)
+adın altındaki satıra geçti. Ok kalktı: satırın tamamı açar ve kapar.
+
 ## Benle gezen eklenti: sitede ekleme ve hangi gezi (0.41.0)
 
 Sayfayı okuma iki türlüdür: sitede bakarken (etiketler, "Seçtiğin uçuş", "Destende var") kod okur, cihazda, AI yok;
