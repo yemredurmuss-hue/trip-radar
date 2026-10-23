@@ -65,6 +65,10 @@ No account, no ads. Your data stays on your computer; it only goes to the AI and
   - scripting: o sekmede sayfanın metnini ve görünen bölümünü almak için tek seferlik okuyucu çalıştırmak.
   - storage / unlimitedStorage: gezileri, kayıtları, ekran görüntülerini ve belgeleri bilgisayarda saklamak.
   - alarms: paylaşılan gezileri dakikada bir eşitlemek ve bekleyen kayıtları yeniden denemek.
+  - tabGroups: kullanıcının isteğiyle bir ihtiyacın adaylarını rotanın adıyla tek bir sekme grubunda açmak; sayfaları
+    okumaz.
+  - İsteğe bağlı host izinleri (Skyscanner, Kiwi.com; kurulumda istenmez, kullanıcı site site açar): "Sitede benle gel",
+    planındaki bir uçuşun aramasında sayfaya şerit ve sonuçlara "+" koyar; "+" basılmadan hiçbir şey kaydedilmez.
   - Host izinleri: generativelanguage.googleapis.com ve api.anthropic.com (AI), *.supabase.co (paylaşım ve AI
     kapısı), nominatim.openstreetmap.org (adres → konum), api.frankfurter.* (döviz kuru).
 - **Uzaktan kod:** Hayır. Tüm kod pakette.

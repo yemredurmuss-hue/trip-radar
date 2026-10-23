@@ -4,6 +4,27 @@ Kararlar: `docs/superpowers/specs/2026-10-22-karar-masasi-kararlar.md`. Tuval: "
 Bu belge o kararların canlı koda nasıl gireceğini ve canlıda bugün olan hiçbir şeyin farkında olmadan kaybolmayacağını
 yazar.
 
+## Durum (23 Ekim gecesi)
+
+Onay: açık sorulardaki dört önerinin hepsi; gizlilik metni değişebilir (Seviye 2 dahil). Yapılanlar, aşama aşama ayrı
+commit, `ucus-satiri-kod` dalında:
+
+- Aşama 0: `tests/kararMasasiKoruma.test.tsx` (Ulaşım ve Konaklama'nın 21 satırı sabit; uçuşta kalan hâller; açık
+  biletin check-in, uçuş günü, eksik belge ve son adımı). Önce görüntüleri `e2e-output/v82/once`, `once-thai`.
+- Aşama 1-5: bu belgedeki gibi. Plandan ayrıldığım yerler:
+  - Bağlanan hat saf işlev yerine CSS kardeş seçicileriyle (`desk.css`: alınan iki bacak art arda gelince
+    `:has(+ …)` ile kenetlenir); yeni veri taşınmadı. Telefonda çizgi yok, nokta adımı söyler.
+  - Söz işlevinin adı `deckVerdict` (`lib/bring.ts`); `lib/priceVerdict.ts`'teki `verdictOf` başka bir şey.
+  - "Seçenekleri aç"ın yerini desteye basmak aldı; e2e'nin `openRow`'u uçuş destesinde çekmeceyi açar.
+  - Arama listesinden en fazla 4 uçuş daha desteye girer (`items.moreFlights`, okuma şemasında `more_flights`).
+- Seviye 1: `lib/candidateTabs.ts` (sekme grubu, "2/3" rozeti, "Burada satın al" ve sekme kapanınca "Aldın mı?"),
+  açılır pencerede aday ve "Bu arama planında" kutusu, çekmecede "Adayları sekmelerde aç". İzin: `tabGroups`.
+- Seviye 2: `src/companion.ts` (içerik betiği, kapalı shadow kökünde şerit ve "+"), `lib/companion.ts` (saf: kart
+  metninden saat, fiyat, aktarma; desteye göre etiket), `lib/companionWorker.ts` (kayıt, kimin sorduğunun denetimi,
+  "+" kaydı). Siteler: Skyscanner (altı alan adı) ve Kiwi.com, `optional_host_permissions`; açılır pencerede
+  "…'da benle gel". Deneme: `scripts/companion-check.mjs`.
+- PRIVACY.md §4 ve §16, `store/listing.md` izin gerekçeleri güncellendi.
+
 ## İlke: hiçbir şey sessizce gitmez
 
 1. Canlıda bugün görünen ve yapılan her şey aşağıdaki envanterde. Her birinin karşısında **kalır**, **değişir** ya da

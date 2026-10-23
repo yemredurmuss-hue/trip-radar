@@ -192,6 +192,23 @@ bugünkü sözleriyle kalır, aynı dil onlara ayrı bir adımda geçer.
   Bilet ya da onay resmiyse bugünkü yol: belge okunur, kayda bağlanır. Yerini bulamadıklarımız Plan'ın başında
   "Gelenler · Nereye koyalım?" (sohbetin sorusu da kalır; birinde cevaplanınca ikisi kapanır).
 
+## Benle gezen eklenti (onay 2026-10-23)
+
+İki seviye; ikisini de gezgin açar (PRIVACY.md §4).
+
+- **Seviye 1, söz bozulmadan** (`lib/candidateTabs.ts`): çekmecenin altında "Adayları sekmelerde aç · 3": sıralamanın ilk
+  üçü (sayfası olanlar) rotanın adıyla ("Bangkok ✈ İstanbul") mor bir Chrome sekme grubunda, ilki önde; her sekmede
+  eklentinin simgesi "1/3", "2/3". O sekmede simgeye basınca açılır pencerenin başında "Aday 2/3 · Bangkok ✈ İstanbul",
+  adı ve fiyatı, "Buna karar ver" (plandaki seçim olur) ve "Burada satın al" (sekme kapanınca plan satırı açıp "Aldın mı?"
+  der). Planındaki bir uçuşun arama sayfasında: "Bu arama planında · Tayland", rota ve gün, "Destende 7 seçenek var";
+  kayıt o satıra gider, listedeki öteki uçuşlar da desteye girer.
+- **Seviye 2, "Sitede benle gel"** (`src/companion.ts`, `lib/companion.ts`): açılır pencerede "Skyscanner'da benle gel"
+  (Chrome o site için izin sorar; "…'da benle gelme" geri alır). Yalnız adres planındaki bir uçuşun aramasıyken sayfanın
+  üstünde koyu ince şerit: "Trip Radar · Bangkok ✈ İstanbul", "Tayland planında · destende 7 seçenek", "Ekrandakileri
+  desteye ekle", "Planı aç", ×. Her sonucun sağ üstünde mor "+" ve yanında desteye göre yeri: yeşil "Destende var",
+  lila "Destedekinden €38 ucuz" ya da "Direktlerin en ucuzu". "+" basılınca yeşil ✓. Çizilen her şey kapalı bir shadow
+  kökünde, sitenin kendi öğelerinin içine değil; sitenin bağlantıları değişmez.
+
 ## Tarih hattı: Uçuş, Konaklama, Ulaşım (plan v14, onay paketi 2026-10-21)
 
 Bu üç kategoride 288 px kutunun yerini tarih hattı alır (`static/v82/rows.css`, `app/plan/v82/IntentRow.tsx`, saf

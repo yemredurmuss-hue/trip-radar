@@ -36,6 +36,7 @@ import type { Typical } from "./OptionCompact";
 import { CarrierLogo } from "./OptionRow";
 import { broughtOf, type Brought } from "./IntentRow";
 import { carriesArrival } from "../../arrive/useDropZone";
+import { canGroupTabs, CANDIDATES_MAX, openCandidates } from "../../../lib/candidateTabs";
 import { ModeIcon } from "./modeIcons";
 
 export type Family = "stay" | "rental" | "ticket";
@@ -511,6 +512,8 @@ export function IntentDrawer({ vm, options, dropped = [], chosenId, art, links, 
   const counts = useMemo(() => ({ all: options.length, mine: options.filter((o) => optionTab(o) === "mine").length, ai: options.filter((o) => optionTab(o) === "ai").length }), [options]);
   const list = drawerList(options, tab, "all", sort, people, nights);
   const env = useCardEnv();
+  // (the candidates to open in tabs: the list's best with a page of their own, as it is sorted now)
+  const tabbed = list.filter((o) => o.item.url && /^https?:\/\//i.test(o.item.url)).slice(0, CANDIDATES_MAX);
   // The decision's own parts for each option (its weights, its sub-scores): the score's three parts and "Neden?".
   const decision = options[0] ? decisionOf(env.decisions?.byGroup, options[0].item) : undefined;
   const partsOf = (o: OptionVM): Part[] => partsFor(env.decisions?.byGroup, o.item);
@@ -702,6 +705,22 @@ export function IntentDrawer({ vm, options, dropped = [], chosenId, art, links, 
           )}
           <div className="dr-foot">
             <small>{pane === "options" && dropped.length > 0 ? L(`Elenen ${dropped.length}: ${dropped.map((i) => i.name).join(", ")}`, `Ruled out ${dropped.length}: ${dropped.map((i) => i.name).join(", ")}`) : view.third.map((p) => p.text).join(" · ")}</small>
+            {/* (benle gezen eklenti, seviye 1: the best ones side by side in Chrome, one tab group named for the route) */}
+            {tabbed.length > 1 && canGroupTabs() && (
+              <button
+                type="button"
+                className="dr-cmpb dr-tabs"
+                title={L("Sekmeleri sıralarıyla açar; eklentinin simgesi her sekmede kaçıncı aday olduğunu söyler", "Opens the tabs in their order; the extension's icon says which candidate each one is")}
+                onClick={() =>
+                  void openCandidates(
+                    { tripId: env.trip.id, intentKey: vm.key, route: vm.kind === "flight" && vm.head.route ? `${vm.head.route.from} ✈ ${vm.head.route.to}` : title },
+                    tabbed.map((o) => ({ itemId: o.item.id, url: o.item.url!, name: o.title, price: o.ticket?.each ?? o.ticket?.total ?? o.price?.text ?? null })),
+                  )
+                }
+              >
+                {L(`Adayları sekmelerde aç · ${tabbed.length}`, `Open the candidates in tabs · ${tabbed.length}`)} <span aria-hidden>↗</span>
+              </button>
+            )}
             {onPano && vm.optionCount > 1 && (
               <button type="button" className="dr-cmpb" onClick={onPano}>
                 {L("Pano'da karşılaştır", "Compare on the Board")} <span aria-hidden>→</span>

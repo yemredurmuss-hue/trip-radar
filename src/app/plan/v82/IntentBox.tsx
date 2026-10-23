@@ -62,6 +62,7 @@ import { bookingIcs, icsName } from "../../../lib/ics";
 import { isDeskRow, rowView, whileSearching } from "../../../lib/rowView";
 import { EmptyNight, OverlapRow, RowOpenContext, StayCard, TicketRow, type Brought, type SlotOn } from "./IntentRow";
 import { arrivedOption, bringKey, deckVerdict } from "../../../lib/bring";
+import { ASK_BOUGHT, type AskBought } from "../../../lib/candidateTabs";
 import { siteOf } from "../../../lib/arrive";
 import { Ic } from "./icons";
 import { addLinks, addTripFiles } from "../../capture";
@@ -391,6 +392,21 @@ function Box({ vm, color, extra, field, pickDoc, dropDoc = null, cancel, askedHi
   const booking = vm.frame !== "collection" && record?.status === "booked" ? record : null;
   const [asking, setAsking] = useState<Ask | null>(null);
   const rows = useContext(RowOpenContext);
+  // (benle gezen eklenti: bought in a candidate's tab and the tab closed, the plan asks "Aldın mı?" under the row, open)
+  useEffect(() => {
+    if (!record || record.status !== "chosen" || typeof chrome === "undefined" || !chrome.storage?.local) return;
+    const check = (v: AskBought | undefined) => {
+      if (v?.itemId !== record.id) return;
+      setProofAsk("asked");
+      rows?.set(record.id);
+      void chrome.storage.local.remove(ASK_BOUGHT);
+    };
+    void chrome.storage.local.get(ASK_BOUGHT).then((got) => check(got[ASK_BOUGHT] as AskBought | undefined));
+    const changed = (ch: Record<string, chrome.storage.StorageChange>, area: string) => area === "local" && ch[ASK_BOUGHT] && check(ch[ASK_BOUGHT].newValue as AskBought | undefined);
+    chrome.storage.onChanged.addListener(changed);
+    return () => chrome.storage.onChanged.removeListener(changed);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- per record and its state
+  }, [record?.id, record?.status]);
   const pick = (o: OptionVM, then?: () => void) => {
     entry.current = "morph";
     setDrawer(false);

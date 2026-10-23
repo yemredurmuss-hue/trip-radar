@@ -7,9 +7,14 @@ import { L, lang, loadLang } from "./lib/i18n";
 import { CATEGORY_LABELS, formatDateRange } from "./lib/items";
 import { collectPage } from "./lib/pagecapture";
 import { saveSnapshot } from "./lib/process";
+import { planFlightFor, type PlannedFlight } from "./lib/bring";
+import { badgeOf, candidateOf, markBuying, type CandidateTab } from "./lib/candidateTabs";
+import { flightSearchOf } from "./lib/url";
+import { companionName, companionSiteOf } from "./lib/companion";
+import { chooseItem } from "./app/actions";
 import { answerHeld, moveToTrip } from "./lib/routing";
 import { isDemoTrip } from "./lib/trips";
-import type { Trip } from "./lib/types";
+import type { Item, Trip } from "./lib/types";
 import { reloadIfStale } from "./lib/update";
 
 type State =
@@ -36,8 +41,37 @@ interface TripPick {
 const pickOf = (t: Trip): TripPick => ({ id: t.id, title: t.title, when: t.confirmedDates ? formatDateRange(t.confirmedDates.start, t.confirmedDates.end) : null });
 const pickLabel = (t: TripPick) => (t.when ? `${t.title} · ${t.when}` : t.title);
 
-async function captureActiveTab(): Promise<string> {
+/**
+ * Benle gezen eklenti (seviye 1): what the plan knows of this tab before it is saved: a candidate we opened in a tab group
+ * ("Aday 2/3"), or a flight search for a planned flight ("Bu arama planında"). Its save then goes into that trip and need.
+ */
+interface Desk {
+  candidate: CandidateTab | null;
+  planned: (PlannedFlight & { title: string }) | null;
+  tabId: number | null;
+  /** Seviye 2: a flight site it may come along on ("https://www.skyscanner.com.tr/*"), and whether it is allowed there. */
+  site: string | null;
+  along: boolean;
+}
+
+async function deskOf(tab: chrome.tabs.Tab | undefined): Promise<Desk> {
+  const site = companionSiteOf(tab?.url);
+  const along = site ? await chrome.permissions.contains({ origins: [site] }).catch(() => false) : false;
+  const none: Desk = { candidate: null, planned: null, tabId: tab?.id ?? null, site, along };
+  if (!tab?.id) return none;
+  const candidate = await candidateOf(tab.id).catch(() => null);
+  const search = flightSearchOf(tab.url);
+  if (!search) return { ...none, candidate };
+  const d = await db();
+  const planned = planFlightFor(await d.getAll("items"), search);
+  const trip = planned ? await d.get("trips", planned.tripId) : undefined;
+  return { ...none, candidate, planned: planned && trip ? { ...planned, title: trip.title } : null };
+}
+
+async function captureActiveTab(onDesk: (desk: Desk) => void): Promise<string> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const desk = await deskOf(tab);
+  onDesk(desk);
   // Our own pages (board, popup-in-a-tab) are extension contexts; their URL is not always visible here.
   const ownTabs = await chrome.runtime.getContexts({ contextTypes: [chrome.runtime.ContextType.TAB] });
   if (ownTabs.some((c) => c.tabId === tab?.id) || tab?.url?.startsWith(chrome.runtime.getURL(""))) {
@@ -59,7 +93,8 @@ async function captureActiveTab(): Promise<string> {
   } catch {
     // Some pages block capture; the page text is still enough.
   }
-  const capture = await saveSnapshot(result.result, screenshot);
+  const bind = desk.candidate ? { forTripId: desk.candidate.tripId } : desk.planned ? { forTripId: desk.planned.tripId, forNeed: desk.planned.forNeed } : {};
+  const capture = await saveSnapshot(result.result, screenshot, bind);
   requestProcessing();
   return capture.id;
 }
@@ -67,10 +102,11 @@ async function captureActiveTab(): Promise<string> {
 function Popup() {
   const [state, setState] = useState<State>({ step: "saving" });
   const [hasKey, setHasKey] = useState(true);
+  const [desk, setDesk] = useState<Desk | null>(null);
 
   useEffect(() => {
     void hasActiveKey().then(setHasKey);
-    captureActiveTab()
+    captureActiveTab(setDesk)
       .then((captureId) => setState({ step: "working", captureId }))
       .catch((error: unknown) =>
         setState(
@@ -109,6 +145,8 @@ function Popup() {
   return (
     <div className="popup-card">
       <div className="popup-title">Trip Radar</div>
+      {desk && (desk.candidate || desk.planned) && <DeskBox desk={desk} />}
+      {desk?.site && desk.tabId != null && <AlongBox site={desk.site} tabId={desk.tabId} along={desk.along} />}
       {state.step === "saving" && <p>{L("Sayfa kaydediliyor…", "Saving the page…")}</p>}
       {state.step === "working" && (
         <p>
@@ -243,3 +281,104 @@ void Promise.all([loadLang(), reloadIfStale(null)]).then(([, updating]) => {
     ),
   );
 });
+
+/**
+ * Benle gezen eklenti (seviye 1): on a candidate's tab, which one it is and the two things to do here; on a search for a
+ * planned flight, which row it is for. The page is saved as always (its price refreshed), into that row.
+ */
+function DeskBox({ desk }: { desk: Desk }) {
+  const [said, setSaid] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const c = desk.candidate;
+  async function decide() {
+    if (!c) return;
+    setBusy(true);
+    try {
+      const d = await db();
+      const item = await d.get("items", c.itemId);
+      if (!item) return setSaid(L("Bu aday artık planda değil.", "This candidate isn't on the plan any more."));
+      const same = item.flight?.from && item.flight.to && item.dates.start ? planFlightFor(await d.getAll("items"), { from: item.flight.from, to: item.flight.to, day: item.dates.start }) : null;
+      const alternatives = same ? (await Promise.all(same.ids.map((id) => d.get("items", id)))).filter((i): i is Item => i != null) : [];
+      await chooseItem(item, alternatives);
+      setSaid(L(`✓ Seçtin: ${item.name}. Plan'da açık bilet olarak duruyor; satın alınca "Aldım" de.`, `✓ Chosen: ${item.name}. It waits on the plan as an open ticket; say "Got it" once bought.`));
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function buyHere() {
+    if (desk.tabId == null) return;
+    await markBuying(desk.tabId);
+    setSaid(L("Satın alınca bu sekmeyi kapat; plan \"Aldın mı?\" diye sorar, bileti de ekleriz.", "Once bought, close this tab; the plan asks \"Did you buy it?\" and we add the ticket."));
+  }
+  return (
+    <div className="popup-desk">
+      {c ? (
+        <>
+          <small>{L(`Aday ${badgeOf(c)} · ${c.route}`, `Candidate ${badgeOf(c)} · ${c.route}`)}</small>
+          <b>
+            {c.name}
+            {c.price ? ` · ${c.price}` : ""}
+          </b>
+          <span className="popup-held-actions">
+            <button type="button" className="small-btn" disabled={busy} onClick={() => void decide()}>
+              {L("Buna karar ver", "Go with this one")}
+            </button>
+            <button type="button" className="small-btn" disabled={busy} onClick={() => void buyHere()}>
+              {L("Burada satın al", "Buy it here")}
+            </button>
+          </span>
+        </>
+      ) : desk.planned ? (
+        <>
+          <small>{L(`Bu arama planında · ${desk.planned.title}`, `This search is on the plan · ${desk.planned.title}`)}</small>
+          <b>
+            {desk.planned.from} ✈ {desk.planned.to} · {formatDateRange(desk.planned.day, null)}
+          </b>
+          <span className="muted">
+            {L(`Destende ${desk.planned.ids.length} seçenek var; bu sayfadaki uçuşlar o desteye girer.`, `Your deck has ${desk.planned.ids.length} option${desk.planned.ids.length === 1 ? "" : "s"}; the flights on this page join it.`)}
+          </span>
+        </>
+      ) : null}
+      {said && <span className="popup-desk-said">{said}</span>}
+    </div>
+  );
+}
+
+/**
+ * Seviye 2, "Sitede benle gel": asked once per site (Chrome asks for that site's permission); allowed, on that site's
+ * searches for a planned flight a strip says which row it is for and each result gets a "+". Taken back here.
+ */
+function AlongBox({ site, tabId, along }: { site: string; tabId: number; along: boolean }) {
+  const [on, setOn] = useState(along);
+  const [said, setSaid] = useState<string | null>(null);
+  const name = companionName(site);
+  async function allow() {
+    const granted = await chrome.permissions.request({ origins: [site] }).catch(() => false);
+    if (!granted) return setSaid(L("İzin verilmedi; yine de simgeye basınca kaydederim.", "Not allowed; pressing the icon still saves the page."));
+    setOn(true);
+    await chrome.scripting.executeScript({ target: { tabId }, files: ["companion.js"] }).catch(() => undefined);
+    setSaid(L(`Artık ${name}'da yanındayım: planındaki uçuşun aramasında şerit ve sonuçlarda + görürsün.`, `I'm with you on ${name} now: on a search for a planned flight you'll see the strip and a + on each result.`));
+  }
+  async function stop() {
+    await chrome.permissions.remove({ origins: [site] }).catch(() => false);
+    setOn(false);
+    setSaid(L(`${name}'da artık yokum; sayfa yenilenince şerit gider.`, `I've left ${name}; the strip goes when the page reloads.`));
+  }
+  return (
+    <div className="popup-along">
+      {on ? (
+        <button type="button" className="btn-link" onClick={() => void stop()}>
+          {L(`${name}'da benle gelme`, `Stop coming along on ${name}`)}
+        </button>
+      ) : (
+        <>
+          <button type="button" className="small-btn" onClick={() => void allow()}>
+            {L(`${name}'da benle gel`, `Come along on ${name}`)}
+          </button>
+          <span className="muted">{L("Yalnız bu sitede, yalnız planındaki bir uçuşun aramasında; + basmadan hiçbir şey kaydedilmez.", "Only on this site, only on a search for a planned flight; nothing is saved until you press +.")}</span>
+        </>
+      )}
+      {said && <span className="popup-desk-said">{said}</span>}
+    </div>
+  );
+}

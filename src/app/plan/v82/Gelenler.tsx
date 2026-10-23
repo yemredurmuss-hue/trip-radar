@@ -19,9 +19,15 @@ export function Gelenler({ tripId }: { tripId: string }) {
         setTrips(all);
       });
     load();
-    const off = onChanged(load);
+    // (every write says "changed": read again once they settle, not on each)
+    let t = 0;
+    const off = onChanged(() => {
+      clearTimeout(t);
+      t = window.setTimeout(load, 400);
+    });
     return () => {
       live = false;
+      clearTimeout(t);
       off();
     };
   }, [tripId]);

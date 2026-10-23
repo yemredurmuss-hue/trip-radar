@@ -93,8 +93,12 @@ function baseCapture(kind: Capture["kind"]): Capture {
   };
 }
 
-export async function saveSnapshot(snapshot: PageSnapshot, screenshot: string | null): Promise<Capture> {
-  const capture: Capture = { ...baseCapture("extension"), ...snapshot, screenshot };
+/**
+ * `bind` (benle gezen eklenti): saved from a page the plan knows (a candidate's tab, a search for a planned flight): it goes
+ * into that trip and that need's deck.
+ */
+export async function saveSnapshot(snapshot: PageSnapshot, screenshot: string | null, bind: { forTripId?: string; forNeed?: string } = {}): Promise<Capture> {
+  const capture: Capture = { ...baseCapture("extension"), ...snapshot, screenshot, ...(bind.forTripId ? { forTripId: bind.forTripId } : {}), ...(bind.forNeed ? { forNeed: bind.forNeed } : {}) };
   await (await db()).put("captures", capture);
   notifyChanged();
   return capture;
