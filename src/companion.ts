@@ -427,31 +427,54 @@ function start() {
 
   /**
    * The results: the smallest elements whose text is one result's, at most forty. A flight's: two hours and a price; a
-   * hotel's or a tour's: a price, a link and a photo in a box the size of a result.
+   * hotel's or a tour's: a price, a link and a photo in a box the size of a result. Found from the prices up (0.42.1): the
+   * page's text read once, each price climbing to its card; never every element's whole text (that froze big pages).
    */
-  const findCards = (): Element[] => {
-    const found: Element[] = [];
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT);
-    for (let n = walker.nextNode(); n && found.length < 200; n = walker.nextNode()) {
-      const el = n as HTMLElement;
-      if (el === host || el.closest("#trip-radar-companion")) continue;
-      // (textContent costs no layout: a big list's is too long and goes at once; it runs words together, so the result's
-      // own text is then read as it is shown)
-      const loose = el.textContent ?? "";
-      if (loose.length < 20 || loose.length > 900) continue;
-      if (timed) {
-        if (!/\d[:.][0-5]\d/.test(loose) || !isResultText(el.innerText ?? "")) continue;
-        const r = el.getBoundingClientRect();
-        if (r.width < 260 || r.height < 48 || r.height > 420) continue;
-      } else {
-        if (!/\d/.test(loose) || !el.querySelector("a[href]") || !el.querySelector("img") || !isOfferText(el.innerText ?? "")) continue;
-        const r = el.getBoundingClientRect();
-        if (r.width < 200 || r.height < 120 || r.height > 760) continue;
-      }
-      found.push(el);
+  const PRICE = /(?:€|£|₺|\$|฿|\b(?:TL|EUR|USD|GBP|TRY|THB)\b)\s?\d|\d\s?(?:€|£|₺|\$|฿|\b(?:TL|EUR|USD|GBP|TRY|THB)\b)/;
+  const fits = (el: HTMLElement): boolean => {
+    const loose = el.textContent ?? "";
+    if (loose.length < 20 || loose.length > 900) return false;
+    if (timed) {
+      if (!/\d[:.][0-5]\d/.test(loose) || !isResultText(el.innerText ?? "")) return false;
+      const r = el.getBoundingClientRect();
+      return r.width >= 260 && r.height >= 48 && r.height <= 420;
     }
-    // (the smallest: one that holds another candidate is the list around them)
-    return found.filter((el) => !found.some((o) => o !== el && el.contains(o))).slice(0, 40);
+    if (!el.querySelector("a[href]") || !el.querySelector("img") || !isOfferText(el.innerText ?? "")) return false;
+    const r = el.getBoundingClientRect();
+    return r.width >= 200 && r.height >= 120 && r.height <= 760;
+  };
+  const findCards = (): Element[] => {
+    const prices: Text[] = [];
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+      acceptNode: (n) => {
+        const v = n.nodeValue ?? "";
+        if (v.length > 80 || !/\d/.test(v)) return NodeFilter.FILTER_REJECT;
+        if (PRICE.test(v)) return NodeFilter.FILTER_ACCEPT;
+        // (a price split in two spans: "€" in one, "912" in the next)
+        const up = n.parentElement?.parentElement;
+        const near = up?.textContent ?? "";
+        return near.length < 60 && PRICE.test(near) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+      },
+    });
+    for (let n = walker.nextNode(); n && prices.length < 400; n = walker.nextNode()) prices.push(n as Text);
+    const found = new Set<Element>();
+    const seen = new Set<Element>();
+    for (const t of prices) {
+      let el = t.parentElement;
+      for (let up = 0; el && up < 14 && el !== document.body; up++, el = el.parentElement) {
+        if (seen.has(el)) break;
+        seen.add(el);
+        if ((el.textContent?.length ?? 0) > 900) break;
+        if (fits(el)) {
+          found.add(el);
+          break;
+        }
+      }
+      if (found.size >= 40) break;
+    }
+    const list = [...found];
+    // (the smallest: one that holds another is the list around them)
+    return list.filter((el) => !list.some((o) => o !== el && el.contains(o)));
   };
 
   const place = () => {
@@ -468,12 +491,18 @@ function start() {
     }
   };
 
-  const drawCards = () => {
+  const drawCards = (force = true) => {
+    // (a flight search only for a flight on the plan, or once trips are known; a hotel's own page has its "Desteye ekle")
+    if (closed || single || (!route && !where)) {
+      layer.replaceChildren();
+      cards = [];
+      return;
+    }
+    const els = findCards();
+    // (the same results as drawn: only placed again, nothing rebuilt; the page's own changes come often)
+    if (!force && els.length === cards.length && els.every((el, i) => cards[i]?.el === el)) return place();
     layer.replaceChildren();
     cards = [];
-    // (a flight search only for a flight on the plan, or once trips are known; a hotel's own page has its "Desteye ekle")
-    if (closed || single || (!route && !where)) return;
-    const els = findCards();
     const facts = els.map((el) => cardFacts((el as HTMLElement).innerText));
     els.forEach((el, i) => {
       const pin = document.createElement("div");
@@ -560,12 +589,15 @@ function start() {
     clearTimeout(pending);
     pending = window.setTimeout(() => {
       if (closed) return;
+      // (only while the page is in view; the page's own work first)
+      if (document.hidden) return;
       // (a hotel's page often says what it is only once its scripts ran)
       if (!single && (single = offerPageKind(location.href, ldTypes()))) drawDock();
-      drawCards();
+      drawCards(false);
     }, 700);
   };
   new MutationObserver(later).observe(document.body, { childList: true, subtree: true });
+  document.addEventListener("visibilitychange", () => !document.hidden && later());
   let frame = 0;
   const follow = () => {
     cancelAnimationFrame(frame);
