@@ -4212,52 +4212,18 @@ try {
   const ubudCard = ekSec("stay").locator('.q-ints > .q-int[aria-label="Ubud"]');
   // v13 (K82): the source's picks are beside the plan, in the drawer "Seçenek bul" opens (under the options it has, none here).
   // (plan v14: its "Ara" opens the drawer where the source's picks come)
-  await ubudCard.locator(".q-rslot .q-srch").click();
+  // 0.40.5: the source's three picks (Sana en uygun, Daha ekonomik, Daha konforlu) come into the row by themselves: a deck,
+  // "3 seçenek", "Seç 3"; pressed, the drawer lists them as the need's options; Seç there chooses.
+  await ubudCard.locator(".q-rslot .q-rsec").waitFor({ timeout: 15000 });
+  assert.ok(candidatesAsked.length >= 1 && candidatesAsked.every((u) => /start=2026-12-10/.test(u) && /end=2026-12-22/.test(u)), "Ubud's candidates asked for its nights");
+  assert.equal(flat([await ubudCard.locator(".q-rlead .q-rstage").innerText()])[0], "3 seçenek");
+  await ubudCard.locator(".q-rslot .q-rsec").click();
   const ubudDrawer = board.locator("aside.dr");
   await ubudDrawer.waitFor();
-  const picksRow = ubudDrawer.locator(".dr-offers .ek-offers.ek-picks").first();
-  await picksRow.waitFor({ timeout: 10000 });
-  assert.ok(candidatesAsked.length >= 1 && candidatesAsked.every((u) => /start=2026-12-10/.test(u) && /end=2026-12-22/.test(u)), "Ubud's candidates asked for its nights");
-  // Open at first (0.38.5, Emre: the options right under the box), the count on its head; its head still closes it.
-  assert.equal(await picksRow.locator(".ek-offers-head").innerText().then((t) => t.replace(/\s+/g, " ").trim()), "✨ Senin için 3 öneri ▾");
-  assert.equal(await picksRow.locator(".ek-offers-head").getAttribute("aria-expanded"), "true", "open by default");
-  await picksRow.locator(".ek-offers-head").click();
-  assert.equal(await picksRow.locator(".z-oc[data-pick]").count(), 0, "closed on its head");
-  await picksRow.locator(".ek-offers-head").click();
-  const pickCards = picksRow.locator(".z-oc[data-pick]");
-  await pickCards.first().waitFor();
-  assert.equal(await pickCards.count(), 3, "three cards");
-  assert.deepEqual(await picksRow.locator(".z-op .q-src").allInnerTexts(), ["✨ Sana en uygun", "Daha ekonomik", "Daha konforlu"]);
-  assert.deepEqual(await picksRow.locator(".z-t").allInnerTexts(), ["Alaya Resort", "Bucu View", "Mandapa"]);
-  assert.match(await pickCards.nth(1).innerText(), /★ 4,3[\s\S]*380 yorum[\s\S]*Bucu View[\s\S]*€40[\s\S]*\/ gece[\s\S]*Seç/);
-  assert.equal(await pickCards.nth(1).locator(".q-pr").getAttribute("title"), "12 gece €480");
-  assert.equal(await pickCards.nth(1).getAttribute("title"), "Bulduklarımın en ucuzu, ★4,3");
-  assert.match(await pickCards.nth(2).getAttribute("title"), /Gecelik €106 daha fazla ama ★4,9/);
-  // The name is the hotel's page; no Favorile, no İncele (not in the design).
-  assert.equal(await pickCards.nth(0).getByRole("link", { name: "Alaya Resort" }).getAttribute("href"), "https://www.booking.com/hotel/id/e2e-alaya.html");
-  assert.equal(await picksRow.getByText(/Favori|İncele/).count(), 0, "only the option card's own buttons");
-  // Wide: three side by side, the best one accented.
-  const tops = await pickCards.evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().top)));
-  // The frame's three columns (OptionCompact), and no card squeezed.
-  const pickCols = await picksRow.locator(".ek-pcs").first().evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(" ").length);
-  assert.equal(new Set(tops).size, Math.ceil(3 / pickCols), "the cards fill the columns the card's width allows");
-  assert.ok(await pickCards.evaluateAll((els) => els.every((el) => el.getBoundingClientRect().width >= 190)), "no pick card is squeezed");
-  assert.equal(await pickCards.nth(0).locator(".z-op .q-src").evaluate((el) => getComputedStyle(el).color), "rgb(255, 255, 255)");
-  // The photo near its own shape (4:3), not a strip.
-  const photoBox = await pickCards.nth(0).locator(".z-op").evaluate((el) => el.getBoundingClientRect().width / el.getBoundingClientRect().height);
-  assert.ok(photoBox > 1.25 && photoBox < 1.42, `the pick's photo is 4:3 (${photoBox.toFixed(2)})`);
+  assert.deepEqual((await ubudDrawer.locator(".dr-op .dr-r1 .dr-nm").allInnerTexts()).sort(), ["Alaya Resort", "Bucu View", "Mandapa"], "the three picks are the options");
   await ubudCard.evaluate((el) => el.scrollIntoView({ block: "center" }));
   await board.screenshot({ path: `${out}/29a-stay-picks.png` });
-  // Narrow: stacked.
-  await board.setViewportSize({ width: 560, height: 1400 });
-  const narrowTops = await pickCards.evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().top)));
-  assert.ok(new Set(narrowTops).size >= 2, "wraps instead of squeezing when narrow");
-  assert.ok(await pickCards.evaluateAll((els) => els.every((el) => el.getBoundingClientRect().width >= 190)), "no pick card is squeezed when narrow");
-  await ubudCard.evaluate((el) => el.scrollIntoView({ block: "start" }));
-  await board.screenshot({ path: `${out}/29b-stay-picks-narrow.png` });
-  await board.setViewportSize({ width: 1440, height: 900 });
-  // Seç: "Daha ekonomik" put on the plan as Ubud's nights and chosen, its page, rating and reviews, price for the nights.
-  await pickCards.nth(1).getByRole("button", { name: "Bucu View: seç" }).click();
+  await ubudDrawer.locator(".dr-op", { has: board.locator(".dr-nm", { hasText: "Bucu View" }) }).locator(".dr-sec").click();
   let favoured = [];
   // (added first, then chosen: waited for until it is)
   for (let i = 0; i < 50 && !favoured.some((x) => x.status === "chosen"); i++) {
