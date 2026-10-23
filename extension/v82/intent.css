@@ -365,6 +365,8 @@ button.q-dl:focus-visible { outline: 2px solid var(--q-acc); outline-offset: 2px
 .q-here > button { border: 0; padding: 0 10px; height: 20px; border-radius: 10px; background: #fff; box-shadow: 0 0 0 1px var(--q-line); color: var(--q-mut); font: inherit; font-size: var(--q-fs-small); font-weight: 650; cursor: pointer; }
 .q-here > button:hover, .q-here > button:focus-visible { color: var(--q-acc); box-shadow: 0 0 0 1px var(--q-acc); outline: none; }
 @media (hover: none) { .q-int > .q-here { opacity: 1; } }
+/* (a card's ⋯ open: its menu over the "+ Buraya ekle" under it, never under it) */
+.q-int:has(.z-mpop) > .q-here { display: none; }
 .q-ints > .q-offers:empty { display: none; }
 .z-int .q-ln .pk-ed-box, .z-int .z-t .pk-ed-box { flex-wrap: nowrap; }
 .z-of .q-pr .z-prov { font-style: normal; color: var(--q-warn); font-weight: 650; }
