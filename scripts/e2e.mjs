@@ -3256,9 +3256,31 @@ try {
     await new Promise((resolve) => (tx.oncomplete = resolve));
     await chrome.runtime.sendMessage({ type: "process" });
   });
-  await board.locator(".toast", { hasText: "Tayland" }).waitFor({ timeout: 20000 });
+  // Hangi gezi (0.41.0): Thailand never answered for, so it is asked once which trip (no Thailand trip yet: a new one
+  // offered), in Bekleyen kayıtlar; answered, the new trip is Thailand's from now on.
+  await board.getByRole("button", { name: /Seyahatlerim/ }).first().click();
+  const waitingSaves = board.locator(".home-waiting");
+  await waitingSaves.getByText("Bangkok River Hotel: hangi geziye ekleyeyim?").waitFor({ timeout: 20000 });
+  await board.locator(".st-hello").waitFor();
   await board.screenshot({ path: `${out}/11-toast.png` });
-  await board.locator(".toast").getByRole("button", { name: "Aç" }).click();
+  await waitingSaves.getByRole("button", { name: "Yeni gezi: Tayland" }).click();
+  await board.getByText("Bangkok River Hotel: hangi geziye ekleyeyim?").waitFor({ state: "detached" });
+  const thailandId = await board.evaluate(async () => {
+    const request = indexedDB.open("trip-radar");
+    const database = await new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const all = await new Promise((resolve) => {
+      const r = database.transaction("trips").objectStore("trips").getAll();
+      r.onsuccess = () => resolve(r.result);
+    });
+    const rules = (await chrome.storage.local.get("tripRules")).tripRules ?? [];
+    const id = all.find((t) => t.title === "Tayland")?.id;
+    return rules.some((r) => r.country === "TH" && r.tripId === id) ? id : null;
+  });
+  assert.ok(thailandId, "the new trip is remembered as Thailand's");
+  await board.goto(`${board.url().replace(/#.*$/, "")}#trip=${thailandId}`);
   await board.getByRole("heading", { name: "Tayland" }).waitFor();
   assert.equal(await board.getByText("Jardim Stay").count(), 0, "Portugal items must not show in the Thailand trip");
   // A lone option has nothing to be compared with: no score, but its measured criteria are one click away (v11: its
