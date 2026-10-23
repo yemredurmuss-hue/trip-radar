@@ -41,6 +41,15 @@ Canlıyı kararlarla yan yana koyunca eksik çıkanlar ve yapılanlar:
 
 Kalan: hero'da "Bu gezide n şey getirdin" sayacı; Ulaşım ve Konaklama'ya aynı dilin geçişi (ayrı adım).
 
+### 23 Ekim öğlen: deste, arama bitince ve seçince (0.40.2)
+
+Tuval: "Onaya · Deste, arama bitince ve seçince" (Karar Masası, Onaylananlar). Onay: "tek fark, seçiliyken çekmece açar,
+alttan bir şey çıkmaz, eski seçim yerine döner".
+
+- Önerimiz birden çok seçenek arasındaysa deste (`rowView` `pickDeck`): "n seçenek", önerimizin satırı, "Seç n".
+- Seçtin'de öteki seçenekler varken deste altta kalır (`RowView.rest`, `.q-row.rest`), "↩ n seçenek daha" çekmeceyi
+  açar; çekmecede ötekiler "Buna geç". Uçuşta seçim değişince "X yerine Y seçildi · Geri al" çıkmaz.
+
 ## İlke: hiçbir şey sessizce gitmez
 
 1. Canlıda bugün görünen ve yapılan her şey aşağıdaki envanterde. Her birinin karşısında **kalır**, **değişir** ya da

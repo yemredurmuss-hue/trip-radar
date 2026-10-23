@@ -82,6 +82,8 @@ export interface RowView {
   busy?: boolean;
   /** Karar Masası: bought, its stamp on the stub ("Alındı", the day it was bought; "Senin" for one's own). */
   stamp?: { word: string; day: string | null } | null;
+  /** Karar Masası: chosen, the other options still under it ("↩ 6 seçenek daha", the drawer); 0 when none. */
+  rest?: number;
 }
 
 /** A rental (a car, a scooter, a camper, a bike) is drawn as a stay's card, its days on the rail (onay paketi, Ulaşım). */
@@ -167,12 +169,15 @@ export function rowView(vm: IntentVM): RowView {
   const chosen = vm.chosen;
   const status = vm.status;
   const hasOptions = vm.options.length > 0 || (vm.more?.length ?? 0) > 0;
-  const deciding = (status === "searching" || status === "deciding") && hasOptions;
-  const searching = status === "searching" && !hasOptions;
   const count = Math.max(vm.optionCount, vm.options.length + (vm.more?.length ?? 0));
   const rental = isRental(vm);
   const mode = vm.ticket?.mode ?? null;
   const desk = isDeskRow(vm);
+  // (Karar Masası: a search that found several is a deck, our pick in front of it, "3 seçenek" and "Seç 3"; one alone is
+  // still "Önerimiz", as the traveller's own one save is "Senin kaydın")
+  const pickDeck = desk && status === "suggested" && chosen != null && !vm.own && count > 1;
+  const deciding = ((status === "searching" || status === "deciding") && hasOptions) || pickDeck;
+  const searching = status === "searching" && !hasOptions;
 
   // The lead over the name.
   let lead: string | null = null;
@@ -197,7 +202,7 @@ export function rowView(vm: IntentVM): RowView {
         ? status === "included" ? L("Dahil", "Included") : vm.selfArranged ? L("Sen hallettin", "You sorted it") : booking ? L("Rezerve", "Booked") : desk ? L("Bilet alındı", "Ticket bought") : L("Alındı", "Bought")
         : stage === "planned"
           ? desk && status === "chosen" ? L("Seçtin", "You chose") : L("Planda", "Planned")
-          : status === "suggested"
+          : status === "suggested" && !pickDeck
             ? vm.own ? L("Senin kaydın", "Your save") : `✨ ${L("Önerimiz", "Our pick")}`
             : deciding
               ? L(`${count} seçenek`, count === 1 ? "1 option" : `${count} options`)
@@ -210,7 +215,7 @@ export function rowView(vm: IntentVM): RowView {
   // The line under it.
   const line: RowPart[] = [];
   const dayParts = vm.head.parts.filter((p) => !/→/.test(p));
-  const shown = chosen && (status === "chosen" || status === "booked" || status === "suggested" || status === "arranged");
+  const shown = chosen && (status === "chosen" || status === "booked" || (status === "suggested" && !pickDeck) || status === "arranged");
   if (ticket && shown && tf) {
     const t1 = tf.from?.time, t2 = tf.to?.time;
     if (t1 || t2) line.push({ text: [t1, t2].filter(Boolean).join(" → "), tone: "bold" });
@@ -228,11 +233,12 @@ export function rowView(vm: IntentVM): RowView {
     if (vm.people) line.push({ text: L(`${vm.people} kişi`, `${vm.people} people`) });
     if (!line.length && vm.head.word) line.push({ text: vm.head.word });
   } else if (desk && deciding) {
-    // (a deck: its best one's carrier, hours and stops, as the drawer's first card says them)
-    const best = deckLead([...vm.options, ...(vm.more ?? [])]);
+    // (a deck: its best one's carrier, hours and stops, as the drawer's first card says them; our pick's when it has one)
+    const best = pickDeck ? chosen : deckLead([...vm.options, ...(vm.more ?? [])]);
     const leg = best?.leg ?? null;
     const name = best?.carrier?.name ?? best?.brand?.label ?? null;
-    if (name) line.push({ text: name });
+    if (pickDeck) line.push({ text: `✨ ${L("önerimiz", "our pick")}${name ? ` ${name}` : ""}` });
+    else if (name) line.push({ text: name });
     if (leg?.dep || leg?.arr) line.push({ text: [leg.dep, leg.arr].filter(Boolean).join(" → "), tone: "bold" });
     if (leg?.stops) line.push({ text: leg.stops.text.toLocaleLowerCase(L("tr", "en")), tone: leg.stops.direct ? "ok" : "warn" });
     if (!line.length) for (const p of dayParts) line.push({ text: p });
@@ -275,10 +281,10 @@ export function rowView(vm: IntentVM): RowView {
   if (searching && vm.estimate) {
     figure = { big: vm.estimate.label, small: vm.estimate.unit === "night" ? L("gece, tahmini", "a night, about") : L("yaklaşık", "about") };
   } else if (deciding) {
-    const o = deckLead([...vm.options, ...(vm.more ?? [])]);
+    const o = pickDeck ? chosen : deckLead([...vm.options, ...(vm.more ?? [])]);
     const p = o ? priceOf(vm, o) : null;
     if (p) {
-      const which = desk ? L("en iyisi", "the best") : o?.ours ? L("önerimiz", "our pick") : L("ilk sırada", "top pick");
+      const which = pickDeck ? L("önerimiz", "our pick") : desk ? L("en iyisi", "the best") : o?.ours ? L("önerimiz", "our pick") : L("ilk sırada", "top pick");
       figure = { big: p.big, small: ticket ? which : [p.small?.split(" · ")[0], which].filter(Boolean).join(", ") };
     }
   } else if ((status === "chosen" || status === "suggested") && chosen) {
@@ -323,7 +329,7 @@ export function rowView(vm: IntentVM): RowView {
       break;
     case "suggested":
       // (a stop of a route the AI proposed, nothing saved for it yet: still to look for; its route is agreed under it)
-      slot = vm.chosen ? { kind: "take" } : desk ? { kind: "self" } : { kind: "ask" };
+      slot = pickDeck ? { kind: "pick", count } : vm.chosen ? { kind: "take" } : desk ? { kind: "self" } : { kind: "ask" };
       break;
     case "chosen":
       slot = { kind: "book", word: vm.kind === "stay" || mode === "car" ? L("Rezerve et", "Book") : L("Satın al", "Buy") };
@@ -334,8 +340,10 @@ export function rowView(vm: IntentVM): RowView {
 
   // (Karar Masası: bought, the stamp says so on the stub, with the day it was marked; never on a cover)
   const stamp = desk && stage === "bought" && status !== "included" ? { word: vm.selfArranged ? L("Senin", "Yours") : L("Alındı", "Bought"), day: markedDay(chosen?.item.statusAt) } : null;
+  // (Karar Masası: chosen, not bought yet, the deck stays under it: the other options, "↩ 6 seçenek daha")
+  const rest = desk && status === "chosen" && chosen ? [...vm.options, ...(vm.more ?? [])].filter((o) => o.id !== chosen.id).length : 0;
 
-  return { face, lead, stage, stageWord, title, route, line, third, wants, figure, slot, count, desk, stamp };
+  return { face, lead, stage, stageWord, title, route, line, third, wants, figure, slot, count, desk, stamp, rest };
 }
 
 /**

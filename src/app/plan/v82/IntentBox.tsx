@@ -473,9 +473,10 @@ function Box({ vm, color, extra, field, pickDoc, dropDoc = null, cancel, askedHi
     // "X yerine Y seçildi · Geri al" (K82): back to the one chosen before, or to nothing chosen.
     const prev = vm.status === "chosen" && record?.status === "chosen" ? record : null;
     a.choose(o.item);
-    // (Karar Masası: chosen, the drawer closes and its row opens as the ticket, "Satın al ↗" on its right)
+    // (Karar Masası: chosen, the drawer closes and its row opens as the ticket, "Satın al ↗" on its right; switched, nothing
+    // comes up under it: the new one is on the deck, the one given up back among the options)
     if (isDeskRow(vm)) rows?.set(o.item.id);
-    env.offer({ kind: "picked", item: o.item, prev });
+    if (!(isDeskRow(vm) && prev)) env.offer({ kind: "picked", item: o.item, prev });
   };
   const change = openDrawer;
   const cancelChange = () => {

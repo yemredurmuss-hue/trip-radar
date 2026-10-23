@@ -966,34 +966,32 @@ try {
   // opened, the boarding pass under it (the hours big with the codes, the length and "direkt", the bag on its line).
   const outDraftKey = await sec("flight").locator('.q-ints > .q-int[data-st="ai"]', { has: app.locator(".z-carl", { hasText: "Pegasus" }) }).getAttribute("data-intent");
   const outDraft = sec("flight").locator(`.q-ints > .q-int[data-intent="${outDraftKey}"]`);
-  assert.equal(flat([await outDraft.locator(".q-rlead").innerText()])[0], "✨ Önerimiz");
+  // Karar Masası (23 Ekim): our pick among several is a deck, it in front: "2 seçenek", its carrier, hours and stops on the
+  // line, what one pays "önerimiz", "Seç 2"; pressed, the drawer.
+  assert.equal(flat([await outDraft.locator(".q-rlead").innerText()])[0], "2 seçenek");
   // 0.38.7: an airline known by its code wears its logo (the flight card's files), its letters only if it won't load.
   assert.match(flat([await outDraft.locator(".z-carl").innerText()])[0], /^Pegasus PC 1201/);
-  assert.match(await outDraft.locator("img.q-air").first().getAttribute("src"), /^logos\/airlines\/PC\.png$/, "the airline's logo by its code, from the extension itself");
-  assert.match(flat([await outDraft.locator(".q-rrow .q-rln").first().innerText()])[0], /^07:10 → 10:05 4 sa 55 dk direkt$/);
-  assert.match(flat([await outDraft.locator(".q-rfig").innerText()])[0], /^€\d+ kişi başı/, "what one pays");
-  assert.equal(await outDraft.locator(".q-rslot .q-take").innerText(), "Seç");
+  assert.ok((await outDraft.locator('img.q-air[src="logos/airlines/PC.png"]').count()) >= 1, "the airline's logo by its code, from the extension itself");
+  assert.match(flat([await outDraft.locator(".q-rrow .q-rln").first().innerText()])[0], /^✨ önerimiz Pegasus.*07:10 → 10:05 direkt$/);
+  assert.match(flat([await outDraft.locator(".q-rfig").innerText()])[0], /^€\d+ önerimiz/, "what one pays");
+  assert.equal(flat([await outDraft.locator(".q-rslot .q-rsec .q-rmini").innerText()])[0], "2");
   assert.equal(await outDraft.locator(".q-got").count(), 0, "no ✓ Aldım on our pick");
   // (C16: the ticket carries no warning line; "Uçuşa 3 gün · bilet alınmadı" is Hazırlık's day now, as every rule's note.)
   assert.equal(await outDraft.locator(".tk-warn, .z-warn").count(), 0, "no warning line on the ticket");
-  await outDraft.locator(".q-rrow[role=button]").click({ position: { x: 80, y: 20 } });
-  await outDraft.locator(".q-rp .z-tk").waitFor();
-  assert.match(flat([await routeOf(outDraft)])[0], /07:10.*IST.*4 sa 55 dk.*direkt.*10:05.*OPO/s);
-  assert.equal(await outDraft.locator(".z-i .z-chip", { hasText: "bagaj" }).first().innerText(), "1 bagaj dahil");
   await outDraft.scrollIntoViewIfNeeded();
   await outDraft.screenshot({ path: `${out}/32b-draft-ticket.png` });
-  await outDraft.locator(".q-racts .q-chg").click();
+  await outDraft.locator(".q-rrow[role=button]").click({ position: { x: 80, y: 20 } });
   const flightDrawer = app.locator("aside.dr");
   await flightDrawer.waitFor();
   assert.deepEqual(await flightDrawer.locator(".dr-op .dr-tn .dr-nm").allInnerTexts(), ["Pegasus", "TAP"], "the options best first");
   assert.equal(await flightDrawer.locator(".dr-op").nth(0).locator(".dr-why").count(), 1, "ours says why");
+  assert.match(flat([await flightDrawer.locator(".dr-op").nth(0).locator(".dr-tb").innerText()])[0], /07:10.*IST.*4 sa 55 dk.*direkt.*10:05.*OPO/s);
   assert.match(flat([await flightDrawer.locator(".dr-op").nth(1).locator(".dr-tb").innerText()])[0], /05:40.*IST.*8 sa 10 dk.*1 aktarma.*12:50.*OPO/s);
   assert.equal(await flightDrawer.locator(".dr-op .dr-sec").count(), 2);
   await app.waitForTimeout(300); // (the drawer's .2 s fade)
   await app.screenshot({ path: `${out}/32a-choice-window.png` });
   await app.keyboard.press("Escape");
   await flightDrawer.waitFor({ state: "detached" });
-  await outDraft.locator(".q-rrow[role=button]").click({ position: { x: 80, y: 20 } });
   // "Sıradaki" goes to the next step (F4): here the visa to get, its row in Belgeler ve internet, with a flash. (The to-do
   // list under the hero, its groups and "⏳ N", left the interface in this version: spec §1.1, C8; not checked here.)
   await app.locator(".x-hero .x-next").click();
@@ -1312,8 +1310,19 @@ try {
   // transfer to the hotel. The hero's shares moved only now (the draft was a decision waiting: 6 of them at the start), by one.
   const beforePick = await heroNumbersOnPage();
   const pegBox = sec("flight").locator(".q-ints > .q-int", { has: app.locator(".z-carl", { hasText: "Pegasus" }) });
-  await pegBox.locator(":is(.z-bt, .q-rslot) .q-take", { hasText: "Seç" }).click();
+  // (Karar Masası, 23 Ekim: our pick among several is a deck; "Seç 2" opens the drawer, its Seç chooses)
+  await pegBox.locator(".q-rslot .q-rsec").click();
+  const pegDrawer = app.locator("aside.dr");
+  await pegDrawer.locator(".dr-op", { has: app.locator(".dr-nm", { hasText: "Pegasus" }) }).locator(".dr-sec").click();
+  await pegDrawer.waitFor({ state: "detached" });
   await sec("flight").locator('.q-ints > .q-int[data-st="sel"]', { has: app.locator(".z-carl", { hasText: "Pegasus" }) }).waitFor();
+  // Chosen among two: the deck stays under it, "↩ 1 seçenek daha" opens the drawer, the chosen one marked, "Buna geç" on the other.
+  await pegBox.locator(".q-more", { hasText: "↩ 1 seçenek daha" }).click();
+  await pegDrawer.waitFor();
+  assert.equal(flat([await pegDrawer.locator(".dr-op.cur .dr-chosen").innerText()])[0], "Seçili");
+  assert.equal(flat([await pegDrawer.locator(".dr-op .dr-sec").innerText()])[0], "Buna geç");
+  await app.keyboard.press("Escape");
+  await pegDrawer.waitFor({ state: "detached" });
   assert.equal(await sec("flight").locator('.q-ints > .q-int[data-st="ai"]').count(), 0, "chosen: no draft left on the flight");
   const afterPick = await heroAgrees("after a pick");
   assert.deepEqual([afterPick.total, afterPick.booked, afterPick.planned, afterPick.open], [beforePick.total, beforePick.booked, beforePick.planned + 1, beforePick.open - 1], `${JSON.stringify(beforePick)} → ${JSON.stringify(afterPick)}`);

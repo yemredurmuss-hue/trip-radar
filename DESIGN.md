@@ -175,13 +175,18 @@ bugünkü sözleriyle kalır, aynı dil onlara ayrı bir adımda geçer.
   önerileri ve siteler) ve yıldızla "AI ara".
 - **Deste:** beyaz kart, ince lila çerçeve ve altında iki ince lila kat; işaretin yerinde üç logolu yelpaze (en iyisi
   önde); söz "7 seçenek", satırda en iyisinin taşıyıcısı, saatleri ve aktarması, fiyatın altında "en iyisi"; sağda
-  "Seç 7" (sayı beyaz kutuda). Desteye basmak da çekmeceyi açar; satırın altında açılan gövde yok.
+  "Seç 7" (sayı beyaz kutuda). Desteye basmak da çekmeceyi açar; satırın altında açılan gövde yok. Arama birden çok
+  seçenek bulunca önerimiz de destedir: önde durur, satırda "✨ önerimiz Turkish · 15:15 → 22:30 · direkt", fiyatın altında
+  "önerimiz", sağda "Seç 3". Tek seçenekse "✨ Önerimiz" ve "Seç" kalır.
 - **Çekmece:** başlıkta uçak; Kaynak yuvası "↗" ile sitenin sayfasına gider; gezginin kendi kaydı altın çerçeveli,
   "Senin · Kiwi.com'dan kaydettin" (`i18n.fromName`); en altta "+ Seninkini ekle: bağlantıyı bırak ya da ekran görüntüsünü
   sürükle", siteler ve "AI yeniden arasın".
 - **Seçtin:** seçince çekmece kapanır, satır kendiliğinden açık bilet olur; mor 1,5 px çerçeve, köşede yarım dolu halka,
   söz "Seçtin", sağda "Satın al ↗". Seçili bir uçuş her açılışta açık gelir, kapatılabilir (kapatılan, yeniden seçilene ya
-  da alınana dek kapalı kalır). Değiştir tek seçenek olsa da durur; aynı çekmeceyi seçili olan işaretli açar.
+  da alınana dek kapalı kalır). Değiştir tek seçenek olsa da durur; aynı çekmeceyi seçili olan işaretli açar. Başka
+  seçenekler varken deste altında kalır: iki ince lila kat ve kartın alt kenarında "↩ 6 seçenek daha"; basınca çekmece,
+  seçili olan "Seçili", ötekilerde "Buna geç". Geçince alttan bir şey çıkmaz; yeni seçilen üste, bırakılan desteye döner.
+  Alınınca deste kalkar.
 - **Bilet alındı:** düğme gider; sağda yeşil koçan ve üstünde yuvarlak, çift halkalı, dik damga ("Alındı" ve işaretlendiği
   gün; "Ben hallettim"de "Senin"), yarısı yırtık çizgiye taşar; koçanda "Bileti ekle" bağlantısı. Kart açık gelir; açıkken
   damga biletin yanında 96 px, altında "Son adım: bileti buraya bırak". Basılırken mühür hareketi (`mv-stamp`).

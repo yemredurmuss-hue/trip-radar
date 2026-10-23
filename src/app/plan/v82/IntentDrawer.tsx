@@ -63,14 +63,14 @@ function Rank({ o, off, solo = false }: { o: OptionVM; off?: boolean; solo?: boo
   );
 }
 
-function Pick({ o, current, onPick, big = false }: { o: OptionVM; current: boolean; onPick: () => void; big?: boolean }) {
+function Pick({ o, current, onPick, big = false, swap = false }: { o: OptionVM; current: boolean; onPick: () => void; big?: boolean; swap?: boolean }) {
   return current ? (
     <span className={`dr-chosen${big ? " big" : ""}`} aria-label={L(`${o.title}: seçili`, `${o.title}: chosen`)}>
       <Ic name="check" size={14} stroke={3} /> {L("Seçili", "Chosen")}
     </span>
   ) : (
-    <button type="button" className={`q-pick dr-sec${big ? " big" : ""}`} onClick={onPick} aria-label={L(`${o.title}: seç`, `Choose ${o.title}`)}>
-      {L("Seç", "Choose")}
+    <button type="button" className={`q-pick dr-sec${big ? " big" : ""}`} onClick={onPick} aria-label={swap ? L(`${o.title}: buna geç`, `Switch to ${o.title}`) : L(`${o.title}: seç`, `Choose ${o.title}`)}>
+      {swap ? L("Buna geç", "Switch to it") : L("Seç", "Choose")}
     </button>
   );
 }
@@ -329,7 +329,8 @@ export function TicketOption({ o, vm, art, current, why, parts, off, solo, onPic
           {o.ticket?.each && <small>{L(`kişi başı · ${o.ticket.total} toplam`, `each · ${o.ticket.total} in all`)}</small>}
           <Fresh o={o} />
         </span>
-        {pick ?? <Pick o={o} current={current} onPick={onPick} />}
+        {/* (Karar Masası: a flight chosen, the others say "Buna geç"; the one given up goes back among them) */}
+        {pick ?? <Pick o={o} current={current} onPick={onPick} swap={vm.kind === "flight" && vm.status === "chosen"} />}
       </div>
       <Slots slots={slots} url={o.item.url} compact go={vm.kind === "flight"} />
       {!solo && <Neden o={o} why={why} parts={parts} />}

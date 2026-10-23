@@ -17,8 +17,9 @@ const find = (list: IntentVM[], key: string) => list.find((v) => v.key === key)!
 const text = (parts: { text: string }[]) => parts.map((p) => p.text).join(" · ");
 
 describe("rowView: a flight, a train, a way of travel (the thin row)", () => {
-  it("our pick: its hours, its stops, what one pays, Seç (still among the options)", () => {
-    const r = rowView(find(jp(), "flight:ist-hnd"));
+  it("our pick alone: its hours, its stops, what one pays, Seç (still among the options)", () => {
+    const f = find(jp(), "flight:ist-hnd");
+    const r = rowView({ ...f, options: f.options.filter((o) => o.id === f.chosen!.id), more: [], optionCount: 1 });
     expect(r.face).toBe("ticket");
     expect(r.lead).toBeNull();
     expect(r.stage).toBe("options");
@@ -28,6 +29,21 @@ describe("rowView: a flight, a train, a way of travel (the thin row)", () => {
     expect(r.line[0].tone).toBe("bold");
     expect(r.figure).toEqual({ big: "€660", small: "kişi başı" });
     expect(r.slot).toEqual({ kind: "take" });
+  });
+  it("our pick among several: a deck with it in front (Karar Masası, 23 Ekim): 2 seçenek, its line, Seç 2", () => {
+    const r = rowView(find(jp(), "flight:ist-hnd"));
+    expect(r.stage).toBe("options");
+    expect(r.stageWord).toBe("2 seçenek");
+    expect(text(r.line)).toMatch(/^✨ önerimiz .* · 20:10 → 20:55 · 1 aktarma$/);
+    expect(r.figure).toEqual({ big: "€660", small: "önerimiz" });
+    expect(r.slot).toEqual({ kind: "pick", count: 2 });
+    expect(r.rest).toBe(0);
+  });
+  it("chosen among several: the deck stays under it, rest counts the others; one alone, none", () => {
+    const f = find(jp(), "flight:ist-hnd");
+    expect(rowView({ ...f, status: "chosen" }).rest).toBe(1);
+    expect(rowView({ ...f, status: "chosen", options: f.options.filter((o) => o.id === f.chosen!.id), more: [] }).rest).toBe(0);
+    expect(rowView({ ...f, status: "booked" }).rest).toBe(0);
   });
   it("bought with its code: the ticket in hand, its code on the stub, nothing to press", () => {
     const r = rowView(find(jp(), "flight:kix-ist"));

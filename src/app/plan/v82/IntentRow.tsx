@@ -454,7 +454,9 @@ export function TicketRow({ vm, view, art, date, on, ticket, links, onDrawer, me
   const press = () => (deck ? on.pick() : setOpen(!open));
   // (Karar Masası: while the AI or the source looks, the hours and the price load where they will stand)
   const loading = Boolean(view.busy) && !deciding;
-  const all = [...(vm.chosen ? [vm.chosen] : []), ...vm.options, ...(vm.more ?? [])];
+  const all = [...(vm.chosen ? [vm.chosen] : []), ...vm.options, ...(vm.more ?? [])].filter((o, i, list) => list.findIndex((x) => x.id === o.id) === i);
+  // (Karar Masası: chosen, the deck stays under it; "↩ 6 seçenek daha" opens the drawer, the chosen one marked there)
+  const rest = view.desk && !deck && onDrawer ? (view.rest ?? 0) : 0;
   const body = deck ? null : deciding ? (
     <div className="q-rp2">
       <div className="q-rhalf">
@@ -484,7 +486,7 @@ export function TicketRow({ vm, view, art, date, on, ticket, links, onDrawer, me
     ticket
   );
   return (
-    <div className={`q-row${open && !deck ? " open" : ""}${over ? " drop" : ""}`} data-face="ticket" {...drop}>
+    <div className={`q-row${open && !deck ? " open" : ""}${over ? " drop" : ""}${rest ? " rest" : ""}`} data-face="ticket" {...drop}>
       <RailCol date={date} editable={editable} />
       <div className="q-rcard">
         <div
@@ -555,6 +557,11 @@ export function TicketRow({ vm, view, art, date, on, ticket, links, onDrawer, me
           {open && acts && <div className="q-racts">{acts}</div>}
         </div>
         {under}
+        {rest > 0 && onDrawer && (
+          <button type="button" className="q-more" onClick={onDrawer} aria-label={L(`Öteki ${rest} seçenek`, `The other ${rest} options`)}>
+            {L(`↩ ${rest} seçenek daha`, `↩ ${rest} more ${rest === 1 ? "option" : "options"}`)}
+          </button>
+        )}
       </div>
     </div>
   );

@@ -61,13 +61,17 @@ const flights = () => {
 };
 
 describe("koruma: uçuşta kalan hâller", () => {
-  it("✨ Önerimiz and Senin kaydın wait for a yes with Seç", () => {
+  it("✨ Önerimiz alone and Senin kaydın wait for a yes with Seç; among several it is a deck (23 Ekim)", () => {
     const pick = flights().find((v) => v.status === "suggested" && v.chosen)!;
     expect(pick).toBeTruthy();
-    const ours = rowView({ ...pick, own: false });
+    const alone = { ...pick, own: false, options: pick.options.filter((o) => o.id === pick.chosen!.id), more: [], optionCount: 1 };
+    const ours = rowView(alone);
     expect(ours.stageWord).toBe("✨ Önerimiz");
     expect(ours.slot).toEqual({ kind: "take" });
     expect(rowView({ ...pick, own: true }).stageWord).toBe("Senin kaydın");
+    const deck = rowView({ ...pick, own: false });
+    expect(deck.stageWord).toBe(`${deck.count} seçenek`);
+    expect(deck.slot).toEqual({ kind: "pick", count: deck.count });
   });
   it("Ben hallettim: Sen hallettin, its ticket still to add", () => {
     const f = flights().find((v) => v.chosen)!;
