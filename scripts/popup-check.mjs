@@ -30,7 +30,7 @@ async function open(v, name) {
       runtime: { lastError: undefined, getURL: (p) => `chrome-extension://x/${p}`, getManifest: () => ({ version }), sendMessage: (m, cb = () => undefined) => (window.__asked.push(m), setTimeout(() => cb(m.type === "popup:view" ? v : m.type === "popup:save" ? { captureId: "c1", tripTitle: m.pick?.tripId === "bali" ? "Bali" : "Portekiz", deck: "Konaklama" } : true), 30)) },
       tabs: { query: async () => [{ id: 7 }], sendMessage: async () => undefined, create: async () => undefined, update: async () => undefined },
       storage: { local: { get: async () => ({ lang: "tr" }), set: async () => undefined, remove: async () => undefined } },
-      permissions: { contains: async () => true, request: async () => true, remove: async () => true },
+      permissions: { contains: async () => v.along, request: async () => true, remove: async () => true },
       action: { setBadgeText: async () => undefined },
     };
   }, [v, VERSION]);
@@ -86,5 +86,8 @@ p = await open(view({ trip: { id: "pt", title: "Portekiz" }, country: "Portekiz"
 await p.getByRole("button", { name: /Fikir olarak ekle/ }).click();
 await p.locator(".pk-done").waitFor();
 assert.equal((await p.evaluate(() => window.__asked.find((m) => m.type === "popup:save"))).idea, true);
+// 6. A travel site without the switch: the switch said first, at the top.
+p = await open(view({ trip: { id: "pt", title: "Portekiz" }, country: "Portekiz", trips, picks: [], saved: false, names: [] }, { along: false }), "7-switch");
+assert.match(await p.locator(".pk-switch").innerText(), /Bu sitede \+ ve "Desteye ekle" kapalı[\s\S]*Seyahat sitelerinde benle gel/);
 console.log(JSON.stringify({ ok: true }));
 await browser.close();

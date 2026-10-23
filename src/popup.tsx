@@ -83,6 +83,13 @@ function Popup() {
         <Done saved={saved} onUndo={() => void ask({ type: "popup:undo", captureId: saved.captureId }).then(() => window.close())} />
       ) : (
         <>
+          {/* (a travel site without the switch: said first, above everything, so the "+" isn't missed) */}
+          {view.site && view.travelSite && !view.along && tabId != null && (
+            <div className="pk-switch">
+              <b>{L("Bu sitede + ve \"Desteye ekle\" kapalı", "The + and \"Add to the deck\" are off on this site")}</b>
+              <AlongBox site={view.site} travel tabId={tabId} along={false} />
+            </div>
+          )}
           <div className="pk-hd">
             <span className="pk-fav" aria-hidden>
               {companionName(view.site ?? "").slice(0, 1).toLocaleUpperCase("tr")}
@@ -132,7 +139,7 @@ function Popup() {
               {L("Bu sayfadan seç: sonuçları işaretle, hepsini ekle", "Pick from this page: tick the results, add them all")}
             </button>
           )}
-          {view.site && tabId != null && <AlongBox site={view.site} travel={view.travelSite} tabId={tabId} along={view.along} />}
+          {view.site && tabId != null && !(view.travelSite && !view.along) && <AlongBox site={view.site} travel={view.travelSite} tabId={tabId} along={view.along} />}
           {!view.key && <p className="warning">{L("AI'ın okuması için ücretsiz Gemini anahtarını bir kez bağla; kayıt bekler.", "Connect a free Gemini key once so the AI can read it; the save waits.")}</p>}
           <button type="button" className="btn-link pk-open" onClick={() => void openBoard(where?.trip ? `#trip=${encodeURIComponent(where.trip.id)}` : "")}>
             {L("Planı aç", "Open the plan")}
