@@ -19,6 +19,7 @@ import { currentFor, loadCurrent, loadRules, rememberTrip, ruleFor, RULE_SLACK_D
 import type { Item, Trip } from "./types";
 import { flightSearchOf, parseUrl } from "./url";
 import { seenCheaper } from "./priceWatchWorker";
+import { pocketFor, pocketRemove, pocketRetry } from "./pocket";
 
 const SCRIPT_ID = "trip-radar-companion";
 
@@ -335,6 +336,27 @@ function answerOn(m: CompanionAsk, url: string, sender: chrome.runtime.MessageSe
       })();
     case "desk:open":
       return openBoard(`#trip=${encodeURIComponent(text(m.tripId, 80))}`).then(() => ({ ok: true }));
+    case "desk:pocket":
+      // (Gezi cebi on the page's edge: the trip asked for, else the page's own, else the current one)
+      return (async () => pocketFor(text(m.tripId, 80) || (await whereFor(url, "")).trip?.id || null))();
+    case "desk:current":
+      // (the trip on the pocket's top changed: what comes next goes there; a new one for the page's country)
+      return (async () => {
+        const pick = pickOf(m);
+        const d = await db();
+        const trip = pick.tripId ? await d.get("trips", pick.tripId.slice(0, 80)) : undefined;
+        if (trip && !isDemoTrip(trip)) {
+          await setCurrent(trip.id, pageCountry(url, "", await loadHome().catch(() => null)));
+          return { ok: true, tripId: trip.id, title: trip.title };
+        }
+        if (!pick.newTrip) return { ok: false, tripId: null, title: null };
+        const made = (await bindFor(url, "", { newTrip: true, remember: false })).forTripId ?? null;
+        return { ok: Boolean(made), tripId: made, title: made ? ((await d.get("trips", made))?.title ?? null) : null };
+      })();
+    case "desk:remove":
+      return pocketRemove(text(m.id, 90)).then((ok) => ({ ok }));
+    case "desk:retry":
+      return pocketRetry(text(m.id, 90), process).then((ok) => ({ ok }));
     default:
       return Promise.resolve(null);
   }

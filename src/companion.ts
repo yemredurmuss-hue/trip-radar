@@ -1,10 +1,11 @@
 // Benle gezen eklenti, seviye 2: "Sitede benle gel" (lib/companion.ts). Runs only on the sites the traveller allowed one by
 // one. On a flight search for a flight on the plan a thin strip says which row it is for ("Bangkok ✈ İstanbul, 2 Nis
 // planında · destende 7 seçenek"); each result in view gets a "+" (and where it stands against the deck); a hotel's or a
-// tour's list gets the same "+", and its own page a small "Desteye ekle" at the bottom right (0.41.0). The first "+" for a
-// country not yet answered asks which trip, here on the page (Hangi gezi, lib/tripRules.ts). Everything it draws is in its
-// own closed shadow root, over the page, never inside the site's own elements; nothing is saved until "+" (or "Desteye
-// ekle", "Ekrandakileri desteye ekle") is pressed; no link on the site is changed.
+// tour's list gets the same "+". On the right edge the gezi cebi (0.44.0, lib/pocket.ts): the current trip, this page ("+ Konaklama
+// destesine ekle" on a place's own page, "Sonuçlardan seç" on a list), what was added last with how each stands, the
+// trip's board. The first "+" for a country not yet answered asks which trip, here on the page (Hangi gezi,
+// lib/tripRules.ts). Everything it draws is in its own closed shadow root, over the page, never inside the site's own
+// elements; nothing is saved until a press; no link on the site is changed.
 import {
   cardFacts,
   cardLabel,
@@ -25,6 +26,7 @@ import {
   type SiteKind,
   type TripPick,
 } from "./lib/companion";
+import type { Pocket, PocketRow } from "./lib/pocket";
 import { formatPrice } from "./lib/items";
 import { L, loadLang } from "./lib/i18n";
 import { collectPage } from "./lib/pagecapture";
@@ -35,11 +37,25 @@ declare global {
   }
 }
 
+/** The extension still there: after an update the page's old script is cut off from it (Chrome's "context invalidated"). */
+const alive = (): boolean => {
+  try {
+    return Boolean(chrome.runtime?.id);
+  } catch {
+    return false;
+  }
+};
+let onStale: () => void = () => undefined;
 const ask = <T,>(message: CompanionAsk): Promise<T | null> =>
   new Promise((done) => {
+    if (!alive()) {
+      onStale();
+      return done(null);
+    }
     try {
       chrome.runtime.sendMessage(message, (reply: T | null) => done(chrome.runtime.lastError ? null : (reply ?? null)));
     } catch {
+      if (!alive()) onStale();
       done(null);
     }
   });
@@ -70,14 +86,51 @@ button:focus-visible, .plus:focus-visible { outline: 3px solid #cfc7ff; outline-
 .tag.in { background: #e7f5ec; color: #1f7a45; box-shadow: inset 0 0 0 1px #bfe3c9; }
 .dock { position: fixed; z-index: 2147483646; right: 20px; bottom: 20px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
   font: 600 13px/1.4 "Plus Jakarta Sans", system-ui, sans-serif; color: #1c1a33; }
-.tip { max-width: 270px; padding: 8px 12px; border-radius: 10px; background: #1c1a33; color: #fff; font-size: 12px; }
-.tip span { color: #c9c2f5; }
-.pill { display: flex; align-items: center; border-radius: 99px; background: #5b45e0; box-shadow: 0 8px 22px -6px rgba(91,69,224,.6); overflow: hidden; }
-.pill.done { background: #1f7a45; box-shadow: 0 8px 22px -6px rgba(31,122,69,.5); }
-.pill button { font: 800 14px/1 "Plus Jakarta Sans", system-ui, sans-serif; border: 0; background: transparent; color: #fff; cursor: pointer; padding: 11px 16px; display: flex; align-items: center; gap: 8px; }
-.pill button i { font-style: normal; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 99px; background: #fff; color: #5b45e0; font-size: 15px; }
-.pill.done button i { color: #1f7a45; font-size: 12px; }
-.pill button.x { padding: 11px 12px; color: #d9d3fb; font-weight: 600; border-left: 1px solid rgba(255,255,255,.25); }
+.tab { position: fixed; z-index: 2147483646; right: 0; top: 38vh; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 8px 7px 8px 9px; border: 0;
+  border-radius: 14px 0 0 14px; background: #1c1a33; color: #fff; cursor: pointer; box-shadow: -6px 6px 22px -8px rgba(28,26,51,.55); font: 800 12px/1 "Plus Jakarta Sans", system-ui, sans-serif; }
+.tab .th { width: 30px; height: 30px; border-radius: 8px; overflow: hidden; display: grid; place-items: center; background: #3b2f7a; color: #fff; font-size: 13px; }
+.tab .th img { width: 100%; height: 100%; object-fit: cover; }
+.tab .n { min-width: 20px; padding: 3px 5px; border-radius: 99px; background: #5b45e0; text-align: center; }
+.tab .n.bump { animation: bump 380ms cubic-bezier(.3,.7,.2,1.4); }
+.tab .add { width: 22px; height: 22px; border-radius: 99px; background: #fff; color: #5b45e0; display: grid; place-items: center; font-size: 15px; }
+@keyframes bump { 0% { transform: scale(1); } 40% { transform: scale(1.45); background: #1f7a45; } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .tab .n.bump { animation: none; } }
+.cep { position: fixed; z-index: 2147483646; right: 0; top: 64px; width: 304px; max-height: calc(100vh - 96px); overflow: auto; border-radius: 14px 0 0 14px; background: #fff;
+  box-shadow: -8px 0 28px rgba(28,26,51,.22), 0 0 0 1px #dcd8e8; display: flex; flex-direction: column; font: 600 12.5px/1.4 "Plus Jakarta Sans", system-ui, sans-serif; color: #1c1a33; }
+.cep .hd { display: flex; align-items: center; gap: 4px; padding: 8px 6px 8px 12px; background: linear-gradient(90deg,#1c1a33,#3b2f7a); color: #fff; }
+.cep .hd .tp { all: unset; flex: 1; min-width: 0; display: flex; align-items: center; gap: 9px; cursor: pointer; border-radius: 8px; }
+.cep .hd .cl { border: 0; background: none; color: #cfc8f5; font: 700 18px/1 system-ui, sans-serif; cursor: pointer; padding: 4px 8px; border-radius: 8px; }
+.cep .hd .cl:hover { background: rgba(255,255,255,.12); }
+.cep .hd .th { width: 32px; height: 32px; border-radius: 8px; overflow: hidden; flex: none; display: grid; place-items: center; background: rgba(255,255,255,.14); font-weight: 800; }
+.cep .hd .th img { width: 100%; height: 100%; object-fit: cover; }
+.cep .hd span.t { min-width: 0; display: grid; }
+.cep .hd b { font-size: 13px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cep .hd small { font-size: 11px; color: #cfc8f5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cep .hd em { margin-left: auto; font-style: normal; color: #cfc8f5; }
+.cep .bd { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.cep .k { font-size: 10.5px; font-weight: 800; color: #8e8aa6; }
+.cep .pg { font-size: 13px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.cep .go { font: 800 13px/1.2 "Plus Jakarta Sans", system-ui, sans-serif; border: 0; border-radius: 10px; padding: 10px; background: #5b45e0; color: #fff; cursor: pointer; }
+.cep .go.done { background: #e7f5ec; color: #1f7a45; cursor: default; }
+.cep .go:disabled { cursor: default; }
+.cep .note { font-size: 11.5px; color: #5d5a78; line-height: 1.45; }
+.cep .lnk { align-self: flex-start; border: 0; background: none; padding: 0; color: #4a36c9; font: 800 12px/1.2 "Plus Jakarta Sans", system-ui, sans-serif; cursor: pointer; }
+.cep .r { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.cep .r .th { width: 28px; height: 28px; border-radius: 7px; overflow: hidden; flex: none; display: grid; place-items: center; background: #efecff; color: #4a36c9; font-weight: 800; font-size: 12px; }
+.cep .r .th img { width: 100%; height: 100%; object-fit: cover; }
+.cep .r span.t { flex: 1; min-width: 0; display: grid; }
+.cep .r b { font-weight: 750; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cep .r .lnk { align-self: center; font-size: 11px; }
+.cep .r small { font-size: 10.5px; color: #5d5a78; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cep .st { flex: none; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 99px; background: #e7f5ec; color: #1f7a45; }
+.cep .st.reading { background: #efecff; color: #4a36c9; }
+.cep .st.failed { background: #fde8e4; color: #b23a1d; }
+.cep .x { flex: none; border: 0; background: none; color: #8e8aa6; font: 800 15px/1 system-ui, sans-serif; cursor: pointer; padding: 2px 4px; border-radius: 6px; }
+.cep .x:hover { color: #b23a1d; background: #f4f2ff; }
+.cep .warn { padding: 8px 10px; border-radius: 10px; background: #fff7e8; color: #8a5a00; font-size: 11.5px; font-weight: 700; }
+.cep .ft { display: flex; justify-content: space-between; gap: 8px; padding: 9px 12px; border-top: 1px solid #efedf5; }
+.cep .ft button { border: 0; background: none; padding: 0; cursor: pointer; font: 800 12px/1.2 "Plus Jakarta Sans", system-ui, sans-serif; color: #4a36c9; }
+.cep .ft button.q { color: #8e8aa6; font-weight: 700; }
 .ask { width: 340px; max-height: min(460px, calc(100vh - 120px)); overflow: auto; padding: 14px; border-radius: 14px; background: #fff;
   box-shadow: 0 0 0 1px #dcd8e8, 0 18px 40px rgba(28,26,51,.22); display: flex; flex-direction: column; gap: 8px; }
 .ask b { font-size: 14.5px; font-weight: 800; }
@@ -153,6 +206,8 @@ function start() {
   const site = companionSiteOf(location.href) ?? originOf(location.href) ?? "";
   const kind: SiteKind = siteKindOf(site);
   const timed = timedSite(site);
+  // (an update left the old script's drawing on the page: the new one takes its place)
+  document.getElementById("trip-radar-companion")?.remove();
   const host = document.createElement("div");
   host.id = "trip-radar-companion";
   const root = host.attachShadow({ mode: "closed" });
@@ -165,7 +220,8 @@ function start() {
   layer.className = "layer";
   const dock = document.createElement("div");
   dock.className = "dock";
-  root.append(style, strip, layer, dock);
+  const side = document.createElement("div");
+  root.append(style, strip, layer, side, dock);
   document.documentElement.append(host);
 
   let route: CompanionRoute | null = null;
@@ -173,8 +229,12 @@ function start() {
   let href = "";
   let closed = false;
   let single: SiteKind | null = null;
-  let pillHidden = false;
-  let pillState: "idle" | "busy" | "done" = "idle";
+  // Gezi cebi: hidden on this site (its ×), open or not, what it shows; this page's "Desteye ekle".
+  let sideHidden = false;
+  let sideOpen = false;
+  let pocket: Pocket | null = null;
+  let pageState: "idle" | "busy" | "done" = "idle";
+  let stale = false;
   let toast: string | null = null;
   let asking: { what: string; then: (pick: TripPick) => void } | null = null;
   let cards: { el: Element; facts: CardFacts; pin: HTMLDivElement }[] = [];
@@ -183,6 +243,13 @@ function start() {
   // (fiyat izleme: the chosen flight's price here, asked once a page; its answer, what it saves)
   let seen: { href: string; save: number | null } | null = null;
   const HIDE = `pillHidden:${location.hostname}`;
+  onStale = () => {
+    if (stale) return;
+    stale = true;
+    sideOpen = false;
+    drawSide();
+    drawDock();
+  };
 
   /** The trip it goes to without asking: the route's, the remembered one; null with trips to ask among: asked first. */
   const knownTrip = (): { id: string; title: string } | null => (route ? { id: route.tripId, title: route.title } : (where?.trip ?? null));
@@ -190,7 +257,10 @@ function start() {
 
   /** Hangi gezi on the page: asked once (its answer kept as the country's trip when said so), then sent. */
   const withTrip = (what: string, send: (pick: TripPick) => Promise<boolean>) => {
-    if (!mustAsk()) return void send({});
+    // (the trip on the pocket's top is where it goes: said so, so the save and the pocket never disagree)
+    if (!mustAsk()) return void send(!route && knownTrip() ? { tripId: knownTrip()!.id } : {});
+    sideOpen = false;
+    drawSide();
     asking = {
       what,
       then: (pick) => {
@@ -223,6 +293,7 @@ function start() {
     // (the trip it went to is the one the next "+" goes to, without asking)
     if (where && r.tripId && title && !where.trip) where = { ...where, trip: { id: r.tripId, title } };
     drawDock();
+    void loadPocket(true);
     clearTimeout(toastTimer);
     toastTimer = window.setTimeout(() => {
       toast = null;
@@ -249,8 +320,10 @@ function start() {
     chip.style.top = `${Math.max(0, from.top + from.height / 2 - 28)}px`;
     chip.style.width = `${w}px`;
     root.append(chip);
-    const dx = innerWidth - 36 - (from.left + from.width / 2);
-    const dy = -(from.top + from.height / 2) + 4;
+    // (into the pocket's tab on the edge when it shows, else the toolbar's corner)
+    const to = side.querySelector(".tab")?.getBoundingClientRect();
+    const dx = (to ? to.left + to.width / 2 : innerWidth - 36) - (from.left + from.width / 2);
+    const dy = (to ? to.top + to.height / 2 : 4) - (from.top + from.height / 2);
     chip
       .animate(
         [
@@ -288,6 +361,21 @@ function start() {
 
   const drawDock = () => {
     dock.replaceChildren();
+    if (stale) {
+      // (the extension was updated while this page was open: said, never broken in silence)
+      const t = document.createElement("div");
+      t.className = "toast";
+      t.setAttribute("role", "status");
+      const words = document.createElement("span");
+      words.textContent = L("Trip Radar yenilendi; bu sayfayı yenileyince + geri gelir.", "Trip Radar was updated; reload this page to get the + back.");
+      const again = document.createElement("button");
+      again.type = "button";
+      again.textContent = L("Sayfayı yenile", "Reload");
+      again.onclick = () => location.reload();
+      t.append(words, again);
+      dock.append(t);
+      return;
+    }
     if (closed) return;
     if (asking) {
       const box = document.createElement("div");
@@ -401,7 +489,26 @@ function start() {
       const bar = document.createElement("div");
       bar.className = "toast sel";
       const words = document.createElement("span");
-      words.textContent = chosen.size ? L(`${chosen.size} seçili`, `${chosen.size} picked`) : L("Eklemek istediklerini işaretle", "Tick what to add");
+      words.textContent = chosen.size ? L(`${chosen.size} seçili`, `${chosen.size} picked`) : cards.length ? L("Eklemek istediklerini işaretle", "Tick what to add") : L("Bu sayfada sonuç bulamadım", "No results found on this page");
+      if (!cards.length) {
+        // (the site's layout changed, no "+" found: what's in view is read instead)
+        const shot = document.createElement("button");
+        shot.type = "button";
+        shot.className = "go";
+        shot.textContent = L("Ekrandakini ekle", "Add what's on screen");
+        shot.onclick = () => {
+          selecting = false;
+          drawCards();
+          addView();
+        };
+        const no = document.createElement("button");
+        no.type = "button";
+        no.textContent = L("Vazgeç", "Cancel");
+        no.onclick = () => ((selecting = false), drawDock());
+        bar.append(words, shot, no);
+        dock.append(bar);
+        return;
+      }
       const go = document.createElement("button");
       go.type = "button";
       go.className = "go";
@@ -467,57 +574,245 @@ function start() {
             toast = L("Geri alındı", "Taken back");
             if (done.el) added.delete(done.el);
             last = null;
-            if (single) pillState = "idle";
+            if (single) pageState = "idle";
             drawCards();
             drawDock();
+            void loadPocket();
           });
         t.append(change, undo);
       }
       dock.append(t);
     }
-    if (!single || pillHidden) return;
-    // "Desteye ekle" (E3): a hotel's or a tour's own page; where it goes said before it's pressed.
-    const trip = knownTrip();
-    if (pillState === "idle" && !where?.saved) {
-      const tip = document.createElement("div");
-      tip.className = "tip";
-      tip.textContent = trip ? L(`${trip.title} gezisi · ${deckWord(single)} destesine girer`, `${trip.title} · joins the ${deckWord(single)} deck`) : mustAsk() ? L("Basınca hangi gezi diye sorarım", "I'll ask which trip when you press it") : L("Basınca yeni bir gezi açarım", "I'll start a trip when you press it");
-      dock.append(tip);
-    }
-    const pill = document.createElement("div");
-    const done = pillState === "done" || (pillState === "idle" && Boolean(where?.saved));
-    pill.className = `pill${done ? " done" : ""}`;
-    const add = document.createElement("button");
-    add.type = "button";
-    const icon = document.createElement("i");
-    icon.textContent = done ? "✓" : pillState === "busy" ? "···" : "+";
-    add.append(icon, document.createTextNode(pillState === "busy" ? L("Okunuyor", "Reading") : done ? (pillState === "done" ? L("Destede", "In the deck") : L("Destende", "In your deck")) : L("Desteye ekle", "Add to the deck")));
-    add.disabled = pillState !== "idle" || done;
-    add.onclick = () =>
-      withTrip(whatOf(single!), async (pick) => {
-        pillState = "busy";
+  };
+
+  /** What the pocket shows: the trip the page goes to (else the current one) and what was added to it last. */
+  const loadPocket = async (bump = false) => {
+    const p = await ask<Pocket>({ type: "desk:pocket", tripId: knownTrip()?.id ?? null });
+    if (!p) return;
+    pocket = p;
+    drawSide(bump);
+  };
+
+  /** "+ Konaklama destesine ekle" on a place's own page: the page as the toolbar reads it, its screenshot too. */
+  const addPage = () =>
+    withTrip(whatOf(single ?? kind), async (pick) => {
+      pageState = "busy";
+      drawSide();
+      const ok = await ask<SavedOnSite>({ type: "desk:page", url: location.href, snapshot: collectPage(), ...pick });
+      pageState = ok?.ok ? "done" : "idle";
+      drawSide();
+      if (ok?.ok) {
+        const h = document.querySelector("h1");
+        fly((h ?? document.body).getBoundingClientRect(), photoOf(document.body), document.title);
+        said(ok);
+      }
+      return Boolean(ok?.ok);
+    });
+  /** "Ekrandakini ekle": what is in view, with its screenshot (a list whose results aren't found, any other page). */
+  const addView = () =>
+    withTrip(L("Ekrandakiler", "What's on screen"), async (pick) => {
+      const r = await ask<SavedOnSite>({ type: "desk:shot", url: location.href, title: document.title, text: collectPage().viewportText.slice(0, 12_000), ...pick });
+      if (r?.ok) said(r);
+      return Boolean(r?.ok);
+    });
+
+  const thumb = (photo: string | null | undefined, title: string) => {
+    const th = document.createElement("span");
+    th.className = "th";
+    const initial = () => void (th.textContent = title.slice(0, 1).toLocaleUpperCase("tr"));
+    if (photo) {
+      const img = document.createElement("img");
+      img.src = photo;
+      img.alt = "";
+      img.referrerPolicy = "no-referrer";
+      img.onerror = () => (img.remove(), initial());
+      th.append(img);
+    } else initial();
+    return th;
+  };
+  const twoLines = (title: string, sub: string) => {
+    const t = document.createElement("span");
+    t.className = "t";
+    const b = document.createElement("b");
+    b.textContent = title;
+    const small = document.createElement("small");
+    small.textContent = sub;
+    t.append(b, small);
+    return t;
+  };
+  const button = (cls: string, text: string, onclick: () => void) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = cls;
+    b.textContent = text;
+    b.onclick = onclick;
+    return b;
+  };
+  const STATE_WORD: Record<PocketRow["state"], () => string> = {
+    in: () => L("destede", "in the deck"),
+    reading: () => L("okunuyor", "being read"),
+    failed: () => L("okunamadı", "couldn't read"),
+  };
+
+  /** "Bundan sonrakiler hangi geziye?": the trip on the pocket's top changed; what comes next goes there. */
+  const changeTrip = () => {
+    if (!where?.trips.length) return;
+    asking = {
+      what: L("Bundan sonrakiler", "What comes next"),
+      then: (pick) => {
+        asking = null;
         drawDock();
-        const ok = await ask<SavedOnSite>({ type: "desk:page", url: location.href, snapshot: collectPage(), ...pick });
-        pillState = ok?.ok ? "done" : "idle";
-        if (ok?.ok) {
-          const h = document.querySelector("h1");
-          fly((h ?? document.body).getBoundingClientRect(), photoOf(document.body), document.title);
-          said(ok);
-        } else drawDock();
-        return Boolean(ok?.ok);
-      });
-    const x = document.createElement("button");
-    x.type = "button";
-    x.className = "x";
-    x.setAttribute("aria-label", L("Bu sitede gizle", "Hide on this site"));
-    x.textContent = "×";
-    x.onclick = () => {
-      pillHidden = true;
-      void chrome.storage.local.set({ [HIDE]: true }).catch(() => undefined);
-      drawDock();
+        void ask<{ ok: boolean; tripId: string | null; title: string | null }>({ type: "desk:current", ...pick }).then((r) => {
+          if (r?.ok && r.tripId && where) where = { ...where, trip: { id: r.tripId, title: r.title ?? "" } };
+          void loadPocket();
+        });
+      },
     };
-    pill.append(add, x);
-    dock.append(pill);
+    sideOpen = false;
+    drawSide();
+    drawDock();
+  };
+
+  /**
+   * Gezi cebi on the right edge: closed, a small tab (the trip's cover, how many on it, a "+" on a place's own page);
+   * open, the trip, this page, what was added last, the board. One surface for all four jobs.
+   */
+  const drawSide = (bump = false) => {
+    side.replaceChildren();
+    if (stale || closed || sideHidden) return;
+    const trip = pocket?.trip ?? null;
+    const listy = !single && !route && cards.length > 0;
+    if (!trip && !single && !listy) return;
+    const inDeck = pageState === "done" || (pageState === "idle" && Boolean(where?.saved));
+    if (!sideOpen) {
+      const tab = document.createElement("button");
+      tab.type = "button";
+      tab.className = "tab";
+      tab.setAttribute("aria-label", trip ? L(`Gezi cebi: ${trip.title}, ${trip.count} kayıt`, `Trip pocket: ${trip.title}, ${trip.count} saved`) : L("Gezi cebi", "Trip pocket"));
+      tab.append(thumb(trip?.photo, trip?.title ?? "+"));
+      if (trip) {
+        const n = document.createElement("span");
+        n.className = `n${bump ? " bump" : ""}`;
+        n.textContent = String(trip.count);
+        tab.append(n);
+      }
+      if (single && !inDeck) {
+        const add = document.createElement("span");
+        add.className = "add";
+        add.textContent = "+";
+        tab.append(add);
+      }
+      tab.onclick = () => {
+        sideOpen = true;
+        drawSide();
+        void loadPocket();
+      };
+      side.append(tab);
+      return;
+    }
+    const box = document.createElement("div");
+    box.className = "cep";
+    box.setAttribute("role", "dialog");
+    box.setAttribute("aria-label", L("Gezi cebi", "Trip pocket"));
+    const hd = document.createElement("div");
+    hd.className = "hd";
+    const tp = document.createElement("button");
+    tp.type = "button";
+    tp.className = "tp";
+    tp.append(thumb(trip?.photo, trip?.title ?? "+"), twoLines(trip?.title ?? L("Henüz gezi yok", "No trip yet"), trip ? [trip.when, L(`${trip.count} kayıt`, `${trip.count} saved`)].filter(Boolean).join(" · ") : L("İlk ekleme geziyi açar", "The first add starts one")));
+    if (where?.trips.length) {
+      const em = document.createElement("em");
+      em.textContent = "▾";
+      tp.append(em);
+      tp.setAttribute("aria-label", L("Başka gezi seç", "Pick another trip"));
+    }
+    tp.onclick = changeTrip;
+    hd.append(
+      tp,
+      button("cl", "×", () => {
+        sideOpen = false;
+        drawSide();
+      }),
+    );
+    hd.lastElementChild!.setAttribute("aria-label", L("Kapat", "Close"));
+    const bd = document.createElement("div");
+    bd.className = "bd";
+    const k = (text: string) => {
+      const e = document.createElement("span");
+      e.className = "k";
+      e.textContent = text;
+      return e;
+    };
+    const pg = (text: string) => {
+      const e = document.createElement("span");
+      e.className = "pg";
+      e.textContent = text;
+      return e;
+    };
+    bd.append(k(L("Bu sayfa", "This page")));
+    if (single) {
+      bd.append(pg((document.querySelector("h1")?.textContent ?? document.title).replace(/\s+/g, " ").trim()));
+      const go = button(`go${inDeck ? " done" : ""}`, inDeck ? L("✓ Destede", "✓ In the deck") : pageState === "busy" ? L("Okunuyor…", "Reading…") : L(`+ ${deckWord(single)} destesine ekle`, `+ Add to ${deckWord(single)}`), addPage);
+      go.disabled = inDeck || pageState === "busy";
+      bd.append(go);
+    } else if (listy) {
+      bd.append(pg(L(`${cards.length} sonuç görünüyor`, `${cards.length} results in view`)));
+      bd.append(
+        button("go", L("Sonuçlardan seç", "Pick from the results"), () => {
+          selecting = true;
+          chosen.clear();
+          sideOpen = false;
+          drawCards();
+          drawDock();
+          drawSide();
+        }),
+      );
+      const note = document.createElement("span");
+      note.className = "note";
+      note.textContent = L("Ya da her sonucun + düğmesine bas. Listenin tamamı tek kayıt olmaz.", "Or press a result's +. The whole list never becomes one record.");
+      bd.append(note);
+    } else {
+      bd.append(pg(document.title), button("lnk", L("Ekrandakini ekle", "Add what's on screen"), addView));
+    }
+    const rows = pocket?.rows ?? [];
+    if (rows.length) {
+      bd.append(k(L("Son eklenenler", "Added last")));
+      for (const r of rows) {
+        const row = document.createElement("div");
+        row.className = "r";
+        const st = document.createElement("span");
+        st.className = `st ${r.state}`;
+        st.textContent = STATE_WORD[r.state]();
+        row.append(thumb(r.photo, r.title), twoLines(r.title, r.sub), st);
+        if (r.state === "failed") row.append(button("lnk", L("tekrar", "retry"), () => void ask({ type: "desk:retry", id: r.id }).then(() => loadPocket())));
+        const x = button("x", "×", () => {
+          row.remove();
+          void ask({ type: "desk:remove", id: r.id }).then(() => loadPocket());
+        });
+        x.setAttribute("aria-label", L(`${r.title} kaldır`, `Remove ${r.title}`));
+        row.append(x);
+        bd.append(row);
+      }
+    }
+    if (pocket && !pocket.key) {
+      const w = document.createElement("div");
+      w.className = "warn";
+      w.textContent = pocket.waiting ? L(`AI bağlı değil: ${pocket.waiting} kayıt bekliyor, toplamaya devam. Anahtarı Trip Radar'ın ayarlarında bağla.`, `AI not connected: ${pocket.waiting} saves waiting, keep collecting. Connect the key in Trip Radar's settings.`) : L("AI bağlı değil: eklediklerin bu bilgisayarda bekler.", "AI not connected: what you add waits on this computer.");
+      bd.append(w);
+    }
+    const ft = document.createElement("div");
+    ft.className = "ft";
+    ft.append(
+      button("", trip ? L(`${trip.title} panosunu aç ↗`, `Open the ${trip.title} board ↗`) : L("Planı aç ↗", "Open the plan ↗"), () => void ask({ type: "desk:open", tripId: trip?.id ?? "" })),
+      button("q", L("Bu sitede gizle", "Hide on this site"), () => {
+        sideHidden = true;
+        sideOpen = false;
+        void chrome.storage.local.set({ [HIDE]: true }).catch(() => undefined);
+        drawSide();
+      }),
+    );
+    box.append(hd, bd, ft);
+    side.append(box);
   };
 
   const drawStrip = () => {
@@ -648,6 +943,7 @@ function start() {
       cards = [];
       return;
     }
+    const had = cards.length;
     const els = findCards();
     // (the same results as drawn: only placed again, nothing rebuilt; the page's own changes come often)
     if (!force && els.length === cards.length && els.every((el, i) => cards[i]?.el === el)) return place();
@@ -722,13 +1018,15 @@ function start() {
       cards.push({ el, facts: facts[i], pin });
     });
     place();
+    // (results came or went: the pocket's "Bu sayfa" says so)
+    if (Boolean(had) !== Boolean(cards.length) && !sideOpen) drawSide();
   };
 
   const refresh = async () => {
     if (location.href === href) return;
     href = location.href;
     closed = false;
-    pillState = "idle";
+    pageState = "idle";
     asking = null;
     single = offerPageKind(href, ldTypes());
     [route, where] = await Promise.all([
@@ -738,6 +1036,7 @@ function start() {
     drawStrip();
     drawCards();
     drawDock();
+    void loadPocket();
   };
 
   let pending = 0;
@@ -748,7 +1047,7 @@ function start() {
       // (only while the page is in view; the page's own work first)
       if (document.hidden) return;
       // (a hotel's page often says what it is only once its scripts ran)
-      if (!single && (single = offerPageKind(location.href, ldTypes()))) drawDock();
+      if (!single && (single = offerPageKind(location.href, ldTypes()))) drawSide();
       drawCards(false);
     }, 700);
   };
@@ -776,18 +1075,37 @@ function start() {
     { passive: true, capture: true },
   );
   addEventListener("resize", follow, { passive: true });
+  // (the pocket closes on a press elsewhere, or Escape)
+  addEventListener(
+    "pointerdown",
+    (e) => {
+      if (sideOpen && !e.composedPath().includes(host)) {
+        sideOpen = false;
+        drawSide();
+      }
+    },
+    { capture: true, passive: true },
+  );
+  addEventListener("keydown", (e) => {
+    if ((e as KeyboardEvent).key === "Escape" && sideOpen) {
+      sideOpen = false;
+      drawSide();
+    }
+  });
   chrome.runtime.onMessage?.addListener((m: { type?: unknown }) => {
     if (m?.type !== "desk:select" || single) return;
+    sideOpen = false;
+    drawSide();
     selecting = true;
     chosen.clear();
     drawCards();
     drawDock();
   });
-  // (a search page changes its address without loading: the way or the day changed)
-  setInterval(() => void refresh(), 1500);
+  // (a search page changes its address without loading: the way or the day changed; nothing once cut off by an update)
+  const tick = window.setInterval(() => (alive() ? void refresh() : clearInterval(tick)), 1500);
   void chrome.storage.local
     .get(HIDE)
-    .then((got) => (pillHidden = got[HIDE] === true))
+    .then((got) => (sideHidden = got[HIDE] === true))
     .catch(() => undefined)
     .then(() => loadLang().catch(() => undefined))
     .then(refresh);

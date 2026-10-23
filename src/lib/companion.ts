@@ -244,6 +244,10 @@ export type CompanionAsk =
   | { type: "desk:undo"; captureId: string }
   | ({ type: "desk:move"; captureId: string } & TripPick)
   | { type: "desk:open"; tripId: string }
+  | { type: "desk:pocket"; tripId: string | null }
+  | ({ type: "desk:current" } & TripPick)
+  | { type: "desk:remove"; id: string }
+  | { type: "desk:retry"; id: string }
   | { type: "desk:seen"; url: string; price: number; currency: string | null };
 
 export interface CompanionRoute {

@@ -485,6 +485,19 @@ yukarıdaki tablodadır (Seçildi kum, Alındı yeşil).
 - Bilet gibi: ne → ne ("Havalimanı → Otel"), adlar ve saat alt satırda, notlar Ayrıntı'da.
 - Artı ve eksi birkaç kelimedir; sayfada okunan somut şey kendi sözleriyle yazılır ("Karşısında genelev var").
 
+## Gezi cebi (0.44.0, tuval 12 · Plan 3)
+
+- Dört iş, iki yüzey: kartta "+" ve kenarda cep. Topla, gör, seç, git; gerisi panoda (karşılaştırma tablosu, oy, not yok).
+- Cep simgede ve sayfanın sağ kenarında aynı içerik (`lib/pocket.ts`): üstte şu anki gezi (kapak, günler, kaç kayıt; ▾
+  başka gezi), "Bu sayfa", son 5 eklenen ve durumu (destede, okunuyor, okunamadı · tekrar) ile ×, AI
+  bağlı değilse tek satır ("3 kayıt bekliyor, toplamaya devam"), altta "Bali panosunu aç ↗".
+- Kapalıyken sağ kenarda küçük sekme: gezinin kapağı, kayıt sayısı (eklenince zıplar), yerin kendi sayfasında "+". Hop
+  hareketi sekmeye uçar. "Bu sitede gizle" o sitede kapatır. Sağ alttaki "Desteye ekle" hapı kalktı, cebe girdi.
+- Yerin kendi sayfası: "+ Konaklama destesine ekle". Liste: "Sonuçlardan seç" (liste tek kayıt olmaz), sonuç bulunamazsa
+  "Ekrandakini ekle". Eklenemeyen sayfa (yeni sekme) çıkmaz sokak değil: gezi ve son eklenenler yine görünür.
+- Yanlış ekleme: notta "Geri al" ya da cepte ×; yanlış gezi: "Değiştir". Eklenti güncellenince açık sayfanın eski +'sı
+  basınca "Trip Radar yenilendi; bu sayfayı yenileyince + geri gelir · Sayfayı yenile" der.
+
 ## Simgeye basınca (0.43.0)
 
 - Simge kendiliğinden kaydetmez; açılır pencere anında açılır (iskelet), işi arka plan yapar (`lib/popupWorker.ts`), paket

@@ -9,7 +9,9 @@ import { companionName, companionSiteOf, deckWord, offerPageKind, originOf, site
 import { bindFor, whereFor } from "./companionWorker";
 import { watch } from "./contextSave";
 import { db, hasActiveKey } from "./db";
-import { undoSave } from "./saveUndo";
+import { moveSave, undoSave } from "./saveUndo";
+import { pocketFor, pocketRemove, pocketRetry, type Pocket } from "./pocket";
+import { setCurrent } from "./tripRules";
 import { L } from "./i18n";
 import { formatDateRange } from "./items";
 import { collectPage } from "./pagecapture";
@@ -21,8 +23,12 @@ import { downscale } from "./browser";
 
 export type PopupAsk =
   | { type: "popup:view"; tabId: number }
-  | { type: "popup:save"; tabId: number; pick: TripPick; idea?: boolean }
+  | { type: "popup:save"; tabId: number; pick: TripPick; idea?: boolean; inView?: boolean }
   | { type: "popup:undo"; captureId: string }
+  | { type: "popup:move"; captureId: string; pick: TripPick }
+  | { type: "popup:pocket"; tripId: string | null }
+  | { type: "popup:remove"; id: string }
+  | { type: "popup:retry"; id: string }
   | { type: "popup:decide"; tabId: number }
   | { type: "popup:buy"; tabId: number };
 
@@ -44,6 +50,8 @@ export interface PopupView {
   desk: { candidate: { name: string; price: string | null; badge: string; route: string } | null; planned: { title: string; from: string; to: string; day: string; count: number } | null };
   key: boolean;
   price: PriceBadge | null;
+  /** Gezi cebi: the trip, what was added to it last, the saves waiting for a key. */
+  pocket: Pocket | null;
 }
 
 /** Read in the page itself, in a blink (no layout): what it says it is, whether a price is written on it. */
@@ -83,11 +91,12 @@ export async function popupView(tabId: number): Promise<PopupView> {
   const tab = await chrome.tabs.get(tabId).catch(() => null);
   const url = tab?.url ?? "";
   const own = chrome.runtime.getURL("");
-  const base: PopupView = { kind: "none", title: tab?.title ?? "", sub: "", site: null, travelSite: false, along: false, what: "idea", where: null, desk: { candidate: null, planned: null }, key: await hasActiveKey(), price: await priceBadge() };
+  const base: PopupView = { kind: "none", title: tab?.title ?? "", sub: "", site: null, travelSite: false, along: false, what: "idea", where: null, desk: { candidate: null, planned: null }, key: await hasActiveKey(), price: await priceBadge(), pocket: null };
   // (our own pages, the board or the popup in a tab: their address isn't always visible here, their context is)
   const ours = await chrome.runtime.getContexts({ contextTypes: [chrome.runtime.ContextType.TAB] }).catch(() => []);
-  if (url.startsWith(own) || ours.some((c) => c.tabId === tabId)) return { ...base, kind: "board" };
-  if (!/^https?:/.test(url)) return base;
+  // (our own pages and pages that can't be saved: the pocket still shows the trip and what was added last)
+  if (url.startsWith(own) || ours.some((c) => c.tabId === tabId)) return { ...base, kind: "board", pocket: await pocketFor(null) };
+  if (!/^https?:/.test(url)) return { ...base, pocket: await pocketFor(null) };
   const travel = companionSiteOf(url);
   const origin = originOf(url);
   const hosts = new Set<string>((chrome.runtime.getManifest().host_permissions ?? []) as string[]);
@@ -103,12 +112,16 @@ export async function popupView(tabId: number): Promise<PopupView> {
   // (Benle gezen eklenti, seviye 1: a candidate we opened, or a search for a planned flight)
   const c = await candidateOf(tabId).catch(() => null);
   let planned: PopupView["desk"]["planned"] = null;
+  let plannedTrip: string | null = null;
   if (search) {
     const d = await db();
     const p = planFlightFor(await d.getAll("items"), search);
     const trip = p ? await d.get("trips", p.tripId) : undefined;
     if (p && trip) planned = { title: trip.title, from: p.from, to: p.to, day: p.day, count: p.ids.length };
+    if (p && trip) plannedTrip = trip.id;
   }
+  const where = await whereFor(url, tab?.title ?? "");
+  const tripId = c?.tripId ?? plannedTrip ?? where.trip?.id ?? null;
   return {
     ...base,
     kind: "page",
@@ -117,13 +130,14 @@ export async function popupView(tabId: number): Promise<PopupView> {
     travelSite: Boolean(travel),
     along,
     what,
-    where: await whereFor(url, tab?.title ?? ""),
+    where,
     desk: { candidate: c ? { name: c.name, price: c.price ?? null, badge: badgeOf(c), route: c.route } : null, planned },
+    pocket: await pocketFor(tripId),
   };
 }
 
 /** "Desteye ekle": the page read and saved now, into its trip (and its row); the popup may close at once. */
-export async function popupSave(tabId: number, pick: TripPick, idea: boolean, process: () => void): Promise<{ captureId: string; tripTitle: string | null; deck: string } | null> {
+export async function popupSave(tabId: number, pick: TripPick, idea: boolean, process: () => void, inView = false): Promise<{ captureId: string; tripId: string | null; tripTitle: string | null; deck: string } | null> {
   const tab = await chrome.tabs.get(tabId).catch(() => null);
   if (!tab?.url || !/^https?:/.test(tab.url)) return null;
   const c = await candidateOf(tabId).catch(() => null);
@@ -133,18 +147,20 @@ export async function popupSave(tabId: number, pick: TripPick, idea: boolean, pr
   const bind = c ? { forTripId: c.tripId } : planned ? { forTripId: planned.tripId, forNeed: planned.forNeed } : await bindFor(tab.url, tab.title ?? "", pick);
   const [result] = await chrome.scripting.executeScript({ target: { tabId }, func: collectPage });
   if (!result?.result) return null;
+  // ("Ekrandakileri ekle" on a list: what is in view, never the whole list as one record)
+  const snap = inView ? { ...result.result, pageText: result.result.viewportText } : result.result;
   let shot: string | null = null;
   try {
     shot = await downscale(await chrome.tabs.captureVisibleTab(tab.windowId, { format: "jpeg", quality: 85 }));
   } catch {
     // (some pages refuse it: the text is enough)
   }
-  const capture = await saveSnapshot(result.result, shot, { ...bind, idea });
+  const capture = await saveSnapshot(snap, shot, { ...bind, idea });
   process();
   void watch(capture.id, tabId);
   const trip = bind.forTripId ? await d.get("trips", bind.forTripId) : undefined;
   const kind = siteKindOf(companionSiteOf(tab.url) ?? "");
-  return { captureId: capture.id, tripTitle: trip?.title ?? null, deck: idea ? L("Fikirler", "Ideas") : deckWord(search ? "flight" : (offerPageKind(tab.url) ?? kind)) };
+  return { captureId: capture.id, tripId: bind.forTripId ?? null, tripTitle: trip?.title ?? null, deck: idea ? L("Fikirler", "Ideas") : deckWord(search ? "flight" : (offerPageKind(tab.url) ?? kind)) };
 }
 
 
@@ -176,9 +192,23 @@ export function popupAnswer(message: PopupAsk | { type?: unknown }, sender: chro
     case "popup:view":
       return popupView(m.tabId);
     case "popup:save":
-      return popupSave(m.tabId, m.pick ?? {}, m.idea === true, process);
+      return popupSave(m.tabId, m.pick ?? {}, m.idea === true, process, m.inView === true);
     case "popup:undo":
       return undoSave(m.captureId);
+    case "popup:move":
+      // ("Değiştir" after a save: that trip, the current one from now on)
+      return (async () => {
+        const tripId = typeof m.pick?.tripId === "string" ? m.pick.tripId.slice(0, 80) : null;
+        if (!tripId || !(await moveSave(m.captureId, tripId))) return null;
+        await setCurrent(tripId, null);
+        return { tripId, tripTitle: (await (await db()).get("trips", tripId))?.title ?? null };
+      })();
+    case "popup:pocket":
+      return pocketFor(typeof m.tripId === "string" ? m.tripId.slice(0, 80) : null);
+    case "popup:remove":
+      return pocketRemove(String(m.id));
+    case "popup:retry":
+      return pocketRetry(String(m.id), process);
     case "popup:decide":
       return popupDecide(m.tabId);
     case "popup:buy":

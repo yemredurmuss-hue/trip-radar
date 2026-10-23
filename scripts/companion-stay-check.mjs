@@ -1,6 +1,7 @@
-// Benle gezen eklenti, 0.41.0: the built content script on a Booking hotel's own page ("Desteye ekle" at the bottom
-// right) and on a Booking list (a "+" on each result), with the extension's answers stubbed. The first add asks which
-// trip here on the page (Hangi gezi); picked with "hep buraya koy", the next "+" goes there without asking.
+// Benle gezen eklenti, 0.41.0–0.44.0: the built content script on a Booking hotel's own page (the gezi cebi on the right
+// edge: "+ Konaklama destesine ekle") and on a Booking list (a "+" on each result, "Sonuçlardan seç" in the pocket), with
+// the extension's answers stubbed. The first add asks which trip here on the page (Hangi gezi); picked with "hep buraya
+// koy", the next "+" goes there without asking. The pocket's rows: × and tekrar. After an update: "sayfayı yenile".
 // Run after `npm run build`: CHROMIUM_PATH=… node scripts/companion-stay-check.mjs → e2e-output/companion/stay-*.png
 import { chromium } from "playwright-core";
 import assert from "node:assert/strict";
@@ -26,8 +27,14 @@ async function open(url, fixture) {
       { id: "bali", title: "Bali", when: "Ocak", match: false, photos: [dot] },
       { id: "dk", title: "Kopenhag ve Amsterdam", when: "8 – 18 Eki", match: false, photos: [] },
     ] };
+    const pocket = { trip: { id: "pt", title: "Portekiz", when: "12 – 19 Kas", count: 7, photo: dot }, key: false, waiting: 2, rows: [
+      { id: "c:r", title: "Lumiares Hotel", sub: "Booking.com", photo: null, state: "reading" },
+      { id: "c:f", title: "Casa do Bairro", sub: "Airbnb", photo: null, state: "failed" },
+      { id: "i:a", title: "Memmo Príncipe Real", sub: "Konaklama", photo: dot, state: "in" },
+    ] };
+    const answer = (m) => (m.type === "desk:where" ? where : m.type === "desk:route" ? null : m.type === "desk:pocket" ? pocket : { ok: true, tripId: m.tripId ?? null, captureId: `c${window.__asked.length}`, reading: 2 });
     window.chrome = {
-      runtime: { lastError: undefined, onMessage: { addListener: (f) => (window.__onMessage = f) }, sendMessage: (m, cb) => (window.__asked.push(m), setTimeout(() => cb(m.type === "desk:where" ? where : m.type === "desk:route" ? null : { ok: true, tripId: m.tripId ?? null, captureId: `c${window.__asked.length}`, reading: 2 }), 10)) },
+      runtime: { id: "x", lastError: undefined, onMessage: { addListener: (f) => (window.__onMessage = f) }, sendMessage: (m, cb) => (window.__asked.push(m), setTimeout(() => cb(answer(m)), 10)) },
       storage: { local: { get: async () => ({ lang: "tr" }), set: async () => undefined } },
     };
   });
@@ -38,12 +45,24 @@ async function open(url, fixture) {
 }
 const inShadow = (page, fn) => page.evaluate(fn);
 
-// 1. A hotel's own page: "Desteye ekle", asked which trip, sent whole into the picked trip.
+// 1. A hotel's own page: the pocket's tab on the edge (the trip, its count, a "+"); open: this page, what was added last.
 const hotel = await open("https://www.booking.com/hotel/pt/memmo-alfama.html?checkin=2026-11-12&checkout=2026-11-16", "booking-hotel.html");
-const pill = await inShadow(hotel, () => document.getElementById("trip-radar-companion").shadowRoot.querySelector(".pill button")?.textContent);
-assert.match(pill ?? "", /Desteye ekle/, "the hotel's page has its Desteye ekle");
-await hotel.screenshot({ path: `${out}/stay-1-pill.png` });
-await inShadow(hotel, () => document.getElementById("trip-radar-companion").shadowRoot.querySelector(".pill button").click());
+const shadow = (page, fn) => page.evaluate(`(${fn})(document.getElementById("trip-radar-companion").shadowRoot)`);
+assert.equal(await shadow(hotel, (r) => r.querySelector(".pill")), null, "no bottom-right pill any more");
+assert.equal(await shadow(hotel, (r) => r.querySelector(".tab")?.textContent), "7+", "the tab: the trip's count and a + on a place's own page");
+await hotel.screenshot({ path: `${out}/stay-1-tab.png` });
+await shadow(hotel, (r) => r.querySelector(".tab").click());
+await hotel.waitForTimeout(150);
+const cep = await shadow(hotel, (r) => r.querySelector(".cep")?.innerText ?? "");
+assert.match(cep, /Portekiz[\s\S]*12 – 19 Kas · 7 kayıt[\s\S]*Bu sayfa[\s\S]*\+ Konaklama destesine ekle[\s\S]*Son eklenenler[\s\S]*Lumiares Hotel[\s\S]*okunuyor[\s\S]*okunamadı[\s\S]*tekrar[\s\S]*AI bağlı değil: 2 kayıt bekliyor[\s\S]*Portekiz panosunu aç/);
+await hotel.screenshot({ path: `${out}/stay-1-pocket.png` });
+await shadow(hotel, (r) => [...r.querySelectorAll(".cep .lnk")].find((b) => b.textContent === "tekrar").click());
+await shadow(hotel, (r) => r.querySelector('.cep .x[aria-label="Lumiares Hotel kaldır"]').click());
+await hotel.waitForTimeout(100);
+assert.deepEqual(await hotel.evaluate(() => window.__asked.filter((m) => m.type === "desk:retry" || m.type === "desk:remove").map((m) => [m.type, m.id])), [["desk:retry", "c:f"], ["desk:remove", "c:r"]]);
+await hotel.waitForTimeout(100);
+// "+ Konaklama destesine ekle": asked which trip (the pocket steps aside), sent whole into the picked trip.
+await shadow(hotel, (r) => r.querySelector(".cep .go").click());
 await hotel.waitForTimeout(200);
 const choices = await inShadow(hotel, () => {
   const r = document.getElementById("trip-radar-companion").shadowRoot;
@@ -61,7 +80,15 @@ assert.equal(page.remember, true, "kept as Portugal's trip");
 assert.match(page.snapshot.pageText, /Memmo Alfama/, "the whole page goes, as the toolbar's save");
 const done = await inShadow(hotel, () => document.getElementById("trip-radar-companion").shadowRoot.textContent);
 assert.match(done, /Portekiz · Konaklama destesine girdi/);
+assert.equal(await shadow(hotel, (r) => r.querySelector(".tab .add")), null, "added: the tab's + goes");
 await hotel.screenshot({ path: `${out}/stay-3-done.png` });
+// An update while the page was open: the old script is cut off; a press says so, never breaks in silence.
+await hotel.evaluate(() => (window.chrome.runtime.id = undefined));
+await shadow(hotel, (r) => r.querySelector(".tab").click());
+await hotel.waitForTimeout(100);
+assert.match(await shadow(hotel, (r) => r.querySelector(".toast")?.textContent ?? ""), /Trip Radar yenilendi; bu sayfayı yenileyince \+ geri gelir\.Sayfayı yenile/);
+assert.equal(await shadow(hotel, (r) => r.querySelector(".tab, .cep")), null, "its old pocket goes");
+await hotel.screenshot({ path: `${out}/stay-3b-stale.png` });
 
 // 2. A list: a "+" on each result, "Destende var" on the deck's own; the first asks, the second goes without asking.
 const list = await open("https://www.booking.com/searchresults.html?ss=Lisbon&checkin=2026-11-12&checkout=2026-11-16", "booking-list.html");
@@ -69,8 +96,15 @@ const pins = await inShadow(list, () => document.getElementById("trip-radar-comp
 assert.equal(pins, 3, "a + on each of the three results");
 const tags = await inShadow(list, () => [...document.getElementById("trip-radar-companion").shadowRoot.querySelectorAll(".pin .tag")].map((t) => t.textContent));
 assert.deepEqual(tags, ["Destende var"], "Casa Balthazar is in the deck");
-const noPill = await inShadow(list, () => document.getElementById("trip-radar-companion").shadowRoot.querySelector(".pill"));
-assert.equal(noPill, null, "a list has no Desteye ekle");
+// The pocket on a list: "Sonuçlardan seç", never the whole list as one record.
+await shadow(list, (r) => r.querySelector(".tab").click());
+await list.waitForTimeout(100);
+assert.match(await shadow(list, (r) => r.querySelector(".cep .bd").innerText), /3 sonuç görünüyor[\s\S]*Sonuçlardan seç[\s\S]*Listenin tamamı tek kayıt olmaz/);
+assert.equal(await shadow(list, (r) => [...r.querySelectorAll(".cep .go")].some((b) => /destesine ekle/.test(b.textContent))), false);
+await list.screenshot({ path: `${out}/stay-4a-pocket.png` });
+await list.keyboard.press("Escape");
+await list.waitForTimeout(50);
+assert.equal(await shadow(list, (r) => r.querySelector(".cep")), null, "Escape closes it");
 // Pinterest's: a small "+" on the card's top edge, "+ Ekle" while the mouse is over the card.
 const card2 = list.locator(".card").nth(1);
 await card2.hover({ position: { x: 300, y: 90 } });
@@ -84,14 +118,15 @@ await inShadow(list, () => document.getElementById("trip-radar-companion").shado
 await list.waitForTimeout(400);
 await inShadow(list, () => document.getElementById("trip-radar-companion").shadowRoot.querySelectorAll(".pin .plus")[0].click());
 await list.waitForTimeout(60);
-assert.equal(await inShadow(list, () => document.getElementById("trip-radar-companion").shadowRoot.querySelectorAll(".hop").length), 1, "hop: the card's small copy flies to the icon");
+assert.equal(await inShadow(list, () => document.getElementById("trip-radar-companion").shadowRoot.querySelectorAll(".hop").length), 1, "hop: the card's small copy flies to the pocket");
 await list.waitForTimeout(500);
 assert.equal(await inShadow(list, () => document.getElementById("trip-radar-companion").shadowRoot.querySelectorAll(".hop").length), 0, "and is gone once it lands");
 const adds = await list.evaluate(() => window.__asked.filter((m) => m.type === "desk:add"));
 assert.equal(adds.length, 2);
 assert.match(adds[0].text, /Lumiares.*€ 1\.040/, "only that result's own text");
 assert.equal(adds[0].tripId, "pt");
-assert.equal(adds[1].tripId, undefined, "the second goes to the remembered trip, nothing asked");
+assert.equal(adds[1].tripId, "pt", "the second goes to the trip on the pocket's top, nothing asked");
+assert.notEqual(adds[1].remember, true);
 const asks = await inShadow(list, () => document.getElementById("trip-radar-companion").shadowRoot.querySelector(".ask"));
 assert.equal(asks, null);
 await list.screenshot({ path: `${out}/stay-5-added.png` });
