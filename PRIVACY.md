@@ -1,6 +1,6 @@
 # Trip Radar · Gizlilik politikası / Privacy policy
 
-Son güncelleme / Last updated: 2026-10-23 · Sürüm / Version: 0.43.1
+Son güncelleme / Last updated: 2026-10-23 · Sürüm / Version: 0.44.0
 
 ---
 
@@ -288,6 +288,10 @@ Pratikte:
 Eklenti kendini otomatik günceller. Bu politika değişirse üstteki tarih ve sürüm güncellenir.
 Önemli bir değişiklik (yeni bir veri türü ya da yeni bir alıcı gibi), değişikliği getiren sürümle birlikte bu
 sayfada açıkça yazılır.
+
+0.44.0'da değişenler: "Gezi cebi" (simgede ve izin verdiğin sitelerde sağ kenarda) gezinin son eklediklerini gösterir;
+bu bilgiler bu bilgisayardaki veritabanından okunur, siteye ya da başka bir yere gönderilmez. Cep, sitenin sayfasının
+içine değil kendi kapalı katmanına çizilir. Yeni izin ya da yeni veri türü yok.
 
 0.43.0'da değişenler: araç çubuğundaki simgeye basmak artık kendiliğinden kaydetmez; pencere sayfanın yalnız adresine,
 başlığına ve kendini ne olarak tanıttığına bakar. Sayfanın metni ve ekran görüntüsü yalnız "Desteye ekle"ye basınca alınır.
@@ -612,6 +616,10 @@ In practice:
 The extension updates itself. When this policy changes, the date and version at the top are updated.
 A significant change (a new kind of data or a new recipient, say) is stated plainly on this page with the version
 that brings it.
+
+Changed in 0.44.0: the "trip pocket" (in the toolbar window, and on the right edge of the sites you allowed) shows what
+you added to the trip last; it is read from the database on this computer and never sent to the site or anywhere else.
+The pocket is drawn in its own closed layer, never inside the site's page. No new permission, no new kind of data.
 
 Changed in 0.43.0: pressing the toolbar icon no longer saves by itself; the window looks only at the page's address, title
 and what the page says it is. The page's text and screenshot are taken only when you press "Add to the deck". The trip you
