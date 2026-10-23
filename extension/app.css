@@ -2880,6 +2880,29 @@ body.still .hm-plane { display: none; }
 .popup-held-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 /* Hangi gezi (0.41.0): the country's trips, then the others; the answer remembered unless turned off */
 .popup-held > small.muted { display: block; margin-top: 8px; font-size: 11.5px; font-weight: 750; }
+/* Hangi geziye (0.42.0, Pinterest's picker): the three most likely with their covers, then every trip, then a new one */
+.pk-pick { display: grid; gap: 6px; }
+.pk-pick > p { margin: 0 0 2px; font-weight: 800; }
+.pk-pick > small.muted { font-size: 11.5px; font-weight: 750; margin-top: 4px; }
+.pk-qp { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.pk-qp button { all: unset; cursor: pointer; display: grid; gap: 4px; min-width: 0; }
+.pk-qp button b { font-size: 12.5px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pk-qp button > span:last-child { font-size: 11px; color: #5d5a78; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pk-qp button.best .pk-cv { box-shadow: 0 0 0 3px #5b45e0; }
+.pk-qp button:focus-visible .pk-cv { box-shadow: 0 0 0 3px #cfc7ff; }
+.pk-cv { height: 70px; border-radius: 12px; overflow: hidden; display: grid; grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr; gap: 2px; background: #efecff; }
+.pk-cv img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pk-cv img:first-child { grid-row: 1 / 3; }
+.pk-cv img:only-child { grid-column: 1 / 3; }
+.pk-cv i { grid-row: 1 / 3; grid-column: 1 / 3; display: grid; place-items: center; font-style: normal; font-weight: 800; font-size: 20px; color: #4a36c9; }
+.pk-ln { all: unset; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 5px 6px; border-radius: 10px; }
+.pk-ln:hover, .pk-ln:focus-visible { background: #f4f2ff; }
+.pk-ln.new { box-shadow: inset 0 0 0 1.5px #d6d2e4; }
+.pk-ln b { display: block; font-size: 13px; font-weight: 750; }
+.pk-ln span span { display: block; font-size: 11px; color: #5d5a78; font-weight: 600; }
+.pk-th { width: 34px; height: 34px; border-radius: 9px; flex: none; overflow: hidden; background: #efecff; display: grid; place-items: center; color: #4a36c9; font-weight: 800; font-size: 13px; }
+.pk-th img { width: 100%; height: 100%; object-fit: cover; }
+.pk-th i { font-style: normal; }
 .popup-remember { display: flex; align-items: flex-start; gap: 8px; margin-top: 10px; padding: 8px 10px; border-radius: 10px; background: #f6f4ff; font-size: 12.5px; line-height: 1.4; cursor: pointer; }
 .popup-remember input { margin: 2px 0 0; accent-color: #5b45e0; }
 .popup-price { display: grid; gap: 4px; margin: 0 0 10px; padding: 10px 12px; border-radius: 12px; background: #eef8f2; box-shadow: inset 0 0 0 1px #bfe3c9; }
