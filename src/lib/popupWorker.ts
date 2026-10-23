@@ -84,7 +84,9 @@ export async function popupView(tabId: number): Promise<PopupView> {
   const url = tab?.url ?? "";
   const own = chrome.runtime.getURL("");
   const base: PopupView = { kind: "none", title: tab?.title ?? "", sub: "", site: null, travelSite: false, along: false, what: "idea", where: null, desk: { candidate: null, planned: null }, key: await hasActiveKey(), price: await priceBadge() };
-  if (url.startsWith(own)) return { ...base, kind: "board" };
+  // (our own pages, the board or the popup in a tab: their address isn't always visible here, their context is)
+  const ours = await chrome.runtime.getContexts({ contextTypes: [chrome.runtime.ContextType.TAB] }).catch(() => []);
+  if (url.startsWith(own) || ours.some((c) => c.tabId === tabId)) return { ...base, kind: "board" };
   if (!/^https?:/.test(url)) return base;
   const travel = companionSiteOf(url);
   const origin = originOf(url);
@@ -167,7 +169,8 @@ export async function popupBuy(tabId: number): Promise<boolean> {
 /** The popup's questions answered; only from our own pages. */
 export function popupAnswer(message: PopupAsk | { type?: unknown }, sender: chrome.runtime.MessageSender, process: () => void): Promise<unknown> | null {
   if (typeof message?.type !== "string" || !message.type.startsWith("popup:")) return null;
-  if (sender.id !== chrome.runtime.id || sender.tab) return Promise.resolve(null);
+  // (our own pages only: the popup, or the popup opened in a tab; never a site's content script)
+  if (sender.id !== chrome.runtime.id || !(sender.url ?? "").startsWith(chrome.runtime.getURL(""))) return Promise.resolve(null);
   const m = message as PopupAsk;
   switch (m.type) {
     case "popup:view":
