@@ -278,9 +278,9 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
   };
   // A dated category (onay paketi 2026-10-22): one bar in the four steps' colours and "2 alındı · 1 planda · 1 karar"
   // (Karar Masası's Uçuş: "1 seçildi").
-  const datedRow = (intents: Collection["intents"], alerts: { text: string; tone?: "warn" | "bad" }[], desk: boolean): Pick<RowView, "stages" | "bar" | "parts"> => {
+  const datedRow = (intents: Collection["intents"], alerts: { text: string; tone?: "warn" | "bad" }[], desk: boolean): Pick<RowView, "stages" | "bar" | "parts" | "ring"> => {
     const { counts } = planSteps(intents);
-    return { stages: counts, bar: null, parts: [...stepParts(counts, desk), ...alerts.map((a) => ({ ...a, decide: false }))] };
+    return { stages: counts, bar: null, parts: [...stepParts(counts, desk), ...alerts.map((a) => ({ ...a, decide: false }))], ring: { done: counts.bought + counts.ticket, near: counts.planned, total: counts.options + counts.planned + counts.bought + counts.ticket } };
   };
   const rowOf = (s: CatSection): RowView => {
     const meta = SECTION_META[s.id];
@@ -290,11 +290,12 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
     if (s.id === "prep" && c && ready) {
       // K0: "Gezi öncesi 6 iş · sıradaki: …" and "2/6 hazır", the bar in one green; nothing to count, no bar and no count.
       const parts = ready.total ? [{ text: L(`${ready.done}/${ready.total} hazır`, `${ready.done}/${ready.total} ready`), decide: false }] : [];
-      return { id: s.id, name: meta.label(), line: c.summary.line, thumbs: [], more: 0, bar: ready.total ? c.summary.bar : null, parts, spent: null, allot: null, settled: ready.total ? { settled: ready.done, total: ready.total } : null };
+      return { id: s.id, name: meta.label(), line: c.summary.line, thumbs: [], more: 0, bar: ready.total ? c.summary.bar : null, parts, spent: null, allot: null, settled: ready.total ? { settled: ready.done, total: ready.total } : null, ring: ready.total ? { done: ready.done, near: 0, total: ready.total } : null };
     }
     if (!c) {
       const line = s.ideas && (s.entries.length || s.hidden.length) ? ideaCount(s.id, s.ideas, s.entries, suggested(s).length) : "";
-      return { id: s.id, name: meta.label(), line, thumbs: [], more: 0, bar: null, parts: [], spent: null, allot: null, settled };
+      // (ideas only: a dashed ring, nothing to count)
+      return { id: s.id, name: meta.label(), line, thumbs: [], more: 0, bar: null, parts: [], spent: null, allot: null, settled, ring: line ? { done: 0, near: 0, total: 0 } : null };
     }
     const { thumbs, more } = rowThumbs(c.intents, { tours: s.id === "activity" ? tourPhotos : [] });
     const sum = c.summary;
@@ -317,6 +318,8 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
       spent: sum.spent ? formatPrice(sum.spent.amount, sum.spent.currency) : null,
       allot: sum.allotted ? formatPrice(sum.allotted.amount, sum.allotted.currency) : null,
       settled,
+      // Bitti ve yaklaştı (lib/planRing.ts): bought or arranged, chosen, and all its plans; ideas only: the dashed ring.
+      ring: c.intents.length ? { done: sum.counts.booked + sum.counts.arranged + done, near: sum.counts.chosen, total: sum.counts.booked + sum.counts.arranged + done + sum.counts.chosen + sum.counts.decide } : null,
       ...(isDatedSection(s.id) && c.intents.length ? datedRow(c.intents, s.id === "stay" ? nightAlerts(c.intents, items) : [], s.id === "flight") : {}),
     };
   };

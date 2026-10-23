@@ -573,7 +573,8 @@ try {
   assert.match(await sec("flight").locator(".q-row1").innerText(), /^Uçuş\s*2 uçuş · gidiş ve dönüş · 3 fikir/);
   // (onay paketi 2026-10-22: a dated category's bar in the four steps' colours, its line by them)
   assert.equal(flat([await sec("flight").locator(".q-pl1").innerText()])[0], "1 alındı · 1 karar");
-  assert.match((await sec("flight").locator(".q-row1 .q-sbar > i").evaluateAll((els) => els.map((e) => e.className))).join(","), /^(bought|ticket),options$/);
+  // Bitti ve yaklaştı (lib/planRing.ts): a part a plan, the bought one dark green, the one to decide empty.
+  assert.equal((await sec("flight").locator(".q-row1 .q-ringsvg path").evaluateAll((els) => els.map((e) => e.getAttribute("class")))).join(","), "q-rp-done,q-rp-open");
   assert.equal(await app.locator(".cat-wait").count(), 0, "no amber line: the row says it");
   assert.equal(await sec("flight").locator(".q-row1 .q-add").count(), 0, "\"+ Uçuş ekle\" is at the category's end, not in its row");
   // No page-bottom lists: what's out of the way waits at the end of its own category.
@@ -2414,14 +2415,6 @@ try {
   await app.waitForFunction(() => !document.querySelector(".q-sec.open"));
   assert.equal(await app.locator(".q-sec").count(), 7, "six categories and Hazırlık");
   assert.equal((await sec("stay").locator(".q-row1").boundingBox()).height, rowH, "E2: the row is the same open or closed");
-  // One arrow, pointing right when closed and down when open (it turns in 260 ms: read once it has settled).
-  const turn = async (scope) => {
-    const chev = scope.locator(".q-chev");
-    await chev.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished.catch(() => undefined))));
-    await app.waitForTimeout(300);
-    return chev.evaluate((el) => getComputedStyle(el).transform);
-  };
-  assert.equal(await turn(sec("todo")), "none");
   // Closed, a category is its row alone (K0, 78 px), the same in every category: icon, name and its line, three small
   // pictures, the bar in two greens and its state line, what's spent of its share, the arrow; nothing under it.
   // (a category folds shut over 260 ms, its body drawn until it has folded: m-bolum)
@@ -2434,20 +2427,20 @@ try {
     assert.equal(row.height, 78, `${id}: the closed row is 78 px (${row.height}px)`);
     // Öneriler (C28): a category's suggestions say "1 öneri" after its line, and in its tip.
     if (await sec(id).locator(".q-sgn").count()) assert.match(await sec(id).locator(".q-sgn").innerText(), /^ · \d+ öneri$/);
-    const kids = await sec(id).locator(".q-row1").evaluate((el) => [...el.children].map((c) => ["q-ic", "q-tt", "q-ths", "q-prog", "q-bud", "q-chev"].find((k) => c.classList.contains(k)) ?? c.className));
-    assert.deepEqual(kids, ["q-ic", "q-tt", "q-ths", "q-prog", "q-bud", "q-chev"], `${id}: icon · name … pictures · bar · spent · arrow`);
+    const kids = await sec(id).locator(".q-row1").evaluate((el) => [...el.children].map((c) => ["q-ic", "q-tt", "q-ths", "q-bud", "q-prog"].find((k) => c.classList.contains(k)) ?? c.className));
+    assert.deepEqual(kids, ["q-ic", "q-tt", "q-ths", "q-bud", "q-prog"], `${id}: icon · name … pictures · spent · the plan ring at the end`);
     assert.ok((await sec(id).locator(".q-th").count()) <= 3, `${id}: three pictures at most`);
     // 0.38.3: the small pictures are real photos only (a record's, an option's, a tour's), never the kind's drawing.
     // (Uçuş closed: its airlines' logos stand among them, Karar Masası)
     assert.equal(await sec(id).locator('.q-th:not(.q-thl) img:not(.ph), .q-th img[src^="illus/"]').count(), 0, `${id}: no drawing among the small pictures`);
     assert.equal(await sec(id).locator(".q-add").count(), 0, `${id}: no "+ ekle" when closed`);
     if (id !== "todo") assert.match(await sec(id).locator(".q-count").textContent(), /^\d+\/\d+$/, `${id}: settled of all, for a screen reader`);
-    const box = await sec(id).locator(".q-chev").boundingBox();
+    const box = await sec(id).locator(".q-prog").boundingBox();
     counts.push(Math.round(box.x + box.width));
   }
-  assert.equal(new Set(counts).size, 1, `the arrows line up on the right (${counts})`);
+  assert.equal(new Set(counts).size, 1, `the rings line up on the right (${counts})`);
   // (onay paketi 2026-10-22: "Planda" for the chosen one)
-  assert.match(flat([await sec("stay").locator(".q-row1").innerText()])[0], /^Konaklama 2 şehir · 6 gece[^€]*?(\d+\/\d+ )?1 alındı · 1 planda €[\d.,]+/);
+  assert.match(flat([await sec("stay").locator(".q-row1").innerText()])[0], /^Konaklama 2 şehir · 6 gece[^€]*?€[\d.,]+.*?1 alındı · 1 planda/);
   await app.locator(".cat-plan").evaluate((el) => el.scrollIntoView({ block: "start" }));
   await app.screenshot({ path: `${out}/5c-collapsed.png` });
   await app.setViewportSize({ width: 560, height: 1400 });
@@ -2469,7 +2462,6 @@ try {
   await app.waitForFunction(() => !document.querySelector('.q-sec[data-section="activity"].open'));
   await sec("activity").locator(".q-tt").click();
   await sec("activity").locator('[data-row="plan"] .z-k[data-item-id]').first().waitFor();
-  assert.match(await turn(sec("activity")), /^matrix\([^,]+, 1, -1,/);
   await app.reload();
   await app.getByRole("heading", { name: "Portekiz (örnek)" }).waitFor();
   await sec("activity").locator('[data-row="plan"] .z-k[data-item-id]').first().waitFor();
@@ -6511,7 +6503,7 @@ try {
     };
     b.click();
     const chip = document.querySelector(".mv-fly");
-    const mark = sec.querySelector(".q-row1 .q-pl1");
+    const mark = sec.querySelector(".q-row1 .q-ring");
     const keys = chip?.getAnimations()[0]?.effect.getKeyframes().map((k) => k.transform) ?? [];
     const timing = chip?.getAnimations()[0]?.effect.getComputedTiming().duration;
     let bump = null;
