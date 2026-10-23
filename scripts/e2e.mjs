@@ -4216,7 +4216,8 @@ try {
   // "3 seçenek", "Seç 3"; pressed, the drawer lists them as the need's options; Seç there chooses.
   await ubudCard.locator(".q-rslot .q-rsec").waitFor({ timeout: 15000 });
   assert.ok(candidatesAsked.length >= 1 && candidatesAsked.every((u) => /start=2026-12-10/.test(u) && /end=2026-12-22/.test(u)), "Ubud's candidates asked for its nights");
-  assert.equal(flat([await ubudCard.locator(".q-rlead .q-rstage").innerText()])[0], "3 seçenek");
+  // (the three come in one after another: the deck counts up to three)
+  await ubudCard.locator(".q-rlead .q-rstage", { hasText: "3 seçenek" }).waitFor({ timeout: 10000 });
   await ubudCard.locator(".q-rslot .q-rsec").click();
   const ubudDrawer = board.locator("aside.dr");
   await ubudDrawer.waitFor();
