@@ -1,6 +1,6 @@
 # Trip Radar · Gizlilik politikası / Privacy policy
 
-Son güncelleme / Last updated: 2026-10-23 · Sürüm / Version: 0.42.1
+Son güncelleme / Last updated: 2026-10-23 · Sürüm / Version: 0.43.0
 
 ---
 
@@ -288,6 +288,10 @@ Pratikte:
 Eklenti kendini otomatik günceller. Bu politika değişirse üstteki tarih ve sürüm güncellenir.
 Önemli bir değişiklik (yeni bir veri türü ya da yeni bir alıcı gibi), değişikliği getiren sürümle birlikte bu
 sayfada açıkça yazılır.
+
+0.43.0'da değişenler: araç çubuğundaki simgeye basmak artık kendiliğinden kaydetmez; pencere sayfanın yalnız adresine,
+başlığına ve kendini ne olarak tanıttığına bakar. Sayfanın metni ve ekran görüntüsü yalnız "Desteye ekle"ye basınca alınır.
+Son seçtiğin gezi ("şu anki gezi") bir gün boyunca yalnız bu bilgisayarda tutulur, sonraki eklemeler sormadan oraya gider.
 
 0.42.0'da değişenler: "Sitede benle gel" artık tek anahtarla açılır: "Seyahat sitelerinde benle gel" (Ayarlar ya da
 araç çubuğu). Chrome bir kez sorar; listedeki 30 kadar seyahat sitesinde (Skyscanner, Kiwi, Kayak, Momondo, Pegasus,
@@ -608,6 +612,10 @@ In practice:
 The extension updates itself. When this policy changes, the date and version at the top are updated.
 A significant change (a new kind of data or a new recipient, say) is stated plainly on this page with the version
 that brings it.
+
+Changed in 0.43.0: pressing the toolbar icon no longer saves by itself; the window looks only at the page's address, title
+and what the page says it is. The page's text and screenshot are taken only when you press "Add to the deck". The trip you
+picked last ("the current trip") is kept on this computer for a day, and later saves go there without asking.
 
 Changed in 0.42.0: "Come along on the site" now turns on with one switch: "Come along on travel sites" (Settings or the
 toolbar). Chrome asks once; on some 30 travel sites (Skyscanner, Kiwi, Kayak, Momondo, Pegasus, Turkish Airlines, AJet,
