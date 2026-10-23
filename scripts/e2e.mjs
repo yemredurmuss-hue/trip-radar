@@ -5135,7 +5135,9 @@ try {
   assert.equal(await tm.getAttribute("data-playing"), "true");
   await board.waitForTimeout(1500);
   await board.screenshot({ path: `${out}/25c-board-map-playing.png` });
-  await tm.getByRole("button", { name: "Durdur" }).click();
+  // (a short trip may have finished playing by now: then there is nothing to stop)
+  const stopPlay = tm.getByRole("button", { name: "Durdur" });
+  if (await stopPlay.count()) await stopPlay.click({ timeout: 3000 }).catch(() => undefined);
   await tm.locator(".tm-plane").waitFor({ state: "detached" });
   // Narrow: the map fits the column.
   await board.setViewportSize({ width: 560, height: 900 });
