@@ -1,6 +1,6 @@
 # Trip Radar · Gizlilik politikası / Privacy policy
 
-Son güncelleme / Last updated: 2026-10-22 · Sürüm / Version: 0.39.28
+Son güncelleme / Last updated: 2026-10-23 · Sürüm / Version: 0.40.0
 
 ---
 
@@ -56,7 +56,19 @@ onları da görebilir.
 ### 4. Sayfa okuma
 
 Eklenti yalnız "Kaydet"e bastığın sekmeyi, yalnız o anda okur. Arka planda sayfa okumaz. Tarama geçmişin,
-şifrelerin ve ödeme bilgilerin okunmaz.
+şifrelerin ve ödeme bilgilerin okunmaz. İki istisna var, ikisini de sen açarsın:
+
+- **Sekme grubu ("Adayları sekmelerde aç"):** bir ihtiyacın adaylarını senin isteğinle Chrome'da bir sekme grubunda açar
+  ve eklentinin simgesinde her sekmenin kaçıncı aday olduğunu yazar. Bunun için yalnız açtığı sekmeleri hatırlar
+  (tarayıcı kapanınca unutulur); o sekmelerin sayfaları okunmaz. "Burada satın al" dediğin sekme kapanınca plan
+  "Aldın mı?" diye sorar. Bunun için `tabGroups` izni kullanılır.
+- **"Sitede benle gel":** yalnız senin tek tek izin verdiğin uçuş sitelerinde (Skyscanner, Kiwi.com; Chrome her site için
+  ayrıca sorar) ve yalnız sayfanın adresi planındaki bir uçuşun araması olduğunda, sayfanın üstünde ince bir şerit ve
+  sonuçların yanında "+" gösterir. Bunun için o sayfadaki sonuçların metnini (saat, fiyat, aktarma) bilgisayarında okur;
+  okunan hiçbir yere gönderilmez. "+" ya da "Ekrandakileri desteye ekle"ye basmadıkça hiçbir şey kaydedilmez; bastığında
+  yalnız o sonucun metni (ya da görünen sonuçlar ve ekran görüntüsü) "Kaydet"teki gibi okunur ve yapay zekâya gider.
+  Sitedeki bağlantılar değiştirilmez. İzni açılır pencerede "…'da benle gelme" ile ya da Chrome'un eklenti ayarlarından
+  geri alırsın.
 
 Kaydettiğin sayfanın metninde ya da ekran görüntüsünde görünen her şey (örneğin bir rezervasyon sayfasındaki adın)
 okunur ve yapay zekâya gönderilir. Kişisel bilgi gösteren bir sayfayı kaydetmek istemiyorsan "Kaydet"e basma.
@@ -277,6 +289,9 @@ Eklenti kendini otomatik günceller. Bu politika değişirse üstteki tarih ve s
 Önemli bir değişiklik (yeni bir veri türü ya da yeni bir alıcı gibi), değişikliği getiren sürümle birlikte bu
 sayfada açıkça yazılır.
 
+0.40.0'da eklenenler: sekme grubu ("Adayları sekmelerde aç", `tabGroups` izni) ve izin verdiğin uçuş sitelerinde
+"Sitede benle gel" (bölüm 4). Yeni bir sunucu ya da yeni bir alıcı yok; sitelerde okunan sonuçlar bilgisayarında kalır.
+
 0.38.0'da eklenenler: Bavul listesi için yapay zekâya giden gezi bilgileri (bölüm 5), İlham'dan yer çıkarma (bölüm 8),
 gezi fotoğraflarının kaynakları ve sunucudaki fotoğraf aramaları (bölüm 8 ve 11), hava için Open-Meteo (önceki
 sürümlerde de kullanılıyordu, bu sayfada yazmıyordu), paylaşılan gezide çocuk ve oda sayısı (bölüm 7). Yeni bir sunucu
@@ -339,7 +354,20 @@ profile can see it too.
 ### 4. Reading pages
 
 The extension reads only the tab where you press "Save", and only at that moment. It does not read pages in the
-background. Your browsing history, passwords and payment details are not read.
+background. Your browsing history, passwords and payment details are not read. There are two exceptions, and you turn
+both on yourself:
+
+- **Tab group ("Open the candidates in tabs"):** at your request it opens a need's candidates in one Chrome tab group
+  and shows on the extension's icon which candidate each tab is. For that it remembers only the tabs it opened
+  (forgotten when the browser closes); those tabs' pages are not read. When the tab you said "Buy it here" on closes, the
+  plan asks "Did you buy it?". This uses the `tabGroups` permission.
+- **"Come along on this site":** only on the flight sites you allow one by one (Skyscanner, Kiwi.com; Chrome asks for
+  each site separately), and only while the page's address is a search for a flight on your plan, it shows a thin strip
+  at the top of the page and a "+" beside each result. For that it reads the results' text on that page (hours, price,
+  stops) on your computer; what it reads is sent nowhere. Nothing is saved until you press "+" or "Add what's on
+  screen"; then only that result's text (or the results in view and a screenshot) is read as with "Save" and goes to the
+  AI. No link on the site is changed. You take the permission back in the popup ("Stop coming along on …") or in
+  Chrome's extension settings.
 
 Whatever appears in the text or the screenshot of a page you save (for example your name on a booking page) is read
 and sent to the AI. If you do not want a page showing personal details to be processed, do not press "Save" on it.
@@ -558,6 +586,10 @@ In practice:
 The extension updates itself. When this policy changes, the date and version at the top are updated.
 A significant change (a new kind of data or a new recipient, say) is stated plainly on this page with the version
 that brings it.
+
+Added in 0.40.0: the tab group ("Open the candidates in tabs", the `tabGroups` permission) and "Come along on this
+site" on the flight sites you allow (section 4). No new server and no new recipient; the results read on those sites
+stay on your computer.
 
 Added in 0.38.0: the trip details sent to the AI for the Packing list (section 5), pulling places out of an
 inspiration (section 8), where trip photos come from and the photo searches kept on the server (sections 8 and 11),
