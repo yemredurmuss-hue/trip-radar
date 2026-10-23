@@ -45,11 +45,12 @@ describe("companionSiteOf", () => {
 });
 
 describe("the manifest asks for exactly these sites, each one optional", () => {
-  it("optional_host_permissions is COMPANION_SITES; none of them is asked at install", async () => {
+  it("optional_host_permissions is COMPANION_SITES and any other site on its own; none of them is asked at install", async () => {
     const { readFileSync } = await import("node:fs");
-    const { COMPANION_SITES } = await import("../src/lib/companion");
+    const { ANY_SITE, COMPANION_SITES } = await import("../src/lib/companion");
     const m = JSON.parse(readFileSync("static/manifest.json", "utf8"));
-    expect(m.optional_host_permissions).toEqual([...COMPANION_SITES]);
+    expect(m.optional_host_permissions).toEqual([...COMPANION_SITES, ANY_SITE]);
+    expect(m.host_permissions).not.toContain(ANY_SITE);
     expect(m.host_permissions.some((h: string) => /skyscanner|kiwi/.test(h))).toBe(false);
     expect(m.content_scripts).toBeUndefined();
     expect(m.permissions).toContain("tabGroups");
@@ -91,5 +92,40 @@ describe("pageCountry: the page's country before any model reads it", async () =
     expect(pageCountry("https://www.skyscanner.com.tr/transport/flights/ist/lis/261112/", "")).toBe("PT");
     expect(pageCountry("https://www.airbnb.com/rooms/1", "Ubud'da villa · Bali")).toBe("ID");
     expect(pageCountry("https://www.viator.com/x", "")).toBeNull();
+  });
+});
+
+describe("0.42.0: the travel sites, the picker's suggestions, the flight home", async () => {
+  const { siteKindOf, timedSite, companionName, originOf } = await import("../src/lib/companion");
+  const { pageCountry, quickPicks } = await import("../src/lib/companionWorker");
+  const { worthRemembering } = await import("../src/lib/tripRules");
+  it("what each travel site sells; another site's name is its host", () => {
+    expect(siteKindOf("https://www.agoda.com/*")).toBe("stay");
+    expect(siteKindOf("https://www.klook.com/*")).toBe("activity");
+    expect(siteKindOf("https://www.omio.com/*")).toBe("transport");
+    expect(timedSite("https://www.omio.com/*")).toBe(true);
+    expect(timedSite("https://www.rentalcars.com/*")).toBe(false);
+    expect(siteKindOf("https://www.hotelx.pt/*")).toBe("any");
+    expect(companionName("https://www.hotelx.pt/*")).toBe("hotelx.pt");
+    expect(originOf("https://www.hotelx.pt/rooms/1?x=2")).toBe("https://www.hotelx.pt/*");
+    expect(originOf("http://www.hotelx.pt/")).toBeNull();
+  });
+  it("the flight home (landing at home) belongs to where it leaves from", () => {
+    expect(pageCountry("https://www.skyscanner.com.tr/transport/flights/lis/ist/261119/", "", "TR")).toBe("PT");
+    expect(pageCountry("https://www.skyscanner.com.tr/transport/flights/ist/lis/261112/", "", "TR")).toBe("PT");
+  });
+  const trip = (id: string, title: string, start: string | null, end: string | null, updatedAt: number) =>
+    ({ id, title, confirmedDates: start && end ? { start, end } : null, budget: null, heroImage: null, createdAt: 1, updatedAt }) as never;
+  const trips = [trip("pt", "Portekiz", "2026-11-12", "2026-11-19", 1), trip("ma", "Madeira, bahar", "2027-03-02", "2027-03-09", 2), trip("bali", "Bali", "2027-01-10", "2027-01-30", 9)];
+  it("Önerilen: the country's trip on the day, the country's other trip, the last saved", () => {
+    expect(quickPicks(trips, [], "PT", "2026-11-13", null, "2026-10-23")).toEqual(["pt", "ma", "bali"]);
+    expect(quickPicks(trips, [], "PT", "2027-03-04", null, "2026-10-23")).toEqual(["ma", "pt", "bali"]);
+    expect(quickPicks(trips, [], null, null, null, "2026-10-23")[0]).toBe("bali");
+  });
+  it("kept as the country's trip only when it says something for sure", () => {
+    expect(worthRemembering("PT", null, trips, [])).toBe(false);
+    expect(worthRemembering("PT", "2026-11-13", trips, [])).toBe(true);
+    expect(worthRemembering("ID", null, trips, [])).toBe(true);
+    expect(worthRemembering(null, "2026-11-13", trips, [])).toBe(false);
   });
 });

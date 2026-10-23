@@ -14,7 +14,9 @@ import {
   isOfferText,
   isResultText,
   offerPageKind,
+  originOf,
   siteKindOf,
+  timedSite,
   type CardFacts,
   type CompanionAsk,
   type CompanionRoute,
@@ -56,6 +58,10 @@ button:focus-visible, .plus:focus-visible { outline: 3px solid #cfc7ff; outline-
 .pin { position: fixed; display: flex; align-items: center; gap: 6px; pointer-events: auto; }
 .plus { width: 30px; height: 30px; border-radius: 99px; border: 0; background: #5b45e0; color: #fff; font: 800 18px/1 system-ui, sans-serif; cursor: pointer;
   box-shadow: 0 4px 12px -4px rgba(91,69,224,.7); }
+.plus { width: auto; min-width: 30px; padding: 0 9px; display: inline-flex; align-items: center; justify-content: center; gap: 0; transition: padding 160ms ease, gap 160ms ease; }
+.plus .lbl { display: inline-block; max-width: 0; overflow: hidden; white-space: nowrap; font: 800 13px/1 "Plus Jakarta Sans", system-ui, sans-serif; transition: max-width 160ms ease; }
+.pin.hot .plus .lbl, .plus:hover .lbl, .plus:focus-visible .lbl { max-width: 60px; }
+.pin.hot .plus, .plus:hover, .plus:focus-visible { padding: 0 12px 0 10px; gap: 5px; }
 .plus.done { background: #1f7a45; font-size: 14px; }
 .plus.read { background: #fff; color: #5b45e0; box-shadow: inset 0 0 0 2px #5b45e0; font-size: 12px; }
 .tag { padding: 4px 9px; border-radius: 99px; background: #efecff; color: #4a36c9; font: 800 11.5px/1.2 "Plus Jakarta Sans", system-ui, sans-serif;
@@ -71,7 +77,7 @@ button:focus-visible, .plus:focus-visible { outline: 3px solid #cfc7ff; outline-
 .pill button i { font-style: normal; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 99px; background: #fff; color: #5b45e0; font-size: 15px; }
 .pill.done button i { color: #1f7a45; font-size: 12px; }
 .pill button.x { padding: 11px 12px; color: #d9d3fb; font-weight: 600; border-left: 1px solid rgba(255,255,255,.25); }
-.ask { width: 300px; max-height: min(460px, calc(100vh - 120px)); overflow: auto; padding: 14px; border-radius: 14px; background: #fff;
+.ask { width: 340px; max-height: min(460px, calc(100vh - 120px)); overflow: auto; padding: 14px; border-radius: 14px; background: #fff;
   box-shadow: 0 0 0 1px #dcd8e8, 0 18px 40px rgba(28,26,51,.22); display: flex; flex-direction: column; gap: 8px; }
 .ask b { font-size: 14.5px; font-weight: 800; }
 .ask small { font-size: 11.5px; font-weight: 800; color: #5d5a78; }
@@ -82,12 +88,33 @@ button:focus-visible, .plus:focus-visible { outline: 3px solid #cfc7ff; outline-
 .ask button.t:hover { background: #f4f2ff; }
 .ask label { display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border-radius: 10px; background: #f7f5ff; font-size: 12px; cursor: pointer; }
 .ask label input { margin: 1px 0 0; accent-color: #5b45e0; }
+.qp { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.qp button { all: unset; cursor: pointer; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.qp .cv { position: relative; height: 70px; border-radius: 12px; overflow: hidden; display: grid; grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr; gap: 2px; background: #efecff; }
+.qp .cv img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.qp .cv img:first-child { grid-row: 1 / 3; }
+.qp .cv img:only-child { grid-column: 1 / 3; }
+.qp .cv .ini { grid-row: 1 / 3; grid-column: 1 / 3; display: grid; place-items: center; font: 800 20px/1 "Plus Jakarta Sans", system-ui, sans-serif; color: #4a36c9; }
+.qp button.best .cv { box-shadow: 0 0 0 3px #5b45e0; }
+.qp b { font-size: 12.5px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qp span.w { font-size: 11px; color: #5d5a78; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qp button:hover .cv { filter: brightness(.95); }
+.ln { all: unset; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 5px 6px; border-radius: 10px; }
+.ln:hover { background: #f4f2ff; }
+.ln .th { width: 34px; height: 34px; border-radius: 9px; flex: none; background: #efecff; object-fit: cover; display: grid; place-items: center; color: #4a36c9; font-weight: 800; font-size: 13px; }
+.ln b { display: block; font-size: 13px; font-weight: 750; }
+.ln span.w { display: block; font-size: 11px; color: #5d5a78; font-weight: 600; }
+.ln.new { box-shadow: inset 0 0 0 1.5px #d6d2e4; }
 .ask button.no { align-self: flex-start; border: 0; background: none; color: #5d5a78; font: 700 12px/1 inherit; cursor: pointer; padding: 4px 0; }
 .toast { display: flex; align-items: center; gap: 10px; max-width: 320px; padding: 10px 12px; border-radius: 12px; background: #1c1a33; color: #fff; font-size: 12.5px;
   box-shadow: 0 10px 24px rgba(0,0,0,.25); }
 .toast i { font-style: normal; flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 99px; background: #1f7a45; font-size: 12px; font-weight: 800; }
 .toast button { border: 0; background: none; color: #c9c2f5; font: 800 12px/1 inherit; cursor: pointer; padding: 0; white-space: nowrap; }
 `;
+
+/** What the question asks about ("Bu konaklama hangi geziye?"). */
+const whatOf = (kind: SiteKind): string =>
+  kind === "stay" ? L("Bu konaklama", "This stay") : kind === "activity" ? L("Bu etkinlik", "This activity") : kind === "transport" ? L("Bu yolculuk", "This journey") : kind === "flight" ? L("Bu uçuş", "This flight") : L("Bu sayfa", "This page");
 
 /** The JSON-LD types a page says it is ("Hotel", "TouristTrip"). */
 function ldTypes(): string[] {
@@ -113,7 +140,9 @@ function ldTypes(): string[] {
 function start() {
   if (window.__tripRadarCompanion) return;
   window.__tripRadarCompanion = true;
-  const kind: SiteKind = siteKindOf(companionSiteOf(location.href) ?? "");
+  const site = companionSiteOf(location.href) ?? originOf(location.href) ?? "";
+  const kind: SiteKind = siteKindOf(site);
+  const timed = timedSite(site);
   const host = document.createElement("div");
   host.id = "trip-radar-companion";
   const root = host.attachShadow({ mode: "closed" });
@@ -188,43 +217,91 @@ function start() {
       h.textContent = L(`${asking.what} hangi geziye?`, `${asking.what}: which trip?`);
       box.append(h);
       const country = where?.country ?? null;
-      const own = where?.trips.filter((t) => t.match) ?? [];
-      const others = where?.trips.filter((t) => !t.match) ?? [];
       const remember = document.createElement("input");
       remember.type = "checkbox";
       remember.checked = true;
       const pick = (p: TripPick) => asking?.then({ ...p, remember: Boolean(country) && remember.checked });
-      const tripButton = (t: CompanionWhere["trips"][number], best: boolean) => {
-        const b = document.createElement("button");
-        b.type = "button";
-        b.className = `t${best ? " best" : ""}`;
-        b.textContent = t.title;
-        if (t.when) {
-          const w = document.createElement("span");
-          w.textContent = t.when;
-          b.append(w);
+      const cover = (t: CompanionWhere["trips"][number], big: boolean) => {
+        const frame = document.createElement("span");
+        frame.className = big ? "cv" : "th";
+        // (no photo, or the site's own rules refuse ours: the trip's first letter)
+        const initial = () => {
+          if (frame.querySelector("img")) return;
+          const ini = document.createElement("span");
+          if (big) ini.className = "ini";
+          ini.textContent = t.title.slice(0, 1).toLocaleUpperCase("tr");
+          frame.replaceChildren(ini);
+        };
+        const photos = (t.photos ?? []).slice(0, big ? 3 : 1);
+        for (const src of photos) {
+          const img = document.createElement("img");
+          img.src = src;
+          img.alt = "";
+          img.referrerPolicy = "no-referrer";
+          img.onerror = () => (img.remove(), initial());
+          frame.append(img);
         }
-        b.onclick = () => pick({ tripId: t.id });
-        return b;
+        if (!photos.length) initial();
+        return frame;
       };
-      if (own.length && country) {
+      const words = (t: CompanionWhere["trips"][number]) => {
+        const w = document.createElement("span");
+        w.className = "w";
+        w.textContent = [t.when, t.match && country ? country : null].filter(Boolean).join(" · ") || L("tarihsiz", "no dates");
+        return w;
+      };
+      // Önerilen (Pinterest's Quick Picks): the three most likely, with their covers; the first picked by one press.
+      const picks = (where?.picks ?? []).map((id) => where!.trips.find((t) => t.id === id)).filter((t): t is CompanionWhere["trips"][number] => Boolean(t));
+      if (picks.length) {
         const g = document.createElement("small");
-        g.textContent = L(`${country} gezilerin`, `Your trips to ${country}`);
-        box.append(g, ...own.map((t, n) => tripButton(t, n === 0)));
+        g.textContent = L("Önerilen", "Suggested");
+        const row = document.createElement("div");
+        row.className = "qp";
+        picks.forEach((t, n) => {
+          const b = document.createElement("button");
+          b.type = "button";
+          if (n === 0) b.className = "best";
+          const name = document.createElement("b");
+          name.textContent = t.title;
+          b.append(cover(t, true), name, words(t));
+          b.onclick = () => pick({ tripId: t.id });
+          row.append(b);
+        });
+        box.append(g, row);
       }
-      if (others.length) {
+      const rest = (where?.trips ?? []).filter((t) => !picks.includes(t));
+      if (rest.length) {
         const g = document.createElement("small");
-        g.textContent = own.length ? L("Diğerleri", "Others") : L("Gezilerin", "Your trips");
-        box.append(g, ...others.map((t) => tripButton(t, false)));
+        g.textContent = L("Tüm geziler", "All trips");
+        box.append(g);
+        for (const t of rest) {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.className = "ln";
+          const text = document.createElement("span");
+          const name = document.createElement("b");
+          name.textContent = t.title;
+          text.append(name, words(t));
+          b.append(cover(t, false), text);
+          b.onclick = () => pick({ tripId: t.id });
+          box.append(b);
+        }
       }
       if (country) {
         const fresh = document.createElement("button");
         fresh.type = "button";
-        fresh.className = "t";
-        fresh.textContent = L(`+ Yeni gezi: ${country}`, `+ New trip: ${country}`);
+        fresh.className = "ln new";
+        const plusTh = document.createElement("span");
+        plusTh.className = "th";
+        plusTh.textContent = "+";
+        const text = document.createElement("span");
+        const name = document.createElement("b");
+        name.textContent = L(`Yeni gezi: ${country}`, `New trip: ${country}`);
+        text.append(name);
+        fresh.append(plusTh, text);
         fresh.onclick = () => pick({ newTrip: true });
         const label = document.createElement("label");
-        label.append(remember, document.createTextNode(L(`${country} için bundan sonra hep buraya koy`, `Put ${country} there from now on`)));
+        label.append(remember, document.createTextNode(L(`${country} için bundan sonra sormadan buraya`, `${country} goes there from now on`)));
         box.append(fresh, label);
       }
       const no = document.createElement("button");
@@ -278,7 +355,7 @@ function start() {
     add.append(icon, document.createTextNode(pillState === "busy" ? L("Okunuyor", "Reading") : done ? (pillState === "done" ? L("Destede", "In the deck") : L("Destende", "In your deck")) : L("Desteye ekle", "Add to the deck")));
     add.disabled = pillState !== "idle" || done;
     add.onclick = () =>
-      withTrip(single === "stay" ? L("Bu konaklama", "This stay") : single === "activity" ? L("Bu etkinlik", "This activity") : L("Bu uçuş", "This flight"), async (pick) => {
+      withTrip(whatOf(single!), async (pick) => {
         pillState = "busy";
         drawDock();
         const ok = await ask<{ ok: boolean; tripId: string | null }>({ type: "desk:page", url: location.href, snapshot: collectPage(), ...pick });
@@ -362,7 +439,7 @@ function start() {
       // own text is then read as it is shown)
       const loose = el.textContent ?? "";
       if (loose.length < 20 || loose.length > 900) continue;
-      if (kind === "flight") {
+      if (timed) {
         if (!/\d[:.][0-5]\d/.test(loose) || !isResultText(el.innerText ?? "")) continue;
         const r = el.getBoundingClientRect();
         if (r.width < 260 || r.height < 48 || r.height > 420) continue;
@@ -418,7 +495,7 @@ function start() {
             });
           }
         }
-      } else if (kind !== "flight" && where?.names?.length && inDeckByName((el as HTMLElement).innerText, where.names)) label = L("Destende var", "In your deck");
+      } else if (!timed && where?.names?.length && inDeckByName((el as HTMLElement).innerText, where.names)) label = L("Destende var", "In your deck");
       if (label) {
         const tag = document.createElement("span");
         tag.className = `tag${/Destende|In your deck|Seçtiğin|Your flight/.test(label) ? " in" : ""}`;
@@ -430,12 +507,19 @@ function start() {
       const isIn = added.has(el), busy = reading.has(el);
       plus.className = `plus${isIn ? " done" : busy ? " read" : ""}`;
       plus.textContent = isIn ? "✓" : busy ? "···" : "+";
+      // (Pinterest's: a small "+" on the card's top edge; over the card, it says "+ Ekle")
+      if (!isIn && !busy) {
+        const lbl = document.createElement("span");
+        lbl.className = "lbl";
+        lbl.textContent = L("Ekle", "Add");
+        plus.append(lbl);
+      }
       plus.title = isIn ? L("Desteye girdi; okunuyor", "In the deck; being read") : L("Bunu desteye ekle", "Add this one to the deck");
       plus.onclick = (e) => {
         e.preventDefault();
         e.stopPropagation();
         if (added.has(el) || reading.has(el)) return;
-        withTrip(kind === "stay" ? L("Bu konaklama", "This stay") : kind === "activity" ? L("Bu etkinlik", "This activity") : L("Bu uçuş", "This flight"), async (pick) => {
+        withTrip(whatOf(kind), async (pick) => {
           reading.add(el);
           drawCards();
           const ok = await ask<{ ok: boolean; tripId: string | null }>({ type: "desk:add", url: location.href, title: document.title, text: (el as HTMLElement).innerText.replace(/\s+/g, " ").trim().slice(0, 1500), ...pick });
@@ -488,6 +572,21 @@ function start() {
     frame = requestAnimationFrame(place);
   };
   addEventListener("scroll", follow, { passive: true, capture: true });
+  // (the card under the mouse: its "+" opens into "+ Ekle")
+  let hot: HTMLDivElement | null = null;
+  addEventListener(
+    "mouseover",
+    (e) => {
+      const t = e.target as Node | null;
+      const c = t ? cards.find((x) => x.el.contains(t)) : undefined;
+      const pin = c?.pin ?? null;
+      if (pin === hot) return;
+      hot?.classList.remove("hot");
+      hot = pin;
+      hot?.classList.add("hot");
+    },
+    { passive: true, capture: true },
+  );
   addEventListener("resize", follow, { passive: true });
   // (a search page changes its address without loading: the way or the day changed)
   setInterval(() => void refresh(), 1500);

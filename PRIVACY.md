@@ -1,6 +1,6 @@
 # Trip Radar · Gizlilik politikası / Privacy policy
 
-Son güncelleme / Last updated: 2026-10-23 · Sürüm / Version: 0.41.2
+Son güncelleme / Last updated: 2026-10-23 · Sürüm / Version: 0.42.0
 
 ---
 
@@ -288,6 +288,14 @@ Pratikte:
 Eklenti kendini otomatik günceller. Bu politika değişirse üstteki tarih ve sürüm güncellenir.
 Önemli bir değişiklik (yeni bir veri türü ya da yeni bir alıcı gibi), değişikliği getiren sürümle birlikte bu
 sayfada açıkça yazılır.
+
+0.42.0'da değişenler: "Sitede benle gel" artık tek anahtarla açılır: "Seyahat sitelerinde benle gel" (Ayarlar ya da
+araç çubuğu). Chrome bir kez sorar; listedeki 30 kadar seyahat sitesinde (Skyscanner, Kiwi, Kayak, Momondo, Pegasus,
+Turkish Airlines, AJet, Booking.com, Airbnb, Hotels.com, Expedia, Agoda, Trip.com, GetYourGuide, Viator, Klook, Tiqets,
+Omio, Trainline, FlixBus, Rentalcars, DiscoverCars) sonuçlara "+" ve bir yerin sayfasına "Desteye ekle" koyar. Listede
+olmayan bir siteyi yalnız o site için araç çubuğundan açabilirsin ("Bu sitede de benle gel"); bunun için eklenti tüm
+sitelere isteğe bağlı izin ister ama yalnız senin açtığın siteyi kullanır. Hiçbir yerde basmadan sayfadan bir şey okunup
+gönderilmez. Gezi seçicide gezilerinin fotoğrafları gösterilir; bunlar bilgisayarındaki kayıtlardan gelir.
 
 0.41.0'da eklenenler: "Sitede benle gel" artık otel ve etkinlik sitelerinde de (Booking.com, Airbnb, GetYourGuide,
 Viator), yine yalnız senin site site izin verdiğin yerlerde: listede her sonuca "+", bir otelin ya da turun kendi
@@ -600,6 +608,14 @@ In practice:
 The extension updates itself. When this policy changes, the date and version at the top are updated.
 A significant change (a new kind of data or a new recipient, say) is stated plainly on this page with the version
 that brings it.
+
+Changed in 0.42.0: "Come along on the site" now turns on with one switch: "Come along on travel sites" (Settings or the
+toolbar). Chrome asks once; on some 30 travel sites (Skyscanner, Kiwi, Kayak, Momondo, Pegasus, Turkish Airlines, AJet,
+Booking.com, Airbnb, Hotels.com, Expedia, Agoda, Trip.com, GetYourGuide, Viator, Klook, Tiqets, Omio, Trainline,
+FlixBus, Rentalcars, DiscoverCars) it puts a "+" on results and "Add to the deck" on a place's page. A site not on the
+list can be turned on for that site alone from the toolbar ("Come along on this site too"); for that the extension asks
+for an optional permission for all sites but uses only the sites you turn on. Nowhere is anything read from a page or
+sent until you press it. The trip picker shows your trips' photos, from the records on your computer.
 
 Added in 0.41.0: "Come along on the site" now also on hotel and activity sites (Booking.com, Airbnb, GetYourGuide,
 Viator), still only where you allow it site by site: a "+" on each result of a list, and "Add to the deck" at the bottom

@@ -19,9 +19,12 @@ async function open(url, fixture) {
     const attach = Element.prototype.attachShadow;
     Element.prototype.attachShadow = function (o) { return attach.call(this, { ...o, mode: "open" }); };
     window.__asked = [];
-    const where = { trip: null, country: "Portekiz", saved: false, names: ["Casa Balthazar"], trips: [
-      { id: "pt", title: "Portekiz", when: "12 – 19 Kas", match: true },
-      { id: "bali", title: "Bali", when: "Ocak", match: false },
+    const dot = "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10" fill="#c9b9a3"/></svg>');
+    const where = { trip: null, country: "Portekiz", saved: false, names: ["Casa Balthazar"], picks: ["pt", "ma", "bali"], trips: [
+      { id: "pt", title: "Portekiz", when: "12 – 19 Kas", match: true, photos: [dot, dot, dot] },
+      { id: "ma", title: "Madeira, bahar", when: "Mar 2027", match: true, photos: [] },
+      { id: "bali", title: "Bali", when: "Ocak", match: false, photos: [dot] },
+      { id: "dk", title: "Kopenhag ve Amsterdam", when: "8 – 18 Eki", match: false, photos: [] },
     ] };
     window.chrome = {
       runtime: { lastError: undefined, sendMessage: (m, cb) => (window.__asked.push(m), setTimeout(() => cb(m.type === "desk:where" ? where : m.type === "desk:route" ? null : { ok: true, tripId: m.tripId ?? null }), 10)) },
@@ -42,10 +45,15 @@ assert.match(pill ?? "", /Desteye ekle/, "the hotel's page has its Desteye ekle"
 await hotel.screenshot({ path: `${out}/stay-1-pill.png` });
 await inShadow(hotel, () => document.getElementById("trip-radar-companion").shadowRoot.querySelector(".pill button").click());
 await hotel.waitForTimeout(200);
-const choices = await inShadow(hotel, () => [...document.getElementById("trip-radar-companion").shadowRoot.querySelectorAll(".ask button.t")].map((b) => b.firstChild.textContent));
-assert.deepEqual(choices, ["Portekiz", "Bali", "+ Yeni gezi: Portekiz"], "the country's trip first, the others, a new one");
+const choices = await inShadow(hotel, () => {
+  const r = document.getElementById("trip-radar-companion").shadowRoot;
+  return { picks: [...r.querySelectorAll(".qp button b")].map((b) => b.textContent), rest: [...r.querySelectorAll(".ask .ln b")].map((b) => b.textContent), covers: r.querySelectorAll(".qp .cv img").length };
+});
+assert.deepEqual(choices.picks, ["Portekiz", "Madeira, bahar", "Bali"], "Önerilen: the three most likely, the country's first");
+assert.deepEqual(choices.rest, ["Kopenhag ve Amsterdam", "Yeni gezi: Portekiz"], "then every other trip, then a new one");
+assert.equal(choices.covers, 4, "their covers (Portekiz three photos, Bali one; Madeira its letter)");
 await hotel.screenshot({ path: `${out}/stay-2-ask.png` });
-await inShadow(hotel, () => document.getElementById("trip-radar-companion").shadowRoot.querySelector(".ask button.t.best").click());
+await inShadow(hotel, () => document.getElementById("trip-radar-companion").shadowRoot.querySelector(".qp button.best").click());
 await hotel.waitForTimeout(300);
 const page = await hotel.evaluate(() => window.__asked.find((m) => m.type === "desk:page"));
 assert.equal(page.tripId, "pt");
@@ -63,10 +71,16 @@ const tags = await inShadow(list, () => [...document.getElementById("trip-radar-
 assert.deepEqual(tags, ["Destende var"], "Casa Balthazar is in the deck");
 const noPill = await inShadow(list, () => document.getElementById("trip-radar-companion").shadowRoot.querySelector(".pill"));
 assert.equal(noPill, null, "a list has no Desteye ekle");
+// Pinterest's: a small "+" on the card's top edge, "+ Ekle" while the mouse is over the card.
+const card2 = list.locator(".card").nth(1);
+await card2.hover({ position: { x: 300, y: 90 } });
+await list.waitForTimeout(250);
+const hot = await inShadow(list, () => [...document.getElementById("trip-radar-companion").shadowRoot.querySelectorAll(".pin")].map((p) => p.classList.contains("hot")));
+assert.deepEqual(hot, [false, true, false], "only the card under the mouse opens its +");
 await list.screenshot({ path: `${out}/stay-4-list.png` });
 await inShadow(list, () => document.getElementById("trip-radar-companion").shadowRoot.querySelectorAll(".pin .plus")[1].click());
 await list.waitForTimeout(200);
-await inShadow(list, () => document.getElementById("trip-radar-companion").shadowRoot.querySelector(".ask button.t.best").click());
+await inShadow(list, () => document.getElementById("trip-radar-companion").shadowRoot.querySelector(".qp button.best").click());
 await list.waitForTimeout(400);
 await inShadow(list, () => document.getElementById("trip-radar-companion").shadowRoot.querySelectorAll(".pin .plus")[0].click());
 await list.waitForTimeout(400);

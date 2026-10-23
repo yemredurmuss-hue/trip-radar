@@ -6,8 +6,13 @@
 import { L } from "./i18n";
 import { formatPrice } from "./items";
 
-/** The sites it may come along on, each asked for once (manifest optional_host_permissions, the same list). */
+/**
+ * Seyahat siteleri (0.42.0): the travel sites it comes along on, all asked for at once with one switch ("Seyahat
+ * sitelerinde benle gel"; manifest optional_host_permissions, the same list). A site not on it can be allowed on its own
+ * ("Bu sitede de benle gel", the optional "https://*\/*").
+ */
 export const COMPANION_SITES = [
+  // Uçuş
   "https://www.skyscanner.com/*",
   "https://www.skyscanner.net/*",
   "https://www.skyscanner.com.tr/*",
@@ -15,17 +20,49 @@ export const COMPANION_SITES = [
   "https://www.skyscanner.co.uk/*",
   "https://www.skyscanner.co.th/*",
   "https://www.kiwi.com/*",
-  // (0.41.0: hotels and activities too: a "+" on each result of a list, "Desteye ekle" on a hotel's or a tour's own page)
+  "https://www.kayak.com/*",
+  "https://www.kayak.com.tr/*",
+  "https://www.momondo.com/*",
+  "https://www.flypgs.com/*",
+  "https://www.turkishairlines.com/*",
+  "https://www.ajet.com/*",
+  // Konaklama
   "https://www.booking.com/*",
   "https://www.airbnb.com/*",
   "https://www.airbnb.com.tr/*",
   "https://www.airbnb.co.uk/*",
   "https://www.airbnb.de/*",
+  "https://www.hotels.com/*",
+  "https://www.expedia.com/*",
+  "https://www.agoda.com/*",
+  "https://www.trip.com/*",
+  // Etkinlik ve tur
   "https://www.getyourguide.com/*",
   "https://www.getyourguide.de/*",
   "https://www.getyourguide.co.uk/*",
   "https://www.viator.com/*",
+  "https://www.klook.com/*",
+  "https://www.tiqets.com/*",
+  // Tren, otobüs, araç
+  "https://www.omio.com/*",
+  "https://www.thetrainline.com/*",
+  "https://www.flixbus.com/*",
+  "https://www.rentalcars.com/*",
+  "https://www.discovercars.com/*",
 ] as const;
+
+/** Any other https site, allowed on its own from the toolbar ("Bu sitede de benle gel"). */
+export const ANY_SITE = "https://*/*";
+
+/** A page's own origin pattern ("https://www.hotelx.com/*"), for "Bu sitede de benle gel". */
+export function originOf(url: string | null | undefined): string | null {
+  try {
+    const u = new URL(url ?? "");
+    return u.protocol === "https:" ? `https://${u.hostname}/*` : null;
+  } catch {
+    return null;
+  }
+}
 
 /** The site's pattern a page belongs to ("https://www.skyscanner.com.tr/*"), else null. */
 export function companionSiteOf(url: string | null | undefined): string | null {
@@ -41,17 +78,38 @@ export function companionSiteOf(url: string | null | undefined): string | null {
   return COMPANION_SITES.find((p) => new URL(p.replace("/*", "/")).hostname === host) ?? null;
 }
 
-/** The site's name for its button ("Skyscanner", "Kiwi.com", "Booking.com"). */
-export const companionName = (site: string): string =>
-  /kiwi/.test(site) ? "Kiwi.com" : /booking/.test(site) ? "Booking.com" : /airbnb/.test(site) ? "Airbnb" : /getyourguide/.test(site) ? "GetYourGuide" : /viator/.test(site) ? "Viator" : "Skyscanner";
+/** The site's name for its button ("Skyscanner", "Booking.com"); another site: its own host. */
+export function companionName(site: string): string {
+  const names: [RegExp, string][] = [
+    [/skyscanner/, "Skyscanner"], [/kiwi/, "Kiwi.com"], [/kayak/, "Kayak"], [/momondo/, "Momondo"], [/flypgs/, "Pegasus"], [/turkishairlines/, "Turkish Airlines"], [/ajet/, "AJet"],
+    [/booking/, "Booking.com"], [/airbnb/, "Airbnb"], [/hotels\.com/, "Hotels.com"], [/expedia/, "Expedia"], [/agoda/, "Agoda"], [/trip\.com/, "Trip.com"],
+    [/getyourguide/, "GetYourGuide"], [/viator/, "Viator"], [/klook/, "Klook"], [/tiqets/, "Tiqets"],
+    [/omio/, "Omio"], [/trainline/, "Trainline"], [/flixbus/, "FlixBus"], [/rentalcars/, "Rentalcars"], [/discovercars/, "DiscoverCars"],
+  ];
+  const hit = names.find(([re]) => re.test(site));
+  if (hit) return hit[1];
+  return site.replace(/^https:\/\/(www\.)?/, "").replace(/\/\*$/, "");
+}
 
-/** What a site sells, and so which deck its results join. */
-export type SiteKind = "flight" | "stay" | "activity";
-export const siteKindOf = (site: string): SiteKind => (/booking|airbnb/.test(site) ? "stay" : /getyourguide|viator/.test(site) ? "activity" : "flight");
+/** What a site sells, and so which deck its results join (another site: told from its page). */
+export type SiteKind = "flight" | "stay" | "activity" | "transport" | "any";
+export const siteKindOf = (site: string): SiteKind =>
+  /booking|airbnb|hotels\.com|expedia|agoda|trip\.com/.test(site)
+    ? "stay"
+    : /getyourguide|viator|klook|tiqets/.test(site)
+      ? "activity"
+      : /omio|trainline|flixbus|rentalcars|discovercars/.test(site)
+        ? "transport"
+        : /skyscanner|kiwi|kayak|momondo|flypgs|turkishairlines|ajet/.test(site)
+          ? "flight"
+          : "any";
+
+/** Its results are timetables (two hours and a price): flights, trains, buses; a car rental's are offers. */
+export const timedSite = (site: string): boolean => /^(flight|transport)$/.test(siteKindOf(site)) && !/rentalcars|discovercars/.test(site);
 
 /** The deck's name in the plan for a kind ("Konaklama destesine girer"). */
 export const deckWord = (kind: SiteKind): string =>
-  kind === "stay" ? L("Konaklama", "Stays") : kind === "activity" ? L("Etkinlikler", "Activities") : L("Uçuş", "Flights");
+  kind === "stay" ? L("Konaklama", "Stays") : kind === "activity" ? L("Etkinlikler", "Activities") : kind === "transport" ? L("Ulaşım", "Getting around") : kind === "any" ? L("Plan", "Plan") : L("Uçuş", "Flights");
 
 /**
  * One thing's own page (a hotel, a stay, a tour), not a list: what "Desteye ekle" is for. From its address on the sites
@@ -213,8 +271,13 @@ export interface CompanionWhere {
   trip: { id: string; title: string } | null;
   /** The page's country as the code reads it from the address and title ("Portekiz"), when it can. */
   country: string | null;
-  /** The trips to ask among: the country's first (match), at most six. */
-  trips: { id: string; title: string; when: string | null; match: boolean }[];
+  /** The trips to ask among: the country's first (match), at most eight, each with up to three photos (its cover first). */
+  trips: { id: string; title: string; when: string | null; match: boolean; photos: string[] }[];
+  /**
+   * Önerilen (Pinterest's Quick Picks): at most three of them, the most likely first: the country's trip on the page's
+   * day, the country's other trip, the trip saved into last; without a country, the last one and the nearest ahead.
+   */
+  picks: string[];
   /** This very page is on the plan already. */
   saved: boolean;
   /** The names of that trip's options of this kind ("Destende var" on a hotel list). */

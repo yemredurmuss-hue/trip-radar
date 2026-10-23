@@ -5,26 +5,47 @@
 import { countryOfAirport } from "./airports";
 import { downscale, openBoard } from "./browser";
 import { planFlightFor } from "./bring";
-import { COMPANION_SITES, companionName, companionSiteOf, siteKindOf, type CompanionAsk, type CompanionRoute, type CompanionWhere, type DeckBrief, type TripPick } from "./companion";
+import { companionName, companionSiteOf, originOf, siteKindOf, type CompanionAsk, type CompanionRoute, type CompanionWhere, type DeckBrief, type TripPick } from "./companion";
 import { db, listTrips, newId } from "./db";
 import { today } from "./extract";
 import { formatDateRange } from "./items";
 import type { PageSnapshot } from "./pagecapture";
 import { titleCodes, tripPlaceCodes } from "./placeCheck";
 import { saveSnapshot } from "./process";
-import { countryName, isDemoTrip, profileTrips, uniqueTitle } from "./trips";
-import { loadRules, rememberTrip, ruleFor } from "./tripRules";
+import { countryName, gapDays, isDemoTrip, profileTrips, uniqueTitle } from "./trips";
+import { loadHome } from "./passport";
+import { loadRules, rememberTrip, ruleFor, RULE_SLACK_DAYS, worthRemembering } from "./tripRules";
 import type { Item, Trip } from "./types";
 import { flightSearchOf, parseUrl } from "./url";
 import { seenCheaper } from "./priceWatchWorker";
 
 const SCRIPT_ID = "trip-radar-companion";
 
+/** The extension's own hosts (its model and lookups): never a site to come along on. */
+const OWN_HOSTS = () => new Set<string>((chrome.runtime.getManifest().host_permissions ?? []) as string[]);
+
+/**
+ * The sites allowed: the travel sites (one switch) and any other allowed on its own ("Bu sitede de"), each as its own
+ * origin pattern; never the extension's own hosts, never "every site".
+ */
+export async function allowedSites(): Promise<string[]> {
+  const granted = (await chrome.permissions.getAll()).origins ?? [];
+  const own = OWN_HOSTS();
+  return granted.filter((o) => /^https:\/\/[^*/]+\/\*$/.test(o) && !own.has(o));
+}
+
+/** A page the companion may answer on: an allowed travel site, or a site allowed on its own. */
+async function allowedPage(url: string): Promise<boolean> {
+  const origin = originOf(url);
+  if (!origin) return false;
+  if (OWN_HOSTS().has(origin)) return false;
+  return chrome.permissions.contains({ origins: [origin] }).catch(() => false);
+}
+
 /** The content script registered for the allowed sites only (none allowed: none registered). */
 export async function syncCompanion(): Promise<void> {
   if (!chrome.scripting?.registerContentScripts || !chrome.permissions?.getAll) return;
-  const granted = new Set((await chrome.permissions.getAll()).origins ?? []);
-  const matches = COMPANION_SITES.filter((p) => granted.has(p));
+  const matches = await allowedSites();
   const had = await chrome.scripting.getRegisteredContentScripts({ ids: [SCRIPT_ID] }).catch(() => []);
   if (had.length) await chrome.scripting.unregisterContentScripts({ ids: [SCRIPT_ID] }).catch(() => undefined);
   if (!matches.length) return;
@@ -58,9 +79,10 @@ export async function routeFor(url: string): Promise<(CompanionRoute & { forNeed
 
 /**
  * The page's country as the code reads it, before any model: a Booking hotel's address says it (/hotel/pt/), a flight
- * search's arrival airport, else a place its address or title names ("Lisbon", "Bali"). Null when nothing says.
+ * search's arrival airport (the flight home, landing at home: where it leaves from), else a place its address or title
+ * names ("Lisbon", "Bali"). Null when nothing says.
  */
-export function pageCountry(url: string, title: string): string | null {
+export function pageCountry(url: string, title: string, home: string | null = null): string | null {
   let u: URL;
   try {
     u = new URL(url);
@@ -70,10 +92,52 @@ export function pageCountry(url: string, title: string): string | null {
   const own = u.pathname.match(/^\/hotel\/([a-z]{2})\//)?.[1];
   if (own && /booking\.com$/.test(u.hostname)) return own.toUpperCase();
   const search = flightSearchOf(url);
-  if (search) return countryOfAirport(search.to) ?? null;
+  if (search) {
+    const to = countryOfAirport(search.to) ?? null;
+    return to && to === home ? (countryOfAirport(search.from) ?? to) : to;
+  }
   const words = decodeURIComponent(`${u.pathname} ${u.searchParams.get("ss") ?? ""} ${u.searchParams.get("q") ?? ""} ${u.searchParams.get("text") ?? ""}`).replace(/[-_/+]+/g, " ");
   return [...titleCodes(`${words} ${title}`)][0] ?? null;
 }
+
+/** A trip's small pictures for the picker (Pinterest's board cover): its own photo, then its last two saved with one. */
+function photosOf(trip: Trip, items: Item[]): string[] {
+  const ok = (u: string | null | undefined): u is string => Boolean(u && (/^https:\/\//.test(u) || (/^data:image\//.test(u) && u.length < 120_000)));
+  const last = items
+    .filter((i) => i.tripId === trip.id && i.status !== "dismissed" && ok(i.imageUrl))
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+    .map((i) => i.imageUrl!);
+  return [...new Set([trip.heroImage, ...last].filter(ok))].slice(0, 3);
+}
+
+/**
+ * Önerilen (Pinterest's Quick Picks): the country's trip on the page's day, the country's other trip, the trip saved into
+ * last; without a country, the last one and the nearest ahead. At most three, the most likely first.
+ */
+export function quickPicks(own: Trip[], items: Item[], code: string | null, day: string | null, end: string | null, now: string): string[] {
+  const profiles = profileTrips(own, items);
+  const range = (t: Trip) => t.confirmedDates ?? profiles.find((p) => p.trip.id === t.id)?.range ?? null;
+  const match = (t: Trip) => Boolean(code && (tripPlaceCodes(t.id, items).has(code) || titleCodes(t.title).has(code)));
+  const fits = (t: Trip) => {
+    const r = range(t);
+    return Boolean(day && r && gapDays(r, day, end) <= RULE_SLACK_DAYS);
+  };
+  const ahead = (t: Trip) => {
+    const r = range(t);
+    return r && r.end >= now ? r.start : "9999";
+  };
+  const lastSaved = [...own].sort((a, b) => lastAt(b, items) - lastAt(a, items));
+  const mine = own.filter(match);
+  const order = [
+    ...mine.filter(fits),
+    ...[...mine].sort((a, b) => ahead(a).localeCompare(ahead(b))),
+    ...lastSaved.slice(0, 1),
+    ...[...own].filter((t) => ahead(t) !== "9999").sort((a, b) => ahead(a).localeCompare(ahead(b))),
+    ...lastSaved,
+  ];
+  return [...new Set(order.map((t) => t.id))].slice(0, 3);
+}
+const lastAt = (t: Trip, items: Item[]) => Math.max(t.updatedAt, ...items.filter((i) => i.tripId === t.id).map((i) => i.createdAt ?? 0));
 
 const pageKey = (u: string | null | undefined): string | null => {
   try {
@@ -87,27 +151,31 @@ const pageKey = (u: string | null | undefined): string | null => {
 /** Where a page would go (the route's trip, the country's remembered one), else the trips to ask among. */
 export async function whereFor(url: string, title: string): Promise<CompanionWhere> {
   const d = await db();
-  const [trips, items] = await Promise.all([listTrips(), d.getAll("items")]);
+  const [trips, items, home] = await Promise.all([listTrips(), d.getAll("items"), loadHome().catch(() => null)]);
   const own = trips.filter((t) => !isDemoTrip(t));
-  const code = pageCountry(url, title);
+  const code = pageCountry(url, title, home);
   const route = await routeFor(url);
   const day = flightSearchOf(url)?.day ?? parseUrl(url).checkIn ?? null;
+  const end = parseUrl(url).checkOut ?? null;
   const rules = route || !code ? null : await loadRules();
-  const trip: Trip | null = route ? (own.find((t) => t.id === route.tripId) ?? null) : rules && code ? ruleFor(rules, [code], own, items, day, parseUrl(url).checkOut ?? null, today()) : null;
+  const trip: Trip | null = route ? (own.find((t) => t.id === route.tripId) ?? null) : rules && code ? ruleFor(rules, [code], own, items, day, end, today()) : null;
   const profiles = profileTrips(own, items);
   const match = (t: Trip) => Boolean(code && (tripPlaceCodes(t.id, items).has(code) || titleCodes(t.title).has(code)));
   const whenOf = (t: Trip) => {
     const r = t.confirmedDates ?? profiles.find((p) => p.trip.id === t.id)?.range ?? null;
     return r ? formatDateRange(r.start, r.end) : null;
   };
-  const listed = [...own].sort((a, b) => Number(match(b)) - Number(match(a)) || b.updatedAt - a.updatedAt).slice(0, 6);
+  const picks = quickPicks(own, items, code, day, end, today());
+  const listed = [...own].sort((a, b) => Number(match(b)) - Number(match(a)) || b.updatedAt - a.updatedAt);
+  const shown = [...picks.map((id) => listed.find((t) => t.id === id)!).filter(Boolean), ...listed.filter((t) => !picks.includes(t.id))].slice(0, 8);
   const key = pageKey(url);
-  const kind = siteKindOf(companionSiteOf(url) ?? "");
-  const category = kind === "stay" ? "stay" : kind === "activity" ? "activity" : "flight";
+  const kind = siteKindOf(companionSiteOf(url) ?? originOf(url) ?? "");
+  const category = kind === "stay" ? "stay" : kind === "activity" ? "activity" : kind === "transport" ? "transport" : "flight";
   return {
     trip: trip ? { id: trip.id, title: trip.title } : null,
     country: code ? countryName(code) : null,
-    trips: listed.map((t) => ({ id: t.id, title: t.title, when: whenOf(t), match: match(t) })),
+    trips: shown.map((t) => ({ id: t.id, title: t.title, when: whenOf(t), match: match(t), photos: photosOf(t, items) })),
+    picks,
     saved: Boolean(key && items.some((i) => i.status !== "dismissed" && pageKey(i.url) === key)),
     names: trip ? items.filter((i) => i.tripId === trip.id && i.category === category && i.status !== "dismissed").map((i) => i.name).slice(0, 60) : [],
   };
@@ -121,8 +189,9 @@ export async function whereFor(url: string, title: string): Promise<CompanionWhe
 export async function bindFor(url: string, title: string, pick: TripPick): Promise<{ forTripId?: string; forNeed?: string }> {
   const route = await routeFor(url);
   if (route) return { forTripId: route.tripId, forNeed: route.forNeed };
-  const code = pageCountry(url, title);
   const d = await db();
+  const code = pageCountry(url, title, await loadHome().catch(() => null));
+  const day = flightSearchOf(url)?.day ?? parseUrl(url).checkIn ?? null;
   if (pick.newTrip) {
     const trips = await listTrips();
     const now = Date.now();
@@ -133,7 +202,8 @@ export async function bindFor(url: string, title: string, pick: TripPick): Promi
   }
   const picked = typeof pick.tripId === "string" ? await d.get("trips", pick.tripId.slice(0, 80)) : undefined;
   if (picked && !isDemoTrip(picked)) {
-    if (pick.remember) await rememberTrip(code, picked.id);
+    const own = (await listTrips()).filter((t) => !isDemoTrip(t));
+    if (pick.remember && worthRemembering(code, day, own, await d.getAll("items"))) await rememberTrip(code, picked.id);
     return { forTripId: picked.id };
   }
   const where = await whereFor(url, title);
@@ -183,8 +253,11 @@ const snapshotOf = (url: string, title: string, text: string): PageSnapshot => (
 export function companionAnswer(message: CompanionAsk | { type?: unknown }, sender: chrome.runtime.MessageSender, process: () => void): Promise<unknown> | null {
   if (typeof message?.type !== "string" || !message.type.startsWith("desk:")) return null;
   const url = sender.url ?? sender.tab?.url ?? "";
-  if (sender.id !== chrome.runtime.id || sender.tab?.id == null || !companionSiteOf(url)) return Promise.resolve(null);
-  const m = message as CompanionAsk;
+  if (sender.id !== chrome.runtime.id || sender.tab?.id == null) return Promise.resolve(null);
+  return allowedPage(url).then((ok) => (ok ? answerOn(message as CompanionAsk, url, sender, process) : null));
+}
+
+function answerOn(m: CompanionAsk, url: string, sender: chrome.runtime.MessageSender, process: () => void): Promise<unknown> {
   const text = (s: unknown, max: number) => (typeof s === "string" ? s.slice(0, max) : "");
   switch (m.type) {
     case "desk:route":
@@ -193,7 +266,7 @@ export function companionAnswer(message: CompanionAsk | { type?: unknown }, send
       // (fiyat izleme: the chosen flight's price on the site, read as the traveller sees it; said when it's less)
       return routeFor(url).then(async (r) => {
         if (!r?.chosenId || typeof m.price !== "number" || !(m.price > 0)) return { save: null };
-        return { save: await seenCheaper(r.chosenId, m.price, typeof m.currency === "string" ? m.currency : null, companionName(companionSiteOf(url) ?? "")) };
+        return { save: await seenCheaper(r.chosenId, m.price, typeof m.currency === "string" ? m.currency : null, companionName(companionSiteOf(url) ?? originOf(url) ?? "")) };
       });
     case "desk:where":
       return whereFor(url, text(m.title, 300));

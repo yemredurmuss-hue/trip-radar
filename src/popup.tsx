@@ -10,7 +10,7 @@ import { saveSnapshot } from "./lib/process";
 import { planFlightFor, type PlannedFlight } from "./lib/bring";
 import { badgeOf, candidateOf, markBuying, type CandidateTab } from "./lib/candidateTabs";
 import { flightSearchOf } from "./lib/url";
-import { companionName, companionSiteOf, siteKindOf, type CompanionWhere, type TripPick as SitePick } from "./lib/companion";
+import { COMPANION_SITES, companionName, companionSiteOf, originOf, type CompanionWhere, type TripPick as SitePick } from "./lib/companion";
 import { bindFor, whereFor } from "./lib/companionWorker";
 import type { PageSnapshot } from "./lib/pagecapture";
 import { chooseItem } from "./app/actions";
@@ -62,7 +62,10 @@ interface Desk {
 }
 
 async function deskOf(tab: chrome.tabs.Tab | undefined): Promise<Desk> {
-  const site = companionSiteOf(tab?.url);
+  // (a travel site of the list, or any other https page: "Bu sitede de benle gel"; never the extension's own pages)
+  const own = new Set<string>((chrome.runtime.getManifest().host_permissions ?? []) as string[]);
+  const other = originOf(tab?.url);
+  const site = companionSiteOf(tab?.url) ?? (other && !own.has(other) ? other : null);
   const along = site ? await chrome.permissions.contains({ origins: [site] }).catch(() => false) : false;
   const none: Desk = { candidate: null, planned: null, tabId: tab?.id ?? null, site, along };
   if (!tab?.id) return none;
@@ -391,43 +394,49 @@ function DeskBox({ desk }: { desk: Desk }) {
 }
 
 /**
- * Seviye 2, "Sitede benle gel": asked once per site (Chrome asks for that site's permission); allowed, on that site's
- * searches for a planned flight a strip says which row it is for and each result gets a "+". Taken back here.
+ * "Sitede benle gel" (0.42.0): on a travel site of the list, one switch for all of them ("Seyahat sitelerinde benle gel",
+ * Chrome asks once); on any other site, that site alone ("Bu sitede de benle gel"). Allowed, the strip and each result's
+ * "+", and a place's own page its "Desteye ekle". Taken back here, or in Settings.
  */
 function AlongBox({ site, tabId, along }: { site: string; tabId: number; along: boolean }) {
   const [on, setOn] = useState(along);
   const [said, setSaid] = useState<string | null>(null);
+  const travel = (COMPANION_SITES as readonly string[]).includes(site);
   const name = companionName(site);
-  const flights = siteKindOf(site) === "flight";
+  const origins = travel ? [...COMPANION_SITES] : [site];
   async function allow() {
-    const granted = await chrome.permissions.request({ origins: [site] }).catch(() => false);
+    const granted = await chrome.permissions.request({ origins }).catch(() => false);
     if (!granted) return setSaid(L("İzin verilmedi; yine de simgeye basınca kaydederim.", "Not allowed; pressing the icon still saves the page."));
     setOn(true);
     await chrome.scripting.executeScript({ target: { tabId }, files: ["companion.js"] }).catch(() => undefined);
     setSaid(
-      flights
-        ? L(`Artık ${name}'da yanındayım: sonuçlarda + görürsün, planındaki uçuşun aramasında üstte şerit de.`, `I'm with you on ${name} now: a + on each result, and on a search for a planned flight the strip too.`)
-        : L(`Artık ${name}'da yanındayım: listelerde her sonuçta +, bir otelin ya da turun kendi sayfasında sağ altta "Desteye ekle".`, `I'm with you on ${name} now: a + on each result of a list, and "Add to the deck" at the bottom right of a place's own page.`),
+      travel
+        ? L("Artık seyahat sitelerinde yanındayım: sonuçlarda +, bir otelin ya da turun sayfasında sağ altta \"Desteye ekle\".", "I'm with you on travel sites now: a + on each result, and \"Add to the deck\" at the bottom right of a place's page.")
+        : L(`Artık ${name}'da da yanındayım.`, `I'm with you on ${name} too now.`),
     );
   }
   async function stop() {
-    await chrome.permissions.remove({ origins: [site] }).catch(() => false);
+    await chrome.permissions.remove({ origins }).catch(() => false);
     setOn(false);
-    setSaid(L(`${name}'da artık yokum; sayfa yenilenince şerit gider.`, `I've left ${name}; the strip goes when the page reloads.`));
+    setSaid(travel ? L("Seyahat sitelerinde artık yokum; sayfa yenilenince + gider.", "I've left the travel sites; the + goes when the page reloads.") : L(`${name}'da artık yokum.`, `I've left ${name}.`));
   }
   return (
     <div className="popup-along">
       {on ? (
         <button type="button" className="btn-link" onClick={() => void stop()}>
-          {L(`${name}'da benle gelme`, `Stop coming along on ${name}`)}
+          {travel ? L("Seyahat sitelerinde benle gelme", "Stop coming along on travel sites") : L(`${name}'da benle gelme`, `Stop coming along on ${name}`)}
         </button>
-      ) : (
+      ) : travel ? (
         <>
           <button type="button" className="small-btn" onClick={() => void allow()}>
-            {L(`${name}'da benle gel`, `Come along on ${name}`)}
+            {L("Seyahat sitelerinde benle gel", "Come along on travel sites")}
           </button>
-          <span className="muted">{L("Yalnız bu sitede; + ya da Desteye ekle basmadan hiçbir şey kaydedilmez. İlk eklemede hangi gezi diye bir kez sorarım.", "Only on this site; nothing is saved until you press + or Add to the deck. The first time I ask once which trip.")}</span>
+          <span className="muted">{L("Booking, Airbnb, Skyscanner, GetYourGuide ve 30 kadar seyahat sitesi, tek izinle. + basmadan hiçbir şey kaydedilmez.", "Booking, Airbnb, Skyscanner, GetYourGuide and some 30 travel sites, with one permission. Nothing is saved until you press +.")}</span>
         </>
+      ) : (
+        <button type="button" className="btn-link" onClick={() => void allow()}>
+          {L(`${name}'da da benle gel`, `Come along on ${name} too`)}
+        </button>
       )}
       {said && <span className="popup-desk-said">{said}</span>}
     </div>
@@ -473,31 +482,60 @@ function PickTrip({ pick, onSaved }: { pick: PickFirst; onSaved: (captureId: str
     requestProcessing();
     onSaved(capture.id);
   }
-  const own = where.trips.filter((t) => t.match);
-  const others = where.trips.filter((t) => !t.match);
-  const button = (t: CompanionWhere["trips"][number], first: boolean) => (
-    <button key={t.id} type="button" className="small-btn" disabled={busy} aria-current={first ? "true" : undefined} onClick={() => void save({ tripId: t.id })}>
-      {t.when ? `${t.title} · ${t.when}` : t.title}
-    </button>
-  );
+  type T = CompanionWhere["trips"][number];
+  const picks = where.picks.map((id) => where.trips.find((t) => t.id === id)).filter((t): t is T => Boolean(t));
+  const rest = where.trips.filter((t) => !picks.includes(t));
+  const words = (t: T) => [t.when, t.match ? where.country : null].filter(Boolean).join(" · ") || L("tarihsiz", "no dates");
   return (
-    <div className="popup-held">
-      <p>{L("Hangi geziye koyalım?", "Which trip should it go to?")}</p>
-      {own.length > 0 && where.country && <small className="muted">{L(`${where.country} gezilerin`, `Your trips to ${where.country}`)}</small>}
-      {own.length > 0 && <div className="popup-held-actions">{own.map((t, n) => button(t, n === 0))}</div>}
-      {others.length > 0 && <small className="muted">{own.length ? L("Diğerleri", "Others") : L("Gezilerin", "Your trips")}</small>}
-      <div className="popup-held-actions">
-        {others.map((t) => button(t, false))}
-        <button type="button" className="small-btn" disabled={busy} onClick={() => void save({ newTrip: true })}>
-          {where.country ? L(`Yeni gezi: ${where.country}`, `New trip: ${where.country}`) : L("Yeni gezi", "New trip")}
+    <div className="pk-pick">
+      <p>{L("Hangi geziye?", "Which trip?")}</p>
+      {picks.length > 0 && (
+        <>
+          <small className="muted">{L("Önerilen", "Suggested")}</small>
+          <div className="pk-qp">
+            {picks.map((t, n) => (
+              <button key={t.id} type="button" className={n === 0 ? "best" : undefined} disabled={busy} onClick={() => void save({ tripId: t.id })}>
+                <TripCover photos={t.photos} title={t.title} big />
+                <b>{t.title}</b>
+                <span>{words(t)}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+      {rest.length > 0 && <small className="muted">{L("Tüm geziler", "All trips")}</small>}
+      {rest.map((t) => (
+        <button key={t.id} type="button" className="pk-ln" disabled={busy} onClick={() => void save({ tripId: t.id })}>
+          <TripCover photos={t.photos} title={t.title} />
+          <span>
+            <b>{t.title}</b>
+            <span>{words(t)}</span>
+          </span>
         </button>
-      </div>
+      ))}
+      <button type="button" className="pk-ln new" disabled={busy} onClick={() => void save({ newTrip: true })}>
+        <span className="pk-th">+</span>
+        <span>
+          <b>{where.country ? L(`Yeni gezi: ${where.country}`, `New trip: ${where.country}`) : L("Yeni gezi", "New trip")}</b>
+        </span>
+      </button>
       {where.country && (
         <label className="popup-remember">
           <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
-          {L(`${where.country} için bundan sonra hep buraya koy`, `Put ${where.country} here from now on`)}
+          {L(`${where.country} için bundan sonra sormadan buraya`, `${where.country} goes there from now on`)}
         </label>
       )}
     </div>
+  );
+}
+
+/** A trip's cover in the picker (Pinterest's board cover): its photo and its last two saved; else its first letter. */
+function TripCover({ photos, title, big = false }: { photos: string[]; title: string; big?: boolean }) {
+  const [failed, setFailed] = useState<ReadonlySet<string>>(() => new Set());
+  const shown = photos.filter((p) => !failed.has(p)).slice(0, big ? 3 : 1);
+  return (
+    <span className={big ? "pk-cv" : "pk-th"} aria-hidden>
+      {shown.length ? shown.map((src) => <img key={src} src={src} alt="" referrerPolicy="no-referrer" onError={() => setFailed((f) => new Set(f).add(src))} />) : <i>{title.slice(0, 1).toLocaleUpperCase("tr")}</i>}
+    </span>
   );
 }

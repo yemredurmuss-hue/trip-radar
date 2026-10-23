@@ -4,11 +4,11 @@
 import { addEvent, db, listTrips, newId, notifyChanged } from "./db";
 import { moveDocsToTrip } from "./docs";
 import { datesIn, isWayThere, placeCodes } from "./placeCheck";
-import { loadRules, rememberTrip } from "./tripRules";
+import { loadRules, rememberTrip, worthRemembering } from "./tripRules";
 import { announceRemoved, deleteItem } from "./removal";
 import { L } from "./i18n";
 import { destinationImage, savedLine } from "./process";
-import { uniqueTitle } from "./trips";
+import { isDemoTrip, uniqueTitle } from "./trips";
 import type { ChatMessage, HeldAnswer, Item, Trip } from "./types";
 
 /** Thrown when the record moved or went since: nothing is written. */
@@ -70,7 +70,7 @@ export async function answerHeld(captureId: string, answer: HeldAnswer, pickedTr
     await d.put("trips", { ...current, heroImage: current.heroImage ?? item.imageUrl, updatedAt: Date.now() });
     tripId = target.id;
     // Hangi gezi (tripRules.ts): asked which trip, the answer is this country's trip from now on (unless said not to).
-    if (held.reason === "trip" && remember) await rememberTrip(placeCodes(item)[0], target.id);
+    if (held.reason === "trip" && remember && worthRemembering(placeCodes(item)[0] ?? null, item.dates.start, trips.filter((t) => !isDemoTrip(t)), allItems)) await rememberTrip(placeCodes(item)[0], target.id);
   }
   await d.put("captures", { ...capture, itemId: tripId ? held.item.id : null, held: { ...held, answer, answeredAt: Date.now() } });
   const lines = (await d.getAllFromIndex("messages", "tripId", held.tripId ?? "")) as ChatMessage[];

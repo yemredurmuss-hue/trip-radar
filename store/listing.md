@@ -69,9 +69,11 @@ No account, no ads. Your data stays on your computer; it only goes to the AI and
   - contextMenus: sağ tık menüsüne "Trip Radar'a ekle" koymak; tıklanan sayfa ya da bağlantı araç çubuğundaki "Kaydet" gibi kaydedilir.
   - tabGroups: kullanıcının isteğiyle bir ihtiyacın adaylarını rotanın adıyla tek bir sekme grubunda açmak; sayfaları
     okumaz.
-  - İsteğe bağlı host izinleri (Skyscanner, Kiwi.com, Booking.com, Airbnb, GetYourGuide, Viator; kurulumda istenmez,
-    kullanıcı site site açar): "Sitede benle gel", sonuçlara "+", bir otelin ya da turun kendi sayfasına "Desteye ekle"
-    koyar, planındaki bir uçuşun aramasında üstte şerit; basılmadan hiçbir şey kaydedilmez.
+  - İsteğe bağlı host izinleri (kurulumda istenmez): seyahat siteleri listesi (Skyscanner, Kiwi, Kayak, Booking.com,
+    Airbnb, GetYourGuide, Viator, Omio ve benzeri, 30 kadar) kullanıcı "Seyahat sitelerinde benle gel" dediğinde tek
+    seferde istenir; "https://*/*" yalnız kullanıcının araç çubuğundan "Bu sitede de benle gel" dediği tek site için,
+    o sitenin kökeniyle istenir. Bu sitelerde sonuçlara "+", bir yerin sayfasına "Desteye ekle" konur, planındaki bir
+    uçuşun aramasında üstte şerit; basılmadan hiçbir şey okunup gönderilmez.
   - Host izinleri: generativelanguage.googleapis.com ve api.anthropic.com (AI), *.supabase.co (paylaşım ve AI
     kapısı), nominatim.openstreetmap.org (adres → konum), api.frankfurter.* (döviz kuru).
 - **Uzaktan kod:** Hayır. Tüm kod pakette.

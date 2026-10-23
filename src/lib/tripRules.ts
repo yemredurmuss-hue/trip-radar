@@ -3,6 +3,7 @@
 // the answer is remembered as that country's trip, and what comes later for that country on that trip's days goes there
 // without asking. A trip over, another country, or a day outside the trip's: asked again. Kept on this device only
 // (chrome.storage.local); Settings forgets them. The matching is pure and tested.
+import { titleCodes, tripPlaceCodes } from "./placeCheck";
 import { gapDays, isDemoTrip, profileTrips } from "./trips";
 import type { Item, Trip } from "./types";
 
@@ -60,4 +61,14 @@ export function ruleFor(rules: readonly TripRule[], codes: readonly string[], tr
     return trip;
   }
   return null;
+}
+
+/**
+ * The answer kept as the country's trip only when it says something for sure: a page with its own day, or the only trip
+ * of that country (two Portugal trips and an undated page: asked again next time, nothing written).
+ */
+export function worthRemembering(code: string | null, day: string | null, own: Trip[], items: Item[]): boolean {
+  if (!code) return false;
+  if (day) return true;
+  return own.filter((t) => tripPlaceCodes(t.id, items).has(code) || titleCodes(t.title).has(code)).length <= 1;
 }

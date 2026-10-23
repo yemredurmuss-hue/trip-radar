@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { requestProcessing } from "../lib/browser";
 import { DEFAULT_GEMINI_MODEL, DEFAULT_MODEL, exportAll, exportDiagnostics, getSettings, listTrips, saveSettings } from "../lib/db";
 import { forgetRule, loadRules } from "../lib/tripRules";
+import { COMPANION_SITES, companionName } from "../lib/companion";
 import { countryName } from "../lib/trips";
 import { L, lang, saveLang, type Lang } from "../lib/i18n";
 import { describeError } from "../lib/llm";
@@ -232,6 +233,7 @@ export function Settings({ onClose }: { onClose: () => void }) {
           {L("Hareketi duraklat (animasyonlar kapalı)", "Pause motion (animations off)")}
         </label>
         <ShareSettings />
+        <AlongSettings />
         <TripRulesSettings />
         <p className="muted small">
           <button className="btn-link" style={{ fontSize: "var(--q-fs-info)", padding: 0 }} onClick={() => void download("diagnostics")}>
@@ -281,6 +283,50 @@ function TripRulesSettings() {
             onClick={() => void forgetRule(r.country).then(() => setRules((all) => all.filter((x) => x.country !== r.country)))}
           >
             {L("Unut", "Forget")}
+          </button>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * "Seyahat sitelerinde benle gel" (0.42.0): one switch for the travel sites (Chrome asks once), and the other sites allowed
+ * one by one from the toolbar ("Bu sitede de"), each taken back here.
+ */
+function AlongSettings() {
+  const [travel, setTravel] = useState(false);
+  const [others, setOthers] = useState<string[]>([]);
+  const read = async () => {
+    if (!chrome.permissions?.getAll) return;
+    const granted = (await chrome.permissions.getAll()).origins ?? [];
+    const own = new Set<string>((chrome.runtime.getManifest().host_permissions ?? []) as string[]);
+    setTravel(COMPANION_SITES.some((o) => granted.includes(o)));
+    setOthers(granted.filter((o) => /^https:\/\/[^*/]+\/\*$/.test(o) && !own.has(o) && !(COMPANION_SITES as readonly string[]).includes(o)));
+  };
+  useEffect(() => void read(), []);
+  async function toggle(on: boolean) {
+    if (on) await chrome.permissions.request({ origins: [...COMPANION_SITES] }).catch(() => false);
+    else await chrome.permissions.remove({ origins: [...COMPANION_SITES] }).catch(() => false);
+    await read();
+  }
+  return (
+    <div className="field">
+      <label className="row-inline" style={{ alignItems: "center", gap: 8 }}>
+        <input type="checkbox" checked={travel} onChange={(e) => void toggle(e.target.checked)} />
+        {L("Seyahat sitelerinde benle gel", "Come along on travel sites")}
+      </label>
+      <span className="muted small">
+        {L(
+          "Booking, Airbnb, Skyscanner, GetYourGuide ve 30 kadar seyahat sitesinde sonuçlara + ve bir otelin sayfasına \"Desteye ekle\" koyar; basmadan hiçbir şey okunup gönderilmez.",
+          "Puts a + on results and \"Add to the deck\" on a place's page on Booking, Airbnb, Skyscanner, GetYourGuide and some 30 travel sites; nothing is read or sent until you press it.",
+        )}
+      </span>
+      {others.map((o) => (
+        <span key={o} className="row-inline" style={{ alignItems: "center", gap: 8 }}>
+          <span>{companionName(o)}</span>
+          <button className="btn-link" style={{ fontSize: "var(--q-fs-info)", padding: 0 }} onClick={() => void chrome.permissions.remove({ origins: [o] }).then(read)}>
+            {L("Kaldır", "Remove")}
           </button>
         </span>
       ))}

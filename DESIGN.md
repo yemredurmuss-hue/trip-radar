@@ -485,6 +485,18 @@ yukarıdaki tablodadır (Seçildi kum, Alındı yeşil).
 - Bilet gibi: ne → ne ("Havalimanı → Otel"), adlar ve saat alt satırda, notlar Ayrıntı'da.
 - Artı ve eksi birkaç kelimedir; sayfada okunan somut şey kendi sözleriyle yazılır ("Karşısında genelev var").
 
+## Benle gezen eklenti: Pinterest gibi kaydetme (0.42.0)
+
+- Tek anahtar: "Seyahat sitelerinde benle gel" (Ayarlar ve araç çubuğu), `COMPANION_SITES` 30 kadar seyahat sitesi, tek
+  izin isteği. Listede olmayan site: araç çubuğundan "X'da da benle gel" (isteğe bağlı `https://*/*`, yalnız o kökeni).
+- Liste sayfasında kartın üst kenarında küçük "+"; fare kartın üstündeyken "+ Ekle"ye açılır (Pinterest'in kaydet düğmesi
+  gibi ama fotoğrafın üstünde değil). Destede olan "Destende var", eklenen ✓.
+- Gezi seçici (sayfada ve açılır pencerede aynı): "Önerilen" üç kapaklı kutu (Pinterest'in Quick Picks'i: ülkenin günü
+  tutan gezisi, ülkenin öteki gezisi, son kaydedilen), "Tüm geziler" küçük fotoğraflı satırlar, en altta "Yeni gezi:
+  Portekiz", "bundan sonra sormadan buraya". Kapak: gezinin fotoğrafı ve son kaydedilen ikisi; yoksa baş harfi.
+- Sıra: plandaki satırın araması/adayı → ülkenin hatırlanan gezisi (günü tutuyorsa) → seçici → hiç gezi yoksa yeni gezi.
+  Dönüş uçuşu (eve iner) kalkış ülkesinin. Aynı ülkede birden çok gezi ve günü olmayan sayfa: cevap kural yazmaz.
+
 ## Kategori satırı: Bitti ve yaklaştı halkası (0.41.2)
 
 Kapalı kategori satırının sonunda, okun yerinde 44 px bir halka (`lib/planRing.ts`, tuval "Kategori satırı" 7. tur D2).
