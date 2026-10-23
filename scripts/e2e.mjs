@@ -2438,7 +2438,8 @@ try {
     assert.deepEqual(kids, ["q-ic", "q-tt", "q-ths", "q-prog", "q-bud", "q-chev"], `${id}: icon · name … pictures · bar · spent · arrow`);
     assert.ok((await sec(id).locator(".q-th").count()) <= 3, `${id}: three pictures at most`);
     // 0.38.3: the small pictures are real photos only (a record's, an option's, a tour's), never the kind's drawing.
-    assert.equal(await sec(id).locator('.q-th img:not(.ph), .q-th img[src^="illus/"]').count(), 0, `${id}: no drawing among the small pictures`);
+    // (Uçuş closed: its airlines' logos stand among them, Karar Masası)
+    assert.equal(await sec(id).locator('.q-th:not(.q-thl) img:not(.ph), .q-th img[src^="illus/"]').count(), 0, `${id}: no drawing among the small pictures`);
     assert.equal(await sec(id).locator(".q-add").count(), 0, `${id}: no "+ ekle" when closed`);
     if (id !== "todo") assert.match(await sec(id).locator(".q-count").textContent(), /^\d+\/\d+$/, `${id}: settled of all, for a screen reader`);
     const box = await sec(id).locator(".q-chev").boundingBox();
