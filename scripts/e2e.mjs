@@ -6084,7 +6084,8 @@ try {
   // rt-fly (D9): a flight's plane glided to its route when the ticket was first drawn (.9 s, from 18 px left); it is on the
   // sample's flights (v82: read while the flights are open the first time; drawn again they don't fly again).
   await openCat("flight");
-  await openRow(app.locator('.q-sec[data-section="flight"] .q-ints > .q-int[data-face="ticket"]').first());
+  // (Karar Masası: a flight's deck opens the drawer, not a ticket; the first one drawn as its ticket)
+  await openRow(app.locator('.q-sec[data-section="flight"] .q-ints > .q-int[data-face="ticket"]:not(:has(.q-rsec))').first());
   const glide = await app.locator('.q-sec[data-section="flight"] .z-tk .q-mid.big img.z-fly').first().evaluate((el) => {
     const cs = getComputedStyle(el);
     return [cs.animationName, cs.animationDuration, cs.animationTimingFunction, el.getAnimations()[0]?.effect.getKeyframes()[0].marginLeft];
@@ -6100,6 +6101,8 @@ try {
   await flight.waitFor();
   await app.waitForTimeout(500);
   await app.mouse.move(2, 2);
+  // (the pointer that pressed "Seç 2" may have been over it: settled before it is read)
+  await app.waitForFunction((el) => getComputedStyle(el).transform === "none", await flight.elementHandle(), { timeout: 4000 }).catch(() => undefined);
   const at0 = await flight.evaluate((el) => getComputedStyle(el).transform);
   await flight.hover({ position: { x: 60, y: 20 } });
   // (the lift takes 180 ms; a busy machine may take longer to show it: wait for it)
