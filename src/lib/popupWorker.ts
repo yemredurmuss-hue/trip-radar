@@ -96,8 +96,40 @@ function probePage(): { ld: string[]; price: boolean; image: string | null; text
   }
   const text = (document.body?.textContent ?? "").replace(/\s+/g, " ").slice(0, 40_000);
   const meta = (k: string) => document.querySelector<HTMLMetaElement>(`meta[property="${k}"], meta[name="${k}"]`)?.content ?? null;
-  const image = [meta("og:image"), meta("twitter:image")].find((u): u is string => Boolean(u && /^https:\/\//.test(u))) ?? null;
+  // (a site that changes pages without loading them, YouTube among them, keeps the first page's og:image: only when its
+  // og:url is this page; else the biggest photo in view)
+  const ogUrl = meta("og:url");
+  const here = (u: string) => {
+    try {
+      const a = new URL(u, location.href), b = new URL(location.href);
+      return a.hostname.replace(/^www\./, "") === b.hostname.replace(/^www\./, "") && a.pathname.replace(/\/+$/, "") === b.pathname.replace(/\/+$/, "");
+    } catch {
+      return false;
+    }
+  };
+  const og = !ogUrl || here(ogUrl) ? ([meta("og:image"), meta("twitter:image")].find((u): u is string => Boolean(u && /^https:\/\//.test(u))) ?? null) : null;
+  let big: { src: string; area: number } | null = null;
+  for (const img of Array.from(document.images).slice(0, 300)) {
+    const r = img.getBoundingClientRect();
+    const src = img.currentSrc || img.src;
+    if (!/^https:\/\//.test(src) || r.width < 200 || r.height < 120 || r.bottom < 0 || r.top > innerHeight) continue;
+    const area = r.width * r.height;
+    if (!big || area > big.area) big = { src, area };
+  }
+  const image = og ?? big?.src ?? null;
   return { ld, price: /(?:€|£|₺|\$|฿|\b(?:TL|EUR|USD|GBP|TRY|THB)\b)\s?\d|\d\s?(?:€|£|₺|\$|฿|\b(?:TL|EUR|USD|GBP|TRY|THB)\b)/.test(text), image, text: text.slice(0, 30_000), jsonLd: JSON.parse(JSON.stringify(blocks)).slice(0, 12) };
+}
+
+/** A video's own picture from its address (YouTube's thumbnail); null for anything else. */
+export function videoThumb(url: string): string | null {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^(?:www|m)\./, "");
+    const id = host === "youtu.be" ? u.pathname.slice(1).split("/")[0] : host === "youtube.com" ? (u.searchParams.get("v") ?? u.pathname.match(/^\/(?:shorts|embed|live)\/([\w-]{6,})/)?.[1] ?? null) : null;
+    return id && /^[\w-]{6,20}$/.test(id) ? `https://i.ytimg.com/vi/${id}/hqdefault.jpg` : null;
+  } catch {
+    return null;
+  }
 }
 
 const isVideo = (url: string) => /^https:\/\/(?:(?:www|m)\.)?(?:youtube\.com\/(?:watch|shorts\/)|youtu\.be\/)|^https:\/\/(?:www\.)?vimeo\.com\/\d/.test(url);
@@ -193,7 +225,7 @@ export async function popupView(tabId: number): Promise<PopupView> {
     where,
     desk: { candidate: c ? { name: c.name, price: c.price ?? null, badge: badgeOf(c), route: c.route } : null, planned },
     pocket,
-    hero: probe?.result?.image ?? null,
+    hero: videoThumb(url) ?? probe?.result?.image ?? null,
     video,
     confirm,
     glance: await glanceOf(tripId ?? pocket.trip?.id),

@@ -40,3 +40,14 @@ describe("İlham'a ekle: Item.inspo", () => {
     expect(sectionOfItem(item({}))).toBe("stay");
   });
 });
+
+describe("videoThumb: a video's own picture from its address", () => {
+  it("YouTube's watch, short and youtu.be addresses; nothing else", async () => {
+    const { videoThumb } = await import("../src/lib/popupWorker");
+    expect(videoThumb("https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=10")).toBe("https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg");
+    expect(videoThumb("https://youtu.be/dQw4w9WgXcQ?si=x")).toBe("https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg");
+    expect(videoThumb("https://m.youtube.com/shorts/abcDEF12345")).toBe("https://i.ytimg.com/vi/abcDEF12345/hqdefault.jpg");
+    expect(videoThumb("https://www.youtube.com/")).toBeNull();
+    expect(videoThumb("https://www.booking.com/hotel/ar/x.html")).toBeNull();
+  });
+});

@@ -199,6 +199,7 @@ function Popup() {
     body = (
       <>
         <div className="tb-main">
+          {view.hero && <Hero src={view.hero} video={view.video} small />}
           <Say title={L("Hangi gezi için topluyorsun?", "Which trip are you collecting for?")} sub={L("Bir kez sorarım; sonra hep oraya.", "I ask once; then everything goes there.")} />
           <Tiles where={where} busy={busy} onPick={(p) => void choose(p)} />
         </div>
@@ -216,6 +217,7 @@ function Popup() {
     body = (
       <>
         <div className="tb-main">
+          {view.hero && <Hero src={view.hero} video={view.video} small />}
           <Say title={where.country ? L(`Bu sayfa ${where.country} için`, `This page is for ${where.country}`) : L("Bu sayfa hangi geziye?", "Which trip is this page for?")} sub={current ? L(`Şu an ${current.title} için topluyorsun. Nereye kaydedeyim?`, `You're collecting for ${current.title}. Where shall I save it?`) : L("Nereye kaydedeyim?", "Where shall I save it?")} />
           <div className="tb-opts">
             {opts.slice(0, 3).map((t, n) => (
