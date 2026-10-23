@@ -233,3 +233,7 @@ body.still .q-ints.q-tl .z-int.z-go[data-desk] .q-tld::after, body.still .q-ints
 .q-int:has([role="menu"]) { position: relative; z-index: 5; }
 /* Uçuş closed: the airlines' logos in the pictures' place */
 .q-th.q-thl { display: grid; place-items: center; background: #fff; }
+/* an Etkinlik idea said in words, no tour found for it yet: its searches on one quiet line */
+.z-kidea { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; font-weight: 750; color: var(--q-mut); }
+.z-kidea a, .z-kidea button { color: var(--q-acc-d); text-decoration: none; background: none; border: 0; padding: 0; font: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 3px; }
+.z-kidea a:hover, .z-kidea button:hover { text-decoration: underline; }

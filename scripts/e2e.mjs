@@ -3054,7 +3054,8 @@ try {
   assert.match(reopen, /airbnb\.com\.tr\/rooms\/777\?.*check_in=2026-10-08&check_out=2026-10-11&adults=2/);
   await pbox.locator(":is(.z-h, .q-rmenu) .z-mb").click();
   await pbox.getByRole("menuitem", { name: "Seçimi geri al" }).click();
-  await pbox.locator(".q-take", { hasText: /^(Bunu seç|Seç)$/ }).waitFor();
+  // (our pick back among the options: one alone says Seç, several are a deck, "Seç n": 0.40.5)
+  await pbox.locator(":is(.q-take, .q-rsec)").first().waitFor();
   console.log("✓ flow: an undated Airbnb page joins the same nights' comparison, provisionally, with a link to add the dates");
 
   // Two stays → the engine ranks them and the worker asks Gemini for the written analysis (the details' "Karşılaştır", C12).

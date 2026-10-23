@@ -20,13 +20,14 @@ import { selfSearches, type SelfSearch } from "../../../lib/intentFrame";
 import type { IntentVM, OptionVM } from "../../../lib/intents";
 import { formatDateRange } from "../../../lib/items";
 import { withPlacePhoto } from "../../../lib/placeSuggest";
-import { photoFromOffers, sameTour, type Need, type Offer } from "../../../lib/offerSource";
+import { photoFromOffers, sameTour, validOffers, type Need, type Offer } from "../../../lib/offerSource";
 import { cityEvents, cityTours, citySights, tourWords } from "../../../lib/offerSources";
 import { locative } from "../../../lib/i18nText";
 import { sightSuggestion, type Sight } from "../../../lib/citySights";
 import { sameCity, type Plan } from "../../../lib/plan";
 import type { Item } from "../../../lib/types";
-import { addOffer, chooseItem, setItemPhoto } from "../../actions";
+import { addOffer, chooseItem, fillIdea, setItemPhoto } from "../../actions";
+import { wordIdea } from "../../../lib/ideas";
 import { useEmptyEnv } from "../../cards/emptyEnv";
 import { useCardEnv } from "../../cards/PlanCard";
 import { useCollectEnv } from "./collectEnv";
@@ -121,6 +122,31 @@ function useCityOffers(city: string | null, plan: Pick<Plan, "stayBlocks"> | nul
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- when the offers or the records without a photo change
   }, [all.length, missing.map((i) => i.id).join(" ")]);
+  // An idea said in words ("Couple spa"): the source asked by its words once; the first tour found takes its place (0.40.5).
+  const words0 = saved.filter(wordIdea);
+  useEffect(() => {
+    if (!need || !available) return;
+    for (const item of words0) {
+      const mark = `trip-radar:idea-tour:${item.id}`;
+      if (ideaGoing.has(mark) || ideaDone(mark)) continue;
+      ideaGoing.add(mark);
+      const ask: Need = { ...need, key: `${need.key}:idea:${item.name.toLocaleLowerCase("tr")}`, query: item.name };
+      void source
+        .offers(ask)
+        .then(async (list) => {
+          const found = validOffers(list, ask)[0];
+          if (!found) return;
+          try {
+            localStorage.setItem(mark, found.id);
+          } catch {
+            // (asked again next time)
+          }
+          await fillIdea(item, found, ask);
+        }, () => undefined)
+        .finally(() => ideaGoing.delete(mark));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- per idea
+  }, [need?.key, available, words0.map((i) => i.id).join(" ")]);
   // A tour saved in another city of the trip (a nearby city's, put on the plan there) isn't offered here again.
   const elsewhere = new Set([...byId.values()].filter((i) => i.status !== "dismissed" && i.url).map((i) => i.url));
   const offers = all.filter((o) => !taken.includes(o.id) && !elsewhere.has(o.url) && !saved.some((i) => sameTour(i, o))).slice(0, PER_CITY);
@@ -145,6 +171,16 @@ function useCityOffers(city: string | null, plan: Pick<Plan, "stayBlocks"> | nul
   };
   return { offers, events, put, looking };
 }
+
+/** The ideas being looked for by their words now, and those already filled (once each). */
+const ideaGoing = new Set<string>();
+const ideaDone = (mark: string): boolean => {
+  try {
+    return localStorage.getItem(mark) != null;
+  } catch {
+    return false;
+  }
+};
 
 /** A city's sights from Google (spec 2026-10-19 SerpApi, item 3), asked once per city while its "Yapılacaklar" shows. */
 function useCitySights(city: string | null): Sight[] {

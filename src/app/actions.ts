@@ -393,6 +393,19 @@ export async function addOffer(tripId: string, offer: Offer, need: Need): Promis
   return item;
 }
 
+/**
+ * An idea said in words (the chat's, the start's: "Couple spa") takes the tour the source found for those words (0.40.5,
+ * Emre): its photo, price, page and reviews; it keeps its own id, day, meal and place on the plan.
+ */
+export async function fillIdea(idea: Item, offer: Offer, need: Need): Promise<Item> {
+  const made = offerItem(offer, need, idea.tripId, idea.id, Date.now());
+  const item: Item = { ...made, createdAt: idea.createdAt, status: idea.status, dates: idea.dates, ...(idea.meal ? { meal: idea.meal } : {}), forNeed: need.key };
+  await (await db()).put("items", item);
+  await addEvent(item.tripId, L(`${idea.name}: ${item.name} bulundu`, `${idea.name}: found ${item.name}`));
+  notifyChanged();
+  return item;
+}
+
 /** A record written back whole (0.40.3: the van's night a hotel took the place of), said in the trip's history. */
 export async function putItem(item: Item, said: string): Promise<void> {
   await (await db()).put("items", { ...item, updatedAt: Date.now() });
