@@ -14,7 +14,7 @@ const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PAT
 
 async function open(url, fixture) {
   const page = await browser.newPage({ viewport: { width: 1280, height: 860 }, locale: "tr-TR" });
-  await page.route("https://www.booking.com/**", (r) => r.fulfill({ contentType: "text/html", body: readFileSync(`tests/fixtures/companion/${fixture}`, "utf8") }));
+  await page.route("https://www.booking.com/**", (r) => r.fulfill({ contentType: "text/html", body: fixture.startsWith("<") ? fixture : readFileSync(`tests/fixtures/companion/${fixture}`, "utf8") }));
   await page.addInitScript(() => {
     // (the check opens the companion's shadow root to press its buttons; the extension's own is closed)
     const attach = Element.prototype.attachShadow;
@@ -32,7 +32,7 @@ async function open(url, fixture) {
       { id: "c:f", title: "Casa do Bairro", sub: "Airbnb", photo: null, state: "failed" },
       { id: "i:a", title: "Memmo Príncipe Real", sub: "Konaklama", photo: dot, state: "in" },
     ] };
-    const answer = (m) => (m.type === "desk:where" ? where : m.type === "desk:route" ? null : m.type === "desk:pocket" ? pocket : { ok: true, tripId: m.tripId ?? null, captureId: `c${window.__asked.length}`, reading: 2 });
+    const answer = (m) => (m.type === "desk:where" ? where : m.type === "desk:route" ? null : m.type === "desk:pocket" ? pocket : m.type === "desk:popup" ? { ok: false } : { ok: true, tripId: m.tripId ?? null, captureId: `c${window.__asked.length}`, reading: 2 });
     window.chrome = {
       runtime: { id: "x", lastError: undefined, onMessage: { addListener: (f) => (window.__onMessage = f) }, sendMessage: (m, cb) => (window.__asked.push(m), setTimeout(() => cb(answer(m)), 10)) },
       storage: { local: { get: async () => ({ lang: "tr" }), set: async () => undefined } },
@@ -53,6 +53,7 @@ assert.equal(await shadow(hotel, (r) => r.querySelector(".tab")?.textContent), "
 await hotel.screenshot({ path: `${out}/stay-1-tab.png` });
 await shadow(hotel, (r) => r.querySelector(".tab").click());
 await hotel.waitForTimeout(150);
+assert.equal((await hotel.evaluate(() => window.__asked.filter((m) => m.type === "desk:popup"))).length, 1, "the tab opens the toolbar's own window first");
 const cep = await shadow(hotel, (r) => r.querySelector(".cep")?.innerText ?? "");
 // 0.44.2 (sade): the trip and one number, one button, the last three by name (a state only when not fine), the board.
 assert.match(cep, /^Portekiz\n4 otel[\s\S]*\+ Konaklama destesine ekle\nSon eklenenler\n[\s\S]*Lumiares Hotel[\s\S]*okunuyor[\s\S]*Casa do Bairro[\s\S]*okunamadı[\s\S]*tekrar[\s\S]*Memmo Príncipe Real[\s\S]*AI bağlı değil · 2 kayıt bekliyor\nPanoyu aç ↗[\s\S]*Bu sitede gösterme/);
@@ -164,5 +165,17 @@ await list.screenshot({ path: `${out}/stay-6-select.png` });
 await inShadow(list, () => document.getElementById("trip-radar-companion").shadowRoot.querySelector(".toast.sel .go").click());
 await list.waitForTimeout(500);
 assert.equal((await list.evaluate(() => window.__asked.filter((m) => m.type === "desk:add"))).length, 3, "the ticked one added too");
+// 0.45.0: a booking's confirmation on the page: asked once in the corner (the icon's ✓ beside it), "Kaydet" saves the page.
+const conf = await open("https://www.booking.com/confirmation.html?aid=1", "<!doctype html><html><head><meta charset=\"utf-8\"><title>Booking.com: Onay</title></head><body><h1>Rezervasyonunuz onaylandı</h1><p>Visesa Ubud Resort · 12 – 16 May</p><p>Onay numarası: 4821 993 107</p><p>Toplam: €378</p></body></html>");
+assert.match(await shadow(conf, (r) => r.querySelector(".ask.conf")?.innerText ?? ""), /Bu bir rezervasyon onayı\nOnay kodu 4821 993 107 · €378\n[\s\S]*[Rr]ezervasyon olarak kaydedeyim mi\?\nKaydet\nŞimdi değil/);
+assert.equal((await conf.evaluate(() => window.__asked.filter((m) => m.type === "desk:confirmed"))).length, 1, "the icon's ✓");
+await conf.screenshot({ path: `${out}/stay-7-confirm.png` });
+await shadow(conf, (r) => r.querySelector(".ask.conf .yes").click());
+await conf.waitForTimeout(200);
+// (no trip known on this page yet: which trip first, then saved)
+await shadow(conf, (r) => r.querySelector(".qp button.best")?.click());
+await conf.waitForTimeout(300);
+const saved = await conf.evaluate(() => window.__asked.find((m) => m.type === "desk:page"));
+assert.match(saved.snapshot.pageText, /Onay numarası: 4821 993 107/);
 console.log(JSON.stringify({ ok: true }));
 await browser.close();

@@ -353,6 +353,18 @@ function answerOn(m: CompanionAsk, url: string, sender: chrome.runtime.MessageSe
         const made = (await bindFor(url, "", { newTrip: true, remember: false })).forTripId ?? null;
         return { ok: Boolean(made), tripId: made, title: made ? ((await d.get("trips", made))?.title ?? null) : null };
       })();
+    case "desk:popup":
+      // (the page's tab: the toolbar's window, opened over that tab's window)
+      return chrome.action
+        .openPopup({ windowId: sender.tab!.windowId })
+        .then(() => ({ ok: true }))
+        .catch(() => ({ ok: false }));
+    case "desk:confirmed":
+      // (a booking's confirmation on the page: a green ✓ on the icon for that tab, the popup's first card)
+      return chrome.action
+        .setBadgeBackgroundColor({ tabId: sender.tab!.id!, color: "#1f7a45" })
+        .then(() => chrome.action.setBadgeText({ tabId: sender.tab!.id!, text: "✓" }))
+        .then(() => ({ ok: true }), () => ({ ok: false }));
     case "desk:remove":
       return pocketRemove(text(m.id, 90)).then((ok) => ({ ok }));
     case "desk:retry":

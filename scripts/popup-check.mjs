@@ -1,4 +1,4 @@
-// Simgeye basınca (0.43.0) and the gezi cebi (0.44.0): the built popup (dist/popup.html) with the service worker's answers stubbed. It opens at
+// Simgeye basınca, tek bakış (0.45.0, tuval 15–16): the built popup (dist/popup.html) with the service worker's answers stubbed. It opens at
 // once and saves nothing by itself; a known trip: one press (or Enter) adds; a new country: the picker, a press saves;
 // already on the plan: "Fiyatı yenile"; then "✓ Eklendi · Değiştir · Geri al". The pocket: the trip on top, what was added
 // last with ×/tekrar, the key line, a list's "Sonuçlardan seç", a page that can't be added. Run after `npm run build`:
@@ -28,12 +28,13 @@ const pocket = {
   waiting: 0,
   key: true,
 };
-const view = (where, extra = {}) => ({ kind: "page", title: "Memmo Alfama Hotel", sub: "Booking.com · konaklama · 12 – 16 Kas", site: "https://www.booking.com/*", travelSite: true, along: true, what: "stay", where, desk: { candidate: null, planned: null }, key: true, price: null, pocket, ...extra });
+const glance = { mine: 16, next: { key: "flight:ist-opo", section: "flight", act: "Seç", text: "İstanbul → Porto", sub: "8 Eki · 2 seçenek" } };
+const view = (where, extra = {}) => ({ kind: "page", title: "Memmo Alfama Hotel", sub: "Booking.com · konaklama · 12 – 16 Kas", site: "https://www.booking.com/*", travelSite: true, along: true, what: "stay", where, desk: { candidate: null, planned: null }, key: true, price: null, pocket, hero: null, video: false, confirm: null, glance, fresh: false, failed: null, alongAsked: true, ...extra });
 const answer = (v, m) =>
-  m.type === "popup:view" ? v : m.type === "popup:save" ? { captureId: "c1", tripId: m.pick?.tripId ?? "pt", tripTitle: m.pick?.tripId === "bali" ? "Bali" : "Portekiz", deck: "Konaklama" } : m.type === "popup:pocket" ? v.pocket : m.type === "popup:move" ? { tripId: m.pick.tripId, tripTitle: "Bali" } : true;
+  m.type === "popup:view" ? v : m.type === "popup:save" ? { captureId: "c1", tripId: m.pick?.tripId ?? "pt", tripTitle: m.pick?.tripId === "bali" ? "Bali" : "Portekiz", deck: "Konaklama" } : m.type === "popup:pocket" ? v.pocket : m.type === "popup:move" ? { tripId: m.pick.tripId, tripTitle: "Bali" } : m.type === "popup:current" ? { ...v, fresh: false, where: { ...v.where, trip: { id: m.tripId, title: "Bali" } } } : true;
 
 async function open(v, name) {
-  const page = await browser.newPage({ viewport: { width: 360, height: 620 }, locale: "tr-TR" });
+  const page = await browser.newPage({ viewport: { width: 380, height: 620 }, locale: "tr-TR" });
   await page.addInitScript(([v, version, answerSrc]) => {
     const answer = eval(answerSrc);
     window.__asked = [];
@@ -56,84 +57,87 @@ async function open(v, name) {
   });
   page.on("pageerror", (e) => console.error("page error:", e.message));
   await page.goto("https://popup.test/popup.html");
-  await page.locator(".pk2").waitFor();
+  await page.locator(".tb").waitFor();
   await page.waitForTimeout(150);
   await page.screenshot({ path: `${out}/${name}.png` });
   return page;
 }
 
-// 1. The trip known: nothing saved on open; Enter adds; "✓ Eklendi · Geri al", it closes itself.
-let p = await open(view({ trip: { id: "pt", title: "Portekiz" }, country: "Portekiz", trips, picks: ["pt", "bali"], saved: false, names: [] }), "1-known");
-assert.equal((await p.evaluate(() => window.__asked.filter((m) => m.type === "popup:save"))).length, 0, "opening saves nothing");
-assert.match(await p.locator(".cep-trip").innerText(), /Portekiz[\s\S]*12 – 19 Kas · 12 kayıt/);
-assert.match(await p.locator(".pk-go").innerText(), /\+ Konaklama destesine ekle/);
-assert.equal(await p.locator(".cep-row").count(), 3, "what was added last");
-assert.match(await p.locator(".cep-foot").innerText(), /Portekiz panosunu aç/);
+const known = { trip: { id: "pt", title: "Portekiz" }, country: "Portekiz", trips, picks: ["pt", "bali"], saved: false, names: [] };
+const unknown = { ...known, trip: null };
+const text = (p) => p.locator(".tb").innerText();
+const asked = (p, type) => p.evaluate((t) => window.__asked.filter((m) => m.type === t), type);
+// 1. A place's own page, the trip known: one card, one button, Biriktirdiklerim under it; nothing saved by opening it.
+let p = await open(view(known), "1-page");
+assert.equal((await asked(p, "popup:save")).length, 0, "opening saves nothing");
+assert.match(await text(p), /^Portekiz\n▾\n×\n[\s\S]*Memmo Alfama Hotel\nBooking\.com · konaklama · 12 – 16 Kas\n\+ Konaklama destesine ekle[\s\S]*Biriktirdiklerim 16\nPanoyu aç ↗$/);
+assert.equal(await p.locator(".tb-go").count(), 1, "one big button");
 await p.keyboard.press("Enter");
 await p.locator(".pk-done").waitFor();
-assert.match(await p.locator(".pk-done").innerText(), /Eklendi · Portekiz · Konaklama/);
+assert.match(await text(p), /Eklendi\nPortekiz · Konaklama · okunuyor\nGeri al[\s\S]*Yanlış gezi mi\?\nDeğiştir/);
 await p.screenshot({ path: `${out}/2-added.png` });
-const save = await p.evaluate(() => window.__asked.find((m) => m.type === "popup:save"));
-assert.deepEqual(save.pick, {}, "into the known trip");
-await p.waitForTimeout(2000);
+assert.deepEqual((await asked(p, "popup:save"))[0].pick, {});
+await p.waitForTimeout(2200);
 assert.equal(await p.evaluate(() => window.__closed === true), true, "it closes itself");
-// 2. The trip on top opens the picker; a trip pressed both picks and saves.
-p = await open(view({ trip: { id: "pt", title: "Portekiz" }, country: "Portekiz", trips, picks: ["pt", "bali"], saved: false, names: [] }), "3-chip");
-await p.locator(".cep-trip").click();
+// 2. The chip: another trip for this page and the next (nothing saved).
+p = await open(view(known), "3-chip");
+await p.locator(".tb-chip").click();
 await p.locator(".pk-qp button", { hasText: "Bali" }).click();
-await p.locator(".pk-done").waitFor();
-assert.equal((await p.evaluate(() => window.__asked.find((m) => m.type === "popup:save"))).pick.tripId, "bali");
-// 3. No trip known: the picker at once, nothing saved until a press.
-p = await open(view({ trip: null, country: "Portekiz", trips, picks: ["pt", "bali"], saved: false, names: [] }), "4-pick");
-assert.equal(await p.locator(".pk-qp button").count(), 2);
-assert.equal(await p.locator(".pk-ln").count(), 2, "the other trip and a new one");
-assert.equal((await p.evaluate(() => window.__asked.filter((m) => m.type === "popup:save"))).length, 0);
-await p.locator(".pk-ln.new").click();
-await p.locator(".pk-done").waitFor();
-assert.equal((await p.evaluate(() => window.__asked.find((m) => m.type === "popup:save"))).pick.newTrip, true);
-// Undo takes it back.
-await p.getByRole("button", { name: "Geri al" }).click();
 await p.waitForTimeout(100);
-assert.equal((await p.evaluate(() => window.__asked.filter((m) => m.type === "popup:undo"))).length, 1);
-// 4. Already on the plan: said so, "Fiyatı yenile".
-p = await open(view({ trip: { id: "pt", title: "Portekiz" }, country: "Portekiz", trips, picks: [], saved: true, names: [] }), "5-saved");
-assert.match(await p.locator(".pk-in").innerText(), /Portekiz · Konaklama destesinde/);
-await p.getByRole("button", { name: "Fiyatı yenile" }).waitFor();
-// 5. Not a booking: "Fikir olarak ekle".
-p = await open(view({ trip: { id: "pt", title: "Portekiz" }, country: "Portekiz", trips, picks: [], saved: false, names: [] }, { what: "idea", title: "Lizbon'da 10 gizli teras", sub: "medium.com · yazı", site: "https://medium.com/*", travelSite: false, along: false }), "6-idea");
-await p.getByRole("button", { name: /Fikir olarak ekle/ }).click();
-await p.locator(".pk-done").waitFor();
-assert.equal((await p.evaluate(() => window.__asked.find((m) => m.type === "popup:save"))).idea, true);
-// 6. A travel site without the switch: the switch said first, at the top.
-p = await open(view({ trip: { id: "pt", title: "Portekiz" }, country: "Portekiz", trips, picks: [], saved: false, names: [] }, { along: false }), "7-switch");
-assert.match(await p.locator(".pk-switch").innerText(), /Bu sitede \+ kapalı[\s\S]*Seyahat sitelerinde benle gel/);
-// 7. The pocket's rows: × takes one back, "tekrar" reads a failed one again.
-p = await open(view({ trip: { id: "pt", title: "Portekiz" }, country: "Portekiz", trips, picks: [], saved: false, names: [] }), "8-rows");
-await p.getByRole("button", { name: "tekrar" }).click();
-await p.getByRole("button", { name: "Lumiares Hotel kaldır" }).click();
+assert.equal((await asked(p, "popup:current"))[0].tripId, "bali");
+assert.equal((await asked(p, "popup:save")).length, 0);
+// 3. The first time (no trip picked to collect for): "Hangi gezi için topluyorsun?", a press picks, nothing saved.
+p = await open(view(unknown, { fresh: true }), "4-first");
+assert.match(await text(p), /Hangi gezi için topluyorsun\?\nBir kez sorarım; sonra hep oraya\./);
+await p.locator(".pk-qp button", { hasText: "Portekiz" }).click();
 await p.waitForTimeout(100);
-assert.deepEqual(await p.evaluate(() => window.__asked.filter((m) => m.type === "popup:retry" || m.type === "popup:remove").map((m) => [m.type, m.id])), [["popup:retry", "c:f"], ["popup:remove", "c:r"]]);
-// 8. A list: never one record; "Sonuçlardan seç" ticks on the page, "Ekrandakileri ekle" reads what's in view.
-p = await open(view({ trip: { id: "pt", title: "Portekiz" }, country: "Portekiz", trips, picks: [], saved: false, names: [] }, { what: "list", title: "Lizbon: 412 otel" }), "9-list");
+assert.equal((await asked(p, "popup:current"))[0].tripId, "pt");
+assert.equal((await asked(p, "popup:save")).length, 0);
+assert.match(await text(p), /\+ Konaklama destesine ekle/, "then the page's card, into the trip picked");
+// 4. Looks like another trip: asked where, the one that fits first ("önerim"); a press saves there.
+p = await open(view(unknown, { pocket: { ...pocket, trip: { id: "bali", title: "Bali", when: "Ocak", count: 3, photo: null } } }), "5-other");
+assert.match(await text(p), /Bu sayfa Portekiz için\nŞu an Bali için topluyorsun\. Nereye kaydedeyim\?\nPortekiz\n12 – 19 Kas · tutuyor\nönerim\nBali[\s\S]*\+ Yeni gezi: Portekiz/);
+await p.locator(".tb-opt.best").click();
+await p.locator(".pk-done").waitFor();
+assert.equal((await asked(p, "popup:save"))[0].pick.tripId, "pt");
+// 5. Already in the deck.
+p = await open(view({ ...known, saved: true }), "6-saved");
+assert.match(await text(p), /Memmo Alfama Hotel zaten destende\nPortekiz · Konaklama\nPanoda karşılaştır\nFiyatı düşerse haber veririm\nFiyatı yenile/);
+// 6. A video: its picture with the play mark, "+ İlham'a ekle", saved as an idea.
+p = await open(view(known, { what: "idea", video: true, hero: dot, title: "Bali'de 3 gün: Ubud", sub: "YouTube · video", site: "https://www.youtube.com/*", travelSite: false, along: false }), "7-video");
+assert.equal(await p.locator(".tb-hero.video").count(), 1);
+await p.getByRole("button", { name: /İlham'a ekle/ }).click();
+await p.locator(".pk-done").waitFor();
+assert.equal((await asked(p, "popup:save"))[0].idea, true);
+// 7. A list: never one record; "Bu listeden seç" ticks on the page (the switch asked by the same press when off).
+p = await open(view(known, { what: "list", title: "Lizbon: 412 otel", along: false }), "8-list");
 assert.equal(await p.getByRole("button", { name: /destesine ekle/ }).count(), 0, "no whole-list save");
-await p.getByRole("button", { name: "Ekrandakileri ekle" }).click();
-await p.locator(".pk-done").waitFor();
-assert.equal((await p.evaluate(() => window.__asked.find((m) => m.type === "popup:save"))).inView, true);
-p = await open(view({ trip: { id: "pt", title: "Portekiz" }, country: "Portekiz", trips, picks: [], saved: false, names: [] }, { what: "list", title: "Lizbon: 412 otel", along: false }), "10-list-off");
-assert.equal(await p.locator(".pk-switch").count(), 0, "a list asks the switch on its own button");
-await p.getByRole("button", { name: "Sonuçlardan seç" }).click();
+await p.getByRole("button", { name: "Bu listeden seç" }).click();
 await p.waitForTimeout(100);
 assert.equal((await p.evaluate(() => window.__asked.filter((m) => m.tab && m.type === "desk:select"))).length, 1);
-// 9. A page that can't be added (a new tab): the pocket still, never a dead end; no key: one line, saving goes on.
-p = await open({ kind: "none", title: "", sub: "", site: null, travelSite: false, along: false, what: "idea", where: null, desk: { candidate: null, planned: null }, key: false, price: null, pocket: { ...pocket, key: false, waiting: 3 } }, "11-newtab");
-assert.match(await p.locator(".pk2").innerText(), /Portekiz[\s\S]*eklenemiyor[\s\S]*Son eklenenler[\s\S]*AI bağlı değil: 3 kayıt bekliyor[\s\S]*Portekiz panosunu aç/);
-// 10. Added into the wrong trip: "Değiştir" moves it.
-p = await open(view({ trip: { id: "pt", title: "Portekiz" }, country: "Portekiz", trips, picks: ["pt", "bali"], saved: false, names: [] }), "12-move");
-await p.keyboard.press("Enter");
-await p.getByRole("button", { name: "Değiştir" }).click();
-await p.locator(".pk-qp button", { hasText: "Bali" }).click();
-await p.locator(".pk-done", { hasText: "Bali" }).waitFor();
-assert.equal((await p.evaluate(() => window.__asked.find((m) => m.type === "popup:move"))).pick.tripId, "bali");
-await p.screenshot({ path: `${out}/13-moved.png` });
+// 8. A booking's confirmation: said first; "Evet, kaydet" saves it, "Bu değil" goes on to the page.
+p = await open(view(known, { confirm: { code: "4821 993 107", name: "Visesa Ubud Resort", paid: "€378" } }), "9-confirm");
+assert.match(await text(p), /Rezervasyon onayı buldum\nVisesa Ubud Resort\nOnay kodu 4821 993 107 · €378 ödendi\nPortekiz gezisine rezervasyon olarak kaydedeyim mi\?[\s\S]*Evet, kaydet\nBaşka gezi\nBu değil/);
+await p.getByRole("button", { name: "Bu değil" }).click();
+assert.match(await text(p), /\+ Konaklama destesine ekle/);
+p = await open(view(known, { confirm: { code: "4821 993 107", name: null, paid: null } }), "9b-confirm");
+await p.getByRole("button", { name: "Evet, kaydet" }).click();
+await p.locator(".pk-done").waitFor();
+assert.equal((await asked(p, "popup:save")).length, 1);
+// 9. A save that couldn't be read a moment ago: said first, "Tekrar dene"; "Bu sayfaya geç".
+p = await open(view(known, { failed: { id: "c:f", title: "Casa do Bairro" } }), "10-failed");
+assert.match(await text(p), /Casa do Bairro okunamadı\nKayıt duruyor; bir daha okuyayım\.\nTekrar dene[\s\S]*Bu sayfaya geç/);
+await p.getByRole("button", { name: "Tekrar dene" }).click();
+await p.waitForTimeout(100);
+assert.equal((await asked(p, "popup:retry"))[0].id, "c:f");
+// 10. A new tab: never a dead end; the trip's next thing to do.
+p = await open({ kind: "none", title: "", sub: "", site: null, travelSite: false, along: false, what: "idea", where: null, desk: { candidate: null, planned: null }, key: true, price: null, pocket, hero: null, video: false, confirm: null, glance, fresh: false, failed: null, alongAsked: true }, "11-newtab");
+assert.match(await text(p), /^Portekiz\n×\n!\nSıradaki\nİstanbul → Porto karar bekliyor\n8 Eki · 2 seçenek\nKarar ver\nBu sayfa eklenemez\nPanoyu aç ↗$/);
+// 11. A travel site without the switch, once: "+ koyayım mı?"; "Ekle" goes on to the page. No key: the quiet line says so.
+p = await open(view(known, { along: false, alongAsked: false, key: false }), "12-along");
+assert.match(await text(p), /Booking\.com'da kartlara \+ koyayım mı\?[\s\S]*Evet, yanımda ol/);
+await p.getByRole("button", { name: "Ekle", exact: true }).click();
+assert.match(await text(p), /\+ Konaklama destesine ekle[\s\S]*AI bağlı değil · kayıtlar bekler\nBağla$/);
+assert.equal((await asked(p, "popup:along-asked")).length, 1, "asked once: not again");
 console.log(JSON.stringify({ ok: true }));
 await browser.close();

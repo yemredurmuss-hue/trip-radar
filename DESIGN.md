@@ -485,6 +485,22 @@ yukarıdaki tablodadır (Seçildi kum, Alındı yeşil).
 - Bilet gibi: ne → ne ("Havalimanı → Otel"), adlar ve saat alt satırda, notlar Ayrıntı'da.
 - Artı ve eksi birkaç kelimedir; sayfada okunan somut şey kendi sözleriyle yazılır ("Karşısında genelev var").
 
+## Tek bakış (0.45.0, tuval 15–16)
+
+- Simge penceresi her an tek kart: resim ya da simge, tek cümle, tek büyük düğme, altında tek sessiz satır ("Biriktirdiklerim
+  16 · Panoyu aç ↗"; AI anahtarı yoksa "AI bağlı değil · Bağla"). Gezi üstte küçük çip; basınca değişir.
+- Hangi kart: yukarıdan aşağı ilk tutan. Az önce eklendi (✓ Eklendi · Geri al · Yanlış gezi mi? Değiştir) → sayfada
+  rezervasyon onayı (lib/confirm.ts: onay sözü + numara ya da JSON-LD Reservation; "Evet, kaydet") → 15 dk içinde okunamayan
+  kayıt ("Tekrar dene", "Bu sayfaya geç") → gezi seçilmemiş ("Hangi gezi için topluyorsun?", bir kez) ya da sayfa başka
+  geziye benziyor ("Bu sayfa Portekiz için · Nereye kaydedeyim?", tutan gezi "önerim") → zaten destede ("Panoda
+  karşılaştır") → liste ("Bu listeden seç") → seyahat sitesinde + kapalı (bir kez: "kartlara + koyayım mı?") → İlham (video,
+  yazı, her site: "+ İlham'a ekle", Item.inspo) → yerin sayfası ("+ Konaklama destesine ekle") → eklenecek yok (yeni sekme,
+  pano): gezinin sıradaki işi ("İstanbul → Porto karar bekliyor · Karar ver", lib/tripGlance.ts).
+- Biriktirdiklerim: Pano'nun kendi sayısı (panoBoardOf counts.mine), aynı hesapla.
+- Sayfadaki kenar sekmesine basınca simgenin penceresi açılır (chrome.action.openPopup); açılamazsa cep sayfada açılır.
+- Onay sayfası (izinli sitelerde): köşede "Bu bir rezervasyon onayı · … kaydedeyim mi? · Kaydet · Şimdi değil", simgede
+  yeşil ✓. Emin değilse sormaz. Kaydedince AI okur; numara sayfada yoksa alındı yazılmaz.
+
 ## Sade cep, katlanan notlar, önerilerde ×, art arda yazmak (0.44.2)
 
 - Cep: başlıkta gezi ve tek sayı ("4 otel"), tek düğme, son 3 eklenenin yalnız adı (durum yalnız yolunda değilse:

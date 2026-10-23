@@ -164,6 +164,8 @@ const decided = (i: Item) => i.status === "chosen" || i.status === "booked";
 export function sectionOfItem(item: Item): SectionId {
   const part = item.part?.section;
   if (part && item.category !== "flight" && item.category !== "transport") return part;
+  // "İlham'a ekle": a stay or a meal saved as inspiration waits in İlham too, until it's chosen or given a day
+  if (item.inspo && isInspiration(item)) return "inspo";
   switch (item.category) {
     case "flight":
       return "flight";

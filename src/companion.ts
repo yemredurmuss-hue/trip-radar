@@ -27,6 +27,7 @@ import {
   type TripPick,
 } from "./lib/companion";
 import type { Pocket, PocketRow } from "./lib/pocket";
+import { confirmationOf, type Confirmation } from "./lib/confirm";
 import { formatPrice } from "./lib/items";
 import { L, loadLang } from "./lib/i18n";
 import { collectPage } from "./lib/pagecapture";
@@ -167,6 +168,14 @@ button:focus-visible, .plus:focus-visible { outline: 3px solid #cfc7ff; outline-
 .ln b { display: block; font-size: 13px; font-weight: 750; }
 .ln span.w { display: block; font-size: 11px; color: #5d5a78; font-weight: 600; }
 .ln.new { box-shadow: inset 0 0 0 1.5px #d6d2e4; }
+.ask.conf { width: 320px; gap: 6px; box-shadow: 0 0 0 1.5px #bfe3c9, 0 18px 40px rgba(28,26,51,.22); }
+.ask.conf > b { color: #1f7a45; }
+.ask.conf small { font-weight: 700; }
+.ask.conf .q { font-size: 13px; font-weight: 700; line-height: 1.4; color: #1c1a33; }
+.ask.conf .row { display: flex; gap: 8px; margin-top: 4px; }
+.ask.conf .row button { flex: 1; height: 40px; border: 0; border-radius: 12px; cursor: pointer; font: 800 13.5px/1 "Plus Jakarta Sans", system-ui, sans-serif; }
+.ask.conf .row .yes { background: #1f7a45; color: #fff; }
+.ask.conf .row .no { background: #f7f6fb; color: #5d5a78; align-self: auto; padding: 0; }
 .ask button.no { align-self: flex-start; border: 0; background: none; color: #5d5a78; font: 700 12px/1 inherit; cursor: pointer; padding: 4px 0; }
 .toast { display: flex; align-items: center; gap: 10px; max-width: 320px; padding: 10px 12px; border-radius: 12px; background: #1c1a33; color: #fff; font-size: 12.5px;
   box-shadow: 0 10px 24px rgba(0,0,0,.25); }
@@ -186,6 +195,19 @@ button:focus-visible, .plus:focus-visible { outline: 3px solid #cfc7ff; outline-
 /** What the question asks about ("Bu konaklama hangi geziye?"). */
 const whatOf = (kind: SiteKind): string =>
   kind === "stay" ? L("Bu konaklama", "This stay") : kind === "activity" ? L("Bu etkinlik", "This activity") : kind === "transport" ? L("Bu yolculuk", "This journey") : kind === "flight" ? L("Bu uçuş", "This flight") : L("Bu sayfa", "This page");
+
+/** The page's JSON-LD blocks as written (a booking's confirmation says its number there). */
+function ldBlocks(): unknown[] {
+  const out: unknown[] = [];
+  for (const s of document.querySelectorAll('script[type="application/ld+json"]')) {
+    try {
+      out.push(JSON.parse(s.textContent ?? ""));
+    } catch {
+      // (broken JSON-LD: the words still say)
+    }
+  }
+  return out.slice(0, 12);
+}
 
 /** The JSON-LD types a page says it is ("Hotel", "TouristTrip"). */
 function ldTypes(): string[] {
@@ -243,6 +265,9 @@ function start() {
   let pocket: Pocket | null = null;
   let pageState: "idle" | "busy" | "done" = "idle";
   let stale = false;
+  // Rezervasyon onayı (0.45.0): the page is a booking's confirmation; asked once a page whether to save it to the trip.
+  let confirmAsk: Confirmation | null = null;
+  let confirmTries = 0;
   let toast: string | null = null;
   let asking: { what: string; then: (pick: TripPick) => void } | null = null;
   let cards: { el: Element; facts: CardFacts; pin: HTMLDivElement }[] = [];
@@ -493,6 +518,47 @@ function start() {
       dock.append(box);
       return;
     }
+    if (confirmAsk && !selecting && !toast) {
+      const c = confirmAsk;
+      const box = document.createElement("div");
+      box.className = "ask conf";
+      box.setAttribute("role", "dialog");
+      const h = document.createElement("b");
+      h.textContent = L("Bu bir rezervasyon onayı", "This is a booking confirmation");
+      const line = document.createElement("small");
+      line.textContent = [c.name, L(`Onay kodu ${c.code}`, `Confirmation ${c.code}`), c.paid].filter(Boolean).join(" · ");
+      const q = document.createElement("span");
+      const trip = knownTrip();
+      q.className = "q";
+      q.textContent = trip ? L(`${trip.title} · ${deckWord(single ?? kind)} destesine rezervasyon olarak kaydedeyim mi?`, `Save it to ${trip.title} · ${deckWord(single ?? kind)} as a booking?`) : L("Rezervasyon olarak kaydedeyim mi?", "Save it as a booking?");
+      const row = document.createElement("div");
+      row.className = "row";
+      const yes = document.createElement("button");
+      yes.type = "button";
+      yes.className = "yes";
+      yes.textContent = L("Kaydet", "Save");
+      yes.onclick = () => {
+        confirmAsk = null;
+        drawDock();
+        withTrip(L("Bu rezervasyon", "This booking"), async (pick) => {
+          const ok = await ask<SavedOnSite>({ type: "desk:page", url: location.href, snapshot: collectPage(), ...pick });
+          if (ok?.ok) said(ok);
+          return Boolean(ok?.ok);
+        });
+      };
+      const no = document.createElement("button");
+      no.type = "button";
+      no.className = "no";
+      no.textContent = L("Şimdi değil", "Not now");
+      no.onclick = () => {
+        confirmAsk = null;
+        drawDock();
+      };
+      row.append(yes, no);
+      box.append(h, line, q, row);
+      dock.append(box);
+      return;
+    }
     if (selecting) {
       const bar = document.createElement("div");
       bar.className = "toast sel";
@@ -724,11 +790,14 @@ function start() {
         add.textContent = "+";
         tab.append(add);
       }
-      tab.onclick = () => {
-        sideOpen = true;
-        drawSide();
-        void loadPocket();
-      };
+      // (0.45.0, tek bakış: the tab opens the toolbar's own window, the same one card; where Chrome won't, the pocket here)
+      tab.onclick = () =>
+        void ask<{ ok: boolean }>({ type: "desk:popup" }).then((r) => {
+          if (r?.ok || stale) return;
+          sideOpen = true;
+          drawSide();
+          void loadPocket();
+        });
       side.append(tab);
       return;
     }
@@ -1058,6 +1127,8 @@ function start() {
     closed = false;
     pageState = "idle";
     asking = null;
+    confirmAsk = null;
+    confirmTries = 0;
     single = offerPageKind(href, ldTypes());
     [route, where] = await Promise.all([
       kind === "flight" ? ask<CompanionRoute>({ type: "desk:route", url: href }) : Promise.resolve(null),
@@ -1065,8 +1136,21 @@ function start() {
     ]);
     drawStrip();
     drawCards();
+    checkConfirm();
     drawDock();
     void loadPocket();
+  };
+
+  /** A booking's confirmation on this page (its words and number, or its JSON-LD): asked once, the icon's ✓ beside it. */
+  const checkConfirm = () => {
+    if (confirmTries >= 3 || where?.saved) return;
+    confirmTries++;
+    const c = confirmationOf({ text: (document.body?.innerText ?? "").slice(0, 60_000), jsonLd: ldBlocks(), title: document.title });
+    if (!c) return;
+    confirmTries = 3;
+    confirmAsk = c;
+    void ask({ type: "desk:confirmed" });
+    drawDock();
   };
 
   let pending = 0;
@@ -1079,6 +1163,8 @@ function start() {
       // (a hotel's page often says what it is only once its scripts ran)
       if (!single && (single = offerPageKind(location.href, ldTypes()))) drawSide();
       drawCards(false);
+      // (a confirmation page often writes its number once its scripts ran)
+      if (!confirmAsk && confirmTries < 3) checkConfirm();
     }, 700);
   };
   new MutationObserver(later).observe(document.body, { childList: true, subtree: true });

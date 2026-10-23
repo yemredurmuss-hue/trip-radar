@@ -276,6 +276,8 @@ export function buildItem(
           )
         : // The line the link was sent with in the chat ("Bu hosteli ekle, kahvaltılı olan": 0.39.4), as its note.
           (capture.note?.trim() || null),
+    // "İlham'a ekle" (0.45.0): kept as inspiration, whatever the page is about, until it's chosen or given a day
+    ...(capture.idea ? { inspo: true } : {}),
     createdAt: now,
     updatedAt: now,
   };

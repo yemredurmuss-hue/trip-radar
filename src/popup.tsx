@@ -1,15 +1,17 @@
-// Toolbar popup (0.43.0, tuval "Benle gezen eklenti" 8 · Simgeye basınca): it opens at once and saves nothing by itself.
-// It says what the page is and where it would go ("Portekiz · Konaklama ▾"), and "Desteye ekle" (or Enter) saves it; a
-// page of a trip not known yet asks which one (a press on a trip both picks and saves). Reading the page, its screenshot
-// and the save happen in the service worker (lib/popupWorker.ts): nothing heavy is loaded here.
-import { useEffect, useRef, useState } from "react";
+// Toolbar popup, tek bakış (0.45.0, tuval "Benle gezen eklenti" 15–16, Emre onayladı): one card at a time, the one the
+// moment asks for, picked in this order: what was just done (✓ Eklendi · Geri al), a booking's confirmation on the page,
+// a save that couldn't be read a moment ago, which trip (the first time; a page that looks like another trip), the page
+// itself (a place's own page, a list, an idea for İlham, already in the deck), else the trip's next thing to do. Each card:
+// a picture or a sign, one sentence, one big button; under it one quiet line (Pano's "Biriktirdiklerim", "Panoyu aç").
+// The trip is a small chip on top. Nothing is saved by opening it; reading and saving happen in the service worker
+// (lib/popupWorker.ts): nothing heavy is loaded here.
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { openBoard } from "./lib/browser";
 import { L, lang, loadLang } from "./lib/i18n";
 import { COMPANION_SITES, companionName, deckWord, siteKindOf, type CompanionWhere, type TripPick } from "./lib/companion";
 import { clearPriceBadge, type PriceBadge } from "./lib/priceBadge";
 import type { PopupAsk, PopupView } from "./lib/popupWorker";
-import type { Pocket, PocketRow } from "./lib/pocket";
 import { reloadIfStale } from "./lib/update";
 
 const ask = <T,>(m: PopupAsk): Promise<T | null> =>
@@ -24,45 +26,57 @@ const ask = <T,>(m: PopupAsk): Promise<T | null> =>
 type Trip = CompanionWhere["trips"][number];
 type Saved = { captureId: string; tripId: string | null; tripTitle: string | null; deck: string };
 
+/** "Seç" on the plan is a decision to make from here. */
+const actWord = (act: string): string => (act === L("Seç", "Pick") ? L("Karar ver", "Decide") : act);
+
 function Popup() {
   const [tabId, setTabId] = useState<number | null>(null);
   const [view, setView] = useState<PopupView | null>(null);
-  const [pocket, setPocket] = useState<Pocket | null>(null);
-  const [picking, setPicking] = useState(false);
+  const [choosing, setChoosing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState<Saved | null>(null);
   const [failed, setFailed] = useState(false);
+  // (put aside for this opening: "Bu değil" on a confirmation, "Bu sayfaya geç" past a failure, "Şimdilik yalnız bu sayfa")
+  const [skip, setSkip] = useState<ReadonlySet<"confirm" | "failed" | "along">>(() => new Set());
+  const skipIt = (k: "confirm" | "failed" | "along") => setSkip((s) => new Set(s).add(k));
 
   useEffect(() => {
     void chrome.tabs.query({ active: true, currentWindow: true }).then(async ([tab]) => {
       if (tab?.id == null) return setView({ kind: "none" } as PopupView);
       setTabId(tab.id);
-      const v = (await ask<PopupView>({ type: "popup:view", tabId: tab.id })) ?? ({ kind: "none" } as PopupView);
-      setView(v);
-      setPocket(v.pocket ?? null);
+      setView((await ask<PopupView>({ type: "popup:view", tabId: tab.id })) ?? ({ kind: "none" } as PopupView));
     });
   }, []);
 
   const where = view?.where ?? null;
+  const page = view?.kind === "page";
   const idea = view?.what === "idea";
   const list = view?.what === "list";
-  const deck = idea ? L("Fikirler", "Ideas") : deckWord(list ? siteKindOf(view?.site ?? "") : view?.what === "page" ? "any" : ((view?.what as Parameters<typeof deckWord>[0]) ?? "any"));
-  const target = view?.desk.planned ? { title: view.desk.planned.title } : view?.desk.candidate ? null : (where?.trip ?? null);
-  const mustPick = Boolean(view?.kind === "page" && !view.desk.planned && !view.desk.candidate && !where?.trip && where?.trips.length);
-  const canPick = Boolean(view?.kind === "page" && view.what !== "list" && !view.desk.planned && !view.desk.candidate && where?.trips.length);
-  const reload = (tripId: string | null = pocket?.trip?.id ?? null) => void ask<Pocket>({ type: "popup:pocket", tripId }).then((p) => p && setPocket(p));
+  const deck = idea ? L("İlham", "Inspiration") : deckWord(list ? siteKindOf(view?.site ?? "") : view?.what === "page" ? "any" : ((view?.what as Parameters<typeof deckWord>[0]) ?? "any"));
+  const fixed = Boolean(view?.desk.planned || view?.desk.candidate);
+  const trip = view?.desk.planned ? { id: null, title: view.desk.planned.title } : (where?.trip ?? (page ? null : view?.pocket?.trip ? { id: view.pocket.trip.id, title: view.pocket.trip.title } : null));
+  const mustPick = Boolean(page && !fixed && !where?.trip && where?.trips.length);
+  const boardOf = (id: string | null | undefined) => void openBoard(id ? `#trip=${encodeURIComponent(id)}` : "").then(() => window.close());
+  const tripId = (where?.trip?.id ?? view?.pocket?.trip?.id) || null;
 
-  async function save(pick: TripPick = {}, inView = false) {
+  async function save(pick: TripPick = {}) {
     if (tabId == null || busy) return;
     setBusy(true);
-    const r = await ask<Saved>({ type: "popup:save", tabId, pick, idea, inView });
+    const r = await ask<Saved>({ type: "popup:save", tabId, pick, idea });
     setBusy(false);
     if (!r) return setFailed(true);
     setSaved(r);
-    reload(r.tripId);
   }
-
-  // "Sonuçlardan seç" on a list: the results' "+" become ticks on the page (the switch asked first, when it's off).
+  /** The chip, or the first question: what this page and the next go to. */
+  async function choose(pick: TripPick) {
+    if (tabId == null) return;
+    setBusy(true);
+    const v = await ask<PopupView>({ type: "popup:current", tabId, ...pick });
+    setBusy(false);
+    setChoosing(false);
+    if (v) setView(v);
+  }
+  // "Bu listeden seç": the results' "+" become ticks on the page (the switch asked first, when it's off).
   async function select() {
     if (tabId == null || !view?.site) return;
     if (!view.along) {
@@ -73,11 +87,19 @@ function Popup() {
     await chrome.tabs.sendMessage(tabId, { type: "desk:select" }).catch(() => undefined);
     window.close();
   }
+  async function along() {
+    if (tabId == null || !view?.site) return;
+    void ask({ type: "popup:along-asked" });
+    const granted = await chrome.permissions.request({ origins: [...COMPANION_SITES] }).catch(() => false);
+    if (granted) await chrome.scripting.executeScript({ target: { tabId }, files: ["companion.js"] }).catch(() => undefined);
+    skipIt("along");
+  }
 
-  // Enter adds (the trip known); Escape closes.
+  // Enter does the card's one thing (the trip known); Escape closes.
+  const card = view && !saved && !choosing ? cardKind(view, { mustPick, skip }) : null;
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
-      if (e.key === "Enter" && view?.kind === "page" && !list && !mustPick && !picking && !saved && !where?.saved) {
+      if (e.key === "Enter" && card === "page" && !busy) {
         e.preventDefault();
         void save();
       }
@@ -86,185 +108,329 @@ function Popup() {
     return () => removeEventListener("keydown", key);
   });
 
-  const tripTitle = pocket?.trip?.title ?? target?.title ?? null;
-  return (
-    <div className="popup-card pk2">
-      <div className="popup-title">Trip Radar</div>
-      {view?.price && <PriceBox badge={view.price} />}
-      {!view ? (
-        <div className="pk-skel" aria-label={L("Hazırlanıyor", "Getting ready")}>
-          <span />
-          <span />
-        </div>
-      ) : saved ? (
-        <Done saved={saved} where={where} onSaved={(s) => (setSaved(s), reload(s.tripId))} />
-      ) : (
-        <>
-          {/* (a travel site without the switch: said first, above everything, so the "+" isn't missed; a list asks it on "Sonuçlardan seç") */}
-          {view.kind === "page" && view.site && view.travelSite && !view.along && !list && tabId != null && (
-            <div className="pk-switch">
-              <b>{L("Bu sitede + kapalı", "The + is off on this site")}</b>
-              <AlongBox site={view.site} travel tabId={tabId} along={false} />
-            </div>
-          )}
-          <TripHead pocket={pocket} onPick={canPick && !picking ? () => setPicking(true) : null} />
-          {view.kind === "board" && <p className="cep-say">{L("Burası pano. Bir otel, uçuş ya da etkinlik sayfasında simgeye bas; o sayfa buraya eklenir.", "This is the board. Click the icon on a hotel, flight or activity page; that page gets added here.")}</p>}
-          {view.kind === "none" && <p className="cep-say">{L("Bu sayfa eklenemiyor. Bir otel, uçuş ya da etkinlik sayfasında simgeye bas.", "This page can't be added. Click the icon on a hotel, flight or activity page.")}</p>}
-          {view.kind === "page" && (
-            <section className="cep-sec">
-              <small className="cep-k">{L("Bu sayfa", "This page")}</small>
-              <div className="pk-hd">
-                <span className="pk-fav" aria-hidden>
-                  {companionName(view.site ?? "").slice(0, 1).toLocaleUpperCase("tr")}
-                </span>
-                <span>
-                  <b>{view.title}</b>
-                  <small>{view.sub}</small>
-                </span>
-              </div>
-              {view.desk.candidate && <DeskBox tabId={tabId!} c={view.desk.candidate} />}
-              {view.desk.planned && (
-                <small className="pk-line">
-                  {L(`Bu arama planında · ${view.desk.planned.from} ✈ ${view.desk.planned.to} · destende ${view.desk.planned.count}`, `On the plan · ${view.desk.planned.from} ✈ ${view.desk.planned.to} · ${view.desk.planned.count} in the deck`)}
-                </small>
-              )}
-              {where?.saved && !picking ? (
-                <>
-                  <div className="pk-in">✓ {where.trip ? L(`${where.trip.title} · ${deck} destesinde`, `In ${where.trip.title} · ${deck}`) : L("Bu sayfa planında", "This page is on your plan")}</div>
-                  <button type="button" className="pk-go ghost" disabled={busy} onClick={() => void save()}>
-                    {L("Fiyatı yenile", "Refresh the price")}
-                  </button>
-                </>
-              ) : (mustPick && !list) || picking ? (
-                <Picker where={where!} busy={busy} onPick={(p) => void save(p)} onCancel={mustPick ? null : () => setPicking(false)} />
-              ) : list ? (
-                <>
-                  {/* (a list is never one record: its results are picked, or what's in view is read) */}
-                  <button type="button" className="pk-go" onClick={() => void select()}>
-                    {L("Sonuçlardan seç", "Pick from the results")}
-                  </button>
-                  <small className="muted cep-note">{L("Listenin tamamı kaydedilmez: her sonucun + düğmesine bas ya da işaretleyip hepsini ekle.", "The whole list isn't saved: press a result's +, or tick several and add them.")}</small>
-                  <button type="button" className="btn-link pk-sel" disabled={busy} onClick={() => void save({}, true)}>
-                    {busy ? L("Ekleniyor…", "Adding…") : L("Ekrandakileri ekle", "Add what's on screen")}
-                  </button>
-                </>
-              ) : (
-                <button type="button" className="pk-go" disabled={busy} onClick={() => void save()}>
-                  {busy ? L("Ekleniyor…", "Adding…") : idea ? L("+ Fikir olarak ekle", "+ Add as an idea") : !target && !view.desk.candidate ? L("+ Yeni gezi aç ve ekle", "+ Start a trip and add") : L(`+ ${deck} destesine ekle`, `+ Add to ${deck}`)}
-                  {!busy && <kbd>Enter</kbd>}
-                </button>
-              )}
-              {failed && <p className="warning">{L("Sayfa okunamadı; bir daha dene ya da sağ tık \"Trip Radar'a ekle\".", "Couldn't read the page; try again, or right-click \"Add to Trip Radar\".")}</p>}
-            </section>
-          )}
-          <Recent pocket={pocket} onChanged={() => reload()} />
-          <KeyLine pocket={pocket} />
-          {view.kind === "page" && view.site && tabId != null && !(view.travelSite && !view.along) && <AlongBox site={view.site} travel={view.travelSite} tabId={tabId} along={view.along} />}
-          <Foot tripId={pocket?.trip?.id ?? where?.trip?.id ?? null} title={tripTitle} />
-        </>
-      )}
-    </div>
-  );
-}
+  const mine = view?.glance?.mine ?? null;
+  // (the line under a card: Pano's count and the board; a card's own words when it has them; no key, said instead of the count)
+  const quiet = (left?: ReactNode, right?: ReactNode) =>
+    left === undefined && right === undefined && view && !view.key ? (
+      <div className="tb-quiet warn">
+        <span>{L("AI bağlı değil · kayıtlar bekler", "AI not connected · saves wait")}</span>
+        <button type="button" className="btn-link" onClick={() => void openBoard("#settings").then(() => window.close())}>
+          {L("Bağla", "Connect")}
+        </button>
+      </div>
+    ) : (
+      <div className="tb-quiet">
+        {left ?? (mine != null ? <span>{L("Biriktirdiklerim", "Saved by us")} <b>{mine}</b></span> : <span />)}
+        {right ?? (
+          <button type="button" className="btn-link" onClick={() => boardOf(tripId)}>
+            {L("Panoyu aç ↗", "Open the board ↗")}
+          </button>
+        )}
+      </div>
+    );
 
-/** The pocket's top: the trip it is (its cover, its days, how many on it); ▾ picks another for this page. */
-function TripHead({ pocket, onPick }: { pocket: Pocket | null; onPick: (() => void) | null }) {
-  const t = pocket?.trip;
-  if (!t) return null;
-  const inner = (
-    <>
-      <Cover photos={t.photo ? [t.photo] : []} title={t.title} />
-      <span>
-        <b>{t.title}</b>
-        <small>{[t.when, L(`${t.count} kayıt`, `${t.count} saved`)].filter(Boolean).join(" · ")}</small>
-      </span>
-      {onPick && <em aria-hidden>▾</em>}
-    </>
-  );
-  return onPick ? (
-    <button type="button" className="cep-trip" onClick={onPick} aria-label={L(`${t.title}; başka gezi seç`, `${t.title}; pick another trip`)}>
-      {inner}
-    </button>
-  ) : (
-    <div className="cep-trip">{inner}</div>
-  );
-}
-
-const STATE_WORD: Record<PocketRow["state"], () => string> = {
-  in: () => L("destede", "in the deck"),
-  reading: () => L("okunuyor", "being read"),
-  failed: () => L("okunamadı", "couldn't read"),
-};
-
-/** Son eklenenler: the trip's last five, how each stands; × takes a wrong one back, "tekrar" reads a failed one again. */
-function Recent({ pocket, onChanged }: { pocket: Pocket | null; onChanged: () => void }) {
-  const [gone, setGone] = useState<ReadonlySet<string>>(() => new Set());
-  const rows = (pocket?.rows ?? []).filter((r) => !gone.has(r.id)).slice(0, 3);
-  if (!rows.length) return null;
-  const act = (type: "popup:remove" | "popup:retry", id: string) => {
-    if (type === "popup:remove") setGone((g) => new Set(g).add(id));
-    void ask({ type, id }).then(onChanged);
-  };
-  return (
-    <section className="cep-sec">
-      <small className="cep-k">{L("Son eklenenler", "Added last")}</small>
-      {rows.map((r) => (
-        <div key={r.id} className="cep-row">
-          <Cover photos={r.photo ? [r.photo] : []} title={r.title} />
-          <b>{r.title}</b>
-          {/* (only what isn't fine says so; a record in its deck is just its name) */}
-          {r.state !== "in" && <em className={`cep-st ${r.state}`}>{STATE_WORD[r.state]()}</em>}
-          {r.state === "failed" && (
-            <button type="button" className="btn-link" onClick={() => act("popup:retry", r.id)}>
-              {L("tekrar", "retry")}
-            </button>
-          )}
-          <button type="button" className="cep-x" aria-label={L(`${r.title} kaldır`, `Remove ${r.title}`)} title={L("Kaldır", "Remove")} onClick={() => act("popup:remove", r.id)}>
-            ×
+  let body: ReactNode = null;
+  if (!view) {
+    body = (
+      <div className="pk-skel" aria-label={L("Hazırlanıyor", "Getting ready")}>
+        <span />
+        <span />
+      </div>
+    );
+  } else if (saved) {
+    body = <Done saved={saved} where={where} onSaved={setSaved} />;
+  } else if (choosing && where) {
+    body = <Picker where={where} busy={busy} onPick={(p) => void choose(p)} onCancel={() => setChoosing(false)} />;
+  } else if (card === "confirm" && view.confirm) {
+    const c = view.confirm;
+    body = (
+      <>
+        <div className="tb-main">
+          <div className="tb-conf">
+            <b>✓ {L("Rezervasyon onayı buldum", "Found a booking confirmation")}</b>
+            <span>{c.name ?? view.title}</span>
+            <span>
+              {L("Onay kodu", "Confirmation")} <code>{c.code}</code>
+              {c.paid ? L(` · ${c.paid} ödendi`, ` · ${c.paid} paid`) : ""}
+            </span>
+          </div>
+          <Say title={trip ? L(`${trip.title} gezisine rezervasyon olarak kaydedeyim mi?`, `Save it to ${trip.title} as a booking?`) : L("Rezervasyon olarak kaydedeyim mi?", "Save it as a booking?")} sub={L("Kaydedince okurum: plan satırı alındı olur, sayfa belgesi olarak eklenir.", "Once saved I read it: its row on the plan turns booked, the page kept as its document.")} />
+          <button type="button" className="tb-go ok" disabled={busy} onClick={() => (mustPick ? setChoosing(true) : void save())}>
+            {busy ? L("Kaydediliyor…", "Saving…") : L("Evet, kaydet", "Yes, save it")}
           </button>
         </div>
-      ))}
-    </section>
-  );
-}
+        {quiet(
+          where?.trips.length ? (
+            <button type="button" className="btn-link muted" onClick={() => setChoosing(true)}>
+              {L("Başka gezi", "Another trip")}
+            </button>
+          ) : (
+            <span />
+          ),
+          <button type="button" className="btn-link" onClick={() => skipIt("confirm")}>
+            {L("Bu değil", "Not this")}
+          </button>,
+        )}
+      </>
+    );
+  } else if (card === "failed" && view.failed) {
+    const f = view.failed;
+    body = (
+      <>
+        <div className="tb-main">
+          <Sign tone="bad">↻</Sign>
+          <Say title={L(`${f.title} okunamadı`, `Couldn't read ${f.title}`)} sub={L("Kayıt duruyor; bir daha okuyayım.", "The save is kept; I'll read it again.")} />
+          <button type="button" className="tb-go" onClick={() => void ask({ type: "popup:retry", id: f.id }).then(() => window.close())}>
+            {L("Tekrar dene", "Try again")}
+          </button>
+        </div>
+        {quiet(
+          undefined,
+          page ? (
+            <button type="button" className="btn-link" onClick={() => skipIt("failed")}>
+              {L("Bu sayfaya geç", "Go on to this page")}
+            </button>
+          ) : undefined,
+        )}
+      </>
+    );
+  } else if (card === "first" && where) {
+    // Hangi gezi için topluyorsun (a bir kez): what's picked is the trip of this page and the next ones.
+    body = (
+      <>
+        <div className="tb-main">
+          <Say title={L("Hangi gezi için topluyorsun?", "Which trip are you collecting for?")} sub={L("Bir kez sorarım; sonra hep oraya.", "I ask once; then everything goes there.")} />
+          <Tiles where={where} busy={busy} onPick={(p) => void choose(p)} />
+        </div>
+        {quiet(<span>{L("Sonra üstteki çipten değişir", "The chip on top changes it later")}</span>, <span />)}
+      </>
+    );
+  } else if (card === "other" && where) {
+    // Başka geziye benziyor: never saved quietly to the trip being collected for; the trip that fits first.
+    const current = view.pocket?.trip ?? null;
+    const opts = [...where.picks.map((id) => where.trips.find((t) => t.id === id)).filter((t): t is Trip => Boolean(t))];
+    if (current && !opts.some((t) => t.id === current.id)) {
+      const t = where.trips.find((x) => x.id === current.id);
+      if (t) opts.push(t);
+    }
+    body = (
+      <>
+        <div className="tb-main">
+          <Say title={where.country ? L(`Bu sayfa ${where.country} için`, `This page is for ${where.country}`) : L("Bu sayfa hangi geziye?", "Which trip is this page for?")} sub={current ? L(`Şu an ${current.title} için topluyorsun. Nereye kaydedeyim?`, `You're collecting for ${current.title}. Where shall I save it?`) : L("Nereye kaydedeyim?", "Where shall I save it?")} />
+          <div className="tb-opts">
+            {opts.slice(0, 3).map((t, n) => (
+              <button key={t.id} type="button" className={`tb-opt${n === 0 && t.match ? " best" : ""}`} disabled={busy} onClick={() => void save({ tripId: t.id, remember: Boolean(where.country) })}>
+                <Cover photos={t.photos} title={t.title} />
+                <span>
+                  <b>{t.title}</b>
+                  <small>{[t.when, t.match && where.country ? L("tutuyor", "fits") : null].filter(Boolean).join(" · ") || L("tarihsiz", "no dates")}</small>
+                </span>
+                {n === 0 && t.match && <em>{L("önerim", "my pick")}</em>}
+              </button>
+            ))}
+            <button type="button" className="btn-link tb-new" disabled={busy} onClick={() => void save({ newTrip: true, remember: true })}>
+              {where.country ? L(`+ Yeni gezi: ${where.country}`, `+ New trip: ${where.country}`) : L("+ Yeni gezi", "+ New trip")}
+            </button>
+          </div>
+        </div>
+        {quiet(<span>{L("Seçtiğin bundan sonra şu anki gezi olur", "What you pick is the trip from now on")}</span>, <span />)}
+      </>
+    );
+  } else if (card === "along" && view.site) {
+    body = (
+      <>
+        <div className="tb-main">
+          <Sign tone="warn">+</Sign>
+          <Say title={L(`${companionName(view.site)}'da kartlara + koyayım mı?`, `Put a + on ${companionName(view.site)}'s results?`)} sub={L("Tek izin, 30 kadar seyahat sitesi. Basmadan hiçbir şey kaydedilmez.", "One permission, some 30 travel sites. Nothing is saved until you press.")} />
+          <button type="button" className="tb-go" onClick={() => void along()}>
+            {L("Evet, yanımda ol", "Yes, come along")}
+          </button>
+        </div>
+        {quiet(
+          <span>{L("Şimdilik yalnız bu sayfa", "Just this page for now")}</span>,
+          <button type="button" className="btn-link" onClick={() => (void ask({ type: "popup:along-asked" }), skipIt("along"))}>
+            {L("Ekle", "Add")}
+          </button>,
+        )}
+      </>
+    );
+  } else if (card === "saved") {
+    body = (
+      <>
+        <div className="tb-main">
+          {view.hero ? <Hero src={view.hero} small /> : <Sign tone="ok">✓</Sign>}
+          <Say title={L(`${view.title} zaten destende`, `${view.title} is in your deck already`)} sub={where?.trip ? L(`${where.trip.title} · ${deck}`, `${where.trip.title} · ${deck}`) : null} />
+          <button type="button" className="tb-go" onClick={() => boardOf(where?.trip?.id ?? tripId)}>
+            {L("Panoda karşılaştır", "Compare on the board")}
+          </button>
+        </div>
+        {quiet(
+          <span>{L("Fiyatı düşerse haber veririm", "I'll tell you if the price drops")}</span>,
+          <button type="button" className="btn-link" disabled={busy} onClick={() => void save()}>
+            {L("Fiyatı yenile", "Refresh the price")}
+          </button>,
+        )}
+      </>
+    );
+  } else if (card === "list") {
+    body = (
+      <>
+        <div className="tb-main">
+          <Sign tone="acc">☰</Sign>
+          <Say title={view.title} sub={L("Beğendiklerini işaretle, hepsini birden ekle", "Tick the ones you like, add them all at once")} />
+          <button type="button" className="tb-go" onClick={() => void select()}>
+            {L("Bu listeden seç", "Pick from this list")}
+          </button>
+        </div>
+        {quiet(<span>{L("ya da kartlardaki +", "or the + on the results")}</span>)}
+      </>
+    );
+  } else if (card === "idea" || card === "page") {
+    body = (
+      <>
+        <div className="tb-main">
+          {view.hero ? <Hero src={view.hero} video={view.video} /> : <Sign tone={idea ? "mute" : "acc"}>{idea ? "✎" : "+"}</Sign>}
+          <Say title={view.title} sub={view.sub || null} />
+          {view.desk.candidate && tabId != null && <DeskBox tabId={tabId} c={view.desk.candidate} />}
+          {view.desk.planned && <small className="pk-line">{L(`Bu arama planında · ${view.desk.planned.from} ✈ ${view.desk.planned.to} · destende ${view.desk.planned.count}`, `On the plan · ${view.desk.planned.from} ✈ ${view.desk.planned.to} · ${view.desk.planned.count} in the deck`)}</small>}
+          <button type="button" className="tb-go" disabled={busy} onClick={() => void save()}>
+            {busy ? L("Ekleniyor…", "Adding…") : idea ? L("+ İlham'a ekle", "+ Add to Inspiration") : !trip && !view.desk.candidate ? L("+ Yeni gezi aç ve ekle", "+ Start a trip and add") : L(`+ ${deck} destesine ekle`, `+ Add to ${deck}`)}
+            {!busy && <kbd>Enter</kbd>}
+          </button>
+          {failed && <p className="warning">{L("Sayfa okunamadı; bir daha dene ya da sağ tık \"Trip Radar'a ekle\".", "Couldn't read the page; try again, or right-click \"Add to Trip Radar\".")}</p>}
+        </div>
+        {quiet()}
+      </>
+    );
+  } else {
+    // Nothing to add here (a new tab, the board): the trip's next thing to do, else where it stands.
+    const next = view.glance?.next ?? null;
+    const t = view.pocket?.trip ?? null;
+    body = next ? (
+      <>
+        <div className="tb-main">
+          <Sign tone="warn">!</Sign>
+          <Say eyebrow={L("Sıradaki", "Next")} title={next.act === L("Seç", "Pick") ? L(`${next.text} karar bekliyor`, `${next.text} waits for a decision`) : next.text} sub={next.sub} />
+          <button type="button" className="tb-go" onClick={() => boardOf(t?.id)}>
+            {actWord(next.act)}
+          </button>
+        </div>
+        {quiet(<span>{view.kind === "board" ? L("Burası pano", "This is the board") : L("Bu sayfa eklenemez", "This page can't be added")}</span>)}
+      </>
+    ) : t ? (
+      <>
+        <div className="tb-main">
+          <Cover photos={t.photo ? [t.photo] : []} title={t.title} big />
+          <Say title={t.title} sub={mine != null ? L(`Biriktirdiklerim ${mine}`, `${mine} saved`) : t.when} />
+          <button type="button" className="tb-go" onClick={() => boardOf(t.id)}>
+            {L("Panoyu aç", "Open the board")}
+          </button>
+        </div>
+        {quiet(<span>{view.kind === "board" ? L("Burası pano", "This is the board") : L("Bir otel, uçuş ya da tur sayfasında simgeye bas", "Click the icon on a hotel, flight or tour page")}</span>, <span />)}
+      </>
+    ) : (
+      <div className="tb-main">
+        <Say title={view.kind === "board" ? L("Burası pano", "This is the board") : L("Bir otel, uçuş ya da tur sayfasında simgeye bas", "Click the icon on a hotel, flight or tour page")} sub={view.kind === "board" ? L("Bir otel, uçuş ya da tur sayfasında simgeye bas; o sayfa buraya eklenir.", "Click the icon on a hotel, flight or tour page; that page gets added here.") : L("O sayfayı gezinin destesine eklerim.", "I'll add that page to your trip's deck.")} />
+      </div>
+    );
+  }
 
-/** No key: saving goes on, the saves wait here; one line says how many and where to connect it. */
-function KeyLine({ pocket }: { pocket: Pocket | null }) {
-  if (!pocket || pocket.key) return null;
+  const chip = view && !saved && card !== "first" ? (trip ?? (page ? null : view.pocket?.trip ? { title: view.pocket.trip.title } : null)) : null;
   return (
-    <p className="cep-key">
-      {pocket.waiting ? L(`AI bağlı değil: ${pocket.waiting} kayıt bekliyor, toplamaya devam.`, `AI not connected: ${pocket.waiting} saves waiting, keep collecting.`) : L("AI bağlı değil: eklediklerin bu bilgisayarda bekler.", "AI not connected: what you add waits on this computer.")}{" "}
-      <button type="button" className="btn-link" onClick={() => void openBoard("#settings")}>
-        {L("Anahtarı bağla", "Connect the key")}
-      </button>
-    </p>
-  );
-}
-
-/** Git: the trip's board (its open tab if there is one), and every trip. */
-function Foot({ tripId, title }: { tripId: string | null; title: string | null }) {
-  return (
-    <div className="cep-foot">
-      <button type="button" className="btn-link" onClick={() => void openBoard(tripId ? `#trip=${encodeURIComponent(tripId)}` : "").then(() => window.close())}>
-        {title ? L(`${title} panosunu aç ↗`, `Open the ${title} board ↗`) : L("Planı aç ↗", "Open the plan ↗")}
-      </button>
-      {tripId && (
-        <button type="button" className="btn-link muted" onClick={() => void openBoard("").then(() => window.close())}>
-          {L("Tüm geziler", "All trips")}
+    <div className="popup-card tb">
+      {view?.price && !saved && <PriceBox badge={view.price} />}
+      <div className="tb-top">
+        {chip || (page && where?.trips.length && !saved) ? (
+          <button type="button" className="tb-chip" disabled={fixed || !where?.trips.length || choosing} onClick={() => setChoosing(true)} aria-label={L("Gezi değiştir", "Change the trip")}>
+            <Cover photos={where?.trips.find((x) => x.title === chip?.title)?.photos ?? (view?.pocket?.trip?.photo ? [view.pocket.trip.photo] : [])} title={chip?.title ?? "?"} />
+            {chip?.title ?? L("Gezi seç", "Pick a trip")}
+            {!fixed && where?.trips.length ? <em aria-hidden>▾</em> : null}
+          </button>
+        ) : (
+          <span className="tb-brand">Trip Radar</span>
+        )}
+        <button type="button" className="tb-x" aria-label={L("Kapat", "Close")} onClick={() => window.close()}>
+          ×
         </button>
-      )}
+      </div>
+      {body}
     </div>
   );
 }
 
-/** Added: the page's small picture lands in its trip ("hop"), "✓ Eklendi · Değiştir · Geri al"; the popup closes itself. */
+type CardKind = "confirm" | "failed" | "first" | "other" | "along" | "saved" | "list" | "idea" | "page" | "rest";
+
+/** Which card, top down; the first that holds. */
+function cardKind(v: PopupView, at: { mustPick: boolean; skip: ReadonlySet<string> }): CardKind {
+  const page = v.kind === "page";
+  if (page && v.confirm && !at.skip.has("confirm")) return "confirm";
+  if (v.failed && !at.skip.has("failed")) return "failed";
+  if (!page) return "rest";
+  if (at.mustPick && v.what !== "list") return v.fresh ? "first" : "other";
+  if (v.where?.saved) return "saved";
+  if (v.what === "list") return "list";
+  if (v.travelSite && !v.along && !v.alongAsked && !at.skip.has("along")) return "along";
+  return v.what === "idea" ? "idea" : "page";
+}
+
+function Say({ title, sub, eyebrow = null }: { title: string; sub: string | null; eyebrow?: string | null }) {
+  return (
+    <div className="tb-say">
+      {eyebrow && <small className="tb-eye">{eyebrow}</small>}
+      <b>{title}</b>
+      {sub && <span>{sub}</span>}
+    </div>
+  );
+}
+
+function Sign({ tone, children }: { tone: "ok" | "bad" | "warn" | "acc" | "mute"; children: ReactNode }) {
+  return (
+    <span className={`tb-sign ${tone}`} aria-hidden>
+      {children}
+    </span>
+  );
+}
+
+/** The page's own picture (og:image), big; a video's with its play mark. None it can't load: nothing. */
+function Hero({ src, video = false, small = false }: { src: string; video?: boolean; small?: boolean }) {
+  const [gone, setGone] = useState(false);
+  if (gone) return null;
+  return (
+    <span className={`tb-hero${small ? " small" : ""}${video ? " video" : ""}`}>
+      <img src={src} alt="" referrerPolicy="no-referrer" decoding="async" onError={() => setGone(true)} />
+    </span>
+  );
+}
+
+/** "Hangi gezi için topluyorsun?": the three most likely as covers, then a new one. */
+function Tiles({ where, busy, onPick }: { where: CompanionWhere; busy: boolean; onPick: (p: TripPick) => void }) {
+  const picks = [...where.picks, ...where.trips.map((t) => t.id)].filter((id, n, all) => all.indexOf(id) === n).slice(0, 3).map((id) => where.trips.find((t) => t.id === id)).filter((t): t is Trip => Boolean(t));
+  return (
+    <>
+      <div className="pk-qp">
+        {picks.map((t, n) => (
+          <button key={t.id} type="button" className={n === 0 ? "best" : undefined} disabled={busy} onClick={() => onPick({ tripId: t.id })}>
+            <Cover photos={t.photos} title={t.title} big />
+            <b>{t.title}</b>
+            <span>{t.when ?? L("tarihsiz", "no dates")}</span>
+          </button>
+        ))}
+      </div>
+      <button type="button" className="btn-link tb-new" disabled={busy} onClick={() => onPick({ newTrip: true })}>
+        {where.country ? L(`+ Yeni gezi: ${where.country}`, `+ New trip: ${where.country}`) : L("+ Yeni gezi", "+ New trip")}
+      </button>
+    </>
+  );
+}
+
+/** Added: "✓ Eklendi", where it went, "Geri al"; a wrong trip "Değiştir". It closes itself. */
 function Done({ saved, where, onSaved }: { saved: Saved; where: CompanionWhere | null; onSaved: (s: Saved) => void }) {
   const held = useRef(false);
   const [moving, setMoving] = useState(false);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     if (moving) return;
-    const t = setTimeout(() => !held.current && window.close(), 1800);
+    const t = setTimeout(() => !held.current && window.close(), 2000);
     return () => clearTimeout(t);
   }, [moving, saved]);
   if (moving && where) {
@@ -286,20 +452,23 @@ function Done({ saved, where, onSaved }: { saved: Saved; where: CompanionWhere |
     );
   }
   return (
-    <div className="pk-done" onMouseEnter={() => (held.current = true)}>
-      <span className="pk-fly" aria-hidden />
-      <b>✓ {saved.tripTitle ? L(`Eklendi · ${saved.tripTitle} · ${saved.deck}`, `Added · ${saved.tripTitle} · ${saved.deck}`) : L("Eklendi", "Added")}</b>
-      <span className="muted">{L("Okunuyor; pencereyi kapatabilirsin.", "Being read; you can close this.")}</span>
-      <span className="popup-held-actions">
-        {where && where.trips.length > 1 && (
-          <button type="button" className="small-btn" onClick={() => ((held.current = true), setMoving(true))}>
-            {L("Değiştir", "Change")}
-          </button>
-        )}
-        <button type="button" className="small-btn" onClick={() => void ask({ type: "popup:undo", captureId: saved.captureId }).then(() => window.close())}>
+    <div onMouseEnter={() => (held.current = true)}>
+      <div className="tb-main pk-done">
+        <span className="pk-fly" aria-hidden />
+        <Sign tone="ok">✓</Sign>
+        <Say title={L("Eklendi", "Added")} sub={[saved.tripTitle, saved.deck, L("okunuyor", "being read")].filter(Boolean).join(" · ")} />
+        <button type="button" className="tb-go ghost" onClick={() => void ask({ type: "popup:undo", captureId: saved.captureId }).then(() => window.close())}>
           {L("Geri al", "Undo")}
         </button>
-      </span>
+      </div>
+      {where && where.trips.length > 1 && (
+        <div className="tb-quiet">
+          <span>{L("Yanlış gezi mi?", "Wrong trip?")}</span>
+          <button type="button" className="btn-link" onClick={() => ((held.current = true), setMoving(true))}>
+            {L("Değiştir", "Change")}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -422,47 +591,6 @@ function DeskBox({ tabId, c }: { tabId: number; c: NonNullable<PopupView["desk"]
           {L("Burada satın al", "Buy it here")}
         </button>
       </span>
-      {said && <span className="popup-desk-said">{said}</span>}
-    </div>
-  );
-}
-
-/** "Sitede benle gel": on a travel site one switch for all of them; on any other site, that site alone. */
-function AlongBox({ site, travel, tabId, along }: { site: string; travel: boolean; tabId: number; along: boolean }) {
-  const [on, setOn] = useState(along);
-  const [said, setSaid] = useState<string | null>(null);
-  const name = companionName(site);
-  const origins = travel ? [...COMPANION_SITES] : [site];
-  async function allow() {
-    const granted = await chrome.permissions.request({ origins }).catch(() => false);
-    if (!granted) return setSaid(L("İzin verilmedi; yine de simgeye basınca kaydederim.", "Not allowed; pressing the icon still saves the page."));
-    setOn(true);
-    await chrome.scripting.executeScript({ target: { tabId }, files: ["companion.js"] }).catch(() => undefined);
-    setSaid(travel ? L("Artık seyahat sitelerinde yanındayım: sonuçlarda +, bir yerin sayfasında \"Desteye ekle\".", "I'm with you on travel sites now: a + on results, \"Add to the deck\" on a place's page.") : L(`Artık ${name}'da da yanındayım.`, `I'm with you on ${name} too now.`));
-  }
-  async function stop() {
-    await chrome.permissions.remove({ origins }).catch(() => false);
-    setOn(false);
-    setSaid(travel ? L("Seyahat sitelerinde artık yokum.", "I've left the travel sites.") : L(`${name}'da artık yokum.`, `I've left ${name}.`));
-  }
-  return (
-    <div className="popup-along">
-      {on ? (
-        <button type="button" className="btn-link" onClick={() => void stop()}>
-          {travel ? L("Seyahat sitelerinde benle gelme", "Stop coming along on travel sites") : L(`${name}'da benle gelme`, `Stop coming along on ${name}`)}
-        </button>
-      ) : travel ? (
-        <>
-          <button type="button" className="small-btn" onClick={() => void allow()}>
-            {L("Seyahat sitelerinde benle gel", "Come along on travel sites")}
-          </button>
-          <span className="muted">{L("30 kadar seyahat sitesi, tek izinle. + basmadan hiçbir şey kaydedilmez.", "Some 30 travel sites, one permission. Nothing is saved until you press +.")}</span>
-        </>
-      ) : (
-        <button type="button" className="btn-link" onClick={() => void allow()}>
-          {L(`${name}'da da benle gel`, `Come along on ${name} too`)}
-        </button>
-      )}
       {said && <span className="popup-desk-said">{said}</span>}
     </div>
   );

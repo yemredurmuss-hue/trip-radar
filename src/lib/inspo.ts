@@ -30,8 +30,10 @@ export const INSPO_LABEL: Record<InspoPlatform, string> = { reels: "Reels", inst
 
 /** Saved to look at: from one of those platforms, a thing to see or do (not a meal, a room, a ticket), with no day and not chosen. */
 export function isInspiration(item: Item): boolean {
-  if (item.category !== "activity" && item.category !== "other") return false;
   if (item.status === "chosen" || item.status === "booked" || item.doneAt) return false;
   if (isoDate(item.dates.start)) return false;
+  // (said so: "İlham'a ekle", any page, any kind but a ticket of its own)
+  if (item.inspo && item.category !== "flight" && item.category !== "transport") return true;
+  if (item.category !== "activity" && item.category !== "other") return false;
   return inspoPlatform(item.url) != null;
 }

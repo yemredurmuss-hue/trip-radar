@@ -246,6 +246,8 @@ export type CompanionAsk =
   | { type: "desk:open"; tripId: string }
   | { type: "desk:pocket"; tripId: string | null }
   | ({ type: "desk:current" } & TripPick)
+  | { type: "desk:popup" }
+  | { type: "desk:confirmed" }
   | { type: "desk:remove"; id: string }
   | { type: "desk:retry"; id: string }
   | { type: "desk:seen"; url: string; price: number; currency: string | null };
