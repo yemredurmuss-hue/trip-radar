@@ -2887,6 +2887,9 @@ body.still .hm-plane { display: none; }
 .pk-skel span { height: 38px; border-radius: 10px; background: linear-gradient(90deg, #f1eff7, #e7e4f0, #f1eff7); background-size: 200% 100%; animation: pk-sh 1.1s linear infinite; }
 .pk-skel span + span { height: 44px; }
 @keyframes pk-sh { to { background-position: -200% 0; } }
+.pk-switch { display: grid; gap: 6px; padding: 12px; border-radius: 12px; background: #fff7e8; box-shadow: inset 0 0 0 1.5px #f0d39a; }
+.pk-switch > b { font-size: 13px; font-weight: 800; color: #8a5a00; }
+.pk-switch .popup-along { margin: 0; }
 .pk-hd { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .pk-hd > span:last-child { min-width: 0; display: grid; gap: 1px; }
 .pk-hd b { font-size: 13.5px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

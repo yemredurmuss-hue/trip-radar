@@ -1,6 +1,6 @@
 # Trip Radar · Gizlilik politikası / Privacy policy
 
-Son güncelleme / Last updated: 2026-10-23 · Sürüm / Version: 0.43.0
+Son güncelleme / Last updated: 2026-10-23 · Sürüm / Version: 0.43.1
 
 ---
 
