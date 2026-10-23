@@ -3105,7 +3105,11 @@ try {
   await board.setViewportSize(wide ?? { width: 1440, height: 900 });
   assert.ok(chatPrompts[0].includes("decisions") && chatPrompts[0].includes("would_change_if"), "chat sees the engine's result");
   // Remembered as something the traveller said: a tag of the hero's "Tercihler" (scope and level in its window, removable there).
-  await board.locator('.x-hero .x-ptag.strong[title="Fiyat · Çok önemli"]').waitFor();
+  // (0.46.0: the hero says how many; the mouse over Tercihler shows them)
+  await board.locator(".x-hero .x-prefb").hover();
+  await board.locator(".x-hero .x-pref-pop li", { hasText: "Fiyat" }).waitFor();
+  await board.mouse.move(5, 5);
+  await board.locator(".x-hero .x-pref-pop").waitFor({ state: "detached" });
   await board.keyboard.press("Escape");
   // The weight the chat set, in the record's breakdown ("Fiyat · çok önemli"); the old table's select is C11's (row 199).
   await (await portoDetail(async (det) => (await det.getByRole("button", { name: "Tüm detaylar ›" }).count()) > 0, 20000)).getByRole("button", { name: "Tüm detaylar ›" }).click();
