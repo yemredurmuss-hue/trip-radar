@@ -640,7 +640,7 @@ export function FrameTicket({ vm, form, page, links, info, detail, quiet, on, on
       const got = o ? on.got : (ways?.own ?? null);
       const seal = own ? <StepSeal stage="bought" word={L("Sen hallettin", "You sorted it")} sub={why} /> : <StepSeal stage="planned" word={L("Planda", "Planned")} sub={face.mode === "ferry" ? L("iskelede alınır", "bought at the pier") : L("yerinde alınır", "paid on the spot")} />;
       const price = o && (o.price || edit?.fields.includes("price")) ? (
-        <span className="z-wp">
+        <span className="z-wpr">
           <small>{L("Fiyat", "Price")}</small>
           <b><Editable field="price">{o.price?.text}</Editable></b>
         </span>
