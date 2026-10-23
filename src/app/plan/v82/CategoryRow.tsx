@@ -11,6 +11,8 @@ import { KindIcon } from "../../cards/Silhouettes";
 import type { SectionMeta } from "../sectionMeta";
 import { Ic } from "./icons";
 import { ModeIcon, type ModeIconName } from "./modeIcons";
+import type { CarrierMark } from "../../../lib/ticketFrame";
+import { CarrierLogo } from "./OptionRow";
 
 /** The dated categories' heads take the rows' icons (MingCute): a plane, a hotel, a train. */
 const MODE_OF: Partial<Record<SectionId, ModeIconName>> = { flight: "plane", stay: "hotel", transport: "train" };
@@ -22,6 +24,8 @@ export interface RowView {
   line: string;
   thumbs: RowThumb[];
   more: number;
+  /** Uçuş closed: the airlines of the flights chosen or bought, their logos in the pictures' place (Karar Masası). */
+  logos?: CarrierMark[];
   /** The bar's two tones, in percent; null: no bar (nothing to count). */
   bar: { booked: number; chosen: number } | null;
   /** The state line's parts ("1 alındı", "2 karar"); Hazırlık's "2/6 hazır". */
@@ -67,6 +71,11 @@ export function CategoryRow({ row, meta, open, onToggle, onDecide, decideTip, bu
         {row.thumbs.filter((t) => !failed.has(t.src)).map((t) => (
           <span key={t.src} className="q-th" style={{ "--bc": meta.color } as React.CSSProperties}>
             <img className="ph" src={t.src} alt="" onError={() => setFailed((f) => new Set(f).add(t.src))} />
+          </span>
+        ))}
+        {row.logos?.map((m, i) => (
+          <span key={`${m.code ?? m.letter}-${i}`} className="q-th q-thl">
+            <CarrierLogo mark={m} art="" small />
           </span>
         ))}
         {row.more > 0 && <span className="q-thm">+{row.more}</span>}

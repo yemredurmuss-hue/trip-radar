@@ -228,3 +228,8 @@ body.still .q-ints.q-tl .z-int.z-go[data-desk] .q-tld::after, body.still .q-ints
 .q-gelh b { font-size: 15px; font-weight: 800; color: var(--q-ink); }
 .q-gelh small { font-size: var(--q-fs-small); font-weight: 650; color: #8a5a12; }
 .q-gel .msg-route { padding: 10px 12px; border-radius: 12px; background: #fff; box-shadow: inset 0 0 0 1px #f0e2c4; }
+
+/* a row whose ⋯ menu is open stands above the rows and the city lines after it (its menu never under the next one) */
+.q-int:has([role="menu"]) { position: relative; z-index: 5; }
+/* Uçuş closed: the airlines' logos in the pictures' place */
+.q-th.q-thl { display: grid; place-items: center; background: #fff; }

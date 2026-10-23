@@ -16,6 +16,7 @@ import { L } from "../../lib/i18n";
 import { doneCount } from "../../lib/collectionCards";
 import { countParts, decideCount, decisionNames, firstDecision, rowThumbs } from "../../lib/intentFrame";
 import { collectionsOf, V82_ORDER, type Collection, type IntentInput, type IntentVM } from "../../lib/intents";
+import { carrierMark, type CarrierMark } from "../../lib/ticketFrame";
 import { formatPrice } from "../../lib/items";
 import { nightsSummary } from "../../lib/lifecycle";
 import { groupKeyOf, sameCity, type Plan } from "../../lib/plan";
@@ -59,6 +60,18 @@ import { VisaRow } from "./VisaRow";
  * A category joins once its boxes are built: 3a stay and other (the stay family's frame), 3b flight and transport (the
  * ticket), 4 activity and todo (the rows of cards).
  */
+
+/** The airlines of a trip's flights chosen or bought (Uçuş's closed row): one logo each, at most three. */
+function flightLogos(intents: readonly IntentVM[]): CarrierMark[] {
+  const out: CarrierMark[] = [];
+  for (const i of intents) {
+    if (!i.chosen || !(i.status === "chosen" || i.status === "booked")) continue;
+    const m = carrierMark(i.chosen.carrier, i.chosen.item);
+    if (m && !out.some((x) => (x.code ?? x.letter) === (m.code ?? m.letter))) out.push(m);
+  }
+  return out.slice(0, 3);
+}
+
 export const V82_SECTIONS: ReadonlySet<SectionId> = new Set<SectionId>(["flight", "stay", "transport", "activity", "todo", "other"]);
 
 const SLICE: Partial<Record<SectionId, BudgetSlice>> = { flight: "flight", stay: "stay", transport: "transport", activity: "activity", other: "other" };
@@ -296,6 +309,8 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
       line: sum.line,
       thumbs,
       more,
+      // (Uçuş: the airlines of what's chosen or bought, one logo each, at most three)
+      ...(s.id === "flight" ? { logos: flightLogos(c.intents) } : {}),
       // 0.39.14: Yapılacaklar' bar shows once something is on its plan (an empty bar beside "1 karar" says nothing more).
       bar: c.intents.length && !(s.id === "todo" && !sum.counts.booked && !sum.counts.chosen && !done) ? sum.bar : null,
       parts: c.intents.length ? [...countParts(sum.counts, c.intents.some((i) => i.frame === "collection")), ...(done ? [{ text: L(`${done} yapıldı`, `${done} done`), decide: false }] : []), ...(s.id === "stay" ? nightAlerts(c.intents, items).map((n) => ({ ...n, decide: false })) : [])] : [],

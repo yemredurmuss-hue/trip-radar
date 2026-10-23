@@ -575,7 +575,10 @@ function StayPhoto({ vm, view, art }: { vm: IntentVM; view: RowView; art: string
   // (a deck: nothing chosen yet, or our pick among several in front of it, 0.40.5)
   const deck = view.slot.kind === "pick" && (!o || vm.status === "suggested");
   if (deck) {
-    const all = [...(o ? [o] : []), ...vm.options, ...(vm.more ?? [])].filter((x, i, list) => list.findIndex((y) => y.id === x.id) === i).slice(0, 3);
+    // (the hotels' own photos when they have them, our pick in front; a drawing only for a deck with no photo at all)
+    const every = [...(o ? [o] : []), ...vm.options, ...(vm.more ?? [])].filter((x, i, list) => list.findIndex((y) => y.id === x.id) === i);
+    const shot = every.filter((x) => x.image);
+    const all = (shot.length ? shot : every).slice(0, 3);
     return (
       <span className="q-rph deck" aria-hidden>
         {all.map((x, i) => (
