@@ -11,7 +11,9 @@
 
 /* ---- 1 · the plane between the ends ---- */
 .q-nm .q-rpl { display: inline-flex; vertical-align: -2px; margin: 0 1px; color: var(--q-ink); font-style: normal; }
-.q-nm .q-rpl .q-mi { width: 15px; height: 15px; transform: rotate(45deg); }
+.q-nm .q-rpl .q-mi { width: 15px; height: 15px; }
+/* (the plane turned to fly along the route; a train, a bus, a boat stand as they are) */
+.q-nm .q-rpl.fly .q-mi, .dr-t .q-rpl.fly .q-mi { transform: rotate(45deg); }
 .q-int[data-desk][data-stage="options"] .q-nm .q-rpl { color: #8e8aa6; }
 
 /* ---- 3 · nothing found yet: Aranacak, Aranıyor ---- */
@@ -75,6 +77,12 @@ body.still .q-rmark.busy::after, body.still .q-rsk { animation: none; }
   box-shadow: inset 0 0 0 1.5px var(--q-acc), 0 1px 2px rgba(28, 26, 51, .06), 0 6px 0 -3px #fff, 0 6px 0 -1.5px #d9d2f8,
     0 12px 0 -6px #fff, 0 12px 0 -4.5px #e7e2fa, 0 22px 28px -18px rgba(91, 69, 224, .4);
 }
+/* a stay chosen among several (0.40.5): the same sheets under its card */
+.q-row.rest[data-face="card"] { padding-bottom: 18px; }
+.q-row.rest[data-face="card"] .q-rcard {
+  box-shadow: inset 0 0 0 1px rgba(28, 26, 51, .08), 0 1px 2px rgba(28, 26, 51, .06), 0 6px 0 -3px #fff, 0 6px 0 -1.5px #d9d2f8,
+    0 12px 0 -6px #fff, 0 12px 0 -4.5px #e7e2fa, 0 22px 28px -18px rgba(91, 69, 224, .3);
+}
 .q-more {
   position: absolute; left: 84px; bottom: -15px; z-index: 3; display: inline-flex; align-items: center; gap: 6px; height: 30px;
   padding: 0 14px; border: 0; border-radius: 99px; background: #fff; color: var(--q-acc-d); font: inherit; font-size: 12.5px;
@@ -109,7 +117,7 @@ body.still .q-rmark.busy::after, body.still .q-rsk { animation: none; }
 
 /* ---- 5 · the drawer: the plane in its title, the source to its page, what the traveller brought in gold ---- */
 .dr-t .q-rpl { display: inline-flex; vertical-align: -3px; margin: 0 2px; color: var(--q-ink); font-style: normal; }
-.dr-t .q-rpl .q-mi { width: 22px; height: 22px; transform: rotate(45deg); }
+.dr-t .q-rpl .q-mi { width: 22px; height: 22px; }
 .dr-slt a:has(.q-ext) { display: inline-flex; align-items: center; gap: 6px; color: inherit; text-decoration: none; }
 .dr-slt a .q-ext { font-size: 12px; font-weight: 800; color: var(--q-acc-d); }
 .dr-slt a:has(.q-ext):hover b { text-decoration: underline; }
@@ -220,3 +228,12 @@ body.still .q-ints.q-tl .z-int.z-go[data-desk] .q-tld::after, body.still .q-ints
 .q-gelh b { font-size: 15px; font-weight: 800; color: var(--q-ink); }
 .q-gelh small { font-size: var(--q-fs-small); font-weight: 650; color: #8a5a12; }
 .q-gel .msg-route { padding: 10px 12px; border-radius: 12px; background: #fff; box-shadow: inset 0 0 0 1px #f0e2c4; }
+
+/* a row whose ⋯ menu is open stands above the rows and the city lines after it (its menu never under the next one) */
+.q-int:has([role="menu"]) { position: relative; z-index: 5; }
+/* Uçuş closed: the airlines' logos in the pictures' place */
+.q-th.q-thl { display: grid; place-items: center; background: #fff; }
+/* an Etkinlik idea said in words, no tour found for it yet: its searches on one quiet line */
+.z-kidea { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; font-weight: 750; color: var(--q-mut); }
+.z-kidea a, .z-kidea button { color: var(--q-acc-d); text-decoration: none; background: none; border: 0; padding: 0; font: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 3px; }
+.z-kidea a:hover, .z-kidea button:hover { text-decoration: underline; }
