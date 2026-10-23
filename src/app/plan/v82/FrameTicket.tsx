@@ -24,6 +24,7 @@ import type { OptionVM } from "../../../lib/intents";
 import { flightDays, flightPrice } from "../../../lib/offerSources";
 import { dayBars, daysSentence, fareEach, historyDrawing, historySentence, priceAsk, verdictOf, type DayFare, type PriceInsight, type Verdict } from "../../../lib/priceVerdict";
 import type { Item } from "../../../lib/types";
+import { isDeskRow, markedDay } from "../../../lib/rowView";
 import { checkinUrl, ownEnds, ticketBookedWord, ticketBookWord, ticketCodeLabel, ticketDocWord, ticketFace, ticketPrice, wayPicks, type TicketFace } from "../../../lib/ticketFrame";
 import { isTravelDay, type TicketChip, type TicketEnd, type TicketLive as Live, type TicketMode } from "../../../lib/ticketView";
 import type { LegMode } from "../../../lib/types";
@@ -35,7 +36,7 @@ import { flysIn } from "../../motion";
 import { CopyCode } from "./DetailLayer";
 import { AgreeRoute, daysUntil, GotAsk, type FrameCardProps } from "./FrameCard";
 import { Ic, Mark } from "./icons";
-import { ModeIcon, modeIconOf, StageGlyph, type Stage } from "./modeIcons";
+import { ModeIcon, modeIconOf, StageGlyph, Stamp, type Stage } from "./modeIcons";
 import { ModePicker, WayPicks } from "./ModePicker";
 import { useV82Env } from "./v82Env";
 import { BagIcon, CarrierLogo } from "./OptionRow";
@@ -384,7 +385,7 @@ function StepSeal({ stage, word, sub }: { stage: Stage; word: string; sub?: Reac
 }
 
 /** Bought, its ticket not here yet: the last step, a zone a file is dropped on (or picked from). */
-function DropZone({ word, onPick, onDrop }: { word: string; onPick: () => void; onDrop: ((files: File[]) => Promise<void> | void) | null }) {
+function DropZone({ word, onPick, onDrop, quiet = false }: { word: string; onPick: () => void; onDrop: ((files: File[]) => Promise<void> | void) | null; quiet?: boolean }) {
   const [over, setOver] = useState(false);
   const drag = onDrop
     ? {
@@ -405,9 +406,16 @@ function DropZone({ word, onPick, onDrop }: { word: string; onPick: () => void; 
         <b>{onDrop ? L("Son adım: bileti buraya bırak", "Last step: drop the ticket here") : L("Son adım: bileti ekle", "Last step: add the ticket")}</b>
         <small>{L("PDF, ekran görüntüsü ya da e-posta; kod, koltuk ve ödenen okunur.", "A PDF, a screenshot or the email; its code, seat and what was paid are read.")}</small>
       </span>
-      <button type="button" className="q-got ok" onClick={(e) => (e.stopPropagation(), onPick())}>
-        {word}
-      </button>
+      {quiet ? (
+        // (Karar Masası: the row's stub says "Bileti ekle"; here only a link, never a second button)
+        <button type="button" className="q-lnk z-dpick" onClick={(e) => (e.stopPropagation(), onPick())}>
+          {L("ya da dosya seç", "or pick a file")}
+        </button>
+      ) : (
+        <button type="button" className="q-got ok" onClick={(e) => (e.stopPropagation(), onPick())}>
+          {word}
+        </button>
+      )}
     </div>
   );
 }
@@ -569,10 +577,16 @@ export function FrameTicket({ vm, form, page, links, info, detail, quiet, on, on
         foot
       ) : proof ? (
         <StepSeal stage="ticket" word={L("Bilet elde", "Ticket in hand")} sub={vm.paid ?? (a?.doc.name ? a.doc.name : null)} />
+      ) : isDeskRow(vm) ? (
+        // (Karar Masası: the stamp beside the ticket, big; the last step under it)
+        <span className="z-step bought z-dstamp">
+          <Stamp big word={vm.selfArranged ? L("Senin", "Yours") : L("Alındı", "Bought")} day={markedDay(o.item.statusAt)} />
+          <small>{L("bileti eklenmedi", "no ticket yet")}</small>
+        </span>
       ) : (
         <StepSeal stage="bought" word={L("Alındı", "Bought")} sub={L("bileti eklenmedi", "no ticket yet")} />
       );
-      const after = proof || now ? (a?.docMissing ? missing : null) : <DropZone word={doc.add} onPick={on.addDoc} onDrop={on.dropDoc ?? null} />;
+      const after = proof || now ? (a?.docMissing ? missing : null) : <DropZone word={doc.add} onPick={on.addDoc} onDrop={on.dropDoc ?? null} quiet={isDeskRow(vm)} />;
       return (
         <Frame cls=" bk" mode={face.mode} onOpen={onOpen} main={<TicketMain face={face} art={draw} fly={fly} inRow />} line={<TicketLine face={face} live={live} badge={badge} after={after} fields={fields} />} foot={seal} primary={proof || now ? primary : null} row={face.note ? <small className="z-note">{face.note}</small> : null} layer={layer} />
       );

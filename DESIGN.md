@@ -46,7 +46,8 @@ Her rengin bir anlamı var; durum hiçbir yerde yalnız renkle anlatılmaz, yan�
 
 - Açık kategoride niyetler soldaki dikey çizgiye bağlıdır; noktanın rengi durumdur: kesikli gri karar, mor önerimiz,
   kum seçildi, yeşil alındı, gri ayarlandı. Kutunun zemini durumun açık rengi, içindeki çerçeve beyazdır. (Tarih hattında
-  nokta yalnız tarihi taşır; durum resmin köşesindeki işarettedir: aşağıda "Planlamanın dört adımı".)
+  nokta yalnız tarihi taşır; durum resmin köşesindeki işarettedir: aşağıda "Planlamanın dört adımı". Uçuş'ta hat durumu
+  da çizer: aşağıda "Karar Masası".)
 - Gezginin istekleri kutunun başlığında: ✓ var (yeşil), ✕ yok (kırmızı). Sayfanın söylemediği ("?") gösterilmez, veride
   kalır (B5). Varsayılanlar bu satıra girmez; yalnız söylediği, ayarladığı ya da sezilen öncelik.
 - Satırlar somut yazar (kaç dakika, kaç puan, hangi saat); "Yakın", "Zor saat" gibi tek kelime yetmez. Bulgu kendi
@@ -150,6 +151,46 @@ modeIcons.tsx` `StageGlyph`, `static/v82/stages.css`). Onaylı çizim: tuval "Pl
 - **Hero'da, yer kaplamadan:** "%71 hazır"ın üstüne gelince "Planın durumu" (dört adımın sayısı, renkli çubuk);
   "Sıradaki"nin üstüne gelince "Sıradaki işler" (önce seçilecekler, sonra alınacaklar, sonra eklenecek biletler;
   `planSteps`). Planın üstünde ayrı kutu yok.
+
+## Karar Masası: Uçuş'un dili (onay paketi 2026-10-22, "Onaylananlar")
+
+Kararlar `docs/superpowers/specs/2026-10-22-karar-masasi-kararlar.md`, geçiş planı
+`docs/superpowers/plans/2026-10-23-karar-masasi-gecis.md`; tuval "Karar Masası", sayfa "Onaylananlar". Önce Uçuş
+(`lib/rowView.ts` `isDeskRow`, `static/v82/desk.css`, `.q-int[data-desk]`); Ulaşım ve Konaklama aşağıdaki dört adımın
+bugünkü sözleriyle kalır, aynı dil onlara ayrı bir adımda geçer.
+
+- **Rota uçakla:** "Bangkok ✈ İstanbul": iki ucun arasında 15 px uçak (çekmecede 22 px); ekran okuyucu ve arama için
+  arkasında görünmeyen "→" durur, düz metinlerde (ipucu, hero, Sıradaki işler) "→" kalır.
+- **Tek düğme, hep sağda:** her hâlin tek eylemi sağdaki 118 px yuvada. Açık biletin altında yalnız bağlantılar, tek
+  satır: "Skyscanner'dan · Değiştir 7 · ✓ Aldım"; alınınca bırakma alanında düğme değil "ya da dosya seç".
+- **Aranacak / Aranıyor:** kesik kenarlı soluk kart, beyaz kesik karoda uçak, köşesinde kesik "+" (bulduğunu ekle:
+  çekmeceyi ve "+ Seninkini ekle"yi açar), sağda "Kendin ara ↗" (rota ve günle dolu ilk site). "Aranıyor" yalnız AI ya da
+  kaynak gerçekten ararken yazar: karoda dönen halka, saat ve fiyatın yerinde yükleniyor çubukları. AI'ya sormak ⋯
+  menüsünde "AI arasın" ve çekmecede "AI yeniden arasın".
+- **Deste:** beyaz kart, ince lila çerçeve ve altında iki ince lila kat; işaretin yerinde üç logolu yelpaze (en iyisi
+  önde); söz "7 seçenek", satırda en iyisinin taşıyıcısı, saatleri ve aktarması, fiyatın altında "en iyisi"; sağda
+  "Seç 7" (sayı beyaz kutuda). Desteye basmak da çekmeceyi açar; satırın altında açılan gövde yok.
+- **Çekmece:** başlıkta uçak; Kaynak yuvası "↗" ile sitenin sayfasına gider; gezginin kendi kaydı altın çerçeveli,
+  "Senin · Kiwi.com'dan kaydettin" (`i18n.fromName`); en altta "+ Seninkini ekle: bağlantıyı bırak ya da ekran görüntüsünü
+  sürükle", siteler ve "AI yeniden arasın".
+- **Seçtin:** seçince çekmece kapanır, satır kendiliğinden açık bilet olur; mor 1,5 px çerçeve, köşede yarım dolu halka,
+  söz "Seçtin", sağda "Satın al ↗". Değiştir aynı çekmeceyi seçili olan işaretli açar.
+- **Bilet alındı:** düğme gider; sağda yeşil koçan ve üstünde yuvarlak, çift halkalı, dik damga ("Alındı" ve işaretlendiği
+  gün; "Ben hallettim"de "Senin"), yarısı yırtık çizgiye taşar; koçanda "Bileti ekle" bağlantısı. Kart açık gelir; açıkken
+  damga biletin yanında 96 px, altında "Son adım: bileti buraya bırak". Basılırken mühür hareketi (`mv-stamp`).
+- **Bilet elde:** koçanda kod ve etiketi; açıkken "Bileti aç", "Takvime ekle"; 48 saat kala "Online check-in ↗", uçuş
+  günü kodu kopyalama ve canlı durum aynen kalır.
+- **Hat bağlanır (Uçuş):** soldaki çizgi yolculuğun kendisi. Her satır noktasının altında kendi parçasını çizer: alınan
+  yeşil 4 px ve art arda alınan bacaklar noktadan noktaya tek çizgi, seçilen düz mor uçları açık, deste kesik lila, aranan
+  noktalı gri; nokta dolu yeşil, yarım mor, kesik ya da noktalı halka. Alınınca çizgi noktadan akıp kenetlenir. Telefonda
+  çizgi yok, nokta adımı söyler. (Konaklama ve Ulaşım'da hat yalnız tarihi taşır.)
+- **Kategori sayacı:** "2 alındı · 1 seçildi · 2 karar" (`rowView.stepParts`), çubuk aynı renklerde.
+- **Getirme anları:** bir satırın ya da açık çekmecenin üstüne bırakılan, çekmecede yapıştırılan bağlantı ve resim o
+  satırın ihtiyacına gider (`Capture.forNeed` → `Item.forNeed`, `lib/bring.ts`); sürüklerken satır "Bırak: bu satıra"
+  der. Okunurken satırın altında "… okunuyor; bu satıra koyacağım"; okununca "Kiwi.com bağlantısı okundu · 4. aday oldu"
+  ve yalnız bilinenle söz ("Önerimizden €86 pahalı ve aktarmalı.", `deckVerdict`), "Karşılaştır" ve "Geri al" (Elenen'e).
+  Bilet ya da onay resmiyse bugünkü yol: belge okunur, kayda bağlanır. Yerini bulamadıklarımız Plan'ın başında
+  "Gelenler · Nereye koyalım?" (sohbetin sorusu da kalır; birinde cevaplanınca ikisi kapanır).
 
 ## Tarih hattı: Uçuş, Konaklama, Ulaşım (plan v14, onay paketi 2026-10-21)
 

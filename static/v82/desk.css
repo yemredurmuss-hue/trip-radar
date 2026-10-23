@@ -85,3 +85,106 @@ body.still .q-rmark.busy::after, body.still .q-rsk { animation: none; }
 .dr-op.own.cur { box-shadow: inset 0 0 0 2px var(--q-acc), 0 0 0 3px #f3dca8; }
 .dr-own { color: #8a5a12; font-weight: 700; }
 .dr-own b { display: inline-block; padding: 1px 7px; border-radius: 99px; background: #fbe9c4; color: #7a4d0c; font-size: 11px; font-weight: 800; }
+
+/* ---- 6 · under the opened ticket: only links, one line ("Skyscanner'dan · Değiştir 7 · ✓ Aldım") ---- */
+.q-int[data-desk] .q-racts { gap: 14px; }
+.q-int[data-desk] .q-racts .q-rsrc { font-size: 12.5px; font-weight: 700; color: var(--q-mut); }
+.q-lnk, .q-int[data-desk] .q-racts .q-lnk {
+  height: auto; min-height: 0; padding: 4px 2px; border: 0; background: none; box-shadow: none; border-radius: 6px;
+  font: inherit; font-size: 13px; font-weight: 750; color: var(--q-acc-d); cursor: pointer;
+}
+.q-lnk b { font-weight: 800; color: color-mix(in srgb, var(--q-acc) 70%, #fff); margin-left: 2px; }
+.q-lnk:hover { text-decoration: underline; text-underline-offset: 3px; }
+.q-lnk:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 1px; }
+.q-int[data-desk] .q-racts .q-got.q-lnk { color: var(--q-ink); }
+
+/* ---- 7 · bought: the button goes; a green stub with its upright stamp, half over the tear ---- */
+:root { --q-stamp-bg: rgba(238, 248, 242, .94); }
+.q-stamp text { font-family: inherit; }
+.q-rstub.q-rkoc { align-items: flex-end; gap: 2px; padding: 8px 46px 8px 34px; }
+.q-rstub.q-rkoc .q-stamp { position: absolute; left: -34px; top: 50%; margin-top: -31px; z-index: 1; filter: drop-shadow(0 1px 1px rgba(28, 26, 51, .08)); }
+.q-rstub.q-rkoc .q-lnk { color: var(--q-ok); font-size: 12.5px; font-weight: 800; padding: 2px 0; }
+.q-rstub.q-rkoc small { font-size: 11px; color: #2f6b48; font-weight: 600; }
+/* the figure's column gives the stamp room to stand over the tear */
+.q-int[data-desk] .q-rrow:has(.q-rkoc) > .q-rfig { min-width: 36px; }
+/* opened: the stamp beside the ticket, big */
+.z-step.z-dstamp { gap: 6px; }
+.z-step.z-dstamp .q-stamp { display: block; }
+.z-step.z-dstamp small { color: #2f6b48; }
+/* pressed on as it is bought (the seal's motion, after the frame's crossfade) */
+.z-int.z-go .q-stamp { animation: mv-stamp 420ms cubic-bezier(.2, .9, .3, 1.3) backwards; }
+@media (prefers-reduced-motion: reduce) { .z-int.z-go .q-stamp { animation: none; } }
+body.still .z-int.z-go .q-stamp { animation: none; }
+
+@media (max-width: 700px) {
+  .q-rstub.q-rkoc { padding: 6px 12px 6px 44px; flex-direction: row; align-items: center; gap: 8px; }
+  .q-rstub.q-rkoc .q-stamp { left: -6px; width: 46px; height: 46px; margin-top: -23px; }
+}
+.z-drop .q-lnk.z-dpick { color: var(--q-ok); flex: none; }
+/* opened, the big stamp stands beside the ticket: the stub keeps only its link */
+.q-row.open .q-rstub.q-rkoc { align-items: center; padding-left: 16px; }
+.q-row.open .q-rstub.q-rkoc .q-stamp { display: none; }
+
+/* ---- 10 · the rail joins (Uçuş): the line is the journey itself. Each row draws its own stretch under its dot, in its
+   step's ink: bought green (4 px) and locked to the next bought one, chosen violet with open ends, a deck dashed lilac,
+   still to find dotted grey. Marked bought, the stretch flows out from the dot and locks on. ---- */
+.q-ints.q-tl:has(> .q-int[data-desk])::before { display: none; }
+.q-ints.q-tl .q-int[data-desk] .q-tld::after {
+  content: ""; position: absolute; z-index: 0; right: -2px; width: 4px; top: 44px; bottom: -4px; border-radius: 9px; transform-origin: 50% 0;
+}
+.q-ints.q-tl .q-int[data-desk][data-stage="options"] .q-tld::after { right: -1.5px; width: 0; border-radius: 0; border-left: 3px dotted #c9c5d6; }
+.q-ints.q-tl .q-int[data-desk][data-stage="options"]:has(.q-rsec) .q-tld::after { bottom: 6px; border-left: 3px dashed #b9aef5; }
+.q-ints.q-tl .q-int[data-desk][data-stage="planned"] .q-tld::after { background: var(--q-acc); }
+.q-ints.q-tl .q-int[data-desk]:is([data-stage="bought"], [data-stage="ticket"]) .q-tld::after { top: 31px; background: var(--q-ok); }
+/* two bought legs one after the other: one green line from dot to dot */
+.q-ints.q-tl .q-int[data-desk]:is([data-stage="bought"], [data-stage="ticket"]):has(+ .q-int[data-desk]:is([data-stage="bought"], [data-stage="ticket"])) .q-tld::after {
+  bottom: -14px; border-bottom-left-radius: 0; border-bottom-right-radius: 0;
+}
+.q-ints.q-tl .q-int[data-desk]:is([data-stage="bought"], [data-stage="ticket"]) + .q-int[data-desk]:is([data-stage="bought"], [data-stage="ticket"]) .q-row::before {
+  content: ""; position: absolute; z-index: 0; left: calc(var(--tlx) - 2px); top: -14px; height: 45px; width: 4px; background: var(--q-ok);
+}
+/* the dots by step */
+.q-ints.q-tl .q-int[data-desk]:is([data-stage="bought"], [data-stage="ticket"]) .q-tld::before {
+  width: 14px; height: 14px; right: -7px; top: 23px; border: 0; background: var(--q-ok); box-shadow: 0 0 0 3px #fff, 0 0 0 5px #bfe3c9;
+}
+.q-ints.q-tl .q-int[data-desk][data-stage="planned"] .q-tld::before {
+  width: 14px; height: 14px; right: -7px; top: 23px; border: 0; background: conic-gradient(#fff 0 50%, var(--q-acc) 50% 100%);
+  box-shadow: inset 0 0 0 2.5px var(--q-acc), 0 0 0 3px #fff;
+}
+.q-ints.q-tl .q-int[data-desk][data-stage="options"] .q-tld::before { width: 14px; height: 14px; right: -7px; top: 23px; border: 2.5px dotted #b4afc9; background: #fff; }
+.q-ints.q-tl .q-int[data-desk][data-stage="options"]:has(.q-rsec) .q-tld::before { border: 2.5px dashed #9c90ee; }
+/* marked bought: the stretch flows out of the dot and locks on */
+.q-ints.q-tl .z-int.z-go[data-desk] .q-tld::after, .q-ints.q-tl .z-int.z-go[data-desk] .q-row::before { animation: q-flow 700ms cubic-bezier(.3, .7, .2, 1) 280ms both; }
+@keyframes q-flow { from { transform: scaleY(0); } }
+@media (prefers-reduced-motion: reduce) { .q-ints.q-tl .z-int.z-go[data-desk] .q-tld::after, .q-ints.q-tl .z-int.z-go[data-desk] .q-row::before { animation: none; } }
+body.still .q-ints.q-tl .z-int.z-go[data-desk] .q-tld::after, body.still .q-ints.q-tl .z-int.z-go[data-desk] .q-row::before { animation: none; }
+/* the phone: the date sits over the card, the dot alone says the step (no line under the cards) */
+@media (max-width: 700px) {
+  .q-ints.q-tl .q-int[data-desk] .q-tld::after, .q-ints.q-tl .q-int[data-desk] .q-row::before { display: none; }
+  .q-ints.q-tl .q-int[data-desk] .q-tld::before { right: auto; left: 0; top: 2px; width: 12px; height: 12px; }
+}
+
+/* ---- 11 · getirme anları: a row takes what is dropped on it; read, it says where it stands ---- */
+.q-row.drop > .q-rcard { box-shadow: inset 0 0 0 2px var(--q-acc), 0 0 0 4px var(--q-acc-s), 0 18px 40px -18px rgba(91, 69, 224, .45); }
+.q-rdrop {
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 0 12px 12px; padding: 10px 14px; border-radius: 12px;
+  border: 1.5px dashed color-mix(in srgb, var(--q-acc) 55%, #fff); background: var(--q-acc-s); color: var(--q-acc-d); pointer-events: none;
+}
+.q-rdrop b { font-size: 13.5px; font-weight: 800; }
+.q-rdrop small { font-size: var(--q-fs-small); font-weight: 600; color: var(--q-mut); }
+.q-brought { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0 12px 12px; padding: 10px 12px 10px 14px; border-radius: 12px; background: #f6f4ff; box-shadow: inset 0 0 0 1px #e4defc; }
+.q-brought .q-bri { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 99px; background: #fff; color: var(--q-acc-d); box-shadow: inset 0 0 0 1px #dcd6fb; flex: none; }
+.q-brought .q-brt { display: grid; gap: 2px; min-width: 0; flex: 1 1 220px; }
+.q-brought .q-brt b { font-size: 13.5px; font-weight: 800; color: var(--q-ink); }
+.q-brought .q-brt small { font-size: var(--q-fs-small); font-weight: 650; color: var(--q-mut); }
+.q-brought .q-brx { border: 0; background: none; color: var(--q-mut); padding: 4px; border-radius: 6px; cursor: pointer; display: grid; place-items: center; }
+.q-brought .q-brx:hover { background: #fff; }
+.q-brought .q-look { min-height: 26px; }
+/* the drawer takes it too: its "+ Seninkini ekle" lights up */
+.dr.over .dr-new { border-style: solid; border-color: var(--q-acc); background: var(--q-acc-s); box-shadow: 0 0 0 4px color-mix(in srgb, var(--q-acc) 16%, transparent); }
+/* Gelenler: what was read and couldn't be placed, at the Plan's top */
+.q-gel { display: grid; gap: 8px; margin: 0 0 14px; padding: 14px 16px; border-radius: 16px; background: #fff8ec; box-shadow: inset 0 0 0 1px #f0dcb4; }
+.q-gelh { display: flex; align-items: baseline; gap: 10px; }
+.q-gelh b { font-size: 15px; font-weight: 800; color: var(--q-ink); }
+.q-gelh small { font-size: var(--q-fs-small); font-weight: 650; color: #8a5a12; }
+.q-gel .msg-route { padding: 10px 12px; border-radius: 12px; background: #fff; box-shadow: inset 0 0 0 1px #f0e2c4; }

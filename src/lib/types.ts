@@ -614,6 +614,11 @@ export interface Capture {
   fromTripId?: string;
   /** Read, but not added: a trip's chat (or the popup) asks where it goes, or whether at all (placeCheck.ts). */
   held?: HeldCapture;
+  /**
+   * Karar Masası (getirme anları): brought to one row of the plan (dropped on it, or on its drawer): the record it makes is
+   * that need's option (Item.forNeed), whatever its own codes say.
+   */
+  forNeed?: string;
   /** Who saved it, when someone else did (a shared trip's other traveller). */
   sharedBy?: string;
   /** When it reached the sharing server (or arrived from it): never uploaded again. */

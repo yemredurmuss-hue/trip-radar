@@ -7,9 +7,9 @@
 // "Gerek yok" folds the body (E7) and the box goes under the category's "Gizlenenler · n" (F3). A record's days, name and
 // price edit where they stand (C2); a thin "+ Buraya ekle" under a stay adds on its last night, in its city (C3).
 import { removeEntries } from "./removeEntries";
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useContext, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { isCampStay } from "../../../lib/campStay";
-import { L } from "../../../lib/i18n";
+import { fromName, L } from "../../../lib/i18n";
 import { areaSearch, changeList, currentOption, frameForm, headName, offerNeed, otherOptions, placeholderOf, railState, SHOWN_OPTIONS, statusChip, unlessEmpty } from "../../../lib/intentFrame";
 import { offersLooking } from "../../../lib/looking";
 import { othersLabel, othersOpen, rememberOthers } from "../../../lib/othersFold";
@@ -60,7 +60,12 @@ import { timingAsk, type StayTiming } from "../../../lib/stayTiming";
 import { freeCancelText, guestGap, guestGapText } from "../../../lib/drawerCard";
 import { bookingIcs, icsName } from "../../../lib/ics";
 import { isDeskRow, rowView, whileSearching } from "../../../lib/rowView";
-import { EmptyNight, OverlapRow, StayCard, TicketRow, type SlotOn } from "./IntentRow";
+import { EmptyNight, OverlapRow, RowOpenContext, StayCard, TicketRow, type Brought, type SlotOn } from "./IntentRow";
+import { arrivedOption, bringKey, deckVerdict } from "../../../lib/bring";
+import { siteOf } from "../../../lib/arrive";
+import { Ic } from "./icons";
+import { addLinks, addTripFiles } from "../../capture";
+import { addEvent, notifyChanged } from "../../../lib/db";
 
 /** A kind's drawing (static/illus), for a frame or an option with no photo. */
 export function artOf(kind: IntentVM["kind"], item: Item | null = null): string {
@@ -275,6 +280,8 @@ function Box({ vm, color, extra, field, pickDoc, dropDoc = null, cancel, askedHi
   const [folding, setFolding] = useState(false);
   // K82: a need's options open beside the plan, never inside the card.
   const [drawer, setDrawer] = useState(false);
+  // Karar Masası, getirme anları: what was brought to this row (the deck as it was then), until it is read and said.
+  const [bringing, setBringing] = useState<{ before: ReadonlySet<string>; at: number; what: string } | null>(null);
   const opener = useRef<HTMLElement | null>(null);
   const openDrawer = () => {
     opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -331,6 +338,26 @@ function Box({ vm, color, extra, field, pickDoc, dropDoc = null, cancel, askedHi
   const all: OptionVM[] = [];
   for (const o of [...(vm.chosen ? [vm.chosen] : []), ...vm.options, ...(vm.more ?? [])]) if (!all.some((x) => x.id === o.id)) all.push(o);
   const others = changing ? (vm.more ?? []).filter((o) => o.id !== vm.chosen?.id) : otherOptions(vm);
+  // (getirme anları: a link or a screenshot brought to a flight's row or its drawer is that need's option, Capture.forNeed)
+  const bindKey = isDeskRow(vm) ? bringKey(vm) : null;
+  const bring = bindKey
+    ? (got: Brought) => {
+        setBringing({ before: new Set(all.map((o) => o.id)), at: Date.now(), what: got.files.length ? L("Ekran görüntüsü", "The screenshot") : L(`${siteOf(got.links.split(/\s+/)[0]) ?? "Bağlantı"} bağlantısı`, `The ${siteOf(got.links.split(/\s+/)[0]) ?? ""} link`) });
+        if (got.files.length)
+          void addTripFiles(env.tripId, got.files, "board", bindKey).then((problems) => {
+            const fresh = problems.filter((p) => !p.logged).map((p) => p.text);
+            if (fresh.length) void addEvent(env.tripId, `⚠ ${fresh.join(" ")}`).then(notifyChanged);
+          });
+        else void addLinks(got.links, { tripId: env.tripId, source: "board", forNeed: bindKey });
+      }
+    : null;
+  const arrived = bringing ? arrivedOption(bringing.before, all) : null;
+  // (read and not landed here within two minutes: it went elsewhere, said by the board's own arrival; the line goes)
+  useEffect(() => {
+    if (!bringing || arrived) return;
+    const t = setTimeout(() => setBringing(null), Math.max(0, bringing.at + 120_000 - Date.now()));
+    return () => clearTimeout(t);
+  }, [bringing, arrived]);
   // 0.38.9: folded to "Diğer seçenekler (n)" once something is chosen; a new pick (from here, the chat, the Pano) folds them.
   const foldKey = `${env.tripId}:${vm.key}`;
   const [othersShown, setOthersShown] = useState(() => othersOpen(foldKey, true));
@@ -363,6 +390,7 @@ function Box({ vm, color, extra, field, pickDoc, dropDoc = null, cancel, askedHi
   // A booking in the box: another option is a switch, asked first (replaceBooking.ts); Vazgeç leaves everything as it was.
   const booking = vm.frame !== "collection" && record?.status === "booked" ? record : null;
   const [asking, setAsking] = useState<Ask | null>(null);
+  const rows = useContext(RowOpenContext);
   const pick = (o: OptionVM, then?: () => void) => {
     entry.current = "morph";
     setDrawer(false);
@@ -374,6 +402,8 @@ function Box({ vm, color, extra, field, pickDoc, dropDoc = null, cancel, askedHi
     // "X yerine Y seçildi · Geri al" (K82): back to the one chosen before, or to nothing chosen.
     const prev = vm.status === "chosen" && record?.status === "chosen" ? record : null;
     a.choose(o.item);
+    // (Karar Masası: chosen, the drawer closes and its row opens as the ticket, "Satın al ↗" on its right)
+    if (isDeskRow(vm)) rows?.set(o.item.id);
     env.offer({ kind: "picked", item: o.item, prev });
   };
   const change = openDrawer;
@@ -548,6 +578,7 @@ function Box({ vm, color, extra, field, pickDoc, dropDoc = null, cancel, askedHi
       onPano={a.pano ? () => (setDrawer(false), a.pano?.()) : null}
       onAsk={a.ask}
       onOffer={(item) => (setDrawer(false), a.choose(item))}
+      onBring={bring}
     />
   ) : null;
   // K85: a way said with nothing to book is a line under the category's cards, its way one tap away.
@@ -586,6 +617,7 @@ function Box({ vm, color, extra, field, pickDoc, dropDoc = null, cancel, askedHi
       take: () => {
         entry.current = "morph";
         if (record) a.choose(record);
+        if (record && view.desk) rows?.set(record.id);
       },
       // (a way said for a leg, no record yet: "Aldım" books the leg itself, as its ticket's own Aldım does; a record asks for
       // what backs it first, ProofAsk)
@@ -600,7 +632,8 @@ function Box({ vm, color, extra, field, pickDoc, dropDoc = null, cancel, askedHi
       add: view.desk ? openDrawer : null,
     };
     const menuNode = <IntentMenu entries={menu} name={name} />;
-    const booked0 = (ref: string | null) => record && (setProofAsk(null), markBooked(record, ref));
+    // (Karar Masası: bought, the row opens with its stamp pressed on and the last step under the ticket)
+    const booked0 = (ref: string | null) => record && (setProofAsk(null), view.desk && rows?.set(record.id), markBooked(record, ref));
     const askNode =
       proofAsk && record && (vm.status === "chosen" || vm.status === "suggested" || vm.status === "arranged") ? (
         <ProofAsk
@@ -652,7 +685,30 @@ function Box({ vm, color, extra, field, pickDoc, dropDoc = null, cancel, askedHi
       inner = <EmptyNight date={date} title={t.title} line={t.line} onAsk={askNow} menu={menuNode} />;
     } else if (view.face === "ticket") {
       const shown = vm.chosen;
-      const acts = (
+      const many = Math.max(vm.optionCount, all.length);
+      // (Karar Masası: under the opened ticket only links, one line: "Skyscanner'dan · Değiştir 7 · ✓ Aldım"; the one button
+      // stays on the row's right)
+      const acts = view.desk ? (
+        <>
+          {shown?.brand?.label && (vm.status === "chosen" || vm.status === "suggested") && <span className="q-rsrc">{fromName(shown.brand.label)}</span>}
+          {all.length > 1 && (vm.status === "chosen" || vm.status === "suggested" || vm.status === "booked") && (
+            <button type="button" className="q-chg q-lnk" onClick={openDrawer}>
+              {vm.status === "suggested" ? L("Seçenekler", "Options") : L("Değiştir", "Change")} <b>{many}</b>
+            </button>
+          )}
+          <span className="q-rsp" />
+          {vm.status === "booked" && record && (
+            <button type="button" className="q-chg q-lnk" onClick={() => saveIcs(record)}>
+              {L("Takvime ekle", "Add to calendar")}
+            </button>
+          )}
+          {vm.status === "chosen" && page && (
+            <button type="button" className="q-got q-lnk" onClick={() => record && setProofAsk("got")}>
+              ✓ {L("Aldım", "Got it")}
+            </button>
+          )}
+        </>
+      ) : (
         <>
           {shown?.brand?.label && (vm.status === "chosen" || vm.status === "suggested") && <span className="q-rsrc">{L(`${shown.brand.label}'dan`, `from ${shown.brand.label}`)}</span>}
           <span className="q-rsp" />
@@ -682,9 +738,44 @@ function Box({ vm, color, extra, field, pickDoc, dropDoc = null, cancel, askedHi
           </div>
         </div>
       ) : ticketProps ? (
-        <FrameTicket {...ticketProps} inRow />
+        // (the row draws its details under itself, ⋯ Ayrıntı: the ticket inside it doesn't draw them again)
+        <FrameTicket {...ticketProps} detail={null} inRow />
       ) : null;
-      inner = <TicketRow vm={vm} view={view} art={art} date={date} on={slotOn} ticket={ticket} links={links} onDrawer={all.length || need ? openDrawer : null} menu={menuNode} acts={acts} chipId={chipId} editable={editable} under={detail ? <div className="q-rdet">{detailNode}</div> : null} focused={itemId != null && env.focus?.id === itemId && env.focus.field != null} openKey={itemId ?? undefined} ask={askNode} />;
+      // (getirme anları: being read, then where it stands and what we think of it, with Karşılaştır and Geri al)
+      const broughtNode = bringing ? (
+        <div className="q-brought" role="status">
+          {arrived ? (
+            <>
+              <span className="q-bri" aria-hidden>
+                <Ic name="spark" size={14} />
+              </span>
+              <span className="q-brt">
+                <b>{L(`${bringing.what} okundu · ${arrived.place}. aday oldu`, `${bringing.what} read · now option ${arrived.place}`)}</b>
+                {deckVerdict(arrived, all) && <small>{deckVerdict(arrived, all)}</small>}
+              </span>
+              <button type="button" className="q-lnk" onClick={() => (setBringing(null), openDrawer())}>
+                {L("Karşılaştır", "Compare")} <b>{many}</b>
+              </button>
+              <button type="button" className="q-lnk" onClick={() => (setBringing(null), void setItemStatus(arrived.item, "dismissed"))}>
+                {L("Geri al", "Undo")}
+              </button>
+              <button type="button" className="q-brx" aria-label={L("Kapat", "Close")} onClick={() => setBringing(null)}>
+                <Ic name="x" size={14} />
+              </button>
+            </>
+          ) : (
+            <span className="q-look q-lookrow">
+              <span className="q-lookd" aria-hidden>
+                <i />
+                <i />
+                <i />
+              </span>
+              <span className="q-lookt">{L(`${bringing.what} okunuyor; bu satıra koyacağım`, `Reading ${bringing.what.toLocaleLowerCase("en")}; it goes on this row`)}</span>
+            </span>
+          )}
+        </div>
+      ) : null;
+      inner = <TicketRow vm={vm} view={view} art={art} date={date} on={slotOn} ticket={ticket} links={links} onDrawer={all.length || need ? openDrawer : null} menu={menuNode} acts={acts} chipId={chipId} editable={editable} under={detail ? <div className="q-rdet">{detailNode}</div> : null} focused={itemId != null && env.focus?.id === itemId && env.focus.field != null} openKey={itemId ?? undefined} ask={askNode} bring={bring} brought={broughtNode} />;
     } else {
       // A stay, a rental: pressed, its options beside the plan (Değiştir once chosen); a booking its details under it.
       const onPress = vm.status === "booked" && record ? () => setDetail(!detail) : all.length ? openDrawer : askCard;

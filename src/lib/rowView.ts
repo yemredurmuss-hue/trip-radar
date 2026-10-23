@@ -18,6 +18,7 @@
 // gece"); never in capitals (DESIGN.md: Türkçe büyük harf etiket yok). It reads intents.ts's view model and decides nothing:
 // the states are intents.ts's, the words intentFrame.ts's and ticketFrame.ts's. Pure; app/plan/v82/IntentRow.tsx draws it.
 import { L } from "./i18n";
+import { shortDay } from "./ideas";
 import { isoDate } from "./items";
 import { codeLabel, headName, optionPrice, ratingParts, sidePrice } from "./intentFrame";
 import type { IntentStatus, IntentVM, OptionVM } from "./intents";
@@ -79,6 +80,8 @@ export interface RowView {
   desk: boolean;
   /** Karar Masası: the AI or the source is looking right now (the ring turns, the hours and the price load). */
   busy?: boolean;
+  /** Karar Masası: bought, its stamp on the stub ("Alındı", the day it was bought; "Senin" for one's own). */
+  stamp?: { word: string; day: string | null } | null;
 }
 
 /** A rental (a car, a scooter, a camper, a bike) is drawn as a stay's card, its days on the rail (onay paketi, Ulaşım). */
@@ -105,6 +108,14 @@ export function rowStage(vm: Pick<IntentVM, "status" | "access" | "selfArranged"
     default:
       return "options";
   }
+}
+
+/** "24 Mar": the day a record's state was set (its stamp's date), in the traveller's own time. */
+export function markedDay(at: number | null | undefined): string | null {
+  if (!at || !Number.isFinite(at)) return null;
+  const d = new Date(at);
+  const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return shortDay(iso);
 }
 
 /** Karar Masası's rows (Uçuş first): a flight drawn as its thin row. */
@@ -317,7 +328,10 @@ export function rowView(vm: IntentVM): RowView {
       slot = deciding ? { kind: "pick", count } : isDatedSection(vm.section) && !isoDate(vm.head.date) ? { kind: "date" } : desk ? { kind: "self" } : { kind: "ask" };
   }
 
-  return { face, lead, stage, stageWord, title, route, line, third, wants, figure, slot, count, desk };
+  // (Karar Masası: bought, the stamp says so on the stub, with the day it was marked; never on a cover)
+  const stamp = desk && stage === "bought" && status !== "included" ? { word: vm.selfArranged ? L("Senin", "Yours") : L("Alındı", "Bought"), day: markedDay(chosen?.item.statusAt) } : null;
+
+  return { face, lead, stage, stageWord, title, route, line, third, wants, figure, slot, count, desk, stamp };
 }
 
 /**

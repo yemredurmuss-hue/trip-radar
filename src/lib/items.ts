@@ -281,6 +281,59 @@ export function buildItem(
   };
 }
 
+/** At most this many of a flight search's other flights in view become options with the one picked (karar 11). */
+export const MORE_FLIGHTS_MAX = 4;
+
+/**
+ * Karar Masası (getirme anları, benle gezen eklenti): a flight search's list saved, its other flights in view are options
+ * of the same need beside the one picked: the same way, page and day, each its own carrier, hours, stops and price as the
+ * list shows them (the price's source is the screen, never guessed). Not for a booking's confirmation, nor a flight
+ * without its hours; one already the picked one is left out. Pure.
+ */
+export function moreFlights(extraction: Pick<Extraction, "more_flights">, item: Item, now = Date.now()): Item[] {
+  if (item.category !== "flight" || item.status === "booked" || !item.flight) return [];
+  const main = item.flight;
+  const same = (n: string | null, d: string | null) => Boolean(n && main.flightNumber && n.replace(/\s+/g, "").toUpperCase() === main.flightNumber.replace(/\s+/g, "").toUpperCase() && (d ?? "").slice(0, 10) === (main.departure ?? "").slice(0, 10));
+  const out: Item[] = [];
+  for (const [n, f] of (extraction.more_flights ?? []).entries()) {
+    if (out.length >= MORE_FLIGHTS_MAX) break;
+    const departure = f.departure?.trim() || null;
+    if (!departure || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(departure) || same(f.flight_number, departure)) continue;
+    const number = f.flight_number?.trim() || null;
+    const carrier = f.carrier?.trim() || null;
+    const amount = finite(f.price_amount);
+    const currency = currencyCode(f.currency) ?? item.price.currency;
+    const at = now + n + 1;
+    out.push({
+      ...item,
+      id: crypto.randomUUID(),
+      key: number ? `flight:${number.replace(/\s+/g, "").toUpperCase()}:${departure.slice(0, 10)}` : null,
+      name: [carrier, number].filter(Boolean).join(" ") || item.name,
+      provider: item.provider,
+      summary: "",
+      optionDetail: L("Aynı arama listesinden", "From the same search list"),
+      imageUrl: null,
+      gallery: undefined,
+      dates: { start: departure.slice(0, 10), end: null, source: "page" },
+      price: { amount, currency: amount == null ? null : currency, scope: item.price.scope, taxesIncluded: "unknown", source: amount == null ? "none" : "screenshot", observedAt: at },
+      priceHistory: amount != null && currency ? [{ amount, currency, observedAt: at }] : [],
+      cancellation: { summary: null, freeUntil: null, source: "none" },
+      rating: { value: null, scale: null, count: null, source: "none" },
+      flight: { from: main.from, to: main.to, departure, arrival: f.arrival?.trim() || null, carrier, flightNumber: number, stops: f.stops ?? null },
+      metrics: EMPTY_METRICS,
+      highlights: [],
+      concerns: [],
+      reviewSummary: null,
+      missing: [],
+      status: "saved",
+      statusNote: null,
+      createdAt: at,
+      updatedAt: at,
+    });
+  }
+  return out;
+}
+
 /**
  * The place an item is an offer for (hotel, flat, tour...): what is read about it is shared by every
  * offer of it. Items without a canonical key are their own place.

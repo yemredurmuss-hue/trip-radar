@@ -101,3 +101,27 @@ export const StageBadge = ({ stage, half = false }: { stage: Stage; half?: boole
     <StageGlyph stage={stage} size={19} half={half} />
   </span>
 );
+
+/**
+ * Karar Masası's stamp (karar 7): round, two rings, upright, in green ink; a tick, its word ("Alındı") and the day. Small on
+ * the closed row's stub, half over its tear; big (96 px) beside the opened ticket. Pressed on with the seal's motion once
+ * bought (`.z-go`, mv-stamp).
+ */
+export function Stamp({ word, day, big = false }: { word: string; day: string | null; big?: boolean }) {
+  const size = big ? 96 : 62;
+  return (
+    <svg className={`q-stamp${big ? " big" : ""}`} width={size} height={size} viewBox="0 0 62 62" aria-hidden>
+      <circle cx="31" cy="31" r="28.5" fill="var(--q-stamp-bg)" stroke="var(--q-ok)" strokeWidth={big ? 2.2 : 2.5} />
+      <circle cx="31" cy="31" r={big ? 24 : 23.5} fill="none" stroke="var(--q-ok)" strokeOpacity=".55" strokeWidth={big ? 0.8 : 1} />
+      <path d="M23 25.5l5 5 10-10.5" fill="none" stroke="var(--q-ok)" strokeWidth={big ? 3 : 3.2} strokeLinecap="round" strokeLinejoin="round" />
+      <text x="31" y={day ? 41 : 44} textAnchor="middle" fontSize={big ? 9.5 : 10} fontWeight="800" fill="var(--q-ok)">
+        {word}
+      </text>
+      {day && (
+        <text x="31" y={big ? 49.5 : 50} textAnchor="middle" fontSize={big ? 6.5 : 7.5} fontWeight="700" fill="var(--q-ok)" fillOpacity=".8">
+          {day}
+        </text>
+      )}
+    </svg>
+  );
+}

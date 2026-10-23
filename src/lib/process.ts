@@ -7,7 +7,7 @@ import { valueOnPage } from "./evidence";
 import { geocode } from "./geo";
 import { L } from "./i18n";
 import { imageProxy, pickCityImage } from "./cityImages";
-import { buildItem, CATEGORY_LABELS, corpusOf, findDuplicate, formatDateRange, isoDate, mergeItem } from "./items";
+import { buildItem, CATEGORY_LABELS, corpusOf, findDuplicate, formatDateRange, isoDate, mergeItem, moreFlights } from "./items";
 import { chooseTrip, countryCodeOf, countryName, gapDays, isDemoTrip, profileTrips, uniqueTitle, type TripChoice, type TripSignal } from "./trips";
 import { askText, countriesText, datesIn, looksLikeTravel, placeCodes, placeFitOf, routeCapture, titleCodes, tripPlaceCodes, type Route } from "./placeCheck";
 import { loadHome } from "./passport";
@@ -105,21 +105,22 @@ export async function saveSnapshot(snapshot: PageSnapshot, screenshot: string | 
  * place is far from that trip's (placeCheck.ts). `fromTripId`: sent in that trip's chat (routed as any capture,
  * checked against that trip).
  */
-export async function savePastedLink(url: string, forTripId?: string, fromTripId?: string, note?: string | null): Promise<Capture> {
+export async function savePastedLink(url: string, forTripId?: string, fromTripId?: string, note?: string | null, forNeed?: string): Promise<Capture> {
   const capture: Capture = {
     ...baseCapture("paste-link"),
     url,
     ...(forTripId ? { forTripId } : {}),
     ...(fromTripId && !forTripId ? { fromTripId } : {}),
     ...(note?.trim() ? { note: note.trim().slice(0, 300) } : {}),
+    ...(forNeed ? { forNeed } : {}),
   };
   await (await db()).put("captures", capture);
   notifyChanged();
   return capture;
 }
 
-export async function saveImage(dataUrl: string, forTripId?: string, fromTripId?: string): Promise<Capture> {
-  const capture: Capture = { ...baseCapture("image"), screenshot: dataUrl, ...(forTripId ? { forTripId } : {}), ...(fromTripId && !forTripId ? { fromTripId } : {}) };
+export async function saveImage(dataUrl: string, forTripId?: string, fromTripId?: string, forNeed?: string): Promise<Capture> {
+  const capture: Capture = { ...baseCapture("image"), screenshot: dataUrl, ...(forTripId ? { forTripId } : {}), ...(fromTripId && !forTripId ? { fromTripId } : {}), ...(forNeed ? { forNeed } : {}) };
   await (await db()).put("captures", capture);
   notifyChanged();
   return capture;
@@ -208,6 +209,8 @@ async function readCapture(capture: Capture, deps: Deps, commit: () => Promise<b
     // A new trip is only made once something goes into it (a page that is asked about makes none).
     const newTripId = "tripId" in choice ? null : newId();
     let incoming = buildItem(extraction, capture, facts, "tripId" in choice ? choice.tripId : newTripId!);
+    // (brought to one row of the plan: that need's option, as an offer added from its box is: plan.flightNeeds)
+    if (capture.forNeed && !incoming.forNeed && incoming.category === capture.forNeed.split(":")[0]) incoming = { ...incoming, forNeed: capture.forNeed };
     // Only a screenshot: the option's photo cut out of it (a car, a room), when the model found one.
     const box = !incoming.imageUrl && capture.screenshot ? photoBox(extraction.image_box) : null;
     if (box) {
@@ -277,8 +280,13 @@ async function readCapture(capture: Capture, deps: Deps, commit: () => Promise<b
     if (!duplicate && capture.sharedBy) item = { ...item, addedBy: capture.sharedBy };
     await d.put("items", item);
     if (before && before !== item.tripId) await moveDocsToTrip(item.id, item.tripId);
+    // (Karar Masası: a flight search's list saved, its other flights in view join the same need's deck; none twice)
+    const more: Item[] = [];
+    for (const m of moreFlights(extraction, item)) if (!findDuplicate([...existing, item, ...more], m)) more.push(m);
+    for (const m of more) await d.put("items", m);
 
     await addEvent(item.tripId, savedLine(item, incoming.status === "booked", Boolean(duplicate), capture.sharedBy));
+    if (more.length) await addEvent(item.tripId, L(`Aynı listeden ${more.length} uçuş daha desteye girdi.`, `${more.length} more flight${more.length > 1 ? "s" : ""} from the same list joined the deck.`));
     // The same thing saved again (Emre, 0.36.55): merged as always, and asked whether to keep it apart instead. Not a
     // booking's confirmation (it books what was saved), nor what a shared trip sends.
     if (duplicate && incoming.status !== "booked" && !capture.sharedAt) {

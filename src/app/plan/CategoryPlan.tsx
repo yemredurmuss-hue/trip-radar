@@ -48,6 +48,7 @@ import { Searching } from "./v82/Searching";
 import { TimelineRail } from "./v82/TimelineRail";
 import { emptyNights, isDatedSection, nightAlerts, overlapNights, undatedLast, type Overlap } from "../../lib/railDates";
 import { planSteps, stepParts } from "../../lib/rowView";
+import { Gelenler } from "./v82/Gelenler";
 import { Ic } from "./v82/icons";
 import { stayTimings } from "../../lib/stayTiming";
 import { intentEl, V82EnvContext, type V82Env } from "./v82/v82Env";
@@ -316,6 +317,8 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
           </div>
         ))}
         {pending?.lead && <div className="ar-lead">{pending.lead}</div>}
+        {/* Karar Masası, getirme anları: what was brought and read, its place not found ("Nereye koyalım?") */}
+        <Gelenler tripId={env.trip.id} />
         {shown.length > 0 && (
           <div className="q-sheet" ref={sheet} data-pit-children>
             {shown.map((s) => {

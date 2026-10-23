@@ -45,8 +45,11 @@ export function parseUrl(raw: string): UrlFacts {
   if (/(^|\.)skyscanner\.[a-z.]+$/.test(host)) return parseSkyscanner(url, q);
   if (/(^|\.)kayak\.[a-z.]+$/.test(host)) return parseKayak(url);
   if (host === "google.com" && url.pathname.startsWith("/travel/flights")) {
-    return { ...EMPTY, provider: "Google Flights", key: genericKey(url) };
+    // (our own searches say the way in words: "Flights from BKK to IST on 2027-04-02"; a shared tfs= link says nothing)
+    const said = (q.get("q") ?? "").match(/from\s+(.+?)\s+to\s+(.+?)\s+on\s+(\d{4}-\d{2}-\d{2})/i);
+    return { ...EMPTY, provider: "Google Flights", key: genericKey(url), from: said?.[1]?.trim() ?? null, to: said?.[2]?.trim() ?? null, checkIn: said ? isoDate(said[3]) : null };
   }
+  if (/(^|\.)kiwi\.com$/.test(host)) return parseKiwi(url);
   if (/(^|\.)getyourguide\.[a-z.]+$/.test(host)) {
     const id = url.pathname.match(/-t(\d+)\/?$/)?.[1];
     return { ...EMPTY, provider: "GetYourGuide", key: id ? `gyg:${id}` : genericKey(url) };
@@ -107,6 +110,25 @@ function parseSkyscanner(url: URL, q: URLSearchParams): UrlFacts {
     checkOut: m?.[4] ? yymmdd(m[4]) : null,
     adults: int(q.get("adultsv2") ?? q.get("adults")),
   };
+}
+
+function parseKiwi(url: URL): UrlFacts {
+  // /tr/search/results/bangkok-thailand/istanbul-turkey/2027-04-02/no-return, or the airports' codes (/bkk/ist/)
+  const m = url.pathname.match(/\/search\/results\/([^/]+)\/([^/]+)\/(\d{4}-\d{2}-\d{2})(?:_\d{4}-\d{2}-\d{2})?(?:\/(\d{4}-\d{2}-\d{2}))?/i);
+  const end = (slug: string | undefined): string | null => {
+    if (!slug || slug === "anywhere") return null;
+    if (/^[a-z]{3}$/i.test(slug)) return slug.toUpperCase();
+    const city = decodeURIComponent(slug).split("-")[0];
+    return city ? city[0].toLocaleUpperCase("tr") + city.slice(1) : null;
+  };
+  return { ...EMPTY, provider: "Kiwi.com", key: genericKey(url), from: end(m?.[1]), to: end(m?.[2]), checkIn: m ? isoDate(m[3]) : null, checkOut: m?.[4] ? isoDate(m[4]) : null };
+}
+
+/** A flight search's way and day from its address (Skyscanner, Kayak, Kiwi, our own Google Flights), else null. */
+export function flightSearchOf(raw: string | null | undefined): { from: string; to: string; day: string; provider: string | null } | null {
+  if (!raw) return null;
+  const f = parseUrl(raw);
+  return f.from && f.to && f.checkIn ? { from: f.from, to: f.to, day: f.checkIn, provider: f.provider } : null;
 }
 
 function parseKayak(url: URL): UrlFacts {

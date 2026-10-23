@@ -6,6 +6,7 @@
 // opens beside the plan, a booking's details under it), and a short open stretch between two stays as an amber empty night.
 // What a row says is lib/rowView.ts's; what it does stays IntentBox's (its menu, drawer, details, inline edit).
 import { createContext, useContext, useEffect, useId, useState, type ReactNode } from "react";
+import { carriesArrival, droppedLinks } from "../../arrive/useDropZone";
 import { L } from "../../../lib/i18n";
 import { ratingParts, type SelfSearch } from "../../../lib/intentFrame";
 import type { IntentVM, OptionVM } from "../../../lib/intents";
@@ -15,7 +16,7 @@ import { deckLead, type RowPart, type RowView } from "../../../lib/rowView";
 import { carrierMark, ticketFace } from "../../../lib/ticketFrame";
 import { Editable } from "../../cards/InlineEdit";
 import { Ic, Mark } from "./icons";
-import { ModeIcon, modeIconOf, StageBadge } from "./modeIcons";
+import { ModeIcon, modeIconOf, StageBadge, Stamp } from "./modeIcons";
 import { SelfLinks } from "./OptionCompact";
 import { CarrierLogo } from "./OptionRow";
 
@@ -202,6 +203,20 @@ function Slot({ view, on, logo }: { view: RowView; on: SlotOn; logo: ReactNode }
         </button>
       );
     case "proof":
+      // (Karar Masası: bought, the button goes; a green stub with its stamp, "Bileti ekle" a link on it)
+      if (view.stamp)
+        return (
+          <span className="q-rstub q-rkoc">
+            <Stamp word={view.stamp.word} day={view.stamp.day} />
+            {on.proof ? (
+              <button type="button" className="q-proof q-lnk" onClick={(e) => (stop(e), on.proof?.())}>
+                {s.word}
+              </button>
+            ) : (
+              <small>{view.stageWord}</small>
+            )}
+          </span>
+        );
       return on.proof ? (
         <button type="button" className="q-proof q-rbtn" onClick={(e) => (stop(e), on.proof?.())}>
           <Ic name="clip" size={14} stroke={2.2} />
@@ -319,11 +334,59 @@ export interface TicketRowProps {
   ask?: ReactNode;
   /** What its open state follows: its record (the intent's key changes as its ends are typed), else the intent. */
   openKey?: string;
+  /** Karar Masası, getirme anları: a link or a screenshot dropped on the row goes to it. */
+  bring?: ((got: Brought) => void) | null;
+  /** Under the row: what was brought, being read, then where it stands ("Kiwi.com okundu · 5. aday"). */
+  brought?: ReactNode;
+}
+
+/** What a drop or a paste carries: its files, else its links. */
+export interface Brought {
+  files: File[];
+  links: string;
+}
+
+/** The files or the links a drop carries; null when it carries neither (a drag from the page itself). */
+export function broughtOf(dt: DataTransfer): Brought | null {
+  if (!carriesArrival(dt)) return null;
+  const files = [...dt.files];
+  const links = files.length ? "" : droppedLinks(dt);
+  return files.length || links ? { files, links } : null;
 }
 
 /** A flight, a train, a bus, a boat, a transfer: one thin row; pressed, its ticket (or its search) opens under it. */
-export function TicketRow({ vm, view, art, date, on, ticket, links, onDrawer, menu, acts, chipId, editable, under = null, focused = false, openKey, ask = null }: TicketRowProps) {
+export function TicketRow({ vm, view, art, date, on, ticket, links, onDrawer, menu, acts, chipId, editable, under = null, focused = false, openKey, ask = null, bring = null, brought = null }: TicketRowProps) {
   const [open, setOpen] = useRowOpen(openKey ?? vm.key);
+  // (getirme anları: dragged over, the row says it will take it; dropped, it is this row's, never the board's guess)
+  const [over, setOver] = useState(false);
+  const drop = bring
+    ? {
+        onDragEnter: (e: React.DragEvent) => {
+          if (!carriesArrival(e.dataTransfer)) return;
+          e.preventDefault();
+          e.stopPropagation();
+          setOver(true);
+        },
+        onDragOver: (e: React.DragEvent) => {
+          if (!carriesArrival(e.dataTransfer)) return;
+          e.preventDefault();
+          e.stopPropagation();
+          e.dataTransfer.dropEffect = "copy";
+        },
+        onDragLeave: (e: React.DragEvent) => {
+          if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+          setOver(false);
+        },
+        onDrop: (e: React.DragEvent) => {
+          setOver(false);
+          const got = broughtOf(e.dataTransfer);
+          if (!got) return;
+          e.preventDefault();
+          e.stopPropagation();
+          bring(got);
+        },
+      }
+    : {};
   // (its ends and hour edit on the ticket under it: opened when a field there is asked for)
   useEffect(() => {
     if (focused && !open) setOpen(true);
@@ -368,7 +431,7 @@ export function TicketRow({ vm, view, art, date, on, ticket, links, onDrawer, me
     ticket
   );
   return (
-    <div className={`q-row${open && !deck ? " open" : ""}`} data-face="ticket">
+    <div className={`q-row${open && !deck ? " open" : ""}${over ? " drop" : ""}`} data-face="ticket" {...drop}>
       <RailCol date={date} editable={editable} />
       <div className="q-rcard">
         <div
@@ -393,8 +456,10 @@ export function TicketRow({ vm, view, art, date, on, ticket, links, onDrawer, me
               {view.route && view.desk ? (
                 <>
                   {view.route.from}{" "}
-                  <i className="q-rpl" aria-label="→">
+                  <i className="q-rpl">
                     <ModeIcon name="plane" size={15} />
+                    {/* (said as the arrow it stands for: a screen reader's and a search's "Porto → Lizbon") */}
+                    <span className="sr-only">→</span>
                   </i>{" "}
                   {view.route.to}
                 </>
@@ -424,6 +489,13 @@ export function TicketRow({ vm, view, art, date, on, ticket, links, onDrawer, me
             {menu}
           </span>
         </div>
+        {over && (
+          <div className="q-rdrop" aria-hidden>
+            <b>{L("Bırak: bu satıra", "Drop it on this row")}</b>
+            <small>{L("bağlantı ya da ekran görüntüsü; okuyup desteye koyarız", "a link or a screenshot; we read it and add it to the deck")}</small>
+          </div>
+        )}
+        {brought}
         {ask}
         <div className="q-rp" id={panelId} hidden={!open || deck}>
           {open && body}

@@ -6681,7 +6681,8 @@ try {
       // (the booked frame comes in 120 ms after the chosen one fades)
       // (onay paketi 2026-10-22: under its row the pass's big mark is the seal)
       if (!box.classList.contains("z-go") || box.dataset.st !== "ok" || !box.querySelector(".z-tk.bk :is(.z-seal, .z-step)")) return;
-      window.__stage.booked ||= { plane: anim(".z-tk .q-mid.big img"), tick: anim(".z-tk :is(.z-seal, .z-step .q-sg)"), glow: box.classList.contains("pk-glow") || box.classList.contains("pk-stage") };
+      // (Karar Masası: a flight's big mark is its stamp, pressed on with the seal's motion)
+      window.__stage.booked ||= { plane: anim(".z-tk .q-mid.big img"), tick: anim(".z-tk :is(.z-seal, .z-step .q-sg, .z-step .q-stamp)"), glow: box.classList.contains("pk-glow") || box.classList.contains("pk-stage") };
       // (plan v14: the row's hap springs with its box's pop; onay paketi 2026-10-22: the corner's mark)
       window.__stage.pop ||= Boolean(box.querySelector(".q-st.pop") || (box.classList.contains("pop") && box.querySelector(".q-rhap, .q-sb")));
     }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ["class", "data-st"], childList: true });

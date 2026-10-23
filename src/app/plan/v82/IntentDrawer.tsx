@@ -34,6 +34,8 @@ import { WeightTuner } from "./WeightTuner";
 import { Ic, Mark, type IconName } from "./icons";
 import type { Typical } from "./OptionCompact";
 import { CarrierLogo } from "./OptionRow";
+import { broughtOf, type Brought } from "./IntentRow";
+import { carriesArrival } from "../../arrive/useDropZone";
 import { ModeIcon } from "./modeIcons";
 
 export type Family = "stay" | "rental" | "ticket";
@@ -401,7 +403,7 @@ export function useOursReason(options: readonly OptionVM[]): string | null {
   }, [ours, env.decisions]);
 }
 
-export function IntentDrawer({ vm, options, dropped = [], chosenId, art, links, typical, need, placeholder = null, people, onPick, onClose, onPano, onAsk, onOffer }: {
+export function IntentDrawer({ vm, options, dropped = [], chosenId, art, links, typical, need, placeholder = null, people, onPick, onClose, onPano, onAsk, onOffer, onBring = null }: {
   vm: IntentVM;
   options: OptionVM[];
   /** Elenen: the options of this need that were ruled out ("Ele"), newest last. */
@@ -421,11 +423,58 @@ export function IntentDrawer({ vm, options, dropped = [], chosenId, art, links, 
   onAsk: (() => void) | null;
   /** A source's pick taken from the drawer ("Ekle" in OfferRow). */
   onOffer: (item: Item) => void;
+  /** Karar Masası, getirme anları: a link or a screenshot dropped or pasted here goes to this need. */
+  onBring?: ((got: Brought) => void) | null;
 }) {
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
   const asideRef = useRef<HTMLElement>(null);
   const [pane, setPane] = useState<"options" | "dropped">("options");
+  // (getirme anları: dragged over the drawer, its "+ Seninkini ekle" says it takes it; a paste here goes to this need too)
+  const [over, setOver] = useState(false);
+  useEffect(() => {
+    if (!onBring) return;
+    const onPaste = (e: ClipboardEvent) => {
+      const at = e.target instanceof HTMLElement ? e.target : null;
+      if (at && (at.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(at.tagName))) return;
+      if (!asideRef.current || (at && !asideRef.current.contains(at) && at !== document.body)) return;
+      const files = [...(e.clipboardData?.files ?? [])];
+      const text = files.length ? "" : (e.clipboardData?.getData("text/plain") ?? "").trim();
+      if (!files.length && !/^https?:\/\//i.test(text)) return;
+      e.preventDefault();
+      onBring({ files, links: text });
+    };
+    document.addEventListener("paste", onPaste);
+    return () => document.removeEventListener("paste", onPaste);
+  }, [onBring]);
+  const drop = onBring
+    ? {
+        onDragEnter: (e: React.DragEvent) => {
+          if (!carriesArrival(e.dataTransfer)) return;
+          e.preventDefault();
+          e.stopPropagation();
+          setOver(true);
+        },
+        onDragOver: (e: React.DragEvent) => {
+          if (!carriesArrival(e.dataTransfer)) return;
+          e.preventDefault();
+          e.stopPropagation();
+          e.dataTransfer.dropEffect = "copy";
+        },
+        onDragLeave: (e: React.DragEvent) => {
+          if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+          setOver(false);
+        },
+        onDrop: (e: React.DragEvent) => {
+          setOver(false);
+          const got = broughtOf(e.dataTransfer);
+          if (!got) return;
+          e.preventDefault();
+          e.stopPropagation();
+          onBring(got);
+        },
+      }
+    : {};
   const [tab, setTab] = useState<DrawerTab>("all");
   // (a nightly price counts the need's nights when it was saved without its own)
   const nights = vm.head.nights ?? null;
@@ -500,7 +549,7 @@ export function IntentDrawer({ vm, options, dropped = [], chosenId, art, links, 
   const node = (
     <>
       <div className="dr-scrim" onClick={onClose} aria-hidden />
-      <aside ref={asideRef} className="dr" role="dialog" aria-modal="true" aria-labelledby={titleId} data-kind={vm.kind} data-family={family} data-intent={vm.key}>
+      <aside ref={asideRef} className={`dr${over ? " over" : ""}`} role="dialog" aria-modal="true" aria-labelledby={titleId} data-kind={vm.kind} data-family={family} data-intent={vm.key} {...drop}>
         <div className="dr-h">
           <div className="dr-top">
             <span className="dr-deck" aria-hidden>
@@ -514,8 +563,9 @@ export function IntentDrawer({ vm, options, dropped = [], chosenId, art, links, 
                 {vm.kind === "flight" && family === "ticket" && vm.head.route ? (
                   <>
                     {vm.head.route.from}{" "}
-                    <i className="q-rpl" aria-label="→">
+                    <i className="q-rpl">
                       <ModeIcon name="plane" size={22} />
+                      <span className="sr-only">→</span>
                     </i>{" "}
                     {vm.head.route.to}
                   </>

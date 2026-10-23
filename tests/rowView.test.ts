@@ -210,4 +210,17 @@ describe("Karar Masası: the flight row's language (Uçuş first)", () => {
     expect(stepParts(counts, false).map((p) => p.text)).toEqual(["2 alındı", "1 planda", "2 karar"]);
     expect(stepParts(counts, true)[2].decide).toBe(true);
   });
+  it("bought: the stamp on the stub, with the day it was marked; one's own says Senin; a cover has none", async () => {
+    const { markedDay } = await import("../src/lib/rowView");
+    const f = flights().find((v) => v.key === "flight:kix-ist")!;
+    const at = new Date(2027, 2, 24, 9, 30).getTime();
+    const bare = { ...f, access: f.access && { ...f.access, code: null, doc: { count: 0, name: null } } };
+    const r = rowView({ ...bare, chosen: f.chosen && { ...f.chosen, item: { ...f.chosen.item, statusAt: at } } });
+    expect(r.stamp).toEqual({ word: "Alındı", day: markedDay(at) });
+    expect(markedDay(at)).toBe("24 Mar");
+    expect(rowView({ ...bare, status: "arranged", selfArranged: true }).stamp?.word).toBe("Senin");
+    expect(rowView({ ...f, status: "included" }).stamp).toBeNull();
+    expect(rowView(f).stamp).toBeNull();
+    expect(markedDay(undefined)).toBeNull();
+  });
 });
