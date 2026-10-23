@@ -4,6 +4,7 @@
 // (Değiştir), the "Kendin ara" sites (providers.ts) and the order the plan's decisions are gone through (F5). It reads
 // intents.ts's view model and decides nothing of its own: the states are intents.ts's, the sites providers.ts's.
 // Pure; the boxes (app/plan/v82) only draw what it says.
+import { isCampStay } from "./campStay";
 import type { CardFacts } from "./cardFacts";
 import type { CardKind } from "./cardKinds";
 import { L } from "./i18n";
@@ -431,7 +432,8 @@ export function unlessEmpty(vm: IntentVM, trip: Pick<Trip, "startGuide">, record
  * pick chosen for the box takes its record in place (actions.fillOffer), never a second card beside it (0.38.5).
  */
 export function placeholderOf(records: readonly Item[], trip: Pick<Trip, "startGuide">, category: Item["category"]): Item | null {
-  return records.find((i) => i.category === category && i.status === "chosen" && (isPlaceholder(trip, i) || bareChatPlan(i))) ?? null;
+  // (the trip's own nights, the van's, the camp's, the boat's, are never a place to fill with a hotel: 0.40.3)
+  return records.find((i) => i.category === category && i.status === "chosen" && !isCampStay(i) && (isPlaceholder(trip, i) || bareChatPlan(i))) ?? null;
 }
 
 /** The need's other options under a chosen or booked box (0.38.5): what was gathered for it beside the one taken. */

@@ -393,6 +393,13 @@ export async function addOffer(tripId: string, offer: Offer, need: Need): Promis
   return item;
 }
 
+/** A record written back whole (0.40.3: the van's night a hotel took the place of), said in the trip's history. */
+export async function putItem(item: Item, said: string): Promise<void> {
+  await (await db()).put("items", { ...item, updatedAt: Date.now() });
+  await addEvent(item.tripId, said);
+  notifyChanged();
+}
+
 /**
  * "Seç" on a pick for a box the start only made room for (its placeholder, intentFrame.placeholderOf): the placeholder
  * becomes the offer in place, a saved option to choose next (0.38.5: the box changes, no second card beside it).

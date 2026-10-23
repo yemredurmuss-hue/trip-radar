@@ -173,6 +173,10 @@ bugünkü sözleriyle kalır, aynı dil onlara ayrı bir adımda geçer.
   Her ihtiyaç bir kez: bulduktan sonra gezginin kaldırdığı geri gelmez; bir şey bulunmazsa sonraki açılışta yeniden sorulur.
   Bu tek kural üç kategoride de geçerli; boş kutuların hepsinde de iki arama durur: büyüteçle "Ara" (çekmece: kaynağın
   önerileri ve siteler) ve yıldızla "AI ara".
+  Gezinin söylediğine karşı hiç aranmaz (`lib/autoSearch.ts`): geceler karavanda, kampta ya da teknede geçiyorsa otel;
+  karavan ya da yol gezisinin arabası şehirler arasını sürüyorsa tren ve otobüs; günübirlik gezide konaklama; kara yoluyla
+  gidiliyorsa uçuş; bir paketin kapsadığı ihtiyaç; rota henüz onaylanmamışsa konaklama ve yollar (geceler değişecek).
+  Gezinin kendi gecesi (karavan, kamp, tekne) asla bir teklifle doldurulacak yer sayılmaz; kaydı yoksa çizimi de onun.
 - **Deste:** beyaz kart, ince lila çerçeve ve altında iki ince lila kat; işaretin yerinde üç logolu yelpaze (en iyisi
   önde); söz "7 seçenek", satırda en iyisinin taşıyıcısı, saatleri ve aktarması, fiyatın altında "en iyisi"; sağda
   "Seç 7" (sayı beyaz kutuda). Desteye basmak da çekmeceyi açar; satırın altında açılan gövde yok. Arama birden çok

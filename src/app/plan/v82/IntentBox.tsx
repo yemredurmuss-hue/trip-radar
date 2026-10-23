@@ -25,8 +25,10 @@ import type { InsertAt } from "../../../lib/templates";
 import type { Item, LegChoice, Trip } from "../../../lib/types";
 import { entryDomId } from "../../../lib/progress";
 import { withLegChoice } from "../../../lib/legs";
-import { agreeRoute } from "../../../lib/startTrip";
-import { addOffer, fillOffer, setHidden, setInstalled, setItemStatus, cancelBooking, markBooked, updateTrip } from "../../actions";
+import { agreeRoute, isRouteDraft } from "../../../lib/startTrip";
+import { shapeOf } from "../../../lib/playbooks/shape";
+import { autoSearchBlock, restoredOwnStay } from "../../../lib/autoSearch";
+import { addOffer, fillOffer, putItem, setHidden, setInstalled, setItemStatus, cancelBooking, markBooked, updateTrip } from "../../actions";
 import { ProofAsk } from "./ProofAsk";
 import type { MenuEntry } from "../../cards/CardShell";
 import { openDoc, useDocPick } from "../../cards/DocAccess";
@@ -70,8 +72,10 @@ import { addLinks, addTripFiles } from "../../capture";
 import { addEvent, notifyChanged } from "../../../lib/db";
 
 /** A kind's drawing (static/illus), for a frame or an option with no photo. */
-export function artOf(kind: IntentVM["kind"], item: Item | null = null): string {
+export function artOf(kind: IntentVM["kind"], item: Item | null = null, sleep: string | null = null): string {
   if (kind === "stay") {
+    // (no record to say it: the trip's own nights, the van's or the camp's, drawn as such, never a hotel)
+    if (!item?.metrics?.stayKind && (sleep === "vehicle" || sleep === "camp")) return sleep === "camp" ? "illus/cadir.svg" : "illus/karavan.png";
     const art = stayArtOf(item);
     return art === "tent" ? "illus/cadir.svg" : `illus/${art}.png`;
   }
@@ -383,7 +387,10 @@ function Box({ vm, color, extra, field, pickDoc, dropDoc = null, cancel, askedHi
   const chipId = useId();
   const name = headName(vm);
   const entry = useRef<Entry>("in");
-  const art = artOf(vm.kind, vm.chosen?.item ?? vm.options[0]?.item ?? null);
+  const shape = shapeOf(env.trip);
+  // (a stop of a route not agreed yet has its own record, the van's night, but nothing chosen: drawn from it)
+  const own = vm.itemIds.map((id) => v82.byId.get(id)).find((i): i is Item => i != null) ?? null;
+  const art = artOf(vm.kind, vm.chosen?.item ?? vm.options[0]?.item ?? own, shape.sleep);
   // C15: a way nobody planned is looked for on the sites that compare every way, a transfer on Uber and the map's directions.
   const links = waySearches(vm, v82.selfAt, itemId ? (v82.byId.get(itemId) ?? null) : null);
   const searchingNow = form === "searching" && a.searching;
@@ -630,7 +637,20 @@ function Box({ vm, color, extra, field, pickDoc, dropDoc = null, cancel, askedHi
   const lookingNow = useLooking(offersLooking, need?.key);
   const busy = vm.status === "searching" && looking && (a.searching || lookingNow);
   const placeholder = need?.kind === "stay" ? placeholderOf(vm.itemIds.map((id) => v82.byId.get(id)).filter((i): i is Item => i != null), env.trip, "stay") : null;
-  useAutoSearch(vm, env.tripId, form === "searching" && !vm.routeDraft && (vm.options.length === 0 || placeholder != null) && !(vm.more?.length), placeholder);
+  // (never against what the trip already says: the van's nights, a day trip, the car's drives, a route still to agree: 0.40.3)
+  const ownStay = vm.kind === "stay" && vm.itemIds.some((id) => isCampStay(v82.byId.get(id)));
+  const autoBlock = need ? autoSearchBlock(need, shape, { ownStay, routeDraft: isRouteDraft(env.trip), covered: vm.cover != null }) : "covered";
+  useAutoSearch(vm, env.tripId, form === "searching" && !vm.routeDraft && autoBlock == null && (vm.options.length === 0 || placeholder != null) && !(vm.more?.length), placeholder);
+  // (0.40.3: a hotel 0.40.1's search put in the van's place goes back to being the van's night, once)
+  useEffect(() => {
+    if (vm.kind !== "stay" || shape.sleep === "hotel") return;
+    for (const id of vm.itemIds) {
+      const it = v82.byId.get(id);
+      const back = it ? restoredOwnStay(it, env.trip, shape.sleep) : null;
+      if (back) void putItem(back, L(`${it!.name} yerine yine ${back.name}`, `${back.name} again instead of ${it!.name}`));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- per record set
+  }, [vm.itemIds.join(","), shape.sleep]);
   const headArt = vm.head.image ? { src: vm.head.image, photo: true } : { src: art, photo: false };
   const camp = record != null && vm.kind === "stay" && isCampStay(record);
   const here = onHere ? hereOf(vm) : null;

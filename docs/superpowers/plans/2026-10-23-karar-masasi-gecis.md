@@ -336,3 +336,15 @@ Seviye 2 site başına iş ve gizlilik sözünü değiştirir; Seviye 1 kullanı
 3. **"Aranıyor" ne zaman yazsın?** Kimse aramıyorken "Aranıyor" yazmak doğru olmaz (uydurma yok kuralı). Önerim: söz
    "Aranacak" ve halka durgun; AI ya da kaynak gerçekten ararken "Aranıyor" ve halka döner.
 4. **Eklenti:** Seviye 1 ile başlayalım mı, Seviye 2 için gizlilik metnini değiştirmeye razı mısın?
+
+### 23 Ekim akşam: kendiliğinden arama ve gezinin biçimi (0.40.3)
+
+Kanada karavan gezisinde 0.40.1'in kendiliğinden araması Vancouver'ın karavan gecesini başlangıcın doldurulacak yeri sanıp
+en ucuz otelle değiştirdi (14 gece, karavan gecelerinin tamamı). Düzeltme:
+
+- `lib/autoSearch.ts` `autoSearchBlock`: gezinin biçimi (`shapeOf`: uyku, hareketli üs, yol gezisi, kapanan kategoriler),
+  paketin kapsadığı ihtiyaç ve onaylanmamış rota kendiliğinden aramayı durdurur.
+- `intentFrame.placeholderOf` gezinin kendi gecesini (karavan, kamp, tekne) asla doldurulacak yer saymaz; çekmecenin
+  "Seç"i de artık onu otelle değiştirmez.
+- `restoredOwnStay`: böyle değişmiş bir kayıt, başlangıcın tuttuğu iziyle (adı, günleri, şehri) bir kez geri gelir.
+- Kaydı seçili olmayan rota durağı kendi kaydından çizilir (karavan), otel çizimi değil.
