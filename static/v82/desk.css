@@ -51,3 +51,37 @@ body.still .q-rmark.busy::after, body.still .q-rsk { animation: none; }
 .q-int[data-desk][data-stage="planned"][data-st="sel"] .q-rcard {
   box-shadow: 0 2px 6px rgba(28, 26, 51, .05), 0 16px 34px -16px rgba(91, 69, 224, .45), inset 0 0 0 1.5px var(--q-acc);
 }
+
+/* ---- 4 · the deck: a white card, three cards fanned on the mark's place, two thin lilac sheets under it ---- */
+.q-int[data-desk]:has(.q-rsec) { padding-bottom: 10px; }
+.q-int[data-desk]:has(.q-rsec) .q-rcard {
+  background: #fff; outline: 0;
+  box-shadow: inset 0 0 0 1.5px #c9bffa, 0 1px 2px rgba(28, 26, 51, .06), 0 6px 0 -3px #fff, 0 6px 0 -1.5px #d9d2f8, 0 12px 0 -6px #fff,
+    0 12px 0 -4.5px #e7e2fa, 0 22px 28px -18px rgba(91, 69, 224, .35);
+}
+.q-int[data-desk]:has(.q-rsec) .q-rstage { color: var(--q-acc-d); }
+.q-int[data-desk]:has(.q-rsec) .q-rhd .q-nm, .q-int[data-desk]:has(.q-rsec) .q-nm .q-rpl { color: var(--q-ink); }
+.q-rmark.q-fan { background: none; box-shadow: none; overflow: visible; }
+.q-rmark.q-fan > span {
+  position: absolute; left: 9px; top: 5px; width: 26px; height: 34px; border-radius: 7px; background: #fff; display: grid; place-items: start center; padding-top: 4px; box-sizing: border-box;
+  box-shadow: 0 1px 3px rgba(28, 26, 51, .16), inset 0 0 0 1px rgba(28, 26, 51, .1); transform: rotate(var(--turn, 0deg)); transform-origin: 50% 120%;
+}
+.q-rmark.q-fan .q-logo, .q-rmark.q-fan .z-lgi { width: 18px; height: 18px; border-radius: 5px; font-size: 8px; }
+.q-rmark.q-fan .z-lgi img { width: 18px; height: 18px; }
+/* "Seç 7": the count in a white box on the button */
+.q-int[data-desk] .q-rsec { padding: 0 5px 0 14px; gap: 8px; }
+.q-int[data-desk] .q-rsec .q-rmini {
+  position: static; display: grid; place-items: center; min-width: 24px; height: 24px; padding: 0 6px; box-sizing: border-box; border-radius: 7px;
+  background: #fff; color: var(--q-acc-d); font-size: 13px; font-weight: 800; box-shadow: none;
+}
+
+/* ---- 5 · the drawer: the plane in its title, the source to its page, what the traveller brought in gold ---- */
+.dr-t .q-rpl { display: inline-flex; vertical-align: -3px; margin: 0 2px; color: var(--q-ink); font-style: normal; }
+.dr-t .q-rpl .q-mi { width: 22px; height: 22px; transform: rotate(45deg); }
+.dr-slt a { display: inline-flex; align-items: center; gap: 6px; color: inherit; text-decoration: none; }
+.dr-slt a .q-ext { font-size: 12px; font-weight: 800; color: var(--q-acc-d); }
+.dr-slt a:hover b { text-decoration: underline; }
+.dr-op.own { box-shadow: inset 0 0 0 2px #e2b65a, 0 10px 26px -20px rgba(166, 116, 18, .55); background: linear-gradient(180deg, #fffaf0, #fff 120px); }
+.dr-op.own.cur { box-shadow: inset 0 0 0 2px var(--q-acc), 0 0 0 3px #f3dca8; }
+.dr-own { color: #8a5a12; font-weight: 700; }
+.dr-own b { display: inline-block; padding: 1px 7px; border-radius: 99px; background: #fbe9c4; color: #7a4d0c; font-size: 11px; font-weight: 800; }

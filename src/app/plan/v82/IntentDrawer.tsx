@@ -14,7 +14,7 @@ import { choiceOf } from "../../../lib/choice";
 import type { GroupDecision, Part } from "../../../lib/decision";
 import { dayBand, flightSlots, guestGap, guestGapText, priceAge, waySlots, groupLabel, partsWhy, placeText, prosCons, rentalSlots, reviewsHead, scoreParts, staySlots, weightShares, type CardSlot, type SlotIcon } from "../../../lib/drawerCard";
 import { drawerList, optionDay, optionTab, pickReason, type DrawerTab, type SortKey } from "../../../lib/drawerView";
-import { L } from "../../../lib/i18n";
+import { fromName, L } from "../../../lib/i18n";
 import { headName, optionPrice, type SelfSearch } from "../../../lib/intentFrame";
 import type { IntentVM, OptionVM } from "../../../lib/intents";
 import { formatPrice } from "../../../lib/items";
@@ -34,6 +34,7 @@ import { WeightTuner } from "./WeightTuner";
 import { Ic, Mark, type IconName } from "./icons";
 import type { Typical } from "./OptionCompact";
 import { CarrierLogo } from "./OptionRow";
+import { ModeIcon } from "./modeIcons";
 
 export type Family = "stay" | "rental" | "ticket";
 
@@ -127,8 +128,12 @@ function Slots({ slots, url, compact = false }: { slots: CardSlot[]; url: string
         return (
           <li key={s.key} className={`dr-slt ${s.tone}`} title={compact ? `${s.label}: ${s.value}` : undefined}>
             {s.key === "source" && url ? (
-              <a href={url} target="_blank" rel="noreferrer">
+              <a href={url} target="_blank" rel="noreferrer" title={L(`${s.value} sayfasında aç`, `Open on ${s.value}`)}>
                 {body}
+                {/* (Karar Masası: the source goes to its page) */}
+                <span className="q-ext" aria-hidden>
+                  ↗
+                </span>
               </a>
             ) : (
               body
@@ -278,12 +283,20 @@ export function TicketOption({ o, vm, art, current, why, parts, off, solo, onPic
   const f = rowFace(o, vm.kind);
   const slots = (vm.kind === "flight" ? flightSlots : waySlots)(o.item, o.brand?.label ?? null);
   return (
-    <article className={`dr-op dr-tk${current ? " cur" : ""}`} data-item-id={o.id}>
+    <article className={`dr-op dr-tk${current ? " cur" : ""}${o.yours ? " own" : ""}`} data-item-id={o.id}>
       <header className="dr-th">
         <CarrierLogo mark={f.mark} art={art} />
         <span className="dr-tn">
           <Name o={{ ...o, title: f.name }} />
-          {f.sub && <small>{f.sub}</small>}
+          {o.yours ? (
+            // (Karar Masası: what the traveller brought stands out in gold, where it came from said)
+            <small className="dr-own">
+              <b>{L("Senin", "Yours")}</b>
+              {o.brand?.label ? ` · ${L(`${fromName(o.brand.label)} kaydettin`, `saved ${fromName(o.brand.label)}`)}` : f.sub ? ` · ${f.sub}` : ""}
+            </small>
+          ) : (
+            f.sub && <small>{f.sub}</small>
+          )}
         </span>
         <Rank o={o} off={off} solo={solo} />
       </header>
@@ -497,7 +510,19 @@ export function IntentDrawer({ vm, options, dropped = [], chosenId, art, links, 
               {options.length > 0 && <b>{options.length}</b>}
             </span>
             <span className="dr-t">
-              <b id={titleId}>{title}</b>
+              <b id={titleId}>
+                {vm.kind === "flight" && family === "ticket" && vm.head.route ? (
+                  <>
+                    {vm.head.route.from}{" "}
+                    <i className="q-rpl" aria-label="→">
+                      <ModeIcon name="plane" size={22} />
+                    </i>{" "}
+                    {vm.head.route.to}
+                  </>
+                ) : (
+                  title
+                )}
+              </b>
               {sub && <span>{sub}</span>}
             </span>
             <button type="button" className="q-pano dr-pano" disabled={!onPano || !vm.optionCount} onClick={onPano ?? undefined} aria-label={L(`${title}: Pano'da ${vm.optionCount} seçenek`, `${title}: ${vm.optionCount} options on the Board`)}>
@@ -594,8 +619,18 @@ export function IntentDrawer({ vm, options, dropped = [], chosenId, art, links, 
                 <Ic name="link" size={20} />
               </span>
               <span className="dr-nt">
-                <b>{family === "stay" ? L("Bulduğun otelin bağlantısını buraya bırak", "Drop the link of a place you found here") : family === "rental" ? L("Bulduğun kiralamanın bağlantısını buraya bırak", "Drop the link of a rental you found here") : vm.kind === "flight" ? L("Bulduğun uçuşun bağlantısını buraya bırak", "Drop the link of a flight you found here") : L("Bulduğun biletin bağlantısını buraya bırak", "Drop the link of a ticket you found here")}</b>
+                {vm.kind === "flight" ? (
+                  <>
+                    {/* (Karar Masası: "+ Seninkini ekle", a link or a screenshot) */}
+                    <b>+ {L("Seninkini ekle", "Add yours")}</b>
+                    <small>{L("Bağlantıyı bırak ya da ekran görüntüsünü sürükle; desteye girer, aynı ağırlıkla puanlanır.", "Drop the link or drag the screenshot; it joins the deck, scored by the same weights.")}</small>
+                  </>
+                ) : (
+                  <>
+                <b>{family === "stay" ? L("Bulduğun otelin bağlantısını buraya bırak", "Drop the link of a place you found here") : family === "rental" ? L("Bulduğun kiralamanın bağlantısını buraya bırak", "Drop the link of a rental you found here") : L("Bulduğun biletin bağlantısını buraya bırak", "Drop the link of a ticket you found here")}</b>
                 <small>{L("Kaydettiğin her sayfa desteye eklenir ve aynı ağırlıkla puanlanır.", "Every page you save joins the deck, scored by the same weights.")}</small>
+                  </>
+                )}
                 {(links.length > 0 || onAsk) && (
                   <span className="dr-mrow">
                     {links.length > 0 && <small>{L("Bakmak için:", "Look on:")}</small>}

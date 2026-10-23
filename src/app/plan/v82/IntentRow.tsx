@@ -11,8 +11,8 @@ import { ratingParts, type SelfSearch } from "../../../lib/intentFrame";
 import type { IntentVM, OptionVM } from "../../../lib/intents";
 import { weekdayLong, type RailDate } from "../../../lib/railDates";
 import { shortDay } from "../../../lib/ideas";
-import type { RowPart, RowView } from "../../../lib/rowView";
-import { ticketFace } from "../../../lib/ticketFrame";
+import { deckLead, type RowPart, type RowView } from "../../../lib/rowView";
+import { carrierMark, ticketFace } from "../../../lib/ticketFrame";
 import { Editable } from "../../cards/InlineEdit";
 import { Ic, Mark } from "./icons";
 import { ModeIcon, modeIconOf, StageBadge } from "./modeIcons";
@@ -264,6 +264,25 @@ function TicketMark({ vm, view, art, add = null }: { vm: IntentVM; view: RowView
   );
 }
 
+/**
+ * Karar Masası's deck (karar 4, "deste C"): three of its cards fanned on the mark's place, the best one in front, its
+ * carrier's logo on each; two thin lilac sheets under the card say there are more (CSS).
+ */
+function DeckFan({ options, art }: { options: OptionVM[]; art: string }) {
+  const best = deckLead(options);
+  const top = [...(best ? [best] : []), ...options.filter((o) => o !== best)].slice(0, 3).reverse();
+  const turn = top.length === 3 ? [-16, 0, 16] : top.length === 2 ? [-9, 9] : [0];
+  return (
+    <span className="q-rmark q-fan" aria-hidden>
+      {top.map((o, i) => (
+        <span key={o.id} style={{ "--turn": `${turn[i]}deg` } as React.CSSProperties}>
+          <CarrierLogo mark={carrierMark(o.carrier, o.item)} art={art} small />
+        </span>
+      ))}
+    </span>
+  );
+}
+
 /** A deck of the options' carriers (three logos crossed), for a ticket's Birikenler. */
 function CarrierDeck({ options, art }: { options: OptionVM[]; art: string }) {
   return (
@@ -314,10 +333,13 @@ export function TicketRow({ vm, view, art, date, on, ticket, links, onDrawer, me
   const face = ticketFace(vm);
   const logo = face?.mark && face.mode !== "car" ? <CarrierLogo mark={face.mark} art={art} small /> : null;
   const deciding = view.slot.kind === "pick";
+  // (Karar Masası: a flight's deck opens the drawer itself, "Seç 7"; the row has nothing of its own to unfold)
+  const deck = view.desk && deciding;
+  const press = () => (deck ? on.pick() : setOpen(!open));
   // (Karar Masası: while the AI or the source looks, the hours and the price load where they will stand)
   const loading = Boolean(view.busy) && !deciding;
   const all = [...(vm.chosen ? [vm.chosen] : []), ...vm.options, ...(vm.more ?? [])];
-  const body = deciding ? (
+  const body = deck ? null : deciding ? (
     <div className="q-rp2">
       <div className="q-rhalf">
         <span className="q-rht">{L("Birikenler", "Saved so far")}</span>
@@ -346,24 +368,25 @@ export function TicketRow({ vm, view, art, date, on, ticket, links, onDrawer, me
     ticket
   );
   return (
-    <div className={`q-row${open ? " open" : ""}`} data-face="ticket">
+    <div className={`q-row${open && !deck ? " open" : ""}`} data-face="ticket">
       <RailCol date={date} editable={editable} />
       <div className="q-rcard">
         <div
           className="q-rrow"
           role="button"
           tabIndex={0}
-          aria-expanded={open}
-          aria-controls={open ? panelId : undefined}
+          aria-expanded={deck ? undefined : open}
+          aria-haspopup={deck ? "dialog" : undefined}
+          aria-controls={open && !deck ? panelId : undefined}
           aria-describedby={chipId}
-          onClick={() => setOpen(!open)}
+          onClick={press}
           onKeyDown={(e) => {
             if (e.target !== e.currentTarget || (e.key !== "Enter" && e.key !== " ")) return;
             e.preventDefault();
-            setOpen(!open);
+            press();
           }}
         >
-          <TicketMark vm={vm} view={view} art={art} add={on.add} />
+          {deck ? <DeckFan options={all} art={art} /> : <TicketMark vm={vm} view={view} art={art} add={on.add} />}
           <span className="q-rhd">
             <Lead view={view} />
             <h4 className="q-nm" title={view.title}>
@@ -402,7 +425,7 @@ export function TicketRow({ vm, view, art, date, on, ticket, links, onDrawer, me
           </span>
         </div>
         {ask}
-        <div className="q-rp" id={panelId} hidden={!open}>
+        <div className="q-rp" id={panelId} hidden={!open || deck}>
           {open && body}
           {open && acts && <div className="q-racts">{acts}</div>}
         </div>

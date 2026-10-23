@@ -76,3 +76,19 @@ export async function saveLang(next: Lang): Promise<void> {
   setLang(next);
   await chrome.storage.local.set({ lang: next });
 }
+
+/** Brands said otherwise than spelled ("Skyscanner" is "skayskenır": its ending follows the sound). */
+const SOUNDS_BACK = /skyscanner|booking|google|kayak|trip\.com|agoda|klook|expedia|airlines|airways/i;
+
+/**
+ * "Kiwi.com'dan", "Pegasus'tan", "Airbnb'den": a name with its "from" ending (Turkish vowel harmony, a hard consonant
+ * hardens d to t). English: "from X".
+ */
+export function fromName(name: string): string {
+  if (current === "en") return `from ${name}`;
+  const lower = name.toLocaleLowerCase("tr").replace(/[^a-zçğıöşü]+$/u, "");
+  const vowels = lower.match(/[aeıioöuü]/gu) ?? [];
+  const back = SOUNDS_BACK.test(name) || /[aıou]/u.test(vowels.at(-1) ?? "a");
+  const hard = /[fstkçşhp]$/u.test(lower);
+  return `${name}'${hard ? "t" : "d"}${back ? "a" : "e"}n`;
+}
