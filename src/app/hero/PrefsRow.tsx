@@ -31,6 +31,16 @@ function Prefs({ trip, decisions }: { trip: Trip; decisions: Decisions | null })
   };
   const away = () => (clearTimeout(leave.current), (leave.current = setTimeout(() => pop.close(), 260)));
   useEffect(() => () => clearTimeout(leave.current), []);
+  // (a button under the mouse taken away, Evet answered: the browser tells no "left" after, so the mouse is watched while open)
+  useEffect(() => {
+    if (!pop.open) return;
+    const move = (e: PointerEvent) => {
+      if (pop.box.current?.contains(e.target as Node)) clearTimeout(leave.current);
+      else if (e.pointerType === "mouse") away();
+    };
+    document.addEventListener("pointermove", move);
+    return () => document.removeEventListener("pointermove", move);
+  });
   // Understood after the hero was drawn (a note, a priority said): it fades in once.
   const appear = useAppear(!nothing, !!decisions);
   // The last entry removed, the question answered: the window goes, so a later one doesn't come back already open.
