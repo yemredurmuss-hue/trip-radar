@@ -37,6 +37,12 @@ describe("rowView: a flight, a train, a way of travel (the thin row)", () => {
     expect(r.stageWord).toBe("Bilet elde");
     expect(r.slot).toEqual({ kind: "none" });
   });
+  it("bought with its code and a seat: the seat on the stub beside the code's word (Karar Masası, karar 8)", () => {
+    const { trip, items } = japan();
+    const seated = items.map((i) => (i.bookingRef === "K7T2QX" ? { ...i, statusNote: "Koltuk 14C" } : i));
+    const r = rowView(find(boardOf(trip, seated, JAPAN_TODAY).intents, "flight:kix-ist"));
+    expect(r.figure).toEqual({ big: "K7T2QX", small: "PNR · koltuk 14C", code: true });
+  });
   it("bought with nothing to show: Bilet alındı (Karar Masası), its ticket the last step, no paid sum guessed", () => {
     const vm = find(jp(), "flight:kix-ist");
     const r = rowView({ ...vm, access: vm.access && { ...vm.access, code: null, doc: { count: 0, name: null } } });

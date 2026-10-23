@@ -27,8 +27,22 @@ export function TimelineRail({ info, lead, children, hidden, dated = false }: {
   /** "Gizlenenler · n", at the end. */
   hidden?: ReactNode;
 }) {
-  const [open, set] = useState<string | null>(null);
-  const rows = useMemo(() => ({ open, set }), [open]);
+  const [open, setOpen] = useState<string | null>(null);
+  // (the rows that come open by themselves, closed by the traveller: Karar Masası's chosen and bought flights)
+  const [closed, setClosed] = useState<ReadonlySet<string>>(() => new Set());
+  const rows = useMemo(
+    () => ({
+      open,
+      // (opened on purpose, a row that was closed opens again: a pick, "Aldım")
+      set: (key: string | null) => {
+        setOpen(key);
+        if (key) setClosed((c) => (c.has(key) ? new Set([...c].filter((k) => k !== key)) : c));
+      },
+      closed,
+      shut: (key: string, yes: boolean) => setClosed((c) => (yes === c.has(key) ? c : yes ? new Set(c).add(key) : new Set([...c].filter((k) => k !== key)))),
+    }),
+    [open, closed],
+  );
   return (
     <RowOpenContext.Provider value={rows}>
     <div className={dated ? "q-ints q-tl" : "q-ints"}>

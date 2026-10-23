@@ -1,5 +1,5 @@
 #!/bin/bash
-# Publishes the current build to the `release` branch, which installed updaters pull hourly.
+# Publishes the current build to the `release` branch, which installed updaters pull every minute (scripts/mac/install.sh, StartInterval 60).
 # Bump the version in static/manifest.json first: updaters only act on a new version.
 set -euo pipefail
 cd "$(dirname "$0")/.."

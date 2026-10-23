@@ -25,6 +25,22 @@ commit, `ucus-satiri-kod` dalında:
   "…'da benle gel". Deneme: `scripts/companion-check.mjs`.
 - PRIVACY.md §4 ve §16, `store/listing.md` izin gerekçeleri güncellendi.
 
+### 23 Ekim sabahı: canlıda eksik kalan kararlar (0.40.1)
+
+Canlıyı kararlarla yan yana koyunca eksik çıkanlar ve yapılanlar:
+
+1. **Kendiliğinden arama (karar 3, "hepsi aranır"):** boş ihtiyaç yalnız çekmece açılınca aranıyordu. Şimdi
+   `IntentBox.useAutoSearch`: uçuş, konaklama, kara yolu ve eSIM kaynağın sorabildiği anda aranır, en iyi üçü seçenek
+   olur; ihtiyaç başına bir kez (`trip-radar:auto-searched:<gezi>:<ihtiyaç>`), bulunamazsa yeniden sorulur.
+2. **Boş kutuda iki arama:** tek "Ara" yerine büyüteçle "Ara" / "Kendin ara ↗" ve yıldızla "AI ara" yan yana
+   (`IntentRow` `q-two`, `aiSearch`); bütün boş kutularda.
+3. **Seçtin ve Bilet alındı açık gelir (karar 6, 7):** `useRowOpen(key, auto)`; kapatılan `RowOpenContext.closed`'da
+   kalır, yeniden seçilince ya da alınınca açılır.
+4. **Değiştir tek seçenekte de:** seçili uçuşun bağlantılarında hep durur.
+5. **Koçanda koltuk (karar 8):** "PNR · koltuk 14C".
+
+Kalan: hero'da "Bu gezide n şey getirdin" sayacı; Ulaşım ve Konaklama'ya aynı dilin geçişi (ayrı adım).
+
 ## İlke: hiçbir şey sessizce gitmez
 
 1. Canlıda bugün görünen ve yapılan her şey aşağıdaki envanterde. Her birinin karşısında **kalır**, **değişir** ya da

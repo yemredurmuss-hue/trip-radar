@@ -295,7 +295,11 @@ export function rowView(vm: IntentVM): RowView {
         : paid
           ? { big: paid, small: L("ödendi", "paid"), code: true, plain: true }
           : { big: L("Onaylı", "Confirmed"), small: null, code: true, plain: true };
-    else if (vm.access?.code && label) figure = { big: vm.access.code.value, small: mode ? ticketCodeLabel(mode, label) : label, code: true };
+    else if (vm.access?.code && label) {
+      const which = mode ? ticketCodeLabel(mode, label) : label;
+      // (Karar Masası, karar 8: a flight's stub carries its seat beside the code's word)
+      figure = { big: vm.access.code.value, small: desk && tf?.note ? `${which} · ${L("koltuk", "seat")} ${tf.note}` : which, code: true };
+    }
     else if (stage === "ticket") figure = { big: L("Ekli", "On file"), small: booking ? L("onay", "confirmation") : L("bilet", "ticket"), code: true };
   } else if (status === "arranged" && !vm.selfArranged && chosen) {
     // (nothing to book: what it costs is the page's or one's own guess, said so)

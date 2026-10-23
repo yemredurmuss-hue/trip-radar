@@ -1025,11 +1025,12 @@ try {
   assert.equal(await home.getAttribute("data-stage"), "bought");
   assert.equal(flat([await home.locator(".q-rslot .q-proof").innerText()])[0], "Bileti ekle");
   assert.equal(flat([await home.locator(".q-rrow > .q-rfig").innerText()])[0], "", "no paid sum guessed");
-  await home.locator(".q-rrow[role=button]").click({ position: { x: 80, y: 20 } });
+  // (Karar Masası, karar 7: bought with its ticket still to add, the flight comes open by itself; it closes on its row)
   await home.locator(".q-rp .z-tk").waitFor();
   assert.match(flat([await routeOf(home)])[0], /19:40.*LIS.*01:35.*\+1.*IST/s);
   assert.match(flat([await home.locator(".q-rp").innerText()])[0], /Son adım: bileti buraya bırak/);
   await home.locator(".q-rrow[role=button]").click({ position: { x: 80, y: 20 } });
+  await home.locator(".q-rp .z-tk").waitFor({ state: "hidden" });
   await home.locator(".q-rmenu .z-mb").click();
   await home.getByRole("menuitem", { name: "Rezervasyonu geri al" }).click();
   await sec("flight").locator('.q-ints > .q-int[data-st="sel"]', { has: app.locator(".q-nm", { hasText: "Lizbon" }) }).waitFor();
@@ -4198,7 +4199,7 @@ try {
   const ubudCard = ekSec("stay").locator('.q-ints > .q-int[aria-label="Ubud"]');
   // v13 (K82): the source's picks are beside the plan, in the drawer "Seçenek bul" opens (under the options it has, none here).
   // (plan v14: its "Ara" opens the drawer where the source's picks come)
-  await ubudCard.locator(".q-rslot .q-pick", { hasText: "Ara" }).click();
+  await ubudCard.locator(".q-rslot .q-srch").click();
   const ubudDrawer = board.locator("aside.dr");
   await ubudDrawer.waitFor();
   const picksRow = ubudDrawer.locator(".dr-offers .ek-offers.ek-picks").first();
@@ -4945,7 +4946,7 @@ try {
   const lkFirst = lkStay.locator('.q-ints > .q-int[aria-label="Sigiriya"]');
   assert.equal(await lkFirst.getAttribute("data-st"), "ai", "a proposed route's stay is our pick's colour");
   // (plan v14: the card's "Ara" still looks for it; "Rotayı onayla" on its strip)
-  await lkFirst.locator(".q-rslot .q-pick", { hasText: "Ara" }).waitFor();
+  await lkFirst.locator(".q-rslot .q-srch").waitFor();
   assert.equal(await lkFirst.locator(".q-rft .q-agree").innerText(), "Rotayı onayla");
   await lkFirst.locator(".q-rft .q-agree").click();
   await lkStay.locator('.q-ints > .q-int[data-st="ai"]').first().waitFor({ state: "detached" });

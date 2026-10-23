@@ -14,6 +14,7 @@ import { areaSearch, changeList, currentOption, frameForm, headName, offerNeed, 
 import { offersLooking } from "../../../lib/looking";
 import { othersLabel, othersOpen, rememberOthers } from "../../../lib/othersFold";
 import { queryOf, type StayCandidate } from "../../../lib/offerSources";
+import { MAX_OFFERS, validOffers } from "../../../lib/offerSource";
 import { typicalNight } from "../../../lib/stayPicks";
 import type { IntentStatus, IntentVM, OptionVM } from "../../../lib/intents";
 import { addDays } from "../../../lib/plan";
@@ -25,7 +26,7 @@ import type { Item, LegChoice, Trip } from "../../../lib/types";
 import { entryDomId } from "../../../lib/progress";
 import { withLegChoice } from "../../../lib/legs";
 import { agreeRoute } from "../../../lib/startTrip";
-import { setHidden, setInstalled, setItemStatus, cancelBooking, markBooked, updateTrip } from "../../actions";
+import { addOffer, fillOffer, setHidden, setInstalled, setItemStatus, cancelBooking, markBooked, updateTrip } from "../../actions";
 import { ProofAsk } from "./ProofAsk";
 import type { MenuEntry } from "../../cards/CardShell";
 import { openDoc, useDocPick } from "../../cards/DocAccess";
@@ -96,6 +97,60 @@ function useStepPop(status: IntentStatus, ms = 520, to?: readonly IntentStatus[]
     return () => clearTimeout(t);
   }, [status]);
   return pop;
+}
+
+/**
+ * "Aranıyor" (karar 3: hepsi kendiliğinden aranır): a need with nothing saved for it (a flight, a stay, a way between two
+ * cities, an eSIM) is looked for by itself once the source can ask it: the source is asked (the row says it looks while it
+ * does, offersLooking) and the best three it finds join the row as options (addOffer; a stay's placeholder from the start
+ * takes the first in place, fillOffer), once per need (remembered, so what the traveller took away doesn't come back).
+ * Nothing without a source; a need the source can't ask stays to "Kendin ara" and "AI ara".
+ */
+const AUTO_KEY = (tripId: string, need: string) => `trip-radar:auto-searched:${tripId}:${need}`;
+/** The needs being looked for by themselves now (one search a need, however many boxes draw it). */
+const autoGoing = new Set<string>();
+const autoDone = (key: string): boolean => {
+  try {
+    return localStorage.getItem(key) != null;
+  } catch {
+    return false;
+  }
+};
+function useAutoSearch(vm: IntentVM, tripId: string, on: boolean, placeholder: Item | null): void {
+  const { offers: source } = useEmptyEnv();
+  const { selfAt } = useV82Env();
+  const need = on ? offerNeed(vm, selfAt) : null;
+  const hold = useRef(placeholder);
+  hold.current = placeholder;
+  useEffect(() => {
+    if (!need || !source.available()) return;
+    const key = AUTO_KEY(tripId, need.key);
+    if (autoGoing.has(key) || autoDone(key)) return;
+    autoGoing.add(key);
+    void offersLooking
+      .track(need.key, source.offers(need))
+      .then(
+        async (list) => {
+          const found = validOffers(list, need).slice(0, MAX_OFFERS);
+          // (nothing found: asked again next time it's drawn, the source keeps its answer for hours)
+          if (!found.length) return;
+          try {
+            localStorage.setItem(key, String(found.length));
+          } catch {
+            // (no storage: asked again next time)
+          }
+          let spot = hold.current;
+          for (const o of found) {
+            if (spot) await fillOffer(spot, o, need);
+            else await addOffer(tripId, o, need);
+            spot = null;
+          }
+        },
+        () => undefined,
+      )
+      .finally(() => autoGoing.delete(key));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per need
+  }, [need?.key, source, tripId]);
 }
 
 /** The areas the offers source's candidates are in, for an empty stay (regionHints); nothing without a source. */
@@ -573,6 +628,7 @@ function Box({ vm, color, extra, field, pickDoc, dropDoc = null, cancel, askedHi
   const lookingNow = useLooking(offersLooking, need?.key);
   const busy = vm.status === "searching" && looking && (a.searching || lookingNow);
   const placeholder = need?.kind === "stay" ? placeholderOf(vm.itemIds.map((id) => v82.byId.get(id)).filter((i): i is Item => i != null), env.trip, "stay") : null;
+  useAutoSearch(vm, env.tripId, form === "searching" && !vm.routeDraft && (vm.options.length === 0 || placeholder != null) && !(vm.more?.length), placeholder);
   const headArt = vm.head.image ? { src: vm.head.image, photo: true } : { src: art, photo: false };
   const camp = record != null && vm.kind === "stay" && isCampStay(record);
   const here = onHere ? hereOf(vm) : null;
@@ -646,6 +702,9 @@ function Box({ vm, color, extra, field, pickDoc, dropDoc = null, cancel, askedHi
       // (Karar Masası: "Kendin ara ↗" is the first site; the "+" opens the drawer, its "+ Seninkini ekle" and the source)
       self: links[0] ?? null,
       add: view.desk ? openDrawer : null,
+      // (an empty box's two searches side by side: the drawer or a site yourself, or the AI)
+      ai: a.ask,
+      aiBusy: a.searching,
     };
     const menuNode = <IntentMenu entries={menu} name={name} />;
     // (Karar Masası: bought, the row opens with its stamp pressed on and the last step under the ticket)
@@ -707,9 +766,11 @@ function Box({ vm, color, extra, field, pickDoc, dropDoc = null, cancel, askedHi
       const acts = view.desk ? (
         <>
           {shown?.brand?.label && (vm.status === "chosen" || vm.status === "suggested") && <span className="q-rsrc">{fromName(shown.brand.label)}</span>}
-          {all.length > 1 && (vm.status === "chosen" || vm.status === "suggested" || vm.status === "booked") && (
+          {/* (a chosen record can always be changed: its drawer, the other options and "+ Seninkini ekle"; a leg's way has its own) */}
+          {(all.length > 1 || (vm.status === "chosen" && record != null)) && (vm.status === "chosen" || vm.status === "suggested" || vm.status === "booked") && (
             <button type="button" className="q-chg q-lnk" onClick={openDrawer}>
-              {vm.status === "suggested" ? L("Seçenekler", "Options") : L("Değiştir", "Change")} <b>{many}</b>
+              {vm.status === "suggested" ? L("Seçenekler", "Options") : L("Değiştir", "Change")}
+              {many > 1 && <b>{many}</b>}
             </button>
           )}
           <span className="q-rsp" />

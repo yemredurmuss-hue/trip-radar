@@ -42,10 +42,27 @@
 @media (prefers-reduced-motion: reduce) { .q-rmark.busy::after, .q-rsk { animation: none; } }
 body.still .q-rmark.busy::after, body.still .q-rsk { animation: none; }
 
-/* "Kendin ara ↗": the site filled with the route and the day, a quiet outlined button (the AI's search is in ⋯ and the drawer) */
-.q-pick.q-self { background: #fff; color: var(--q-acc-d); box-shadow: inset 0 0 0 1px #dcd6fb; gap: 4px; text-decoration: none; }
+/* the empty flight's two searches, side by side: "Kendin ara ↗" (the site filled with the route and the day, a quiet
+   outlined button) and "AI ara" (the chat looks and fills the deck; lilac, "AI arıyor…" while it does) */
+.q-two { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; justify-content: flex-end; }
+/* (the slot's column, 118px for one button, takes the two) */
+.q-rrow:has(> .q-rslot .q-two) { grid-template-columns: 38px minmax(0, 1fr) auto auto 28px; }
+.q-rrow.card:has(> .q-rslot .q-two) { grid-template-columns: 84px minmax(0, 1fr) auto auto 28px; }
+.q-rrow.gap:has(> .q-rslot .q-two) { grid-template-columns: 36px minmax(0, 1fr) auto 28px; }
+.q-pick.q-self { background: #fff; color: var(--q-acc-d); box-shadow: inset 0 0 0 1px #dcd6fb; gap: 5px; text-decoration: none; }
 .q-pick.q-self:hover { background: var(--q-acc-s); }
 .q-pick.q-self .q-ext { font-size: 12px; }
+.q-pick.q-ai2 { background: var(--q-acc-s); color: var(--q-acc-d); border: 0; gap: 5px; cursor: pointer; }
+.q-pick.q-ai2:hover { background: #e4defd; }
+.q-pick.q-ai2:disabled { cursor: default; opacity: .75; }
+.q-pick.q-ai2 svg { color: var(--q-acc); }
+@media (max-width: 700px) {
+  .q-rrow:has(> .q-rslot .q-two) { grid-template-columns: 38px minmax(0, 1fr) auto 24px; }
+  .q-rrow.card:has(> .q-rslot .q-two) { grid-template-columns: 64px minmax(0, 1fr) auto 24px; }
+  .q-rrow.gap:has(> .q-rslot .q-two) { grid-template-columns: 36px minmax(0, 1fr) 24px; }
+  .q-two { flex-wrap: wrap; }
+  .q-rrow.gap > .q-rslot .q-two { justify-content: flex-start; }
+}
 
 /* ---- 6 · Seçtin: decided, not bought ---- */
 .q-int[data-desk][data-stage="planned"][data-st="sel"] .q-rcard {

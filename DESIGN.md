@@ -164,9 +164,15 @@ bugünkü sözleriyle kalır, aynı dil onlara ayrı bir adımda geçer.
 - **Tek düğme, hep sağda:** her hâlin tek eylemi sağdaki 118 px yuvada. Açık biletin altında yalnız bağlantılar, tek
   satır: "Skyscanner'dan · Değiştir 7 · ✓ Aldım"; alınınca bırakma alanında düğme değil "ya da dosya seç".
 - **Aranacak / Aranıyor:** kesik kenarlı soluk kart, beyaz kesik karoda uçak, köşesinde kesik "+" (bulduğunu ekle:
-  çekmeceyi ve "+ Seninkini ekle"yi açar), sağda "Kendin ara ↗" (rota ve günle dolu ilk site). "Aranıyor" yalnız AI ya da
-  kaynak gerçekten ararken yazar: karoda dönen halka, saat ve fiyatın yerinde yükleniyor çubukları. AI'ya sormak ⋯
-  menüsünde "AI arasın" ve çekmecede "AI yeniden arasın".
+  çekmeceyi ve "+ Seninkini ekle"yi açar), sağda iki arama yan yana: büyüteçle "Kendin ara ↗" (rota ve günle dolu ilk
+  site) ve yıldızla "AI ara" (sohbet arar, ararken "AI arıyor…"). "Aranıyor" yalnız AI ya da kaynak gerçekten ararken
+  yazar: karoda dönen halka, saat ve fiyatın yerinde yükleniyor çubukları. ⋯ menüsünde "AI arasın", çekmecede "AI yeniden
+  arasın" da durur.
+- **Kendiliğinden arama (hepsi):** boş bir ihtiyaç (uçuş, konaklama, iki şehir arası yol, eSIM) kaynağın sorabildiği
+  anda kendiliğinden aranır; bulunan en iyi üçü seçenek olur (konaklamada başlangıcın yer tutucusu ilkini yerinde alır).
+  Her ihtiyaç bir kez: bulduktan sonra gezginin kaldırdığı geri gelmez; bir şey bulunmazsa sonraki açılışta yeniden sorulur.
+  Bu tek kural üç kategoride de geçerli; boş kutuların hepsinde de iki arama durur: büyüteçle "Ara" (çekmece: kaynağın
+  önerileri ve siteler) ve yıldızla "AI ara".
 - **Deste:** beyaz kart, ince lila çerçeve ve altında iki ince lila kat; işaretin yerinde üç logolu yelpaze (en iyisi
   önde); söz "7 seçenek", satırda en iyisinin taşıyıcısı, saatleri ve aktarması, fiyatın altında "en iyisi"; sağda
   "Seç 7" (sayı beyaz kutuda). Desteye basmak da çekmeceyi açar; satırın altında açılan gövde yok.
@@ -174,11 +180,12 @@ bugünkü sözleriyle kalır, aynı dil onlara ayrı bir adımda geçer.
   "Senin · Kiwi.com'dan kaydettin" (`i18n.fromName`); en altta "+ Seninkini ekle: bağlantıyı bırak ya da ekran görüntüsünü
   sürükle", siteler ve "AI yeniden arasın".
 - **Seçtin:** seçince çekmece kapanır, satır kendiliğinden açık bilet olur; mor 1,5 px çerçeve, köşede yarım dolu halka,
-  söz "Seçtin", sağda "Satın al ↗". Değiştir aynı çekmeceyi seçili olan işaretli açar.
+  söz "Seçtin", sağda "Satın al ↗". Seçili bir uçuş her açılışta açık gelir, kapatılabilir (kapatılan, yeniden seçilene ya
+  da alınana dek kapalı kalır). Değiştir tek seçenek olsa da durur; aynı çekmeceyi seçili olan işaretli açar.
 - **Bilet alındı:** düğme gider; sağda yeşil koçan ve üstünde yuvarlak, çift halkalı, dik damga ("Alındı" ve işaretlendiği
   gün; "Ben hallettim"de "Senin"), yarısı yırtık çizgiye taşar; koçanda "Bileti ekle" bağlantısı. Kart açık gelir; açıkken
   damga biletin yanında 96 px, altında "Son adım: bileti buraya bırak". Basılırken mühür hareketi (`mv-stamp`).
-- **Bilet elde:** koçanda kod ve etiketi; açıkken "Bileti aç", "Takvime ekle"; 48 saat kala "Online check-in ↗", uçuş
+- **Bilet elde:** koçanda kod ve etiketi, koltuğu biliniyorsa yanında ("PNR · koltuk 14C"); açıkken "Bileti aç", "Takvime ekle"; 48 saat kala "Online check-in ↗", uçuş
   günü kodu kopyalama ve canlı durum aynen kalır.
 - **Hat bağlanır (Uçuş):** soldaki çizgi yolculuğun kendisi. Her satır noktasının altında kendi parçasını çizer: alınan
   yeşil 4 px ve art arda alınan bacaklar noktadan noktaya tek çizgi, seçilen düz mor uçları açık, deste kesik lila, aranan

@@ -20,13 +20,17 @@ import { ModeIcon, modeIconOf, StageBadge, Stamp } from "./modeIcons";
 import { SelfLinks } from "./OptionCompact";
 import { CarrierLogo } from "./OptionRow";
 
-/** One row open at a time in a category (onay paketi: "aynı anda bir satır açık"). */
-export const RowOpenContext = createContext<{ open: string | null; set: (key: string | null) => void } | null>(null);
+/**
+ * One row open at a time in a category (onay paketi: "aynı anda bir satır açık"); Karar Masası's chosen and bought
+ * flights come open on their own (karar 6, 7: "açık gelir, kapanabilir"), each until it is closed (`closed`).
+ */
+export const RowOpenContext = createContext<{ open: string | null; set: (key: string | null) => void; closed?: ReadonlySet<string>; shut?: (key: string, closed: boolean) => void } | null>(null);
 
-export function useRowOpen(key: string): [boolean, (open: boolean) => void] {
+export function useRowOpen(key: string, auto = false): [boolean, (open: boolean) => void] {
   const ctx = useContext(RowOpenContext);
-  const [own, setOwn] = useState(false);
+  const [own, setOwn] = useState(auto);
   if (!ctx) return [own, setOwn];
+  if (auto && ctx.closed && ctx.shut) return [ctx.open === key || !ctx.closed.has(key), (open) => (ctx.shut!(key, !open), !open && ctx.open === key && ctx.set(null))];
   return [ctx.open === key, (open) => ctx.set(open ? key : ctx.open === key ? null : ctx.open)];
 }
 
@@ -138,9 +142,26 @@ export interface SlotOn {
   self?: SelfSearch | null;
   /** Karar Masası: the "+" on the mark's corner, what one found brought here (the drawer, its "+ Seninkini ekle"). */
   add?: (() => void) | null;
+  /** An empty box's other search, the AI's ("AI ara"), beside "Ara" / "Kendin ara ↗"; busy while it looks. */
+  ai?: (() => void) | null;
+  aiBusy?: boolean;
 }
 
-/** The one thing on the right (118 px): Ara · Seç and the count · Bunu seç · Satın al ↗ / Rezerve et ↗ · the state's hap. */
+/** "AI ara": the chat looks for it (busy while it does); the same in an empty box's slot and an empty flight's. */
+function aiSearch(on: SlotOn): ReactNode {
+  if (!on.ai) return null;
+  return (
+    <button type="button" className="q-pick q-rbtn q-ai2" disabled={on.aiBusy} onClick={(e) => (e.stopPropagation(), on.ai?.())} title={L("AI senin için arasın, bulduklarını seçeneklere koysun", "Let the AI look and add what it finds to the options")}>
+      <Ic name="spark" size={14} />
+      <span>{on.aiBusy ? L("AI arıyor…", "AI is looking…") : L("AI ara", "AI search")}</span>
+    </button>
+  );
+}
+
+/**
+ * The one thing on the right (118 px): Ara and AI ara (an empty box's two searches) · Seç and the count · Bunu seç · Satın
+ * al ↗ / Rezerve et ↗ · the state's hap.
+ */
 function Slot({ view, on, logo }: { view: RowView; on: SlotOn; logo: ReactNode }) {
   const s = view.slot;
   const stop = (e: React.MouseEvent) => e.stopPropagation();
@@ -152,24 +173,55 @@ function Slot({ view, on, logo }: { view: RowView; on: SlotOn; logo: ReactNode }
         </button>
       );
     case "self":
-      if (on.self)
+      // (two searches, both always there: on a site yourself, or the AI looks and brings options back to the deck)
+      if (on.self || on.ai)
         return (
-          <a className="q-pick q-rbtn q-self" href={on.self.url} target="_blank" rel="noreferrer" onClick={stop} title={L(`${on.self.name} sitesinde ara`, `Search on ${on.self.name}`)}>
-            <span>{L("Kendin ara", "Search yourself")}</span>
-            <span className="q-ext">↗</span>
-          </a>
+          <span className="q-two">
+            {on.self && (
+              <a className="q-pick q-rbtn q-self q-srch" href={on.self.url} target="_blank" rel="noreferrer" onClick={stop} title={L(`${on.self.name} sitesinde ara`, `Search on ${on.self.name}`)}>
+                <Ic name="search" size={14} stroke={2.4} />
+                <span>{L("Kendin ara", "Search yourself")}</span>
+                <span className="q-ext">↗</span>
+              </a>
+            )}
+            {aiSearch(on)}
+          </span>
         );
       return on.ask ? (
         <button type="button" className="q-pick q-rbtn" onClick={(e) => (stop(e), on.ask?.())}>
           {L("Ara", "Search")}
         </button>
       ) : null;
-    case "ask":
+    case "ask": {
+      // (an empty box's two searches: "Ara" (the drawer: the source's picks and the sites; else a site of its own, "↗") and
+      // "AI ara" (the chat looks); one alone when that is all there is)
+      const drawer = on.ask && on.ask !== on.ai ? on.ask : null;
+      const search = drawer ? (
+        <button type="button" className="q-pick q-rbtn q-self q-srch" onClick={(e) => (stop(e), drawer())}>
+          <Ic name="search" size={14} stroke={2.4} />
+          <span>{L("Ara", "Search")}</span>
+        </button>
+      ) : on.self ? (
+        <a className="q-pick q-rbtn q-self q-srch" href={on.self.url} target="_blank" rel="noreferrer" onClick={stop} title={L(`${on.self.name} sitesinde ara`, `Search on ${on.self.name}`)}>
+          <Ic name="search" size={14} stroke={2.4} />
+          <span>{L("Ara", "Search")}</span>
+          <span className="q-ext">↗</span>
+        </a>
+      ) : null;
+      const ai = aiSearch(on);
+      if (search || ai)
+        return (
+          <span className="q-two">
+            {search}
+            {ai}
+          </span>
+        );
       return on.ask ? (
-        <button type="button" className="q-pick q-rbtn" onClick={(e) => (stop(e), on.ask?.())}>
+        <button type="button" className="q-pick q-rbtn q-srch" onClick={(e) => (stop(e), on.ask?.())}>
           {L("Ara", "Search")}
         </button>
       ) : null;
+    }
     case "pick":
       return (
         <button type="button" className="q-pick q-rbtn q-rsec" onClick={(e) => (stop(e), on.pick())} aria-label={L(`Seç · ${s.count} seçenek`, `Choose · ${s.count} options`)}>
@@ -356,7 +408,8 @@ export function broughtOf(dt: DataTransfer): Brought | null {
 
 /** A flight, a train, a bus, a boat, a transfer: one thin row; pressed, its ticket (or its search) opens under it. */
 export function TicketRow({ vm, view, art, date, on, ticket, links, onDrawer, menu, acts, chipId, editable, under = null, focused = false, openKey, ask = null, bring = null, brought = null }: TicketRowProps) {
-  const [open, setOpen] = useRowOpen(openKey ?? vm.key);
+  // (Karar Masası: chosen, or bought with its ticket still to add, the flight comes open as its ticket; it can be closed)
+  const [open, setOpen] = useRowOpen(openKey ?? vm.key, view.desk && (vm.status === "chosen" || view.stamp != null));
   // (getirme anları: dragged over, the row says it will take it; dropped, it is this row's, never the board's guess)
   const [over, setOver] = useState(false);
   const drop = bring
