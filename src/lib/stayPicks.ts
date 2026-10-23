@@ -286,8 +286,11 @@ function fitScore(c: StayCandidate, all: StayCandidate[], ctx: PickCtx, wants: W
  * fewer than three hotels, fewer cards ("Sana en uygun" first, the other only when it really is cheaper or better rated).
  */
 export function pickThree(cands: StayCandidate[], ctx: PickCtx): Picks {
-  // Only the kinds of place this trip can stay in (stayFitOf: no dorm bed for two on a romantic month).
-  const list = distinct(cands ?? []).filter((c) => fitsTrip(c, ctx.fit));
+  // Only the kinds of place this trip can stay in (stayFitOf: no dorm bed for two on a romantic month), and when a site
+  // prices any of them for these very nights, only those: a hotel known by its usual range alone isn't known to have a
+  // room then (0.40.5, Emre: "aranan tarihlere göre müsait olanlar"). None priced: as before, each said as typical.
+  const fit = distinct(cands ?? []).filter((c) => fitsTrip(c, ctx.fit));
+  const list = fit.some((c) => c.nightly != null) ? fit.filter((c) => c.nightly != null) : fit;
   const none: Picks = { best: null, cheaper: null, comfier: null };
   if (!list.length) return none;
   const wants = wantsOf(ctx.trip ?? null);
