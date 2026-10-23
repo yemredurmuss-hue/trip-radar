@@ -193,6 +193,41 @@ adımı" ve "Tarih hattı" bölümleri.
 
 `static/manifest.json`, `package.json`, `PRIVACY.md` sürümü; `scripts/release.sh` yalnız "yayınla" deyince.
 
+## Değişecek testler
+
+Bugün satırı doğrudan çizen birim testi yok; satırın sözleri `tests/rowView.test.ts`, `railDates.test.ts` ve
+`drawerCard.test.ts` ile, çizimi e2e ile denetleniyor. Görüntü karşılaştırması (baseline) yok.
+
+**Kural:** sınıf adları aynı kalır (`.q-rrow`, `.q-rslot`, `.q-rsec`, `.q-take`, `.q-cta`, `.q-proof`, `.q-rstub`,
+`.q-rp`, `.q-racts`, `.q-rstage`, `data-stage`, `data-st`). e2e'nin yardımcıları (`scripts/e2e.mjs:11-33`: `openRow`,
+`pressCard`, `routeOf`) 36 yerde bunlara dayanıyor; yeni görünüm yeni sınıf ekler, eskisini silmez.
+
+| Aşama | Test | Bugün ne bekliyor | Ne olacak |
+| --- | --- | --- | --- |
+| 1 | `tests/rowView.test.ts:44` | uçuşta "Alındı" | "Bilet alındı" |
+| 1 | `tests/rowView.test.ts:72-76` | uçuş destesinde "2 seçenek", `pick`, rakamın altı "önerimiz" ya da "ilk sırada" | söz ve slot aynı; rakamın altı "en iyisi", satırda en iyisinin saatleri |
+| 1 | `tests/rowView.test.ts:104-110` | Osaka konaklamasında "Aranacak" ve `ask` | **aynı kalır**; uçuş için yeni test: `self` ("Kendin ara ↗") |
+| 1 | `tests/rowView.test.ts:53, 64` | trende "Planda" | **aynı kalır** (Ulaşım'a dokunulmaz) |
+| 1 | `tests/rowView.test.ts:26-27` | başlık "İstanbul → Tokyo" | **aynı kalır** (düz metinde ok; simge yalnız çizimde) |
+| 1 | `scripts/e2e.mjs:1023, 1044` (adım 4) | uçuşun sözü "Alındı" | "Bilet alındı" |
+| 1 | `scripts/e2e.mjs:575` (adım 4) | Uçuş başlığı "1 alındı · 1 karar" | aynı; "planda" olan yerde "seçildi" |
+| 1 | `scripts/e2e.mjs:913, 975, 969, 1330` | uçuşta "Seç", "✨ Önerimiz", "Sen hallettin" | **aynı kalır** |
+| 2 | `scripts/e2e.mjs:23` `pressCard` | `.q-rslot .q-rsec` | aynı sınıf "Seç 7" düğmesinde kalır |
+| 2 | `openRow` ile açılan uçuş destesi | basınca altında `.q-rp` | Uçuş destesinde basınca çekmece açılır; bu çağrılar `pressCard`'a döner |
+| 2 | `scripts/e2e.mjs:942-991` | çekmecenin kartları | aynı; Kaynak yuvasında "↗" ve "Senin" için yeni denetim |
+| 3 | `scripts/e2e.mjs:1026` | `.q-rslot .q-proof` "Bileti ekle" | uçuşta koçanın içinde; Ulaşım'da aynı kalır |
+| 3 | `scripts/e2e.mjs:1065` | `.q-rstub` "ABC123 PNR" | kod aynı; koltuk varsa eklenir |
+| 3 | `scripts/e2e.mjs:985, 1069` | `.q-racts .q-chg` "Değiştir"; tek seçenekli rezervasyonda Değiştir yok | aynı sınıf, aynı kural; tek satır bağlantı |
+| 3 | `scripts/e2e.mjs:1031` | "Son adım: bileti buraya bırak" | **aynı kalır** |
+| 3 | `scripts/e2e.mjs:1038-1043, 1293-1296, 1408-1411` | Aldım kutusu yolları | **aynı kalır**; kayıttan sonra satırın açık geldiği ve damga eklenir |
+| 3 | `tests/patagonya0388.test.tsx:168-191` | açık bilette `q-cta` "Bileti al" ve logo | **aynı kalır** |
+| 4 | yeni `tests/railDates.test.ts` | | `railLinks`: kenetli, kopuk, kesik, noktalı |
+| 5 | yeni testler | | `verdictOf` (yalnız bilinenle), satıra bırakmanın `forNeed`'i, Gelenler |
+
+**Görüntüyle karşılaştırma (yeni):** aşama 0'da `scripts/v82-shots.mjs` ile Uçuş, Ulaşım ve Konaklama'nın bugünkü
+görüntüleri 390 ve 1440'ta "önce" olarak alınır. Her aşamadan sonra aynı görüntüler "sonra" olarak alınır; Ulaşım ve
+Konaklama birebir aynı kalmalı.
+
 ## Benle gezen eklenti: nasıl çalışacak
 
 ### Bugün eklenti ne yapıyor
