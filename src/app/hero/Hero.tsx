@@ -24,7 +24,7 @@ import { XIcon } from "./icons";
 import { PrefsRow } from "./PrefsRow";
 import { visaDoneOf } from "../../lib/visa";
 import { TripMenu, type TripMenuActions } from "./TripMenu";
-import { COVER_W, sizedPhoto } from "../../lib/photoCache";
+import { coverWidth, sizedPhoto } from "../../lib/photoCache";
 
 /** E11: how long folding and unfolding take (ms). */
 const FOLD_MS = 260;
@@ -140,7 +140,7 @@ export function Hero(props: HeroProps) {
   }, [folded]);
 
   // (the small picture is the cover itself, at the address the cover was drawn from: nothing more loaded)
-  const cover = props.mosaic.cover?.image ? sizedPhoto(props.mosaic.cover.image, COVER_W) : null;
+  const cover = props.mosaic.cover?.image ? sizedPhoto(props.mosaic.cover.image, coverWidth(props.mosaic.cover.image)) : null;
   const during = props.today != null;
   const slimOn = folded || during;
   const line = heroLine({ range: props.dates?.range ?? null, estimated: !!props.dates?.estimated, rough: !!props.dates?.rough, people: props.who.count, counts, budget: budget?.view ?? null });

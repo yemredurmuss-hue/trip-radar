@@ -37,6 +37,19 @@ export function sizedPhoto(url: string, width: number): string {
 
 /** The cover's width: the hero's and the trip card's (one address, so the card's photo is the hero's, already loaded). */
 export const COVER_W = 1280;
+/**
+ * The hero's own cover width: drawn up to ~1400 px wide, on a sharp (2x) screen 1280 px was half what it needs (2026-10-24:
+ * "foto kalitesi inanılmaz düşük"), so there it asks for 2560 where the server resizes (Unsplash, Pexels; a Wikimedia
+ * thumbnail stays 1280: wider than its file it won't load).
+ */
+export function coverWidth(url: string, dpr = typeof devicePixelRatio === "number" ? devicePixelRatio : 1): number {
+  if (dpr < 1.5) return COVER_W;
+  try {
+    return /^images\.(unsplash|pexels)\.com$/.test(new URL(url).hostname) ? COVER_W * 2 : COVER_W;
+  } catch {
+    return COVER_W;
+  }
+}
 /** A card's photo (half the panel at most, 2x): what FallbackImg asks for unless told. */
 export const CARD_W = 640;
 /** A thumbnail's (a day's 64 px, a plan row's, a map stop's), 2x. */

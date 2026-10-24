@@ -1,6 +1,6 @@
 // The hero's photos asked for at the size they're drawn (2026-10-22: light and kept, lib/photoCache.ts).
 import { describe, expect, it, vi } from "vitest";
-import { foundPhoto, heldPhoto, holdPhoto, keepFound, sizedPhoto } from "../src/lib/photoCache";
+import { coverWidth, foundPhoto, heldPhoto, holdPhoto, keepFound, sizedPhoto } from "../src/lib/photoCache";
 
 describe("sizedPhoto", () => {
   it("Unsplash: its width, quality and format by its own server", () => {
@@ -46,5 +46,15 @@ describe("foundPhoto / keepFound", () => {
     expect(() => keepFound("Ubud", "https://x/y.jpg")).not.toThrow();
     expect(foundPhoto("Ubud")).toBeNull();
     vi.unstubAllGlobals();
+  });
+});
+
+describe("coverWidth", () => {
+  it("a sharp screen asks the resizing servers for twice the cover; a plain one and Wikimedia stay at 1280", () => {
+    expect(coverWidth("https://images.unsplash.com/photo-1?w=2400", 2)).toBe(2560);
+    expect(coverWidth("https://images.pexels.com/photos/1/a.jpeg?w=2400", 2)).toBe(2560);
+    expect(coverWidth("https://images.unsplash.com/photo-1?w=2400", 1)).toBe(1280);
+    expect(coverWidth("https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/x.jpg/1280px-x.jpg", 2)).toBe(1280);
+    expect(coverWidth("not a url", 2)).toBe(1280);
   });
 });

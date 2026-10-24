@@ -58,7 +58,7 @@ import type { Typical } from "./OptionCompact";
 import { useLooking } from "./Searching";
 import { useCrossfade, type Entry } from "./useCrossfade";
 import { useIntentActions } from "./useIntentActions";
-import { useV82Env } from "./v82Env";
+import { useV82Env, type V82Env } from "./v82Env";
 import { emptyNightText, isDatedSection, overlapText, railDate, type Overlap } from "../../../lib/railDates";
 import { timingAsk, type StayTiming } from "../../../lib/stayTiming";
 import { freeCancelText, guestGap, guestGapText } from "../../../lib/drawerCard";
@@ -171,6 +171,30 @@ function useAutoSearch(vm: IntentVM, tripId: string, on: boolean, placeholder: I
       .finally(() => autoGoing.delete(key));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once per need
   }, [need?.key, source, tripId]);
+}
+
+/** Whether a need is looked for by itself now (useAutoSearch's `on`): from its own row, or from its shut category (AutoSearch). */
+function autoOn(vm: IntentVM, form: ReturnType<typeof frameForm>, need: ReturnType<typeof offerNeed> | null, placeholder: Item | null, shape: ReturnType<typeof shapeOf>, byId: V82Env["byId"]): boolean {
+  // (never against what the trip already says: the van's nights, a day trip, the car's drives, a route still to agree: 0.40.3)
+  const ownStay = vm.kind === "stay" && vm.itemIds.some((id) => isCampStay(byId.get(id)));
+  const autoBlock = need ? autoSearchBlock(need, shape, { ownStay, covered: vm.cover != null }) : "covered";
+  // (0.40.5: a stop of a proposed route too, it has its own nights: found, its row is a deck, "Seç 3")
+  return form === "searching" && autoBlock == null && (vm.options.length === 0 || placeholder != null) && !(vm.more?.length);
+}
+
+/**
+ * A need's own search while its category is shut (draws nothing; 2026-10-24, Emre: "planlama ekranı açılınca AI tüm
+ * kategoriler için arama yapıyor olacak"): the plan looks for every need as it opens, not only the open category's, and
+ * the closed row shows it looking and then what came (Section). One search a need however many ask (autoGoing).
+ */
+export function AutoSearch({ vm }: { vm: IntentVM }) {
+  const env = useCardEnv();
+  const v82 = useV82Env();
+  const form = vm.routeDraft ? "searching" : frameForm(vm);
+  const need = form === "searching" || form === "options" ? offerNeed(vm, v82.selfAt) : null;
+  const placeholder = need?.kind === "stay" ? placeholderOf(vm.itemIds.map((id) => v82.byId.get(id)).filter((i): i is Item => i != null), env.trip, "stay") : null;
+  useAutoSearch(vm, env.tripId, autoOn(vm, form, need, placeholder, shapeOf(env.trip), v82.byId), placeholder);
+  return null;
 }
 
 /** The areas the offers source's candidates are in, for an empty stay (regionHints); nothing without a source. */
@@ -653,11 +677,7 @@ function Box({ vm, color, extra, field, pickDoc, dropDoc = null, cancel, askedHi
   const lookingNow = useLooking(offersLooking, need?.key);
   const busy = vm.status === "searching" && looking && (a.searching || lookingNow);
   const placeholder = need?.kind === "stay" ? placeholderOf(vm.itemIds.map((id) => v82.byId.get(id)).filter((i): i is Item => i != null), env.trip, "stay") : null;
-  // (never against what the trip already says: the van's nights, a day trip, the car's drives, a route still to agree: 0.40.3)
-  const ownStay = vm.kind === "stay" && vm.itemIds.some((id) => isCampStay(v82.byId.get(id)));
-  const autoBlock = need ? autoSearchBlock(need, shape, { ownStay, covered: vm.cover != null }) : "covered";
-  // (0.40.5: a stop of a proposed route too, it has its own nights: found, its row is a deck, "Seç 3")
-  useAutoSearch(vm, env.tripId, form === "searching" && autoBlock == null && (vm.options.length === 0 || placeholder != null) && !(vm.more?.length), placeholder);
+  useAutoSearch(vm, env.tripId, autoOn(vm, form, need, placeholder, shape, v82.byId), placeholder);
   // (0.40.3: a hotel 0.40.1's search put in the van's place goes back to being the van's night, once)
   useEffect(() => {
     if (vm.kind !== "stay" || shape.sleep === "hotel") return;

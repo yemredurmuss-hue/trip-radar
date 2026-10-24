@@ -18,6 +18,7 @@ import type { CarrierMark } from "../../../lib/ticketFrame";
 import { CarrierLogo } from "./OptionRow";
 import { ringArcs, ringDone, ringParts, type PlanRing } from "../../../lib/planRing";
 import { sizedPhoto, THUMB_W } from "../../../lib/photoCache";
+import { SearchDots } from "./Searching";
 
 /** The dated categories' heads take the rows' icons (MingCute): a plane, a hotel, a train. */
 const MODE_OF: Partial<Record<SectionId, ModeIconName>> = { flight: "plane", stay: "hotel", transport: "train" };
@@ -91,7 +92,7 @@ function useCompleted(done: boolean): boolean {
   return on;
 }
 
-export function CategoryRow({ row, meta, open, onToggle, onDecide, decideTip, budgetTip, extraTip }: {
+export function CategoryRow({ row, meta, open, onToggle, onDecide, decideTip, budgetTip, extraTip, seeking = false, fresh = 0 }: {
   row: RowView;
   meta: SectionMeta;
   open: boolean;
@@ -104,21 +105,34 @@ export function CategoryRow({ row, meta, open, onToggle, onDecide, decideTip, bu
   budgetTip: ReactNode;
   /** C28: its open suggestions ("1 öneri"), said in the tip too. */
   extraTip: string | null;
+  /** Shut, while the source looks for its needs: a light goes over the row, its icon sends a ring, "Aranıyor" with the dots. */
+  seeking?: boolean;
+  /** Shut, after: how many options came, a small number on its icon until it is opened. */
+  fresh?: number;
 }) {
   const [failed, setFailed] = useState<ReadonlySet<string>>(() => new Set());
   const said = row.parts.map((p) => p.text).join(" · ");
   const alerts = row.parts.filter((p) => p.tone);
   const win = useCompleted(Boolean(row.ring && ringDone(row.ring)));
   return (
-    <div className={`q-row1${win ? " q-win" : ""}`} onClick={onToggle}>
+    <div className={`q-row1${win ? " q-win" : ""}${seeking ? " q-seek" : ""}`} onClick={onToggle}>
       <span className={`q-ic${MODE_OF[row.id] ? " mc" : ""}`} aria-hidden>
         {MODE_OF[row.id] ? <ModeIcon name={MODE_OF[row.id]!} size={24} /> : <KindIcon kind={meta.icon} size={20} />}
+        {fresh > 0 && <b className="q-fresh">{fresh > 9 ? "9+" : fresh}</b>}
       </span>
       <button type="button" className="q-tt" aria-expanded={open} onClick={(e) => (e.stopPropagation(), onToggle())}>
         <b>{row.name}</b>
         <small className="q-kw">
           {row.line}
           {extraTip && <span className="q-sgn"> · {extraTip}</span>}
+          {seeking && (
+            <span className="q-seekw" role="status">
+              {" · "}
+              <SearchDots />
+              {L("Aranıyor", "Searching")}
+            </span>
+          )}
+          {fresh > 0 && <span className="sr-only">{L(` · ${fresh} yeni seçenek`, ` · ${fresh} new option${fresh === 1 ? "" : "s"}`)}</span>}
           {alerts.map((p) => (
             <span key={p.text} aria-hidden>
               {" · "}

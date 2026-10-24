@@ -931,7 +931,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       <SilhouetteDefs />
       {/* v30: two tabs atop the board, Plan · Pano. "Gün gün" is the Plan's third way to read (PlanOrder). v82: the Pano tab opens the
           Pano window over the plan (and reads as chosen while it is open); Belgeler is in that window's side menu (C5). */}
-      {timeline.entries.length > 0 && (
+      {/* (not only a dated trip: one with a rough date has no timeline but a Pano all the same) */}
+      {(timeline.entries.length > 0 || items.length > 0) && (
         <div className="view-tabs" role="tablist" aria-label={L("Görünüm", "View")}>
           <button role="tab" aria-selected={!pano} className={!pano ? "on" : ""} onClick={() => (setPano(null), setView("plan"))}>
             {L("Plan", "Plan")}

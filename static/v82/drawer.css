@@ -228,6 +228,13 @@
   .dr-card > .dr-why { margin: 8px 14px 0; }
 }
 .dr-tm .dr-m { font-size: 13px; gap: 6px; }
+/* The Pano's two columns (a card ~440 px): the rule above reads the card's own width and gave the photo the stacked card's
+   2.4:1 strip, while the card's grid (read against the Pano) kept the photo on the left: a strip in the top corner, white
+   under it (2026-10-24). There the photo fills its column top to bottom, as in the drawer. */
+@media (min-width: 861px) {
+  .pd-cards .dr-card > .dr-ph { align-self: stretch; height: auto; min-height: 200px; aspect-ratio: auto; }
+}
+
 .dr-tm .dr-m small.warn { color: var(--q-warn); }
 
 /* Kaçırdıklarımız 4: a price older than two days in amber with "Yenile"; one that fell since in lila ("Dün €71'di"). */

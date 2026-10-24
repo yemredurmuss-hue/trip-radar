@@ -61,6 +61,21 @@ button.q-ring:focus-visible { outline: 2px solid var(--q-acc); outline-offset: 2
 body.still .q-row1.q-win::after, body.still .q-row1.q-win .q-ringsvg { animation: none; }
 @media (prefers-reduced-motion: reduce) { .q-row1.q-win::after, .q-row1.q-win .q-ringsvg { animation: none; } }
 .q-kw .q-alert { font-style: normal; font-weight: 700; }
+/* A shut category looking for its needs (2026-10-24, "kategoriler seviyesinde arama hissi"): a soft light in its colour goes
+   over the row again and again, its icon sends a ring, "Aranıyor" with the dots. After, the options that came: a small
+   number on the icon, as a notice, until it is opened. Still: the dots stand, no light, no ring. */
+.q-ic { position: relative; }
+.q-row1.q-seek { position: relative; overflow: hidden; }
+.q-row1.q-seek::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(100deg, transparent 25%, color-mix(in srgb, var(--c) 12%, transparent) 50%, transparent 75%); transform: translateX(-100%); animation: q-seek-light 1.8s ease-in-out infinite; }
+.q-row1.q-seek .q-ic::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; animation: q-seek-ring 1.8s ease-out infinite; }
+@keyframes q-seek-light { to { transform: translateX(100%); } }
+@keyframes q-seek-ring { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--c) 40%, transparent); } 100% { box-shadow: 0 0 0 9px color-mix(in srgb, var(--c) 0%, transparent); } }
+.q-kw .q-seekw { color: var(--c); font-weight: 700; }
+.q-kw .q-seekw .th-dots { margin-right: 5px; vertical-align: 1px; }
+.q-kw .q-seekw .th-dots i { background: currentColor; }
+.q-fresh { position: absolute; top: -7px; right: -7px; min-width: 20px; height: 20px; padding: 0 5px; box-sizing: border-box; border-radius: 99px; background: var(--q-acc); color: #fff; font-size: 11.5px; font-weight: 800; line-height: 20px; text-align: center; box-shadow: 0 0 0 2px #fff; animation: q-win-pop .5s cubic-bezier(.3, 1.6, .5, 1) both; }
+body.still .q-row1.q-seek::after, body.still .q-row1.q-seek .q-ic::after, body.still .q-fresh { animation: none; }
+@media (prefers-reduced-motion: reduce) { .q-row1.q-seek::after, .q-row1.q-seek .q-ic::after, .q-fresh { animation: none; } }
 .q-bar { position: relative; display: flex; height: 6px; border-radius: 99px; background: #ebe9f2; overflow: hidden; }
 .q-bar i { display: block; height: 100%; transition: width .3s var(--e-out); }
 .q-bar .bk { background: var(--q-ok); }
