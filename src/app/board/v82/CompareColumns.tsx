@@ -6,7 +6,7 @@
 // written as "yok").
 import { L } from "../../../lib/i18n";
 import type { PanoNeed, PanoOption } from "../../../lib/panoBoard";
-import { Likes, PickButton, Score, SourceBadge, StateChip, tintOf, Visual } from "./parts";
+import { Likes, PageName, PageVisual, PickButton, Score, SourceBadge, StateChip, tintOf } from "./parts";
 
 /** Its pluses or minuses under their label; none: the cell stays, empty. */
 function Lines({ lines, label, tone }: { lines: string[]; label: string; tone: "p" | "m" }) {
@@ -28,13 +28,13 @@ function Column({ option, need }: { option: PanoOption; need: PanoNeed }) {
   return (
     <article className={`q-col${option.current ? " cur" : ""}`} id={`pn-${option.id}`} aria-label={option.item.name} data-item-id={option.id} style={tintOf(need.section)}>
       <div className={`q-c1 q-ph${option.mark ? " lg" : ""}`}>
-        <Visual option={option} />
+        <PageVisual option={option} />
         <SourceBadge source={option.source} />
         <StateChip option={option} multi={need.multi} long />
       </div>
       <div className="q-c2">
         {option.brand && <span className="q-pgbn">{option.brand}</span>}
-        <b>{option.name}</b>
+        <PageName option={option} />
         {option.sub && <small>{option.sub}</small>}
       </div>
       <div className="q-c3">

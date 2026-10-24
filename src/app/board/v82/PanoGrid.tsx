@@ -5,7 +5,7 @@
 import { L } from "../../../lib/i18n";
 import { inView, recordsText, type PanoNeed, type PanoOption } from "../../../lib/panoBoard";
 import { isDeck, PanoDeck } from "./PanoDeck";
-import { Likes, PickButton, Score, SourceBadge, StateChip, tintOf, Visual } from "./parts";
+import { Likes, PageName, PageVisual, PickButton, Score, SourceBadge, StateChip, tintOf } from "./parts";
 
 export function PanoCard({ option, need, fresh }: { option: PanoOption; need: PanoNeed; fresh: boolean }) {
   const site = option.brand ? (
@@ -27,13 +27,13 @@ export function PanoCard({ option, need, fresh }: { option: PanoOption; need: Pa
   return (
     <article className={`q-pg${option.current ? " cur" : ""}${fresh ? " ar-new" : ""}`} id={`pn-${option.id}`} aria-label={option.item.name} data-item-id={option.id} style={tintOf(need.section)}>
       <div className={`q-ph${option.mark ? " lg" : ""}`}>
-        <Visual option={option} />
+        <PageVisual option={option} />
         <SourceBadge source={option.source} />
         <StateChip option={option} multi={need.multi} />
       </div>
       <div className="q-pgb">
         {site}
-        <b>{option.name}</b>
+        <PageName option={option} />
         {option.sub && <small>{option.sub}</small>}
         <div className="q-pgm">
           {option.price ? (

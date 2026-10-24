@@ -54,6 +54,37 @@ export function SourceBadge({ source }: { source: PanoSource | null }) {
   }
 }
 
+/** The option's own page, a web address only: on the Pano its picture and name go there (Emre 2026-10-24: "panoda her şey tıklayınca kaynağına gitsin"). */
+export const pageOf = (option: PanoOption): string | null => (option.url && /^https?:\/\//i.test(option.url) ? option.url : null);
+
+/** The picture, going to the option's page when it has one; laid out as the picture alone (pano.css .q-phgo). */
+export function PageVisual({ option }: { option: PanoOption }) {
+  const go = pageOf(option);
+  return go ? (
+    <a className="q-phgo" href={go} target="_blank" rel="noreferrer" tabIndex={-1} aria-hidden>
+      <Visual option={option} />
+    </a>
+  ) : (
+    <Visual option={option} />
+  );
+}
+
+/** The option's name, going to its page when it has one. */
+export function PageName({ option }: { option: PanoOption }) {
+  const go = pageOf(option);
+  return (
+    <b>
+      {go ? (
+        <a className="q-pgnm" href={go} target="_blank" rel="noreferrer">
+          {option.name}
+        </a>
+      ) : (
+        option.name
+      )}
+    </b>
+  );
+}
+
 /** The picture: a page's photo, else the kind's drawing; a ticket its carrier's mark ("TK" on its colour). */
 export function Visual({ option }: { option: PanoOption }) {
   if (option.mark) {

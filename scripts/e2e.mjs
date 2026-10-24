@@ -1126,6 +1126,13 @@ try {
   // (plan v14: what was asked for is a chip while still deciding; on our pick it is in the details, ✓ Sessiz above)
   await app.screenshot({ path: `${out}/3-cards.png` });
   await portoBox.locator(".q-rrow.card").click({ position: { x: 200, y: 20 } });
+  // 2026-10-24 (Emre: "otel çekmecedeki seçenekler tıklayınca da kaynağa gitsin"): in the drawer too the name and the photo
+  // open the option's page in a new tab; its record (Tüm detaylar) is the ⋯ beside the name, pressed just below.
+  const casaOp = app.locator("aside.dr .dr-op", { has: app.locator(".dr-nm", { hasText: "Casa Azul" }) }).first();
+  const casaHref = await casaOp.locator("a.dr-nm").getAttribute("href");
+  assert.match(casaHref ?? "", /^https?:\/\//, "the drawer's option name goes to its page");
+  assert.equal(await casaOp.locator("a.dr-nm").getAttribute("target"), "_blank");
+  assert.equal(await casaOp.locator("a.dr-phgo").getAttribute("href"), casaHref, "the photo goes to the same page");
   await app.locator("aside.dr").getByRole("button", { name: "Casa Azul: tüm detaylar" }).click();
   const casaDrawer = app.getByRole("dialog");
   const construction = casaDrawer.locator(".pc-line", { hasText: "Yan binada inşaat gürültüsü" });

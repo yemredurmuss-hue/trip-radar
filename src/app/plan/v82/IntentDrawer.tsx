@@ -100,18 +100,32 @@ function Neden({ o, why, parts }: { o: OptionVM; why: string | null; parts: Part
   );
 }
 
-/** B14: an option's name opens its record (Tüm detaylar), where the evidence behind a finding is; the drawer gives way to it. */
+/**
+ * An option's name goes to its page, in the drawer as on the Pano (Emre 2026-10-24: "çekmecedeki seçenekler tıklayınca da
+ * kaynağa gitsin"); in the drawer its record (Tüm detaylar, B14: the evidence, the price's history, another trip, delete)
+ * is the small ⋯ beside it. With no page the name itself opens the record.
+ */
 function Name({ o }: { o: OptionVM }) {
   const open = useOpenRecord();
-  const go = useSourceLink(o);
+  const go = sourceLink(o);
+  const details = (
+    <button type="button" className="dr-dt" title={L("Tüm detaylar", "All details")} onClick={() => open?.(o)} aria-label={L(`${o.title}: tüm detaylar`, `${o.title}: all details`)}>
+      <Ic name="dots" size={14} />
+    </button>
+  );
+  if (go)
+    return (
+      <span className="dr-nmw">
+        <a className="dr-nm" href={go} target="_blank" rel="noopener noreferrer" title={L(`${o.title} · kaynağında aç`, `${o.title} · open where it was found`)}>
+          {o.title}
+        </a>
+        {open && details}
+      </span>
+    );
   return open ? (
     <button type="button" className="dr-nm" title={o.title} onClick={() => open(o)} aria-label={L(`${o.title}: tüm detaylar`, `${o.title}: all details`)}>
       {o.title}
     </button>
-  ) : go ? (
-    <a className="dr-nm" href={go} target="_blank" rel="noopener noreferrer" title={L(`${o.title} · kaynağında aç`, `${o.title} · open where it was found`)}>
-      {o.title}
-    </a>
   ) : (
     <b className="dr-nm" title={o.title}>
       {o.title}
@@ -120,18 +134,17 @@ function Name({ o }: { o: OptionVM }) {
 }
 
 /**
- * Where the card's photo and name go away from the drawer (the Pano, Emre: "panodaki şeyin üstüne basınca kaynağa gitsin"):
- * the option's own page, a web address only; in the drawer they open the record instead, so null there.
+ * Where the card's photo and name go (Emre: "panodaki şeyin üstüne basınca kaynağa gitsin", and the drawer's too): the
+ * option's own page, a web address only.
  */
-function useSourceLink(o: OptionVM): string | null {
-  const open = useOpenRecord();
+function sourceLink(o: OptionVM): string | null {
   const url = o.item.url;
-  return !open && url && /^https?:\/\//i.test(url) ? url : null;
+  return url && /^https?:\/\//i.test(url) ? url : null;
 }
 
-/** The card's photo; on the Pano it opens the option's page. */
+/** The card's photo: it opens the option's page. */
 function CardPhoto({ o, art }: { o: OptionVM; art: string }) {
-  const go = useSourceLink(o);
+  const go = sourceLink(o);
   const img = <img className={o.image ? "ph" : "art"} src={o.image ?? art} alt="" />;
   return go ? (
     <a className="dr-phgo" href={go} target="_blank" rel="noopener noreferrer" aria-label={L(`${o.title}: kaynağında aç`, `${o.title}: open where it was found`)}>
