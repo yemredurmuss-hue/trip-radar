@@ -76,6 +76,9 @@ button:focus-visible, .plus:focus-visible { outline: 3px solid #cfc7ff; outline-
 .pin { position: absolute; display: flex; align-items: center; gap: 6px; pointer-events: auto; }
 .pin.out { flex-direction: column-reverse; align-items: flex-start; }
 .pin.out .tag { max-width: var(--room, 120px); white-space: normal; border-radius: 10px; }
+.pin.edge .tag { position: absolute; right: calc(15px + var(--step, 0px)); top: calc(4px - var(--h, 30px) / 2); white-space: nowrap; }
+.pin.edge .plus .lbl { display: none; }
+.pin.edge .plus, .pin.edge.hot .plus, .pin.edge .plus:hover { width: 30px; padding: 0; }
 .plus { width: 30px; height: 30px; border-radius: 99px; border: 0; background: #5b45e0; color: #fff; font: 800 18px/1 system-ui, sans-serif; cursor: pointer;
   box-shadow: 0 4px 12px -4px rgba(91,69,224,.7); }
 .plus { width: auto; min-width: 30px; padding: 0 9px; display: inline-flex; align-items: center; justify-content: center; gap: 0; transition: padding 160ms ease, gap 160ms ease; }
@@ -1008,8 +1011,10 @@ function start() {
 
   /**
    * Each "+" beside its card, in the page's own coordinates (0.44.1): it scrolls with the page as the site's own parts do,
-   * never chasing it. Outside the card, by its right edge, so nothing of the result is covered (never its left: a site's
-   * filters sit there); with no room there on the card's top edge, stepping left of the site's own button.
+   * never chasing it. Always on the card's right (never its left: a site's filters sit there): outside it when there's
+   * room; with none (a flight list as wide as the page), half over its right edge at its middle, so it covers nothing of
+   * the result, its words (a label) along the top edge left of the site's own button (Emre 2026-10-24: "uçuş kartında da
+   * sağına al"; on the top edge it fell on the price).
    */
   const OUT = 52;
   /** The page's own name: its first visible h1 with words. */
@@ -1069,21 +1074,24 @@ function start() {
       const room = innerWidth - r.right - 18;
       const out = room >= OUT - 18;
       c.pin.classList.toggle("out", out);
+      c.pin.classList.toggle("edge", !out);
+      c.pin.style.transform = "none";
       if (out) {
         c.pin.style.setProperty("--room", `${room}px`);
         c.pin.style.top = `${r.top + y0 + 10}px`;
         c.pin.style.left = `${r.right + x0 + 10}px`;
-        c.pin.style.transform = "none";
       } else {
-        let right = Math.min(innerWidth - 40, r.right - 8);
-        // (the site's own button under the "+" (a heart, a share): the "+" steps left of it)
+        const edge = Math.min(r.right, innerWidth - 16);
+        // (the site's own button where the label meets the top edge (a heart, a share): the label steps left of it)
+        let step = 0;
         if (r.top > 0 && r.top < innerHeight) {
-          const under = document.elementsFromPoint(right - 15, r.top + 6).find((x) => x !== host && !host.contains(x));
-          if (under && c.el.contains(under) && under.closest("button, [role='button'], input, select")) right -= 44;
+          const under = document.elementsFromPoint(edge - 20, r.top + 6).find((x) => x !== host && !host.contains(x));
+          if (under && c.el.contains(under) && under.closest("button, [role='button'], input, select")) step = 44;
         }
-        c.pin.style.top = `${Math.max(4, r.top - 15) + y0}px`;
-        c.pin.style.left = `${right + x0}px`;
-        c.pin.style.transform = "translateX(-100%)";
+        c.pin.style.setProperty("--h", `${r.height}px`);
+        c.pin.style.setProperty("--step", `${step}px`);
+        c.pin.style.top = `${r.top + y0 + r.height / 2 - 15}px`;
+        c.pin.style.left = `${edge - 15 + x0}px`;
       }
     }
   };
