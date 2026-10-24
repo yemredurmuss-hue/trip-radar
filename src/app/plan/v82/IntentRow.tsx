@@ -5,7 +5,7 @@
 // 120 px card that doesn't fold (StayCard: its picture on the left, its city or kind over its name; pressed, the drawer
 // opens beside the plan, a booking's details under it), and a short open stretch between two stays as an amber empty night.
 // What a row says is lib/rowView.ts's; what it does stays IntentBox's (its menu, drawer, details, inline edit).
-import { createContext, useContext, useEffect, useId, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { carriesArrival, droppedLinks } from "../../arrive/useDropZone";
 import { L } from "../../../lib/i18n";
 import { ratingParts, type SelfSearch } from "../../../lib/intentFrame";
@@ -30,9 +30,19 @@ export const RowOpenContext = createContext<{ open: string | null; set: (key: st
 export function useRowOpen(key: string, auto = false): [boolean, (open: boolean) => void] {
   const ctx = useContext(RowOpenContext);
   const [own, setOwn] = useState(auto);
+  // A row open on its own that stops being so while on screen (a flight chosen, then bought: "Aldım") stays open: it is
+  // only a bought one coming into view that comes closed (2026-10-24).
+  const was = useRef(auto);
+  useEffect(() => {
+    if (was.current && !auto && ctx && ctx.open == null && !ctx.closed?.has(key)) ctx.set(key);
+    was.current = auto;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- when it stops coming open on its own
+  }, [auto]);
   if (!ctx) return [own, setOwn];
   if (auto && ctx.closed && ctx.shut) return [ctx.open === key || !ctx.closed.has(key), (open) => (ctx.shut!(key, !open), !open && ctx.open === key && ctx.set(null))];
-  return [ctx.open === key, (open) => ctx.set(open ? key : ctx.open === key ? null : ctx.open)];
+  // (in the moment it stops, before the effect above says so: no frame closed in between)
+  const keep = was.current && !auto && ctx.open == null && !ctx.closed?.has(key);
+  return [ctx.open === key || keep, (open) => ctx.set(open ? key : ctx.open === key ? null : ctx.open)];
 }
 
 /** The date column beside an intent: its day over its weekday, or a stay's range, weekdays and nights on a slice. */
