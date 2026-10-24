@@ -62,13 +62,13 @@ body.still .q-row1.q-win::after, body.still .q-row1.q-win .q-ringsvg { animation
 @media (prefers-reduced-motion: reduce) { .q-row1.q-win::after, .q-row1.q-win .q-ringsvg { animation: none; } }
 .q-kw .q-alert { font-style: normal; font-weight: 700; }
 /* A shut category looking for its needs (2026-10-24, "kategoriler seviyesinde arama hissi"): a soft light in its colour goes
-   over the row again and again, its icon sends a ring, "Aranıyor" with the dots. After, the options that came: a small
+   goes back and forth along the row (git gel, 2026-10-24), its icon sends a ring, "Aranıyor" with the dots. After, the options that came: a small
    number on the icon, as a notice, until it is opened. Still: the dots stand, no light, no ring. */
 .q-ic { position: relative; }
 .q-row1.q-seek { position: relative; overflow: hidden; }
-.q-row1.q-seek::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(100deg, transparent 25%, color-mix(in srgb, var(--c) 12%, transparent) 50%, transparent 75%); transform: translateX(-100%); animation: q-seek-light 1.8s ease-in-out infinite; }
+.q-row1.q-seek::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(100deg, transparent 30%, color-mix(in srgb, var(--c) 16%, transparent) 50%, transparent 70%); transform: translateX(-60%); animation: q-seek-light 1.3s cubic-bezier(.45, 0, .55, 1) infinite alternate; }
 .q-row1.q-seek .q-ic::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; animation: q-seek-ring 1.8s ease-out infinite; }
-@keyframes q-seek-light { to { transform: translateX(100%); } }
+@keyframes q-seek-light { to { transform: translateX(60%); } }
 @keyframes q-seek-ring { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--c) 40%, transparent); } 100% { box-shadow: 0 0 0 9px color-mix(in srgb, var(--c) 0%, transparent); } }
 .q-kw .q-seekw { color: var(--c); font-weight: 700; }
 .q-kw .q-seekw .th-dots { margin-right: 5px; vertical-align: 1px; }

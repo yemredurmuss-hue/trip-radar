@@ -4563,6 +4563,8 @@ try {
   const offersAsked = [];
   const offersFn = async (route) => {
     offersAsked.push(route.request().url());
+    // (a shut category's own search, 2026-10-24, may ask the source meanwhile: nothing for it, so only the chat's ask lands)
+    if (!/prefer=cheap|candidates=1/.test(route.request().url())) return route.fulfill({ headers: { "Access-Control-Allow-Origin": "*" }, json: { offers: [] } });
     await new Promise((resolve) => setTimeout(resolve, 1500));
     const offer = (id, title, rating, price, source, url, why) => ({ id, kind: "stay", title, photo: null, rating, price, currency: "EUR", nights: 3, url, why, source, fetchedAt: Date.now() });
     return route.fulfill({
@@ -4600,9 +4602,10 @@ try {
   assert.match(await chatCards.nth(1).innerText(), /8,9/);
   assert.equal(await chatCards.nth(0).locator('a[href="https://www.tripadvisor.com/Hotel_Review-e2e-favorita"]').count(), 2, "its page through the offer's own link");
   // A stay with no ceiling asks its candidates first (the three picks); none here, so the cheapest as before.
-  const offersOnly = offersAsked.filter((u) => !/candidates=1/.test(u));
-  assert.ok(offersAsked.length > offersOnly.length, "the stay's candidates asked first");
-  assert.ok(offersOnly.length >= 1 && offersOnly.every((u) => /kind=stay/.test(u) && /city=Porto/.test(u) && /prefer=cheap/.test(u)), "the source asked for Porto's cheapest");
+  // (the chat's ask says what it prefers; a shut category's own searches, which don't, are left out)
+  const offersOnly = offersAsked.filter((u) => !/candidates=1/.test(u) && /prefer=/.test(u));
+  assert.ok(offersAsked.some((u) => /candidates=1/.test(u)), "the stay's candidates asked first");
+  assert.ok(offersOnly.length >= 1 && offersOnly.every((u) => /kind=stay/.test(u) && /city=Porto/.test(u) && /prefer=cheap/.test(u)), `the source asked for Porto's cheapest: ${JSON.stringify(offersAsked)}`);
   // 0.38.5: what the chat shows is saved as the need's options without a tap (Pano and the box show it), said "Eklendi ✓".
   await chatCards.nth(0).getByRole("button", { name: "Pensão Favorita eklendi" }).waitFor({ timeout: 5000 });
   await board.screenshot({ path: `${out}/27f-chat-offers.png` });
