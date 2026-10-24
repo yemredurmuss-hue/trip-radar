@@ -366,7 +366,12 @@ export function buildLegs(plan: Plan, trip: Pick<Trip, "legs">, listings: Map<st
     // A transfer said at the airport's city (the start's "Havalimanı transferi" in Kolombo, the stay in Ahangama) is this
     // road's too (farHub), not a box of its own beside it.
     const far = kind === "change" ? null : (farOf(kind, travel, city)?.city ?? null);
-    const options = locals.filter((i) => !takenLocals.has(i.id) && departureDay(i) === date && (!i.city || !city || sameCity(i.city, city) || (far != null && sameCity(i.city, far))));
+    const matching = locals.filter((i) => !takenLocals.has(i.id) && departureDay(i) === date && (!i.city || !city || sameCity(i.city, city) || (far != null && sameCity(i.city, far))));
+    // One ride taken (chosen or booked) per road: a second one that day ("Uber Yolculukları" beside "Havalimanı → Bonfim",
+    // Emre 2026-10-24: "chat koydum dedi ama ulaşımda bir şey çıkmadı") is not this road's; it is left for its own row
+    // instead of being hidden behind the first (the road's box shows one).
+    const first = settledOf(matching);
+    const options = matching.filter((i) => i === first || (i.status !== "chosen" && i.status !== "booked"));
     options.forEach((i) => takenLocals.add(i.id));
     const choice = choiceOf(key) ?? choiceOf(legacyKey(date, kind, from.city, to.city));
     const settled = settledOf(options);

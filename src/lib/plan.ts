@@ -7,7 +7,7 @@ import { L } from "./i18n";
 import { nNights } from "./i18nText";
 import { experienceOf } from "./experiences";
 import { formatDateRange, isoDate, nightsBetween } from "./items";
-import { isLocalTransfer, isRental, isTrip } from "./travelKinds";
+import { isGeneratedName, isLocalTransfer, isRental, isTrip } from "./travelKinds";
 import type { Category, Item, Trip } from "./types";
 
 /** Categories whose saved options are alternatives for one need (places to visit are not). */
@@ -887,6 +887,9 @@ const agree = (a: string | null, b: string | null) => !a || !b || a === b;
 function sameTrip(said: Item, page: Item): boolean {
   const [a, b] = [departureDay(said), departureDay(page)];
   if (!a || !b || daysApart(a, b) > 1 || tripKind(said) !== tripKind(page)) return false;
+  // A plan the traveller named with no road said ("Uber Yolculukları": the trip's rides, priced in one; Emre 2026-10-24:
+  // "chat koydum dedi ama ulaşımda bir şey çıkmadı") is its own thing, not the day's transfer page under another name.
+  if (!said.flight?.from && !isGeneratedName(said.name) && said.name.trim().toLocaleLowerCase() !== page.name.trim().toLocaleLowerCase()) return false;
   const [x, y] = [tripEnds(said), tripEnds(page)];
   return agree(x.from, y.from) && agree(x.to, y.to);
 }

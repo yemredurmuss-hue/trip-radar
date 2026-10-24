@@ -7,7 +7,7 @@ import { L } from "./i18n";
 import { liveLabels } from "./i18nText";
 import { EMPTY_METRICS, isoDate } from "./items";
 import { cityKeyOf } from "./plan";
-import { choreText, ESIM_WORDS, RENTAL_KINDS } from "./travelKinds";
+import { choreText, ESIM_WORDS, GENERATED, isGeneratedName, RENTAL_KINDS } from "./travelKinds";
 import type { Category, Item, PlannedKind } from "./types";
 
 export type { PlannedKind } from "./types";
@@ -270,10 +270,8 @@ export function plannedItem(input: PlannedInput, tripId: string, id: string, now
   };
 }
 
-const GENERATED =
-  /^(Uçuş|Tren|Otobüs|Minibüs|Feribot|Transfer|Taksi|Araç kiralama|Motosiklet kiralama|Karavan kiralama|Bisiklet kiralama|Konaklama|Restoran|Seyahat sigortası|Not|Yapılacak|Hazırlık|eSIM|Plan|Flight|Train|Bus|Minibus|Ferry|Taxi|Car rental|Motorbike rental|Camper van rental|Bike rental|Stay|Restaurant|Travel insurance|Note|To-do|Prep)( ·|$)/;
-/** A name nameOf made (in either language), not one the traveller gave. */
-export const isGeneratedName = (name: string) => GENERATED.test(name);
+// (GENERATED, isGeneratedName: travelKinds.ts, so plan.ts reads them without importing this file)
+export { isGeneratedName };
 const where = (s: string | null | undefined) => (s ? cityKeyOf(s) : null);
 
 /**
@@ -301,13 +299,16 @@ export function samePlan(a: Item, b: Item): boolean {
 /** A plan said again keeps what was said before and isn't said now (where from, the time, the note). */
 export function fillPlanned(input: PlannedInput, before: Item): PlannedInput {
   const time = before.flight?.departure?.slice(11, 16) || null;
+  // Named anew with no ends said ("havalimanı olanı sil, Uber yolculukları koy", Emre 2026-10-24): the old ends were only
+  // what its name was made from ("Taksi · Havalimanı → Bonfim"), so they go with that name.
+  const renamed = Boolean(input.title?.trim() && !GENERATED.test(input.title.trim()) && GENERATED.test(before.name) && !input.from && !input.to);
   return {
     ...input,
     date: input.date ?? before.dates.start,
     end_date: input.end_date ?? before.dates.end,
     time: input.time ?? time,
-    from: input.from ?? before.flight?.from ?? null,
-    to: input.to ?? before.flight?.to ?? null,
+    from: input.from ?? (renamed ? null : (before.flight?.from ?? null)),
+    to: input.to ?? (renamed ? null : (before.flight?.to ?? null)),
     city: input.city ?? before.city,
     title: input.title ?? (GENERATED.test(before.name) ? null : before.name),
     note: input.note ?? before.statusNote,

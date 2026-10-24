@@ -102,3 +102,9 @@ export const isPaperwork = (i: Item): boolean =>
   (LOOSE_KINDS.includes(i.plannedKind) && (i.category === "other" || i.category === "activity") && ESIM_WORDS.test(i.name) && (!i.plannedKind || !choreText(i.name)));
 
 export { LOCAL };
+
+/** The names planned.ts nameOf makes from a plan's kind and places ("Taksi · Havalimanı → Bonfim"), in either language. */
+export const GENERATED =
+  /^(Uçuş|Tren|Otobüs|Minibüs|Feribot|Transfer|Taksi|Araç kiralama|Motosiklet kiralama|Karavan kiralama|Bisiklet kiralama|Konaklama|Restoran|Seyahat sigortası|Not|Yapılacak|Hazırlık|eSIM|Plan|Flight|Train|Bus|Minibus|Ferry|Taxi|Car rental|Motorbike rental|Camper van rental|Bike rental|Stay|Restaurant|Travel insurance|Note|To-do|Prep)( ·|$)/;
+/** A name nameOf made (in either language), not one the traveller gave. */
+export const isGeneratedName = (name: string) => GENERATED.test(name);

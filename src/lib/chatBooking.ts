@@ -388,6 +388,14 @@ export function bookedUpdate(raw: Item, said: PlannedInput, extras: BookingExtra
     if (page) edits.name = name;
     else next.name = name;
     note("name", name);
+    // A taxi or transfer named anew with no ends said ("havalimanı olanı sil, Uber yolculukları koy", Emre 2026-10-24):
+    // the ends its old name was made from ("Taksi · Havalimanı → Bonfim") go with that name (planned.ts fillPlanned too).
+    const f = view.flight;
+    if (!page && (raw.plannedKind === "taxi" || raw.plannedKind === "transfer") && isGeneratedName(view.name) && !said.from && !said.to && (f?.from || f?.to)) {
+      next.flight = { ...f!, from: null, to: null };
+      next = withoutEdits(next, ["from", "to"]);
+      note("route", L("güzergâh kalktı", "route removed"));
+    }
   }
   if (pack && (pack.dataGb || pack.unlimited || pack.days)) {
     const m = { ...metricsOf(raw) };

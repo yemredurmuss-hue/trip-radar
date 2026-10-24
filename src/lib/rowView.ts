@@ -20,6 +20,7 @@
 import { L } from "./i18n";
 import { shortDay } from "./ideas";
 import { isoDate } from "./items";
+import { isGeneratedName } from "./planned";
 import { codeLabel, headName, optionPrice, ratingParts, sidePrice } from "./intentFrame";
 import type { IntentStatus, IntentVM, OptionVM } from "./intents";
 import { isDatedSection, railDate, spanText, stayCheckOut } from "./railDates";
@@ -49,6 +50,9 @@ export type RowSlot =
   | { kind: "onsite"; text: string }
   /** Its ticket is in hand: the stub says it (the figure's code), nothing to press. */
   | { kind: "none" };
+
+/** A ride within a place (a taxi, a transfer): the kinds whose row reads by the name the traveller gave it. */
+const LOCAL_KINDS: readonly string[] = ["taxi", "transfer"];
 
 export interface RowPart {
   text: string;
@@ -209,18 +213,26 @@ export function rowView(vm: IntentVM): RowView {
               ? L(`${count} seçenek`, count === 1 ? "1 option" : `${count} options`)
               : L("Aranacak", "To find");
 
-  // The name.
+  // The name. A taxi or a transfer the traveller named in the chat ("Uber Yolculukları", Emre 2026-10-24: "Uber yolculukları koy dedim,
+  // ulaşımda bir şey çıkmadı") reads by that name, its route first on the line under it; a flight, or a name the chat
+  // only made from the route ("Taksi · Havalimanı → Bonfim"), or a page's transfer (kararMasasiKoruma), keeps the route as the title.
   const route = ticket && vm.head.route ? vm.head.route : null;
-  const title = route ? `${route.from} → ${route.to}` : !ticket && chosen && (status === "chosen" || status === "booked" || (status === "suggested" && !pickDeck)) ? chosen.title : headName(vm);
+  const ownName = ticket && chosen && chosen.item.origin === "chat" && LOCAL_KINDS.includes(chosen.item.plannedKind ?? "") && chosen.item.name.trim() && !isGeneratedName(chosen.item.name) ? chosen.item.name.trim() : null;
+  const title = ownName ?? (route ? `${route.from} → ${route.to}` : !ticket && chosen && (status === "chosen" || status === "booked" || (status === "suggested" && !pickDeck)) ? chosen.title : headName(vm));
 
   // The line under it.
   const line: RowPart[] = [];
   const dayParts = vm.head.parts.filter((p) => !/→/.test(p));
   const shown = chosen && (status === "chosen" || status === "booked" || (status === "suggested" && !pickDeck) || status === "arranged");
+  if (ownName && route) line.push({ text: `${route.from} → ${route.to}` });
   if (ticket && shown && tf) {
     const t1 = tf.from?.time, t2 = tf.to?.time;
     if (t1 || t2) line.push({ text: [t1, t2].filter(Boolean).join(" → "), tone: "bold" });
-    else if (tf.name) line.push({ text: [tf.name, tf.sub].filter(Boolean).join(" ") });
+    else if (tf.name) {
+      // (a named ride's name is its title already: only what's beside it)
+      const text = [tf.name === ownName ? null : tf.name, tf.sub].filter(Boolean).join(" ");
+      if (text) line.push({ text });
+    }
     if (tf.mid.top) line.push({ text: tf.mid.top });
     if (tf.mid.bottom) line.push({ text: tf.mid.bottom, tone: tf.mid.tone ?? undefined });
   } else if (!ticket && shown && chosen) {

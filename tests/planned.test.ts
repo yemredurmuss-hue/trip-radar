@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ALL_PLANNED_KINDS, checkPlanned, plannedItem, PLANNED_KINDS, type PlannedInput } from "../src/lib/planned";
+import { ALL_PLANNED_KINDS, checkPlanned, fillPlanned, plannedItem, PLANNED_KINDS, type PlannedInput } from "../src/lib/planned";
 import { isInsurance, isLocalTransfer, isRental, isTrip } from "../src/lib/travelKinds";
 import { makeItem } from "./fixtures/makeItem";
 
@@ -59,5 +59,19 @@ describe("insurance from the words on a saved page", () => {
     expect(isInsurance(makeItem({ category: "other", name: "Allianz seyahat sağlık sigortası" }))).toBe(true);
     expect(isInsurance(makeItem({ category: "other", name: "Lounge pass" }))).toBe(false);
     expect(isInsurance(makeItem({ category: "stay", name: "Hotel Seguro" }))).toBe(false);
+  });
+});
+
+describe("a taxi named anew (Emre 2026-10-24: \"havalimanı olanı sil, Uber yolculukları koy\")", () => {
+  it("the ends its generated name was made from go with that name; ends said again, or no new name, stay", () => {
+    const before = plannedItem(said({ kind: "taxi", from: "Havalimanı", to: "Bonfim", date: "2026-10-07", time: "15:00" }), "t1", "x", 1);
+    expect(before.name).toBe("Taksi · Havalimanı → Bonfim");
+    const renamed = fillPlanned(said({ kind: "taxi", title: "Uber Yolculukları" }), before);
+    expect([renamed.from, renamed.to, renamed.title, renamed.date, renamed.time]).toEqual([null, null, "Uber Yolculukları", "2026-10-07", "15:00"]);
+    expect(fillPlanned(said({ kind: "taxi", title: "Uber", to: "Bonfim" }), before).from).toBe("Havalimanı");
+    expect(fillPlanned(said({ kind: "taxi", time: "16:00" }), before).to).toBe("Bonfim");
+    // A name of its own already: renaming it again keeps its ends (they were said, not made up).
+    const own = plannedItem(said({ kind: "taxi", from: "Havalimanı", to: "Bonfim", date: "2026-10-07", title: "Gece taksisi" }), "t1", "y", 1);
+    expect(fillPlanned(said({ kind: "taxi", title: "Uber gece" }), own).from).toBe("Havalimanı");
   });
 });
