@@ -29,7 +29,7 @@ import { activeSignals, pendingSignals } from "./intent";
 import { buildLegs, canHideLeg, isHiddenLeg, legTiming, staleHiddenMoves, withLegChoice, type Leg } from "./legs";
 import { checkPlanned, guardKind, isGeneratedName, plannedInput, plannedItem, planToSave, PLANNED_KINDS, type PlannedInput } from "./planned";
 import { bookedUpdate, candidateLabel, changedFields, countryOfPlace, decideBooking, esimPackage, saidKind, sameKind, SECOND_PURCHASE, tripPlaceOf, updateSummary, type BookingExtras } from "./chatBooking";
-import { boardChange, lineOf, withBoardChange } from "./boardChange";
+import { boardChange, lineOf, summaryLine, withBoardChange, type BoardChange } from "./boardChange";
 import { focusOf, RECENT_MS, recentBlock, type RecentFile } from "./chatContext";
 import { modelHistory } from "./modelHistory";
 import { cardKind, cardKindLabel } from "./cardKinds";
@@ -2961,6 +2961,8 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
   // ("ekledim" before anything was added); the last step's answer is shown, this one only when that is empty.
   let narrated = "";
   let narratedId: string | null = null;
+  // (what each tool really changed this turn: the code's own line when the model writes nothing)
+  const changes: BoardChange[] = [];
   // (the chips a step offered beside its tool calls go with the answer that is shown)
   let carried: string[] = [];
   for (let step = 0; step < MAX_STEPS; step++) {
@@ -2978,6 +2980,10 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
           await d.put("messages", { ...kept, text: narrated });
           notifyChanged();
         }
+      } else {
+        // (no words at all, but the board changed: the code's line, never a silent chat)
+        const line = summaryLine(changes);
+        if (line) await saveMessage({ tripId, role: "assistant", content: provider.assistantContent(line), text: line, choices: carried, provider: provider.id });
       }
       return;
     }
@@ -2998,6 +3004,7 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
           if (n < answer.calls.length - 1) await pause(liveTiming.stepMs);
         }
         const change = was && !content.startsWith(UNCHANGED) ? boardChange(was, await listItems(tripId)) : null;
+        if (change) changes.push(change);
         results.push({ call, content: change ? withBoardChange(content, change) : content, isError: false });
         turn.done++;
         if (!READ_ONLY_TOOLS.has(call.name) && !content.startsWith(UNCHANGED)) turn.changed++;
@@ -3045,6 +3052,8 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
       text = "";
     } else {
       if (!text && narrated) text = narrated;
+      // (nothing written at all after a change: the code says what really changed)
+      if (!text) text = summaryLine(changes) ?? "";
       if (!choices.length && carried.length) choices.push(...carried);
     }
     // "Done! I've updated your budget currency" with no tool that changed anything: the chat shows a note under it

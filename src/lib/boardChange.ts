@@ -2,6 +2,7 @@
 // ama ulaşımda bir şey çıkmadı", "genel uber yolculukları diyor ama plana A noktası B noktası getiriyor"): the model sees
 // what was added, changed and taken off, and what is on that part of the plan now, so it writes what is true and puts
 // right what isn't (the old airport taxi still there) before it answers. Pure.
+import { L } from "./i18n";
 import { withEdits } from "./userEdits";
 import type { Item } from "./types";
 
@@ -70,4 +71,21 @@ export function withBoardChange(content: string, change: BoardChange): string {
     // (a plain sentence: the board after it)
   }
   return `${content}\n${JSON.stringify({ board_after: change, check: CHECK })}`;
+}
+
+/**
+ * A turn's changes in one line, written by the code from what really happened (Sohbet Faz 1's verified summary): said
+ * when the model wrote nothing ("Eklendi: Fado gösterisi · Kaldırıldı: Taksi · Havalimanı → Bonfim"). null: no change.
+ */
+export function summaryLine(changes: readonly BoardChange[]): string | null {
+  const names = (pick: (c: BoardChange) => BoardLine[]) => [...new Set(changes.flatMap(pick).map((l) => l.name))];
+  const added = names((c) => c.added);
+  const removed = names((c) => c.removed);
+  const changed = names((c) => c.changed).filter((n) => !added.includes(n));
+  const parts = [
+    added.length ? `${L("Eklendi", "Added")}: ${added.join(", ")}` : null,
+    changed.length ? `${L("Güncellendi", "Updated")}: ${changed.join(", ")}` : null,
+    removed.length ? `${L("Kaldırıldı", "Removed")}: ${removed.join(", ")}` : null,
+  ].filter(Boolean);
+  return parts.length ? parts.join(" · ") : null;
 }

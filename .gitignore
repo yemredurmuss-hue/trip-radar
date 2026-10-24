@@ -5,3 +5,6 @@ dist/
 e2e-output/
 docs/screens-en/
 store/*.zip
+
+# chat eval results (vitest.eval.config.ts)
+evals/out/

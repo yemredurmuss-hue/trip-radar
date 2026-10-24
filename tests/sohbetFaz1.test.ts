@@ -104,3 +104,29 @@ describe("a turn: the board read back, the answer after it", () => {
     expect(shown).toEqual(["Uber Yolculukları'nı tüm gezi için ekliyorum."]);
   });
 });
+
+describe("the code's own line when the model writes nothing (Sohbet Faz 4, the real-model eval's fado case)", () => {
+  it("summaryLine: what was added, updated and removed, by name; null when nothing changed", async () => {
+    const { summaryLine } = await import("../src/lib/boardChange");
+    const a = airport();
+    const added = boardChange([a], [a, uber()])!;
+    const gone = boardChange([a, uber()], [uber()])!;
+    expect(summaryLine([added, gone])).toBe("Eklendi: Uber Yolculukları · Kaldırıldı: Taksi · Havalimanı → Bonfim");
+    expect(summaryLine([])).toBeNull();
+  });
+
+  it("a turn that changed the board and said nothing: the line is on screen, never a silent chat", async () => {
+    const d = await db();
+    await d.put("trips", { id: "t7", title: "X", confirmedDates: null, budget: null, heroImage: null, createdAt: 1, updatedAt: 1 } as Trip);
+    const { client } = fakeClient([
+      {
+        stop_reason: "tool_use",
+        content: [{ type: "tool_use", id: "p1", name: "plan_item", caller: { type: "direct" }, input: { kind: "activity", title: "Fado gösterisi", date: null, end_date: null, time: null, from: null, to: null, city: "Porto", booked: false, note: null, replaces: null, item_id: null } }] as Anthropic.ContentBlock[],
+      },
+      { stop_reason: "end_turn", content: [] as Anthropic.ContentBlock[] },
+    ]);
+    await sendMessage("t7", "Porto'da bir fado gösterisi fikri ekle", anthropicProvider(client, "claude-opus-5"));
+    const shown = (await listMessages("t7")).filter((m) => m.role === "assistant" && m.text.trim()).map((m) => m.text);
+    expect(shown).toEqual(["Eklendi: Fado gösterisi"]);
+  });
+});
