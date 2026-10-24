@@ -125,11 +125,10 @@ export function CategoryRow({ row, meta, open, onToggle, onDecide, decideTip, bu
         <small className="q-kw">
           {row.line}
           {extraTip && <span className="q-sgn"> · {extraTip}</span>}
+          {/* (its words drawn by the style, data-w: the line's own text stays what it says, "2 şehir için · 5 fikir") */}
           {seeking && (
-            <span className="q-seekw" role="status">
-              {" · "}
+            <span className="q-seekw" role="status" aria-label={L("Aranıyor", "Searching")} data-w={L("Aranıyor", "Searching")}>
               <SearchDots />
-              {L("Aranıyor", "Searching")}
             </span>
           )}
           {fresh > 0 && <span className="sr-only">{L(` · ${fresh} yeni seçenek`, ` · ${fresh} new option${fresh === 1 ? "" : "s"}`)}</span>}

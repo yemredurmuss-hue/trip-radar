@@ -71,6 +71,8 @@ body.still .q-row1.q-win::after, body.still .q-row1.q-win .q-ringsvg { animation
 @keyframes q-seek-light { to { transform: translateX(60%); } }
 @keyframes q-seek-ring { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--c) 40%, transparent); } 100% { box-shadow: 0 0 0 9px color-mix(in srgb, var(--c) 0%, transparent); } }
 .q-kw .q-seekw { color: var(--c); font-weight: 700; }
+.q-kw .q-seekw::before { content: " · "; }
+.q-kw .q-seekw::after { content: attr(data-w); }
 .q-kw .q-seekw .th-dots { margin-right: 5px; vertical-align: 1px; }
 .q-kw .q-seekw .th-dots i { background: currentColor; }
 .q-fresh { position: absolute; top: -7px; right: -7px; min-width: 20px; height: 20px; padding: 0 5px; box-sizing: border-box; border-radius: 99px; background: var(--q-acc); color: #fff; font-size: 11.5px; font-weight: 800; line-height: 20px; text-align: center; box-shadow: 0 0 0 2px #fff; animation: q-win-pop .5s cubic-bezier(.3, 1.6, .5, 1) both; }
