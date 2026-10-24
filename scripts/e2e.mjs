@@ -961,7 +961,9 @@ try {
   await firstOpt.locator(".dr-pc.w h6", { hasText: "Yorumlarda öne çıkan" }).waitFor();
   const ph = await firstOpt.locator(".dr-ph").boundingBox();
   const inn = await firstOpt.locator(".dr-in").boundingBox();
-  assert.ok(ph && inn && ph.x + ph.width <= inn.x + 1 && ph.width < 200, `the photo on the left (${JSON.stringify(ph)})`);
+  // (the photo is a narrow tall column on the left, the name beside it to its right — not the old wide banner on top)
+  assert.ok(ph && ph.width < 220 && ph.height > ph.width, `the photo is a left column (${JSON.stringify(ph)})`);
+  assert.ok(inn && inn.x > ph.x + ph.width - 2, `the name is right of the photo (${JSON.stringify(inn)})`);
   await app.waitForTimeout(300); // (the drawer's .2 s fade)
   await app.screenshot({ path: `${out}/40b-stay-drawer.png` });
   await app.keyboard.press("Escape");
