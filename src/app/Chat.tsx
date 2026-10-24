@@ -28,6 +28,8 @@ import { ChatOffers } from "./ChatOffers";
 import { ArrowUp, Back } from "./Icons";
 import { Mascot } from "./Mascot";
 import { show } from "./Progress";
+import { sectionsOfWords } from "../lib/chatSections";
+import { sectionLooking } from "../lib/looking";
 import { DONE_FOR, LONG_WAIT, mascotFace, thinkingLine } from "./thinking";
 
 interface Props {
@@ -180,7 +182,10 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
     const langBefore = lang();
     let failed = false;
     try {
-      await sendMessage(trip.id, input);
+      const work = sendMessage(trip.id, input);
+      // ("Uçuş ekle": Uçuş's row moves from now until the answer lands, lib/chatSections.ts)
+      for (const section of sectionsOfWords(input)) void sectionLooking.track(section, work).catch(() => undefined);
+      await work;
     } catch (e) {
       failed = true;
       fail(e);
