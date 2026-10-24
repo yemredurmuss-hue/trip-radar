@@ -52,6 +52,14 @@ button.q-ring:focus-visible { outline: 2px solid var(--q-acc); outline-offset: 2
 .q-ringsvg .q-rp-open { stroke: #e9e6f1; }
 .q-ringsvg .q-ridea { stroke: #d6d2e4; }
 .q-ringsvg .q-rdisc { fill: var(--q-ok); }
+/* Tamamlandı (0.47.0): a soft light crosses the row once and the tick settles (pop), 900 ms; nothing moves the layout */
+.q-row1.q-win { position: relative; overflow: hidden; }
+.q-row1.q-win::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(100deg, transparent 30%, color-mix(in srgb, var(--q-ok) 14%, transparent) 50%, transparent 70%); transform: translateX(-100%); animation: q-win-light .9s ease-out both; }
+.q-row1.q-win .q-ringsvg { animation: q-win-pop .5s cubic-bezier(.3, 1.6, .5, 1) both; }
+@keyframes q-win-light { to { transform: translateX(100%); } }
+@keyframes q-win-pop { 0% { transform: scale(.85); } 60% { transform: scale(1.08); } 100% { transform: scale(1); } }
+body.still .q-row1.q-win::after, body.still .q-row1.q-win .q-ringsvg { animation: none; }
+@media (prefers-reduced-motion: reduce) { .q-row1.q-win::after, .q-row1.q-win .q-ringsvg { animation: none; } }
 .q-kw .q-alert { font-style: normal; font-weight: 700; }
 .q-bar { position: relative; display: flex; height: 6px; border-radius: 99px; background: #ebe9f2; overflow: hidden; }
 .q-bar i { display: block; height: 100%; transition: width .3s var(--e-out); }
