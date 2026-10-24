@@ -100,4 +100,29 @@ describe("booking confirmations", () => {
     const { plan } = outline([longer], trip);
     expect(plan.range).toEqual({ start: "2026-10-07", end: "2026-10-16" });
   });
+
+  it("a booking fills the dateless plan for the same city and nights, set aside not left beside it (2026-10-24)", async () => {
+    // Emre: "Porto konaklama 4 gün demiştim sonra rezervasyonu attım yine yeni ekledi; aynı şehir aynı gün sayısı çok belli".
+    const d = await db();
+    const t9: Trip = { ...trip, id: "t9", title: "Portekiz", confirmedDates: null };
+    await d.put("trips", t9);
+    const said = (title: string, city: string): Item => ({
+      ...plannedItem({ kind: "stay", date: null, end_date: null, time: null, from: null, to: null, city, title, booked: false, note: null }, "t9", `said-${title}`, 1),
+      summary: title.includes("4") ? "4 gece" : "",
+    });
+    const evora = said("Évora Konaklama (4 Gece)", "Évora");
+    const evoraThree = said("Évora Konaklama (3 Gece)", "Évora");
+    const lisbon = said("Lizbon Konaklama (4 Gece)", "Lizbon");
+    for (const i of [evora, evoraThree, lisbon]) await d.put("items", i);
+    await saveConfirmation(confirmation({ name: "Casa Évora", city: "Évora", need_key: "stay:evora", booking_reference: "EVR1", dates: { start: "2026-11-03", end: "2026-11-07", source: "screenshot" }, trip: { existing_trip_id: "t9", new_trip_title: null } }));
+    // (listItems leaves out what is set aside: the whole store, this trip's)
+    const items = (await d.getAll("items")).filter((i) => i.tripId === "t9");
+    const byName = (n: string) => items.find((i) => i.name.normalize() === n.normalize())!;
+    // (another city than this file's Porto trip, so the booking stays in t9) The 4 nights in Évora are the booking's: set aside, the booking said to take their place.
+    expect(byName("Évora Konaklama (4 Gece)")).toMatchObject({ status: "dismissed", dismissedFrom: "chosen", replacedBy: byName("Casa Évora").id });
+    // Another number of nights, another city: still to plan.
+    expect(byName("Évora Konaklama (3 Gece)").status).toBe("chosen");
+    expect(byName("Lizbon Konaklama (4 Gece)").status).toBe("chosen");
+    expect((await listMessages("t9")).map((m) => m.text).join("\n").normalize()).toContain("Évora Konaklama (4 Gece): yerine Casa Évora geldi".normalize());
+  });
 });

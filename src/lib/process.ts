@@ -11,6 +11,7 @@ import { buildItem, CATEGORY_LABELS, corpusOf, findDuplicate, formatDateRange, i
 import { chooseTrip, countryCodeOf, countryName, gapDays, isDemoTrip, profileTrips, uniqueTitle, type TripChoice, type TripSignal } from "./trips";
 import { askText, countriesText, datesIn, looksLikeTravel, placeCodes, placeFitOf, routeCapture, titleCodes, tripPlaceCodes, type Route } from "./placeCheck";
 import { loadHome } from "./passport";
+import { stayPlaceholdersTaken } from "./placeTaken";
 import { homeFromFlights } from "./suggestions";
 import type { PageSnapshot } from "./pagecapture";
 import type { Capture, Geo, HeldCapture, Item, Trip } from "./types";
@@ -312,6 +313,20 @@ async function readCapture(capture: Capture, deps: Deps, commit: () => Promise<b
     const more: Item[] = [];
     for (const m of moreFlights(extraction, item)) if (!findDuplicate([...existing, item, ...more], m)) more.push(m);
     for (const m of more) await d.put("items", m);
+    // A booking (or a page chosen) for the place the plan only made room for ("Porto Konaklama (4 Gece)" said in the
+    // chat): that place is taken, set aside under Gizlenenler as Seç does (actions.chooseItem), not left as a second
+    // card (Emre 2026-10-24: "rezervasyonu attım, yine yeni ekledi onu güncellemek yerine").
+    if (item.category === "stay" && (item.status === "booked" || item.status === "chosen")) {
+      const own = await d.get("trips", item.tripId);
+      const there = (await d.getAll("items")).filter((i) => i.tripId === item.tripId);
+      // (a plan with dates is closed by the booking on the plan itself, plan.ts, its nights left beside it still open: only
+      // the dateless one is set aside here, as it has nothing the plan could close it by)
+      for (const ph of own ? stayPlaceholdersTaken(item, there, own).filter((p) => !p.dates.start && !p.dates.end) : []) {
+        const now = Date.now();
+        await d.put("items", { ...ph, status: "dismissed", dismissedFrom: ph.status, replacedBy: item.id, statusAt: now, updatedAt: now });
+        await addEvent(item.tripId, L(`${ph.name}: yerine ${item.name} geldi`, `${ph.name}: replaced by ${item.name}`));
+      }
+    }
 
     await addEvent(item.tripId, savedLine(item, incoming.status === "booked", Boolean(duplicate), capture.sharedBy));
     if (more.length) await addEvent(item.tripId, L(`Aynı listeden ${more.length} uçuş daha desteye girdi.`, `${more.length} more flight${more.length > 1 ? "s" : ""} from the same list joined the deck.`));

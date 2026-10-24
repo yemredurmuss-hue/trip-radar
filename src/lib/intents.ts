@@ -964,23 +964,8 @@ function plainTitle(title: string): string {
   return bare && bare !== title.trim() ? bare : title;
 }
 
-/**
- * The start's place for some nights that a stay chosen now takes (0.38.6, Emre: "seçince omurga değişsin"): the same city,
- * most of its nights. A choice for all of them closes it on the plan already (plan.ts); one for most leaves it standing
- * with a night or two beside it, a second card, so it is set aside too. The nights the choice leaves stay to find.
- */
-export function stayPlaceholdersTaken(choice: Item, items: readonly Item[], trip: Pick<Trip, "startGuide">): Item[] {
-  const own = choice.category === "stay" && choice.origin !== "chat" ? stayRange(choice) : null;
-  if (!own) return [];
-  return items.filter((i) => {
-    if (i.id === choice.id || i.category !== "stay" || !(isPlaceholder(trip, i) || bareChatPlan(i))) return false;
-    const r = stayRange(i);
-    if (!r || !sameCity(i.city, choice.city) || (own.start <= r.start && own.end >= r.end)) return false;
-    const start = own.start > r.start ? own.start : r.start;
-    const end = own.end < r.end ? own.end : r.end;
-    return start < end && nightsBetween(start, end) * 2 > nightsBetween(r.start, r.end);
-  });
-}
+// (the places a stay chosen now takes: placeTaken.ts, shared with the capture's processing)
+export { stayPlaceholdersTaken } from "./placeTaken";
 
 /** Gerek yok (F3): a transfer or nights said not needed fold into the category's "Gizlenenler · n", one tap from coming back. */
 function skippedIntents(section: CatSection): IntentVM[] {
