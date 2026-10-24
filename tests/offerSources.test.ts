@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { Need, Offer } from "../src/lib/offerSource";
 import { cityTours, countryNeed, makeLiveSource, queryOf, tourWords, type StayCandidate } from "../src/lib/offerSources";
 import { memoryKV } from "../src/lib/share/store";
+import { sectionLooking } from "../src/lib/looking";
 
 const flight: Need = { key: "f", section: "flight", kind: "flight", from: "İstanbul", to: "Denpasar", start: "2026-11-10", adults: 2 };
 const stay: Need = { key: "s", section: "stay", kind: "stay", city: "Ubud", country: "ID", start: "2026-11-12", end: "2026-11-16", adults: 2 };
@@ -230,5 +231,21 @@ describe("a town the source doesn't know (Emre's Ahangama, 19 Ekim)", () => {
     expect((await cityTours(wide, ahangama, "LK", [], ["surf"])).map((o) => [o.id, o.place])).toEqual([["s2", "Ahangama"]]);
     expect(asked.map((n) => [n.city, n.query ?? null])).toEqual([["Ahangama", null], ["Sri Lanka", "Ahangama"], ["Sri Lanka", "surf Ahangama"], ["Sri Lanka", null]]);
     expect(new Set(asked.map((n) => n.key)).size).toBe(asked.length);
+  });
+});
+
+describe("each ask marks its category while it is out (the Plan row's search)", () => {
+  it("a stay's offers mark Konaklama until they answer, a failure too", async () => {
+    let release: () => void = () => undefined;
+    const answered = new Promise<void>((resolve) => (release = resolve));
+    const fetcher = (async () => (await answered, { ok: false, json: async () => ({ offers: [] }) } as Response)) as unknown as typeof fetch;
+    const src = makeLiveSource({ kv: memoryKV(), fetcher, now: () => 1, server: "https://srv" });
+    const asked = src.offers(stay);
+    expect(sectionLooking.has("stay")).toBe(true);
+    expect(sectionLooking.has("flight")).toBe(false);
+    release();
+    await asked;
+    await Promise.resolve();
+    expect(sectionLooking.has("stay")).toBe(false);
   });
 });

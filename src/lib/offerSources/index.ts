@@ -8,6 +8,7 @@
 // Nothing for the other kinds yet (transfers, eSIMs: no source connected), nor when the question is
 // short of what a search needs; a failure or an unconfigured server is no offers, so the row stays away.
 import { lang } from "../i18n";
+import { sectionLooking } from "../looking";
 import { airportCode } from "../searchLinks";
 import { chromeKV, DEFAULT_SERVER, type KV } from "../share/store";
 import { validOffers, type Need, type Offer, type SuggestionSource } from "../offerSource";
@@ -544,16 +545,18 @@ export function makeLiveSource(opts: { kv?: KV; fetcher?: typeof fetch; now?: ()
     return going;
   };
 
+  // (each ask marks its category while it is out: its row on the Plan shows the search, lib/looking.ts)
+  const mark = <T>(section: string, work: Promise<T>): Promise<T> => sectionLooking.track(section, work);
   return {
     available: () => true,
-    offers: (need) => find(need),
-    find,
-    candidates,
+    offers: (need) => mark(need.section, find(need)),
+    find: (need, narrow) => mark(need.section, find(need, narrow)),
+    candidates: (need) => mark(need.section, candidates(need)),
     places,
     price,
-    sights,
+    sights: (city, country) => mark("todo", sights(city, country)),
     days,
-    events,
+    events: (city, start, end) => mark("activity", events(city, start, end)),
   };
 }
 

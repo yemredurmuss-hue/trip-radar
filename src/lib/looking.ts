@@ -45,3 +45,10 @@ export const offersLooking = lookStore();
 
 /** A trip's Bavul list asked from the AI, by trip id (plan/prep/usePackAi). */
 export const packLooking = lookStore();
+
+/**
+ * Any search of a category, by its id ("stay", "activity"): every ask of the connected source (a need's offers, a stay's
+ * candidates, a city's tours, the chat's find_offers, sights, events) marks its category while it is out, so the category's
+ * row shows it looking, open or shut (2026-10-24, Emre: "her arama yapılırken onun çalışması gerekti").
+ */
+export const sectionLooking = lookStore();

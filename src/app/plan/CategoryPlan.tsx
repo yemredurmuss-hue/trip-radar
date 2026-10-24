@@ -14,7 +14,7 @@ import { activityGaps } from "../../lib/emptyCards";
 import { countryNames } from "../../lib/heroInfo";
 import { L } from "../../lib/i18n";
 import { doneCount } from "../../lib/collectionCards";
-import { countParts, decideCount, decisionNames, firstDecision, offerNeed, rowThumbs } from "../../lib/intentFrame";
+import { countParts, decideCount, decisionNames, firstDecision, rowThumbs } from "../../lib/intentFrame";
 import { collectionsOf, V82_ORDER, type Collection, type IntentInput, type IntentVM } from "../../lib/intents";
 import { carrierMark, type CarrierMark } from "../../lib/ticketFrame";
 import { formatPrice } from "../../lib/items";
@@ -346,9 +346,8 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
               const slice = SLICE[s.id];
               const allotNum = allot && slice && allot.by[slice] > 0 ? { amount: allot.by[slice], currency: allot.currency } : null;
               const firstHere = c ? firstDecision([c]) : null;
-              // Its needs the source looks for by itself, shut or open (the closed row shows the search and what came).
+              // Its needs the source looks for by itself while it is shut (its row shows the search and what came).
               const auto = v82(s) ? (c?.intents ?? []).filter((i) => i.status !== "skipped" && i.frame !== "collection") : [];
-              const lookKeys = auto.map((vm) => offerNeed(vm, v82Env.selfAt)?.key).filter((k): k is string => k != null);
               return (
                 <Fragment key={s.id}>
                 {!opened && auto.map((vm) => <AutoSearch key={vm.key} vm={vm} />)}
@@ -356,7 +355,7 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
                   onToggle={() => toggle(s)} onAdd={() => onAdd(s.id, null)}
                   onDecide={() => (firstHere ? goTo(s.id, firstHere.intent.key) : open(s.id))} decideTip={c ? decisionNames(c.intents) : []}
                   allotNum={allotNum} suggestions={cardSuggestions(s).filter((x) => x.kind === "add").length}
-                  lookKeys={lookKeys} found={auto.reduce((n, vm) => n + vm.options.length, 0)}>
+                  reviewing={reviewLine(s) != null} found={auto.reduce((n, vm) => n + vm.options.length, 0)}>
                   {v82(s) ? (
                     <TimelineRail
                       dated={isDatedSection(s.id)}

@@ -2,19 +2,17 @@
 // its body folding in under it on a grid (m-bolum: 260 ms, the cards 80 ms late; shut, it folds back before it goes). The
 // categories drawn the new way (CategoryPlan's V82_SECTIONS) put their intents on a rail in it; the others keep their old
 // body as it was (its timeline of cards, "Gizlenenler · N göster"). At its end "+ Konaklama ekle" adds its own kind (B6).
-import { useRef, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { CatSection } from "../../lib/categories";
 import { L } from "../../lib/i18n";
 import { formatPrice } from "../../lib/items";
 import { useFold } from "../motion";
-import { offersLooking } from "../../lib/looking";
+import { sectionLooking } from "../../lib/looking";
 import { lookWord } from "../../lib/stageWords";
 import { UiIcon } from "../cards/Silhouettes";
 import { HiddenList } from "./HiddenList";
 import { SECTION_META } from "./sectionMeta";
 import { CategoryRow, type RowView } from "./v82/CategoryRow";
-
-const NO_KEYS: readonly string[] = [];
 
 /** The word of a category's own "+ … ekle" where it isn't its short name (as drawn: "+ Yer ekle", "+ Belge ekle"). */
 const ADD_WORD: Partial<Record<CatSection["id"], () => string>> = { todo: () => L("Yer", "Place"), other: () => L("Belge", "Document") };
@@ -29,21 +27,37 @@ const ADD_EN: Partial<Record<CatSection["id"], string>> = {
   other: "Add a document",
 };
 
+/** One full back and forth of the row's light: a search that answers at once (a failure too) still shows it. */
+const MIN_SEEK_MS = 2600;
+
 /**
- * A shut category's own search (2026-10-24): `seeking` while the source looks for any of its needs; after, `fresh` how many
- * options came meanwhile (the small number on its icon), gone once it is opened.
+ * A category's search (2026-10-24): `seeking` while the source is asked for anything of it (sectionLooking) or the AI
+ * reviews it, open or shut, held at least one back and forth; shut, after, `fresh` how many options came meanwhile (the
+ * small number on its icon), gone once it is opened.
  */
-function useShutSearch(keys: readonly string[], found: number, open: boolean): { seeking: boolean; fresh: number } {
-  const read = () => keys.some((k) => offersLooking.has(k));
-  const seeking = useSyncExternalStore(offersLooking.subscribe, read, read);
+function useSectionSearch(id: string, also: boolean, found: number, open: boolean): { seeking: boolean; fresh: number } {
+  const read = () => sectionLooking.has(id);
+  const live = useSyncExternalStore(sectionLooking.subscribe, read, read) || also;
+  const [held, setHeld] = useState(false);
+  const since = useRef(0);
+  useEffect(() => {
+    if (live) {
+      since.current = Date.now();
+      setHeld(true);
+      return;
+    }
+    const t = setTimeout(() => setHeld(false), Math.max(0, MIN_SEEK_MS - (Date.now() - since.current)));
+    return () => clearTimeout(t);
+  }, [live]);
+  const seeking = live || held;
   // (what it held when the search began, shut; opened, nothing is new any more)
   const base = useRef<number | null>(null);
   if (open) base.current = null;
   else if (seeking && base.current == null) base.current = found;
-  return { seeking: seeking && !open, fresh: !open && !seeking && base.current != null ? Math.max(0, found - base.current) : 0 };
+  return { seeking, fresh: !open && !seeking && base.current != null ? Math.max(0, found - base.current) : 0 };
 }
 
-export function Section({ section, row, v82, open, instant = false, onToggle, onAdd, onDecide, decideTip, allotNum = null, suggestions = 0, lookKeys = NO_KEYS, found = 0, children }: {
+export function Section({ section, row, v82, open, instant = false, onToggle, onAdd, onDecide, decideTip, allotNum = null, suggestions = 0, reviewing = false, found = 0, children }: {
   section: CatSection;
   row: RowView;
   /** Drawn the new way: intents on a rail (their Gizlenenler among them), no old body around them. */
@@ -60,13 +74,14 @@ export function Section({ section, row, v82, open, instant = false, onToggle, on
   allotNum?: { amount: number; currency: string } | null;
   /** Its open suggestions ("1 öneri", C28). */
   suggestions?: number;
-  /** Its needs' keys the source looks for by itself (offersLooking), and how many options they hold now. */
-  lookKeys?: readonly string[];
+  /** The AI's review is out for it now ("Öneriler aranıyor…"): its row shows the search too. */
+  reviewing?: boolean;
+  /** How many options its needs hold now (what came while it was shut is the number on its icon). */
   found?: number;
   children: ReactNode;
 }) {
   const meta = SECTION_META[section.id];
-  const shut = useShutSearch(lookKeys, found, open);
+  const shut = useSectionSearch(section.id, reviewing, found, open);
   const label = meta.label();
   const fold = useFold(open);
   const mounted = instant && !open ? false : fold.mounted;

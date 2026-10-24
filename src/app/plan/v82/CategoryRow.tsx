@@ -105,7 +105,7 @@ export function CategoryRow({ row, meta, open, onToggle, onDecide, decideTip, bu
   budgetTip: ReactNode;
   /** C28: its open suggestions ("1 öneri"), said in the tip too. */
   extraTip: string | null;
-  /** Shut, while the source looks for its needs: a light goes over the row, its icon sends a ring, "Aranıyor" with the dots. */
+  /** While anything of it is searched (open or shut): a light goes back and forth over the row, its icon sends a ring, "Aranıyor" with the dots. */
   seeking?: boolean;
   /** Shut, after: how many options came, a small number on its icon until it is opened. */
   fresh?: number;
