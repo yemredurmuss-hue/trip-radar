@@ -86,6 +86,17 @@ describe("Şu anki gezi: picked once, then nothing asked until another country",
     expect(currentFor({ tripId: "pt", country: "PT", at: now }, "PT", trips, [], "2026-10-23", now)?.id).toBe("pt");
     expect(currentFor({ tripId: "pt", country: "PT", at: now }, null, trips, [], "2026-10-23", now)?.id).toBe("pt");
   });
+  it("kept from a page with no country (a video): the trip's own places decide the next page (Emre 2026-10-24)", () => {
+    const more = [...trips, trip("bali", "15-Day Bali Honeymoon"), trip("new", "Yeni gezi")];
+    const fromVideo = (tripId: string) => ({ tripId, country: null, at: now });
+    // A flight from Spain is not the Bali trip's because a video went there: asked.
+    expect(currentFor(fromVideo("bali"), "ES", more, [], "2026-10-23", now)).toBeNull();
+    // A Bali page, or another page with no country, still goes there.
+    expect(currentFor(fromVideo("bali"), "ID", more, [], "2026-10-23", now)?.id).toBe("bali");
+    expect(currentFor(fromVideo("bali"), null, more, [], "2026-10-23", now)?.id).toBe("bali");
+    // A trip with no place yet takes what comes.
+    expect(currentFor(fromVideo("new"), "ES", more, [], "2026-10-23", now)?.id).toBe("new");
+  });
   it("another country, a day old, a trip over or gone: asked again", () => {
     expect(currentFor({ tripId: "pt", country: "PT", at: now }, "ID", trips, [], "2026-10-23", now)).toBeNull();
     expect(currentFor({ tripId: "pt", country: "PT", at: now - 25 * 3600_000 }, "PT", trips, [], "2026-10-23", now)).toBeNull();

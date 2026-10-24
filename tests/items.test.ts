@@ -169,6 +169,40 @@ describe("dedupe and merge", () => {
     expect(merged.captureIds).toHaveLength(2);
   });
 
+  it("the same flight from a search list (no number) updates its card: new price, baggage kept (Emre 2026-10-24)", () => {
+    const leg = { from: "ALC", to: "SAW", departure: "2026-11-03T12:25", arrival: "2026-11-03T18:10", carrier: "Pegasus Airlines", flight_number: null, stops: 0 };
+    const metrics = { review_aspects: [], amenities: [], cancellation_type: "unknown" as const, distance_to_center_km: null, duration_minutes: 225, checked_bag_included: true, data_gb: null, unlimited_data: null, validity_days: null };
+    const flight = (over: Partial<Extraction> = {}) =>
+      extraction({ category: "flight", name: "Pegasus ALC → SAW", option_detail: null, dates: { start: "2026-11-03", end: "2026-11-03", source: "page" }, flight: leg, metrics, ...over });
+    const c1 = capture({ url: "https://www.skyscanner.com.tr/transport/flights/alc/saw/261103/" });
+    const first = { ...buildItem(flight(), c1, parseUrl(c1.url!), "t1", 1000), status: "chosen" as const };
+    const c2 = capture({ url: "https://www.kayak.com/flights/ALC-SAW/2026-11-03" });
+    const again = buildItem(
+      flight({
+        name: "Pegasus · Alicante → İstanbul",
+        price: { ...extraction().price, amount: 5442, currency: "TRY", evidence: "5.442 TL" },
+        flight: { ...leg, carrier: "Pegasus" },
+        metrics: { ...metrics, checked_bag_included: null, duration_minutes: null },
+      }),
+      c2,
+      parseUrl(c2.url!),
+      "t1",
+      2000,
+    );
+    expect(findDuplicate([first], again)?.item.id).toBe(first.id);
+    const merged = mergeItem(first, again);
+    expect(merged.status).toBe("chosen");
+    expect(merged.price.amount).toBe(5442);
+    expect(merged.priceHistory.map((p) => p.amount)).toEqual([285, 5442]);
+    expect(merged.metrics?.checkedBagIncluded).toBe(true);
+    expect(merged.metrics?.durationMinutes).toBe(225);
+    expect(merged.flight).toMatchObject({ from: "ALC", to: "SAW", carrier: "Pegasus", stops: 0 });
+    // Another minute, another airline, or another trip: its own card.
+    expect(findDuplicate([first], { ...again, flight: { ...again.flight!, departure: "2026-11-03T07:05" } })).toBeUndefined();
+    expect(findDuplicate([first], { ...again, flight: { ...again.flight!, carrier: "AJet" } })).toBeUndefined();
+    expect(findDuplicate([first], { ...again, tripId: "t2" })).toBeUndefined();
+  });
+
   it("matches screenshot-only items by name inside the same trip", () => {
     const c = capture({ url: null });
     const a = buildItem(extraction(), c, parseUrl(""), "t1");

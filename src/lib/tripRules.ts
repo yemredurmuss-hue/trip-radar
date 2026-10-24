@@ -108,7 +108,10 @@ export async function setCurrent(tripId: string, country: string | null): Promis
 
 /**
  * The current trip for a page of this country, when it still holds: the trip there, not a sample, not over, kept within a
- * day, and the page of the same country (or of none it could tell, or a country that trip has).
+ * day, and the page of the same country (or of none it could tell, or a country that trip has). Kept from a page with no
+ * country (a video, a blog), it says nothing about the next page's: the trip's own places decide, so a flight from Spain
+ * isn't put in the Bali trip because a video went there before (Emre 2026-10-24: "direkt gitti bali gezisine ekledi");
+ * only a trip with no place yet takes it.
  */
 export function currentFor(cur: CurrentTrip | null, code: string | null, trips: Trip[], items: Item[], today: string, now = Date.now()): Trip | null {
   if (!cur || now - cur.at > CURRENT_MS) return null;
@@ -116,6 +119,9 @@ export function currentFor(cur: CurrentTrip | null, code: string | null, trips: 
   if (!trip || isDemoTrip(trip)) return null;
   const range = profileTrips([trip], items)[0]?.range ?? (trip.confirmedDates ? { start: trip.confirmedDates.start, end: trip.confirmedDates.end } : null);
   if (range && range.end < today) return null;
-  if (!code || !cur.country || cur.country === code) return trip;
-  return tripPlaceCodes(trip.id, items).has(code) || titleCodes(trip.title).has(code) ? trip : null;
+  if (!code || cur.country === code) return trip;
+  const places = tripPlaceCodes(trip.id, items);
+  const named = titleCodes(trip.title);
+  if (places.has(code) || named.has(code)) return trip;
+  return !cur.country && !places.size && !named.size ? trip : null;
 }

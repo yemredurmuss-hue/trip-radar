@@ -361,12 +361,38 @@ export interface Duplicate {
   placeOnly: boolean;
 }
 
+/** An airline as the pages write it, loosely: "Pegasus Airlines" and "Pegasus" are one. */
+const carrierWord = (c: string | null | undefined): string => (c ? normalize(c).replace(/\b(airlines?|airways|air lines)\b/g, "").replace(/\s+/g, " ").trim() : "");
+const flightNo = (f: NonNullable<Item["flight"]>): string | null => f.flightNumber?.replace(/\s+/g, "").toUpperCase() || null;
+const minuteOf = (d: string | null): string | null => (d && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(d) ? d.slice(0, 16) : null);
+const sameAirport = (a: string | null, b: string | null): boolean => Boolean(a && b && normalize(a) === normalize(b));
+
+/**
+ * The same flight saved twice (Emre 2026-10-24: "aynı uçuş olduğunu anlayınca kart bilgileri güncellesin"): the same
+ * number on the same day; or, where a search's list shows no number, the same airports at the same minute, by the same
+ * airline when both say one.
+ */
+export function sameFlight(a: Item["flight"], b: Item["flight"]): boolean {
+  if (!a || !b) return false;
+  const na = flightNo(a), nb = flightNo(b);
+  if (na && nb) return na === nb && Boolean(a.departure) && a.departure!.slice(0, 10) === b.departure?.slice(0, 10);
+  const at = minuteOf(a.departure);
+  const ca = carrierWord(a.carrier), cb = carrierWord(b.carrier);
+  return Boolean(at) && at === minuteOf(b.departure) && sameAirport(a.from, b.from) && sameAirport(a.to, b.to) && (!ca || !cb || ca === cb);
+}
+
 export function findDuplicate(existing: Item[], candidate: Item): Duplicate | undefined {
+  const newest = (list: Item[]) => [...list].sort((a, b) => b.updatedAt - a.updatedAt)[0];
+  // A flight is the same flight by its number, or its airports and minute when the list showed no number: its card is
+  // brought up to date, not a second one made.
+  if (candidate.category === "flight" && candidate.flight) {
+    const same = existing.filter((i) => i.category === "flight" && i.tripId === candidate.tripId && sameFlight(i.flight, candidate.flight));
+    if (same.length) return { item: newest(same), placeOnly: false };
+  }
   const samePlace = candidate.key
     ? existing.filter((i) => i.key === candidate.key)
     : existing.filter((i) => i.tripId === candidate.tripId && i.category === candidate.category && normalize(i.name) === normalize(candidate.name));
   if (!samePlace.length) return undefined;
-  const newest = (list: Item[]) => [...list].sort((a, b) => b.updatedAt - a.updatedAt)[0];
   if (candidate.dates.start) {
     const exact = samePlace.filter((i) => i.dates.start === candidate.dates.start && i.dates.end === candidate.dates.end && sameOffer(i, candidate));
     if (exact.length) return { item: newest(exact), placeOnly: false };
@@ -377,6 +403,18 @@ export function findDuplicate(existing: Item[], candidate: Item): Duplicate | un
   const dateless = samePlace.filter((i) => !i.dates.start && sameOffer(i, candidate));
   if (dateless.length) return { item: newest(dateless), placeOnly: false };
   return { item: newest(samePlace), placeOnly: true };
+}
+
+/**
+ * Field by field: what the new reading says wins, what it left out (null, empty, "unknown") keeps what was known, so a
+ * flight read again from a list without its baggage keeps the baggage its first page said (Emre 2026-10-24: "eskileri
+ * silmeden").
+ */
+function fieldwise<T extends object>(prev: T | null | undefined, next: T | null | undefined): T | null {
+  if (!prev || !next) return next ?? prev ?? null;
+  const out = { ...prev } as Record<string, unknown>;
+  for (const [k, v] of Object.entries(next)) if (!(v == null || v === "" || v === "unknown" || (Array.isArray(v) && !v.length))) out[k] = v;
+  return out as T;
 }
 
 /** Newer capture wins for facts it actually has; the user's decisions (status, notes) are kept. */
@@ -422,8 +460,8 @@ export function mergeItem(existing: Item, incoming: Item, placeOnly = false): It
     priceHistory: priceChanged ? [...existing.priceHistory, ...incoming.priceHistory] : existing.priceHistory,
     cancellation: incoming.cancellation.summary ? incoming.cancellation : existing.cancellation,
     rating: incoming.rating.value != null ? incoming.rating : existing.rating,
-    flight: incoming.flight ?? existing.flight,
-    metrics: incoming.metrics && incoming.metrics !== EMPTY_METRICS ? incoming.metrics : existing.metrics,
+    flight: fieldwise(existing.flight, incoming.flight),
+    metrics: incoming.metrics && incoming.metrics !== EMPTY_METRICS ? (fieldwise(existing.metrics, incoming.metrics) ?? undefined) : existing.metrics,
     geo: incoming.geo ?? existing.geo,
     highlights: incoming.highlights.length ? incoming.highlights : existing.highlights,
     concerns: incoming.concerns.length ? incoming.concerns : existing.concerns,
