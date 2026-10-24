@@ -522,7 +522,7 @@ export interface CustomPlaybook {
 /** A photo's credit for the hero ("Fotoğraf: <by> / Unsplash"): both parts linked when their pages are known. */
 export interface PhotoCredit {
   by: string | null;
-  source: "unsplash" | "pexels" | "wikipedia";
+  source: "unsplash" | "pexels" | "wikipedia" | "commons";
   /** The photographer's page (Unsplash's with its UTM). */
   authorUrl: string | null;
   /** The photo's page on the source. */

@@ -1,0 +1,85 @@
+// The cover's photo, chosen (lib/coverPhoto.ts): Commons' wide photos beside the stock one, the model's look; whenever it
+// can't choose, the old way (the stock photo, else Wikipedia's) as it was.
+import { describe, expect, it } from "vitest";
+import { findCityPhoto, wantsCityImage, nextHeroImage } from "../src/lib/cityImages";
+import { chooseCover, commonsCandidates, stockThumb, type CoverCandidate } from "../src/lib/coverPhoto";
+
+const page = (title: string, w: number, h: number, mime = "image/jpeg", index = 1) => ({
+  title, index,
+  imageinfo: [{ width: w, height: h, mime, thumburl: `https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/${encodeURIComponent(title)}/1920px-x.jpg?utm=1`, descriptionurl: `https://commons.wikimedia.org/wiki/${title}`, extmetadata: { Artist: { value: '<a href="x">Jane Doe</a>' } } }],
+});
+const commonsAnswer = { query: { pages: {
+  a: page("File:Ozora stage.jpg", 4256, 2140, "image/jpeg", 1),
+  b: page("File:Ozora logo.jpg", 3000, 1500, "image/jpeg", 2),
+  c: page("File:Ozora small.jpg", 1200, 800, "image/jpeg", 3),
+  d: page("File:Ozora tall.jpg", 2400, 3600, "image/jpeg", 4),
+  e: page("File:Ozora drawing.png", 4000, 2000, "image/png", 5),
+  f: page("File:Ozora dragon.jpg", 3968, 2976, "image/jpeg", 6),
+} } };
+
+describe("commonsCandidates", () => {
+  it("wide JPEG landscapes only, in Commons' order, never a logo; credited to the author, linked to the file", async () => {
+    const list = await commonsCandidates("Ozora festival", async () => commonsAnswer);
+    expect(list.map((c) => c.credit?.photoPage)).toEqual(["https://commons.wikimedia.org/wiki/File:Ozora stage.jpg", "https://commons.wikimedia.org/wiki/File:Ozora dragon.jpg"]);
+    expect(list[0].credit).toMatchObject({ by: "Jane Doe", source: "commons" });
+    expect(list[0].url).not.toContain("?");
+    expect(list[0].thumb).toContain("/500px-");
+  });
+});
+
+describe("chooseCover", () => {
+  const cands: CoverCandidate[] = [
+    { url: "https://images.unsplash.com/a", thumb: "https://t/a", credit: null },
+    { url: "https://upload.wikimedia.org/b", thumb: "https://t/b", credit: null },
+  ];
+  const jpeg = (async () => new Response(new Uint8Array([255, 216, 255]), { headers: { "content-type": "image/jpeg" } })) as unknown as typeof fetch;
+  it("the model's pick", async () => {
+    expect((await chooseCover("Ozora", cands, async () => 2, jpeg))?.url).toBe("https://upload.wikimedia.org/b");
+  });
+  it("no judge, none fit, an error, a number out of range: null (the old way)", async () => {
+    expect(await chooseCover("Ozora", cands, null, jpeg)).toBeNull();
+    expect(await chooseCover("Ozora", cands, async () => null, jpeg)).toBeNull();
+    expect(await chooseCover("Ozora", cands, async () => { throw new Error("no key"); }, jpeg)).toBeNull();
+    expect(await chooseCover("Ozora", cands, async () => 7, jpeg)).toBeNull();
+  });
+  it("a photo that won't load as a JPEG/PNG isn't looked at", async () => {
+    const webp = (async () => new Response(new Uint8Array([1]), { headers: { "content-type": "image/webp" } })) as unknown as typeof fetch;
+    expect(await chooseCover("Ozora", cands, async () => 1, webp)).toBeNull();
+  });
+});
+
+describe("findCityPhoto with the cover's look", () => {
+  const proxy = { url: "https://srv/functions/v1/city-image", headers: {} };
+  const fetchJson = async (url: string) => (url.includes("city-image") ? { url: "https://images.unsplash.com/photo-1?w=2400", source: "unsplash" } : url.includes("commons.wikimedia.org") ? commonsAnswer : null);
+  const jpeg = (async () => new Response(new Uint8Array([255, 216, 255]), { headers: { "content-type": "image/jpeg" } })) as unknown as typeof fetch;
+  it("the model picks Commons' stage over the stock photo", async () => {
+    const found = await findCityPhoto("Ozora", { proxy, fetchJson, judge: async () => 2, fetchImage: jpeg });
+    expect(found?.url).toContain("upload.wikimedia.org");
+    expect(found?.credit?.source).toBe("commons");
+  });
+  it("it can't choose: the stock photo, as before", async () => {
+    const found = await findCityPhoto("Ozora", { proxy, fetchJson, judge: async () => { throw new Error("no key"); }, fetchImage: jpeg });
+    expect(found?.url).toContain("images.unsplash.com");
+  });
+  it("no judge: Commons isn't asked at all", async () => {
+    const asked: string[] = [];
+    await findCityPhoto("Ozora", { proxy, fetchJson: async (u: string) => (asked.push(u), fetchJson(u)) });
+    expect(asked.some((u) => u.includes("commons"))).toBe(false);
+  });
+});
+
+describe("a chosen Commons cover stays", () => {
+  it("isn't asked again as an old Wikipedia picture, and takes the hero's place", () => {
+    const url = "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/x.jpg/1920px-x.jpg";
+    expect(wantsCityImage(url, true, { by: null, source: "commons", authorUrl: null, photoPage: null })).toBe(false);
+    expect(wantsCityImage(url, true, { by: null, source: "wikipedia", authorUrl: null, photoPage: null })).toBe(true);
+    expect(nextHeroImage("https://upload.wikimedia.org/old.jpg", url, true)).toBe(url);
+  });
+});
+
+describe("stockThumb", () => {
+  it("Unsplash's small copy as a JPEG", () => {
+    const u = new URL(stockThumb("https://images.unsplash.com/photo-1?w=2400&auto=format&q=80"));
+    expect([u.searchParams.get("fm"), u.searchParams.get("w"), u.searchParams.get("auto")]).toEqual(["jpg", "500", null]);
+  });
+});

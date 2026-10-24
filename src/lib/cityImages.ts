@@ -1,6 +1,7 @@
 // One landscape photo per city for the hero. A sharing-server proxy (Unsplash or Pexels, keys on the server) when
 // it answers; otherwise Wikipedia, skipping flags, coats of arms, maps and drawings. The proxy says who took the
 // photo; the hero credits it ("Fotoğraf: <Ad> / Unsplash", both linked).
+import { chooseCover, commonsCandidates, stockThumb, type CoverJudge } from "./coverPhoto";
 import { L, lang } from "./i18n";
 import { getShareConfig } from "./share/store";
 import type { PhotoCredit } from "./types";
@@ -82,7 +83,7 @@ export interface CityPhoto {
   credit: PhotoCredit | null;
 }
 /** `alt`: the proxy's searches after `query` when it finds nothing (an event's: "Ozora Festival", "music festival crowd stage"). */
-type PhotoOpts = { fetchJson?: FetchJson; proxy?: ImageProxy | null; query?: string; titles?: string[]; alt?: string[] };
+type PhotoOpts = { fetchJson?: FetchJson; proxy?: ImageProxy | null; query?: string; titles?: string[]; alt?: string[]; judge?: CoverJudge | null; fetchImage?: typeof fetch };
 
 /** Credits the proxy gave this session, by photo URL: a photo found before its trip exists (the start) keeps its credit. */
 const seenCredits = new Map<string, PhotoCredit>();
@@ -122,14 +123,27 @@ export async function findCityPhoto(city: string, opts: PhotoOpts = {}): Promise
       return null;
     }
   };
+  let stock: CityPhoto | null = null;
   if (opts.proxy) {
     const p = await get(proxyQuery(opts.proxy.url, opts.query?.trim() || city, opts.alt), { headers: opts.proxy.headers });
     if (p?.url) {
       const credit = proxyCredit(p);
       if (credit) seenCredits.set(p.url, credit);
-      return { url: p.url as string, credit };
+      stock = { url: p.url as string, credit };
     }
   }
+  // The cover's own look (coverPhoto.ts): the stock photo beside Commons' wide ones, the model keeps the best; when it
+  // can't choose, the old way below, as it was.
+  if (opts.judge) {
+    const commons = await commonsCandidates(opts.query?.trim() || city, get).catch(() => []);
+    const candidates = [...(stock ? [{ url: stock.url, thumb: stockThumb(stock.url), credit: stock.credit }] : []), ...commons];
+    const pick = await chooseCover(opts.query?.trim() || city, candidates, opts.judge, opts.fetchImage);
+    if (pick) {
+      if (pick.credit) seenCredits.set(pick.url, pick.credit);
+      return { url: pick.url, credit: pick.credit };
+    }
+  }
+  if (stock) return stock;
   // The pages asked for first (an English title such as "Ella, Sri Lanka" on the English Wikipedia), then the name.
   const titles = [...new Set([...(opts.titles ?? []), city])];
   const wikis = lang() === "en" ? ["en", "tr"] : ["tr", "en"];
@@ -163,8 +177,8 @@ export function isWikiImage(url: string | null | undefined): boolean {
  * Whether to ask for a city's photo: never asked yet; or, once the proxy is set up, a stored miss or a
  * Wikipedia picture (trips from before the proxy kept those and would never ask again).
  */
-export const wantsCityImage = (cached: string | null | undefined, proxy: boolean): boolean =>
-  cached === undefined || (proxy && (cached === null || isWikiImage(cached)));
+export const wantsCityImage = (cached: string | null | undefined, proxy: boolean, credit: PhotoCredit | null = null): boolean =>
+  cached === undefined || (proxy && (cached === null || (isWikiImage(cached) && credit?.source !== "commons")));
 
 /** What to store after asking: the new photo; a miss keeps the picture there was (a first miss is none). */
 export const nextCityImage = (cached: string | null | undefined, found: string | null): string | null => found ?? cached ?? null;
@@ -173,9 +187,10 @@ export const nextCityImage = (cached: string | null | undefined, found: string |
  * The trip card's picture after the first city's photo is asked for: the new photo when there was none, or
  * a proxy photo in place of a Wikipedia one; anything else (a page's photo, a proxy photo) stays.
  */
-export function nextHeroImage(hero: string | null, found: string | null): string | null {
+export function nextHeroImage(hero: string | null, found: string | null, chosen = false): string | null {
   if (!found) return hero;
-  if (!hero) return found;
+  // (a cover the model chose among Commons' and the stock photos, coverPhoto.ts: it takes the place of what was there)
+  if (!hero || chosen) return found;
   return isWikiImage(hero) && !isWikiImage(found) ? found : hero;
 }
 
@@ -224,8 +239,8 @@ export interface CreditPart {
   text: string;
   href: string | null;
 }
-const SOURCE_NAME = { unsplash: "Unsplash", pexels: "Pexels", wikipedia: "Wikipedia" } as const;
-const SOURCE_HOME = { unsplash: "https://unsplash.com/", pexels: "https://www.pexels.com/", wikipedia: "https://www.wikipedia.org/" } as const;
+const SOURCE_NAME = { unsplash: "Unsplash", pexels: "Pexels", wikipedia: "Wikipedia", commons: "Wikimedia Commons" } as const;
+const SOURCE_HOME = { unsplash: "https://unsplash.com/", pexels: "https://www.pexels.com/", wikipedia: "https://www.wikipedia.org/", commons: "https://commons.wikimedia.org/" } as const;
 
 /**
  * The hero's credit line: "Fotoğraf: <photographer> / Unsplash" (their page; Unsplash's home, Pexels' or

@@ -13,6 +13,7 @@ import { cachedWeather } from "../lib/climate";
 import { addDays, cityKeyOf, sameCity, type OptionGroup, type Plan } from "../lib/plan";
 import { retryCapture } from "../lib/process";
 import { contentLang, contentTag, L, withLang } from "../lib/i18n";
+import { modelCoverJudge } from "../lib/coverJudge";
 import { creditOf, findCityPhoto, imageProxy, keptCredits, nextCityImage, nextHeroImage, wantsCityImage, type HeroCity } from "../lib/cityImages";
 import { acceptMood, moodKey } from "../lib/heroText";
 import { getProvider, MissingKeyError } from "../lib/llm";
@@ -413,7 +414,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     if (!placesSettled) return;
     const unasked = mainNames.filter((name) => {
       const key = cityKeyOf(name);
-      return key && !askedImages.current.has(`${trip.id}:${key}`) && wantsCityImage(trip.cityImages?.[key], true);
+      return key && !askedImages.current.has(`${trip.id}:${key}`) && wantsCityImage(trip.cityImages?.[key], true, creditOf(trip.cityImages?.[key], trip.photoCredits));
     });
     if (!unasked.length) return;
     for (const name of unasked) askedImages.current.add(`${trip.id}:${cityKeyOf(name)}`);
@@ -422,9 +423,10 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       const proxy = await imageProxy();
       for (const name of unasked) {
         const key = cityKeyOf(name)!;
-        if (!wantsCityImage(trip.cityImages?.[key], Boolean(proxy))) continue;
+        if (!wantsCityImage(trip.cityImages?.[key], Boolean(proxy), creditOf(trip.cityImages?.[key], trip.photoCredits))) continue;
         try {
-          const found = await findCityPhoto(name, { proxy });
+          // (the trip's first place is its cover: looked at with Commons' photos and the model's eye, coverPhoto.ts)
+          const found = await findCityPhoto(name, { proxy, judge: key === firstKey ? modelCoverJudge : null });
           const url = found?.url ?? null;
           await updateTrip(
             trip.id,
@@ -432,7 +434,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
               const next = {
                 ...t,
                 cityImages: { ...t.cityImages, [key]: nextCityImage(t.cityImages?.[key], url) },
-                ...(key === firstKey ? { heroImage: nextHeroImage(t.heroImage, url) } : {}),
+                ...(key === firstKey ? { heroImage: nextHeroImage(t.heroImage, url, found?.credit?.source === "commons") } : {}),
               };
               return { ...next, photoCredits: keptCredits(next, [found]) };
             },

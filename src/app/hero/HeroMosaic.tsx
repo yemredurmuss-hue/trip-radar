@@ -58,6 +58,28 @@ function Credit({ credit }: { credit: PhotoCredit }) {
   );
 }
 
+/**
+ * The cover's credit, always there and quiet (2026-10-24, Emre approved hero-gorsel-v1: "Fotoğraf: who · source", small and
+ * faint on its bottom right; the licence asks the credit be seen, a hidden "i" hardly does). Tiles keep their "i".
+ */
+function CreditLine({ credit }: { credit: PhotoCredit }) {
+  const line = creditLine(credit);
+  const part = (p: CreditPart) =>
+    p.href ? (
+      <a href={p.href} target="_blank" rel="noopener noreferrer">
+        {p.text}
+      </a>
+    ) : (
+      <span>{p.text}</span>
+    );
+  return (
+    <span className="x-crl">
+      {line.label} {line.by && <>{part(line.by)} · </>}
+      {part(line.source)}
+    </span>
+  );
+}
+
 /** A tile's or a stop's state in words, beside its dot (never by colour alone). */
 const stateWords = (state: Exclude<TileState, null>) => (state === "booked" ? L("Alındı", "Booked") : L("Planda, henüz alınmadı", "Planned, not booked yet"));
 
@@ -180,7 +202,7 @@ export function HeroMosaic({ mosaic, title, where, mood, working, menu, onTile, 
           {mood && <em className="x-mood">{mood}</em>}
           {route && <Route route={route} />}
         </figcaption>
-        {cover?.credit && <Credit credit={cover.credit} />}
+        {cover?.credit && <CreditLine credit={cover.credit} />}
         {/* On paper the cover's credit is written out (PrintPlan copies the hero as drawn). */}
         {cover?.credit && (
           <span className="x-crprint" aria-hidden>

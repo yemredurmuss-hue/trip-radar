@@ -8,6 +8,7 @@
 // aborted at ROUTE_MS: the classic circuit or one stop stands meanwhile.
 import { hasActiveKey } from "../../lib/db";
 import { imageProxy, pickCityImage } from "../../lib/cityImages";
+import { modelCoverJudge } from "../../lib/coverJudge";
 import { withLang, type Lang } from "../../lib/i18n";
 import { getProvider } from "../../lib/llm";
 import {
@@ -169,7 +170,8 @@ export async function findPhotos(places: string[], s?: Pick<StartState, "where" 
     places.slice(0, 7).map(async (place) => {
       try {
         const how = s ? photoQuery(place, s) : { query: place, titles: [] };
-        return [place, await withTimeout(pickCityImage(place, { proxy, ...how }), 8000)] as const;
+        // (the first place is the cover: Commons' photos and the model's eye beside the stock one, coverPhoto.ts)
+        return [place, await withTimeout(pickCityImage(place, { proxy, ...how, judge: place === places[0] ? modelCoverJudge : null }), 15000)] as const;
       } catch {
         return [place, null] as const;
       }

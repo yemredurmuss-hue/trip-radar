@@ -45,6 +45,8 @@ chromium.launchPersistentContext = async (...args) => {
   ctx.on("page", settledShots);
   // The rate source is a live network call: a sandbox without outbound access would leave the hero without its rate tip.
   await ctx.route(/frankfurter/, (route) => route.fulfill({ json: { date: "2026-09-28", rates: { TRY: 40, THB: 38, USD: 1.1 } } }));
+  // Commons' photo search for a cover (coverPhoto.ts): nothing found here, so a cover is the stock photo or Wikipedia's as before.
+  await ctx.route(/commons\.wikimedia\.org\/w\/api\.php/, (route) => route.fulfill({ json: {} }));
   // The airline logos' first source (images.kiwi.com, airlines.ts) turns a HeadlessChrome user agent away (403) where the owner's
   // Chrome gets the picture: here a logo answers with a small picture, so the cards wear the logo as they do for the owner.
   await ctx.route(/images\.kiwi\.com\/airlines\//, (route) =>
@@ -289,7 +291,7 @@ try {
   // With no photo to be had (offline) the cover stands alone, plain, and no "i" says a credit there isn't (C19, C7).
   if (process.env.E2E_OFFLINE) {
     assert.equal(await hero.locator(".x-mos.solo .x-big.empty").count(), 1, "no photo: the cover alone");
-    assert.equal(await hero.locator(".x-tiles, .x-cr").count(), 0, "no tile and no credit without a photo");
+    assert.equal(await hero.locator(".x-tiles, .x-cr, .x-crl").count(), 0, "no tile and no credit without a photo");
   }
   // The ⋯ menu on the cover's top left (C1).
   assert.equal(await hero.locator(".x-mos > .x-tmenu .x-tmb").count(), 1);
@@ -4456,21 +4458,17 @@ try {
   assert.equal(await board.evaluate(() => window.__printed), 0, "no print window");
   await board.locator(".print-plan").waitFor({ state: "detached" });
   console.log(`✓ plan as PDF: the trip menu's "Planı PDF indir" saves the plan as a file (${pdfPages} pages, ${Math.round(pdfBytes.length / 1024)} KB) → ${out}/27d-plan.pdf`);
-  // The photo's credit (0.36.54): a small ⓘ on the photo, the credit on hover; on paper in full.
-  // (v83 C7: on every photo of the mosaic whose source is known; none without a photo)
-  const creditBox = board.locator(".x-hero .x-big .x-cr").first();
-  if (await creditBox.count()) {
-    // (the mouse is still where "Gezi menüsü" was, on the cover: off it first, and its fade ends)
+  // The photo's credit: on the cover always there and faint, "Fotoğraf: … · source" (hero-gorsel-v1, 2026-10-24); a tile keeps
+  // its small ⓘ, the credit on hover; on paper in full. (v83 C7: on every photo whose source is known; none without a photo)
+  const creditLine = board.locator(".x-hero .x-big .x-crl").first();
+  if (await creditLine.count()) {
     await board.mouse.move(5, 5);
-    await creditBox.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
-    assert.equal(await creditBox.evaluate((el) => getComputedStyle(el).opacity), "0", "only the photo until hovered");
-    await board.locator(".x-hero .x-big").hover();
-    await creditBox.hover();
-    assert.match(await board.locator(".tipx-box").innerText(), /^Fotoğraf: /);
-    await board.screenshot({ path: `${out}/27e-credit-hover.png` });
-    await board.mouse.move(5, 5);
+    assert.match(await creditLine.innerText(), /^Fotoğraf: /);
+    assert.notEqual(await creditLine.evaluate((el) => getComputedStyle(el).opacity), "0", "seen without a hover");
+    assert.equal(await board.locator(".x-hero .x-big > .x-cr").count(), 0, "no ⓘ on the cover beside the line");
+    await board.screenshot({ path: `${out}/27e-credit-line.png` });
   }
-  console.log("✓ photo credit: a small ⓘ on the photo, the credit on hover");
+  console.log("✓ photo credit: on the cover a faint line always there, 'Fotoğraf: …'");
 
   // 20d2. Web search: "Ozora 2027 tarihlerini araştır" → the chat calls web_search; while it runs the thinking line
   // says "Web'de arıyorum…"; the answer ends with "Kaynak:" and the site's link. Only the question goes out.

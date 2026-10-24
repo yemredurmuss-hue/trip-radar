@@ -43,8 +43,11 @@ export const COVER_W = 1280;
  * thumbnail stays 1280: wider than its file it won't load).
  */
 export function coverWidth(url: string, dpr = typeof devicePixelRatio === "number" ? devicePixelRatio : 1): number {
-  if (dpr < 1.5) return COVER_W;
   try {
+    // (a Commons cover is stored at the width it was chosen at, 1920 px, coverPhoto.ts: never asked smaller)
+    const kept = new URL(url).hostname === "upload.wikimedia.org" ? Number(/\/(\d+)px-/.exec(url)?.[1] ?? 0) : 0;
+    if (kept >= 1920) return kept;
+    if (dpr < 1.5) return COVER_W;
     return /^images\.(unsplash|pexels)\.com$/.test(new URL(url).hostname) ? COVER_W * 2 : COVER_W;
   } catch {
     return COVER_W;
