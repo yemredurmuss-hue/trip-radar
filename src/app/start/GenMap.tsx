@@ -7,6 +7,7 @@
 // stops. With reduced motion: the last frame at once. The timeline is startMap.genTimeline (the steps follow it).
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { L, withLang, type Lang } from "../../lib/i18n";
+import { COVER_W, sizedPhoto } from "../../lib/photoCache";
 import {
   along, arcControl, arcPath, between, easeInOut, flightView, groundPath, MAP_W, nearSide, project, stopsView, worldView, type GenTimeline, type View, type XY,
 } from "../../lib/startMap";
@@ -177,7 +178,7 @@ export function GenMap({ world, from, to, label, stops, ground, photos, timeline
         {photos.slice(0, 3).map((p, i) => (
           <div key={`${i}:${p.place}`} className={`gm-card gm-card-${i}${ms >= t.photos ? " in" : ""}`}>
             <span>{p.place}</span>
-            {p.url && <img src={p.url} alt="" referrerPolicy="no-referrer" />}
+            {p.url && <img src={sizedPhoto(p.url, COVER_W)} alt="" referrerPolicy="no-referrer" />}
           </div>
         ))}
       </div>

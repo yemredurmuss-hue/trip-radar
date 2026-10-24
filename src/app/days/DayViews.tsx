@@ -8,6 +8,7 @@ import { Fragment, useState, type ReactNode } from "react";
 import { dayCards, type DayCard } from "../../lib/dayCards";
 import { dayPhotoUrl, journeyDay, motifOf, reservationRows, reservationsReady, type Motif } from "../../lib/dayView";
 import { placeRoute } from "../../lib/dayRowTitle";
+import { COVER_W, sizedPhoto, THUMB_W } from "../../lib/photoCache";
 import { formatDateRange } from "../../lib/items";
 import { L } from "../../lib/i18n";
 import type { DayRow } from "../../lib/journey";
@@ -90,9 +91,13 @@ const MOTIFS: Record<Motif, ReactNode> = {
   ),
 };
 
-/** The day's picture: its photo when it has one, over its faint drawing (which shows when there is no photo, or it doesn't load). */
-function Picture({ card, cityImage }: { card: DayCard; cityImage: DayCardsProps["cityImage"] }) {
-  const photo = dayPhotoUrl(card, cityImage);
+/**
+ * The day's picture: its photo when it has one, over its faint drawing (which shows when there is no photo, or it doesn't
+ * load). At `width`: the list's large one at the cover's (the city's photo, already loaded by the hero), a thumbnail small.
+ */
+function Picture({ card, cityImage, width }: { card: DayCard; cityImage: DayCardsProps["cityImage"]; width: number }) {
+  const found = dayPhotoUrl(card, cityImage);
+  const photo = found && sizedPhoto(found, width);
   return (
     <>
       <svg className="dv-motif" viewBox="0 0 260 140" aria-hidden fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
@@ -160,7 +165,7 @@ function RichDay({ card, mode, stays, isToday, ...props }: DayProps) {
       <section className={`dv-day${isToday ? " today" : ""}`} id={`dvd-list-${card.key}`} aria-label={label}>
         <div className="dv-card">
           <div className="dv-photo">
-            <Picture card={card} cityImage={props.cityImage} />
+            <Picture card={card} cityImage={props.cityImage} width={COVER_W} />
             {dayNo && <i className="dv-pill">{dayNo}</i>}
           </div>
           <div className="dv-body">
@@ -179,7 +184,7 @@ function RichDay({ card, mode, stays, isToday, ...props }: DayProps) {
     <section className={`dv-day${isToday ? " today" : ""}`} id={`dvd-cards-${card.key}`} aria-label={label}>
       <header className="dv-chead">
         <span className="dv-thumb">
-          <Picture card={card} cityImage={props.cityImage} />
+          <Picture card={card} cityImage={props.cityImage} width={THUMB_W} />
         </span>
         <span className="dv-ctext">
           {title}

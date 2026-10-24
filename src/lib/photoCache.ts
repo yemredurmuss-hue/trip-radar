@@ -37,6 +37,34 @@ export function sizedPhoto(url: string, width: number): string {
 
 /** The cover's width: the hero's and the trip card's (one address, so the card's photo is the hero's, already loaded). */
 export const COVER_W = 1280;
+/** A card's photo (half the panel at most, 2x): what FallbackImg asks for unless told. */
+export const CARD_W = 640;
+/** A thumbnail's (a day's 64 px, a plan row's, a map stop's), 2x. */
+export const THUMB_W = 160;
+
+// A photo found by a search (the map's stops: "Ubud travel") is kept by its query, so the next visit draws it without
+// asking the proxy again (2026-10-24: "girdiğimde tekrar çekiliyor"). The proxy keeps its picks 30 days; so do we.
+const FOUND = "trip-radar:photo-for:";
+const FOUND_DAYS = 30;
+
+/** The photo a search found before, while it's fresh; null when there's none kept (or no storage). */
+export function foundPhoto(query: string, now = Date.now()): string | null {
+  try {
+    const kept = JSON.parse(localStorage.getItem(FOUND + query.trim().toLowerCase()) ?? "null");
+    return typeof kept?.url === "string" && now - Number(kept.at) < FOUND_DAYS * 864e5 ? kept.url : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Keeps what a search found (a miss is not kept: it's asked again, the proxy may have one by then). */
+export function keepFound(query: string, url: string, now = Date.now()): void {
+  try {
+    localStorage.setItem(FOUND + query.trim().toLowerCase(), JSON.stringify({ url, at: now }));
+  } catch {
+    // No storage (full, blocked): asked again next visit.
+  }
+}
 
 /** How many decoded photos a visit holds (a trip's hero is a cover and up to six tiles; a few trips' worth). */
 export const PHOTO_MAX = 40;

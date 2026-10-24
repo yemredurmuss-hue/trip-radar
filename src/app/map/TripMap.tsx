@@ -12,6 +12,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { GeoJSONSource, Map as MlMap, Marker } from "maplibre-gl";
 import { pickCityImage, imageProxy } from "../../lib/cityImages";
+import { foundPhoto, keepFound, sizedPhoto, THUMB_W } from "../../lib/photoCache";
 import { formatDateRange } from "../../lib/items";
 import { L, withLang, type Lang } from "../../lib/i18n";
 import { nNights } from "../../lib/i18nText";
@@ -98,14 +99,18 @@ function icon(paths: string, className = "tm-icon"): SVGSVGElement {
   return svg;
 }
 
-/** Photos asked for by query, once per session. */
+/** Photos asked for by query: once per session, and one found is kept for the next visits (photoCache.ts foundPhoto). */
 const photoCache = new Map<string, Promise<string | null>>();
 function photoFor(query: string): Promise<string | null> {
   let p = photoCache.get(query);
   if (!p) {
-    p = imageProxy()
-      .then((proxy) => pickCityImage(query, { proxy, query }))
-      .catch(() => null);
+    const kept = foundPhoto(query);
+    p = kept
+      ? Promise.resolve(kept)
+      : imageProxy()
+          .then((proxy) => pickCityImage(query, { proxy, query }))
+          .then((url) => (url && keepFound(query, url), url))
+          .catch(() => null);
     photoCache.set(query, p);
   }
   return p;
@@ -320,8 +325,8 @@ export function TripMap(props: TripMapProps) {
     img.referrerPolicy = "no-referrer";
     img.onerror = () => img.remove();
     img.onload = () => img.classList.add("in");
-    if (s.photo) img.src = s.photo;
-    else if (s.photoQuery) void photoFor(s.photoQuery).then((url) => url && img.isConnected && (img.src = url));
+    if (s.photo) img.src = sizedPhoto(s.photo, THUMB_W);
+    else if (s.photoQuery) void photoFor(s.photoQuery).then((url) => url && img.isConnected && (img.src = sizedPhoto(url, THUMB_W)));
     ph.append(img);
     if (s.nights) ph.append(el("span", "tm-n", String(s.nights)));
     node.append(name, ph);

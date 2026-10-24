@@ -6,6 +6,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { airlineLogos } from "../../../lib/airlines";
 import { L } from "../../../lib/i18n";
 import type { JourneyStep, StepAction, StepTarget } from "../../../lib/journeyChapters";
+import { THUMB_W } from "../../../lib/photoCache";
 import { CopyText } from "../../CopyButton";
 import { DocPickButton } from "../../cards/DocAccess";
 import { KindIcon, UiIcon } from "../../cards/Silhouettes";
@@ -135,7 +136,7 @@ export function StepCard({ step, tripId, on }: { step: JourneyStep; tripId: stri
         <div key={look} className={`q-scard${look === "todo" && step.kind !== "prep" ? " todo" : ""}${step.kind === "ideas" ? " idea" : ""}${step.kind === "onboard" ? " night" : ""}${step.missed ? " missed" : ""}`}>
           {!plain && (
             <span className="q-sth" aria-hidden>
-              <span className={`q-th${step.image ? "" : " art"}`}>{step.image ? <FallbackImg src={step.image} className="q-thimg" fallback={art} /> : art}</span>
+              <span className={`q-th${step.image ? "" : " art"}`}>{step.image ? <FallbackImg src={step.image} className="q-thimg" width={THUMB_W} fallback={art} /> : art}</span>
             </span>
           )}
           {step.kind === "onboard" && (

@@ -6,9 +6,10 @@
 // 2026-10-13): one big photo with two smaller beside it. The mosaic is the default; the traveller can switch to the strip and back, and
 // the choice is kept in this browser. Photos are the trip's own (the places' and moments'); a slot without one shows the soft gradient.
 import { useState, type ReactNode } from "react";
+import { COVER_W, sizedPhoto } from "../../lib/photoCache";
 import type { Preview } from "../../lib/startTrip";
 
-/** A photo that fades in once it has loaded (the gradient shows meanwhile, and where it fails). */
+/** A photo that fades in once it has loaded (the gradient shows meanwhile, and where it fails); at the cover's width, as the trip will show it. */
 function Photo({ url, place, i }: { url: string | null; place: string; i: number }) {
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -16,7 +17,7 @@ function Photo({ url, place, i }: { url: string | null; place: string; i: number
     <div className={`st-pv-photo st-pv-photo-${i}`}>
       <span className="st-pv-photo-name">{place}</span>
       {url && !failed && (
-        <img src={url} alt="" referrerPolicy="no-referrer" className={loaded ? "in" : ""} onLoad={() => setLoaded(true)} onError={() => setFailed(true)} />
+        <img src={sizedPhoto(url, COVER_W)} alt="" referrerPolicy="no-referrer" className={loaded ? "in" : ""} onLoad={() => setLoaded(true)} onError={() => setFailed(true)} />
       )}
     </div>
   );

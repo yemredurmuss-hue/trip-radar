@@ -17,6 +17,7 @@ import { ModeIcon, type ModeIconName } from "./modeIcons";
 import type { CarrierMark } from "../../../lib/ticketFrame";
 import { CarrierLogo } from "./OptionRow";
 import { ringArcs, ringDone, ringParts, type PlanRing } from "../../../lib/planRing";
+import { sizedPhoto, THUMB_W } from "../../../lib/photoCache";
 
 /** The dated categories' heads take the rows' icons (MingCute): a plane, a hotel, a train. */
 const MODE_OF: Partial<Record<SectionId, ModeIconName>> = { flight: "plane", stay: "hotel", transport: "train" };
@@ -130,7 +131,7 @@ export function CategoryRow({ row, meta, open, onToggle, onDecide, decideTip, bu
         {/* Only real photos (0.38.3): a photo that doesn't load goes, and no drawing stands in for one. */}
         {row.thumbs.filter((t) => !failed.has(t.src)).map((t) => (
           <span key={t.src} className="q-th" style={{ "--bc": meta.color } as React.CSSProperties}>
-            <img className="ph" src={t.src} alt="" onError={() => setFailed((f) => new Set(f).add(t.src))} />
+            <img className="ph" src={sizedPhoto(t.src, THUMB_W)} alt="" onError={() => setFailed((f) => new Set(f).add(t.src))} />
           </span>
         ))}
         {row.logos?.map((m, i) => (

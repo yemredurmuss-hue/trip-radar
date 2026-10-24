@@ -60,7 +60,7 @@ export function TripCard({ title, info, image: stored, photoBy, left, people, or
   return (
     <button type="button" className="trip-card vcard v1" data-trip-card={tripId} style={{ "--tint": tint } as CSSProperties} onClick={onOpen}>
       <span className="pic">
-        <FallbackImg className="pic-img" src={image} title={photoBy} fallback={<span className="pic-img" />} />
+        <FallbackImg className="pic-img" src={image} width={COVER_W} title={photoBy} fallback={<span className="pic-img" />} />
         <span className="who">
           <Faces people={people} order={order} />
         </span>

@@ -18,6 +18,7 @@ import type { Plan } from "../../lib/plan";
 import type { Item } from "../../lib/types";
 import { setItemStatus } from "../actions";
 import { FallbackImg } from "../FallbackImg";
+import { THUMB_W } from "../../lib/photoCache";
 import { DeleteX } from "../cards/CardShell";
 import { Editable, InlineEdit, useInlineEdit } from "../cards/InlineEdit";
 import { NAME_IN_PLACE } from "../../lib/inlineEdit";
@@ -77,7 +78,7 @@ function IdeaLineFace({ item, plan, status, returned = null, today, during }: Id
   const doneDay = item.doneAt ? shortDay(new Date(item.doneAt).toISOString().slice(0, 10)) : null;
   return (
     <div className={`il-row${done ? " done" : ""}${returned ? " back" : ""}`} aria-label={item.name} data-item-id={item.id} title={item.summary ?? undefined}>
-      {item.imageUrl ? <FallbackImg className="il-img" src={item.imageUrl} fallback={tile} /> : tile}
+      {item.imageUrl ? <FallbackImg className="il-img" src={item.imageUrl} width={THUMB_W} fallback={tile} /> : tile}
       <div className="il-main">
         {edit?.open === "name" ? (
           <b>

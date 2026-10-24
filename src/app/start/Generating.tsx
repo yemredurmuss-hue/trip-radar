@@ -14,6 +14,7 @@
 // landed, or OPEN_CAP_MS after the map started, whichever comes first.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { creditFor, keptCredits } from "../../lib/cityImages";
+import { COVER_W, sizedPhoto } from "../../lib/photoCache";
 import { cityKeyOf } from "../../lib/plan";
 import { L, withLang } from "../../lib/i18n";
 import { genSubLine, runStep, stepsFor, type StepId } from "../../lib/startCreate";
@@ -45,14 +46,17 @@ interface Props {
   onLine?: (text: string) => void;
 }
 
-/** A photo card: the gradient (and the place's name) first, the photo fading in over it once loaded. */
+/**
+ * A photo card: the gradient (and the place's name) first, the photo fading in over it once loaded. At the cover's width
+ * (photoCache.ts): these become the trip's photos, so the hero opens on them already loaded.
+ */
 function Card({ i, place, url }: { i: number; place: string; url: string | null }) {
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
   return (
     <div className={`st-photo st-photo-${i}`}>
       <span>{place}</span>
-      {url && !failed && <img src={url} alt="" referrerPolicy="no-referrer" className={loaded ? "in" : ""} onLoad={() => setLoaded(true)} onError={() => setFailed(true)} />}
+      {url && !failed && <img src={sizedPhoto(url, COVER_W)} alt="" referrerPolicy="no-referrer" className={loaded ? "in" : ""} onLoad={() => setLoaded(true)} onError={() => setFailed(true)} />}
     </div>
   );
 }
