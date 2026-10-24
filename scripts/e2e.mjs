@@ -2653,9 +2653,11 @@ try {
   const popup = await context.newPage();
   await popup.setViewportSize({ width: 340, height: 260 });
   await popup.goto(`chrome-extension://${id}/popup.html`);
-  await popup.getByText("Burası pano", { exact: false }).waitFor();
+  // (açılır kart v1.1, 0.47.2: the trips ahead, else the first trip's invitation; never a decision here)
+  await popup.locator(".ts-band, .tb-empty").first().waitFor();
+  assert.equal(await popup.getByText(/Karar ver|Sıradaki/).count(), 0);
   await popup.screenshot({ path: `${out}/7-popup.png` });
-  console.log("✓ popup: renders and guides when clicked on the board itself");
+  console.log("✓ popup: on the board itself, the trips ahead (or the first trip's invitation), no decision");
 } finally {
   await context.close();
 }

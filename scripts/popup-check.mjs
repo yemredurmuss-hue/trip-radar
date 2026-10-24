@@ -103,6 +103,10 @@ assert.equal((await asked(p, "popup:save"))[0].pick.tripId, "pt");
 // 5. Already in the deck.
 p = await open(view({ ...known, saved: true }), "6-saved");
 assert.match(await text(p), /Memmo Alfama Hotel zaten destende\nPortekiz · Konaklama\nPanoda karşılaştır\nFiyatı düşerse haber veririm\nFiyatı yenile/);
+// 5b. An idea already in the deck: nothing to compare and no price to watch; "✓ Eklendi", the board a press below.
+p = await open(view({ ...known, saved: true }, { what: "idea", video: true, hero: dot, title: "Bali'de 15 gün", sub: "YouTube · video" }), "6b-saved-idea");
+assert.match(await text(p), /Bali'de 15 gün zaten destende\nPortekiz · İlham\n✓ Eklendi\nBiriktirdiklerim 16\nPanoda gör$/);
+assert.equal(await p.getByText(/Fiyat|karşılaştır/).count(), 0, "no price lines on an idea");
 // 6. A video: its picture with the play mark, "+ İlham'a ekle", saved as an idea.
 p = await open(view(known, { what: "idea", video: true, hero: dot, title: "Bali'de 3 gün: Ubud", sub: "YouTube · video", site: "https://www.youtube.com/*", travelSite: false, along: false }), "7-video");
 assert.equal(await p.locator(".tb-hero.video").count(), 1);
@@ -130,9 +134,28 @@ assert.match(await text(p), /Casa do Bairro okunamadı\nKayıt duruyor; bir daha
 await p.getByRole("button", { name: "Tekrar dene" }).click();
 await p.waitForTimeout(100);
 assert.equal((await asked(p, "popup:retry"))[0].id, "c:f");
-// 10. A new tab: never a dead end; the trip's next thing to do.
-p = await open({ kind: "none", title: "", sub: "", site: null, travelSite: false, along: false, what: "idea", where: null, desk: { candidate: null, planned: null }, key: true, price: null, pocket, hero: null, video: false, confirm: null, glance, fresh: false, failed: null, alongAsked: true }, "11-newtab");
-assert.match(await text(p), /^Trip Radar\nUygulamayı aç ↗\n×\nPortekiz\n!\nSıradaki\nİstanbul → Porto karar bekliyor\n8 Eki · 2 seçenek\nKarar ver\nBu sayfa eklenemez$/);
+// 10. A new tab (açılır kart v1.1, 0.47.2): the trips ahead, the selected one big (photo, how long, how ready, Pano's count),
+// the others a row each; a press on a row selects that trip (no decision here: decisions are the Plan's). No trips: one invitation.
+const shelfTrip = (id, title, when, countdown, ready, mine, photo = dot) => ({ id, title, photo, art: "illus/ucus.png", when, countdown, ready, mine });
+const shelf = {
+  selected: true,
+  total: 4,
+  trips: [
+    shelfTrip("bali", "15-Day Bali Honeymoon", "26 Eki – 9 Kas", { text: "2 gün kaldı", tone: "soon" }, { plan: 72, booked: 44, fresh: false }, 14),
+    shelfTrip("pt", "Porto hafta sonu", "12 – 15 Ara", { text: "7 hafta kaldı", tone: "far" }, { plan: 55, booked: 30, fresh: false }, 9),
+    shelfTrip("oz", "Ozora Festival 2027", null, null, { plan: 0, booked: 0, fresh: true }, 2, null),
+  ],
+};
+const newTab = { kind: "none", title: "", sub: "", site: null, travelSite: false, along: false, what: "idea", where: null, desk: { candidate: null, planned: null }, key: true, price: null, pocket, hero: null, video: false, confirm: null, glance, fresh: false, failed: null, alongAsked: true, shelf };
+p = await open(newTab, "11-newtab");
+assert.match(await text(p), /^Trip Radar\nUygulamayı aç ↗\n×\n2 gün kaldı\n15-Day Bali Honeymoon\n26 Eki – 9 Kas\n%72\nhazır\n14 Pano'da\nSeçili gezi\nÖbür geziler\nPorto hafta sonu\n12 – 15 Ara · 7 hafta kaldı\n%55\nOzora Festival 2027\ntarihsiz\n\+ Yeni gezi\nTüm geziler \(4\)$/);
+assert.equal(await p.getByText(/Karar ver|Sıradaki|eklenemez/).count(), 0, "no decision on the new tab's card");
+assert.equal(await p.locator(".tb-chip").count(), 0, "the band names the trip; no chip");
+await p.getByRole("button", { name: "Porto hafta sonu gezisine geç" }).click();
+await p.waitForTimeout(100);
+assert.equal((await asked(p, "popup:current"))[0].tripId, "pt", "a row selects that trip");
+p = await open({ ...newTab, shelf: { selected: false, total: 0, trips: [] } }, "11b-newtab-empty");
+assert.match(await text(p), /İlk gezini başlat[\s\S]*\+ Yeni gezi$/);
 // 11. A travel site without the switch, once: "+ koyayım mı?"; "Ekle" goes on to the page. No key: the quiet line says so.
 p = await open(view(known, { along: false, alongAsked: false, key: false }), "12-along");
 assert.match(await text(p), /Booking\.com'da kartlara \+ koyayım mı\?[\s\S]*Evet, yanımda ol/);

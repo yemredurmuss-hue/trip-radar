@@ -12,6 +12,7 @@ import { L, lang, loadLang } from "./lib/i18n";
 import { COMPANION_SITES, companionName, deckWord, siteKindOf, type CompanionWhere, type TripPick } from "./lib/companion";
 import { clearPriceBadge, type PriceBadge } from "./lib/priceBadge";
 import type { PopupAsk, PopupView } from "./lib/popupWorker";
+import type { Ready, Shelf, ShelfTrip } from "./lib/tripShelf";
 import { reloadIfStale } from "./lib/update";
 
 const ask = <T,>(m: PopupAsk): Promise<T | null> =>
@@ -25,9 +26,6 @@ const ask = <T,>(m: PopupAsk): Promise<T | null> =>
 
 type Trip = CompanionWhere["trips"][number];
 type Saved = { captureId: string; tripId: string | null; tripTitle: string | null; deck: string };
-
-/** "Seç" on the plan is a decision to make from here. */
-const actWord = (act: string): string => (act === L("Seç", "Pick") ? L("Karar ver", "Decide") : act);
 
 function Popup() {
   const [tabId, setTabId] = useState<number | null>(null);
@@ -254,21 +252,36 @@ function Popup() {
       </>
     );
   } else if (card === "saved") {
+    // (comparing and a price to watch: only a need with options; an idea or any other page is just "✓ Eklendi", Emre 0.47.2)
+    const options = view.what === "stay" || view.what === "flight" || view.what === "transport" || view.what === "activity";
     body = (
       <>
         <div className="tb-main">
-          {view.hero ? <Hero src={view.hero} small /> : <Sign tone="ok">✓</Sign>}
+          {view.hero ? <Hero src={view.hero} video={view.video} small /> : <Sign tone="ok">✓</Sign>}
           <Say title={L(`${view.title} zaten destende`, `${view.title} is in your deck already`)} sub={where?.trip ? L(`${where.trip.title} · ${deck}`, `${where.trip.title} · ${deck}`) : null} />
-          <button type="button" className="tb-go" onClick={() => boardOf(where?.trip?.id ?? tripId)}>
-            {L("Panoda karşılaştır", "Compare on the board")}
-          </button>
+          {options ? (
+            <button type="button" className="tb-go" onClick={() => boardOf(where?.trip?.id ?? tripId)}>
+              {L("Panoda karşılaştır", "Compare on the board")}
+            </button>
+          ) : (
+            <span className="tb-go added" role="status">
+              ✓ {L("Eklendi", "Added")}
+            </span>
+          )}
         </div>
-        {quiet(
-          <span>{L("Fiyatı düşerse haber veririm", "I'll tell you if the price drops")}</span>,
-          <button type="button" className="btn-link" disabled={busy} onClick={() => void save()}>
-            {L("Fiyatı yenile", "Refresh the price")}
-          </button>,
-        )}
+        {options
+          ? quiet(
+              <span>{L("Fiyatı düşerse haber veririm", "I'll tell you if the price drops")}</span>,
+              <button type="button" className="btn-link" disabled={busy} onClick={() => void save()}>
+                {L("Fiyatı yenile", "Refresh the price")}
+              </button>,
+            )
+          : quiet(
+              undefined,
+              <button type="button" className="btn-link" onClick={() => boardOf(where?.trip?.id ?? tripId)}>
+                {L("Panoda gör", "See it on the board")}
+              </button>,
+            )}
       </>
     );
   } else if (card === "list") {
@@ -302,39 +315,23 @@ function Popup() {
       </>
     );
   } else {
-    // Nothing to add here (a new tab, the board): the trip's next thing to do, else where it stands.
-    const next = view.glance?.next ?? null;
-    const t = view.pocket?.trip ?? null;
-    body = next ? (
-      <>
-        <div className="tb-main">
-          <Sign tone="warn">!</Sign>
-          <Say eyebrow={L("Sıradaki", "Next")} title={next.act === L("Seç", "Pick") ? L(`${next.text} karar bekliyor`, `${next.text} waits for a decision`) : next.text} sub={next.sub} />
-          <button type="button" className="tb-go" onClick={() => boardOf(t?.id)}>
-            {actWord(next.act)}
-          </button>
-        </div>
-        {quiet(<span>{view.kind === "board" ? L("Burası pano", "This is the board") : L("Bu sayfa eklenemez", "This page can't be added")}</span>)}
-      </>
-    ) : t ? (
-      <>
-        <div className="tb-main">
-          <Cover photos={t.photo ? [t.photo] : []} title={t.title} big />
-          <Say title={t.title} sub={mine != null ? L(`Biriktirdiklerim ${mine}`, `${mine} saved`) : t.when} />
-          <button type="button" className="tb-go" onClick={() => boardOf(t.id)}>
-            {L("Panoyu aç", "Open the board")}
-          </button>
-        </div>
-        {quiet(<span>{view.kind === "board" ? L("Burası pano", "This is the board") : L("Bir otel, uçuş ya da tur sayfasında simgeye bas", "Click the icon on a hotel, flight or tour page")}</span>, <span />)}
-      </>
+    // Nothing to add here (a new tab, the board), açılır kart v1.1 (Emre onayladı): the trips ahead, the selected one big; a
+    // row selects that trip. No decision here: decisions are the Plan's.
+    const shelf = view.shelf;
+    body = shelf?.trips.length ? (
+      <TripShelfCard shelf={shelf} busy={busy} onOpen={(id) => boardOf(id)} onPick={(id) => void choose({ tripId: id })} onHome={() => void openBoard("#home").then(() => window.close())} />
     ) : (
-      <div className="tb-main">
-        <Say title={view.kind === "board" ? L("Burası pano", "This is the board") : L("Bir otel, uçuş ya da tur sayfasında simgeye bas", "Click the icon on a hotel, flight or tour page")} sub={view.kind === "board" ? L("Bir otel, uçuş ya da tur sayfasında simgeye bas; o sayfa buraya eklenir.", "Click the icon on a hotel, flight or tour page; that page gets added here.") : L("O sayfayı gezinin destesine eklerim.", "I'll add that page to your trip's deck.")} />
+      <div className="tb-main tb-empty">
+        <img src="illus/ucus.png" alt="" width={132} />
+        <Say title={L("İlk gezini başlat", "Start your first trip")} sub={L("Nereye gitmek istediğini yaz; otel, uçuş ve tur sayfalarında simgeye basınca onları da buraya eklerim.", "Say where you'd like to go; on a hotel, flight or tour page, press the icon and I'll add it here too.")} />
+        <button type="button" className="tb-go" onClick={() => void openBoard("#home").then(() => window.close())}>
+          {L("+ Yeni gezi", "+ New trip")}
+        </button>
       </div>
     );
   }
 
-  const chip = view && !saved && card !== "first" ? (trip ?? (page ? null : view.pocket?.trip ? { title: view.pocket.trip.title } : null)) : null;
+  const chip = view && !saved && card !== "first" && card !== "rest" ? (trip ?? (page ? null : view.pocket?.trip ? { title: view.pocket.trip.title } : null)) : null;
   return (
     <div className="popup-card tb">
       {/* 0.47.0 (Emre: "simgeye basınca uygulamama kolayca gidebilmem lazım"): the app one press away, whatever the card;
@@ -379,6 +376,101 @@ function cardKind(v: PopupView, at: { mustPick: boolean; skip: ReadonlySet<strin
   if (v.what === "list") return "list";
   if (v.travelSite && !v.along && !v.alongAsked && !at.skip.has("along")) return "along";
   return v.what === "idea" ? "idea" : "page";
+}
+
+/** Açılır kart v1.1: the selected trip big (its photo, how long until it, how ready, Pano's count), the others a row each. */
+function TripShelfCard({ shelf, busy, onOpen, onPick, onHome }: { shelf: Shelf; busy: boolean; onOpen: (id: string) => void; onPick: (id: string) => void; onHome: () => void }) {
+  const [lead, ...rest] = shelf.trips;
+  return (
+    <>
+      <div className="ts-lead">
+        <button type="button" className={`ts-band${lead.photo ? "" : " art"}`} onClick={() => onOpen(lead.id)} aria-label={L(`${lead.title} gezisini aç`, `Open ${lead.title}`)}>
+          <BandPicture trip={lead} />
+          {lead.countdown && <span className={`ts-when ${lead.countdown.tone}`}>{lead.countdown.text}</span>}
+          <span className="ts-t">
+            <b>{lead.title}</b>
+            {lead.when && <span>{lead.when}</span>}
+          </span>
+          {lead.ready && !lead.ready.fresh && <Ring ready={lead.ready} size={62} stroke={5} big />}
+        </button>
+        <div className="ts-facts">
+          <span>
+            <b>{lead.mine}</b> {L("Pano'da", "on the Pano")}
+          </span>
+          {shelf.selected && <span className="ts-pin">{L("Seçili gezi", "Selected trip")}</span>}
+        </div>
+      </div>
+      {rest.length > 0 && (
+        <div className="ts-list">
+          <small>{shelf.selected ? L("Öbür geziler", "Other trips") : L("Sonraki geziler", "Next trips")}</small>
+          {rest.map((t) => (
+            <button key={t.id} type="button" className="ts-row" disabled={busy} onClick={() => onPick(t.id)} aria-label={L(`${t.title} gezisine geç`, `Switch to ${t.title}`)}>
+              {t.photo ? (
+                <Cover photos={[t.photo]} title={t.title} />
+              ) : (
+                <span className="pk-th ts-th-art" aria-hidden>
+                  <img src={t.art} alt="" />
+                </span>
+              )}
+              <span className="ts-s">
+                <b>{t.title}</b>
+                <span>{[t.when, t.countdown?.text].filter(Boolean).join(" · ") || L("tarihsiz", "no dates")}</span>
+              </span>
+              <span className="ts-r">
+                <em>{L("Buna geç", "Switch")}</em>
+                {t.ready && !t.ready.fresh && (
+                  <>
+                    <Ring ready={t.ready} size={26} stroke={4} />
+                    <span>%{t.ready.plan}</span>
+                  </>
+                )}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="tb-quiet">
+        <button type="button" className="btn-link" onClick={onHome}>
+          {L("+ Yeni gezi", "+ New trip")}
+        </button>
+        {shelf.total > shelf.trips.length ? (
+          <button type="button" className="btn-link" onClick={onHome}>
+            {L(`Tüm geziler (${shelf.total})`, `All trips (${shelf.total})`)}
+          </button>
+        ) : (
+          <span />
+        )}
+      </div>
+    </>
+  );
+}
+
+/** The band's picture: the trip's photo; none, or one that won't load, the drawing of how it sleeps. */
+function BandPicture({ trip }: { trip: ShelfTrip }) {
+  const [gone, setGone] = useState(false);
+  return trip.photo && !gone ? <img src={trip.photo} alt="" referrerPolicy="no-referrer" decoding="async" onError={() => setGone(true)} /> : <img className="ts-art" src={trip.art} alt="" />;
+}
+
+/** The hero's "%72 hazır" as a ring: booked dark green over planned light green (B9), the number inside on the big one. */
+function Ring({ ready, size, stroke, big = false }: { ready: Ready; size: number; stroke: number; big?: boolean }) {
+  const r = (size - stroke) / 2 - (big ? 3 : 0);
+  const c = 2 * Math.PI * r;
+  const arc = (pct: number, cls: string) => (pct > 0 ? <circle className={cls} cx={size / 2} cy={size / 2} r={r} strokeWidth={stroke} strokeDasharray={`${(c * Math.min(pct, 100)) / 100} ${c}`} /> : null);
+  return (
+    <span className={`ts-ring${big ? " big" : ""}`} style={{ width: size, height: size }} role="img" aria-label={L(`%${ready.plan} hazır, %${ready.booked} alındı`, `${ready.plan}% ready, ${ready.booked}% booked`)}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden>
+        <circle className="tk" cx={size / 2} cy={size / 2} r={r} strokeWidth={stroke} />
+        {arc(ready.plan, "pl")}
+        {arc(ready.booked, "bk")}
+      </svg>
+      {big && (
+        <span className="in">
+          <b>%{ready.plan}</b>
+          <small>{L("hazır", "ready")}</small>
+        </span>
+      )}
+    </span>
+  );
 }
 
 function Say({ title, sub, eyebrow = null }: { title: string; sub: string | null; eyebrow?: string | null }) {

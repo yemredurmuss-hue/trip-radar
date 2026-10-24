@@ -3,12 +3,14 @@
 // to do, the hero's "Sıradaki" (rowView.planSteps). Neither has the board's decisions or files here: an option's order
 // and a booking's document aren't known, so "Onayı ekle" is never the next step said from here. Pure; tested.
 import { categorize } from "./categories";
-import { collectionsOf } from "./intents";
+import { bookedShare, collectionsOf, planShare } from "./intents";
 import { buildLegs } from "./legs";
 import { panoBoardOf } from "./panoBoard";
 import { buildPlan } from "./plan";
 import { planSteps, type NextStep } from "./rowView";
 import { buildTimeline } from "./timeline";
+import { countedIntents, tripModeOf } from "./tripPhase";
+import { profileTrips } from "./trips";
 import type { Item, Trip } from "./types";
 
 export interface TripGlance {
@@ -16,6 +18,11 @@ export interface TripGlance {
   mine: number;
   /** The first thing to do on the plan ("Dönüş uçuşu · Seç"), when there is one to say from here. */
   next: Pick<NextStep, "key" | "section" | "act" | "text" | "sub"> | null;
+  /**
+   * The hero's two shares worked out the hero's way, from the records alone (0.47.2): the popup's ring until the trip's page
+   * has drawn its own (tripShelf.saveReady). fresh: nothing picked yet; null: no need to count.
+   */
+  ready: { plan: number; booked: number; fresh: boolean } | null;
 }
 
 export function tripGlance(trip: Trip, all: readonly Item[], today: string): TripGlance {
@@ -29,9 +36,14 @@ export function tripGlance(trip: Trip, all: readonly Item[], today: string): Tri
     const input = { trip, plan, sections, items, today };
     const mine = panoBoardOf({ ...input, me: null }).counts.mine;
     // (a document isn't known here: a booking's "Onayı ekle" is the board's to say)
-    const step = planSteps(collectionsOf(input).flatMap((c) => c.intents), 6).next.find((s) => s.stage !== "ticket") ?? null;
-    return { mine, next: step ? { key: step.key, section: step.section, act: step.act, text: step.text, sub: step.sub } : null };
+    const intents = collectionsOf(input).flatMap((c) => c.intents);
+    const step = planSteps(intents, 6).next.find((s) => s.stage !== "ticket") ?? null;
+    const range = trip.confirmedDates ?? profileTrips([trip], items)[0]?.range ?? null;
+    const counted = countedIntents(intents, { today, mode: tripModeOf(range, today), plan, items });
+    const planned = planShare(counted);
+    const ready = planned.pct == null ? null : { plan: planned.pct, booked: bookedShare(counted).pct ?? 0, fresh: !counted.some((i) => i.status === "chosen" || i.status === "booked") };
+    return { mine, next: step ? { key: step.key, section: step.section, act: step.act, text: step.text, sub: step.sub } : null, ready };
   } catch {
-    return { mine: items.filter((i) => i.status !== "dismissed" && i.addedBy !== "ai").length, next: null };
+    return { mine: items.filter((i) => i.status !== "dismissed" && i.addedBy !== "ai").length, next: null, ready: null };
   }
 }

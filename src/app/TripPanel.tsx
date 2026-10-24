@@ -106,6 +106,7 @@ import type { ValueCard } from "../lib/value";
 import type { Decisions } from "./useDecisions";
 import { useWho } from "./Travellers";
 import { onTripChange } from "../lib/tripUndo";
+import { saveReady } from "../lib/tripShelf";
 import { takeLangUndo } from "./langSwitch";
 import { START_CARD_SHOWN, StartGuideCard } from "./start/StartGuideCard";
 import { WorkLine } from "./WorkPill";
@@ -657,6 +658,10 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   // plane. The shares, "n karar", "Sıradaki" and the first decision go by these.
   const counted = useMemo(() => countedIntents(heroIntents, { today, mode, plan, items }), [heroIntents, today, mode, plan, items]);
   const counts = useMemo(() => heroCounts(counted), [counted]);
+  // Açılır kart (0.47.2): the toolbar popup's ring says this same number.
+  useEffect(() => {
+    if (counts.plan.pct != null) void saveReady(trip.id, { plan: counts.plan.pct, booked: counts.booked.pct ?? 0, fresh: counts.fresh });
+  }, [trip.id, counts]);
   // 0.38.3: the source's tours for the Etkinlik cities (the rows' own questions, answered from the source's store), with
   // their photos: the mosaic's fourth source and the Etkinlik row's small pictures.
   // P2 (F48): a trip that is only its event (a festival, a liveaboard) is offered no tours, here or on the mosaic.

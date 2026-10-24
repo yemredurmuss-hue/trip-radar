@@ -14,6 +14,7 @@ import { pocketFor, pocketRemove, pocketRetry, type Pocket } from "./pocket";
 import { loadCurrent, setCurrent } from "./tripRules";
 import { confirmationOf, type Confirmation } from "./confirm";
 import { tripGlance, type TripGlance } from "./tripGlance";
+import { tripShelf, type Shelf } from "./tripShelf";
 import { today } from "./extract";
 import { pageCountry } from "./companionWorker";
 import { loadHome } from "./passport";
@@ -71,6 +72,8 @@ export interface PopupView {
   failed: { id: string; title: string } | null;
   /** "Booking'de kartlara + koyayım mı?" was asked once already. */
   alongAsked: boolean;
+  /** Where nothing can be added (a new tab, the board): the trips ahead, the selected one first (açılır kart v1.1). */
+  shelf: Shelf | null;
 }
 
 /** Read in the page itself, in a blink (no layout): what it says it is, whether a price is written on it, its picture. */
@@ -177,13 +180,13 @@ export async function popupView(tabId: number): Promise<PopupView> {
   const tab = await chrome.tabs.get(tabId).catch(() => null);
   const url = tab?.url ?? "";
   const own = chrome.runtime.getURL("");
-  const base: PopupView = { kind: "none", title: tab?.title ?? "", sub: "", site: null, travelSite: false, along: false, what: "idea", where: null, desk: { candidate: null, planned: null }, key: await hasActiveKey(), price: await priceBadge(), pocket: null, hero: null, video: false, confirm: null, glance: null, fresh: false, failed: null, alongAsked: true };
+  const base: PopupView = { kind: "none", title: tab?.title ?? "", sub: "", site: null, travelSite: false, along: false, what: "idea", where: null, desk: { candidate: null, planned: null }, key: await hasActiveKey(), price: await priceBadge(), pocket: null, hero: null, video: false, confirm: null, glance: null, fresh: false, failed: null, alongAsked: true, shelf: null };
   // (our own pages, the board or the popup in a tab: their address isn't always visible here, their context is)
   const ours = await chrome.runtime.getContexts({ contextTypes: [chrome.runtime.ContextType.TAB] }).catch(() => []);
   // (our own pages and pages that can't be saved: the pocket still shows the trip and what was added last)
   if (url.startsWith(own) || ours.some((c) => c.tabId === tabId) || !/^https?:/.test(url)) {
     const pocket = await pocketFor(null);
-    return { ...base, kind: url.startsWith(own) || ours.some((c) => c.tabId === tabId) ? "board" : "none", pocket, glance: await glanceOf(pocket.trip?.id), failed: await freshFailure(pocket.trip?.id) };
+    return { ...base, kind: url.startsWith(own) || ours.some((c) => c.tabId === tabId) ? "board" : "none", pocket, glance: await glanceOf(pocket.trip?.id), failed: await freshFailure(pocket.trip?.id), shelf: await tripShelf() };
   }
   const travel = companionSiteOf(url);
   const origin = originOf(url);

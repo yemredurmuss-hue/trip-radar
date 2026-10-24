@@ -37,7 +37,7 @@ export interface Pocket {
   key: boolean;
 }
 
-const photoOk = (u: string | null | undefined): u is string => Boolean(u && (/^https:\/\//.test(u) || (/^data:image\//.test(u) && u.length < 60_000)));
+export const photoOk = (u: string | null | undefined): u is string => Boolean(u && (/^https:\/\//.test(u) || (/^data:image\//.test(u) && u.length < 60_000)));
 
 /**
  * The pocket's rows for a trip, newest first: its saves still being read or failed (and those not given a trip yet, a
