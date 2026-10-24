@@ -130,3 +130,27 @@ describe("the code's own line when the model writes nothing (Sohbet Faz 4, the r
     expect(shown).toEqual(["Eklendi: Fado gösterisi"]);
   });
 });
+
+describe("the whole trip asked in the traveller's words (the real-model eval's 'Porto için değil, genel olsun')", () => {
+  it("saysWholeTrip: 'genel', 'tüm gezi', 'whole trip'; not a day or a city", async () => {
+    const { saysWholeTrip } = await import("../src/lib/planned");
+    expect(["porto için değil genel olacak bu sadece", "tüm gezi için uber", "for the whole trip"].map(saysWholeTrip)).toEqual([true, true, true]);
+    expect(["12 Ekim'e taksi koy", "Porto'da taksi", "genelde metroyla"].map(saysWholeTrip)).toEqual([false, false, false]);
+  });
+
+  it("the model updates the Porto ride by its id with no day and no word for the trip: it still becomes the whole trip's line", async () => {
+    const d = await db();
+    await d.put("trips", { id: "t6", title: "X", confirmedDates: null, budget: null, heroImage: null, createdAt: 1, updatedAt: 1 } as Trip);
+    await d.put("items", plannedItem(plannedInput({ kind: "taxi", title: "Uber Yolculukları", city: "Porto", date: "2026-10-07" }), "t6", "ub", 1));
+    const { client } = fakeClient([
+      {
+        stop_reason: "tool_use",
+        content: [{ type: "tool_use", id: "p1", name: "plan_item", caller: { type: "direct" }, input: { kind: "taxi", title: "Uber Yolculukları", date: null, end_date: null, time: null, from: null, to: null, city: null, booked: false, note: null, replaces: null, item_id: "ub" } }] as Anthropic.ContentBlock[],
+      },
+      { stop_reason: "end_turn", content: [{ type: "text", text: "Tüm gezi için güncelledim.", citations: null }] as Anthropic.ContentBlock[] },
+    ]);
+    await sendMessage("t6", "porto için değil genel uber yolculukları olacak bu sadece", anthropicProvider(client, "claude-opus-5"));
+    const ub = (await listItems("t6")).find((i) => i.id === "ub")!;
+    expect([ub.dates.start, ub.city, ub.flight?.from ?? null, ub.flight?.to ?? null]).toEqual([null, null, null, null]);
+  });
+});

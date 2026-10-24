@@ -27,7 +27,7 @@ import { coverageText, searchText } from "./listing";
 import { prosConsFor } from "./proscons";
 import { activeSignals, pendingSignals } from "./intent";
 import { buildLegs, canHideLeg, isHiddenLeg, legTiming, staleHiddenMoves, withLegChoice, type Leg } from "./legs";
-import { checkPlanned, guardKind, isGeneratedName, plannedInput, plannedItem, planToSave, PLANNED_KINDS, type PlannedInput } from "./planned";
+import { checkPlanned, guardKind, isGeneratedName, plannedInput, plannedItem, planToSave, PLANNED_KINDS, saysWholeTrip, type PlannedInput } from "./planned";
 import { bookedUpdate, candidateLabel, changedFields, countryOfPlace, decideBooking, esimPackage, saidKind, sameKind, SECOND_PURCHASE, tripPlaceOf, updateSummary, type BookingExtras } from "./chatBooking";
 import { boardChange, lineOf, summaryLine, withBoardChange, type BoardChange } from "./boardChange";
 import { focusOf, RECENT_MS, recentBlock, type RecentFile } from "./chatContext";
@@ -1964,7 +1964,13 @@ async function runTool(tripId: string, name: string, input: any, choices: string
       // Renting gear or getting things is a chore before the trip (Hazırlık), never a thing to do there (0.38.9).
       const typed = guarded.kind === "todo" && isGearChore(guarded.title) ? { ...guarded, kind: "prep" as const } : guarded;
       // A place typed loosely ("Maderia") is the trip's own (Madeira): the card, its search and its offers read it.
-      const said = { ...typed, from: tripPlaceOf(typed.from, items), to: tripPlaceOf(typed.to, items), city: tripPlaceOf(typed.city, items) };
+      const placed = { ...typed, from: tripPlaceOf(typed.from, items), to: tripPlaceOf(typed.to, items), city: tripPlaceOf(typed.city, items) };
+      // The whole trip's line asked in the traveller's own words ("porto için değil genel olacak"), a ride said with no day and
+      // no road: that line, whatever word the model put as its place (the real-model eval saw both; Sohbet Faz 4).
+      const ride = placed.kind === "taxi" || placed.kind === "transfer";
+      const said = !placed.whole && ride && !placed.date && !placed.from && !placed.to && saysWholeTrip(turn.userText)
+        ? { ...placed, city: null, time: null, end_date: null, whole: true }
+        : placed;
       // A wrong value is refused here; what's missing (the city of a hire already on the plan) only for a new one.
       const problem = checkPlanned(said, PLANNED_KINDS, { complete: false });
       if (problem) throw new ToolError(problem);

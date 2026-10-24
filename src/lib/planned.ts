@@ -115,6 +115,9 @@ export function plannedInput(raw: any): PlannedInput {
   return said;
 }
 
+/** The traveller's own words asking for the whole trip's line ("genel uber yolculukları", "tüm gezi için", "for the whole trip"). */
+export const saysWholeTrip = (text: string): boolean => /(?<![\p{L}])(genel|t[üu]m\s+gezi\p{L}*|b[üu]t[üu]n\s+gezi\p{L}*|t[üu]m\s+sezon\p{L}*|whole\s+trip|entire\s+trip|general)(?![\p{L}])/iu.test(text);
+
 /** The trip as a whole said as a place ("Tüm gezi", "genel", "whole trip"): no place, the line is the trip's. */
 const WHOLE_TRIP = /^(t[üu]m|b[üu]t[üu]n)\s+(gezi|seyahat|sezon|yolculuk|tatil)\p{L}*$|^genel$|^(the\s+)?(whole|entire|all(\s+the)?)\s+(trip|journey|holiday)$/iu;
 const place = (v: unknown): string | null => {
