@@ -886,6 +886,8 @@ export interface ChatMessage {
   undoneAt?: number;
   /** An assistant reply saying something changed while no tool changed anything (claims.ts): a note shows under it. */
   unbacked?: boolean;
+  /** The records this answer changed (Sohbet Faz 2): the next message's "it", "that one" (chatContext.ts focus). */
+  touched?: string[];
   /**
    * A question the code asked under this reply (kişiye özel rezervasyon): its chips are answered by the code, not
    * the model ("Evet, Alicante" adds the way home; "Sabine" makes the ticket hers). Only the newest reply's counts.

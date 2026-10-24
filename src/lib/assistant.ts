@@ -29,7 +29,8 @@ import { activeSignals, pendingSignals } from "./intent";
 import { buildLegs, canHideLeg, isHiddenLeg, legTiming, staleHiddenMoves, withLegChoice, type Leg } from "./legs";
 import { checkPlanned, guardKind, isGeneratedName, plannedInput, plannedItem, planToSave, PLANNED_KINDS, type PlannedInput } from "./planned";
 import { bookedUpdate, candidateLabel, changedFields, countryOfPlace, decideBooking, esimPackage, saidKind, sameKind, SECOND_PURCHASE, tripPlaceOf, updateSummary, type BookingExtras } from "./chatBooking";
-import { boardChange, withBoardChange } from "./boardChange";
+import { boardChange, lineOf, withBoardChange } from "./boardChange";
+import { focusOf, RECENT_MS, recentBlock, type RecentFile } from "./chatContext";
 import { cardKind, cardKindLabel } from "./cardKinds";
 import { isIdea } from "./booking";
 import { sectionOfItem, type SectionId } from "./categories";
@@ -213,6 +214,7 @@ Nasıl konuşursun:
   • "12 Ekim'e taksi koyalım", "havalimanına taksiyle" → plan_item kind taxi (date, söylendiyse time; from/to: "Otel", "Havalimanı" gibi; city o günün şehri). O günün transferinde görünür, yoksa kendi bloğu olur. Yalnız nasıl gideceğini söylüyorsa ("metroyla gideceğim") set_leg.
   • Gezi boyunca genel yolculuklar ("Uber yolculukları koy, toplu fiyat yazarım", "genel taksi kullanımı"): TEK plan_item kind taxi, title ("Uber Yolculukları"), city "Tüm gezi"; date, from, to BOŞ (null). Ulaşım'da "Tüm gezi" satırı olur; fiyatı set_price ile. Bir güne, bir şehre ya da "Tüm gezi → Tüm gezi", "Porto → Porto" gibi uca koyma. Aynı kalem varsa onun item_id'siyle güncelle, ikincisini açma; yerine geldiği taksi varsa replaces ile kaldır.
   • Planda OLAN bir şeyi değiştirmek ("onu sil", "yerine şunu koy", "porto için değil genel olacak", "adını değiştir", "saatini 10 yap"): önce items[]'ta o kaydı bul (kind alanı türünü söyler). Güncellemek için plan_item item_id ile; yerine başka bir şey koymak için replaces ile; yalnız kaldırmak için remove_from_plan. Asla ikinci bir kayıt açma. Bir araç çalışınca sonucunda board_after gelir: panonun o bölümde gerçekten ne olduğunu gösterir. Kullanıcının istediği orada yoksa ya da kaldırılması gereken (ya da kopya) hâlâ now listesindeyse cevaplamadan önce bir araçla düzelt. Cevabında yalnız board_after'da görünen değişikliği söyle.
+  • Mesajla birlikte <recent> gelebilir: files = kullanıcının az önce attığı dosyalar/ekran görüntüleri ve her birinin dönüştüğü kayıt (en yenisi önce); focus = son cevabının değiştirdiği kayıtlar. "Bu", "bunun fiyatı", "attığım görüntü" en yeni files kaydıdır; "onu", "o", "bunu genel yap", "sil onu" focus'taki kayıttır. O kaydı id'siyle kullan (item_id / replaces / target_id); belirsizse tahmin etme, hangisi olduğunu sor.
   • Kiralamada türü söylenen araçtır: karavan → rv_rental, motosiklet/scooter → moto_rental, bisiklet → bike_rental, araba → car_rental. Gün sayısı alıştan iadeye 24 saatlik dönemdir (11–18 Ekim = 7 gün).
   • "eSIM alalım" → plan_item kind esim (date null; city: ülke, ör. Portekiz). Diğer bölümünde "Tüm gezi" satırında durur; yeri ülkesidir. "10 GB aldım" ve planda eSIM var → o eSIM'in item_id'siyle plan_item (title "10 GB eSIM", booked true).
   • Seyahat sigortası: "sigorta alalım" → plan_item kind insurance (booked false). "Sigortam var", "poliçeyi attım/ekledim", "sigortayı aldım" → kind insurance, booked true (sağlayıcı provider'a, poliçe no note'a; planda sigorta varsa onun item_id'siyle). Bilet, rezervasyon ya da poliçe için "aldım/attım/var/ekledim" diyorsa kayıt alınmış sayılır (booked true), asla yapılacak iş değildir. Sigorta, vize, eSIM hiçbir zaman todo ya da activity değildir; hepsi Diğer bölümüne düşer.
@@ -281,6 +283,7 @@ How you talk:
   • "let's put a taxi on 12 October", "taxi to the airport" → plan_item kind taxi (date, time if said; from/to like "Hotel", "Airport"; city is that day's city). It shows in that day's transfer, else as its own block. If they only say how they'll go ("I'll take the metro") → set_leg.
   • Rides for the whole trip ("add Uber rides, I'll give one total", "general taxi use"): ONE plan_item kind taxi with a title ("Uber rides"), city "Whole trip", and date, from, to null. It becomes the "Whole trip" line in Getting around; its price via set_price. Never put it on a day, a city, or ends like "Whole trip → Whole trip" or "Porto → Porto". If that line exists, update it with its item_id, never a second one; if it replaces a taxi, remove that one with replaces.
   • Changing something ALREADY on the plan ("delete that", "put this instead", "not for Porto, make it general", "rename it", "make it 10:00"): first find that record in items[] (its kind field says what it is). To update it: plan_item with its item_id; to put something else in its place: replaces; only to take it off: remove_from_plan. Never open a second record. After a tool runs, its result carries board_after: what that part of the board really is now. If what the user asked isn't there, or something to remove (or a duplicate) is still in now, fix it with a tool before you answer. In your answer say only the change board_after shows.
+  • A message may come with <recent>: files = what the user just sent (documents, screenshots) and the record each became (newest first); focus = the records your last answer changed. "this", "its price", "the screenshot I sent" is the newest file's record; "it", "that one", "make it general", "delete it" is the focus record. Use that record by its id (item_id / replaces / target_id); if it is unclear, don't guess, ask which.
   • A rental is the vehicle said: camper → rv_rental, motorbike/scooter → moto_rental, bike → bike_rental, car → car_rental. Its days are 24-hour stretches from pick-up to return (11–18 October = 7 days).
   • "let's get an eSIM" → plan_item kind esim (date null; city: the country, e.g. Portugal). It sits in the Other section's "Whole trip" row; its place is its country. "bought 10 GB" with an eSIM on the plan → plan_item with that eSIM's item_id (title "10 GB eSIM", booked true).
   • Travel insurance: "let's get insurance" → plan_item kind insurance (booked false). "I have insurance", "I sent/attached the policy", "bought the insurance" → kind insurance, booked true (the provider in provider, the policy number in note; with the insurance's item_id when one is on the plan). When they say "I have / I sent / I bought / I attached" a ticket, a booking or a policy, the record is booked (booked true), never a to-do. Insurance, a visa and an eSIM are never todo or activity; they all go to the Other section.
@@ -2664,6 +2667,23 @@ export async function sendMessage(tripId: string, userText: string, llm?: LlmPro
 }
 
 /** The model's answer within liveTiming.answerMs, else the turn ends with the honest line (the request is called off). */
+/** The files sent lately (documents and screenshots) and the last answer's records, for <recent> (Sohbet Faz 2). */
+async function recentContext(tripId: string, session: ChatMessage[], now = Date.now()): Promise<string | null> {
+  const d = await db();
+  const every = (await d.getAll("items")).filter((i) => i.tripId === tripId);
+  const byId = new Map(every.map((i) => [i.id, i]));
+  const files: RecentFile[] = (await listDocMeta(tripId))
+    .filter((doc) => now - doc.addedAt <= RECENT_MS)
+    .map((doc) => ({ file: doc.name, at: doc.addedAt, became: doc.itemId && byId.has(doc.itemId) ? lineOf(byId.get(doc.itemId)!) : null, ...(doc.kind ? { doc: doc.kind } : {}) }));
+  // A screenshot handed over is a capture read into a record: the records made lately from one (one capture read each).
+  for (const i of every.filter((x) => now - x.createdAt <= RECENT_MS && x.captureIds.length)) {
+    const capture = await d.get("captures", i.captureIds[0]);
+    if (capture?.kind === "image") files.push({ file: L("ekran görüntüsü", "screenshot"), at: capture.capturedAt, became: lineOf(i) });
+  }
+  const lastAnswer = session.findLast((m) => m.role === "assistant" && m.text.trim() !== "");
+  return recentBlock(files, focusOf(lastAnswer?.touched, every), now);
+}
+
 async function answerInTime<T>(tripId: string, ask: (signal: AbortSignal) => Promise<T>): Promise<T> {
   const stop = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -2911,7 +2931,9 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
   // The trip in a few words with every message, right before the traveller's (spec 2026-10-07 §D): the full state goes
   // only when it changes and sinks back as the chat grows; this keeps the trip at the end of the context.
   const brief = withLang(contentLang(trip.lang), () => tripBrief(trip, items, who.me ?? null));
-  const texts = [...(stateHash === lastStateHash ? [] : [`<trip_state>${state}</trip_state>`]), `<trip_brief>${brief}</trip_brief>`, userText];
+  // (Sohbet Faz 2: the files sent lately and what the last answer changed, with every message: chatContext.ts)
+  const recent = await recentContext(tripId, session);
+  const texts = [...(stateHash === lastStateHash ? [] : [`<trip_state>${state}</trip_state>`]), `<trip_brief>${brief}</trip_brief>`, ...(recent ? [`<recent>${recent}</recent>`] : []), userText];
   // A search still running from before: its result comes as its own line; it isn't asked for again.
   if (chatStatusOf(tripId) === "web") {
     texts.push(
@@ -3073,6 +3095,8 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
       choices,
       provider: provider.id,
       ...(unbacked ? { unbacked: true } : {}),
+      // (Sohbet Faz 2: what this answer changed is what "it", "that one" mean next time)
+      ...(last && (turn.touched.size || turn.removed.size) ? { touched: [...new Set([...turn.touched, ...turn.removed])] } : {}),
       ...(ask ? { ask: ask.ask } : {}),
       // Web search: the links its "Kaynak:" may show, and the searches this reply still waits for (resumeSearches).
       ...(last && turn.searchSources.length ? { webSources: turn.searchSources.map((s) => linkUrl(s.url)) } : {}),
