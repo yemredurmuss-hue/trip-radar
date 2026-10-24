@@ -397,6 +397,16 @@ export function bookedUpdate(raw: Item, said: PlannedInput, extras: BookingExtra
       note("route", L("güzergâh kalktı", "route removed"));
     }
   }
+  // Made the whole trip's line ("Uber Yolculukları" said for "Tüm gezi", Sohbet Faz 1): its day, time, city and road go,
+  // so it stands as "Tüm gezi" and not on the day of the ride it took the place of (planned.ts plannedInput `whole`).
+  if (!page && said.whole && (raw.plannedKind === "taxi" || raw.plannedKind === "transfer") && (view.dates.start || view.city || view.flight?.from || view.flight?.to)) {
+    const f = next.flight ?? view.flight;
+    next.dates = { ...next.dates, start: null, end: null };
+    if (f) next.flight = { ...f, from: null, to: null, departure: null, arrival: null };
+    next.city = null;
+    next = withoutEdits(next, ["from", "to", "city", "start", "end", "time", "arrival"]);
+    note("route", L("tüm gezi", "whole trip"));
+  }
   if (pack && (pack.dataGb || pack.unlimited || pack.days)) {
     const m = { ...metricsOf(raw) };
     if (pack.dataGb && m.dataGb !== pack.dataGb) {
@@ -448,12 +458,15 @@ export function bookedUpdate(raw: Item, said: PlannedInput, extras: BookingExtra
       next.countryCode = country.code ?? next.countryCode;
       if (view.city !== country.name) note("city", country.name);
     }
-  } else if (TRAVEL.includes(kind)) {
+  } else if (TRAVEL.includes(kind) || kind === "taxi") {
+    // (a taxi's or a transfer's road too, Sohbet Faz 1: "Havalimanı → Bonfim" put right by its id, never a second ride)
     // A trip's ends ("Madeira'dan İstanbul'a"): where the card and its offers read them (flight.from / flight.to),
     // the place it goes its city too when it had none or the old end.
     const f = view.flight ?? { from: null, to: null, departure: null, arrival: null, carrier: null, flightNumber: null, stops: null };
     const from = said.from && cityKeyOf(said.from) !== cityKeyOf(f.from) ? said.from : null;
-    const to = (said.to ?? said.city) && cityKeyOf(said.to ?? said.city) !== cityKeyOf(f.to) ? (said.to ?? said.city)! : null;
+    // (a taxi's city is the day's, never where it goes: only its own \"to\")
+    const goes = kind === "taxi" ? said.to : (said.to ?? said.city);
+    const to = goes && cityKeyOf(goes) !== cityKeyOf(f.to) ? goes : null;
     if (from || to) {
       if (page) Object.assign(edits, from ? { from } : {}, to ? { to } : {});
       else {

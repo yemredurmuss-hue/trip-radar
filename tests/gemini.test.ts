@@ -125,7 +125,10 @@ describe("gemini chat", () => {
     const second = calls[1].contents as { role: string; parts: Record<string, any>[] }[];
     expect(second.map((c) => c.role)).toEqual(["user", "model", "user"]);
     expect(second[1].parts[1].thoughtSignature).toBe("sig-1");
-    expect(second[2].parts[0].functionResponse).toEqual({ id: "fc1", name: "update_items", response: { result: "ok" } });
+    // (Sohbet Faz 1: the board read back after the change rides with the tool's own "ok")
+    const fr = second[2].parts[0].functionResponse;
+    expect(fr).toMatchObject({ id: "fc1", name: "update_items" });
+    expect(String(fr.response.result)).toMatch(/^ok\n\{"board_after":\{"added":\[\],"changed":\[\{"id":"a","name":"Jardim Stay"/);
     expect(calls[1].config?.tools?.[0]).toMatchObject({ functionDeclarations: expect.arrayContaining([expect.objectContaining({ name: "set_priorities" })]) });
 
     const messages = await listMessages("g1");

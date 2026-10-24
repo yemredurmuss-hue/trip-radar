@@ -29,6 +29,7 @@ import { activeSignals, pendingSignals } from "./intent";
 import { buildLegs, canHideLeg, isHiddenLeg, legTiming, staleHiddenMoves, withLegChoice, type Leg } from "./legs";
 import { checkPlanned, guardKind, isGeneratedName, plannedInput, plannedItem, planToSave, PLANNED_KINDS, type PlannedInput } from "./planned";
 import { bookedUpdate, candidateLabel, changedFields, countryOfPlace, decideBooking, esimPackage, saidKind, sameKind, SECOND_PURCHASE, tripPlaceOf, updateSummary, type BookingExtras } from "./chatBooking";
+import { boardChange, withBoardChange } from "./boardChange";
 import { cardKind, cardKindLabel } from "./cardKinds";
 import { isIdea } from "./booking";
 import { sectionOfItem, type SectionId } from "./categories";
@@ -210,7 +211,8 @@ Nasıl konuşursun:
 - Planı sohbetten şekillendirme (hemen, aynı mesajda, sormadan):
   • "12 Ekim'e uçak bileti", "dönüş uçağı 12'si" → plan_item kind flight, o tarih; nereden/nereye plandan belliyse ver, değilse null bırak (bilet şablonu açılır). Sonra gelen bilgiyi aynı gün için plan_item ile tekrar ver (nereden/nereye, saat), fiyatı set_price ile yaz.
   • "12 Ekim'e taksi koyalım", "havalimanına taksiyle" → plan_item kind taxi (date, söylendiyse time; from/to: "Otel", "Havalimanı" gibi; city o günün şehri). O günün transferinde görünür, yoksa kendi bloğu olur. Yalnız nasıl gideceğini söylüyorsa ("metroyla gideceğim") set_leg.
-  • Gezi boyunca genel yolculuklar ("Uber yolculukları koy, toplu fiyat yazarım", "genel taksi kullanımı"): TEK plan_item kind taxi, title ("Uber Yolculukları"), date, from, to ve city BOŞ (null). Ulaşım'da "Tüm gezi" satırı olur; fiyatı set_price ile. Bir güne, bir şehre ya da "Tüm gezi → Tüm gezi", "Porto → Porto" gibi uca koyma. Aynı kalem varsa onun item_id'siyle güncelle, ikincisini açma; yerine geldiği taksi varsa replaces ile kaldır.
+  • Gezi boyunca genel yolculuklar ("Uber yolculukları koy, toplu fiyat yazarım", "genel taksi kullanımı"): TEK plan_item kind taxi, title ("Uber Yolculukları"), city "Tüm gezi"; date, from, to BOŞ (null). Ulaşım'da "Tüm gezi" satırı olur; fiyatı set_price ile. Bir güne, bir şehre ya da "Tüm gezi → Tüm gezi", "Porto → Porto" gibi uca koyma. Aynı kalem varsa onun item_id'siyle güncelle, ikincisini açma; yerine geldiği taksi varsa replaces ile kaldır.
+  • Planda OLAN bir şeyi değiştirmek ("onu sil", "yerine şunu koy", "porto için değil genel olacak", "adını değiştir", "saatini 10 yap"): önce items[]'ta o kaydı bul (kind alanı türünü söyler). Güncellemek için plan_item item_id ile; yerine başka bir şey koymak için replaces ile; yalnız kaldırmak için remove_from_plan. Asla ikinci bir kayıt açma. Bir araç çalışınca sonucunda board_after gelir: panonun o bölümde gerçekten ne olduğunu gösterir. Kullanıcının istediği orada yoksa ya da kaldırılması gereken (ya da kopya) hâlâ now listesindeyse cevaplamadan önce bir araçla düzelt. Cevabında yalnız board_after'da görünen değişikliği söyle.
   • Kiralamada türü söylenen araçtır: karavan → rv_rental, motosiklet/scooter → moto_rental, bisiklet → bike_rental, araba → car_rental. Gün sayısı alıştan iadeye 24 saatlik dönemdir (11–18 Ekim = 7 gün).
   • "eSIM alalım" → plan_item kind esim (date null; city: ülke, ör. Portekiz). Diğer bölümünde "Tüm gezi" satırında durur; yeri ülkesidir. "10 GB aldım" ve planda eSIM var → o eSIM'in item_id'siyle plan_item (title "10 GB eSIM", booked true).
   • Seyahat sigortası: "sigorta alalım" → plan_item kind insurance (booked false). "Sigortam var", "poliçeyi attım/ekledim", "sigortayı aldım" → kind insurance, booked true (sağlayıcı provider'a, poliçe no note'a; planda sigorta varsa onun item_id'siyle). Bilet, rezervasyon ya da poliçe için "aldım/attım/var/ekledim" diyorsa kayıt alınmış sayılır (booked true), asla yapılacak iş değildir. Sigorta, vize, eSIM hiçbir zaman todo ya da activity değildir; hepsi Diğer bölümüne düşer.
@@ -277,7 +279,8 @@ How you talk:
 - Shaping the plan from the chat (right away, in the same message, without asking):
   • "a plane ticket for 12 October", "the return flight is on the 12th" → plan_item kind flight on that date; give from/to if clear from the plan, else leave null (a ticket template opens). Send later details again with plan_item for the same day (from/to, time), and the price with set_price.
   • "let's put a taxi on 12 October", "taxi to the airport" → plan_item kind taxi (date, time if said; from/to like "Hotel", "Airport"; city is that day's city). It shows in that day's transfer, else as its own block. If they only say how they'll go ("I'll take the metro") → set_leg.
-  • Rides for the whole trip ("add Uber rides, I'll give one total", "general taxi use"): ONE plan_item kind taxi with a title ("Uber rides") and date, from, to and city all null. It becomes the "Whole trip" line in Getting around; its price via set_price. Never put it on a day, a city, or ends like "Whole trip → Whole trip" or "Porto → Porto". If that line exists, update it with its item_id, never a second one; if it replaces a taxi, remove that one with replaces.
+  • Rides for the whole trip ("add Uber rides, I'll give one total", "general taxi use"): ONE plan_item kind taxi with a title ("Uber rides"), city "Whole trip", and date, from, to null. It becomes the "Whole trip" line in Getting around; its price via set_price. Never put it on a day, a city, or ends like "Whole trip → Whole trip" or "Porto → Porto". If that line exists, update it with its item_id, never a second one; if it replaces a taxi, remove that one with replaces.
+  • Changing something ALREADY on the plan ("delete that", "put this instead", "not for Porto, make it general", "rename it", "make it 10:00"): first find that record in items[] (its kind field says what it is). To update it: plan_item with its item_id; to put something else in its place: replaces; only to take it off: remove_from_plan. Never open a second record. After a tool runs, its result carries board_after: what that part of the board really is now. If what the user asked isn't there, or something to remove (or a duplicate) is still in now, fix it with a tool before you answer. In your answer say only the change board_after shows.
   • A rental is the vehicle said: camper → rv_rental, motorbike/scooter → moto_rental, bike → bike_rental, car → car_rental. Its days are 24-hour stretches from pick-up to return (11–18 October = 7 days).
   • "let's get an eSIM" → plan_item kind esim (date null; city: the country, e.g. Portugal). It sits in the Other section's "Whole trip" row; its place is its country. "bought 10 GB" with an eSIM on the plan → plan_item with that eSIM's item_id (title "10 GB eSIM", booked true).
   • Travel insurance: "let's get insurance" → plan_item kind insurance (booked false). "I have insurance", "I sent/attached the policy", "bought the insurance" → kind insurance, booked true (the provider in provider, the policy number in note; with the insurance's item_id when one is on the plan). When they say "I have / I sent / I bought / I attached" a ticket, a booking or a policy, the record is booked (booked true), never a to-do. Insurance, a visa and an eSIM are never todo or activity; they all go to the Other section.
@@ -641,7 +644,7 @@ function buildTools(en: boolean): ToolSpec[] {
           booked: { type: "boolean", description: t("Kullanıcı bileti aldığını/rezerve ettiğini söylediyse true (gideceğiz, ekle, yaptık değil)", "true if the user said they bought the ticket/booked it (not 'we'll go', 'add it', 'we did it')") },
           note: { ...nullable({ type: "string" }), description: t("Kullanıcının söylediği kısa not; bilet/rezervasyon varsa onu yaz (\"bileti aldım\", \"masa 20:00\", PNR)", "A short note from what the user said; for a ticket/booking say so (\"bought the tickets\", \"table at 20:00\", the PNR)") },
           replaces: { ...nullable({ type: "string" }), description: t("Bu planın yerine geçtiği kaydın items[].id'si (kullanıcı 'X iptal, yerine bu' ya da 'X yerine Y aldım' dediyse); yoksa null", "The items[].id of the record this plan replaces (when the user said 'X is cancelled, this instead' or 'bought Y instead of X'); else null") },
-          item_id: { ...nullable({ type: "string" }), description: t("Kullanıcı planda zaten olan şeyi aldığını/rezerve ettiğini söylediyse o kaydın items[].id'si: o kayıt güncellenir, ikinci bir kayıt açılmaz. Başka bir şey onun yerine geldiyse item_id değil replaces. Alınmış olanın yanına ikincisi alındıysa (ya da kullanıcı 'Yeni kayıt ekle' dediyse) \"new\". Yoksa null", "The items[].id of the record, when the user said they bought/booked something already on the plan: that record is updated, never a second one. If another thing takes its place, use replaces, not item_id. A second one bought next to the one already bought (or the user said 'Add a new one'): \"new\". Else null") },
+          item_id: { ...nullable({ type: "string" }), description: t("Planda ZATEN OLAN bir kayıtla ilgili her değişiklikte (adını, saatini, güzergâhını, türünü düzeltme; 'aldım/rezerve ettim'; 'onu genel yap') o kaydın items[].id'si: o kayıt güncellenir, ikinci bir kayıt açılmaz. Başka bir şey onun yerine geldiyse item_id değil replaces. Alınmış olanın yanına ikincisi alındıysa (ya da kullanıcı 'Yeni kayıt ekle' dediyse) \"new\". Yalnız planda olmayan yeni bir şey için null; null vermeden önce items[]'ta aynı şeyi ara", "For ANY change to a record ALREADY on the plan (fix its name, time, road or kind; 'bought/booked it'; 'make it general'): that record's items[].id, so it is updated and never doubled. If another thing takes its place, use replaces, not item_id. A second one bought next to the one already bought (or the user said 'Add a new one'): \"new\". null only for something new that is not on the plan: look for it in items[] first") },
           provider: { ...nullable({ type: "string" }), description: t("Söylendiyse satıcı/şirket (Airalo, Europcar, Allianz, havayolu)", "The shop or company if said (Airalo, Europcar, Allianz, the airline)") },
           price: { ...nullable({ type: "number" }), description: t("Söylendiyse toplam fiyat (sayı)", "The total price if said (a number)") },
           currency: { ...nullable({ type: "string" }), description: t("Fiyatın para birimi, ISO kodu (EUR, TRY, USD)", "The price's currency, an ISO code (EUR, TRY, USD)") },
@@ -1031,6 +1034,8 @@ export function tripState(
       missing: i.missing,
       ...(withDocs && needsDoc(i) && !withDocs.has(i.id) ? { document: "missing" } : {}),
       ...(i.origin === "chat" ? { said_in_chat: true } : {}),
+      // (its exact kind, Sohbet Faz 1: a taxi, a camper, a car rental are all "transport" by category)
+      ...(i.plannedKind ? { kind: i.plannedKind } : {}),
       // Made by the start only to hold room (startTrip.isPlaceholder): the real flight or route said later replaces it.
       ...(isPlaceholder(trip, i) ? { placeholder: true } : {}),
       ...(i.forWho?.length ? { for_who: i.forWho } : {}),
@@ -1056,9 +1061,11 @@ function hash(text: string): string {
   return (h >>> 0).toString(36);
 }
 
-async function saveMessage(message: Omit<ChatMessage, "id" | "createdAt">): Promise<void> {
-  await (await db()).put("messages", { ...message, id: newId(), createdAt: nextTime() });
+async function saveMessage(message: Omit<ChatMessage, "id" | "createdAt">): Promise<string> {
+  const id = newId();
+  await (await db()).put("messages", { ...message, id, createdAt: nextTime() });
   notifyChanged();
+  return id;
 }
 
 /**
@@ -1404,6 +1411,9 @@ function bookingTarget(input: any, said: PlannedInput, extras: BookingExtras, it
     }
     return named;
   }
+  // The whole trip's line ("Uber Yolculukları · Tüm gezi") is never a guess for a ride on a day (the airport taxi):
+  // only its id (item_id) or replaces says that; the board read back (board_after) shows the model what still stands.
+  if (said.whole) return null;
   const skip = new Set([...(replaced ? [replaced.id] : []), ...turn.removed]);
   const decision = decideBooking(said, extras, items, tripId, skip, { userText: turn.userText, names });
   switch (decision.kind) {
@@ -2924,11 +2934,28 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
   const turn = newTurn(userText, session.findLast((m) => m.role === "assistant" && m.text.trim() && !m.landed)?.text ?? null, who);
   turn.provider = provider;
   let askedAgain = false;
+  // What the model wrote beside its tool calls (Sohbet Faz 1): kept in its history, never on screen before the results
+  // ("ekledim" before anything was added); the last step's answer is shown, this one only when that is empty.
+  let narrated = "";
+  let narratedId: string | null = null;
+  // (the chips a step offered beside its tool calls go with the answer that is shown)
+  let carried: string[] = [];
   for (let step = 0; step < MAX_STEPS; step++) {
     const history = currentSession(await listMessages(tripId), provider.id);
     // In the board's language (0.39.1), whatever the trip's start chat spoke: contentLang.
     const answer = await answerInTime(tripId, (signal) => provider.chatStep(history, withLang(contentLang(trip.lang), systemPrompt), withLang(contentLang(trip.lang), tools), { signal }));
-    if (!answer) return;
+    if (!answer) {
+      // (nothing more after its tools: what it wrote beside them, with its chips, is the answer; Sohbet Faz 1)
+      if (narratedId) {
+        const d = await db();
+        const kept = await d.get("messages", narratedId);
+        if (kept) {
+          await d.put("messages", { ...kept, text: narrated });
+          notifyChanged();
+        }
+      }
+      return;
+    }
 
     const choices: string[] = [];
     const results: ToolResult[] = [];
@@ -2938,12 +2965,15 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
       const said = describeCall(call.name, call.input, byId);
       if (said) stepStarted(tripId, said);
       try {
+        // (Sohbet Faz 1: the board before a change, to read back what the tool really did; boardChange.ts)
+        const was = READ_ONLY_TOOLS.has(call.name) ? null : await listItems(tripId);
         const content = await runTool(tripId, call.name, call.input, choices, turn);
         if (!READ_ONLY_TOOLS.has(call.name)) {
           notifyChanged();
           if (n < answer.calls.length - 1) await pause(liveTiming.stepMs);
         }
-        results.push({ call, content, isError: false });
+        const change = was && !content.startsWith(UNCHANGED) ? boardChange(was, await listItems(tripId)) : null;
+        results.push({ call, content: change ? withBoardChange(content, change) : content, isError: false });
         turn.done++;
         if (!READ_ONLY_TOOLS.has(call.name) && !content.startsWith(UNCHANGED)) turn.changed++;
       } catch (error) {
@@ -2981,6 +3011,16 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
         continue;
       }
       text = turn.done ? L("İsteğini işledim ama yanıtımı yazamadım; panodan kontrol eder misin?", "I handled your request but couldn't write my answer; could you check the board?") : replyFallback();
+    }
+    // (a step with tool calls: its words wait in the history; the answer after the results is the one shown, Sohbet Faz 1)
+    const hidden = !last && !finalStep;
+    if (hidden) {
+      if (text) narrated = text;
+      if (choices.length) carried = [...choices];
+      text = "";
+    } else {
+      if (!text && narrated) text = narrated;
+      if (!choices.length && carried.length) choices.push(...carried);
     }
     // "Done! I've updated your budget currency" with no tool that changed anything: the chat shows a note under it
     // (Chat.tsx, on screen only; the model's history stays its own words).
@@ -3025,11 +3065,11 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
       }
       choices.splice(0, choices.length, ...ask.choices);
     }
-    await saveMessage({
+    const savedId = await saveMessage({
       tripId,
       role: "assistant",
       content,
-      text: text || fallback,
+      text: hidden ? "" : text || fallback,
       choices,
       provider: provider.id,
       ...(unbacked ? { unbacked: true } : {}),
@@ -3040,6 +3080,7 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
       // find_offers: the real offers, as cards under this reply (each with "Ekle").
       ...(last && turn.offers?.offers.length ? { offers: { need: turn.offers.need, offers: turn.offers.offers, ...(turn.offers.added?.length ? { added: turn.offers.added } : {}) } } : {}),
     });
+    if (hidden && narrated) narratedId = savedId;
     if (last) return;
     await saveMessage({
       tripId,

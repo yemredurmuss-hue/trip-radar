@@ -34,6 +34,9 @@ export interface PlannedInput {
   title: string | null;
   booked: boolean;
   note: string | null;
+  /** Said for the whole trip ("Tüm gezi" as its place, Sohbet Faz 1): a line with no day, time, city or road, even when it
+   * takes the place of a dated one (the airport taxi made "Uber Yolculukları"). */
+  whole?: boolean;
 }
 
 const CATEGORY: Record<PlannedKind, Category> = {
@@ -102,6 +105,10 @@ export function plannedInput(raw: any): PlannedInput {
     booked: raw?.booked === true,
     note: text(raw?.note),
   };
+  // Said for the whole trip ("Tüm gezi", "genel" as its place or road): no day, no time, no place of its own.
+  if ([raw?.from, raw?.to, raw?.city].some((v) => typeof v === "string" && WHOLE_TRIP.test(v.trim()))) {
+    return { ...said, date: null, end_date: null, time: null, from: null, to: null, city: null, whole: true };
+  }
   // A ride from a place to itself ("Porto → Porto") has no road: where it is is its city (Emre 2026-10-24: "plana A
   // noktası B noktası getiriyor").
   if (said.from && said.to && cityKeyOf(said.from) === cityKeyOf(said.to)) return { ...said, city: said.city ?? said.to, from: null, to: null };
@@ -320,6 +327,8 @@ export function samePlan(a: Item, b: Item): boolean {
 
 /** A plan said again keeps what was said before and isn't said now (where from, the time, the note). */
 export function fillPlanned(input: PlannedInput, before: Item): PlannedInput {
+  // (made the whole trip's line: nothing of the day, the time, the city or the road it had stays)
+  if (input.whole) return { ...input, title: input.title ?? (GENERATED.test(before.name) ? null : before.name), note: input.note ?? before.statusNote };
   const time = before.flight?.departure?.slice(11, 16) || null;
   // Named anew with no ends said ("havalimanı olanı sil, Uber yolculukları koy", Emre 2026-10-24): the old ends were only
   // what its name was made from ("Taksi · Havalimanı → Bonfim"), so they go with that name.
@@ -343,7 +352,9 @@ export function fillPlanned(input: PlannedInput, before: Item): PlannedInput {
  */
 export function planToSave(said: PlannedInput, items: Item[], tripId: string, id: string, now: number): { item: Item; same: Item | null } {
   const probe = plannedItem(said, tripId, "", 0);
-  const same = items.find((i) => samePlan(i, probe)) ?? null;
+  // (the whole trip's line repeats only another whole-trip line of its own name, never a ride on a day)
+  const wholeLine = (i: Item) => !i.dates.start && !i.flight?.from && !i.flight?.to && slug(i.name) === slug(probe.name);
+  const same = items.find((i) => samePlan(i, probe) && (!said.whole || wholeLine(i))) ?? null;
   const plan = same ? fillPlanned(said, same) : said;
   const fresh = plannedItem(plan, tripId, id, now);
   const status = plan.booked || same?.status === "booked" ? ("booked" as const) : ("chosen" as const);
