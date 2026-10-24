@@ -348,6 +348,12 @@ body.still .dr, body.still .dr-scrim { animation: none; }
 .dr-nm { all: unset; cursor: pointer; color: inherit; text-align: left; }
 .dr-nm:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dr-nm:focus-visible { outline: 2px solid var(--q-acc); outline-offset: 2px; border-radius: 4px; }
+/* (2026-10-24) the name goes to the option's page; its record is the small ⋯ beside it. */
+.dr-nmw { display: flex; align-items: flex-start; gap: 4px; min-width: 0; }
+.dr-nmw .dr-nm { flex: 0 1 auto; min-width: 0; }
+.dr-dt { all: unset; flex: none; cursor: pointer; color: var(--q-mut); width: 22px; height: 22px; display: grid; place-items: center; border-radius: 6px; }
+.dr-dt:hover { color: var(--q-acc); background: var(--q-acc-s); }
+.dr-dt:focus-visible { outline: 2px solid var(--q-acc); outline-offset: 1px; }
 
 /* yükselme (E §425, kept from v82): an option lifts 3 px while pointed at; the chosen one stays. */
 .dr-op { transition: transform 180ms var(--x-in, cubic-bezier(.2, .8, .2, 1)), box-shadow 180ms; }
