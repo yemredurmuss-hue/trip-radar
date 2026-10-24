@@ -163,6 +163,7 @@ button:focus-visible, .plus:focus-visible { outline: 3px solid #cfc7ff; outline-
 .qp .cv img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .qp .cv img:first-child { grid-row: 1 / 3; }
 .qp .cv img:only-child { grid-column: 1 / 3; }
+.qp .cv img:nth-child(2):last-child { grid-row: 1 / 3; }
 .qp .cv .ini { grid-row: 1 / 3; grid-column: 1 / 3; display: grid; place-items: center; font: 800 20px/1 "Plus Jakarta Sans", system-ui, sans-serif; color: #4a36c9; }
 .qp button.best .cv { box-shadow: 0 0 0 3px #5b45e0; }
 .qp b { font-size: 12.5px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -170,7 +171,8 @@ button:focus-visible, .plus:focus-visible { outline: 3px solid #cfc7ff; outline-
 .qp button:hover .cv { filter: brightness(.95); }
 .ln { all: unset; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 5px 6px; border-radius: 10px; }
 .ln:hover { background: #f4f2ff; }
-.ln .th { width: 34px; height: 34px; border-radius: 9px; flex: none; background: #efecff; object-fit: cover; display: grid; place-items: center; color: #4a36c9; font-weight: 800; font-size: 13px; }
+.ln .th { width: 34px; height: 34px; border-radius: 9px; overflow: hidden; flex: none; background: #efecff; display: grid; place-items: center; color: #4a36c9; font-weight: 800; font-size: 13px; }
+.ln .th img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .ln b { display: block; font-size: 13px; font-weight: 750; }
 .ln span.w { display: block; font-size: 11px; color: #5d5a78; font-weight: 600; }
 .ln.new { box-shadow: inset 0 0 0 1.5px #d6d2e4; }
@@ -441,6 +443,9 @@ function start() {
         const photos = (t.photos ?? []).slice(0, big ? 3 : 1);
         for (const src of photos) {
           const img = document.createElement("img");
+          // (decoded off the page's own work; a row scrolled to only when it's in view)
+          img.decoding = "async";
+          img.loading = "lazy";
           img.src = src;
           img.alt = "";
           img.referrerPolicy = "no-referrer";
@@ -651,6 +656,8 @@ function start() {
     const initial = () => void (th.textContent = title.slice(0, 1).toLocaleUpperCase("tr"));
     if (photo) {
       const img = document.createElement("img");
+      img.decoding = "async";
+      img.loading = "lazy";
       img.src = photo;
       img.alt = "";
       img.referrerPolicy = "no-referrer";

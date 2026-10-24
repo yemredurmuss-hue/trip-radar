@@ -11,6 +11,7 @@ import { today } from "./extract";
 import { formatDateRange } from "./items";
 import type { PageSnapshot } from "./pagecapture";
 import { titleCodes, tripPlaceCodes } from "./placeCheck";
+import { sizedPhoto, THUMB_W } from "./photoCache";
 import { saveSnapshot } from "./process";
 import { moveSave, readingCount, undoSave } from "./saveUndo";
 import { countryName, gapDays, isDemoTrip, profileTrips, uniqueTitle } from "./trips";
@@ -102,14 +103,18 @@ export function pageCountry(url: string, title: string, home: string | null = nu
   return [...titleCodes(`${words} ${title}`)][0] ?? null;
 }
 
-/** A trip's small pictures for the picker (Pinterest's board cover): its own photo, then its last two saved with one. */
-function photosOf(trip: Trip, items: Item[]): string[] {
-  const ok = (u: string | null | undefined): u is string => Boolean(u && (/^https:\/\//.test(u) || (/^data:image\//.test(u) && u.length < 120_000)));
+/**
+ * A trip's small pictures for the picker (Pinterest's board cover): its own photo, then its last two saved with one; a
+ * listed trip's only its first. Each asked for at the size it's drawn (a 70 px tile, 2x), never a page's own data: copy
+ * (2026-10-24, "açılırken çok kasılıyor": eight trips' 2400 px photos and 120 KB data: pictures came on every opening).
+ */
+function photosOf(trip: Trip, items: Item[], n: number): string[] {
+  const ok = (u: string | null | undefined): u is string => Boolean(u && /^https:\/\//.test(u));
   const last = items
     .filter((i) => i.tripId === trip.id && i.status !== "dismissed" && ok(i.imageUrl))
     .sort((a, b) => b.updatedAt - a.updatedAt)
     .map((i) => i.imageUrl!);
-  return [...new Set([trip.heroImage, ...last].filter(ok))].slice(0, 3);
+  return [...new Set([trip.heroImage, ...last].filter(ok))].slice(0, n).map((u) => sizedPhoto(u, THUMB_W));
 }
 
 /**
@@ -180,7 +185,7 @@ export async function whereFor(url: string, title: string): Promise<CompanionWhe
   return {
     trip: trip ? { id: trip.id, title: trip.title } : null,
     country: code ? countryName(code) : null,
-    trips: shown.map((t) => ({ id: t.id, title: t.title, when: whenOf(t), match: match(t), photos: photosOf(t, items) })),
+    trips: shown.map((t) => ({ id: t.id, title: t.title, when: whenOf(t), match: match(t), photos: photosOf(t, items, picks.includes(t.id) ? 3 : 1) })),
     picks,
     saved: Boolean(key && items.some((i) => i.status !== "dismissed" && pageKey(i.url) === key)),
     names: trip ? items.filter((i) => i.tripId === trip.id && i.category === category && i.status !== "dismissed").map((i) => i.name).slice(0, 60) : [],

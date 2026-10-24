@@ -7,6 +7,7 @@ import { db, hasActiveKey, listTrips } from "./db";
 import { today } from "./extract";
 import { CATEGORY_LABELS, formatDateRange } from "./items";
 import { L } from "./i18n";
+import { sizedPhoto, THUMB_W } from "./photoCache";
 import { retryCapture } from "./process";
 import { deleteItem } from "./removal";
 import { isDemoTrip, profileTrips } from "./trips";
@@ -100,8 +101,9 @@ export async function pocketFor(tripId: string | null): Promise<Pocket> {
   const range = trip ? (trip.confirmedDates ?? profileTrips([trip], items)[0]?.range ?? null) : null;
   const photo = trip ? ([trip.heroImage, ...mine.sort((a, b) => b.createdAt - a.createdAt).map((i) => i.imageUrl)].find(photoOk) ?? null) : null;
   return {
-    trip: trip ? { id: trip.id, title: trip.title, when: range ? formatDateRange(range.start, range.end) : null, count: mine.length, decks: deckCounts(mine), photo } : null,
-    rows: pocketRows(trip?.id ?? null, captures, items),
+    // (its small pictures at the size they're drawn, 2x: never a hero's 2400 px photo for a 32 px square)
+    trip: trip ? { id: trip.id, title: trip.title, when: range ? formatDateRange(range.start, range.end) : null, count: mine.length, decks: deckCounts(mine), photo: photo && sizedPhoto(photo, THUMB_W) } : null,
+    rows: pocketRows(trip?.id ?? null, captures, items).map((r) => (r.photo ? { ...r, photo: sizedPhoto(r.photo, THUMB_W) } : r)),
     waiting: key ? 0 : captures.filter((c) => c.status === "pending" || c.status === "processing").length,
     key,
   };
