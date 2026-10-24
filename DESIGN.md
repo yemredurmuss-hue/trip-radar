@@ -34,7 +34,7 @@ Her rengin bir anlamı var; durum hiçbir yerde yalnız renkle anlatılmaz, yan�
 | Renk | Anlamı | Değişkenler | Nerede |
 | --- | --- | --- | --- |
 | Mor | Eylem ve bizim önerimiz | `--q-acc`, `--q-acc-d`, `--q-acc-s`; kutu `--q-st-pick-bg`, `--q-st-pick-line` | Bunu seç, Rezerve et, AI'dan öner, Plana koy; "Önerimiz" çipi ve kutusu; Değiştir gibi metin düğmeleri |
-| Kum | **Seçildi**: karar verildi, henüz alınmadı (B7) | `--q-sand`, `--q-sand-l`, `--q-sand-ink`; kutu `--q-st-chosen-bg`, `--q-st-chosen-line`, nokta `--q-st-chosen-dot` | Seçili kutunun zemini ve çizgisi, "Seçildi" ve "Planda" çipleri, kart sırasının "Planında" kartı |
+| Kum | **Seçildi**: karar verildi, henüz alınmadı (B7). Tarih hattında (Uçuş, Konaklama, Ulaşım) ve çekmecede artık kullanılmaz: orada karar mor, "Planda" (onay paketi 2026-10-22) | `--q-sand`, `--q-sand-l`, `--q-sand-ink`; kutu `--q-st-chosen-bg`, `--q-st-chosen-line`, nokta `--q-st-chosen-dot` | Seçili kutunun zemini ve çizgisi, "Seçildi" ve "Planda" çipleri, kart sırasının "Planında" kartı |
 | Yeşil | Alındı: rezerve edildi, bilet alındı; artı | `--q-ok`, `--q-ok-s`, `--q-ok-l`; kutu `--q-st-booked-bg` | Alındı kutusu, mühür (✓), "Belgeyi aç", "E-bilet aç", istekte ✓ |
 | Yeşilin iki tonu | Yalnız hazırlık çubuğunda: koyu ton alındı, açık ton planda (B9) | `--q-ok`, `--q-ok-l` | Hero şeridi, ince şerit, kategori satırının çubuğu |
 | Gri, kesikli çizgi | Karar bekliyor ya da aranıyor | `--q-st-wait-bg`, `--q-st-wait-line`, `--q-st-wait-dot` | Seçeneği olmayan ya da seçilmemiş kutu |
@@ -45,7 +45,9 @@ Her rengin bir anlamı var; durum hiçbir yerde yalnız renkle anlatılmaz, yan�
 | Tür renkleri | Yalnız hangi tür | `cardKindColor` (`src/lib/cardKinds.ts`): tren `#2563c9`, otobüs `#d9480f`, minibüs `#e8890c`, vapur `#0e8fb0`, taksi `#d29a00`, araç `#475467`, motosiklet `#c0256b`, karavan `#8a6534`, bisiklet `#5d8a1c`, eSIM `#3b6fd1`, sigorta `#0f8a6a` | Tür ikonu, siluet çizgisi, ekleme penceresinin kutuları |
 
 - Açık kategoride niyetler soldaki dikey çizgiye bağlıdır; noktanın rengi durumdur: kesikli gri karar, mor önerimiz,
-  kum seçildi, yeşil alındı, gri ayarlandı. Kutunun zemini durumun açık rengi, içindeki çerçeve beyazdır.
+  kum seçildi, yeşil alındı, gri ayarlandı. Kutunun zemini durumun açık rengi, içindeki çerçeve beyazdır. (Tarih hattında
+  nokta yalnız tarihi taşır; durum resmin köşesindeki işarettedir: aşağıda "Planlamanın dört adımı". Uçuş'ta hat durumu
+  da çizer: aşağıda "Karar Masası".)
 - Gezginin istekleri kutunun başlığında: ✓ var (yeşil), ✕ yok (kırmızı). Sayfanın söylemediği ("?") gösterilmez, veride
   kalır (B5). Varsayılanlar bu satıra girmez; yalnız söylediği, ayarladığı ya da sezilen öncelik.
 - Satırlar somut yazar (kaç dakika, kaç puan, hangi saat); "Yakın", "Zor saat" gibi tek kelime yetmez. Bulgu kendi
@@ -89,7 +91,7 @@ gelip gelmemesine ve duruma göre değişmez (v82). Plan'da her şeyin kendi kar
 | Pano kartı | 220 px ızgara; tek seçenek de büyümez | `--q-pano-w` |
 | Karşılaştırma sütunu | 280 px | `--q-col-w` |
 
-- **Tekli kutu 288 px**: 1440 ve 860 px'te her durumda aynı yükseklik, iki dilde (A6). Ölçüm:
+- **Tekli kutu 288 px** (Uçuş, Konaklama ve Ulaşım'da artık tarih hattı, aşağıda): 1440 ve 860 px'te her durumda aynı yükseklik, iki dilde (A6). Ölçüm:
   `scripts/v82-shots.mjs` → `heights.json`.
 - **Çerçeve aileleri:** konaklama, eSIM ve sigorta: görsel 196 | bilgi dört satır (marka ve puan ya da durum, ad, konum
   ya da tarih, çipler) | yan sütun. Uçuş, tren ve transfer: bilet (taşıyıcı satırı, şehirler ve istasyon ya da saat,
@@ -117,6 +119,175 @@ gelip gelmemesine ve duruma göre değişmez (v82). Plan'da her şeyin kendi kar
 - 390 px'te yapı aynı kalır: görsel solda, bilgi sağda, yan sütun alta iner, istekler alt satıra kayar. Bu genişlikte
   eşit boy sonraki iştir (A8).
 
+## Planlamanın dört adımı (onay paketi 2026-10-22)
+
+Tarih hattındaki her satır dört adımdan birinde durur; adım satırın resminin (ikon, logo, fotoğraf) köşesindeki işaretle
+ve türün kelimesinden sonraki sözle söylenir (konaklamada şehir kartta değil hatta: şehir değiştiği yerde iğneli bir
+nokta ve şehrin adı, tarihsiz; tarih ve gece soldaki sütunda), renkle tek başına asla (`lib/rowView.ts` `rowStage`, `app/plan/v82/
+modeIcons.tsx` `StageGlyph`, `static/v82/stages.css`). Onaylı çizim: tuval "Plan satırları · onay paketi".
+
+| Adım | Ne demek | İşaret | Kart | Sağdaki tek şey |
+| --- | --- | --- | --- | --- |
+| Seçenekler | Düşünülüyor, karar yok | kesik halka | kesik kenar, soluk zemin | Seç ve sayı (tek önerimizde "Seç", "Bunu seç" yok), Ara |
+| Planda | Karar verildi; önceden alınacak ya da yerinde ödenecek | mor halka, ortası dolu | düz beyaz kart | Satın al ↗ / Rezerve et ↗; rezervasyon gerekmeyende "Yerinde alınır" ("İskelede alınır"), fiyat tahmini ya da "Fiyat yaz" |
+| Alındı (konaklamada Rezerve, "Ben hallettim"de Sen hallettin) | Ödendi; geriye yalnız bilet kaldı | yeşil halka içinde tik | düz beyaz kart | sakin yeşil "Bileti ekle" / "Onayı ekle" |
+| Bilet elde (konaklamada Onay elde) | Kodu ya da belgesi var | dolu yeşil tik | ince yeşil çizgi | satırın ucunda bilet koçanı: kod ve adı (konaklamada kod değil: "giriş 15:00 · €210 ödendi"; numara Ayrıntı'da), kesik yırtık ve iki çentik |
+
+- **Sarı yalnız sorun için.** Normal ilerlemede kum ya da amber yok; "belge yok, yolculuğa az kaldı" gibi gerçek sorun
+  amber kalır. Ödenen tutar bir kod ya da belge desteklemeden yazılmaz (sayfanın fiyatı "ödendi" diye gösterilmez).
+- **Aldım bir kutu açar** (`ProofAsk.tsx`): beyaz, satırın altında; "Güzel, alındı. Bileti de ekleyelim mi?", PNR ya da
+  rezervasyon no, "PDF ya da e-postayı bırak", "Bileti ekle", "Şimdilik yalnız işaretle", "Vazgeç". Sitenin Satın al ↗
+  düğmesinden sonra "Aldın mı? Aldıysan bileti de ekleyelim." ve "Henüz almadım". Kod büyük harfle kayda yazılır,
+  bırakılan belge okunur (`docReader`).
+- **Hat tarihi taşır:** noktası her adımda aynı sessiz halka; konaklamanın tarihi giriş günü tam ay adıyla ("27 Kasım") ve
+  altında gece, ay değişse de iki satır; çıkış günü kartın üçüncü satırının başında ("Çıkış 1 Aralık Salı", rezervede
+  saatiyle).
+- **Kategori başlığı:** tek çubuk dört adımın renklerinde (koyu yeşil bilet elde, açık yeşil alındı, mor planda, gri
+  seçenek) ve tek satır: "2 alındı · 1 planda · 1 karar" ("karar" basınca ilk karara gider), gecenin sorunu ("1 gece
+  boş") aynı satırda.
+- **Türün ikonu:** MingCute dolu ikonlar (Apache-2.0, `static/licenses`), koyu, açık gri 48 px karoda: tren yandan, taksi
+  önden, vapur, otobüs, minibüs, scooter; kategori başlıklarında uçak, otel, tren. Uçuşta havayolunun logosu (uygulamanın
+  içinde, `static/logos/airlines`, airlogos MIT; yoksa harfleri ve markanın rengi), konaklamada otel fotoğrafı.
+- **Hero'da, yer kaplamadan:** "%71 hazır"ın üstüne gelince "Planın durumu" (dört adımın sayısı, renkli çubuk);
+  "Sıradaki"nin üstüne gelince "Sıradaki işler" (önce seçilecekler, sonra alınacaklar, sonra eklenecek biletler;
+  `planSteps`). Planın üstünde ayrı kutu yok.
+
+## Karar Masası: Uçuş'un dili (onay paketi 2026-10-22, "Onaylananlar")
+
+Kararlar `docs/superpowers/specs/2026-10-22-karar-masasi-kararlar.md`, geçiş planı
+`docs/superpowers/plans/2026-10-23-karar-masasi-gecis.md`; tuval "Karar Masası", sayfa "Onaylananlar". Önce Uçuş
+(`lib/rowView.ts` `isDeskRow`, `static/v82/desk.css`, `.q-int[data-desk]`); 0.40.5'ten beri Ulaşım'da önceden alınan
+biletler de (tren, otobüs, feribot) aynı dili konuşur: deste, Seçtin, damga, "↩ n seçenek daha"; rotada uçağın yerinde
+kendi simgesi (dönmez). Konaklama kartı boyunu ve yüzünü korur, desteyi alır: arama bulunca "3 seçenek", fotoğraf
+destesi, önerimiz önde ("✨ önerimiz …"), "Seç 3"; seçilince altında iki lila kat ve "↩ n seçenek daha". Yerinde alınan
+yollar (taksi, metro) aşağıdaki dört adımın bugünkü sözleriyle kalır.
+
+- **Rota uçakla:** "Bangkok ✈ İstanbul": iki ucun arasında 15 px uçak (çekmecede 22 px); ekran okuyucu ve arama için
+  arkasında görünmeyen "→" durur, düz metinlerde (ipucu, hero, Sıradaki işler) "→" kalır.
+- **Tek düğme, hep sağda:** her hâlin tek eylemi sağdaki 118 px yuvada. Açık biletin altında yalnız bağlantılar, tek
+  satır: "Skyscanner'dan · Değiştir 7 · ✓ Aldım"; alınınca bırakma alanında düğme değil "ya da dosya seç".
+- **Aranacak / Aranıyor:** kesik kenarlı soluk kart, beyaz kesik karoda uçak, köşesinde kesik "+" (bulduğunu ekle:
+  çekmeceyi ve "+ Seninkini ekle"yi açar), sağda iki arama yan yana: büyüteçle "Kendin ara ↗" (rota ve günle dolu ilk
+  site) ve yıldızla "AI ara" (sohbet arar, ararken "AI arıyor…"). "Aranıyor" yalnız AI ya da kaynak gerçekten ararken
+  yazar: karoda dönen halka, saat ve fiyatın yerinde yükleniyor çubukları. ⋯ menüsünde "AI arasın", çekmecede "AI yeniden
+  arasın" da durur.
+- **Kendiliğinden arama (hepsi):** boş bir ihtiyaç (uçuş, konaklama, iki şehir arası yol, eSIM) kaynağın sorabildiği
+  anda kendiliğinden aranır; bulunan en iyi üçü seçenek olur (konaklamada başlangıcın yer tutucusu ilkini yerinde alır).
+  Her ihtiyaç bir kez: bulduktan sonra gezginin kaldırdığı geri gelmez; bir şey bulunmazsa sonraki açılışta yeniden sorulur.
+  Bu tek kural üç kategoride de geçerli; boş kutuların hepsinde de iki arama durur: büyüteçle "Ara" (çekmece: kaynağın
+  önerileri ve siteler) ve yıldızla "AI ara".
+  Gezinin söylediğine karşı hiç aranmaz (`lib/autoSearch.ts`): geceler karavanda, kampta ya da teknede geçiyorsa otel;
+  karavan ya da yol gezisinin arabası şehirler arasını sürüyorsa tren ve otobüs; günübirlik gezide konaklama; kara yoluyla
+  gidiliyorsa uçuş; bir paketin kapsadığı ihtiyaç. Önerilen rotanın durakları da aranır (her birinin kendi geceleri var).
+  Konaklamada satıra giren üç seçenek çekmecenin "Senin için 3 öneri"siyle aynıdır (Sana en uygun, Daha ekonomik, Daha
+  konforlu) ve yalnız o geceler için fiyatı olan oteller arasından seçilir.
+  Gezinin kendi gecesi (karavan, kamp, tekne) asla bir teklifle doldurulacak yer sayılmaz; kaydı yoksa çizimi de onun.
+- **Deste:** beyaz kart, ince lila çerçeve ve altında iki ince lila kat; işaretin yerinde üç logolu yelpaze (en iyisi
+  önde); söz "7 seçenek", satırda en iyisinin taşıyıcısı, saatleri ve aktarması, fiyatın altında "en iyisi"; sağda
+  "Seç 7" (sayı beyaz kutuda). Desteye basmak da çekmeceyi açar; satırın altında açılan gövde yok. Arama birden çok
+  seçenek bulunca önerimiz de destedir: önde durur, satırda "✨ önerimiz Turkish · 15:15 → 22:30 · direkt", fiyatın altında
+  "önerimiz", sağda "Seç 3". Tek seçenekse "✨ Önerimiz" ve "Seç" kalır.
+- **Çekmece:** başlıkta uçak; Kaynak yuvası "↗" ile sitenin sayfasına gider; gezginin kendi kaydı altın çerçeveli,
+  "Senin · Kiwi.com'dan kaydettin" (`i18n.fromName`); en altta "+ Seninkini ekle: bağlantıyı bırak ya da ekran görüntüsünü
+  sürükle", siteler ve "AI yeniden arasın".
+- **Seçtin:** seçince çekmece kapanır, satır kendiliğinden açık bilet olur; mor 1,5 px çerçeve, köşede yarım dolu halka,
+  söz "Seçtin", sağda "Satın al ↗". Seçili bir uçuş her açılışta açık gelir, kapatılabilir (kapatılan, yeniden seçilene ya
+  da alınana dek kapalı kalır). Değiştir tek seçenek olsa da durur; aynı çekmeceyi seçili olan işaretli açar. Başka
+  seçenekler varken deste altında kalır: iki ince lila kat ve kartın alt kenarında "↩ 6 seçenek daha"; basınca çekmece,
+  seçili olan "Seçili", ötekilerde "Buna geç". Geçince alttan bir şey çıkmaz; yeni seçilen üste, bırakılan desteye döner.
+  Alınınca deste kalkar.
+- **Bilet alındı:** düğme gider; sağda yeşil koçan ve üstünde yuvarlak, çift halkalı, dik damga ("Alındı" ve işaretlendiği
+  gün; "Ben hallettim"de "Senin"), yarısı yırtık çizgiye taşar; koçanda "Bileti ekle" bağlantısı. Kart açık gelir; açıkken
+  damga biletin yanında 96 px, altında "Son adım: bileti buraya bırak". Basılırken mühür hareketi (`mv-stamp`).
+- **Bilet elde:** koçanda kod ve etiketi, koltuğu biliniyorsa yanında ("PNR · koltuk 14C"); açıkken "Bileti aç", "Takvime ekle"; 48 saat kala "Online check-in ↗", uçuş
+  günü kodu kopyalama ve canlı durum aynen kalır.
+- **Hat bağlanır (Uçuş):** soldaki çizgi yolculuğun kendisi. Her satır noktasının altında kendi parçasını çizer: alınan
+  yeşil 4 px ve art arda alınan bacaklar noktadan noktaya tek çizgi, seçilen düz mor uçları açık, deste kesik lila, aranan
+  noktalı gri; nokta dolu yeşil, yarım mor, kesik ya da noktalı halka. Alınınca çizgi noktadan akıp kenetlenir. Telefonda
+  çizgi yok, nokta adımı söyler. (Konaklama ve Ulaşım'da hat yalnız tarihi taşır.)
+- **Kategori sayacı:** "2 alındı · 1 seçildi · 2 karar" (`rowView.stepParts`), çubuk aynı renklerde.
+- **Getirme anları:** bir satırın ya da açık çekmecenin üstüne bırakılan, çekmecede yapıştırılan bağlantı ve resim o
+  satırın ihtiyacına gider (`Capture.forNeed` → `Item.forNeed`, `lib/bring.ts`); sürüklerken satır "Bırak: bu satıra"
+  der. Okunurken satırın altında "… okunuyor; bu satıra koyacağım"; okununca "Kiwi.com bağlantısı okundu · 4. aday oldu"
+  ve yalnız bilinenle söz ("Önerimizden €86 pahalı ve aktarmalı.", `deckVerdict`), "Karşılaştır" ve "Geri al" (Elenen'e).
+  Bilet ya da onay resmiyse bugünkü yol: belge okunur, kayda bağlanır. Yerini bulamadıklarımız Plan'ın başında
+  "Gelenler · Nereye koyalım?" (sohbetin sorusu da kalır; birinde cevaplanınca ikisi kapanır).
+
+## Benle gezen eklenti (onay 2026-10-23)
+
+İki seviye; ikisini de gezgin açar (PRIVACY.md §4).
+
+- **Seviye 1, söz bozulmadan** (`lib/candidateTabs.ts`): çekmecenin altında "Adayları sekmelerde aç · 3": sıralamanın ilk
+  üçü (sayfası olanlar) rotanın adıyla ("Bangkok ✈ İstanbul") mor bir Chrome sekme grubunda, ilki önde; her sekmede
+  eklentinin simgesi "1/3", "2/3". O sekmede simgeye basınca açılır pencerenin başında "Aday 2/3 · Bangkok ✈ İstanbul",
+  adı ve fiyatı, "Buna karar ver" (plandaki seçim olur) ve "Burada satın al" (sekme kapanınca plan satırı açıp "Aldın mı?"
+  der). Planındaki bir uçuşun arama sayfasında: "Bu arama planında · Tayland", rota ve gün, "Destende 7 seçenek var";
+  kayıt o satıra gider, listedeki öteki uçuşlar da desteye girer.
+- **Seviye 2, "Sitede benle gel"** (`src/companion.ts`, `lib/companion.ts`): açılır pencerede "Skyscanner'da benle gel"
+  (Chrome o site için izin sorar; "…'da benle gelme" geri alır). Yalnız adres planındaki bir uçuşun aramasıyken sayfanın
+  üstünde koyu ince şerit: "Trip Radar · Bangkok ✈ İstanbul", "Tayland planında · destende 7 seçenek", "Ekrandakileri
+  desteye ekle", "Planı aç", ×. Her sonucun sağ üstünde mor "+" ve yanında desteye göre yeri: yeşil "Destende var",
+  lila "Destedekinden €38 ucuz" ya da "Direktlerin en ucuzu". "+" basılınca yeşil ✓. Çizilen her şey kapalı bir shadow
+  kökünde, sitenin kendi öğelerinin içine değil; sitenin bağlantıları değişmez.
+
+## Tarih hattı: Uçuş, Konaklama, Ulaşım (plan v14, onay paketi 2026-10-21)
+
+Bu üç kategoride 288 px kutunun yerini tarih hattı alır (`static/v82/rows.css`, `app/plan/v82/IntentRow.tsx`, saf
+mantık `lib/railDates.ts` ve `lib/rowView.ts`). Etkinlik, Yapılacaklar ve Belgeler ve internet yukarıdaki kutuda kalır.
+
+- **Hat:** solda tarih sütunu (yolda gün ve haftanın günü; konaklamada "27 Kasım" ve "4 gece"), her gece bir çentik,
+  sessiz nokta. Durum noktada değil, satırın resminin köşesinde (yukarıda "Planlamanın dört adımı").
+- **Yol satırı** (uçuş, tren, otobüs, feribot, transfer): ince satır; solda taşıyıcının logosu ya da türün ikonu,
+  üstte küçük tür ve adımın sözü ("Tren · Planda", "✨ Önerimiz"), ad iki uç, altında saatler ve aktarma; sağda tek şey
+  (Ara · Seç ve sayı · Satın al ↗ · Bileti ekle · koçan). Basınca altında bilet gibi açılır: solda yolun çizimi büyük
+  (dar kartta yok), kalkışta saat büyük ve şehir ile istasyon altında, arada kesik çizgide türün ikonu, varış; sağda
+  adım büyük (Bilet elde ve belgesi, ya da Alındı); alındıysa altında "Son adım: bileti buraya bırak" alanı (dosya
+  sürüklenip bırakılır ya da seçilir); yerinde alınacaksa "Biletini Krabi iskelesinde alırsın", fiyat ve Aldım. Gün,
+  süre ve aktarma satırın kendisinde, açılınca tekrar edilmez. Açık hâli kayda bağlıdır, uçlar yazılırken kapanmaz.
+- **Konaklama ve Kiralama kartı:** katlanmaz; fotoğraf solda, üstte şehir ve gece ("Bangkok · 3 gece") ya da tür ve gün
+  ("Motosiklet kiralama · 3 gün"), ad, site ve semt; sağda gece fiyatı ve toplam, tek düğme. Karta basmak çekmeceyi açar
+  (seçilide Değiştir), rezervede Ayrıntı açılır. Altında şeritler: yeşil rezervasyon (giriş, ödenen, onay, sayfa),
+  amber saat bağı (Geç giriş bildir / Geç çıkış sor; `lib/stayTiming.ts`, legs.ts'in notlarından), lila "Rotayı onayla".
+- **Yerinde:** rezervasyonu olmayan yol (taksi, metro) sade bir satır: "Taksi · Planda", rota, "rezervasyon
+  gerekmez", sağda "Yerinde alınır"; açılınca yollar (her biri "rezervasyon gerekmez" ya da "rezervasyon ister · kart olur"), Ben hallettim,
+  Haritada aç ↗.
+- **Kaçırdıklarımız:** iki konaklama arasında kısa açık gece amber "boş gece" satırı; iki kaydın aynı geceyi tutması
+  kırmızı "çakışan gece" satırı ve "Birini kısalt"; kategori kapalıyken de satır özetinde "1 gece boş" (amber),
+  "1 gece çakışıyor" (kırmızı).
+- **Kaçırdıklarımız, 2. tur:** AI ararken sağdaki yuva lila "Aranıyor…" der (ilk seçenek gelince deste olur).
+  Tarihi olmayan niyetler hattın sonunda "Tarihi yok" çizgisinin altında, yuvalarında "Tarih ver" (kendi kaydında tarih
+  orada yazılır). Seçili oda sayfadaki kişi sayısından farklı sayıda kişi için seçilmişse amber "Bu oda 3 kişiye uygun
+  mu?", çekmecede "fiyat 2 kişi için, yeniden ara". Rezervede "Ücretsiz iptal … dek" ve "Takvime ekle" (`lib/ics.ts`:
+  geceler ya da saat, iptalin son günü 3 gün önce alarmla). Karttan eklenen onay okunur (`docReader`): numara, ödenen,
+  giriş. Ortak gezide beğenenler çekmece kartının fotoğrafında; ağırlıklı puanı değiştirmez.
+- 700 px altında tarih karta tırmanır, satır iki sıraya iner (fiyat görünür kalır).
+
+## Çekmece standardı (onay paketi 2026-10-21)
+
+`app/plan/v82/IntentDrawer.tsx`, `static/v82/drawer.css`, saf mantık `lib/drawerCard.ts`.
+
+- **Başlık üç satır:** deste ve sayı, ad ve "ne zaman · kaç kişi"; Ölçütler (lila şart, gri tercih, "+ ekle");
+  Seçenekler / Elenen anahtarı ve Sırala. Konaklama ve kiralamada sıralamanın ağırlığı tek çubuk (Yorumlar · Özellikler ·
+  Fiyat yüzdeleri, karar motorunun kendi ağırlıklarından toplanır; uydurma yok) ve yanında "Ayarla" (`WeightTuner.tsx`):
+  "Neye göre sıralayalım?", Dengeli · Fiyat önce · Yorumlar önce · Konum önce ve üç kadran (0–4, 2 varsayılan); kadran
+  grubunun ölçütlerini bu kategori için gezide değiştirir (`decision.withPriorities`), kartlar hemen yeniden sıralanır.
+- **Konaklama / kiralama kartı (3. tur, onaylı 2026-10-24):** fotoğraf solda 188 px, üstünde "91 · 1. sırada", köşesinde
+  sayfanın iki fotoğrafı daha ve "+n" (galeri: sayfa kaydedilirken ilk sekiz fotoğrafın yalnız adresi saklanır,
+  `items.galleryOf`; basınca büyük görünüm, ← → ve Esc); "✓ Seçili" mor; yanında ad, site ve semt, puanın üç parçası;
+  sağda fiyat ve büyük Seç. Yuvalar kutu değil tek ince satır, hep aynı sırada (konaklama: Kahvaltı, İptal, Merkez, Puan;
+  kiralama: Sigorta, İptal, Teslim, Puan): küçük işaret ve değer, adı üzerine gelince; yeşil iyi, amber dikkat, gri
+  "bilinmiyor" (C19). Satırın sonunda kaynak: sitenin işareti ve adı, ↗; basınca ilanın sayfası yeni sekmede açılır.
+  Kazanılan yer artı ve eksilere: "Yorumlarda öne çıkan" ve "Yorumlarda şikâyet" başlıklı iki sütun, 4'er madde, hep
+  açık. Önerimiz kartın ayağında tek satır. Kap 520 px'in altına inince fotoğraf üste geçer.
+- **Bilet kartı:** biniş kartı (saatler büyük, süre ve aktarma arada), fiyat ve Seç, beş yuva (uçuş: Bagaj, El bagajı,
+  İade, Varış, Kaynak; tren ve otobüs: Kalkış, Varış, Süre, İade, Kaynak), "Neden 91?" (önerimizde açık). Birden çok
+  günde uçuşlar gün bandının altında (52 px karo, "istenen gün", "bir gün sonra"); komşu günün puanı amber.
+- Fiyat iki günden eskiyse amber "n gün önce · Yenile"; düştüyse lila "Dün €71 idi".
+- Altta "Yeni bul" kutusu (bağlantıyı buraya bırak, bakılacak siteler, AI yeniden arasın) ve "Pano'da karşılaştır →".
+- Kart iç yerleşimi kabın genişliğine göre (container query): telefonda ve dar sütunda Seç tam genişlik, yuvalar sarar.
+- Aynı kart Pano'da: fotoğrafa ya da ada basınca seçeneğin kendi sayfası yeni sekmede açılır (0.46.0); çekmecede ad
+  kaydın tüm detaylarını açar.
+
 ## Hero = mozaik
 
 Gezinin özeti planın üstünde, kendi açık mor zemininde, yuvarlak bir kutuda durur; altında 40 px boşluk, sonra "Plan"
@@ -137,11 +308,15 @@ başlığı (v82). Bileşenler `src/app/hero/`, biçim `static/v82/hero.css`, sa
   çubuğu ("%61 planda · %33 alındı", B9) | bütçe (bütçe yoksa "Bütçe belirle", D16) | koyu "Sıradaki" düğmesi (önce
   vize, sonra Önerimiz onayı, sonra karar bekleyen; C30). Sayıya basınca ilk karara gider, üzerine gelince hangileri
   olduğunu söyler (F5).
-- **Çipler:** ülke (çok ülkede "n ülke" ve ülke tablosu, D9), hava, para, priz, saat farkı, dil, vize; uyarı çipleri
+- **Çipler:** ülke bayrağıyla ("🇦🇷 Arjantin · 🇨🇱 Şili", üç ülkeye kadar adıyla, daha çoğunda "n ülke"; üzerine gelince
+  ülke tablosu, D9), hava, para, priz, saat farkı, dil (bayraksız: dil bir ülkenin değil), vize; uyarı çipleri
   amber ("Schengen vizesi gerekiyor", "2 belge yok"). Üzerine gelince ya da basınca ayrıntılar açılır (şehir şehir hava,
   kur, priz uyumu, "Sende 12:00 iken orada 18:00", vize ayrıntısı).
-- **Küçük pencereler** (180/120 ms, E12): Tercihler "Seni böyle anladım" (kapsam etiketi, kaynak, × kaldır, AI'nın
-  sorusu Evet/Hayır), Bütçe (Rezerve · Planlanan · Boşta, kategori dağılımı, iki ve daha çok kişide "Kişi başı ~€3.450 ·
+- **Bayrak ülkenindir (0.46.0):** ülke yerin şehrinden okunur (Santiago Şili'dir), AI'nın verdiği kod yalnız şehir
+  tabloda yoksa kullanılır. Kapaktaki rotada her ülkenin ilk durağının önünde küçük bayrağı durur.
+- **Tercihler** satırda tek düğmedir, yanında sayısı; üzerine gelince açılır (sohbet başındaki istekler dahil), çıkınca
+  kapanır. Pencere yalnız okunur: soru sorulmaz, × yok; tercihler sohbette konuştukça şekillenir (0.46.0).
+- **Küçük pencereler** (180/120 ms, E12): Tercihler "Seni böyle anladım" (kapsam etiketi, kaynak), Bütçe (Rezerve · Planlanan · Boşta, kategori dağılımı, iki ve daha çok kişide "Kişi başı ~€3.450 ·
   2 kişi", T5), Kimler gidiyor (yetişkin, çocuk, oda; davet, son hareket; D12).
 - **Ana yerler** (revizyon 1): hero'nun şehirleri gezginin gittiği ana yerlerdir (şehir, ada, bölge), gecelediği her
   kasaba değil. Madeira'daki bir köy (Gaula) Madeira'nın içine katlanır. Hangi yerin hangisinin içinde olduğunu
@@ -156,6 +331,13 @@ başlığı (v82). Bileşenler `src/app/hero/`, biçim `static/v82/hero.css`, sa
   soluk, her satırda tek eylem, altta yarının ilk işi (D8). Uçuş günü alınmış biletin çip satırı canlı şeride döner
   (kapı, biniş, rötar; C4).
 - Hero'nun üstünde, ortada sekmeler: **Plan | Pano** (Pano'da kayıt sayısı).
+
+- **Fotoğraflar hafif ve saklı** (`lib/photoCache.ts`, `hero/Photo.tsx`): gezide yalnız adresleri durur (Unsplash, Pexels,
+  Wikipedia). Her biri çizildiği boyutta istenir (kapak 1280 px, kutu 480 px, renk tonu 64 px; sunucusu sıkıştırır). Gezi
+  kartı, kapağın aynı adresini kullanır: Seyahatlerim'de yüklenen fotoğraf, gezi açılınca hero'da hazırdır. Sunucular
+  fotoğrafı bir yıl saklanmak üzere gönderir, tarayıcının kendi önbelleği tutar; sonraki açılışta (yeniden yüklemede de)
+  hiçbir şey indirilmez. Ziyaret boyunca çizilenler çözülmüş tutulur (son 40), tekrar girişte boş kare olmadan ilk anda
+  çizilir. Fotoğraf hiçbir zaman beklenmez, adresinden hemen çizilir.
 
 ## Sağlayıcı kuralı
 
@@ -213,7 +395,12 @@ olmalı"). "Kendin ara" simgeleri, boş şehrin "…'da ara" düğmeleri ve Haz�
   Her yerden açılır: üstteki Plan | Pano sekmesi, her niyetteki "Pano n".
 - Solda kenar menü: Tümü · Biriktirdiklerim · AI önerileri · İlham · Belgeler (sayılarıyla), altında "İhtiyaçlar"
   ağacı (kategori > niyet, durum noktası ve sayı). Vurgu kayar, içerik belirir (E9).
-- Karşılaştırma yalnız konaklama, eSIM, uçuş ve trende: 280 px sütunlar, satırlar hizalı (görsel ve kim ekledi, ad,
+- **Çekmecenin büyümüş hâli (onay paketi 11):** uçuş, konaklama ve ulaşım ihtiyaçları çekmecenin kartlarıyla iki
+  sütun (`app/board/v82/PanoDeck.tsx`); grubun başı çekmecenin başı gibi (ölçütler, ağırlık, Yeni bul, Kartlar |
+  Karşılaştır), sağda "Seçildi: X · Plan'da gör →" ya da "Karar bekliyor". Rezerve grup tek satıra iner ("Aç ▾").
+  Karşılaştır: etiket sütunu ve seçenek başına sütun; ağırlıklı puan, üç parça, fiyat, beş yuva, artılar, eksiler,
+  oylar, Seç; her satırda en iyi yeşil, en zayıf amber.
+- Karşılaştırma (eSIM gibi kalanlar): 280 px sütunlar, satırlar hizalı (görsel ve kim ekledi, ad,
   fiyat ve toplam, "Uyum puanı n/100 · n. sırada" ve ⓘ'de "AI analizi dahil" (B3), istekler, artılar, eksiler, puan,
   iptal, bagaj, ♥, kaynak ↗, Seç). Etkinlik ve yapılacaklarda kıyas yok, toplama ızgarası ("+ Plana koy" / "Planda").
 - Beğeni tek ♥; eski oylar beğeniye çevrildi (B16).
@@ -305,3 +492,127 @@ yukarıdaki tablodadır (Seçildi kum, Alındı yeşil).
 - Kısa ve şehirlerle: "Porto → Lizbon", "3 karar bekliyor", "Ücretsiz iptal".
 - Bilet gibi: ne → ne ("Havalimanı → Otel"), adlar ve saat alt satırda, notlar Ayrıntı'da.
 - Artı ve eksi birkaç kelimedir; sayfada okunan somut şey kendi sözleriyle yazılır ("Karşısında genelev var").
+
+## Uygulamaya tek basış, kartta ×, öneriler sohbetle bir, küçük ödül (0.47.0)
+
+- **Açılır pencerenin üst şeridi:** her durumda en üstte ince bir şerit: solda logo ve "Trip Radar", sağda lila
+  "Uygulamayı aç ↗" ve ×. Uygulama bir sekmede açıksa yenisi açılmaz, o sekmeye geçilir. Alttaki sessiz satırdaki
+  "Panoyu aç" bu yüzden kalktı.
+- **Seyahatlerim'de ×:** gezi kartının üzerine gelince sağ üstte küçük × (kalan gün sola kayar). Basınca kartın
+  üstünde tek soru: "Silinsin mi? Çöp kutusuna gider, 30 gün içinde geri alınır" · kırmızı Sil · Vazgeç. Paylaşılan
+  gezide "yalnız bu bilgisayardan" denir. Silince Seyahatlerim'de Geri al.
+- **Etkinlik önerileri sohbetle bir:** sohbetin bulduğu tur ve etkinlikler (find_offers) gezide şehir şehir saklanır
+  ve Plan'daki Etkinlik satırında da çıkar, önce onlar. Bir öneriye × basınca kaynağın sıradaki önerisi yerine gelir.
+- **"Bulamadın mı?" kutusu** kartların altında hep tam genişlikte bir banttır (bir kartın hücresine sıkışmaz).
+  İçinde "AI ile ara": sohbete o şehir için 3 öneri daha sorar; bulunanlar sohbette ve satırda ikinci sıra olarak çıkar.
+- **Bir bölüm tamamlanınca:** satırın üstünden yumuşak, yeşilimsi bir ışık bir kez geçer, halkanın ✓'si küçük bir
+  sıçrayışla oturur (900 ms, yerleşim kımıldamaz). İki notalı, çok kısık bir ses (C6, G6; ~150 ms) çalar. Açılışta
+  değil, aynı satırda ikinci kez değil. Ayarlar'da "Küçük sesler" kapatır; "Hareketi duraklat" ya da azaltılmış
+  hareket açıksa ne hareket ne ses.
+
+## Tek bakış (0.45.0, tuval 15–16)
+
+- Simge penceresi her an tek kart: resim ya da simge, tek cümle, tek büyük düğme, altında tek sessiz satır ("Biriktirdiklerim
+  16 · Panoyu aç ↗"; AI anahtarı yoksa "AI bağlı değil · Bağla"). Gezi üstte küçük çip; basınca değişir.
+- Hangi kart: yukarıdan aşağı ilk tutan. Az önce eklendi (✓ Eklendi · Geri al · Yanlış gezi mi? Değiştir) → sayfada
+  rezervasyon onayı (lib/confirm.ts: onay sözü + numara ya da JSON-LD Reservation; "Evet, kaydet") → 15 dk içinde okunamayan
+  kayıt ("Tekrar dene", "Bu sayfaya geç") → gezi seçilmemiş ("Hangi gezi için topluyorsun?", bir kez) ya da sayfa başka
+  geziye benziyor ("Bu sayfa Portekiz için · Nereye kaydedeyim?", tutan gezi "önerim") → zaten destede ("Panoda
+  karşılaştır") → liste ("Bu listeden seç") → seyahat sitesinde + kapalı (bir kez: "kartlara + koyayım mı?") → İlham (video,
+  yazı, her site: "+ İlham'a ekle", Item.inspo) → yerin sayfası ("+ Konaklama destesine ekle") → eklenecek yok (yeni sekme,
+  pano): gezinin sıradaki işi ("İstanbul → Porto karar bekliyor · Karar ver", lib/tripGlance.ts).
+- Biriktirdiklerim: Pano'nun kendi sayısı (panoBoardOf counts.mine), aynı hesapla.
+- Yerin kendi sayfasında (0.45.1) listedeki "+" adın hemen yanında, açık: "+ Konaklama destesine ekle"; tek basış ekler,
+  eklenince ✓. Sayfayla birlikte kayar.
+- Sayfadaki kenar sekmesine basınca simgenin penceresi açılır (chrome.action.openPopup); açılamazsa cep sayfada açılır.
+- Onay sayfası (izinli sitelerde): köşede "Bu bir rezervasyon onayı · … kaydedeyim mi? · Kaydet · Şimdi değil", simgede
+  yeşil ✓. Emin değilse sormaz. Kaydedince AI okur; numara sayfada yoksa alındı yazılmaz.
+
+## Sade cep, katlanan notlar, önerilerde ×, art arda yazmak (0.44.2)
+
+- Cep: başlıkta gezi ve tek sayı ("4 otel"), tek düğme, son 3 eklenenin yalnız adı (durum yalnız yolunda değilse:
+  okunuyor, okunamadı · tekrar; × üstüne gelince), "Panoyu aç ↗" · "Bu sitede gösterme". Açıklama satırı yok.
+- Konaklama kartının amber notları (giriş/çıkış saati, kişi sayısı, gece uyarısı) kart kapalıyken kartın içinde tek küçük
+  satır: "⏱ Giriş saati" (birden çoksa "· +1"); basınca kart açılır, her not tam cümlesi ve tek işiyle görünür.
+- Etkinlik: Viator/GetYourGuide turları, "O tarihlerde" etkinlikleri ve plana alınmamış kayıtlı fikirler üstüne gelince ×
+  (Gerek yok); tur `offer:<id>` anahtarıyla gezinin önerilerinde gizlenir, Gizlenenler'den geri gelir.
+- Sohbet: cevap sürerken yazılan "Sırada · cevap bitince gider" balonu olur (× ile çıkar); cevap bitince sıradakilerin
+  hepsi tek tur olarak birlikte gider.
+
+## Gezi cebi (0.44.0, tuval 12 · Plan 3)
+
+- Dört iş, iki yüzey: kartta "+" ve kenarda cep. Topla, gör, seç, git; gerisi panoda (karşılaştırma tablosu, oy, not yok).
+- Cep simgede ve sayfanın sağ kenarında aynı içerik (`lib/pocket.ts`): üstte şu anki gezi (kapak, günler, kaç kayıt; ▾
+  başka gezi), "Bu sayfa", son 5 eklenen ve durumu (destede, okunuyor, okunamadı · tekrar) ile ×, AI
+  bağlı değilse tek satır ("3 kayıt bekliyor, toplamaya devam"), altta "Bali panosunu aç ↗".
+- Kapalıyken sağ kenarda küçük sekme: gezinin kapağı, bu sitenin destesindeki sayı ("4 otel"; uçuş sitesinde uçuş, tur
+  sitesinde tur; başka sitede gezinin toplamı; eklenince zıplar), yerin kendi sayfasında "+". Cebin başında "Konaklama 4
+  · toplam 29".
+- Sonuçlardaki "+" (0.44.1) kartın sağ dışında, sayfaya yapışık (kaydırınca kartla birlikte gider, peşinden koşmaz); sağda
+  yer yoksa kartın üst kenarında. Hiçbir zaman sonucun puanının, fiyatının ya da düğmesinin üstünde değil. Hop
+  hareketi sekmeye uçar. "Bu sitede gizle" o sitede kapatır. Sağ alttaki "Desteye ekle" hapı kalktı, cebe girdi.
+- Yerin kendi sayfası: "+ Konaklama destesine ekle". Liste: "Sonuçlardan seç" (liste tek kayıt olmaz), sonuç bulunamazsa
+  "Ekrandakini ekle". Eklenemeyen sayfa (yeni sekme) çıkmaz sokak değil: gezi ve son eklenenler yine görünür.
+- Yanlış ekleme: notta "Geri al" ya da cepte ×; yanlış gezi: "Değiştir". Eklenti güncellenince açık sayfanın eski +'sı
+  basınca "Trip Radar yenilendi; bu sayfayı yenileyince + geri gelir · Sayfayı yenile" der.
+
+## Simgeye basınca (0.43.0)
+
+- Simge kendiliğinden kaydetmez; açılır pencere anında açılır (iskelet), işi arka plan yapar (`lib/popupWorker.ts`), paket
+  hafif (244 KB). Sayfanın metni ve ekran görüntüsü yalnız "Desteye ekle"ye (ya da Enter) basınca.
+- Dört hal: gezi belli ("Portekiz · Konaklama ▾" çipi + "+ Desteye ekle"), gezi belli değil (seçici; bir kutuya basmak
+  seçer ve ekler), zaten destede ("✓ … destesinde", "Fiyatı yenile"), seyahat sayfası değil ("+ Fikir olarak ekle",
+  Capture.idea: soru sorulmaz). Ekledikten sonra "✓ Eklendi · Geri al", pencere 1,8 sn sonra kendisi kapanır.
+- Şu anki gezi (`tripRules.currentFor`): son seçilen ya da eklenen gezi, bir gün; aynı ülke ya da ülkesi okunamayan sayfa
+  sormadan oraya. Sıra: satırın araması → ülkenin hatırlanan gezisi → şu anki gezi → seçici.
+- Sitede: eklenince kartın küçük kopyası (fotoğraf, ad) sağ üste uçar (420 ms, azaltılmış harekette yok), simgede "+1";
+  not "Portekiz · Konaklama destesine girdi · 2 okunuyor · Değiştir · Geri al". Reklam/sponsorlu kartlara + yok; +'nın
+  altında sitenin düğmesi varsa sola kayar. Simgeden "Bu sayfadan seç": +'lar işarete döner, hepsi birden eklenir.
+
+## Benle gezen eklenti: Pinterest gibi kaydetme (0.42.0)
+
+- Tek anahtar: "Seyahat sitelerinde benle gel" (Ayarlar ve araç çubuğu), `COMPANION_SITES` 30 kadar seyahat sitesi, tek
+  izin isteği. Listede olmayan site: araç çubuğundan "X'da da benle gel" (isteğe bağlı `https://*/*`, yalnız o kökeni).
+- Liste sayfasında kartın üst kenarında küçük "+"; fare kartın üstündeyken "+ Ekle"ye açılır (Pinterest'in kaydet düğmesi
+  gibi ama fotoğrafın üstünde değil). Destede olan "Destende var", eklenen ✓.
+- Gezi seçici (sayfada ve açılır pencerede aynı): "Önerilen" üç kapaklı kutu (Pinterest'in Quick Picks'i: ülkenin günü
+  tutan gezisi, ülkenin öteki gezisi, son kaydedilen), "Tüm geziler" küçük fotoğraflı satırlar, en altta "Yeni gezi:
+  Portekiz", "bundan sonra sormadan buraya". Kapak: gezinin fotoğrafı ve son kaydedilen ikisi; yoksa baş harfi.
+- Sıra: plandaki satırın araması/adayı → ülkenin hatırlanan gezisi (günü tutuyorsa) → seçici → hiç gezi yoksa yeni gezi.
+  Dönüş uçuşu (eve iner) kalkış ülkesinin. Aynı ülkede birden çok gezi ve günü olmayan sayfa: cevap kural yazmaz.
+
+## Kategori satırı: Bitti ve yaklaştı halkası (0.41.2)
+
+Kapalı kategori satırının sonunda, okun yerinde 44 px bir halka (`lib/planRing.ts`, tuval "Kategori satırı" 7. tur D2).
+Ölçü plan, seçenek değil: Uçuş'ta gidiş ve dönüş iki yarım, Ulaşım'da üç yolculuk üç parça; 8 seçenek halkayı doldurmaz.
+Alınan (ya da ayarlanan) parça koyu yeşil, seçilip alınmayan açık yeşil, karar bekleyen boş; hepsi alınınca dolu yeşil
+daire ve ✓. Yalnız fikir olan kategoride kesik boş halka. Halkanın yanında yazı yok; "1 alındı · 1 karar" ekran okuyucu
+için gizli durur. Karar bekleyen varsa halka bir düğmedir: üstünde hangileri, basınca ilk karara. Uyarılar (gece eksik)
+adın altındaki satıra geçti. Ok kalktı: satırın tamamı açar ve kapar.
+
+## Benle gezen eklenti: sitede ekleme ve hangi gezi (0.41.0)
+
+Sayfayı okuma iki türlüdür: sitede bakarken (etiketler, "Seçtiğin uçuş", "Destende var") kod okur, cihazda, AI yok;
+desteye eklenince o sonucun ya da sayfanın metni AI'ya okutulur (araç çubuğundaki "Kaydet" gibi).
+
+- "Sitede benle gel" uçuş sitelerine ek olarak Booking.com, Airbnb, GetYourGuide, Viator'da da; yine site site izinle.
+  Liste sayfasında her sonucun üst kenarında "+" (+ → ··· okunuyor → ✓ destede), destedekinin adı tutarsa "Destende var".
+  Bir otelin ya da turun kendi sayfasında (`offerPageKind`: adres ya da JSON-LD) sağ altta "Desteye ekle" hapı; üstünde
+  nereye gideceği yazar ("Portekiz gezisi · Konaklama destesine girer"); × o sitede gizler. Listede hap yok.
+- Sağ tık "Trip Radar'a ekle": sayfa ya da bağlantı, araç çubuğunun kaydı gibi; simgede ··· → ✓, sorulursa bildirim.
+- Hangi gezi (`lib/tripRules.ts`): bir ülke için ilk kayıt bir kez sorar; o ülkenin gezileri önce, tarihi tutan
+  seçili, sonra diğerleri, "Yeni gezi: Portekiz". "Bundan sonra hep buraya koy" açıksa cevap o ülkenin gezisi olur; sonra
+  o ülkeye ve gezinin günlerine (±3 gün) düşen her şey sormadan gider. Başka ülke, gezinin günleri dışı, bitmiş gezi:
+  yine sorar. "Başka geziye taşı" kuralı da taşır. Ayarlar → Hatırlanan geziler → Unut. Hiç gezi yoksa sorulmaz, açılan
+  gezi o ülkenin olur. Sitede soru sayfanın içinde (sağ altta), araç çubuğunda açılır pencerede sorulur: 0.41.1'den beri
+  kaydetmeden önce (ülke sayfanın adresinden ve başlığından kodla okunur), seçilince kaydedilir; AI okuduktan sonra değil.
+- Fiyat düşünce simgede yeşil rozet ("−40"); açılır pencere "Fiyatı düştü" satırını gösterir; o gezinin planı açılınca gider.
+
+## Fiyat izleme (0.40.6)
+
+Planında olup henüz alınmamış uçuş ve oteller günde bir kez yeniden sorulur (`lib/priceWatch.ts`,
+`lib/priceWatchWorker.ts`): uçuş paylaşılan canlı uçuş aramasına (Kiwi bulur, Google Flights doğrular), otel o geceler için
+fiyatlı adaylara. Yalnız aynı uçuş (saati ve havayolu) ya da aynı otel (adı ya da sayfası); başkasından fiyat uydurulmaz.
+€5 ve %3'ten büyük düşüş kayda yazılır (çekmecede "Dün €364 idi"), gezinin geçmişine düşer ve bir Chrome bildirimiyle
+söylenir; basınca gezinin planı açılır. "Sitede benle gel"in sitelerinde seçtiğin uçuş görünürse orada "Seçtiğin uçuş"
+yazar, kişi başı fiyatı planındakinden ucuzsa "Seçtiğin uçuş · €42 ucuz" ve günde bir bildirim. Arayüzde yeni düğme yok.

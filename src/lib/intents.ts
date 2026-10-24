@@ -189,6 +189,8 @@ export interface OptionVM {
   brand: Brand | null;
   source: OptionSource | null;
   image: string | null;
+  /** A stay's other photos from its page (galeri), the card's own first photo apart. */
+  gallery: string[];
   /** cardFacts' price: the total (a stay: its nights), per night, one person's share. */
   price: CardFacts["price"];
   /** A ticket's price per person and in all (cardTicket.ticketPrices). */
@@ -310,6 +312,8 @@ export interface IntentVM {
   word: string;
   /** The pick waiting for a yes is the traveller's own save, not ours (P6, F38): "Senin kaydın", never "Önerimiz". */
   own?: boolean;
+  /** "Ben hallettim" (the traveller sorted it outside the tool), not a way with nothing to book: its row counts it bought. */
+  selfArranged?: boolean;
   head: IntentHead;
   /** The options to pick from, best fit first: three for one choice, four for a row of cards; the rest are on the Pano. */
   options: OptionVM[];
@@ -514,6 +518,7 @@ function optionVM(item: Item, env: Env, at: { place: number; frame: FrameFamily;
     brand: brandOf(facts.source?.label, facts.source?.host),
     source: sourceOf(item),
     image: facts.image,
+    gallery: item.gallery?.filter((g) => g !== facts.image) ?? [],
     price: facts.price,
     ticket: at.frame === "ticket" ? ticketPrices(item, facts.price, env.people) : null,
     score: facts.score,
@@ -878,6 +883,7 @@ function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
     status: draftRoute ? "suggested" : status,
     word: ownDraft ? L("Senin kaydın", "Your save") : statusWord(draftRoute ? "suggested" : status, kind),
     ...(ownDraft ? { own: true } : {}),
+    ...(status === "arranged" && (farOwn || Boolean(settled?.arranged && settled.noBooking != null)) ? { selfArranged: true } : {}),
     head,
     options: top,
     more: rest,

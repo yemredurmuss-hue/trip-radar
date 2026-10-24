@@ -65,6 +65,15 @@ No account, no ads. Your data stays on your computer; it only goes to the AI and
   - scripting: o sekmede sayfanın metnini ve görünen bölümünü almak için tek seferlik okuyucu çalıştırmak.
   - storage / unlimitedStorage: gezileri, kayıtları, ekran görüntülerini ve belgeleri bilgisayarda saklamak.
   - alarms: paylaşılan gezileri dakikada bir eşitlemek ve bekleyen kayıtları yeniden denemek.
+  - notifications: planındaki, henüz almadığın uçuş ya da otelin fiyatı düşünce tek bir bildirimle haber vermek (günde en çok bir kez); başka bir şey için kullanılmaz.
+  - contextMenus: sağ tık menüsüne "Trip Radar'a ekle" koymak; tıklanan sayfa ya da bağlantı araç çubuğundaki "Kaydet" gibi kaydedilir.
+  - tabGroups: kullanıcının isteğiyle bir ihtiyacın adaylarını rotanın adıyla tek bir sekme grubunda açmak; sayfaları
+    okumaz.
+  - İsteğe bağlı host izinleri (kurulumda istenmez): seyahat siteleri listesi (Skyscanner, Kiwi, Kayak, Booking.com,
+    Airbnb, GetYourGuide, Viator, Omio ve benzeri, 30 kadar) kullanıcı "Seyahat sitelerinde benle gel" dediğinde tek
+    seferde istenir; "https://*/*" yalnız kullanıcının araç çubuğundan "Bu sitede de benle gel" dediği tek site için,
+    o sitenin kökeniyle istenir. Bu sitelerde sonuçlara "+", sağ kenara gezi cebi (gezinin son eklenenleri, "Bu sayfa") konur,
+    planındaki bir uçuşun aramasında üstte şerit; basılmadan hiçbir şey okunup gönderilmez.
   - Host izinleri: generativelanguage.googleapis.com ve api.anthropic.com (AI), *.supabase.co (paylaşım ve AI
     kapısı), nominatim.openstreetmap.org (adres → konum), api.frankfurter.* (döviz kuru).
 - **Uzaktan kod:** Hayır. Tüm kod pakette.

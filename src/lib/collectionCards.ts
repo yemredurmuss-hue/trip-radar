@@ -399,6 +399,17 @@ export function nearPlaces(plan: Pick<Plan, "stayBlocks">, items: Iterable<Item>
   return out;
 }
 
+/** The key a tour or an event said "Gerek yok" to is kept under, among the trip's suggestions (0.44.2). */
+export const offerKey = (o: Pick<Offer, "id">): string => `offer:${o.id}`;
+
+/**
+ * What its × stores: a suggestion of the rules' kind (never shown back from storage, suggestions.shownSuggestions), said
+ * not needed; Gizlenenler's "Geri getir" opens it again and the tour comes back.
+ */
+export function offerHidden(o: Pick<Offer, "id" | "title">): Suggestion {
+  return { key: offerKey(o), section: "activity", kind: "add", title: o.title, why: "", source: "rule", createdAt: Date.now(), state: "open" };
+}
+
 /** A tour the connected source offers for the city (its page, its photo, how long, its price a person). */
 export function offerCard(o: Offer, people: number | null): KCardVM {
   const each = o.price != null && o.price > 0 ? (people && people > 1 ? o.price / people : o.price) : null;
@@ -565,8 +576,8 @@ export const moreLabel = (n: number, title: string): string => L(`${title}: ${n}
 export function askMore(section: SectionId, city: string | null): string {
   const where = city ?? L("bu gezi", "this trip");
   return section === "activity"
-    ? L(`${where} için bilet ya da rezervasyon gerektiren birkaç etkinlik ve tur daha öner.`, `Suggest a few more activities and tours for ${where}, the kind that take a ticket or a booking.`)
-    : L(`${where} için gezilecek birkaç yer ve restoran daha öner.`, `Suggest a few more places to see and restaurants for ${where}.`);
+    ? L(`${where} için bilet ya da rezervasyon gerektiren 3 etkinlik ya da tur daha öner.`, `Suggest 3 more activities or tours for ${where}, the kind that take a ticket or a booking.`)
+    : L(`${where} için gezilecek 3 yer ya da restoran daha öner.`, `Suggest 3 more places to see or restaurants for ${where}.`);
 }
 export const askOther = (title: string): string => L(`“${title}” yerine başka bir etkinlik ya da tur öner.`, `Suggest another activity or tour in place of “${title}”.`);
 export const askLike = (card: Pick<KCardVM, "title" | "family">, city: string | null): string =>

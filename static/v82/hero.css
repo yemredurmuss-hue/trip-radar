@@ -196,15 +196,6 @@ button.x-ps:focus-visible { outline: 2px solid var(--q-acc); outline-offset: 2px
 .x-pref-pop li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid #f1eff6; font-size: var(--q-fs-info); }
 .x-pref-pop li small { color: var(--q-mut); font-size: var(--q-fs-small); }
 .x-tag { font-style: normal; display: inline-block; margin-right: 8px; padding: 2px 8px; border-radius: 99px; background: var(--q-soft); border: 1px solid var(--q-line); font-size: var(--q-fs-badge); font-weight: 750; color: var(--q-mut); }
-.x-rmv { all: unset; flex: none; cursor: pointer; width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; color: var(--q-mut); }
-.x-rmv:hover { background: var(--q-soft); color: var(--q-bad); }
-.x-rmv:focus-visible { outline: 2px solid var(--q-acc); }
-.x-ask { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 12px; background: var(--q-acc-s); }
-.x-ask p { margin: 0; flex: 1 1 100%; font-size: var(--q-fs-info); font-weight: 650; }
-.x-ask p small { display: block; font-weight: 500; color: var(--q-mut); font-size: var(--q-fs-small); }
-.x-ask button { all: unset; cursor: pointer; height: 30px; padding: 0 14px; border-radius: 9px; font-size: var(--q-fs-info); font-weight: 700; background: #fff; border: 1px solid var(--q-line); }
-.x-ask .x-yes { background: var(--q-acc); color: #fff; border-color: var(--q-acc); }
-.x-ask button:focus-visible { outline: 2px solid var(--q-acc); outline-offset: 2px; }
 .x-edit { font-size: var(--q-fs-small); color: var(--q-mut); }
 
 /* ---- the facts' quiet row: small muted words each with a small icon; the visa and the files missing keep their chips ---- */
@@ -244,8 +235,8 @@ button.x-chip:focus-visible { outline: 2px solid var(--q-acc); outline-offset: 2
 .x-prefb b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 650; color: var(--q-ink); }
 .x-prefb .x-ptag.strong { font-weight: 800; }
 .x-prefb em { flex: none; font-style: normal; font-weight: 750; color: var(--q-acc); }
+.x-prefb .x-pn { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 99px; background: var(--q-acc-s); font-size: 12px; font-weight: 800; }
 .x-prefb svg { flex: none; }
-.x-q { flex: none; font-style: normal; display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--q-acc); color: #fff; font-size: var(--q-fs-badge); font-weight: 800; }
 .x-prefs .x-pop { left: auto; right: 0; }
 .x-fold { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; box-sizing: border-box; border-radius: 99px; border: 1px solid var(--q-line); background: #fff; color: var(--q-ink); font: inherit; font-size: var(--q-fs-small); font-weight: 700; cursor: pointer; }
 .x-fold:hover { border-color: #cfc9e3; }
@@ -308,6 +299,13 @@ ul.hm-pop { list-style: none; margin: 0; padding: 6px; }
 @container panel (max-width: 700px) { .h-mb, .h-tabs { display: none; } }
 @container panel (max-width: 460px) { .h-mp, .h-mt { display: none; } .h-next.sm { max-width: none; margin-left: auto; } }
 
+/* 0.46.0 (Emre: "satır olarak inmesin"): wide, the style and Tercihler stay on the facts' line; the facts wrap in their own room */
+@container panel (min-width: 640px) {
+  .x-info { flex-wrap: nowrap; }
+  .x-info > .x-chips { flex: 1 1 auto; }
+  .x-info > .x-prow { flex: none; flex-wrap: nowrap; margin-left: auto; }
+}
+
 /* ---- narrow (the board under 900 px): the cover 480 px, the tiles three by two, the card two by two with "Sıradaki" the full width ---- */
 @container panel (max-width: 900px) {
   .x-big { height: 480px; }
@@ -343,7 +341,7 @@ ul.hm-pop { list-style: none; margin: 0; padding: 6px; }
 
 /* ---- on paper (PrintPlan copies the hero as drawn): no buttons, the whole summary even when folded ---- */
 .pp-hero-copy .x-hero { margin: 0 0 8px; }
-.pp-hero-copy .x-tmenu, .pp-hero-copy .x-next, .pp-hero-copy .x-fold, .pp-hero-copy .x-cr, .pp-hero-copy .x-busy, .pp-hero-copy .x-unfold, .pp-hero-copy .x-prefb svg, .pp-hero-copy .x-q, .pp-hero-copy .x-pop { display: none !important; }
+.pp-hero-copy .x-tmenu, .pp-hero-copy .x-next, .pp-hero-copy .x-fold, .pp-hero-copy .x-cr, .pp-hero-copy .x-busy, .pp-hero-copy .x-unfold, .pp-hero-copy .x-prefb svg, .pp-hero-copy .x-pop { display: none !important; }
 /* (an action is no line on paper: "Bütçe belirle", the files still to add) */
 .pp-hero-copy .x-bsetl, .pp-hero-copy .c-docs, .pp-hero-copy .x-s3:has(.x-budb.set) { display: none !important; }
 .pp-hero-copy .x-hero.fold .x-mos, .pp-hero-copy .x-hero.fold .x-strip { display: grid !important; }
@@ -357,3 +355,5 @@ body.still .x-hero *, body.still .x-hero, body.still .h-mini, body.still .h-mini
 @media (prefers-reduced-motion: reduce) {
   .x-hero *, .x-hero, .h-mini, .h-mini * { animation: none !important; transition: none !important; }
 }
+/* 0.46.0: a country's flag before its first stop on the route */
+.x-rflag { font-size: 13px; line-height: 1; margin-right: -2px; }

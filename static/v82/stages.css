@@ -1,0 +1,227 @@
+/* Onay paketi 2026-10-22, "planlamanın dört adımı" (docs/mockups/paket-dort-adim): every row of a dated category stands on
+   one step, said by the mark on its picture's corner and a word after the kind's, never by the rail (the rail keeps the date):
+     options  Seçenekler: nothing decided, a dashed card, "Seç" and the count       (a dashed ring)
+     planned  Planda: decided; bought ahead ("Satın al") or paid on the spot          (a violet ring with its dot)
+     bought   Alındı / Rezerve: paid, its ticket still to add ("Bileti ekle", calm)   (a green ring with its tick)
+     ticket   Bilet elde / Onay elde: its code on a stub at the row's end             (a filled green tick)
+   Yellow is for trouble only; the kinds of travel are MingCute's filled icons, dark on a soft tile (modeIcons.tsx). */
+
+:root { --q-sg-opt: #aaa4c4; --q-stub: color-mix(in srgb, var(--q-ok-s) 70%, #fff); --q-stub-line: color-mix(in srgb, var(--q-ok) 28%, #fff); }
+
+/* ---- the rail keeps the date: one quiet dot for every step ---- */
+.q-ints.q-tl .q-int[data-stage] .q-tld::before { width: 11px; height: 11px; right: -5.5px; top: 24.5px; border: 2px solid #c9c4d9; border-style: solid; background: #fff; box-shadow: 0 0 0 3px #fff; }
+.q-ints.q-tl .q-int[data-stage] .q-tlend { width: 11px; height: 11px; right: -5.5px; border: 2px solid #c9c4d9; background: #fff; }
+.q-int[data-stage] .q-tld.none::before { top: 24.5px; }
+
+/* ---- the mark: the kind's icon (or the carrier's logo, or the stay's photo) and the step on its corner ---- */
+.q-rrow { grid-template-columns: 44px minmax(0, 1fr) auto 118px 28px; }
+.q-rmark { width: 44px; height: 44px; border-radius: 13px; }
+.q-rmark.ic, .q-int[data-kind] .q-rmark.ic { background: #f1f0f5; color: var(--q-ink); }
+.q-rmark.ic .q-mi { width: 27px; height: 27px; display: block; }
+.q-rmark.carr .q-logo { width: 44px; height: 44px; border-radius: 13px; font-size: 14px; }
+.q-sb { position: absolute; right: -6px; bottom: -6px; z-index: 2; width: 24px; height: 24px; border-radius: 99px; background: #fff; display: grid; place-items: center; box-shadow: 0 0 0 1px rgba(28, 26, 51, .07), 0 1px 3px rgba(28, 26, 51, .12); }
+.q-sb .q-sg { display: block; }
+.q-rph > .q-sb { right: -7px; bottom: -7px; width: 28px; height: 28px; }
+.q-rph > .q-sb .q-sg { width: 22px; height: 22px; }
+.q-rph.deck > .q-sb { right: 2px; bottom: 2px; }
+
+/* ---- the lead: the kind's word, then the step's ---- */
+.q-rlead { display: flex; align-items: baseline; gap: 0; min-width: 0; }
+.q-rlead > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: none; max-width: 100%; }
+.q-rlead > span:last-child { flex: 0 1 auto; }
+.q-rlead > .q-rkind + .q-rstage::before { content: " · "; white-space: pre; color: #c3bfd3; }
+.q-rkind { color: var(--k, var(--c)); }
+.q-rstage { color: var(--q-mut); }
+.q-int[data-stage="options"] .q-rstage { color: #7c7799; }
+.q-int[data-stage="options"][data-st="ai"] .q-rstage { color: var(--q-acc); }
+.q-int[data-stage="planned"] .q-rstage { color: var(--q-acc-d, #4a36c9); }
+.q-int[data-stage="bought"] .q-rstage, .q-int[data-stage="ticket"] .q-rstage { color: var(--q-ok); }
+
+/* ---- the card by its step ---- */
+/* options: dashed, a soft ground (the deck keeps its two edges under it) */
+.q-int[data-stage="options"] .q-rcard { background: #fbfafd; box-shadow: 0 1px 2px rgba(28, 26, 51, .03); outline: 1.5px dashed #cdc7df; outline-offset: -1.5px; }
+.q-int[data-stage="options"]:has(.q-rsec) .q-rcard { outline-color: color-mix(in srgb, var(--q-acc) 32%, #cdc7df); }
+.q-int[data-stage="options"] .q-rhd .q-nm { color: #3b3857; }
+/* planned and bought: a plain white card (decided; never dashed) */
+.q-int[data-stage="planned"] .q-rcard, .q-int[data-stage="bought"] .q-rcard { background: #fff; outline: 0; }
+/* ticket: a green hairline; its code on the stub */
+.q-int[data-stage="ticket"] .q-rcard { background: #fff; outline: 0; box-shadow: 0 1px 1px rgba(28, 26, 51, .04), 0 2px 6px rgba(28, 26, 51, .05), 0 12px 28px -10px rgba(28, 26, 51, .18), inset 0 0 0 1px var(--q-stub-line); }
+
+/* ---- the slot by its step ---- */
+.q-proof { display: inline-flex; align-items: center; border: 1.5px solid color-mix(in srgb, var(--q-ok) 40%, #fff); background: #fff; color: var(--q-ok); font: inherit; cursor: pointer; }
+.q-proof:hover { background: var(--q-stub); }
+.q-proof:focus-visible { outline: 3px solid color-mix(in srgb, var(--q-ok) 35%, #fff); outline-offset: 1px; }
+.q-onsite { display: inline-flex; align-items: center; gap: 6px; background: var(--q-soft); color: var(--q-mut); font-weight: 700; white-space: nowrap; }
+.q-rslot:has(> .q-rstub) { align-self: stretch; margin-right: -48px; position: relative; z-index: 0; }
+.q-rrow > .q-rmenu { position: relative; z-index: 1; }
+.q-rstub { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 0 40px 0 12px; background: var(--q-stub); border-left: 2px dashed var(--q-stub-line); border-radius: 0 16px 16px 0; }
+.q-row.open .q-rstub { border-bottom-right-radius: 0; }
+.q-rstub::before, .q-rstub::after { content: ""; position: absolute; left: -8px; width: 14px; height: 14px; border-radius: 99px; background: var(--q-notch, #fff); box-shadow: inset 0 0 0 1px var(--q-stub-line); }
+.q-rstub::before { top: -8px; }
+.q-rstub::after { bottom: -8px; }
+.q-rstub .q-rcode { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 14.5px; font-weight: 800; letter-spacing: .04em; color: var(--q-ink); white-space: nowrap; }
+.q-rstub small { font-size: var(--q-fs-badge); color: var(--q-mut); font-weight: 600; white-space: nowrap; }
+.q-rrow.card > .q-rslot:has(> .q-rstub) { margin-block: -14px; }
+
+@media (max-width: 700px) {
+  .q-rrow { grid-template-columns: 44px minmax(0, 1fr) auto 24px; }
+  .q-rslot:has(> .q-rstub) { margin: 0; }
+  .q-rstub { padding: 8px 14px; border-radius: 11px; border: 1.5px dashed var(--q-stub-line); flex-direction: row; gap: 8px; }
+  .q-rstub::before, .q-rstub::after { display: none; }
+  .q-rrow.card > .q-rslot:has(> .q-rstub) { margin-block: 0; }
+}
+
+/* ---- a dated category's head icon ---- */
+.q-ic.mc { background: #f1f0f5; color: var(--q-ink); }
+.q-ic.mc .q-mi { display: block; }
+
+
+/* ---- under the row: a pass (onay paketi 2026-10-22, "bilet gibi") ---- */
+.q-rcard { container-type: inline-size; }
+.q-rp .z-tm.z-pass { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 26px; align-items: center; }
+.z-tart { display: grid; place-items: center; height: 164px; border-radius: 16px; background: linear-gradient(160deg, #e7effc, #f3f6fd); overflow: hidden; }
+.q-int[data-kind="ferry"] .z-tart { background: linear-gradient(160deg, #e2f4f8, #f2fafc); }
+.z-tart img { width: 100%; height: 100%; object-fit: contain; mix-blend-mode: multiply; transform: scale(1.12); }
+.q-mid.big > i.z-mic { height: 66px; }
+.q-mid.big > i.z-mic::before { right: calc(50% + 40px); border-top-width: 2px; }
+.q-mid.big > i.z-mic::after { left: calc(50% + 40px); border-top-width: 2px; }
+.z-micc { position: relative; width: 66px; height: 66px; border-radius: 99px; background: #fff; display: grid; place-items: center; color: var(--q-ink); box-shadow: 0 0 0 1px var(--q-line), 0 6px 14px -8px rgba(28, 26, 51, .45); }
+.z-micc .q-mi { display: block; }
+@container (max-width: 780px) {
+  .q-rp .z-tm.z-pass { grid-template-columns: minmax(0, 1fr); }
+  .z-tart { display: none; }
+}
+/* the step said big on the right */
+.z-step { display: grid; justify-items: center; gap: 4px; text-align: center; min-width: 124px; }
+.z-step b { font-size: 15px; font-weight: 800; }
+.z-step small { font-size: var(--q-fs-badge); color: var(--q-mut); font-weight: 650; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.z-step.ticket b, .z-step.bought b { color: var(--q-ok); }
+.z-step.planned b { color: var(--q-acc-d); }
+.q-rp .z-f.z13.bk:has(.z-step.ticket) > .z-s { background: var(--q-stub); border-left: 2px dashed var(--q-stub-line); margin: 0; padding: 14px 18px; }
+/* bought: the last step, a zone the ticket is dropped on */
+.z-drop { flex: 1 1 100%; display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: 14px; border: 1.5px dashed color-mix(in srgb, var(--q-ok) 40%, #fff); background: var(--q-stub); color: var(--q-ok); }
+.z-drop.over { background: color-mix(in srgb, var(--q-ok-s) 100%, #fff); border-style: solid; }
+.z-dropt { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.z-dropt b { font-size: 14px; font-weight: 800; color: var(--q-ink); }
+.z-dropt small { font-size: var(--q-fs-small); color: var(--q-mut); font-weight: 600; }
+.z-drop .q-got.ok { background: var(--q-ok); color: #fff; border-color: var(--q-ok); height: 36px; min-height: 36px; padding: 0 14px; }
+/* planned on the spot: where its ticket is bought, its price, Aldım */
+.z-onsite { flex: 1 1 100%; display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; background: #f2fafc; color: #0e7f9c; }
+.z-onsite > span { display: grid; gap: 2px; }
+.z-onsite b { font-size: 14px; font-weight: 800; color: var(--q-ink); }
+.z-onsite small { font-size: var(--q-fs-small); color: var(--q-mut); font-weight: 600; }
+.z-wpr { display: inline-flex; align-items: baseline; gap: 8px; padding: 8px 12px; border-radius: 11px; box-shadow: inset 0 0 0 1.5px #d9d4e8; }
+.z-wpr small { font-size: var(--q-fs-small); color: var(--q-mut); font-weight: 700; }
+.z-wpr b { font-size: 14px; font-weight: 800; }
+.q-pick.z-got { height: 36px; min-height: 36px; padding: 0 14px; }
+.q-rp .z-f.z13 > .z-i .z-l3:has(.z-drop, .z-onsite) { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.q-city.pass small { display: flex; flex-direction: column; gap: 1px; }
+.q-city.pass.r small { align-items: flex-end; }
+.q-city.pass .z-cty { color: var(--q-ink); font-weight: 750; }
+/* open, its last step is under the pass: not said twice on the row */
+.q-row.open .q-rslot > .q-proof { visibility: hidden; }
+
+/* ---- "Aldım": a white box under the row asks for what backs it (never a yellow warning) ---- */
+.q-proofq { display: grid; gap: 14px; margin: 0 14px 14px; padding: 16px 18px; border-radius: 16px; background: #fff; box-shadow: 0 0 0 1px var(--q-line), 0 18px 40px -24px rgba(28, 26, 51, .45); animation: q-rp-in .26s cubic-bezier(.2, .7, .2, 1); }
+.q-pqh { display: flex; gap: 12px; align-items: flex-start; }
+.q-pqh > span { display: grid; gap: 3px; }
+.q-pqh b { font-size: 15px; font-weight: 800; color: var(--q-ink); }
+.q-pqh small { font-size: var(--q-fs-small); color: var(--q-mut); font-weight: 600; line-height: 1.45; }
+.q-pqf { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.q-pqc, .q-pqd-w { display: grid; gap: 5px; min-width: 0; }
+.q-pqc small, .q-pqd-w small { font-size: var(--q-fs-badge); color: var(--q-mut); font-weight: 700; }
+.q-pqc input { height: 40px; box-sizing: border-box; padding: 0 12px; border-radius: 11px; border: 1.5px solid #d9d4e8; font: inherit; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 15px; letter-spacing: .04em; color: var(--q-ink); background: #fff; }
+.q-pqc input:focus { outline: none; border-color: var(--q-acc); box-shadow: 0 0 0 3px var(--q-acc-s); }
+.q-pqd { display: flex; align-items: center; gap: 8px; height: 40px; box-sizing: border-box; padding: 0 12px; border-radius: 11px; border: 1.5px dashed #c9c4d9; background: #fbfafd; color: var(--q-acc); font: inherit; font-size: 13px; font-weight: 800; cursor: pointer; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.q-pqd.over, .q-pqd:hover { border-color: var(--q-acc); background: var(--q-acc-s); }
+.q-pqa { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.q-pqa .q-got.ok { height: 38px; min-height: 38px; padding: 0 16px; background: var(--q-ok); border-color: var(--q-ok); color: #fff; }
+.q-pqa .q-got.ok:disabled { opacity: .45; cursor: default; }
+@media (max-width: 700px) { .q-pqf { grid-template-columns: minmax(0, 1fr); } .q-proofq { margin: 0 8px 10px; } }
+@media (prefers-reduced-motion: reduce) { .q-proofq { animation: none; } }
+
+/* ---- a stay's date: its check-in in full and its nights, two lines, a month changing or not ---- */
+.q-int[data-kind="stay"] .q-tld b { font-size: 14px; white-space: nowrap; text-wrap: nowrap; }
+.q-int[data-kind="stay"] .q-tld .q-tlspan { margin-top: 2px; font-size: var(--q-fs-small); letter-spacing: 0; }
+
+/* ---- the drawer card's photos (galeri): two small ones and "+n" on its photo; pressed, big over the page ---- */
+.dr-gal { position: absolute; left: 12px; bottom: 12px; z-index: 2; display: flex; gap: 6px; }
+.dr-gth { width: 64px; height: 46px; padding: 0; border: 2px solid #fff; border-radius: 10px; overflow: hidden; background: rgba(255, 255, 255, .92); box-shadow: 0 2px 8px -3px rgba(28, 26, 51, .45); cursor: pointer; font: inherit; font-size: 14px; font-weight: 800; color: var(--q-ink); }
+.dr-gth img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.dr-gth.more { border: 0; }
+.dr-gth:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 1px; }
+.dr-lb { position: fixed; inset: 0; z-index: 400; display: grid; place-items: center; background: rgba(20, 18, 38, .82); padding: max(24px, env(safe-area-inset-top, 0px)) 72px; }
+.dr-lb figure { margin: 0; display: grid; gap: 10px; justify-items: center; max-width: min(1100px, 100%); }
+.dr-lb img { max-width: 100%; max-height: calc(100vh - 120px); border-radius: 14px; object-fit: contain; box-shadow: 0 30px 60px -30px rgba(0, 0, 0, .6); }
+.dr-lb figcaption { color: #fff; font-size: 14px; font-weight: 700; }
+.dr-lbn, .dr-lbx { position: absolute; width: 44px; height: 44px; border-radius: 99px; border: 0; background: rgba(255, 255, 255, .92); color: var(--q-ink); font-size: 26px; font-weight: 700; display: grid; place-items: center; cursor: pointer; }
+.dr-lbn.prev { left: 16px; top: 50%; } .dr-lbn.next { right: 16px; top: 50%; }
+.dr-lbx { right: 16px; top: max(16px, env(safe-area-inset-top, 0px)); }
+@media (max-width: 700px) { .dr-lb { padding: 16px; } .dr-lbn { top: auto; bottom: 16px; } .dr-gth { width: 52px; height: 38px; } }
+
+/* ---- "Ayarla": the sort's weights as presets and three dials ---- */
+.dr-tune { position: relative; }
+.dr-tuneb { display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 10px; border-radius: 99px; border: 1px solid var(--q-line); background: #fff; color: var(--q-acc); font: inherit; font-size: 12.5px; font-weight: 800; cursor: pointer; }
+.dr-tuneb[aria-expanded="true"], .dr-tuneb:hover { background: var(--q-acc-s); border-color: color-mix(in srgb, var(--q-acc) 30%, var(--q-line)); }
+.dr-tunep { position: absolute; z-index: 30; right: 0; top: calc(100% + 8px); width: min(360px, 86vw); display: grid; gap: 14px; padding: 16px 18px; border-radius: 18px; background: #fff; box-shadow: 0 0 0 1px var(--q-line), 0 22px 48px -24px rgba(28, 26, 51, .5); }
+.dr-tuneh { display: flex; align-items: center; justify-content: space-between; }
+.dr-tuneh b { font-size: 15px; font-weight: 800; }
+.dr-tunex { width: 30px; height: 30px; border-radius: 9px; border: 1px solid var(--q-line); background: #fff; color: var(--q-mut); display: grid; place-items: center; cursor: pointer; }
+.dr-presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.dr-preset { height: 30px; padding: 0 12px; border-radius: 99px; border: 1px solid var(--q-line); background: #fff; font: inherit; font-size: 12.5px; font-weight: 750; color: var(--q-ink); cursor: pointer; }
+.dr-preset:hover { background: var(--q-acc-s); color: var(--q-acc-d); }
+.dr-dial { display: grid; gap: 6px; font-size: 13.5px; font-weight: 750; }
+.dr-dial > span { display: flex; justify-content: space-between; }
+.dr-dial i { display: inline-block; width: 9px; height: 9px; border-radius: 99px; margin-right: 4px; background: var(--g); }
+.dr-dial input { accent-color: var(--g, var(--q-acc)); width: 100%; }
+.dr-tunen { font-size: var(--q-fs-small); color: var(--q-mut); font-weight: 600; line-height: 1.45; }
+
+/* "✓ Seçili" in the drawer and the deck: decided is violet, never the sand of a warning (onay paketi 2026-10-22) */
+.dr-in > span.q-pick, .dr-tm > span.q-pick { background: var(--q-acc-s); color: var(--q-acc-d); border: 1px solid color-mix(in srgb, var(--q-acc) 25%, #fff); }
+.dr-chosen { border-color: color-mix(in srgb, var(--q-acc) 25%, #fff); }
+.pd-st.sel { color: var(--q-acc-d); }
+
+/* the four steps' bar and lines (the hero's "Planın durumu" tip) */
+.q-psbar { display: flex; gap: 3px; height: 8px; border-radius: 99px; overflow: hidden; background: #e3e0ec; }
+.q-psbar i { display: block; min-width: 6px; }
+.q-psbar i.ticket { background: var(--q-ok); }
+.q-psbar i.bought { background: color-mix(in srgb, var(--q-ok) 55%, #fff); }
+.q-psbar i.planned { background: var(--q-acc); }
+.q-psbar i.options { background: #d6d2e3; }
+.q-psl { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 8px; align-items: center; font-size: 13px; font-weight: 700; color: var(--q-ink); }
+.q-psl b { font-variant-numeric: tabular-nums; }
+
+/* ---- a stay's city on the rail, where the city changes: a pinned stop and its name (its dates stay in the column) ---- */
+.q-ints.q-tl > .q-tlcity { display: flex; align-items: center; gap: 10px; margin: 8px 0 -6px calc(var(--tlx) - 11px); position: relative; z-index: 1; }
+.q-tlcity > i { width: 22px; height: 22px; border-radius: 99px; background: var(--k, var(--c, #23998b)); color: #fff; display: grid; place-items: center; box-shadow: 0 0 0 3px #fff; flex: none; }
+.q-tlcity > b { font-size: 16px; font-weight: 800; letter-spacing: -.01em; color: var(--k, var(--c, #23998b)); }
+.q-ints.q-tl > .q-tlcity:first-child { margin-top: 0; }
+@media (max-width: 700px) { .q-ints.q-tl > .q-tlcity { margin-left: -5px; } }
+.q-rstub.plain .q-rbig { font-size: 19px; font-weight: 800; letter-spacing: -.01em; color: var(--q-ink); white-space: nowrap; }
+.q-rstub.plain small:last-child { color: var(--q-ok); font-weight: 800; }
+
+/* ---- the hero's tips: "Planın durumu" over "hazır", "Sıradaki işler" over Sıradaki ---- */
+.x-steps { display: grid; gap: 7px; text-align: left; }
+.x-steps > b { font-size: 13.5px; font-weight: 800; }
+.x-steps > small { font-size: 12px; line-height: 1.4; }
+.x-steps .q-psl { grid-template-columns: 18px minmax(0, 1fr) auto; font-size: 12.5px; }
+.x-steps, .x-steps .q-psl, .x-steps b { color: inherit; }
+.x-steps > small, .x-steps .q-psl small { color: color-mix(in srgb, currentColor 68%, transparent); font-weight: 600; }
+.x-steps { min-width: 0; width: 100%; box-sizing: border-box; }
+.x-steps .q-psl.nx { grid-template-columns: 18px minmax(0, 1fr); align-items: start; }
+.x-steps .q-psl.nx > span { display: grid; gap: 1px; }
+.x-steps .q-psbar { background: rgba(255, 255, 255, .18); }
+
+/* ---- a dated category's bar in the four steps' colours ---- */
+.q-bar.q-sbar { gap: 2px; background: #ebe9f2; }
+.q-sbar i { display: block; height: 100%; min-width: 4px; }
+.q-sbar i.ticket { background: var(--q-ok); }
+.q-sbar i.bought { background: color-mix(in srgb, var(--q-ok) 55%, #fff); }
+.q-sbar i.planned { background: var(--q-acc); }
+.q-sbar i.options { background: #d6d2e3; }
+
+/* the step forward: the corner's mark springs (K29, as the hap did); the pass's big mark is stamped as the old seal was */
+.q-int.pop .q-sb { animation: q-pop .52s cubic-bezier(.2, .7, .2, 1.4); }
+.z-int.z-go .z-f.z13 .z-step .q-sg { animation: mv-stamp 420ms cubic-bezier(.2, .9, .3, 1.3) backwards; }
+body.still .q-int.pop .q-sb, body.still .z-int.z-go .z-f.z13 .z-step .q-sg { animation: none; }
+@media (prefers-reduced-motion: reduce) { .q-int.pop .q-sb, .z-int.z-go .z-f.z13 .z-step .q-sg { animation: none; } }

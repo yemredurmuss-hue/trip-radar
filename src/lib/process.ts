@@ -7,7 +7,7 @@ import { valueOnPage } from "./evidence";
 import { geocode } from "./geo";
 import { L } from "./i18n";
 import { imageProxy, pickCityImage } from "./cityImages";
-import { buildItem, CATEGORY_LABELS, corpusOf, findDuplicate, formatDateRange, isoDate, mergeItem } from "./items";
+import { buildItem, CATEGORY_LABELS, corpusOf, findDuplicate, formatDateRange, isoDate, mergeItem, moreFlights } from "./items";
 import { chooseTrip, countryCodeOf, countryName, gapDays, isDemoTrip, profileTrips, uniqueTitle, type TripChoice, type TripSignal } from "./trips";
 import { askText, countriesText, datesIn, looksLikeTravel, placeCodes, placeFitOf, routeCapture, titleCodes, tripPlaceCodes, type Route } from "./placeCheck";
 import { loadHome } from "./passport";
@@ -15,6 +15,7 @@ import { homeFromFlights } from "./suggestions";
 import type { PageSnapshot } from "./pagecapture";
 import type { Capture, Geo, HeldCapture, Item, Trip } from "./types";
 import { parseUrl, type UrlFacts } from "./url";
+import { loadRules, rememberTrip, ruleFor, type TripRule } from "./tripRules";
 
 export type Extractor = (capture: Capture, facts: UrlFacts, trips: Trip[]) => Promise<Extraction>;
 
@@ -28,6 +29,8 @@ export interface Deps {
   crop?: (dataUrl: string, box: Box) => Promise<string | null>;
   /** The traveller's home country when set (Settings → Pasaport): always a trip's own (placeCheck.ts). */
   home?: () => Promise<string | null>;
+  /** Hangi gezi (tripRules.ts): the trips remembered per country; null where there is no storage (nothing asked then). */
+  rules?: () => Promise<TripRule[] | null>;
 }
 
 const defaultDeps: Deps = {
@@ -93,8 +96,12 @@ function baseCapture(kind: Capture["kind"]): Capture {
   };
 }
 
-export async function saveSnapshot(snapshot: PageSnapshot, screenshot: string | null): Promise<Capture> {
-  const capture: Capture = { ...baseCapture("extension"), ...snapshot, screenshot };
+/**
+ * `bind` (benle gezen eklenti): saved from a page the plan knows (a candidate's tab, a search for a planned flight): it goes
+ * into that trip and that need's deck.
+ */
+export async function saveSnapshot(snapshot: PageSnapshot, screenshot: string | null, bind: { forTripId?: string; forNeed?: string; idea?: boolean } = {}): Promise<Capture> {
+  const capture: Capture = { ...baseCapture("extension"), ...snapshot, screenshot, ...(bind.forTripId ? { forTripId: bind.forTripId } : {}), ...(bind.forNeed ? { forNeed: bind.forNeed } : {}), ...(bind.idea ? { idea: true } : {}) };
   await (await db()).put("captures", capture);
   notifyChanged();
   return capture;
@@ -105,21 +112,22 @@ export async function saveSnapshot(snapshot: PageSnapshot, screenshot: string | 
  * place is far from that trip's (placeCheck.ts). `fromTripId`: sent in that trip's chat (routed as any capture,
  * checked against that trip).
  */
-export async function savePastedLink(url: string, forTripId?: string, fromTripId?: string, note?: string | null): Promise<Capture> {
+export async function savePastedLink(url: string, forTripId?: string, fromTripId?: string, note?: string | null, forNeed?: string): Promise<Capture> {
   const capture: Capture = {
     ...baseCapture("paste-link"),
     url,
     ...(forTripId ? { forTripId } : {}),
     ...(fromTripId && !forTripId ? { fromTripId } : {}),
     ...(note?.trim() ? { note: note.trim().slice(0, 300) } : {}),
+    ...(forNeed ? { forNeed } : {}),
   };
   await (await db()).put("captures", capture);
   notifyChanged();
   return capture;
 }
 
-export async function saveImage(dataUrl: string, forTripId?: string, fromTripId?: string): Promise<Capture> {
-  const capture: Capture = { ...baseCapture("image"), screenshot: dataUrl, ...(forTripId ? { forTripId } : {}), ...(fromTripId && !forTripId ? { fromTripId } : {}) };
+export async function saveImage(dataUrl: string, forTripId?: string, fromTripId?: string, forNeed?: string): Promise<Capture> {
+  const capture: Capture = { ...baseCapture("image"), screenshot: dataUrl, ...(forTripId ? { forTripId } : {}), ...(fromTripId && !forTripId ? { fromTripId } : {}), ...(forNeed ? { forNeed } : {}) };
   await (await db()).put("captures", capture);
   notifyChanged();
   return capture;
@@ -208,6 +216,8 @@ async function readCapture(capture: Capture, deps: Deps, commit: () => Promise<b
     // A new trip is only made once something goes into it (a page that is asked about makes none).
     const newTripId = "tripId" in choice ? null : newId();
     let incoming = buildItem(extraction, capture, facts, "tripId" in choice ? choice.tripId : newTripId!);
+    // (brought to one row of the plan: that need's option, as an offer added from its box is: plan.flightNeeds)
+    if (capture.forNeed && !incoming.forNeed && incoming.category === capture.forNeed.split(":")[0]) incoming = { ...incoming, forNeed: capture.forNeed };
     // Only a screenshot: the option's photo cut out of it (a car, a room), when the model found one.
     const box = !incoming.imageUrl && capture.screenshot ? photoBox(extraction.image_box) : null;
     if (box) {
@@ -230,10 +240,29 @@ async function readCapture(capture: Capture, deps: Deps, commit: () => Promise<b
     // Saved from the toolbar with more than one trip it could be and nothing that says which (two India trips, an undated
     // page; 0.39.4): asked under the button (popup) and in Bekleyen kayıtlar, never put in one by a guess. A page saved
     // before (merged) stays where it is; a chat's or a board's capture has its own trip.
-    const candidates = "tripId" in choice && !duplicate && !anchor && !capture.sharedAt && capture.kind === "extension" ? (choice.candidates ?? []) : [];
-    const route: Route = capture.sharedAt
+    const fromToolbar = !duplicate && !anchor && !capture.sharedAt && capture.kind === "extension";
+    let candidates = "tripId" in choice && fromToolbar ? (choice.candidates ?? []) : [];
+    // Hangi gezi (0.41.0, tripRules.ts): this country's trip remembered → there, nothing asked; never answered for this
+    // country yet → asked once which trip (its trips first), the answer remembered (routing.ts answerHeld).
+    let remembered: Trip | null = null;
+    const rules = fromToolbar ? await (deps.rules ?? loadRules)() : null;
+    if (rules) {
+      const codes = placeCodes(item);
+      remembered = ruleFor(rules, codes, trips, allItems, item.dates.start, item.dates.end, today());
+      if (remembered) {
+        item = { ...item, tripId: remembered.id, dates: datesIn(item, remembered, allItems) };
+        candidates = [];
+      } else if (codes.length) {
+        const ownTrips = trips.filter((t) => !isDemoTrip(t));
+        const same = ownTrips.filter((t) => codes.some((c) => tripPlaceCodes(t.id, allItems).has(c) || titleCodes(t.title).has(c)));
+        const byRecent = (list: Trip[]) => [...list].sort((a, b) => b.updatedAt - a.updatedAt).map((t) => t.id);
+        const first = "tripId" in choice && ownTrips.some((t) => t.id === choice.tripId) ? [choice.tripId] : [];
+        candidates = [...new Set([...first, ...candidates, ...byRecent(same), ...byRecent(ownTrips)])].slice(0, 4);
+      }
+    }
+    const route: Route = capture.sharedAt || remembered
       ? { kind: "keep" }
-      : candidates.length > 1
+      : candidates.length > 1 || (rules && candidates.length === 1)
         ? { kind: "ask", reason: "trip", askIn: null, candidates }
         : routeCapture({
           item,
@@ -242,7 +271,7 @@ async function readCapture(capture: Capture, deps: Deps, commit: () => Promise<b
           anchorId: anchor?.id ?? null,
           board: Boolean(forced),
           home,
-          travel: looksLikeTravel(extraction),
+          travel: Boolean(capture.idea) || looksLikeTravel(extraction),
           trips,
           items: allItems,
         });
@@ -272,13 +301,20 @@ async function readCapture(capture: Capture, deps: Deps, commit: () => Promise<b
         updatedAt: now,
       };
       await d.put("trips", made);
+      // (nothing to choose from: the country's first trip, remembered as its own)
+      if (rules) await rememberTrip(placeCodes(item)[0], made.id);
     }
     // Who saved it (v11 Pano's faces): a link a fellow traveller shared is theirs; the board's own owner otherwise (absent).
     if (!duplicate && capture.sharedBy) item = { ...item, addedBy: capture.sharedBy };
     await d.put("items", item);
     if (before && before !== item.tripId) await moveDocsToTrip(item.id, item.tripId);
+    // (Karar Masası: a flight search's list saved, its other flights in view join the same need's deck; none twice)
+    const more: Item[] = [];
+    for (const m of moreFlights(extraction, item)) if (!findDuplicate([...existing, item, ...more], m)) more.push(m);
+    for (const m of more) await d.put("items", m);
 
     await addEvent(item.tripId, savedLine(item, incoming.status === "booked", Boolean(duplicate), capture.sharedBy));
+    if (more.length) await addEvent(item.tripId, L(`Aynı listeden ${more.length} uçuş daha desteye girdi.`, `${more.length} more flight${more.length > 1 ? "s" : ""} from the same list joined the deck.`));
     // The same thing saved again (Emre, 0.36.55): merged as always, and asked whether to keep it apart instead. Not a
     // booking's confirmation (it books what was saved), nor what a shared trip sends.
     if (duplicate && incoming.status !== "booked" && !capture.sharedAt) {

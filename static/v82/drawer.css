@@ -1,0 +1,291 @@
+/* The drawer's standard card (onay paketi 2026-10-21, docs/mockups/paket-ucus-konaklama 4, 5, 9, 16): the head in three
+   lines (the deck and who and when; Ölçütler; Seçenekler/Elenen and the order), a stay's weights as one bar, a stay's and a
+   rental's card with the photo first, a flight's boarding pass, five labelled slots, the reviews' pros and cons, the day
+   bands, the "Yeni bul" box. Over card13.css's drawer (its frame, scrim and slide stay). */
+
+.dr { width: min(720px, 100%); }
+.dr-h { gap: 12px; padding: 18px 20px 0; }
+
+/* Line 1: the deck, the title and when, the Pano, close. */
+.dr-top { align-items: center; gap: 12px; }
+.dr-deck { position: relative; flex: none; width: 46px; height: 46px; }
+.dr-deck > img, .dr-deck > .q-logo, .dr-deck > .z-lgi { position: absolute; width: 34px; height: 34px; border-radius: 9px; object-fit: cover; box-shadow: 0 0 0 2px #fff; background: var(--q-soft); }
+.dr-deck > :nth-child(1) { left: 0; top: 0; }
+.dr-deck > :nth-child(2) { left: 6px; top: 6px; }
+.dr-deck > :nth-child(3) { left: 12px; top: 12px; }
+.dr-deck > b:last-child { position: absolute; left: auto; right: -6px; top: -6px; min-width: 20px; height: 20px; padding: 0 5px; box-sizing: border-box; border-radius: 99px; background: var(--q-acc); color: #fff; font-size: 11.5px; font-weight: 800; display: grid; place-items: center; box-shadow: 0 0 0 2px #fff; }
+.dr-t b { font-size: 22px; }
+.dr-t span { font-size: 13px; }
+
+/* Line 2: Ölçütler, lila what must be, grey what is wished. */
+.dr-crit { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.dr-crit > small, .dr-wt > small { font-size: var(--q-fs-small, 12px); font-weight: 750; color: var(--q-mut); margin-right: 4px; }
+.dr-want { height: 30px; padding: 0 13px; border: 1px solid var(--q-line); background: var(--q-soft); color: var(--q-ink); font-size: 13px; font-weight: 700; }
+.dr-want.req { border-color: transparent; background: var(--q-acc-s); color: var(--q-acc-d); }
+.dr-want.add { border-style: dashed; background: none; color: var(--q-mut); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.dr-want.add:hover { color: var(--q-acc); border-color: var(--q-acc); }
+
+/* A stay's weights: one bar, its three shares under the same colours as the card's parts. */
+.dr-wt { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.dr-bar { display: flex; gap: 3px; width: 180px; height: 8px; }
+.dr-bar i { display: block; border-radius: 99px; min-width: 6px; }
+.dr-lg { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; font-weight: 700; color: var(--q-ink); }
+.dr-lg > span::before, .dr-parts > span::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 99px; margin-right: 6px; vertical-align: 1px; background: var(--g); }
+.dr .reviews, .pd .reviews { --g: var(--q-acc); }
+.dr .features, .pd .features { --g: #1f9a86; }
+.dr .price, .pd .price { --g: #c98a26; }
+.dr-bar i { background: var(--g); }
+
+/* Line 3: Seçenekler/Elenen, the source, the order. */
+.dr-ctl { gap: 8px 10px; padding: 0 0 14px; }
+.dr-ctl .dr-seg { display: inline-flex; gap: 2px; padding: 3px; margin-right: auto; border-radius: 12px; background: var(--q-soft); border: 1px solid var(--q-line); }
+.dr-ctl .dr-tab { height: 36px; padding: 0 14px; border: 0; border-radius: 9px; font-size: 14px; }
+.dr-ctl .dr-tab[aria-selected="true"] { background: #fff; color: var(--q-ink); box-shadow: 0 1px 2px rgba(28, 26, 51, .12); }
+.dr-ctl .dr-tab[aria-selected="true"] b { background: var(--q-acc); color: #fff; }
+.dr-sel { height: 40px; border-radius: 11px; }
+
+.dr-b { gap: 16px; padding: 18px 20px 28px; background: var(--q-soft); }
+.dr-ops { display: grid; gap: 16px; }
+.dr-dg { display: grid; gap: 12px; }
+
+/* The score and its place: lila for the first, ink for the rest, amber for a neighbouring day. */
+.dr-rank { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px 0 3px; border-radius: 99px; background: color-mix(in srgb, #fff 92%, transparent); box-shadow: 0 1px 3px rgba(28, 26, 51, .12); font-size: 14px; font-weight: 800; color: var(--q-ink); white-space: nowrap; }
+.dr-rank b { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 99px; background: var(--q-ink); color: #fff; font-size: 13px; }
+.dr-rank.top { background: var(--q-acc-s); color: var(--q-acc-d); }
+.dr-rank.top b { background: var(--q-acc); }
+.dr-rank.off { background: #fff4e2; color: var(--q-warn); }
+.dr-rank.off b { background: var(--q-warn); }
+
+/* Seç big beside the price; the chosen one in sand. */
+.dr-sec.big, .dr-chosen.big { min-width: 120px; height: 46px; justify-content: center; border-radius: 12px; font-size: 15px; }
+.dr-chosen { border: 1px solid var(--q-sand-l); }
+
+/* A stay, a rental: the photo first and full width. */
+.dr-op { border-radius: 18px; grid-template-rows: none; }
+.dr-op.cur { border: 2px solid var(--q-acc); box-shadow: 0 10px 26px -18px var(--q-acc); }
+.dr-card .dr-ph { aspect-ratio: 2.4 / 1; }
+.dr-card .dr-ph img.art { padding: 14px; background: linear-gradient(160deg, #e6f4ef, #f6f3fb); }
+.dr-card .dr-rank { position: absolute; left: 14px; top: 14px; }
+.dr-card .dr-in { grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 4px 16px; padding: 16px 18px 6px; }
+.dr-card .dr-r1 { display: grid; gap: 4px; justify-content: stretch; }
+.dr-card .dr-r1 .dr-nm { font-size: 19px; -webkit-line-clamp: 1; }
+.dr-card .dr-r2 { font-size: 13.5px; }
+.dr-nm { border: 0; background: none; padding: 0; font: inherit; text-align: left; color: var(--q-ink); cursor: pointer; }
+.dr-nm:hover { color: var(--q-acc-d); }
+.dr-parts { display: flex; flex-wrap: wrap; gap: 2px 14px; font-size: 13px; font-weight: 650; color: var(--q-mut); }
+.dr-parts b, .dr-r1 .dr-parts b { display: inline; font-size: 13px; line-height: inherit; color: var(--q-ink); font-weight: 800; }
+.dr-parts > span { white-space: nowrap; }
+.dr-pr { display: grid; justify-items: end; gap: 1px; text-align: right; }
+.dr-pr b { font-size: 24px; font-weight: 800; letter-spacing: -.02em; color: var(--q-ink); font-variant-numeric: tabular-nums; }
+.dr-pr small { font-size: 12.5px; color: var(--q-mut); font-weight: 600; white-space: nowrap; }
+.dr-pr.none { font-size: 13px; color: var(--q-mut); font-weight: 700; }
+
+/* The five slots: always in the same order; green said, amber against, grey not known, lila the source. */
+.dr-slots { list-style: none; margin: 0; padding: 10px 18px 4px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.dr-slt { min-width: 0; border-radius: 12px; background: var(--q-soft); }
+.dr-slt, .dr-slt > a { display: flex; align-items: center; gap: 8px; padding: 9px 11px; color: var(--q-mut); text-decoration: none; }
+.dr-slt > a { padding: 0; flex: 1; min-width: 0; }
+.dr-slt svg { flex: none; }
+.dr-slt > span, .dr-slt > a > span { display: grid; min-width: 0; }
+.dr-slt small { font-size: 12px; font-weight: 600; color: var(--q-mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dr-slt b { font-size: 14px; font-weight: 750; color: var(--q-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dr-slt.ok b, .dr-slt.ok svg { color: var(--q-ok); }
+.dr-slt.warn b, .dr-slt.warn svg { color: var(--q-warn); }
+.dr-slt.dim b { color: var(--q-ink); }
+.dr-slt.dim b:only-child, .dr-slt.dim > span > b { font-weight: 700; }
+.dr-slt.link b, .dr-slt.link svg { color: var(--q-acc); }
+.dr-slt.link:hover { background: var(--q-acc-s); }
+.dr-slots.c { padding: 4px 16px 12px; }
+.dr-slots.c .dr-slt, .dr-slots.c .dr-slt > a { padding: 10px 12px; }
+.dr-slots.c .dr-slt > a { padding: 0; }
+
+/* What the reviews praise and fault: two columns, always open. */
+.dr-pc { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px 22px; margin: 8px 18px 18px; padding: 14px 18px; border-radius: 14px; background: color-mix(in srgb, var(--q-acc-s) 70%, #fff); }
+.dr-pc > small { grid-column: 1 / -1; display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 750; color: var(--q-acc-d); }
+.dr-pc ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; align-content: start; }
+.dr-pc li { position: relative; padding-left: 28px; font-size: 14px; line-height: 1.35; color: var(--q-ink); }
+.dr-pc li::before { position: absolute; left: 0; top: 0; width: 19px; height: 19px; border-radius: 99px; display: grid; place-items: center; color: #fff; font-size: 14px; font-weight: 900; line-height: 1; }
+.dr-pc .up li::before { content: "+"; background: var(--q-ok); }
+.dr-pc .dn li::before { content: "–"; background: var(--q-warn); }
+.dr-card > .dr-why { margin: 8px 18px 0; }
+
+/* A flight, a boat, a train: the boarding pass. */
+.dr-tk .dr-th { grid-template-columns: 44px minmax(0, 1fr) auto; padding: 14px 18px 4px; border-bottom: 0; }
+.dr-tk .dr-th .q-logo, .dr-tk .dr-th .z-lgi { width: 44px; height: 44px; border-radius: 11px; }
+.dr-tk .dr-tn .dr-nm { font-size: 17px; }
+.dr-tm { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 14px; padding: 6px 18px 12px; }
+.dr-tm .dr-tb { padding: 6px 18px 6px 0; border-right: 1px solid var(--q-line); }
+.dr-tm .dr-e b { font-size: 36px; }
+.dr-tm .dr-m i { border-top: 2px dashed var(--q-line); }
+.dr-tk .dr-pr b { font-size: 28px; }
+.dr-tk .dr-sec, .dr-tk .dr-chosen { min-width: 90px; height: 46px; justify-content: center; border-radius: 12px; font-size: 15px; }
+.dr-tk .dr-sec:not(:first-of-type) { background: #fff; }
+.dr-nd { border-top: 1px solid var(--q-line); }
+.dr-nd summary { list-style: none; display: flex; align-items: center; gap: 8px; padding: 12px 18px; font-size: 14px; font-weight: 750; color: var(--q-mut); cursor: pointer; }
+.dr-nd summary::-webkit-details-marker { display: none; }
+.dr-nd summary svg:first-child { color: var(--q-acc); }
+.dr-nd summary svg:last-child { margin-left: auto; transform: rotate(90deg); transition: transform .2s var(--e-out); }
+.dr-nd[open] summary svg:last-child { transform: rotate(-90deg); }
+.dr-nd .dr-why, .dr-wyp { margin: -4px 18px 14px; padding: 0; background: none; font-size: 14.5px; line-height: 1.45; color: var(--q-ink); display: block; }
+.dr-why b { color: var(--q-acc-d); }
+
+/* A flight's day: the tile, the full date and its note, "istenen gün". */
+.dr-day { position: sticky; top: -18px; z-index: 2; display: flex; align-items: center; gap: 14px; padding: 8px 0; background: var(--q-soft); }
+.dr-dt { flex: none; display: grid; place-items: center; width: 52px; height: 52px; box-sizing: border-box; border-radius: 12px; border: 2px solid var(--q-line); background: #fff; line-height: 1; }
+.dr-dt b { font-size: 22px; font-weight: 800; color: var(--q-ink); }
+.dr-dt small { font-size: 11px; font-weight: 800; color: var(--q-mut); }
+.dr-day.asked .dr-dt { border-color: var(--q-acc); }
+.dr-day.asked .dr-dt small { color: var(--q-acc); }
+.dr-day.off .dr-dl small { color: var(--q-warn); }
+.dr-dl { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.dr-dl b { font-size: 17px; font-weight: 800; }
+.dr-dl small { font-size: 13px; color: var(--q-mut); font-weight: 600; }
+.dr-dp { flex: none; height: 28px; padding: 0 12px; border-radius: 99px; background: var(--q-acc-s); color: var(--q-acc-d); font-size: 12.5px; font-weight: 800; display: inline-flex; align-items: center; }
+
+/* Yeni bul: a link dropped here lands in the deck; the sites to look on; the AI. */
+.dr-new { display: flex; align-items: flex-start; gap: 16px; padding: 18px 20px; border-radius: 16px; border: 1.5px dashed color-mix(in srgb, var(--q-acc) 45%, var(--q-line)); background: color-mix(in srgb, var(--q-acc-s) 45%, #fff); }
+.dr-ni { flex: none; display: grid; place-items: center; width: 46px; height: 46px; border-radius: 12px; background: var(--q-acc); color: #fff; }
+.dr-nt { display: grid; gap: 4px; min-width: 0; }
+.dr-nt > b { font-size: 16px; font-weight: 800; color: var(--q-ink); }
+.dr-nt > small { font-size: 13.5px; color: var(--q-mut); line-height: 1.4; }
+.dr-nt .dr-mrow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 4px; }
+.dr-nt .dr-mrow small { font-size: 13px; color: var(--q-mut); }
+.dr-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 16px; padding: 0 4px; }
+.dr-foot small { font-size: 13px; font-weight: 650; color: var(--q-mut); min-width: 0; }
+.dr-cmpb { border: 0; background: none; padding: 6px 0; font: inherit; font-size: 14px; font-weight: 800; color: var(--q-acc); cursor: pointer; }
+
+/* Elenen: one line each, Geri al. */
+.dr-drop { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.dr-drop li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; align-items: center; padding: 12px 16px; border-radius: 14px; background: #fff; border: 1px solid var(--q-line); }
+.dr-drop .dr-nm { font-size: 15px; font-weight: 800; }
+.dr-drop small { grid-column: 1; font-size: 13px; color: var(--q-mut); }
+.dr-drop .link-btn { grid-column: 2; grid-row: 1 / span 2; }
+
+.dr-sec:focus-visible, .dr-nm:focus-visible, .dr-want.add:focus-visible, .dr-nd summary:focus-visible, .dr-cmpb:focus-visible, .dr-slt a:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 2px; border-radius: 8px; }
+
+@media (max-width: 700px) {
+  .dr-h { padding: 14px 16px 0; }
+  .dr-b { padding: 14px 16px 24px; }
+  .dr-t b { font-size: 19px; }
+  .dr-pano span { display: none; }
+  .dr-new { padding: 14px; gap: 12px; }
+  .dr-bar { width: 120px; }
+}
+
+/* Otel çekmecesi 3. tur (onaylı 2026-10-24): the photo on the left, 188 px; beside it the name and price, the slots in one
+   thin line, the pros and the cons under their headings; Önerimiz the card's foot. Narrow, it stacks as before. */
+.dr-card { grid-template-columns: 188px minmax(0, 1fr); grid-template-areas: "ph in" "ph sl" "ph pc" "why why"; align-items: start; }
+.dr-card > .dr-ph { grid-area: ph; aspect-ratio: auto; height: 100%; min-height: 200px; }
+.dr-card > .dr-in { grid-area: in; padding: 14px 16px 2px; }
+.dr-card > .dr-sl3 { grid-area: sl; }
+.dr-card > .dr-pc { grid-area: pc; }
+.dr-card > .dr-why { grid-area: why; margin: 0; border-radius: 0; padding: 9px 16px; border-top: 1px solid color-mix(in srgb, var(--q-acc) 14%, #fff); }
+.dr-card .dr-r1 .dr-nm { font-size: 17px; }
+.dr-card .dr-pr b { font-size: 21px; }
+.dr-sl3 { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding: 8px 16px 2px; font-size: 12.5px; }
+.dr-s3 { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; color: var(--q-mut); }
+.dr-s3 b { font-weight: 800; color: var(--q-ink); }
+.dr-s3.ok b, .dr-s3.ok svg { color: var(--q-ok); }
+.dr-s3.warn b, .dr-s3.warn svg { color: var(--q-warn); }
+.dr-s3.dim b { color: #a9a5c0; font-weight: 700; }
+.dr-src { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 3px; border-radius: 9px; background: #fff; box-shadow: inset 0 0 0 1px var(--q-line); font-size: 12.5px; font-weight: 800; color: var(--q-ink); text-decoration: none; white-space: nowrap; }
+.dr-src:hover { box-shadow: inset 0 0 0 1px var(--q-acc); }
+.dr-src i { font-style: normal; color: var(--q-acc); font-size: 12px; }
+.dr-src:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 2px; }
+.dr-pc.w { margin: 8px 16px 14px; padding: 10px 0 0; background: none; border-top: 1px solid var(--q-line); border-radius: 0; gap: 4px 20px; }
+.dr-pc.w > small { color: var(--q-mut); font-size: 12px; }
+.dr-pc.w > div { display: grid; gap: 5px; align-content: start; min-width: 0; }
+.dr-pc.w h6 { margin: 0; font-size: 11.5px; font-weight: 800; color: #8e8aa6; }
+.dr-pc.w ul { gap: 5px; }
+.dr-pc.w li { font-size: 13.5px; padding-left: 24px; }
+.dr-pc.w li::before { width: 16px; height: 16px; font-size: 12px; top: 1px; }
+@container (max-width: 520px) {
+  .dr-card { grid-template-columns: minmax(0, 1fr); grid-template-areas: "ph" "in" "sl" "pc" "why"; }
+  .dr-card > .dr-ph { height: auto; min-height: 0; aspect-ratio: 2.4 / 1; }
+  .dr-src { margin-left: 0; }
+}
+
+/* A card narrower than the drawer's (a phone, the Pano's two columns): the name over the price and Seç, Seç the card's whole
+   width (Kaçırdıklarımız 7), the slots wrapping in their order, the pros over the cons. */
+.dr-op { container-type: inline-size; }
+@container (max-width: 600px) {
+  .dr-card .dr-in { grid-template-columns: minmax(0, 1fr) auto; padding: 14px 14px 4px; }
+  .dr-card .dr-r1 { grid-column: 1 / -1; }
+  .dr-card .dr-pr { justify-items: start; text-align: left; }
+  .dr-card .dr-in > .dr-sec, .dr-card .dr-in > .dr-chosen, .dr-card .dr-in > .q-pick { grid-column: 1 / -1; width: 100%; }
+  .dr-slots, .dr-slots.c { grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); padding: 10px 14px 4px; }
+  .dr-slots.c { padding: 4px 14px 12px; }
+  .dr-slt small, .dr-slt b { white-space: normal; }
+  .dr-pc { grid-template-columns: minmax(0, 1fr); margin: 8px 14px 14px; padding: 12px 14px; }
+  .dr-tm { grid-template-columns: minmax(0, 1fr) auto; padding: 6px 14px 12px; }
+  .dr-tm .dr-tb { grid-column: 1 / -1; border-right: 0; padding-right: 0; }
+  .dr-tm .dr-e b { font-size: 30px; }
+  .dr-tm .dr-pr { justify-items: start; text-align: left; }
+  .dr-tm > .dr-sec, .dr-tm > .dr-chosen, .dr-tm > .q-pick { grid-column: 1 / -1; width: 100%; }
+  .dr-tk .dr-th { padding: 12px 14px 2px; }
+  .dr-nd summary { padding: 12px 14px; }
+  .dr-nd .dr-why, .dr-wyp { margin: -4px 14px 12px; }
+  .dr-card > .dr-why { margin: 8px 14px 0; }
+}
+.dr-tm .dr-m { font-size: 13px; gap: 6px; }
+.dr-tm .dr-m small.warn { color: var(--q-warn); }
+
+/* Kaçırdıklarımız 4: a price older than two days in amber with "Yenile"; one that fell since in lila ("Dün €71'di"). */
+.dr-pr .dr-age { color: var(--q-warn); font-weight: 750; }
+.dr-pr .dr-was { color: var(--q-acc-d); font-weight: 750; }
+.dr-pr .dr-rf { border: 0; background: none; padding: 2px 0; font: inherit; font-size: 12.5px; font-weight: 800; color: var(--q-acc); cursor: pointer; }
+
+/* ---- The Pano: the drawer grown (onay paketi 11). A deck's head, its cards two by two, Karşılaştır's rows. ---- */
+.pd { display: grid; gap: 16px; padding: 20px 22px 22px; margin-bottom: 18px; border-radius: 20px; background: #fff; box-shadow: 0 1px 2px rgba(28, 26, 51, .06), 0 10px 30px -22px rgba(28, 26, 51, .35); }
+.pd .dr-op { box-shadow: 0 1px 2px rgba(28, 26, 51, .06), 0 10px 26px -20px rgba(28, 26, 51, .4); }
+.pd-h { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px 16px; }
+.pd-t { display: grid; gap: 3px; flex: 1; min-width: 0; }
+.pd-t b { font-size: 22px; font-weight: 800; letter-spacing: -.01em; color: var(--q-ink); }
+.pd-t small { font-size: 14px; font-weight: 600; color: var(--q-mut); }
+.pd-st { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 14px; font-weight: 800; }
+.pd-st.sel { color: var(--q-sand-ink); }
+.pd-st.ok { color: var(--q-ok); }
+.pd-st.wait { color: var(--q-acc); }
+.pd-go, .pd-open { border: 0; background: none; padding: 4px 0; font: inherit; font-size: 14px; font-weight: 800; color: var(--q-acc); cursor: pointer; }
+.pd-c { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.pd-c .dr-wt { margin-left: 6px; }
+.pd-new { display: inline-flex; align-items: center; gap: 7px; height: 40px; padding: 0 14px; border-radius: 11px; border: 1px solid var(--q-line); background: #fff; font: inherit; font-size: 14px; font-weight: 800; color: var(--q-ink); cursor: pointer; }
+.pd-new:hover { border-color: var(--q-acc); color: var(--q-acc-d); }
+.pd-seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 12px; background: var(--q-soft); border: 1px solid var(--q-line); }
+.pd-seg .dr-tab { height: 36px; padding: 0 12px; border: 0; border-radius: 9px; font-size: 14px; }
+.pd-seg .dr-tab[aria-selected="true"] { background: #fff; color: var(--q-ink); box-shadow: 0 1px 2px rgba(28, 26, 51, .12); }
+.pd-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-items: start; }
+.pd-fold { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; padding: 16px 22px; }
+.pd-fold > b { font-size: 17px; font-weight: 800; color: var(--q-ink); }
+.pd-fold small { font-size: 14px; font-weight: 650; color: var(--q-mut); }
+/* (the Pano's own Seç inside the drawer's card: the card's big button) */
+.dr-in > .q-pick, .dr-tm > .q-pick { min-width: 110px; height: 46px; display: inline-flex; align-items: center; justify-content: center; border-radius: 12px; font-size: 15px; }
+.dr-in > span.q-pick, .dr-tm > span.q-pick { background: var(--q-sand); color: var(--q-sand-ink); border: 1px solid var(--q-sand-l); font-weight: 800; }
+
+/* Karşılaştır: a label column, a column each; the best green, the worst amber. */
+.pc { display: grid; grid-template-columns: 150px repeat(var(--n), minmax(170px, 1fr)); border: 1px solid var(--q-line); border-radius: 16px; overflow-x: auto; }
+.pc > * { padding: 12px 16px; border-bottom: 1px solid var(--q-line); min-width: 0; font-size: 14px; }
+.pc-l { font-weight: 700; color: var(--q-mut); }
+.pc-g::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 99px; margin-right: 6px; vertical-align: 1px; background: var(--g); }
+.pc-hd { display: grid; gap: 4px; }
+.pc-hd img { width: 100%; aspect-ratio: 2.4 / 1; object-fit: cover; border-radius: 12px; background: linear-gradient(160deg, #e6f4ef, #f6f3fb); }
+.pc-hd img.art { object-fit: contain; padding: 6px; box-sizing: border-box; }
+.pc-hd b { font-size: 16px; font-weight: 800; color: var(--q-ink); }
+.pc-hd small { font-size: 13px; color: var(--q-mut); }
+.pc-v { font-weight: 700; color: var(--q-ink); }
+.pc-v.best { color: var(--q-ok); background: color-mix(in srgb, var(--q-ok-s) 70%, transparent); }
+.pc-v.worst { color: var(--q-warn); }
+.pc-v.dim { color: var(--q-mut); font-weight: 600; }
+.pc-ls { margin: 0; padding: 12px 16px 12px 32px; display: grid; gap: 4px; }
+.pc-ls.up li::marker { color: var(--q-ok); }
+.pc-ls.dn li::marker { color: var(--q-warn); }
+.pc-pick { border-bottom: 0; }
+
+@media (max-width: 860px) {
+  .pd { padding: 16px; }
+  .pd-cards { grid-template-columns: minmax(0, 1fr); }
+  .pc { grid-template-columns: 110px repeat(var(--n), minmax(150px, 1fr)); }
+}
+/* Who liked it (a shared trip's hearts): on the photo's corner, never in the score. */
+.dr-hearts { position: absolute; right: 14px; top: 14px; display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: 99px; background: color-mix(in srgb, #fff 92%, transparent); box-shadow: 0 1px 3px rgba(28, 26, 51, .12); font-size: 13px; font-weight: 800; color: var(--q-ink); max-width: 60%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dr-hearts > span { color: #e0457b; }

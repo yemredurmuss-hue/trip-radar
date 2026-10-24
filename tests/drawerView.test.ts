@@ -20,6 +20,7 @@ function opt(o: { day?: string; price?: number | null; scope?: "total" | "per_pe
     id: item.id,
     item: item as unknown as OptionVM["item"],
     title: item.name,
+    gallery: [],
     brand: null,
     source: o.ai ? { kind: "ai" } : { kind: "link" },
     image: null,

@@ -18,7 +18,7 @@ import { askLike, askOther, eventPicture, moreLabel, pictureChips, placeChips, p
 import { L } from "../../../lib/i18n";
 import { num } from "../../../lib/i18nText";
 import type { AccessVM, IntentVM, OptionVM } from "../../../lib/intents";
-import { moveToBookings, setDone, setIdeaDay, setPrep } from "../../../lib/ideas";
+import { ideaSearches, moveToBookings, setDone, setIdeaDay, setPrep, wordIdea } from "../../../lib/ideas";
 import type { Plan } from "../../../lib/plan";
 import { findPlace, knownPlace, placeLookupKey, type PlaceFound } from "../../../lib/placeSuggest";
 import { citySights } from "../../../lib/offerSources";
@@ -333,6 +333,12 @@ function RecordFace({ card, vm, plan, search, onPut, onTakeOff }: RecordCardProp
             <Ic name="x" size={12} stroke={2.6} />
           </button>
         )}
+        {/* (an idea not on the plan: its × is "Gerek yok", as a suggestion's) */}
+        {card.state === "idea" && (
+          <button type="button" className="q-rm" aria-label={L(`${card.title}: gerek yok`, `${card.title}: not needed`)} title={L("Gerek yok", "Not needed")} onClick={notNeeded.run}>
+            <Ic name="x" size={12} stroke={2.6} />
+          </button>
+        )}
         <KMenu entries={menu} label={L(`${card.title}: diğer`, `${card.title}: more`)} />
       </>
     );
@@ -358,6 +364,23 @@ function RecordFace({ card, vm, plan, search, onPut, onTakeOff }: RecordCardProp
     let main: ReactNode = null;
     // (the record's own line is its day and price, which the foot says now)
     let l2e: ReactNode = <DealFacts deal={deal} fallback={null} />;
+    // (an idea said in words that no tour was found for yet: its own searches, GetYourGuide, Viator and the AI: 0.40.5)
+    if (wordIdea(item) && !card.page && card.state !== "booked")
+      l2e = (
+        <span className="z-kidea">
+          <Ic name="search" size={12} stroke={2.4} />
+          {ideaSearches(item.name, vm.head.city).map((l) => (
+            <a key={l.name} href={l.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} title={L(`${l.name}'da ara · yeni sekmede açılır`, `Search ${l.name} · opens in a new tab`)}>
+              {l.name} ↗
+            </a>
+          ))}
+          {env.ask && (
+            <button type="button" onClick={(e) => (e.stopPropagation(), env.ask!(L(`${vm.head.city ?? ""} için "${item.name}" öner`, `Suggest "${item.name}" in ${vm.head.city ?? ""}`).trim()))}>
+              <Ic name="spark" size={12} /> {L("AI ara", "AI search")}
+            </button>
+          )}
+        </span>
+      );
     if (card.state === "idea") main = <PutButton title={card.title} onPut={() => onPut(item)} />;
     else if (card.state === "booked") {
       // A bought ticket (v81, kept): its code to copy and the meeting place on the grey line, "Bileti aç" (else "Bilet ekle").
@@ -676,8 +699,14 @@ function DealFacts({ deal, fallback }: { deal: KDeal | null; fallback: string | 
  * rating, length and free cancellation; the price a person big beside "+ Plana koy". A city's event (no deal) keeps the
  * plain card.
  */
-export function OfferCard({ card, onPut }: { card: KCardVM; onPut: () => void }) {
+export function OfferCard({ card, onPut, onDismiss = null }: { card: KCardVM; onPut: () => void; onDismiss?: (() => void) | null }) {
   const deal = card.deal;
+  // (0.44.2, Emre: "beğenmediklerimize x çıksın"): an offer has its × as a plan's card does; it stays away, Gizlenenler brings it back
+  const tools = onDismiss ? (
+    <button type="button" className="q-rm" aria-label={L(`${card.title}: gerek yok`, `${card.title}: not needed`)} title={L("Gerek yok", "Not needed")} onClick={onDismiss}>
+      <Ic name="x" size={12} stroke={2.6} />
+    </button>
+  ) : undefined;
   if (deal) {
     const source = pictureChips(card).find((c) => c.kind === "source");
     return (
@@ -687,7 +716,7 @@ export function OfferCard({ card, onPut }: { card: KCardVM; onPut: () => void })
         href={card.page ?? card.map}
         label={card.title}
         attrs={{ "data-offer": card.offer?.id }}
-        pic={<EventPic card={card} />}
+        pic={<EventPic card={card} tools={tools} />}
         title={
           card.page ? (
             <a className="z-tb" href={card.page} target="_blank" rel="noopener noreferrer">
@@ -716,7 +745,7 @@ export function OfferCard({ card, onPut }: { card: KCardVM; onPut: () => void })
       href={card.page ?? card.map}
       label={card.title}
       attrs={{ "data-offer": o?.id }}
-      pic={<EventPic card={card} />}
+      pic={<EventPic card={card} tools={tools} />}
       title={
         card.page ? (
           <a className="z-tb" href={card.page} target="_blank" rel="noopener noreferrer">

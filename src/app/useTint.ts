@@ -2,6 +2,7 @@
 // every card sits in its own mood (Bali green, Porto amber) instead of one grey. Read from the photo's lower half on a
 // tiny canvas; a photo that can't be read (no CORS, no picture) leaves the neutral deep violet.
 import { useEffect, useState } from "react";
+import { sizedPhoto } from "../lib/photoCache";
 
 export const NEUTRAL_TINT = "#1c1a33";
 const cache = new Map<string, string>();
@@ -40,7 +41,7 @@ export function usePhotoTint(src: string | null): string {
         // tainted canvas: the neutral tone stays
       }
     };
-    img.src = src;
+    img.src = sizedPhoto(src, 64); // (twelve pixels are read: a small copy, not the photo)
     return () => {
       live = false;
     };

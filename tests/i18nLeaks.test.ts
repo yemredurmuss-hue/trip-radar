@@ -24,6 +24,7 @@ const SELECTORS = new Set(["querySelector", "querySelectorAll", "closest", "matc
  * amenity ids stored in Turkish. A string there is shown only through a table that has its English beside it.
  */
 const READERS = new Set([
+  "lib/airlineData.ts",
   "lib/assistant.ts", "lib/startTrip.ts", "lib/startEvents.ts", "lib/extract.ts", "lib/reader.ts", "lib/analysis.ts",
   "lib/travelKinds.ts", "lib/prepBuy.ts", "lib/whose.ts", "lib/whoseChat.ts", "lib/types.ts", "lib/decision.ts",
   "lib/demo.ts", "lib/stayPicks.ts", "lib/lifecycle.ts", "lib/dayRowTitle.ts", "lib/listing.ts", "lib/i18nText.ts",

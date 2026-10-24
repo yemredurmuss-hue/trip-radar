@@ -25,6 +25,15 @@ const PATHS = {
   car: "M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2M9 17h6M7 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM17 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4z",
   walk: "M13 4.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM10 22l2-7-3-3 1-5 4 3 3 1M9 12l-3 2v4",
   user: "M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
+  // The drawer card's five slots (onay paketi 2026-10-21): a cup, money back, a bag, a cabin bag, a terminal, a shield, a key.
+  food: "M4 9h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5zM17 10h1.5a2.5 2.5 0 0 1 0 5H17M8 3v3M12 3v3",
+  undo: "M4 4v5h5M4.6 13a8 8 0 1 0 1.9-6.6L4 9",
+  bag: "M6 7h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2zM9 7V4h6v3M9 11v5M15 11v5",
+  cabin: "M8 8h8a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2zM10 8V3h4v5M9 21h.01M15 21h.01",
+  gate: "M3 21h18M5 21V8l7-4 7 4v13M9 21v-6h6v6M9 10h6",
+  shield: "M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6zM9 12l2 2 4-4",
+  clock: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2",
+  key: "M14.5 9.5a4 4 0 1 0-5 3.9V21h3v-2h2v-2h-2v-3.6a4 4 0 0 0 2-3.9z",
 } as const;
 
 export type IconName = keyof typeof PATHS;

@@ -121,10 +121,13 @@ describe("the row as drawn", () => {
     expect(html).not.toContain("/ gece");
     // No code given: an airline listed by its name has its logo by its code (0.38.7, Emre: "gerçek bir Turkish Airlines
     // uçuşuysa logosuyla gelmeli"); one we don't list keeps its initial, never a code made from its name (TU, SU, İB).
-    expect(html).toContain('<img class="ek-of-air ek-of-logo" src="https://images.kiwi.com/airlines/64/TK.png"');
+    expect(html).toContain('<img class="ek-of-air ek-of-logo" src="logos/airlines/TK.png"');
     const coded = renderToStaticMarkup(<OfferRowView offers={[{ ...flight, carrier: "Skyline Air", carrierCode: "SK" }]} open onToggle={noop} onAdd={noop} onLess={noop} />);
-    expect(coded).toContain('src="https://images.kiwi.com/airlines/64/SK.png"');
-    const unknown = renderToStaticMarkup(<OfferRowView offers={[{ ...flight, carrier: "indigo", source: "goindigo.in" }]} open onToggle={noop} onAdd={noop} onLess={noop} />);
+    expect(coded).toContain('src="logos/airlines/SK.png"');
+    // 0.46.0: the library knows most by name (IndiGo: 6E); one it doesn't keeps its initial.
+    const indigo = renderToStaticMarkup(<OfferRowView offers={[{ ...flight, carrier: "indigo", source: "goindigo.in" }]} open onToggle={noop} onAdd={noop} onLess={noop} />);
+    expect(indigo).toContain('src="logos/airlines/6E.png"');
+    const unknown = renderToStaticMarkup(<OfferRowView offers={[{ ...flight, carrier: "istrail", source: "istrail.example" }]} open onToggle={noop} onAdd={noop} onLess={noop} />);
     expect(unknown).toContain('<span class="ek-of-air" aria-hidden="true">I</span>');
     expect(unknown).not.toContain("İ");
     expect(unknown).not.toContain("<img");

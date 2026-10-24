@@ -18,13 +18,14 @@ import { acceptMood, moodKey } from "../lib/heroText";
 import { getProvider, MissingKeyError } from "../lib/llm";
 import { resetConversation } from "../lib/assistant";
 import { collectionsOf, type IntentInput } from "../lib/intents";
+import { planSteps } from "../lib/rowView";
 import { journeyChapters, type StepTarget } from "../lib/journeyChapters";
 import { countedIntents, localNow, tripModeOf } from "../lib/tripPhase";
 import { timedNext, timedNextLabel, todayStrip, type TimedNext, type TodayInput } from "../lib/tripToday";
 import type { PlanTarget } from "../lib/chatCards";
 import { linksOf, momentsOf, mosaicOf, offerTiles, placesOfIntents, tileSelectors, tourNeeds, type TileTarget } from "../lib/heroMosaic";
 import { heroRoute } from "../lib/heroRoute";
-import { cityOfAirport } from "../lib/airports";
+import { cityOfAirport, countryOfCity } from "../lib/airports";
 import { budgetView, datesTip, docsMissing, heroCounts, heroLine } from "../lib/heroStrip";
 import { allSet, nextLabel, nextShort, nextStep, type NextIntent, type NextStep } from "../lib/nextStep";
 import { nNights } from "../lib/i18nText";
@@ -57,7 +58,7 @@ import { SilhouetteDefs } from "./cards/Silhouettes";
 import { UndoToast } from "./cards/UndoToast";
 import { isIdea } from "../lib/booking";
 import { findTarget, show, TodoList } from "./Progress";
-import { cityRanges, countryCodesOf, countryNames, sectionTally } from "../lib/heroInfo";
+import { cityRanges, countryCodesOf, countryNames, placeCountryOf, sectionTally } from "../lib/heroInfo";
 import { answerParents, answersAny, heroCityPhotos, mainPlaceOf, mainPlaces, placesKey, placesPrompt, placesSystemPrompt, resolveParents, tripCities } from "../lib/destinations";
 import { acceptNoteLabel, type Pref } from "../lib/preferences";
 import { acceptStyle, budgetLevel, styleChips, styleKey, stylePrompt } from "../lib/tripStyle";
@@ -649,6 +650,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     [trip, plan, sections, items, today, decisions, docsFor, who.count, suggestions.bySection, at, prep],
   );
   const collections = useMemo(() => collectionsOf(intentInput), [intentInput]);
+  // The plan's four steps for the hero's tips (onay paketi 2026-10-22).
+  const planStepsView = useMemo(() => planSteps(collections.flatMap((c) => c.intents)), [collections]);
   const heroIntents = useMemo(() => collections.flatMap((c) => c.intents), [collections]);
   // Row 127 (D8, K17): on the trip a need left open on a day gone by is no decision, after it none is; never a night on the
   // plane. The shares, "n karar", "Sıradaki" and the first decision go by these.
@@ -672,7 +675,9 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       .filter((i) => i.status !== "dismissed" && i.category === "flight" && (i.flight?.from || i.flight?.to))
       .sort((a, b) => (a.flight?.departure ?? a.dates.start ?? "9").localeCompare(b.flight?.departure ?? b.dates.start ?? "9"))
       .map((f) => ({ from: end(f.flight?.from), to: end(f.flight?.to) }));
-    return heroRoute({ places: mains, stays: plan.stayBlocks, legs, flights });
+    // (a place's country: its city's, else its records')
+    const countryOf = (place: string) => countryOfCity(place) ?? items.map((i) => (i.status !== "dismissed" && i.category !== "flight" && sameCity(i.city, place) ? placeCountryOf(i) : null)).find(Boolean) ?? null;
+    return heroRoute({ places: mains, stays: plan.stayBlocks, legs, flights, countryOf });
   }, [mains, plan.stayBlocks, legs, items]);
   const mosaic = useMemo(
     () =>
@@ -974,6 +979,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           items={items}
           onShare={onShare}
           counts={counts}
+          steps={planStepsView}
           onFirstDecision={onFirstDecision}
           budget={heroBudget}
           budgetSet={budgetSet}
@@ -982,6 +988,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           next={heroNext}
           facts={heroFacts}
           countries={countryNames(countries)}
+          countryCodes={countries}
           places={places}
           home={passport}
           now={today}

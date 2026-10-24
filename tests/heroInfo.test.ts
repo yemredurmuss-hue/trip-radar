@@ -180,3 +180,12 @@ describe("hero places", () => {
     ]);
   });
 });
+
+describe("placeCountryOf (0.46.0): a place's country is its city's, not the model's guess", () => {
+  it("Santiago with the model's ES is Chile; a city not in the table keeps the record's code", async () => {
+    const { placeCountryOf } = await import("../src/lib/heroInfo");
+    expect(placeCountryOf({ city: "Santiago", countryCode: "ES" })).toBe("CL");
+    expect(placeCountryOf({ city: "Valparaíso", countryCode: "cl" })).toBe("CL");
+    expect(placeCountryOf({ city: "Bilinmez", countryCode: "XYZ" })).toBeNull();
+  });
+});

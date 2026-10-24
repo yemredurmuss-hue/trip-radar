@@ -223,8 +223,8 @@ describe("a city's two rows from its intent", () => {
 
 describe("the chat's lines and Kendin ara", () => {
   it("more for the city, more like a place", () => {
-    expect(askMore("activity", "Tokyo")).toBe("Tokyo için bilet ya da rezervasyon gerektiren birkaç etkinlik ve tur daha öner.");
-    expect(askMore("todo", "Kyoto")).toBe("Kyoto için gezilecek birkaç yer ve restoran daha öner.");
+    expect(askMore("activity", "Tokyo")).toBe("Tokyo için bilet ya da rezervasyon gerektiren 3 etkinlik ya da tur daha öner.");
+    expect(askMore("todo", "Kyoto")).toBe("Kyoto için gezilecek 3 yer ya da restoran daha öner.");
     expect(askLike({ title: "Ichiran", family: "food" }, "Tokyo")).toBe("Tokyo için “Ichiran” gibi birkaç restoran daha öner.");
   });
   it("Google Haritalar for the city's places, by the chip", () => {

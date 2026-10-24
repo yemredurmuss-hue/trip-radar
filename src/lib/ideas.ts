@@ -302,3 +302,20 @@ export const asBooking = (item: Item): Item =>
   item.plannedKind === "todo" ? { ...item, plannedKind: "activity", category: "activity", booking: "needed" } : { ...item, booking: "needed" };
 export const moveToBookings = (item: Item) =>
   change(item, asBooking, L(`${item.name} etkinliklere taşındı`, `${item.name} moved to activities`));
+
+/**
+ * An idea said only in words (the chat's or the start's "Couple spa", "Diving"): an Etkinlik record with no page and no
+ * photo of its own. Its words are asked of the tours' source (0.40.5): found, the tour takes its place; else its card offers
+ * the searches for those words (GetYourGuide, Viator, the AI).
+ */
+export const wordIdea = (i: Pick<Item, "category" | "url" | "imageUrl" | "origin" | "addedBy" | "status">): boolean =>
+  i.category === "activity" && !i.url && !i.imageUrl && (i.origin === "chat" || i.addedBy === "ai") && i.status !== "booked" && i.status !== "dismissed";
+
+/** The searches for an idea's words in its city: GetYourGuide's and Viator's own search pages. */
+export function ideaSearches(name: string, city: string | null): { name: string; url: string; letter: string; color: string }[] {
+  const q = encodeURIComponent([name, city].filter(Boolean).join(" "));
+  return [
+    { name: "GetYourGuide", url: `https://www.getyourguide.com/s/?q=${q}`, letter: "G", color: "#ff5533" },
+    { name: "Viator", url: `https://www.viator.com/searchResults/all?text=${q}`, letter: "V", color: "#186b6d" },
+  ];
+}

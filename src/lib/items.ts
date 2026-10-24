@@ -146,6 +146,24 @@ export function tooLowForATour(x: Pick<Extraction, "category" | "name" | "price"
   return x.category === "activity" && amount != null && amount > 0 && amount < 5 && ["EUR", "USD", "GBP", "CHF", "€", "$", "£"].includes(money) && TOUR_WORDS.test(x.name ?? "");
 }
 
+/** How many of a stay's page photos its card keeps beside its own (their addresses only). */
+export const GALLERY_MAX = 8;
+
+/** A stay's page photos past its own, in view first (pagecapture.ts), each once, the web's only. */
+export function galleryOf(category: Item["category"], capture: Pick<Capture, "images" | "url">, own: string | null): { gallery?: string[] } {
+  if (category !== "stay" || !capture.url) return {};
+  const seen = new Set(own ? [own] : []);
+  const out: string[] = [];
+  for (const im of capture.images ?? []) {
+    const src = httpUrl(im.src);
+    if (!src || seen.has(src) || /\.svg(\?|$)|sprite|logo|icon|avatar|map/i.test(src)) continue;
+    seen.add(src);
+    out.push(src);
+    if (out.length >= GALLERY_MAX) break;
+  }
+  return out.length ? { gallery: out } : {};
+}
+
 export function buildItem(
   extraction: Extraction,
   capture: Capture,
@@ -188,6 +206,7 @@ export function buildItem(
     url: capture.url,
     // A web address only from a page (a screenshot alone has none to give; its photo is cut out, see process.ts).
     imageUrl: capture.url ? (httpUrl(x.image_url) ?? httpUrl(capture.meta["og:image"])) : null,
+    ...galleryOf(x.category, capture, capture.url ? (httpUrl(x.image_url) ?? httpUrl(capture.meta["og:image"])) : null),
     // P5 (F13): a stay, a sight or a table is where its page's address says, before the model's reading.
     city: (["stay", "activity", "food"].includes(x.category) ? pageLocality(capture) : null) ?? x.city,
     country: x.country,
@@ -257,9 +276,64 @@ export function buildItem(
           )
         : // The line the link was sent with in the chat ("Bu hosteli ekle, kahvaltılı olan": 0.39.4), as its note.
           (capture.note?.trim() || null),
+    // "İlham'a ekle" (0.45.0): kept as inspiration, whatever the page is about, until it's chosen or given a day
+    ...(capture.idea ? { inspo: true } : {}),
     createdAt: now,
     updatedAt: now,
   };
+}
+
+/** At most this many of a flight search's other flights in view become options with the one picked (karar 11). */
+export const MORE_FLIGHTS_MAX = 4;
+
+/**
+ * Karar Masası (getirme anları, benle gezen eklenti): a flight search's list saved, its other flights in view are options
+ * of the same need beside the one picked: the same way, page and day, each its own carrier, hours, stops and price as the
+ * list shows them (the price's source is the screen, never guessed). Not for a booking's confirmation, nor a flight
+ * without its hours; one already the picked one is left out. Pure.
+ */
+export function moreFlights(extraction: Pick<Extraction, "more_flights">, item: Item, now = Date.now()): Item[] {
+  if (item.category !== "flight" || item.status === "booked" || !item.flight) return [];
+  const main = item.flight;
+  const same = (n: string | null, d: string | null) => Boolean(n && main.flightNumber && n.replace(/\s+/g, "").toUpperCase() === main.flightNumber.replace(/\s+/g, "").toUpperCase() && (d ?? "").slice(0, 10) === (main.departure ?? "").slice(0, 10));
+  const out: Item[] = [];
+  for (const [n, f] of (extraction.more_flights ?? []).entries()) {
+    if (out.length >= MORE_FLIGHTS_MAX) break;
+    const departure = f.departure?.trim() || null;
+    if (!departure || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(departure) || same(f.flight_number, departure)) continue;
+    const number = f.flight_number?.trim() || null;
+    const carrier = f.carrier?.trim() || null;
+    const amount = finite(f.price_amount);
+    const currency = currencyCode(f.currency) ?? item.price.currency;
+    const at = now + n + 1;
+    out.push({
+      ...item,
+      id: crypto.randomUUID(),
+      key: number ? `flight:${number.replace(/\s+/g, "").toUpperCase()}:${departure.slice(0, 10)}` : null,
+      name: [carrier, number].filter(Boolean).join(" ") || item.name,
+      provider: item.provider,
+      summary: "",
+      optionDetail: L("Aynı arama listesinden", "From the same search list"),
+      imageUrl: null,
+      gallery: undefined,
+      dates: { start: departure.slice(0, 10), end: null, source: "page" },
+      price: { amount, currency: amount == null ? null : currency, scope: item.price.scope, taxesIncluded: "unknown", source: amount == null ? "none" : "screenshot", observedAt: at },
+      priceHistory: amount != null && currency ? [{ amount, currency, observedAt: at }] : [],
+      cancellation: { summary: null, freeUntil: null, source: "none" },
+      rating: { value: null, scale: null, count: null, source: "none" },
+      flight: { from: main.from, to: main.to, departure, arrival: f.arrival?.trim() || null, carrier, flightNumber: number, stops: f.stops ?? null },
+      metrics: EMPTY_METRICS,
+      highlights: [],
+      concerns: [],
+      reviewSummary: null,
+      missing: [],
+      status: "saved",
+      statusNote: null,
+      createdAt: at,
+      updatedAt: at,
+    });
+  }
+  return out;
 }
 
 /**
@@ -337,6 +411,7 @@ export function mergeItem(existing: Item, incoming: Item, placeOnly = false): It
     optionDetail: pick(incoming.optionDetail, existing.optionDetail),
     url: pick(incoming.url, existing.url),
     imageUrl: pick(incoming.imageUrl, existing.imageUrl),
+    ...(incoming.gallery?.length || existing.gallery?.length ? { gallery: incoming.gallery?.length ? incoming.gallery : existing.gallery } : {}),
     city: pick(incoming.city, existing.city),
     country: pick(incoming.country, existing.country),
     countryCode: pick(incoming.countryCode, existing.countryCode),

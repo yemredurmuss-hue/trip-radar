@@ -123,6 +123,26 @@ function buildExtractionSchema(en: boolean) {
       .boolean()
       .optional()
       .describe(t("Bu sayfa bir geziyle ilgili mi (kalacak yer, uçuş, ulaşım, etkinlik, restoran, gezilecek yer, eSIM, sigorta, vize, gezi rehberi ya da ilhamı, rezervasyon)? Geziyle ilgisi olmayan bir haber, ürün, yazılım ya da başka bir konu: false", "Is this page about a trip (a place to stay, a flight, transport, an activity, a restaurant, a place to visit, an eSIM, insurance, a visa, a travel guide or inspiration, a booking)? A news article, a product, software or anything else unrelated to travel: false")),
+    // Karar Masası (getirme anları, benle gezen eklenti): a flight search's list, its other flights in view become options too.
+    more_flights: z
+      .array(
+        z.object({
+          carrier: z.string().nullable(),
+          flight_number: z.string().nullable(),
+          departure: z.string().nullable().describe(t("YYYY-MM-DDTHH:MM yerel saat", "YYYY-MM-DDTHH:MM local time")),
+          arrival: z.string().nullable(),
+          stops: z.number().nullable(),
+          price_amount: z.number().nullable(),
+          currency: z.string().nullable(),
+        }),
+      )
+      .optional()
+      .describe(
+        t(
+          "Yalnız sayfa bir uçuş arama sonucu listesiyse: seçtiğin uçuşun dışında ekranda (viewport_text, ekran görüntüsü) görünen öteki uçuşlar, sıralarıyla, en fazla 4. Her biri aynı yön ve gün; fiyatı ekrandaki gibi (kişi başı ya da toplam, price.scope ile aynı). Tek uçuş sayfasında, onayda ya da başka kategoride boş bırak.",
+          "Only if the page is a flight search's result list: the other flights in view (viewport_text, the screenshot) besides the one you picked, in their order, at most 4. Each the same way and day; its price as shown (per person or in all, the same as price.scope). Leave it empty on a single flight's page, a confirmation or any other category.",
+        ),
+      ),
     booking_quote: z.string().nullable().optional().describe(t("Onayı söyleyen ifade, sayfadan ya da ekrandan birebir ('Rezervasyonunuz onaylandı', 'Booking confirmed'); yoksa null", "The words that say it is confirmed, verbatim from the page or screen ('Booking confirmed', 'Rezervasyonunuz onaylandı'); else null")),
   });
 }

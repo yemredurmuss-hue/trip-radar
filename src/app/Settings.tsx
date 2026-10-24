@@ -2,13 +2,17 @@ import { AiGateSettings } from "./AiGateSettings";
 import { ProfileSettings } from "./Profile";
 import { useEffect, useState } from "react";
 import { requestProcessing } from "../lib/browser";
-import { DEFAULT_GEMINI_MODEL, DEFAULT_MODEL, exportAll, exportDiagnostics, getSettings, saveSettings } from "../lib/db";
+import { DEFAULT_GEMINI_MODEL, DEFAULT_MODEL, exportAll, exportDiagnostics, getSettings, listTrips, saveSettings } from "../lib/db";
+import { forgetRule, loadRules } from "../lib/tripRules";
+import { COMPANION_SITES, companionName } from "../lib/companion";
+import { countryName } from "../lib/trips";
 import { L, lang, saveLang, type Lang } from "../lib/i18n";
 import { describeError } from "../lib/llm";
 import { listGeminiModels } from "../lib/llm/gemini";
 import { retryAllFailed } from "../lib/process";
 import type { Settings as SettingsShape } from "../lib/types";
 import { setStill, stillChosen } from "./motion";
+import { setSounds, soundsOn } from "./chime";
 import { ShareSettings } from "./Share";
 
 // Sonnet first: near Opus on the start chat's trips (2026-10-09, six real messages) and fast enough for its 25 s reading;
@@ -57,6 +61,7 @@ export function Settings({ onClose }: { onClose: () => void }) {
   const [keyTone, setKeyTone] = useState<{ tone: "bad" | "ok"; n: number } | null>(null);
   const keyEnded = (tone: "bad" | "ok") => setKeyTone((prev) => ({ tone, n: (prev?.n ?? 0) + 1 }));
   const [still, setStillOn] = useState(stillChosen);
+  const [sounds, setSoundsOn] = useState(soundsOn);
 
   useEffect(() => {
     void getSettings().then(setS);
@@ -229,7 +234,20 @@ export function Settings({ onClose }: { onClose: () => void }) {
           />
           {L("Hareketi duraklat (animasyonlar kapalı)", "Pause motion (animations off)")}
         </label>
+        <label className="field row-inline" style={{ alignItems: "center", gap: 8 }}>
+          <input
+            type="checkbox"
+            checked={sounds}
+            onChange={(e) => {
+              setSoundsOn(e.target.checked);
+              setSounds(e.target.checked);
+            }}
+          />
+          {L("Küçük sesler (bir bölüm tamamlanınca)", "Small sounds (when a section is complete)")}
+        </label>
         <ShareSettings />
+        <AlongSettings />
+        <TripRulesSettings />
         <p className="muted small">
           <button className="btn-link" style={{ fontSize: "var(--q-fs-info)", padding: 0 }} onClick={() => void download("diagnostics")}>
             {L("Tanı dosyası indir", "Download diagnostics file")}
@@ -248,6 +266,83 @@ export function Settings({ onClose }: { onClose: () => void }) {
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Hangi gezi (lib/tripRules.ts): the trips remembered per country, each forgotten here (the next save asks again). */
+function TripRulesSettings() {
+  const [rules, setRules] = useState<{ country: string; title: string }[]>([]);
+  useEffect(() => {
+    void (async () => {
+      const list = (await loadRules()) ?? [];
+      const trips = await listTrips();
+      setRules(list.map((r) => ({ country: r.country, title: trips.find((t) => t.id === r.tripId)?.title ?? "" })).filter((r) => r.title));
+    })();
+  }, []);
+  if (!rules.length) return null;
+  return (
+    <div className="field">
+      {L("Hatırlanan geziler", "Remembered trips")}
+      <span className="muted small">{L("Eklentiden kaydettiklerin bu ülkeler için sormadan bu gezilere gider.", "What you save from the extension goes to these trips for these countries without asking.")}</span>
+      {rules.map((r) => (
+        <span key={r.country} className="row-inline" style={{ alignItems: "center", gap: 8 }}>
+          <span>
+            {countryName(r.country) ?? r.country} → {r.title}
+          </span>
+          <button
+            className="btn-link"
+            style={{ fontSize: "var(--q-fs-info)", padding: 0 }}
+            onClick={() => void forgetRule(r.country).then(() => setRules((all) => all.filter((x) => x.country !== r.country)))}
+          >
+            {L("Unut", "Forget")}
+          </button>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * "Seyahat sitelerinde benle gel" (0.42.0): one switch for the travel sites (Chrome asks once), and the other sites allowed
+ * one by one from the toolbar ("Bu sitede de"), each taken back here.
+ */
+function AlongSettings() {
+  const [travel, setTravel] = useState(false);
+  const [others, setOthers] = useState<string[]>([]);
+  const read = async () => {
+    if (!chrome.permissions?.getAll) return;
+    const granted = (await chrome.permissions.getAll()).origins ?? [];
+    const own = new Set<string>((chrome.runtime.getManifest().host_permissions ?? []) as string[]);
+    setTravel(COMPANION_SITES.some((o) => granted.includes(o)));
+    setOthers(granted.filter((o) => /^https:\/\/[^*/]+\/\*$/.test(o) && !own.has(o) && !(COMPANION_SITES as readonly string[]).includes(o)));
+  };
+  useEffect(() => void read(), []);
+  async function toggle(on: boolean) {
+    if (on) await chrome.permissions.request({ origins: [...COMPANION_SITES] }).catch(() => false);
+    else await chrome.permissions.remove({ origins: [...COMPANION_SITES] }).catch(() => false);
+    await read();
+  }
+  return (
+    <div className="field">
+      <label className="row-inline" style={{ alignItems: "center", gap: 8 }}>
+        <input type="checkbox" checked={travel} onChange={(e) => void toggle(e.target.checked)} />
+        {L("Seyahat sitelerinde benle gel", "Come along on travel sites")}
+      </label>
+      <span className="muted small">
+        {L(
+          "Booking, Airbnb, Skyscanner, GetYourGuide ve 30 kadar seyahat sitesinde sonuçlara + ve bir otelin sayfasına \"Desteye ekle\" koyar; basmadan hiçbir şey okunup gönderilmez.",
+          "Puts a + on results and \"Add to the deck\" on a place's page on Booking, Airbnb, Skyscanner, GetYourGuide and some 30 travel sites; nothing is read or sent until you press it.",
+        )}
+      </span>
+      {others.map((o) => (
+        <span key={o} className="row-inline" style={{ alignItems: "center", gap: 8 }}>
+          <span>{companionName(o)}</span>
+          <button className="btn-link" style={{ fontSize: "var(--q-fs-info)", padding: 0 }} onClick={() => void chrome.permissions.remove({ origins: [o] }).then(read)}>
+            {L("Kaldır", "Remove")}
+          </button>
+        </span>
+      ))}
     </div>
   );
 }

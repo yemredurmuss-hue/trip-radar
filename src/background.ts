@@ -1,4 +1,9 @@
 // Service worker: runs the capture queue and the decision analyses so they continue after the popup closes.
+import { checkPricesDaily, listenPriceNotices } from "./lib/priceWatchWorker";
+import { candidateClosed, candidateOf, showBadge } from "./lib/candidateTabs";
+import { companionAnswer, syncCompanion } from "./lib/companionWorker";
+import { listenContextMenu, setupContextMenu } from "./lib/contextSave";
+import { popupAnswer } from "./lib/popupWorker";
 import { analyzeStale, isAnalyzing } from "./lib/analysis";
 import { loadLang, setLang } from "./lib/i18n";
 import {
@@ -92,12 +97,40 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 });
 
-chrome.runtime.onStartup.addListener(() => void run());
+// Benle gezen eklenti (seviye 1, lib/candidateTabs.ts): a candidate's tab keeps its "2/3" as it loads; closed, it is
+// forgotten, and if it was bought there the plan asks "Aldın mı?". Only the tabs we opened; no page is read.
+chrome.tabs.onRemoved.addListener((tabId) => void candidateClosed(tabId));
+// Benle gezen eklenti (seviye 2, lib/companionWorker.ts): the content script only on the sites allowed, and its questions.
+chrome.permissions.onAdded.addListener(() => void syncCompanion());
+chrome.permissions.onRemoved.addListener(() => void syncCompanion());
+// Simgeye basınca (lib/popupWorker.ts): the popup only asks; the page is read and saved here.
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  const answer = popupAnswer(message, sender, () => void run());
+  if (!answer) return undefined;
+  void answer.then(sendResponse, () => sendResponse(null));
+  return true;
+});
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  const answer = companionAnswer(message, sender, () => void run());
+  if (!answer) return undefined;
+  void answer.then(sendResponse, () => sendResponse(null));
+  return true;
+});
+// Sağ tık "Trip Radar'a ekle" (lib/contextSave.ts): the page or the link saved as the toolbar saves it.
+listenContextMenu(() => void run());
+chrome.tabs.onUpdated.addListener((tabId, info) => {
+  if (info.status !== "complete") return;
+  void candidateOf(tabId).then((c) => c && showBadge(c));
+});
+
+chrome.runtime.onStartup.addListener(() => (void run(), void syncCompanion(), void langReady.then(setupContextMenu)));
 chrome.runtime.onInstalled.addListener((details) => {
   // First install: the board, one tab (P10, F01): its first card's step 1 opens the free Gemini key's setup.
   if (details.reason === "install") void chrome.tabs.create({ url: chrome.runtime.getURL("app.html") });
   // Updated from the board: bring the board back where it was.
   if (details.reason === "update") void reopenBoard();
+  void syncCompanion();
+  void langReady.then(setupContextMenu);
   void run();
 });
 
@@ -128,7 +161,11 @@ chrome.alarms.create("update-check", { periodInMinutes: 1 });
 chrome.alarms.create("retry-failed", { periodInMinutes: 10 });
 // Shared trips: the other traveller's captures and votes arrive within a minute.
 chrome.alarms.create("share-sync", { periodInMinutes: 1 });
+// Fiyat izleme (lib/priceWatch.ts): what's on the plan and not bought, asked again once a day; a drop said in a notification.
+chrome.alarms.create("price-watch", { delayInMinutes: 2, periodInMinutes: 6 * 60 });
+listenPriceNotices();
 chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === "price-watch") void checkPricesDaily().catch(() => undefined);
   if (alarm.name === "update-check") void applyUpdateIfIdle();
   if (alarm.name === "share-sync") void syncShared();
   if (alarm.name === "retry-failed") {

@@ -24,6 +24,7 @@ import { XIcon } from "./icons";
 import { PrefsRow } from "./PrefsRow";
 import { visaDoneOf } from "../../lib/visa";
 import { TripMenu, type TripMenuActions } from "./TripMenu";
+import { COVER_W, sizedPhoto } from "../../lib/photoCache";
 
 /** E11: how long folding and unfolding take (ms). */
 const FOLD_MS = 260;
@@ -70,11 +71,15 @@ export interface HeroProps {
   /** B15: the bookings in their last two weeks without their file. */
   docs: HeroDocs | null;
   next: HeroNext;
+  /** The plan's four steps and its next things to do, for the strip's tips (onay paketi 2026-10-22). */
+  steps?: import("../../lib/rowView").PlanStepsTip | null;
   facts: TripFacts;
   /** The trip's countries by name. */
   countries: string[];
   /** With several countries, each one's own facts in the same order (D9). */
   perCountry: CountryFacts[];
+  /** The countries' codes, in the order of `countries` (their flags). */
+  countryCodes?: string[];
   /** Each city's days, for its weather. */
   places: { city: string; start: string; end: string }[];
   /** The traveller's passport country. */
@@ -101,7 +106,7 @@ export function Hero(props: HeroProps) {
   const month = props.dates ? new Date(`${props.dates.range.start}T12:00:00Z`).toLocaleDateString(locale(), { month: "long", timeZone: "UTC" }) : "";
   const sky = weatherChip(weather, month);
   // One country is said on the photo, over the trip's name; several keep "n ülke" and its table in the facts' row (D9).
-  const chips = factChips({ facts: props.facts, countries: props.countries, cities: props.cities, weather: sky, home: props.home, visaDone: visaDoneOf(trip), perCountry: props.perCountry }).filter(
+  const chips = factChips({ facts: props.facts, countries: props.countries, cities: props.cities, weather: sky, home: props.home, visaDone: visaDoneOf(trip), perCountry: props.perCountry, codes: props.countryCodes }).filter(
     (c) => c.key !== "country" || props.countries.length > 1,
   );
 
@@ -134,7 +139,8 @@ export function Hero(props: HeroProps) {
     };
   }, [folded]);
 
-  const cover = props.mosaic.cover?.image ?? null;
+  // (the small picture is the cover itself, at the address the cover was drawn from: nothing more loaded)
+  const cover = props.mosaic.cover?.image ? sizedPhoto(props.mosaic.cover.image, COVER_W) : null;
   const during = props.today != null;
   const slimOn = folded || during;
   const line = heroLine({ range: props.dates?.range ?? null, estimated: !!props.dates?.estimated, rough: !!props.dates?.rough, people: props.who.count, counts, budget: budget?.view ?? null });
@@ -172,6 +178,7 @@ export function Hero(props: HeroProps) {
             budget={budget}
             budgetSet={props.budgetSet}
             next={props.next}
+            steps={props.steps ?? null}
           />
           <div className="x-info">
             <FactChips chips={chips} sky={sky?.sky ?? null} docs={props.docs} />

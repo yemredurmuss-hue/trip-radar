@@ -38,9 +38,16 @@ const options = {
   logLevel: "info",
 };
 
+// Benle gezen eklenti (seviye 2): the content script for the sites the traveller allowed, one classic script (a content
+// script is no module), registered at run time (background.ts syncCompanion).
+const companion = { ...options, entryPoints: { companion: "src/companion.ts" }, format: "iife" };
+
 if (watch) {
   const ctx = await esbuild.context(options);
   await ctx.watch();
+  const cctx = await esbuild.context(companion);
+  await cctx.watch();
 } else {
   await esbuild.build(options);
+  await esbuild.build(companion);
 }

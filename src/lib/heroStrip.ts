@@ -4,6 +4,7 @@
 // share, the bookings whose file is missing (B15), the weather's one chip and the facts' chips (country, money, plug,
 // time, language, visa; a trip of several countries each one's own, D9). Nothing is said that isn't known: a missing
 // part is left out, never written as "yok". Pure.
+import { flagEmoji } from "./heroInfo";
 import { weatherTitle, type CityWeather, type Sky } from "./climate";
 import { countryInfo } from "./countries";
 import { countryNames, currencyName, nPeople, offsetText, plugFit, plugFitText } from "./heroInfo";
@@ -275,14 +276,19 @@ export function factChips(input: {
   visaDone: boolean;
   /** With several countries, each one's facts in the same order as `countries` (D9). */
   perCountry?: readonly CountryFacts[];
+  /** The countries' codes in the same order (their flags). */
+  codes?: readonly string[];
 }): FactChip[] {
   const { facts, countries, cities } = input;
   const out: FactChip[] = [];
   const where = cities.length ? `${cities.join(", ")} · ${L(`${cities.length} şehir`, `${cities.length} ${cities.length === 1 ? "city" : "cities"}`)}` : null;
-  if (countries.length === 1) out.push({ key: "country", text: countries[0], tip: where });
+  // (0.46.0: the flags are the countries', "🇦🇷 Arjantin · 🇨🇱 Şili"; up to three by name, more as "n ülke")
+  const codes = input.codes ?? [];
+  const named = countries.map((name, n) => `${flagEmoji(codes[n]) ? `${flagEmoji(codes[n])} ` : ""}${name}`);
+  if (countries.length === 1) out.push({ key: "country", text: named[0], tip: where, ...(codes[0] ? { flag: codes[0] } : {}) });
   else if (countries.length > 1) {
     const rows = countryRows(input.perCountry ?? [], countries, input.visaDone);
-    out.push({ key: "country", text: L(`${countries.length} ülke`, `${countries.length} countries`), tip: [countries.join(", "), where].filter(Boolean).join(" · "), ...(rows.length ? { rows } : {}) });
+    out.push({ key: "country", text: countries.length <= 3 ? named.join(" · ") : L(`${countries.length} ülke`, `${countries.length} countries`), tip: [countries.join(", "), where].filter(Boolean).join(" · "), ...(codes[0] ? { flag: codes[0] } : {}), ...(rows.length ? { rows } : {}) });
   }
   if (input.weather) out.push({ key: "weather", text: input.weather.text, tip: input.weather.tip });
   const local = facts.local;
@@ -297,7 +303,8 @@ export function factChips(input: {
     }
     const offset = offsetText(local.hours, true);
     if (offset) out.push({ key: "time", text: offset, tip: timeTip(local.hours) });
-    out.push({ key: "lang", text: L(local.info.language.tr, local.info.language.en), tip: null, ...(facts.country ? { flag: facts.country } : {}) });
+    // (a language is no country's: no flag on it, 0.46.0)
+    out.push({ key: "lang", text: L(local.info.language.tr, local.info.language.en), tip: null });
   }
   const visa = facts.visa;
   if (visa?.kind === "visa")

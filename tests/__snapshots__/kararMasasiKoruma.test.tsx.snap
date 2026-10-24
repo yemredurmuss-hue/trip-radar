@@ -1,0 +1,1140 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`koruma: Ulaşım ve Konaklama bugünkü sözleriyle kalır > Japonya 1`] = `
+[
+  {
+    "key": "stay:2027-04-01",
+    "row": {
+      "count": 0,
+      "face": "card",
+      "figure": null,
+      "lead": null,
+      "line": [],
+      "route": null,
+      "slot": {
+        "kind": "ask",
+      },
+      "stage": "options",
+      "stageWord": "Aranacak",
+      "third": [],
+      "title": "Konaklama",
+      "wants": [],
+    },
+    "searching": {
+      "count": 0,
+      "face": "card",
+      "figure": null,
+      "lead": null,
+      "line": [],
+      "route": null,
+      "slot": {
+        "kind": "hap",
+        "text": "Aranıyor…",
+        "tone": "busy",
+      },
+      "stage": "options",
+      "stageWord": "Aranıyor",
+      "third": [],
+      "title": "Konaklama",
+      "wants": [],
+    },
+    "status": "searching",
+  },
+  {
+    "key": "stay:2027-04-02",
+    "row": {
+      "count": 1,
+      "face": "card",
+      "figure": {
+        "big": "€213",
+        "small": "gece · €639",
+      },
+      "lead": null,
+      "line": [
+        "Booking.com",
+        "Ginza",
+      ],
+      "route": null,
+      "slot": {
+        "kind": "book",
+        "word": "Rezerve et",
+      },
+      "stage": "planned",
+      "stageWord": "Planda",
+      "third": [
+        "Çıkış 5 Nisan Pazartesi",
+        "1.204 yorum",
+      ],
+      "title": "Hyatt Centric Ginza",
+      "wants": [],
+    },
+    "searching": {
+      "count": 1,
+      "face": "card",
+      "figure": {
+        "big": "€213",
+        "small": "gece · €639",
+      },
+      "lead": null,
+      "line": [
+        "Booking.com",
+        "Ginza",
+      ],
+      "route": null,
+      "slot": {
+        "kind": "book",
+        "word": "Rezerve et",
+      },
+      "stage": "planned",
+      "stageWord": "Planda",
+      "third": [
+        "Çıkış 5 Nisan Pazartesi",
+        "1.204 yorum",
+      ],
+      "title": "Hyatt Centric Ginza",
+      "wants": [],
+    },
+    "status": "chosen",
+  },
+  {
+    "key": "stay:2027-04-05",
+    "row": {
+      "count": 3,
+      "face": "card",
+      "figure": {
+        "big": "€163",
+        "small": "gece, önerimiz",
+      },
+      "lead": null,
+      "line": [
+        "✨ önerimiz Hotel The Celestine",
+      ],
+      "route": null,
+      "slot": {
+        "count": 3,
+        "kind": "pick",
+      },
+      "stage": "options",
+      "stageWord": "3 seçenek",
+      "third": [
+        "Çıkış 9 Nisan Cuma",
+        "Booking.com 3",
+        "€163–200 gece",
+      ],
+      "title": "Kyoto",
+      "wants": [],
+    },
+    "searching": {
+      "count": 3,
+      "face": "card",
+      "figure": {
+        "big": "€163",
+        "small": "gece, önerimiz",
+      },
+      "lead": null,
+      "line": [
+        "✨ önerimiz Hotel The Celestine",
+      ],
+      "route": null,
+      "slot": {
+        "count": 3,
+        "kind": "pick",
+      },
+      "stage": "options",
+      "stageWord": "3 seçenek",
+      "third": [
+        "Çıkış 9 Nisan Cuma",
+        "Booking.com 3",
+        "€163–200 gece",
+      ],
+      "title": "Kyoto",
+      "wants": [],
+    },
+    "status": "suggested",
+  },
+  {
+    "key": "stay:2027-04-09",
+    "row": {
+      "count": 1,
+      "face": "card",
+      "figure": {
+        "big": "€900",
+        "code": true,
+        "plain": true,
+        "small": "ödendi",
+      },
+      "lead": null,
+      "line": [
+        "Booking.com",
+        "Gora",
+      ],
+      "route": null,
+      "slot": {
+        "kind": "none",
+      },
+      "stage": "ticket",
+      "stageWord": "Onay elde",
+      "third": [
+        "Çıkış 12 Nisan Pazartesi",
+      ],
+      "title": "Gora Kadan",
+      "wants": [],
+    },
+    "searching": {
+      "count": 1,
+      "face": "card",
+      "figure": {
+        "big": "€900",
+        "code": true,
+        "plain": true,
+        "small": "ödendi",
+      },
+      "lead": null,
+      "line": [
+        "Booking.com",
+        "Gora",
+      ],
+      "route": null,
+      "slot": {
+        "kind": "none",
+      },
+      "stage": "ticket",
+      "stageWord": "Onay elde",
+      "third": [
+        "Çıkış 12 Nisan Pazartesi",
+      ],
+      "title": "Gora Kadan",
+      "wants": [],
+    },
+    "status": "booked",
+  },
+  {
+    "key": "stay:2027-04-12",
+    "row": {
+      "count": 0,
+      "face": "card",
+      "figure": null,
+      "lead": null,
+      "line": [],
+      "route": null,
+      "slot": {
+        "kind": "ask",
+      },
+      "stage": "options",
+      "stageWord": "Aranacak",
+      "third": [],
+      "title": "Osaka",
+      "wants": [],
+    },
+    "searching": {
+      "count": 0,
+      "face": "card",
+      "figure": null,
+      "lead": null,
+      "line": [],
+      "route": null,
+      "slot": {
+        "kind": "hap",
+        "text": "Aranıyor…",
+        "tone": "busy",
+      },
+      "stage": "options",
+      "stageWord": "Aranıyor",
+      "third": [],
+      "title": "Osaka",
+      "wants": [],
+    },
+    "status": "searching",
+  },
+  {
+    "key": "leg:2027-04-01:arrival:?",
+    "row": {
+      "count": 1,
+      "face": "ticket",
+      "figure": null,
+      "lead": "Taksi · transfer",
+      "line": [
+        "19:45 [bold]",
+        "aktarmasız [ok]",
+      ],
+      "route": {
+        "from": "Tokyo Havalimanı",
+        "to": "Konaklama",
+      },
+      "slot": {
+        "kind": "proof",
+        "word": "Bileti ekle",
+      },
+      "stage": "bought",
+      "stageWord": "Sen hallettin",
+      "third": [],
+      "title": "Tokyo Havalimanı → Konaklama",
+      "wants": [],
+    },
+    "searching": {
+      "count": 1,
+      "face": "ticket",
+      "figure": null,
+      "lead": "Taksi · transfer",
+      "line": [
+        "19:45 [bold]",
+        "aktarmasız [ok]",
+      ],
+      "route": {
+        "from": "Tokyo Havalimanı",
+        "to": "Konaklama",
+      },
+      "slot": {
+        "kind": "proof",
+        "word": "Bileti ekle",
+      },
+      "stage": "bought",
+      "stageWord": "Sen hallettin",
+      "third": [],
+      "title": "Tokyo Havalimanı → Konaklama",
+      "wants": [],
+    },
+    "status": "arranged",
+  },
+  {
+    "key": "transport:tokyo-kyoto",
+    "row": {
+      "count": 2,
+      "face": "ticket",
+      "figure": {
+        "big": "€95",
+        "small": "önerimiz",
+      },
+      "lead": "Tren",
+      "line": [
+        "✨ önerimiz Hikari",
+        "09:30 [bold]",
+        "direkt [ok]",
+      ],
+      "route": {
+        "from": "Tokyo",
+        "to": "Kyoto",
+      },
+      "slot": {
+        "count": 2,
+        "kind": "pick",
+      },
+      "stage": "options",
+      "stageWord": "2 seçenek",
+      "third": [],
+      "title": "Tokyo → Kyoto",
+      "wants": [],
+    },
+    "searching": {
+      "count": 2,
+      "face": "ticket",
+      "figure": {
+        "big": "€95",
+        "small": "önerimiz",
+      },
+      "lead": "Tren",
+      "line": [
+        "✨ önerimiz Hikari",
+        "09:30 [bold]",
+        "direkt [ok]",
+      ],
+      "route": {
+        "from": "Tokyo",
+        "to": "Kyoto",
+      },
+      "slot": {
+        "count": 2,
+        "kind": "pick",
+      },
+      "stage": "options",
+      "stageWord": "2 seçenek",
+      "third": [],
+      "title": "Tokyo → Kyoto",
+      "wants": [],
+    },
+    "status": "suggested",
+  },
+  {
+    "key": "transport:kyoto-hakone",
+    "row": {
+      "count": 1,
+      "face": "ticket",
+      "figure": {
+        "big": "OD-7721",
+        "code": true,
+        "small": "Bilet",
+      },
+      "lead": "Tren",
+      "line": [
+        "08:30 [bold]",
+        "aktarmasız [ok]",
+      ],
+      "route": {
+        "from": "Kyoto",
+        "to": "Hakone",
+      },
+      "slot": {
+        "kind": "none",
+      },
+      "stage": "ticket",
+      "stageWord": "Bilet elde",
+      "third": [],
+      "title": "Kyoto → Hakone",
+      "wants": [],
+    },
+    "searching": {
+      "count": 1,
+      "face": "ticket",
+      "figure": {
+        "big": "OD-7721",
+        "code": true,
+        "small": "Bilet",
+      },
+      "lead": "Tren",
+      "line": [
+        "08:30 [bold]",
+        "aktarmasız [ok]",
+      ],
+      "route": {
+        "from": "Kyoto",
+        "to": "Hakone",
+      },
+      "slot": {
+        "kind": "none",
+      },
+      "stage": "ticket",
+      "stageWord": "Bilet elde",
+      "third": [],
+      "title": "Kyoto → Hakone",
+      "wants": [],
+    },
+    "status": "booked",
+  },
+  {
+    "key": "transport:hakone-osaka",
+    "row": {
+      "count": 1,
+      "face": "ticket",
+      "figure": {
+        "big": "€98",
+        "small": "kişi başı",
+      },
+      "lead": "Tren",
+      "line": [
+        "09:00 [bold]",
+        "aktarmasız [ok]",
+      ],
+      "route": {
+        "from": "Hakone",
+        "to": "Osaka",
+      },
+      "slot": {
+        "kind": "book",
+        "word": "Satın al",
+      },
+      "stage": "planned",
+      "stageWord": "Seçtin",
+      "third": [],
+      "title": "Hakone → Osaka",
+      "wants": [],
+    },
+    "searching": {
+      "count": 1,
+      "face": "ticket",
+      "figure": {
+        "big": "€98",
+        "small": "kişi başı",
+      },
+      "lead": "Tren",
+      "line": [
+        "09:00 [bold]",
+        "aktarmasız [ok]",
+      ],
+      "route": {
+        "from": "Hakone",
+        "to": "Osaka",
+      },
+      "slot": {
+        "kind": "book",
+        "word": "Satın al",
+      },
+      "stage": "planned",
+      "stageWord": "Seçtin",
+      "third": [],
+      "title": "Hakone → Osaka",
+      "wants": [],
+    },
+    "status": "chosen",
+  },
+]
+`;
+
+exports[`koruma: Ulaşım ve Konaklama bugünkü sözleriyle kalır > Japonya, yolculukta 1`] = `
+[
+  {
+    "key": "stay:2027-04-02",
+    "row": {
+      "count": 1,
+      "face": "card",
+      "figure": {
+        "big": "€639",
+        "code": true,
+        "plain": true,
+        "small": "ödendi",
+      },
+      "lead": null,
+      "line": [
+        "Booking.com",
+        "Ginza",
+      ],
+      "route": null,
+      "slot": {
+        "kind": "none",
+      },
+      "stage": "ticket",
+      "stageWord": "Onay elde",
+      "third": [
+        "Çıkış 5 Nisan Pazartesi",
+      ],
+      "title": "Hyatt Centric Ginza",
+      "wants": [],
+    },
+    "searching": {
+      "count": 1,
+      "face": "card",
+      "figure": {
+        "big": "€639",
+        "code": true,
+        "plain": true,
+        "small": "ödendi",
+      },
+      "lead": null,
+      "line": [
+        "Booking.com",
+        "Ginza",
+      ],
+      "route": null,
+      "slot": {
+        "kind": "none",
+      },
+      "stage": "ticket",
+      "stageWord": "Onay elde",
+      "third": [
+        "Çıkış 5 Nisan Pazartesi",
+      ],
+      "title": "Hyatt Centric Ginza",
+      "wants": [],
+    },
+    "status": "booked",
+  },
+  {
+    "key": "stay:2027-04-05",
+    "row": {
+      "count": 3,
+      "face": "card",
+      "figure": {
+        "big": "€720",
+        "code": true,
+        "plain": true,
+        "small": "ödendi",
+      },
+      "lead": null,
+      "line": [
+        "Booking.com",
+        "Gion",
+      ],
+      "route": null,
+      "slot": {
+        "kind": "none",
+      },
+      "stage": "ticket",
+      "stageWord": "Onay elde",
+      "third": [
+        "Çıkış 9 Nisan Cuma",
+      ],
+      "title": "Gion Hatanaka",
+      "wants": [],
+    },
+    "searching": {
+      "count": 3,
+      "face": "card",
+      "figure": {
+        "big": "€720",
+        "code": true,
+        "plain": true,
+        "small": "ödendi",
+      },
+      "lead": null,
+      "line": [
+        "Booking.com",
+        "Gion",
+      ],
+      "route": null,
+      "slot": {
+        "kind": "none",
+      },
+      "stage": "ticket",
+      "stageWord": "Onay elde",
+      "third": [
+        "Çıkış 9 Nisan Cuma",
+      ],
+      "title": "Gion Hatanaka",
+      "wants": [],
+    },
+    "status": "booked",
+  },
+  {
+    "key": "stay:2027-04-09",
+    "row": {
+      "count": 1,
+      "face": "card",
+      "figure": {
+        "big": "€900",
+        "code": true,
+        "plain": true,
+        "small": "ödendi",
+      },
+      "lead": null,
+      "line": [
+        "Booking.com",
+        "Gora",
+      ],
+      "route": null,
+      "slot": {
+        "kind": "none",
+      },
+      "stage": "ticket",
+      "stageWord": "Onay elde",
+      "third": [
+        "Çıkış 12 Nisan Pazartesi",
+      ],
+      "title": "Gora Kadan",
+      "wants": [],
+    },
+    "searching": {
+      "count": 1,
+      "face": "card",
+      "figure": {
+        "big": "€900",
+        "code": true,
+        "plain": true,
+        "small": "ödendi",
+      },
+      "lead": null,
+      "line": [
+        "Booking.com",
+        "Gora",
+      ],
+      "route": null,
+      "slot": {
+        "kind": "none",
+      },
+      "stage": "ticket",
+      "stageWord": "Onay elde",
+      "third": [
+        "Çıkış 12 Nisan Pazartesi",
+      ],
+      "title": "Gora Kadan",
+      "wants": [],
+    },
+    "status": "booked",
+  },
+  {
+    "key": "stay:2027-04-12",
+    "row": {
+      "count": 1,
+      "face": "card",
+      "figure": {
+        "big": "€512",
+        "code": true,
+        "plain": true,
+        "small": "ödendi",
+      },
+      "lead": null,
+      "line": [
+        "Booking.com",
+        "Namba",
+      ],
+      "route": null,
+      "slot": {
+        "kind": "none",
+      },
+      "stage": "ticket",
+      "stageWord": "Onay elde",
+      "third": [
+        "Çıkış 16 Nisan Cuma",
+      ],
+      "title": "Cross Hotel Osaka",
+      "wants": [],
+    },
+    "searching": {
+      "count": 1,
+      "face": "card",
+      "figure": {
+        "big": "€512",
+        "code": true,
+        "plain": true,
+        "small": "ödendi",
+      },
+      "lead": null,
+      "line": [
+        "Booking.com",
+        "Namba",
+      ],
+      "route": null,
+      "slot": {
+        "kind": "none",
+      },
+      "stage": "ticket",
+      "stageWord": "Onay elde",
+      "third": [
+        "Çıkış 16 Nisan Cuma",
+      ],
+      "title": "Cross Hotel Osaka",
+      "wants": [],
+    },
+    "status": "booked",
+  },
+  {
+    "key": "leg:2027-04-01:arrival:?",
+    "row": {
+      "count": 1,
+      "face": "ticket",
+      "figure": null,
+      "lead": "Taksi · transfer",
+      "line": [
+        "19:45 [bold]",
+        "aktarmasız [ok]",
+      ],
+      "route": {
+        "from": "Tokyo Havalimanı",
+        "to": "Konaklama",
+      },
+      "slot": {
+        "kind": "proof",
+        "word": "Bileti ekle",
+      },
+      "stage": "bought",
+      "stageWord": "Sen hallettin",
+      "third": [],
+      "title": "Tokyo Havalimanı → Konaklama",
+      "wants": [],
+    },
+    "searching": {
+      "count": 1,
+      "face": "ticket",
+      "figure": null,
+      "lead": "Taksi · transfer",
+      "line": [
+        "19:45 [bold]",
+        "aktarmasız [ok]",
+      ],
+      "route": {
+        "from": "Tokyo Havalimanı",
+        "to": "Konaklama",
+      },
+      "slot": {
+        "kind": "proof",
+        "word": "Bileti ekle",
+      },
+      "stage": "bought",
+      "stageWord": "Sen hallettin",
+      "third": [],
+      "title": "Tokyo Havalimanı → Konaklama",
+      "wants": [],
+    },
+    "status": "arranged",
+  },
+  {
+    "key": "transport:tokyo-kyoto",
+    "row": {
+      "count": 2,
+      "face": "ticket",
+      "figure": {
+        "big": "JR-30871",
+        "code": true,
+        "small": "Bilet",
+      },
+      "lead": "Tren",
+      "line": [
+        "09:00 [bold]",
+        "2 sa 15 dk",
+        "aktarmasız [ok]",
+      ],
+      "route": {
+        "from": "Tokyo",
+        "to": "Kyoto",
+      },
+      "slot": {
+        "kind": "none",
+      },
+      "stage": "ticket",
+      "stageWord": "Bilet elde",
+      "third": [],
+      "title": "Tokyo → Kyoto",
+      "wants": [],
+    },
+    "searching": {
+      "count": 2,
+      "face": "ticket",
+      "figure": {
+        "big": "JR-30871",
+        "code": true,
+        "small": "Bilet",
+      },
+      "lead": "Tren",
+      "line": [
+        "09:00 [bold]",
+        "2 sa 15 dk",
+        "aktarmasız [ok]",
+      ],
+      "route": {
+        "from": "Tokyo",
+        "to": "Kyoto",
+      },
+      "slot": {
+        "kind": "none",
+      },
+      "stage": "ticket",
+      "stageWord": "Bilet elde",
+      "third": [],
+      "title": "Tokyo → Kyoto",
+      "wants": [],
+    },
+    "status": "booked",
+  },
+  {
+    "key": "transport:kyoto-hakone",
+    "row": {
+      "count": 1,
+      "face": "ticket",
+      "figure": {
+        "big": "OD-7721",
+        "code": true,
+        "small": "Bilet",
+      },
+      "lead": "Tren",
+      "line": [
+        "08:30 [bold]",
+        "aktarmasız [ok]",
+      ],
+      "route": {
+        "from": "Kyoto",
+        "to": "Hakone",
+      },
+      "slot": {
+        "kind": "none",
+      },
+      "stage": "ticket",
+      "stageWord": "Bilet elde",
+      "third": [],
+      "title": "Kyoto → Hakone",
+      "wants": [],
+    },
+    "searching": {
+      "count": 1,
+      "face": "ticket",
+      "figure": {
+        "big": "OD-7721",
+        "code": true,
+        "small": "Bilet",
+      },
+      "lead": "Tren",
+      "line": [
+        "08:30 [bold]",
+        "aktarmasız [ok]",
+      ],
+      "route": {
+        "from": "Kyoto",
+        "to": "Hakone",
+      },
+      "slot": {
+        "kind": "none",
+      },
+      "stage": "ticket",
+      "stageWord": "Bilet elde",
+      "third": [],
+      "title": "Kyoto → Hakone",
+      "wants": [],
+    },
+    "status": "booked",
+  },
+  {
+    "key": "transport:hakone-osaka",
+    "row": {
+      "count": 1,
+      "face": "ticket",
+      "figure": {
+        "big": "JR-55120",
+        "code": true,
+        "small": "Bilet",
+      },
+      "lead": "Tren",
+      "line": [
+        "09:00 [bold]",
+        "aktarmasız [ok]",
+      ],
+      "route": {
+        "from": "Hakone",
+        "to": "Osaka",
+      },
+      "slot": {
+        "kind": "none",
+      },
+      "stage": "ticket",
+      "stageWord": "Bilet elde",
+      "third": [],
+      "title": "Hakone → Osaka",
+      "wants": [],
+    },
+    "searching": {
+      "count": 1,
+      "face": "ticket",
+      "figure": {
+        "big": "JR-55120",
+        "code": true,
+        "small": "Bilet",
+      },
+      "lead": "Tren",
+      "line": [
+        "09:00 [bold]",
+        "aktarmasız [ok]",
+      ],
+      "route": {
+        "from": "Hakone",
+        "to": "Osaka",
+      },
+      "slot": {
+        "kind": "none",
+      },
+      "stage": "ticket",
+      "stageWord": "Bilet elde",
+      "third": [],
+      "title": "Hakone → Osaka",
+      "wants": [],
+    },
+    "status": "booked",
+  },
+]
+`;
+
+exports[`koruma: Ulaşım ve Konaklama bugünkü sözleriyle kalır > Ozora 1`] = `
+[
+  {
+    "key": "stay:2027-07-26",
+    "row": {
+      "count": 2,
+      "face": "card",
+      "figure": {
+        "big": "€140",
+        "small": "gece, önerimiz",
+      },
+      "lead": null,
+      "line": [
+        "✨ önerimiz Hotel Moments",
+      ],
+      "route": null,
+      "slot": {
+        "count": 2,
+        "kind": "pick",
+      },
+      "stage": "options",
+      "stageWord": "2 seçenek",
+      "third": [
+        "Çıkış 27 Temmuz Salı",
+        "Booking.com 2",
+        "€140–170 gece",
+      ],
+      "title": "Budapeşte",
+      "wants": [],
+    },
+    "searching": {
+      "count": 2,
+      "face": "card",
+      "figure": {
+        "big": "€140",
+        "small": "gece, önerimiz",
+      },
+      "lead": null,
+      "line": [
+        "✨ önerimiz Hotel Moments",
+      ],
+      "route": null,
+      "slot": {
+        "count": 2,
+        "kind": "pick",
+      },
+      "stage": "options",
+      "stageWord": "2 seçenek",
+      "third": [
+        "Çıkış 27 Temmuz Salı",
+        "Booking.com 2",
+        "€140–170 gece",
+      ],
+      "title": "Budapeşte",
+      "wants": [],
+    },
+    "status": "suggested",
+  },
+  {
+    "key": "stay:2027-07-27",
+    "row": {
+      "count": 1,
+      "face": "card",
+      "figure": null,
+      "lead": null,
+      "line": [],
+      "route": null,
+      "slot": {
+        "kind": "hap",
+        "text": "Dahil",
+        "tone": "inc",
+      },
+      "stage": "bought",
+      "stageWord": "Dahil",
+      "third": [
+        "Çıkış 2 Ağustos Pazartesi",
+      ],
+      "title": "Ozora",
+      "wants": [],
+    },
+    "searching": {
+      "count": 1,
+      "face": "card",
+      "figure": null,
+      "lead": null,
+      "line": [],
+      "route": null,
+      "slot": {
+        "kind": "hap",
+        "text": "Dahil",
+        "tone": "inc",
+      },
+      "stage": "bought",
+      "stageWord": "Dahil",
+      "third": [
+        "Çıkış 2 Ağustos Pazartesi",
+      ],
+      "title": "Ozora",
+      "wants": [],
+    },
+    "status": "included",
+  },
+  {
+    "key": "transport:budapeşte-ozora",
+    "row": {
+      "count": 1,
+      "face": "ticket",
+      "figure": {
+        "big": "€35",
+        "small": "en iyisi",
+      },
+      "lead": "Otobüs",
+      "line": [
+        "Festival otobüsü",
+        "09:00 [bold]",
+        "direkt [ok]",
+      ],
+      "route": {
+        "from": "Budapeşte",
+        "to": "Ozora",
+      },
+      "slot": {
+        "count": 1,
+        "kind": "pick",
+      },
+      "stage": "options",
+      "stageWord": "1 seçenek",
+      "third": [],
+      "title": "Budapeşte → Ozora",
+      "wants": [],
+    },
+    "searching": {
+      "count": 1,
+      "face": "ticket",
+      "figure": {
+        "big": "€35",
+        "small": "en iyisi",
+      },
+      "lead": "Otobüs",
+      "line": [
+        "Festival otobüsü",
+        "09:00 [bold]",
+        "direkt [ok]",
+      ],
+      "route": {
+        "from": "Budapeşte",
+        "to": "Ozora",
+      },
+      "slot": {
+        "count": 1,
+        "kind": "pick",
+      },
+      "stage": "options",
+      "stageWord": "1 seçenek",
+      "third": [],
+      "title": "Budapeşte → Ozora",
+      "wants": [],
+    },
+    "status": "deciding",
+  },
+  {
+    "key": "transport:ozora-budapeşte",
+    "row": {
+      "count": 1,
+      "face": "ticket",
+      "figure": {
+        "big": "€35",
+        "small": "en iyisi",
+      },
+      "lead": "Otobüs",
+      "line": [
+        "Festival otobüsü",
+        "12:00 [bold]",
+        "direkt [ok]",
+      ],
+      "route": {
+        "from": "Ozora",
+        "to": "Budapeşte",
+      },
+      "slot": {
+        "count": 1,
+        "kind": "pick",
+      },
+      "stage": "options",
+      "stageWord": "1 seçenek",
+      "third": [],
+      "title": "Ozora → Budapeşte",
+      "wants": [],
+    },
+    "searching": {
+      "count": 1,
+      "face": "ticket",
+      "figure": {
+        "big": "€35",
+        "small": "en iyisi",
+      },
+      "lead": "Otobüs",
+      "line": [
+        "Festival otobüsü",
+        "12:00 [bold]",
+        "direkt [ok]",
+      ],
+      "route": {
+        "from": "Ozora",
+        "to": "Budapeşte",
+      },
+      "slot": {
+        "count": 1,
+        "kind": "pick",
+      },
+      "stage": "options",
+      "stageWord": "1 seçenek",
+      "third": [],
+      "title": "Ozora → Budapeşte",
+      "wants": [],
+    },
+    "status": "deciding",
+  },
+]
+`;

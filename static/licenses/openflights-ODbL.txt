@@ -1,0 +1,7 @@
+The airline names in src/lib/airlineData.ts (the active airlines with an IATA code) come from OpenFlights' airlines.dat
+(https://openflights.org/data, https://github.com/jpatokal/openflights), made available under the Open Database License
+(ODbL) v1.0: https://opendatacommons.org/licenses/odbl/1-0/. Any rights in individual contents of the database are licensed
+under the Database Contents License: https://opendatacommons.org/licenses/dbcl/1-0/.
+
+Trip Radar uses the names only to tell which airline a flight is (its logo); the derived list is regenerated with
+scripts/airline-data.mjs from the original file.

@@ -1,6 +1,6 @@
 # Trip Radar · Gizlilik politikası / Privacy policy
 
-Son güncelleme / Last updated: 2026-10-21 · Sürüm / Version: 0.39.27
+Son güncelleme / Last updated: 2026-10-24 · Sürüm / Version: 0.47.0
 
 ---
 
@@ -56,7 +56,19 @@ onları da görebilir.
 ### 4. Sayfa okuma
 
 Eklenti yalnız "Kaydet"e bastığın sekmeyi, yalnız o anda okur. Arka planda sayfa okumaz. Tarama geçmişin,
-şifrelerin ve ödeme bilgilerin okunmaz.
+şifrelerin ve ödeme bilgilerin okunmaz. İki istisna var, ikisini de sen açarsın:
+
+- **Sekme grubu ("Adayları sekmelerde aç"):** bir ihtiyacın adaylarını senin isteğinle Chrome'da bir sekme grubunda açar
+  ve eklentinin simgesinde her sekmenin kaçıncı aday olduğunu yazar. Bunun için yalnız açtığı sekmeleri hatırlar
+  (tarayıcı kapanınca unutulur); o sekmelerin sayfaları okunmaz. "Burada satın al" dediğin sekme kapanınca plan
+  "Aldın mı?" diye sorar. Bunun için `tabGroups` izni kullanılır.
+- **"Sitede benle gel":** yalnız senin tek tek izin verdiğin uçuş sitelerinde (Skyscanner, Kiwi.com; Chrome her site için
+  ayrıca sorar) ve yalnız sayfanın adresi planındaki bir uçuşun araması olduğunda, sayfanın üstünde ince bir şerit ve
+  sonuçların yanında "+" gösterir. Bunun için o sayfadaki sonuçların metnini (saat, fiyat, aktarma) bilgisayarında okur;
+  okunan hiçbir yere gönderilmez. "+" ya da "Ekrandakileri desteye ekle"ye basmadıkça hiçbir şey kaydedilmez; bastığında
+  yalnız o sonucun metni (ya da görünen sonuçlar ve ekran görüntüsü) "Kaydet"teki gibi okunur ve yapay zekâya gider.
+  Sitedeki bağlantılar değiştirilmez. İzni açılır pencerede "…'da benle gelme" ile ya da Chrome'un eklenti ayarlarından
+  geri alırsın.
 
 Kaydettiğin sayfanın metninde ya da ekran görüntüsünde görünen her şey (örneğin bir rezervasyon sayfasındaki adın)
 okunur ve yapay zekâya gönderilir. Kişisel bilgi gösteren bir sayfayı kaydetmek istemiyorsan "Kaydet"e basma.
@@ -277,6 +289,43 @@ Eklenti kendini otomatik günceller. Bu politika değişirse üstteki tarih ve s
 Önemli bir değişiklik (yeni bir veri türü ya da yeni bir alıcı gibi), değişikliği getiren sürümle birlikte bu
 sayfada açıkça yazılır.
 
+0.45.0'da değişenler: simge penceresi açıldığında (ve izin verdiğin seyahat sitelerinde) sayfanın bir rezervasyon onayı
+olup olmadığına bu bilgisayarda bakılır (onay sözü ve onay numarası); bulunursa yalnız sorar, sen "Kaydet" demeden hiçbir şey
+kaydedilmez ve hiçbir yere gönderilmez. YouTube videosu ve diğer siteler "İlham'a ekle" ile kaydedilebilir. Yeni izin yok.
+
+0.44.0'da değişenler: "Gezi cebi" (simgede ve izin verdiğin sitelerde sağ kenarda) gezinin son eklediklerini gösterir;
+bu bilgiler bu bilgisayardaki veritabanından okunur, siteye ya da başka bir yere gönderilmez. Cep, sitenin sayfasının
+içine değil kendi kapalı katmanına çizilir. Yeni izin ya da yeni veri türü yok.
+
+0.43.0'da değişenler: araç çubuğundaki simgeye basmak artık kendiliğinden kaydetmez; pencere sayfanın yalnız adresine,
+başlığına ve kendini ne olarak tanıttığına bakar. Sayfanın metni ve ekran görüntüsü yalnız "Desteye ekle"ye basınca alınır.
+Son seçtiğin gezi ("şu anki gezi") bir gün boyunca yalnız bu bilgisayarda tutulur, sonraki eklemeler sormadan oraya gider.
+
+0.42.0'da değişenler: "Sitede benle gel" artık tek anahtarla açılır: "Seyahat sitelerinde benle gel" (Ayarlar ya da
+araç çubuğu). Chrome bir kez sorar; listedeki 30 kadar seyahat sitesinde (Skyscanner, Kiwi, Kayak, Momondo, Pegasus,
+Turkish Airlines, AJet, Booking.com, Airbnb, Hotels.com, Expedia, Agoda, Trip.com, GetYourGuide, Viator, Klook, Tiqets,
+Omio, Trainline, FlixBus, Rentalcars, DiscoverCars) sonuçlara "+" ve bir yerin sayfasına "Desteye ekle" koyar. Listede
+olmayan bir siteyi yalnız o site için araç çubuğundan açabilirsin ("Bu sitede de benle gel"); bunun için eklenti tüm
+sitelere isteğe bağlı izin ister ama yalnız senin açtığın siteyi kullanır. Hiçbir yerde basmadan sayfadan bir şey okunup
+gönderilmez. Gezi seçicide gezilerinin fotoğrafları gösterilir; bunlar bilgisayarındaki kayıtlardan gelir.
+
+0.41.0'da eklenenler: "Sitede benle gel" artık otel ve etkinlik sitelerinde de (Booking.com, Airbnb, GetYourGuide,
+Viator), yine yalnız senin site site izin verdiğin yerlerde: listede her sonuca "+", bir otelin ya da turun kendi
+sayfasında sağ altta "Desteye ekle". Basılana kadar sayfadan hiçbir şey okunup gönderilmez; basınca yalnız o sonucun ya da
+o sayfanın metni kaydedilir (araç çubuğundaki "Kaydet" gibi). Sağ tık menüsünde "Trip Radar'a ekle" (`contextMenus`
+izni): yalnız tıkladığın sayfa ya da bağlantı kaydedilir. "Hangi gezi": bir ülke için ilk kaydedişte hangi geziye
+koyacağın sorulur, cevabın (ülke kodu ve gezi) yalnız bu bilgisayarda saklanır, Ayarlar'dan silinir. Fiyat düşünce eklenti
+simgesinde küçük bir rozet görünür; plan açılınca gider.
+
+0.40.6'da eklenenler: fiyat izleme. Planında olup henüz almadığın uçuş ve oteller için, günde en çok bir kez, önerilerin
+geldiği aynı sunucu fonksiyonuna yalnız rota, gün, şehir, geceler ve kişi sayısı sorulur (bölüm 8'deki aramalarla
+aynı); kim olduğun, adın ya da planının geri kalanı gitmez. Aynı uçuş ya da otel daha ucuzsa bilgisayarındaki kayda
+yazılır ve bir Chrome bildirimiyle söylenir (`notifications` izni). İzin verdiğin uçuş sitelerinde seçtiğin uçuş
+görünürse oradaki fiyatı okunur ve karşılaştırılır; bu da bilgisayarında kalır.
+
+0.40.0'da eklenenler: sekme grubu ("Adayları sekmelerde aç", `tabGroups` izni) ve izin verdiğin uçuş sitelerinde
+"Sitede benle gel" (bölüm 4). Yeni bir sunucu ya da yeni bir alıcı yok; sitelerde okunan sonuçlar bilgisayarında kalır.
+
 0.38.0'da eklenenler: Bavul listesi için yapay zekâya giden gezi bilgileri (bölüm 5), İlham'dan yer çıkarma (bölüm 8),
 gezi fotoğraflarının kaynakları ve sunucudaki fotoğraf aramaları (bölüm 8 ve 11), hava için Open-Meteo (önceki
 sürümlerde de kullanılıyordu, bu sayfada yazmıyordu), paylaşılan gezide çocuk ve oda sayısı (bölüm 7). Yeni bir sunucu
@@ -339,7 +388,20 @@ profile can see it too.
 ### 4. Reading pages
 
 The extension reads only the tab where you press "Save", and only at that moment. It does not read pages in the
-background. Your browsing history, passwords and payment details are not read.
+background. Your browsing history, passwords and payment details are not read. There are two exceptions, and you turn
+both on yourself:
+
+- **Tab group ("Open the candidates in tabs"):** at your request it opens a need's candidates in one Chrome tab group
+  and shows on the extension's icon which candidate each tab is. For that it remembers only the tabs it opened
+  (forgotten when the browser closes); those tabs' pages are not read. When the tab you said "Buy it here" on closes, the
+  plan asks "Did you buy it?". This uses the `tabGroups` permission.
+- **"Come along on this site":** only on the flight sites you allow one by one (Skyscanner, Kiwi.com; Chrome asks for
+  each site separately), and only while the page's address is a search for a flight on your plan, it shows a thin strip
+  at the top of the page and a "+" beside each result. For that it reads the results' text on that page (hours, price,
+  stops) on your computer; what it reads is sent nowhere. Nothing is saved until you press "+" or "Add what's on
+  screen"; then only that result's text (or the results in view and a screenshot) is read as with "Save" and goes to the
+  AI. No link on the site is changed. You take the permission back in the popup ("Stop coming along on …") or in
+  Chrome's extension settings.
 
 Whatever appears in the text or the screenshot of a page you save (for example your name on a booking page) is read
 and sent to the AI. If you do not want a page showing personal details to be processed, do not press "Save" on it.
@@ -558,6 +620,47 @@ In practice:
 The extension updates itself. When this policy changes, the date and version at the top are updated.
 A significant change (a new kind of data or a new recipient, say) is stated plainly on this page with the version
 that brings it.
+
+Changed in 0.45.0: when you open the toolbar window (and on the travel sites you allowed), the extension checks on this
+computer whether the page is a booking confirmation (a confirming phrase and a confirmation number); if so it only asks,
+nothing is saved until you press "Save", and nothing is sent anywhere. YouTube videos and any other site can be saved with
+"Add to Inspiration". No new permission.
+
+Changed in 0.44.0: the "trip pocket" (in the toolbar window, and on the right edge of the sites you allowed) shows what
+you added to the trip last; it is read from the database on this computer and never sent to the site or anywhere else.
+The pocket is drawn in its own closed layer, never inside the site's page. No new permission, no new kind of data.
+
+Changed in 0.43.0: pressing the toolbar icon no longer saves by itself; the window looks only at the page's address, title
+and what the page says it is. The page's text and screenshot are taken only when you press "Add to the deck". The trip you
+picked last ("the current trip") is kept on this computer for a day, and later saves go there without asking.
+
+Changed in 0.42.0: "Come along on the site" now turns on with one switch: "Come along on travel sites" (Settings or the
+toolbar). Chrome asks once; on some 30 travel sites (Skyscanner, Kiwi, Kayak, Momondo, Pegasus, Turkish Airlines, AJet,
+Booking.com, Airbnb, Hotels.com, Expedia, Agoda, Trip.com, GetYourGuide, Viator, Klook, Tiqets, Omio, Trainline,
+FlixBus, Rentalcars, DiscoverCars) it puts a "+" on results and "Add to the deck" on a place's page. A site not on the
+list can be turned on for that site alone from the toolbar ("Come along on this site too"); for that the extension asks
+for an optional permission for all sites but uses only the sites you turn on. Nowhere is anything read from a page or
+sent until you press it. The trip picker shows your trips' photos, from the records on your computer.
+
+Added in 0.41.0: "Come along on the site" now also on hotel and activity sites (Booking.com, Airbnb, GetYourGuide,
+Viator), still only where you allow it site by site: a "+" on each result of a list, and "Add to the deck" at the bottom
+right of a hotel's or a tour's own page. Nothing is read from the page or sent until you press it; then only that
+result's or that page's text is saved (as the toolbar's "Save" does). "Add to Trip Radar" in the right-click menu (the
+`contextMenus` permission): only the page or link you clicked is saved. "Which trip": the first time you save something
+for a country you're asked which trip it goes to; the answer (the country code and the trip) is kept only on this
+computer and can be forgotten in Settings. When a price drops, a small badge shows on the extension's icon until the plan
+is opened.
+
+Added in 0.40.6: price watching. For the flights and stays on your plan that you haven't bought yet, at most once a day,
+the same server function the suggestions come from is asked only the route, the day, the city, the nights and the
+number of people (the same as the searches in section 8); nothing about who you are or the rest of your plan is sent.
+When the same flight or hotel is cheaper, it is written on the record on your computer and said in a Chrome
+notification (the `notifications` permission). On the flight sites you allow, when your chosen flight shows up its price
+there is read and compared; that stays on your computer too.
+
+Added in 0.40.0: the tab group ("Open the candidates in tabs", the `tabGroups` permission) and "Come along on this
+site" on the flight sites you allow (section 4). No new server and no new recipient; the results read on those sites
+stay on your computer.
 
 Added in 0.38.0: the trip details sent to the AI for the Packing list (section 5), pulling places out of an
 inspiration (section 8), where trip photos come from and the photo searches kept on the server (sections 8 and 11),

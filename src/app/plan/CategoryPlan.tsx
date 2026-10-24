@@ -8,17 +8,18 @@
 import { PackPrefetch } from "./prep/usePackAi";
 import { PhonePrefetch } from "./prep/PhoneApps";
 import { stayQueryOf } from "../../lib/travelWants";
-import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { isIdeaSection, planSectionOfItem, sectionProgress, type CatEntry, type CatSection, type SectionId } from "../../lib/categories";
+import { Fragment, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { isIdeaSection, planSectionOfItem, sectionProgress, type CatEntry, type CatSection, type HiddenThing, type SectionId } from "../../lib/categories";
 import { activityGaps } from "../../lib/emptyCards";
 import { countryNames } from "../../lib/heroInfo";
 import { L } from "../../lib/i18n";
 import { doneCount } from "../../lib/collectionCards";
 import { countParts, decideCount, decisionNames, firstDecision, rowThumbs } from "../../lib/intentFrame";
-import { collectionsOf, V82_ORDER, type Collection, type IntentInput } from "../../lib/intents";
+import { collectionsOf, V82_ORDER, type Collection, type IntentInput, type IntentVM } from "../../lib/intents";
+import { carrierMark, type CarrierMark } from "../../lib/ticketFrame";
 import { formatPrice } from "../../lib/items";
 import { nightsSummary } from "../../lib/lifecycle";
-import { sameCity, type Plan } from "../../lib/plan";
+import { groupKeyOf, sameCity, type Plan } from "../../lib/plan";
 import { REVIEW_SECTIONS } from "../../lib/suggestReview";
 import { eMove, scrollBy } from "../../lib/planOpen";
 import type { BudgetSlice } from "../../lib/progress";
@@ -46,6 +47,11 @@ import { artOf, IntentBox } from "./v82/IntentBox";
 import { PlanHeader } from "./v82/PlanHeader";
 import { Searching } from "./v82/Searching";
 import { TimelineRail } from "./v82/TimelineRail";
+import { emptyNights, isDatedSection, nightAlerts, overlapNights, undatedLast, type Overlap } from "../../lib/railDates";
+import { planSteps, stepParts } from "../../lib/rowView";
+import { Gelenler } from "./v82/Gelenler";
+import { Ic } from "./v82/icons";
+import { stayTimings } from "../../lib/stayTiming";
 import { intentEl, V82EnvContext, type V82Env } from "./v82/v82Env";
 import { VisaRow } from "./VisaRow";
 
@@ -54,11 +60,47 @@ import { VisaRow } from "./VisaRow";
  * A category joins once its boxes are built: 3a stay and other (the stay family's frame), 3b flight and transport (the
  * ticket), 4 activity and todo (the rows of cards).
  */
+
+/** The airlines of a trip's flights chosen or bought (Uçuş's closed row): one logo each, at most three. */
+function flightLogos(intents: readonly IntentVM[]): CarrierMark[] {
+  const out: CarrierMark[] = [];
+  for (const i of intents) {
+    if (!i.chosen || !(i.status === "chosen" || i.status === "booked")) continue;
+    const m = carrierMark(i.chosen.carrier, i.chosen.item);
+    if (m && !out.some((x) => (x.code ?? x.letter) === (m.code ?? m.letter))) out.push(m);
+  }
+  return out.slice(0, 3);
+}
+
 export const V82_SECTIONS: ReadonlySet<SectionId> = new Set<SectionId>(["flight", "stay", "transport", "activity", "todo", "other"]);
 
 const SLICE: Partial<Record<SectionId, BudgetSlice>> = { flight: "flight", stay: "stay", transport: "transport", activity: "activity", other: "other" };
 
 const NO_ENTRIES: CatEntry[] = [];
+
+/** A short open stretch between two stays (railDates.emptyNights): the stays on either side of it, for its line. */
+function gapOf(vm: IntentVM, list: readonly IntentVM[]): { before: IntentVM | null; after: IntentVM | null } | null {
+  if (!emptyNights(list).has(vm.key)) return null;
+  const stays = list.filter((v) => v.kind === "stay" && v.head.date && v.head.nights > 0).sort((a, b) => a.head.date!.localeCompare(b.head.date!));
+  const i = stays.findIndex((v) => v.key === vm.key);
+  return { before: stays[i - 1] ?? null, after: stays[i + 1] ?? null };
+}
+
+/** The red row over the stay whose record is the later of two holding the same night. */
+const overlapOf = (vm: IntentVM, clashes: ReadonlyMap<string, Overlap>): Overlap | null => {
+  for (const id of [vm.chosen?.item.id, ...vm.itemIds]) if (id && clashes.has(id)) return clashes.get(id)!;
+  return null;
+};
+
+/** On the date rail the needs with no day go last, under "Tarihi yok" (railDates.undatedLast); elsewhere as they are. */
+const railOrder = (id: SectionId, list: IntentVM[]): { list: IntentVM[]; first: string | null } => (isDatedSection(id) ? undatedLast(list) : { list, first: null });
+
+/** Elenen in an intent's drawer: the section's ruled-out records of the same group as its options. */
+function droppedOf(vm: IntentVM, hidden: readonly HiddenThing[]): Item[] {
+  const keys = new Set(vm.options.map((o) => groupKeyOf(o.item)));
+  if (!keys.size) return [];
+  return hidden.flatMap((h) => (h.kind === "dismissed" && keys.has(groupKeyOf(h.item)) ? [h.item] : []));
+}
 
 /** What sits pinned over the plan when it scrolls (the thin bar, app.css scroll-margin-top 76px). */
 const PINNED = 76;
@@ -158,6 +200,10 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
     now: new Date(),
   };
   const collections = collectionsOf(input);
+  // Kaçırdıklarımız 2: each stay's hours against the flight either side (the legs' own notes).
+  const timings = useMemo(() => stayTimings(sections), [sections]);
+  // Kaçırdıklarımız 3: two stays chosen or booked for one night.
+  const clashes = useMemo(() => overlapNights(items), [items]);
   const collectionOf = (id: SectionId): Collection | null => collections.find((c) => c.section.id === id) ?? null;
   const drawn = sections.filter(
     (s) =>
@@ -223,6 +269,19 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
   const first = firstDecision(collections);
   const collectEnv = useMemo(() => ({ plan }), [plan]);
 
+  // Konaklama (onay paketi 2026-10-22, "şehir hatta"): a stay's city on the rail where the city changes, its name only.
+  const cityChange = (vm: IntentVM, list: readonly IntentVM[]): boolean => {
+    if (!vm.head.city || vm.frame === "collection") return false;
+    const at = list.indexOf(vm);
+    const before = list.slice(0, at).reverse().find((v) => v.kind === "stay" && v.head.city);
+    return !before || before.head.city!.toLocaleLowerCase("tr") !== vm.head.city.toLocaleLowerCase("tr");
+  };
+  // A dated category (onay paketi 2026-10-22): one bar in the four steps' colours and "2 alındı · 1 planda · 1 karar"
+  // (Karar Masası's Uçuş: "1 seçildi").
+  const datedRow = (intents: Collection["intents"], alerts: { text: string; tone?: "warn" | "bad" }[], desk: boolean): Pick<RowView, "stages" | "bar" | "parts" | "ring"> => {
+    const { counts } = planSteps(intents);
+    return { stages: counts, bar: null, parts: [...stepParts(counts, desk), ...alerts.map((a) => ({ ...a, decide: false }))], ring: { done: counts.bought + counts.ticket, near: counts.planned, total: counts.options + counts.planned + counts.bought + counts.ticket } };
+  };
   const rowOf = (s: CatSection): RowView => {
     const meta = SECTION_META[s.id];
     const c = collectionOf(s.id);
@@ -231,11 +290,12 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
     if (s.id === "prep" && c && ready) {
       // K0: "Gezi öncesi 6 iş · sıradaki: …" and "2/6 hazır", the bar in one green; nothing to count, no bar and no count.
       const parts = ready.total ? [{ text: L(`${ready.done}/${ready.total} hazır`, `${ready.done}/${ready.total} ready`), decide: false }] : [];
-      return { id: s.id, name: meta.label(), line: c.summary.line, thumbs: [], more: 0, bar: ready.total ? c.summary.bar : null, parts, spent: null, allot: null, settled: ready.total ? { settled: ready.done, total: ready.total } : null };
+      return { id: s.id, name: meta.label(), line: c.summary.line, thumbs: [], more: 0, bar: ready.total ? c.summary.bar : null, parts, spent: null, allot: null, settled: ready.total ? { settled: ready.done, total: ready.total } : null, ring: ready.total ? { done: ready.done, near: 0, total: ready.total } : null };
     }
     if (!c) {
       const line = s.ideas && (s.entries.length || s.hidden.length) ? ideaCount(s.id, s.ideas, s.entries, suggested(s).length) : "";
-      return { id: s.id, name: meta.label(), line, thumbs: [], more: 0, bar: null, parts: [], spent: null, allot: null, settled };
+      // (ideas only: a dashed ring, nothing to count)
+      return { id: s.id, name: meta.label(), line, thumbs: [], more: 0, bar: null, parts: [], spent: null, allot: null, settled, ring: line ? { done: 0, near: 0, total: 0 } : null };
     }
     const { thumbs, more } = rowThumbs(c.intents, { tours: s.id === "activity" ? tourPhotos : [] });
     const sum = c.summary;
@@ -250,12 +310,17 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
       line: sum.line,
       thumbs,
       more,
+      // (Uçuş: the airlines of what's chosen or bought, one logo each, at most three)
+      ...(s.id === "flight" ? { logos: flightLogos(c.intents) } : {}),
       // 0.39.14: Yapılacaklar' bar shows once something is on its plan (an empty bar beside "1 karar" says nothing more).
       bar: c.intents.length && !(s.id === "todo" && !sum.counts.booked && !sum.counts.chosen && !done) ? sum.bar : null,
-      parts: c.intents.length ? [...countParts(sum.counts, c.intents.some((i) => i.frame === "collection")), ...(done ? [{ text: L(`${done} yapıldı`, `${done} done`), decide: false }] : [])] : [],
+      parts: c.intents.length ? [...countParts(sum.counts, c.intents.some((i) => i.frame === "collection")), ...(done ? [{ text: L(`${done} yapıldı`, `${done} done`), decide: false }] : []), ...(s.id === "stay" ? nightAlerts(c.intents, items).map((n) => ({ ...n, decide: false })) : [])] : [],
       spent: sum.spent ? formatPrice(sum.spent.amount, sum.spent.currency) : null,
       allot: sum.allotted ? formatPrice(sum.allotted.amount, sum.allotted.currency) : null,
       settled,
+      // Bitti ve yaklaştı (lib/planRing.ts): bought or arranged, chosen, and all its plans; ideas only: the dashed ring.
+      ring: c.intents.length ? { done: sum.counts.booked + sum.counts.arranged + done, near: sum.counts.chosen, total: sum.counts.booked + sum.counts.arranged + done + sum.counts.chosen + sum.counts.decide } : null,
+      ...(isDatedSection(s.id) && c.intents.length ? datedRow(c.intents, s.id === "stay" ? nightAlerts(c.intents, items) : [], s.id === "flight") : {}),
     };
   };
 
@@ -270,6 +335,8 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
           </div>
         ))}
         {pending?.lead && <div className="ar-lead">{pending.lead}</div>}
+        {/* Karar Masası, getirme anları: what was brought and read, its place not found ("Nereye koyalım?") */}
+        <Gelenler tripId={env.trip.id} />
         {shown.length > 0 && (
           <div className="q-sheet" ref={sheet} data-pit-children>
             {shown.map((s) => {
@@ -286,6 +353,7 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
                   allotNum={allotNum} suggestions={cardSuggestions(s).filter((x) => x.kind === "add").length}>
                   {v82(s) ? (
                     <TimelineRail
+                      dated={isDatedSection(s.id)}
                       // Kısa bilgi satırı (spec §1.4): only where the trip's shape changed something in the category.
                       info={c?.summary.info?.text ?? info[s.id]}
                       lead={
@@ -298,12 +366,27 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
                       }
                       hidden={<Hidden section={s} live={items.filter((i) => i.status !== "dismissed" && planSectionOfItem(i) === s.id)} suggestions={dismissed} art={(kind) => artOf(kind)} />}
                     >
-                      {(c?.intents ?? []).filter((i) => i.status !== "skipped").map((vm) =>
+                      {railOrder(s.id, (c?.intents ?? []).filter((i) => i.status !== "skipped")).list.map((vm, _n, list) =>
                         // Etkinlik and Yapılacaklar: a city's row of cards (aşama 4); a part of the trip's shape among them (a ski pass) is one choice.
                         vm.frame === "collection" ? (
                           <CollectionBox key={vm.key} vm={vm} color={SECTION_META[s.id].color} />
                         ) : (
-                          <IntentBox key={vm.key} vm={vm} color={SECTION_META[s.id].color} onHere={s.id === "stay" ? (at) => onAdd(s.id, at) : null} />
+                          <Fragment key={vm.key}>
+                          {railOrder(s.id, list).first === vm.key && (
+                            <div className="q-tlnone" role="separator">
+                              {L("Tarihi yok", "No date yet")}
+                            </div>
+                          )}
+                          {s.id === "stay" && cityChange(vm, list) && (
+                            <div className="q-tlcity" role="separator" aria-label={vm.head.city!}>
+                              <i aria-hidden>
+                                <Ic name="pin" size={13} stroke={2.6} />
+                              </i>
+                              <b>{vm.head.city}</b>
+                            </div>
+                          )}
+                          <IntentBox key={vm.key} vm={vm} color={SECTION_META[s.id].color} onHere={s.id === "stay" ? (at) => onAdd(s.id, at) : null} gap={s.id === "stay" ? gapOf(vm, list) : null} dropped={droppedOf(vm, s.hidden)} overlap={s.id === "stay" ? overlapOf(vm, clashes) : null} timing={vm.kind === "stay" && vm.chosen ? (timings.get(vm.chosen.item.id) ?? null) : null} />
+                          </Fragment>
                         ),
                       )}
                       {s.id === "activity" && <CityGaps gaps={gaps.filter((g) => !(c?.intents ?? []).some((i) => i.frame === "collection" && i.head.city != null && sameCity(i.head.city, g.city)))} section="activity" />}

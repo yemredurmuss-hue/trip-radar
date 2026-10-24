@@ -30,7 +30,7 @@ export async function addImages(files: Iterable<File>): Promise<number> {
  * Saves the text as links when it is only links; returns false for ordinary text. `from`: where it was handed
  * over (a trip's chat, its board), so the chat can show its chip and the board can follow it (arrive/intake).
  */
-export async function addLinks(text: string, from?: { tripId: string | null; source: IntakeSource }): Promise<boolean> {
+export async function addLinks(text: string, from?: { tripId: string | null; source: IntakeSource; forNeed?: string }): Promise<boolean> {
   const tokens = text.trim().split(/\s+/).filter(Boolean);
   if (!tokens.length || !tokens.every(looksLikeUrl)) return false;
   for (const url of tokens) {
@@ -38,7 +38,7 @@ export async function addLinks(text: string, from?: { tripId: string | null; sou
     // placeCheck.ts). Sent in a trip's chat: routed as any capture, and that trip says where it went or asks.
     const forTrip = from?.source === "board" && from.tripId ? from.tripId : undefined;
     const fromTrip = from?.source === "chat" && from.tripId ? from.tripId : undefined;
-    const capture = await savePastedLink(url, forTrip, fromTrip);
+    const capture = await savePastedLink(url, forTrip, fromTrip, null, from?.forNeed);
     if (from) addIntake<LinkIntake>({ kind: "link", tripId: from.tripId, source: from.source, url, captureId: capture.id });
   }
   requestProcessing();
@@ -81,7 +81,7 @@ async function boardAttachment(doc: DocRecord): Promise<Attachment> {
  * document, or can't read, is saved as a screenshot like before. Returns what went wrong, in words
  * (`logged`: already a line in the chat).
  */
-export async function addTripFiles(tripId: string, files: Iterable<File>, source: IntakeSource = "chat"): Promise<{ text: string; logged: boolean }[]> {
+export async function addTripFiles(tripId: string, files: Iterable<File>, source: IntakeSource = "chat", forNeed?: string): Promise<{ text: string; logged: boolean }[]> {
   const errors: { text: string; logged: boolean }[] = [];
   let screenshots = 0;
   // Each file's chip and waiting card (arrive/intake): reading, then where it went.
@@ -89,7 +89,8 @@ export async function addTripFiles(tripId: string, files: Iterable<File>, source
   const intakes = all.map((file) => addIntake<FileIntake>({ kind: "file", tripId, source, name: file.name, type: file.type, state: "reading" }));
   const screenshot = async (file: File, at: FileIntake) => {
     const shot = await downscale(await fileToDataUrl(file));
-    const capture = await saveImage(shot, source === "board" ? tripId : undefined, source === "chat" ? tripId : undefined);
+    // (brought to a row: the screenshot's option goes to that row's need, getirme anları)
+    const capture = await saveImage(shot, source === "board" ? tripId : undefined, source === "chat" ? tripId : undefined, forNeed);
     updateIntake(at.id, { state: "screenshot", captureId: capture.id, thumb: shot });
     screenshots++;
   };

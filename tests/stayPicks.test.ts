@@ -34,6 +34,11 @@ const distinctIds = (p: Picks) => {
 };
 
 describe("the three", () => {
+  it("0.40.5: when a site prices some for these nights, a hotel known by its usual range alone is left out (not known free then)", () => {
+    const p = pickThree([...ubud(), cand("Ranged Palace", { rating: 5, reviews: 4000, priceRange: { min: 300, max: 500 } })], plain);
+    expect(distinctIds(p)).not.toContain("Ranged Palace");
+    expect(pickList(p).length).toBe(3);
+  });
   it("the Ubud spread: the cheapest rated 4+, the best rated, and a balanced one in between; three different hotels", () => {
     const p = pickThree(ubud(), plain);
     expect(ids(p).cheaper).toBe("Bucu View");

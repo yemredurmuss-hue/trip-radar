@@ -117,9 +117,9 @@ describe("factChips", () => {
   it("names the country, its money, plug, time and language, and the visa to get in amber", () => {
     const chips = factChips({ facts: facts(), countries: ["Portekiz"], cities: ["Porto", "Lizbon"], weather: { text: "13–24°", tip: "…" }, home: "TR", visaDone: false });
     expect(chips.map((c) => c.text)).toEqual(["Portekiz", "13–24°", "Euro", "C/F priz", "−2 sa", "Portekizce", "Schengen vizesi gerekiyor"]);
-    // A · Kapak: the plug's types for its socket, the language's country for its flag.
+    // A · Kapak: the plug's types for its socket; a language has no flag (0.46.0: the flags are the countries').
     expect(chips[3].plugs).toEqual(["C", "F"]);
-    expect(chips[5].flag).toBe("PT");
+    expect(chips[5].flag).toBeUndefined();
     expect(chips[0].tip).toBe("Porto, Lizbon · 2 şehir");
     expect(chips[2].tip).toBe("€1 = ₺40,00");
     expect(chips[3].tip).toBe("Adaptör gerekmez · Türkiye C/F kullanıyor");
@@ -137,7 +137,7 @@ describe("factChips", () => {
     expect(factChips({ facts: facts({ visa: voa }), countries: ["Endonezya"], cities: [], weather: null, home: "TR", visaDone: false }).at(-1)).toMatchObject({ text: "Varışta vize ya da e-VOA", tip: "30 güne kadar · ücretli", tone: "warn" });
     expect(factChips({ facts: facts({ visa: voa }), countries: ["Endonezya"], cities: [], weather: null, home: "TR", visaDone: true }).at(-1)).toMatchObject({ text: "Vize alındı", tone: "ok" });
     const two = factChips({ facts: facts({ local: null, visa: null }), countries: ["Portekiz", "İspanya"], cities: ["Porto", "Madrid"], weather: null, home: "TR", visaDone: false });
-    expect(two).toEqual([{ key: "country", text: "2 ülke", tip: "Portekiz, İspanya · Porto, Madrid · 2 şehir" }]);
+    expect(two).toEqual([{ key: "country", text: "Portekiz · İspanya", tip: "Portekiz, İspanya · Porto, Madrid · 2 şehir" }]);
     expect(factChips({ facts: facts({ local: null, visa: { kind: "unknown", label: "Resmi kaynağa bak", link: "x" } }), countries: [], cities: [], weather: null, home: "TR", visaDone: false })).toEqual([]);
   });
 });
@@ -216,11 +216,20 @@ describe("D9: each country of a trip of several", () => {
     ]);
     expect(countryRows([pt], ["Portekiz"], true)[0].parts.at(-1)).toBe("Schengen vizesi alındı");
   });
-  it("puts them under the \"n ülke\" chip", () => {
+  it("puts them under the countries' chip", () => {
     const facts = { origin: null, adults: 2, country: "PT", visa: pt.visa, local: pt.local };
     const chips = factChips({ facts, countries: ["Portekiz", "Fas"], cities: ["Lizbon", "Marakeş"], weather: null, home: "TR", visaDone: false, perCountry: [pt, ma] });
-    expect(chips[0]).toMatchObject({ key: "country", text: "2 ülke" });
+    expect(chips[0]).toMatchObject({ key: "country", text: "Portekiz · Fas" });
     expect(chips[0].rows?.map((r) => r.name)).toEqual(["Portekiz", "Fas"]);
+  });
+  it("0.46.0: each country by its flag and name, up to three; more as \"n ülke\"", () => {
+    const facts = { origin: null, adults: 2, country: "AR", visa: null, local: null };
+    const two = factChips({ facts, countries: ["Arjantin", "Şili"], cities: ["Buenos Aires", "Santiago"], weather: null, home: "TR", visaDone: false, codes: ["AR", "CL"] });
+    expect(two[0]).toMatchObject({ key: "country", text: "🇦🇷 Arjantin · 🇨🇱 Şili", flag: "AR" });
+    const one = factChips({ facts, countries: ["Arjantin"], cities: [], weather: null, home: "TR", visaDone: false, codes: ["AR"] });
+    expect(one[0].text).toBe("🇦🇷 Arjantin");
+    const four = factChips({ facts, countries: ["Arjantin", "Şili", "Peru", "Bolivya"], cities: [], weather: null, home: "TR", visaDone: false, codes: ["AR", "CL", "PE", "BO"] });
+    expect(four[0].text).toBe("4 ülke");
   });
 });
 

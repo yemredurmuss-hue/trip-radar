@@ -189,13 +189,12 @@ describe("find_offers for a stay: the three picks", () => {
     expect(found.asked).toHaveLength(1);
     expect(found.calls).toHaveLength(0);
     const reply = await lastReply();
-    expect(reply.offers!.offers.map((o) => [o.pick, o.id])).toEqual([["best", "Quinta Range"], ["cheaper", "Hotel do Carmo"], ["comfier", "Reid's"]]);
-    // The best one has no price for the dates: only its usual range, said as such (no total, no per night).
-    expect(priceOf(reply.offers!.offers[0])).toEqual({ price: null, meta: "tipik €60–90 / gece · tarihli fiyat yok" });
+    // (0.40.5: a hotel known by its usual range alone isn't known to have a room these nights: left out while others are priced)
+    expect(reply.offers!.offers.map((o) => [o.pick, o.id])).toEqual([["best", "Pestana"], ["cheaper", "Hotel do Carmo"], ["comfier", "Reid's"]]);
+    expect(priceOf(reply.offers!.offers[0]).price).toBe(480);
     const result = JSON.parse(String(resultOf(calls, 1).content));
     expect(result.offers.map((o: any) => o.pick)).toEqual(["Sana en uygun", "Daha ekonomik", "Daha konforlu"]);
-    expect(result.offers[0]).toMatchObject({ title: "Quinta Range", total: null, price_note: "tipik €60–90 / gece · tarihli fiyat yok", reviews: 1500 });
-    expect(result.offers[0].per_night).toBeUndefined();
+    expect(result.offers[0]).toMatchObject({ title: "Pestana", total: "€480", per_night: "€160", reviews: 2400 });
     expect(result.offers[1]).toMatchObject({ title: "Hotel do Carmo", total: "€330", per_night: "€110", why: "Bulduklarımın en ucuzu, ★4,2" });
     expect(result.shown).toContain("üç öneri");
     // Drawn with the same labels, the best one accented.
@@ -279,6 +278,9 @@ describe("find_offers for a stay: the three picks", () => {
       const reply = (await listMessages("lk")).filter((m) => m.role === "assistant" && m.text.trim()).at(-1)!;
       expect(reply.offers!.need).toMatchObject({ kind: "activity", city: "Ahangama" });
       expect(reply.offers!.offers.map((o) => o.id)).toEqual(["v1", "v2"]);
+      // 0.47.0 (Emre: "chat ve plan ayrı hareket etmesin"): the same tours wait on the trip for the plan's Etkinlik row.
+      const kept = (await (await db()).get("trips", "lk"))!.chatTours!;
+      expect(kept.map((t) => [t.city, t.offers.map((o) => o.id)])).toEqual([["Ahangama", ["v1", "v2"]]]);
       // Ekle saves the tour in the town, an option of Etkinlik.
       const item = await addChatOffer(reply.id, reply.offers!.offers[0], reply.offers!.need);
       expect(item).toMatchObject({ name: "Surf lesson in Ahangama", category: "activity", city: "Ahangama", status: "saved", provider: "Viator" });

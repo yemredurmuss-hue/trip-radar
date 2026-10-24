@@ -14,6 +14,8 @@ export interface RouteStop {
   nights: number | null;
   /** Every stay of it booked (green); else planned or still open (amber). */
   booked: boolean;
+  /** Its country's code on the first stop of each country (0.46.0: its flag before it), else absent. */
+  flag?: string;
 }
 
 export interface HeroRoute {
@@ -40,6 +42,8 @@ export function heroRoute(input: {
   legs: readonly { kind: string; from: { city: string | null }; to: { city: string | null }; mode: LegMode | null; travel?: { mode: LegMode | null } | null }[];
   /** The trip's flights in time order, each end as a city. */
   flights: readonly { from: string | null; to: string | null }[];
+  /** A place's country (its flag on the first stop of each country). */
+  countryOf?: (place: string) => string | null;
 }): HeroRoute | null {
   const keys = input.places.map((p) => new Set((typeof p === "string" ? [p] : [p.name, ...p.members]).map(cityKeyOf).filter((k): k is string => !!k)));
   const at = (city: string | null | undefined) => {
@@ -52,6 +56,14 @@ export function heroRoute(input: {
     return { name: typeof p === "string" ? p : p.name, nights: nights || null, booked: mine.length > 0 && mine.every((s) => s.kind === "booked") };
   });
   if (!stops.length) return null;
+  if (input.countryOf) {
+    let was: string | null = null;
+    for (const s of stops) {
+      const c = input.countryOf(s.name);
+      if (c && c !== was) s.flag = c;
+      if (c) was = c;
+    }
+  }
   const first = input.flights[0]?.from?.trim() || null;
   const last = input.flights.at(-1)?.to?.trim() || null;
   const from = first && at(first) < 0 ? first : null;

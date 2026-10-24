@@ -14,6 +14,8 @@ export interface Pop {
   /** Fading out (the `x-out` class). */
   leaving: boolean;
   toggle: () => void;
+  /** Opened (the mouse over it): never closes it. */
+  show: () => void;
   close: (focusBack?: boolean) => void;
   /** Holds the trigger and the window: a click inside doesn't close it. */
   box: React.RefObject<HTMLDivElement | null>;
@@ -64,6 +66,12 @@ export function usePop(): Pop {
         setLeaving(false);
         setOpen(true);
       }
+    },
+    show: () => {
+      if (open) return;
+      clearTimeout(timer.current);
+      setLeaving(false);
+      setOpen(true);
     },
     close,
     box,

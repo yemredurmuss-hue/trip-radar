@@ -65,6 +65,10 @@ a { color: var(--accent); text-decoration: none; }
   font-size: 15.5px; white-space: pre-wrap;
 }
 .msg-assistant { font-size: 16.5px; line-height: 1.55; white-space: pre-wrap; }
+/* Art arda yazmak (0.44.2): written while the answer comes, waiting its turn */
+.msg-user.msg-queued { opacity: .72; display: grid; gap: 4px; }
+.msg-q { display: flex; align-items: center; justify-content: flex-end; gap: 6px; font-size: 11.5px; font-weight: 700; color: #6e6e73; white-space: normal; }
+.msg-q .btn-link { padding: 0 2px; font-size: 15px; line-height: 1; color: #6e6e73; }
 .msg-assistant .msg-note { margin: 8px 0 0; padding: 6px 10px; border-radius: 8px; background: #fff6e5; color: #7a4b00; font-size: 13.5px; line-height: 1.4; white-space: normal; }
 /* find_offers: the real offers under a reply, compact (title · rating · source · why | price · Ekle). */
 .chat-offers { display: grid; gap: 8px; margin-top: 10px; white-space: normal; }
@@ -2878,6 +2882,135 @@ body.still .hm-plane { display: none; }
 .dc-who { display: inline-flex; flex: none; margin-left: auto; padding-left: 8px; }
 .dc-who .wh-av + .wh-av { margin-left: -7px; box-shadow: 0 0 0 2px #fffdfa; }
 .popup-held-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+/* Hangi gezi (0.41.0): the country's trips, then the others; the answer remembered unless turned off */
+.popup-held > small.muted { display: block; margin-top: 8px; font-size: 11.5px; font-weight: 750; }
+/* Simgeye basınca (0.43.0): opens at once, saves only on "Desteye ekle" (or Enter) */
+.pk2 { display: grid; gap: 10px; }
+.pk2 > .popup-title { margin-bottom: 0; }
+.pk-skel { display: grid; gap: 8px; }
+.pk-skel span { height: 38px; border-radius: 10px; background: linear-gradient(90deg, #f1eff7, #e7e4f0, #f1eff7); background-size: 200% 100%; animation: pk-sh 1.1s linear infinite; }
+.pk-skel span + span { height: 44px; }
+@keyframes pk-sh { to { background-position: -200% 0; } }
+.pk-switch { display: grid; gap: 6px; padding: 12px; border-radius: 12px; background: #fff7e8; box-shadow: inset 0 0 0 1.5px #f0d39a; }
+.pk-switch > b { font-size: 13px; font-weight: 800; color: #8a5a00; }
+.pk-switch .popup-along { margin: 0; }
+.pk-hd { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.pk-hd > span:last-child { min-width: 0; display: grid; gap: 1px; }
+.pk-hd b { font-size: 13.5px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pk-hd small { font-size: 11.5px; color: #5d5a78; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pk-fav { width: 34px; height: 34px; border-radius: 9px; flex: none; display: grid; place-items: center; background: #1c1a33; color: #fff; font-weight: 800; font-size: 13px; }
+.pk-line { font-size: 12px; font-weight: 750; color: #4a36c9; }
+.cep-trip:focus-visible, .pk-go:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 2px; }
+.pk-go { all: unset; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px; border-radius: 12px; background: #5b45e0; color: #fff; font-weight: 800; font-size: 14px; text-align: center; }
+.pk-go:disabled { opacity: .7; cursor: default; }
+.pk-go kbd { font: 700 11px/1 inherit; padding: 3px 6px; border-radius: 5px; background: rgba(255, 255, 255, .2); }
+.pk-go.ghost { background: #fff; color: #4a36c9; box-shadow: inset 0 0 0 1.5px #c9bffa; }
+.pk-in { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 12px; background: #eef8f2; color: #1f7a45; font-weight: 800; font-size: 13px; }
+.pk-sel { justify-self: start; font-size: 12.5px; }
+.pk-open { justify-self: start; font-size: 12.5px; }
+/* Tek bakış (0.45.0): one card at a time; a picture or a sign, one sentence, one big button, one quiet line */
+body.popup:has(.tb) { width: 380px; }
+.popup-card.tb { display: grid; gap: 0; padding: 0; overflow: hidden; }
+.tb > .popup-price { margin: 12px 14px 0; }
+.tb-top { display: flex; align-items: center; gap: 8px; padding: 12px 12px 0 14px; }
+.tb-app { display: flex; align-items: center; gap: 8px; padding: 8px 10px 8px 12px; border-bottom: 1px solid #efedf5; background: #faf9fc; }
+.tb-brand { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 800; color: #1c1a33; margin-right: auto; }
+.tb-open { all: unset; cursor: pointer; height: 30px; padding: 0 12px; border-radius: 9px; display: inline-flex; align-items: center; background: #efecff; color: #4a36c9; font-size: 13px; font-weight: 800; }
+.tb-open:hover { background: #e4dfff; }
+.tb-brand:focus-visible, .tb-open:focus-visible, .tb-x:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 2px; }
+.tb-app .tb-x { width: 28px; height: 28px; background: none; }
+.tb-chip { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; max-width: 280px; padding: 4px 12px 4px 4px; border-radius: 999px; background: #f7f6fb; box-shadow: inset 0 0 0 1px #e7e4ef; font-size: 14px; font-weight: 800; color: #1c1a33; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tb-chip:disabled { cursor: default; }
+.tb-chip .pk-th { width: 26px; height: 26px; border-radius: 50%; font-size: 11px; }
+.tb-chip em { font-style: normal; color: #8e8aa6; }
+.tb-chip:focus-visible, .tb-go:focus-visible, .tb-opt:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 2px; }
+.tb-x { all: unset; cursor: pointer; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: #f7f6fb; color: #5d5a78; font-weight: 700; font-size: 16px; }
+.tb-main { display: grid; gap: 12px; padding: 14px 16px 16px; }
+.tb-say { display: grid; gap: 3px; }
+.tb-say b { font-size: 18px; font-weight: 800; letter-spacing: -.01em; line-height: 1.25; }
+.tb-say span { font-size: 14px; line-height: 1.45; color: #5d5a78; font-weight: 600; }
+.tb-eye { font-size: 12.5px; font-weight: 800; color: #8e8aa6; }
+.tb-sign { width: 56px; height: 56px; border-radius: 16px; display: grid; place-items: center; font-size: 26px; font-weight: 800; }
+.tb-sign.ok { background: #e8f6ee; color: #1f7a45; }
+.tb-sign.bad { background: #fde8e4; color: #c0392b; }
+.tb-sign.warn { background: #fff3df; color: #8a5a00; }
+.tb-sign.acc { background: #efecff; color: #4a36c9; }
+.tb-sign.mute { background: #f7f6fb; color: #5d5a78; }
+.tb-hero { position: relative; display: block; height: 150px; border-radius: 16px; overflow: hidden; background: #f1eff7; }
+.tb-hero.small { height: 104px; }
+.tb-hero img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.tb-hero.video::after { content: ""; position: absolute; left: 50%; top: 50%; width: 0; height: 0; margin: -14px 0 0 -9px; border-left: 24px solid #fff; border-top: 14px solid transparent; border-bottom: 14px solid transparent; filter: drop-shadow(0 2px 6px rgba(0,0,0,.4)); }
+.tb-go { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px; padding: 0 14px; border-radius: 16px; background: #5b45e0; color: #fff; font-weight: 800; font-size: 16px; text-align: center; }
+.tb-go:disabled { opacity: .7; cursor: default; }
+.tb-go.ok { background: #1f7a45; }
+.tb-go.ghost { background: #fff; color: #4a36c9; box-shadow: inset 0 0 0 1.5px #c9bffa; }
+.tb-go kbd { font: 700 11px/1 inherit; padding: 3px 6px; border-radius: 5px; background: rgba(255, 255, 255, .2); }
+.tb-quiet { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 16px; border-top: 1px solid #efedf5; font-size: 13.5px; font-weight: 700; color: #5d5a78; }
+.tb-quiet b { color: #1c1a33; }
+.tb-quiet .btn-link { padding: 0; font-size: 13.5px; font-weight: 800; }
+.tb-quiet.warn { background: #fff7e8; color: #8a5a00; }
+.tb-conf { display: grid; gap: 4px; padding: 12px 14px; border-radius: 14px; background: #e8f6ee; box-shadow: inset 0 0 0 1px #bfe3c9; }
+.tb-conf b { font-size: 15px; color: #1f7a45; }
+.tb-conf span { font-size: 13.5px; font-weight: 650; }
+.tb-conf code { font: 800 13.5px/1 ui-monospace, monospace; letter-spacing: .04em; }
+.tb-opts { display: grid; gap: 8px; }
+.tb-opt { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 14px; box-shadow: inset 0 0 0 1.5px #e7e4ef; }
+.tb-opt.best { box-shadow: inset 0 0 0 2px #5b45e0; background: #f7f5ff; }
+.tb-opt .pk-th { width: 42px; height: 42px; border-radius: 12px; }
+.tb-opt > span { min-width: 0; display: grid; }
+.tb-opt b { font-size: 15px; font-weight: 800; }
+.tb-opt small { font-size: 12.5px; color: #5d5a78; font-weight: 600; }
+.tb-opt em { margin-left: auto; font-style: normal; font-size: 11.5px; font-weight: 800; color: #4a36c9; background: #efecff; padding: 3px 8px; border-radius: 999px; }
+.tb-new { justify-self: center; font-size: 14px; font-weight: 800; }
+.tb .pk-qp { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.tb .pk-pick { padding: 14px 16px 16px; }
+.tb .popup-desk { margin: 0; }
+.tb .pk-done { background: none; padding: 14px 16px 16px; }
+.tb .pk-done .pk-fly { top: 20px; }
+.pk-done { position: relative; display: grid; gap: 4px; padding: 14px 12px; border-radius: 12px; background: #eef8f2; overflow: hidden; }
+.pk-done b { color: #1f7a45; font-size: 14px; }
+/* "hop": a small card rises from where the page was and lands in the trip */
+.pk-fly { position: absolute; right: 14px; top: 10px; width: 26px; height: 20px; border-radius: 5px; background: #5b45e0; box-shadow: 0 4px 12px rgba(91, 69, 224, .4); animation: pk-hop 420ms cubic-bezier(.3, .7, .2, 1) both; }
+@keyframes pk-hop { 0% { transform: translate(-150px, 60px) scale(1.6); opacity: .9; } 70% { opacity: 1; } 100% { transform: translate(0, 0) scale(.4); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .pk-fly { display: none; } .pk-skel span { animation: none; } }
+body.still .pk-fly { display: none; }
+/* Hangi geziye (0.42.0, Pinterest's picker): the three most likely with their covers, then every trip, then a new one */
+.pk-pick { display: grid; gap: 6px; }
+.pk-pick > p { margin: 0 0 2px; font-weight: 800; }
+.pk-pick > small.muted { font-size: 11.5px; font-weight: 750; margin-top: 4px; }
+.pk-qp { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.pk-qp button { all: unset; cursor: pointer; display: grid; gap: 4px; min-width: 0; }
+.pk-qp button b { font-size: 12.5px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pk-qp button > span:last-child { font-size: 11px; color: #5d5a78; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pk-qp button.best .pk-cv { box-shadow: 0 0 0 3px #5b45e0; }
+.pk-qp button:focus-visible .pk-cv { box-shadow: 0 0 0 3px #cfc7ff; }
+.pk-cv { height: 70px; border-radius: 12px; overflow: hidden; display: grid; grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr; gap: 2px; background: #efecff; }
+.pk-cv img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pk-cv img:first-child { grid-row: 1 / 3; }
+.pk-cv img:only-child { grid-column: 1 / 3; }
+.pk-cv i { grid-row: 1 / 3; grid-column: 1 / 3; display: grid; place-items: center; font-style: normal; font-weight: 800; font-size: 20px; color: #4a36c9; }
+.pk-ln { all: unset; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 5px 6px; border-radius: 10px; }
+.pk-ln:hover, .pk-ln:focus-visible { background: #f4f2ff; }
+.pk-ln.new { box-shadow: inset 0 0 0 1.5px #d6d2e4; }
+.pk-ln b { display: block; font-size: 13px; font-weight: 750; }
+.pk-ln span span { display: block; font-size: 11px; color: #5d5a78; font-weight: 600; }
+.pk-th { width: 34px; height: 34px; border-radius: 9px; flex: none; overflow: hidden; background: #efecff; display: grid; place-items: center; color: #4a36c9; font-weight: 800; font-size: 13px; }
+.pk-th img { width: 100%; height: 100%; object-fit: cover; }
+.pk-th i { font-style: normal; }
+.popup-remember { display: flex; align-items: flex-start; gap: 8px; margin-top: 10px; padding: 8px 10px; border-radius: 10px; background: #f6f4ff; font-size: 12.5px; line-height: 1.4; cursor: pointer; }
+.popup-remember input { margin: 2px 0 0; accent-color: #5b45e0; }
+.popup-price { display: grid; gap: 4px; margin: 0 0 10px; padding: 10px 12px; border-radius: 12px; background: #eef8f2; box-shadow: inset 0 0 0 1px #bfe3c9; }
+.popup-price small { font-size: 11.5px; font-weight: 800; color: #1f7a45; }
+.popup-price b { font-size: 13.5px; font-weight: 750; line-height: 1.35; }
+/* Benle gezen eklenti (seviye 1): which candidate this tab is, or which planned flight this search is for */
+.popup-desk { display: grid; gap: 3px; margin: 0 0 10px; padding: 10px 12px; border-radius: 12px; background: #f6f4ff; box-shadow: inset 0 0 0 1px #e4defc; }
+.popup-desk small { font-size: 11.5px; font-weight: 800; color: #4a36c9; }
+.popup-desk b { font-size: 14px; font-weight: 800; }
+.popup-desk .muted { font-size: 12.5px; }
+.popup-desk-said { font-size: 12.5px; color: #1f7a45; font-weight: 650; }
+.popup-along { display: grid; gap: 4px; margin: 0 0 10px; }
+.popup-along .muted { font-size: 12px; }
+.pk2 .popup-along .btn-link { font-size: 12.5px; justify-self: start; padding: 0; }
 .popup-card .popup-move { font-size: inherit; }
 .home-waiting { display: flex; flex-direction: column; gap: 8px; margin: 0 0 14px; }
 .home-waiting-h { font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: #8e8e93; }
@@ -3295,6 +3428,22 @@ a.ch-why { text-decoration: none; }
 .st-draft { position: relative; width: 100%; max-width: 352px; }
 .st-draft-x { position: absolute; left: 14px; top: 14px; z-index: 3; width: 30px; height: 30px; display: grid; place-items: center; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .92); color: #6b6790; font-size: 18px; line-height: 1; opacity: .75; transition: opacity .2s, color .2s; }
 .st-draft:hover .st-draft-x, .st-draft-x:focus-visible { opacity: 1; } .st-draft-x:hover { color: #c62828; }
+/* 0.47.0: a trip card's × on hover (top right, the days left step aside), asked once on the card */
+.st-trip { position: relative; width: 100%; max-width: 352px; }
+.st-trip > .trip-card { width: 100%; }
+.st-trip-x { position: absolute; right: 12px; top: 12px; z-index: 3; width: 28px; height: 28px; display: grid; place-items: center; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .92); color: #6b6790; font-size: 17px; line-height: 1; cursor: pointer; opacity: 0; transition: opacity .15s, color .15s; }
+.st-trip:hover .st-trip-x, .st-trip-x:focus-visible { opacity: 1; }
+.st-trip-x:hover { color: #c62828; }
+.st-trip .vp { transition: right .15s; }
+.st-trip:hover .vp, .st-trip:focus-within .vp { right: 48px; }
+.st-ask { position: absolute; left: 10px; right: 10px; bottom: 10px; z-index: 4; display: grid; gap: 4px; padding: 12px 14px; border-radius: 14px; background: #fff; box-shadow: 0 10px 28px rgba(28, 26, 51, .22); color: #1c1a33; }
+.st-ask b { font-size: 15px; font-weight: 800; }
+.st-ask > span { font-size: 13px; color: #5d5a78; line-height: 1.4; }
+.st-ask-b { display: flex; gap: 8px; margin-top: 6px; }
+.st-ask-b button { all: unset; cursor: pointer; height: 32px; padding: 0 14px; border-radius: 10px; font-size: 13.5px; font-weight: 700; background: #f7f6fb; color: #1c1a33; }
+.st-ask-b .st-ask-del { background: #c62828; color: #fff; }
+.st-ask-b button:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 2px; }
+@media (hover: none) { .st-trip-x { opacity: .85; } }
 
 /* ============================================================================================================   v11 as drawn (docs/superpowers/specs/2026-10-09-v11-canli-fark-listesi.md; values from the drawing's own tokens):
    the plan bar on one line, each section its own card, the cards in a grid, the three stages' grounds (Arıyoruz white

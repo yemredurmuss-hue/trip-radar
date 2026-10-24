@@ -1,5 +1,6 @@
 // The facts column beside the hero: where from, how many, entry rules, local money and time.
 // Only what the saved pages or fixed tables say; anything unknown is null and its row is hidden.
+import { placeCountryOf } from "./heroInfo";
 import { countryInfo, type CountryInfo } from "./countries";
 import { cityOfAirport } from "./airports";
 import { convert, type Rates } from "./currency";
@@ -82,7 +83,7 @@ export function tripFacts(items: Item[], opts: FactsOpts): TripFacts {
   const from = flights[0]?.flight?.from;
   const origin = from ? cityOfAirport(from) : null;
   const adults = adultsOf(live);
-  const country = mostCommon(live.filter((i) => i.category !== "flight").map((i) => i.countryCode?.toUpperCase() ?? null).filter((c): c is string => !!c));
+  const country = mostCommon(live.filter((i) => i.category !== "flight").map(placeCountryOf).filter((c): c is string => !!c));
   if (!country) return { origin, adults, country, visa: null, local: null };
   const { visa, local } = countryFacts(country, opts);
   return { origin, adults, country, visa, local };

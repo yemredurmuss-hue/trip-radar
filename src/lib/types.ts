@@ -291,6 +291,11 @@ export interface Trip {
    * suggestion ("Plana ekle", "Gerek yok"). A rule's open suggestion isn't stored: it's worked out from the trip.
    */
   suggestions?: Suggestion[];
+  /**
+   * Tours and activities the chat found (find_offers, 0.47.0, Emre: "chat ve plan ayrı hareket etmesin"), by city, the
+   * newest first: the plan's Etkinlik row shows them with its own.
+   */
+  chatTours?: { city: string; offers: Offer[]; at: number }[];
   /** The last AI review of the trip for suggestions (suggestReview.ts): for which state, when, and whether it failed. */
   suggestReview?: { key: string; at: number; failed?: boolean; state?: "running" | "done" | "failed" } | null;
   /** Made by the start chat (spec 2026-10-06 §2): its one-time start card above the plan (startTrip.ts guideSteps). */
@@ -614,6 +619,13 @@ export interface Capture {
   fromTripId?: string;
   /** Read, but not added: a trip's chat (or the popup) asks where it goes, or whether at all (placeCheck.ts). */
   held?: HeldCapture;
+  /**
+   * Karar Masası (getirme anları): brought to one row of the plan (dropped on it, or on its drawer): the record it makes is
+   * that need's option (Item.forNeed), whatever its own codes say.
+   */
+  forNeed?: string;
+  /** "Fikir olarak ekle" (0.43.0): a page that isn't a booking (a blog post, a map), kept as an idea, never asked about. */
+  idea?: boolean;
   /** Who saved it, when someone else did (a shared trip's other traveller). */
   sharedBy?: string;
   /** When it reached the sharing server (or arrived from it): never uploaded again. */
@@ -697,6 +709,11 @@ export interface Item {
   optionDetail: string | null;
   url: string | null;
   imageUrl: string | null;
+  /**
+   * A stay's other photos as its page showed them (onay paketi 2026-10-22, galeri): their addresses only, never the files,
+   * read where they are; the first is never the card's own photo.
+   */
+  gallery?: string[];
   city: string | null;
   country: string | null;
   /** ISO 3166-1 alpha-2; used to keep trips apart. */
@@ -810,6 +827,8 @@ export interface Item {
   doneAt?: number;
   /** Moved by the traveller between Hazırlık (true) and Yapılacak şeyler (false); wins over its words. */
   prep?: boolean;
+  /** Saved with "İlham'a ekle" (0.45.0, Capture.idea): Pano's İlham, whatever the page is about, until chosen or given a day. */
+  inspo?: boolean;
   /** The idea's kind the traveller picked (fikir havuzu, ideaKinds.ts); wins over its words. */
   ideaKind?: string | null;
   /** A restaurant idea put on a day: which meal ("8 Eki akşam"). */

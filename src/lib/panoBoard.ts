@@ -101,6 +101,8 @@ export interface PanoNeed {
   options: PanoOption[];
   /** The groups its records are decided in: an old card's "Pano'da aç" opens the Pano by one of these. */
   groups: string[];
+  /** The intent itself (its head, its wants, its options as the drawer draws them): the card is the drawer's (onay paketi). */
+  vm?: IntentVM;
 }
 
 export interface PanoCategory {
@@ -445,6 +447,7 @@ export function panoBoardOf(input: PanoInput): PanoBoard {
           compare: !multi && COMPARED.includes(kind) && options.length > 1,
           options,
           groups: [...new Set(records.map(groupKeyOf))],
+          vm: need,
         },
       ];
     });

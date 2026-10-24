@@ -27,6 +27,7 @@ import type { Decisions } from "../../useDecisions";
 import { CompareColumns } from "./CompareColumns";
 import { IlhamGrid } from "./IlhamGrid";
 import { PanoDocs, useDocRows } from "./PanoDocs";
+import { isDeck, PanoDeck } from "./PanoDeck";
 import { PanoGroup } from "./PanoGrid";
 import { PanoSidebar, type PanoPlace } from "./PanoSidebar";
 
@@ -196,9 +197,9 @@ export function PanoDialog({ at, trip, plan, sections, items, today, decisions, 
   const removeIdea = (idea: PanoIdea) => onRemove(idea.item);
 
   const content = need ? (
-    <NeedPage need={need} fresh={fresh} onAsk={askFor} />
+    <NeedPage need={need} fresh={fresh} onAsk={askFor} onReveal={reveal} />
   ) : shown.section ? (
-    <SectionPage board={board} section={shown.section} fresh={fresh} onCompare={compare} />
+    <SectionPage board={board} section={shown.section} fresh={fresh} onCompare={compare} onReveal={reveal} onAsk={askFor} />
   ) : shown.view === "docs" ? (
     <>
       <Head title={L("Belgeler", "Documents")} line={L("Biletler, onaylar ve gezi belgeleri · her biri kendi kartına bağlı · yalnız bu bilgisayarda", "Tickets, confirmations and travel papers · each on its own card · on this computer only")} />
@@ -214,7 +215,7 @@ export function PanoDialog({ at, trip, plan, sections, items, today, decisions, 
       )}
     </>
   ) : (
-    <ListPage board={board} view={shown.view === "mine" || shown.view === "ai" ? shown.view : "all"} plan={plan} fresh={fresh} onCompare={compare} onIlham={() => go({ view: "ilham", section: null, need: null })} onExtract={extract} onRemove={removeIdea} />
+    <ListPage board={board} view={shown.view === "mine" || shown.view === "ai" ? shown.view : "all"} plan={plan} fresh={fresh} onCompare={compare} onReveal={reveal} onAsk={askFor} onIlham={() => go({ view: "ilham", section: null, need: null })} onExtract={extract} onRemove={removeIdea} />
   );
 
   return createPortal(
@@ -274,7 +275,9 @@ function Empty({ text, sleepy = false }: { text: string; sleepy?: boolean }) {
 }
 
 /** One intent: its options side by side (best fit first), or its cards where options don't compare (a row of things to do). */
-function NeedPage({ need, fresh, onAsk }: { need: PanoNeed; fresh: ReadonlySet<string>; onAsk?: (need: PanoNeed) => void }) {
+function NeedPage({ need, fresh, onAsk, onReveal }: { need: PanoNeed; fresh: ReadonlySet<string>; onAsk?: (need: PanoNeed) => void; onReveal?: (itemId: string) => void }) {
+  // The drawer's "Büyük Pano": its own deck, the options side by side first.
+  if (isDeck(need)) return <PanoDeck need={need} initial={need.options.length > 1 ? "cmp" : "cards"} fresh={fresh} onReveal={onReveal} onAsk={onAsk} />;
   const line = [need.word, need.info || null, need.compare ? null : L("biriktirdiklerin", "what you saved")].filter(Boolean).join(" · ");
   const n = need.options.length;
   // B3: the score is "Uyum puanı"; that the AI's reading is in it is said in its ⓘ.
@@ -295,23 +298,25 @@ function NeedPage({ need, fresh, onAsk }: { need: PanoNeed; fresh: ReadonlySet<s
   );
 }
 
-function SectionPage({ board, section, fresh, onCompare }: { board: PanoBoard; section: SectionId; fresh: ReadonlySet<string>; onCompare: (n: PanoNeed) => void }) {
+function SectionPage({ board, section, fresh, onCompare, onReveal, onAsk }: { board: PanoBoard; section: SectionId; fresh: ReadonlySet<string>; onCompare: (n: PanoNeed) => void; onReveal?: (itemId: string) => void; onAsk?: (n: PanoNeed) => void }) {
   const cat = board.cats.find((c) => c.section === section);
   return (
     <>
       <Head title={sectionName(section)} line={recordsText(cat?.count ?? 0)} />
-      {cat ? cat.needs.map((n) => <PanoGroup key={n.key} need={n} fresh={fresh} onCompare={onCompare} />) : <Empty text={L("Burada kayıt yok.", "Nothing saved here.")} />}
+      {cat ? cat.needs.map((n) => <PanoGroup key={n.key} need={n} fresh={fresh} onCompare={onCompare} onReveal={onReveal} onAsk={onAsk} />) : <Empty text={L("Burada kayıt yok.", "Nothing saved here.")} />}
     </>
   );
 }
 
 /** Tümü, Biriktirdiklerim, AI önerileri: every intent's cards that belong (Tümü ends with three of the inspiration and "Hepsi ›"). */
-function ListPage({ board, view, plan, fresh, onCompare, onIlham, onExtract, onRemove }: {
+function ListPage({ board, view, plan, fresh, onCompare, onReveal, onAsk, onIlham, onExtract, onRemove }: {
   board: PanoBoard;
   view: "all" | "mine" | "ai";
   plan: Plan;
   fresh: ReadonlySet<string>;
   onCompare: (n: PanoNeed) => void;
+  onReveal?: (itemId: string) => void;
+  onAsk?: (n: PanoNeed) => void;
   onIlham: () => void;
   onExtract?: (idea: PanoIdea) => void;
   onRemove: (idea: PanoIdea) => void;
@@ -327,7 +332,7 @@ function ListPage({ board, view, plan, fresh, onCompare, onIlham, onExtract, onR
     <>
       <Head title={titles[0]} line={titles[1]} />
       {needs.map((n) => (
-        <PanoGroup key={n.key} need={n} filter={view} showWord fresh={fresh} onCompare={onCompare} />
+        <PanoGroup key={n.key} need={n} filter={view} showWord fresh={fresh} onCompare={onCompare} onReveal={onReveal} onAsk={onAsk} />
       ))}
       {ideas.length > 0 && (
         <section className="q-grp" aria-label={L("İlham", "Inspiration")}>

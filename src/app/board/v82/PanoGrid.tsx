@@ -4,6 +4,7 @@
 // line and how many, "Yan yana karşılaştır ›" where options compare.
 import { L } from "../../../lib/i18n";
 import { inView, recordsText, type PanoNeed, type PanoOption } from "../../../lib/panoBoard";
+import { isDeck, PanoDeck } from "./PanoDeck";
 import { Likes, PickButton, Score, SourceBadge, StateChip, tintOf, Visual } from "./parts";
 
 export function PanoCard({ option, need, fresh }: { option: PanoOption; need: PanoNeed; fresh: boolean }) {
@@ -59,14 +60,18 @@ export function PanoCard({ option, need, fresh }: { option: PanoOption; need: Pa
  * category or kind ("Konaklama · 3 gece · 2–5 Nis · 4 kayıt"). `filter`: only what this list shows. `bare`: the intent's own page
  * (its head is the page's).
  */
-export function PanoGroup({ need, filter = "all", showWord = false, bare = false, fresh, onCompare }: {
+export function PanoGroup({ need, filter = "all", showWord = false, bare = false, fresh, onCompare, onReveal, onAsk }: {
   need: PanoNeed;
   filter?: "all" | "mine" | "ai";
   showWord?: boolean;
   bare?: boolean;
   fresh: ReadonlySet<string>;
   onCompare: (need: PanoNeed) => void;
+  /** "Plan'da gör" on a deck's head, "Yeni bul" (the drawer's card on the Pano, PanoDeck). */
+  onReveal?: (itemId: string) => void;
+  onAsk?: (need: PanoNeed) => void;
 }) {
+  if (!bare && isDeck(need)) return <PanoDeck need={need} filter={filter} fresh={fresh} onReveal={onReveal} onAsk={onAsk} />;
   const options = need.options.filter((o) => inView(filter, o));
   if (!options.length) return null;
   const line = [showWord ? need.word : null, need.info || null, recordsText(options.length)].filter(Boolean).join(" · ");

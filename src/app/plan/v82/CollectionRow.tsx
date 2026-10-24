@@ -13,20 +13,21 @@
 import { shapeOf } from "../../../lib/playbooks/shape";
 import { useEffect, useState, type ReactNode } from "react";
 import { citiesOfPlan, type SectionId } from "../../../lib/categories";
-import { askMore, collectionRow, filterWord, ideasCaption, inFilter, K_FILTERS, mapsSearch, moreLabel, nearPlaces, offerCard, ROW_CELLS, rowCells, stopCountry, type KCardVM, type KFilter } from "../../../lib/collectionCards";
+import { askMore, collectionRow, filterWord, ideasCaption, inFilter, K_FILTERS, mapsSearch, moreLabel, nearPlaces, offerCard, offerHidden, offerKey, ROW_CELLS, rowCells, stopCountry, type KCardVM, type KFilter } from "../../../lib/collectionCards";
 import { needKey, type ActivityGap } from "../../../lib/emptyCards";
 import { L } from "../../../lib/i18n";
 import { selfSearches, type SelfSearch } from "../../../lib/intentFrame";
 import type { IntentVM, OptionVM } from "../../../lib/intents";
 import { formatDateRange } from "../../../lib/items";
 import { withPlacePhoto } from "../../../lib/placeSuggest";
-import { photoFromOffers, sameTour, type Need, type Offer } from "../../../lib/offerSource";
+import { photoFromOffers, sameTour, validOffers, type Need, type Offer } from "../../../lib/offerSource";
 import { cityEvents, cityTours, citySights, tourWords } from "../../../lib/offerSources";
 import { locative } from "../../../lib/i18nText";
 import { sightSuggestion, type Sight } from "../../../lib/citySights";
 import { sameCity, type Plan } from "../../../lib/plan";
 import type { Item } from "../../../lib/types";
-import { addOffer, chooseItem, setItemPhoto } from "../../actions";
+import { addOffer, chooseItem, fillIdea, setItemPhoto } from "../../actions";
+import { wordIdea } from "../../../lib/ideas";
 import { useEmptyEnv } from "../../cards/emptyEnv";
 import { useCardEnv } from "../../cards/PlanCard";
 import { useCollectEnv } from "./collectEnv";
@@ -121,9 +122,39 @@ function useCityOffers(city: string | null, plan: Pick<Plan, "stayBlocks"> | nul
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- when the offers or the records without a photo change
   }, [all.length, missing.map((i) => i.id).join(" ")]);
+  // An idea said in words ("Couple spa"): the source asked by its words once; the first tour found takes its place (0.40.5).
+  const words0 = saved.filter(wordIdea);
+  useEffect(() => {
+    if (!need || !available) return;
+    for (const item of words0) {
+      const mark = `trip-radar:idea-tour:${item.id}`;
+      if (ideaGoing.has(mark) || ideaDone(mark)) continue;
+      ideaGoing.add(mark);
+      const ask: Need = { ...need, key: `${need.key}:idea:${item.name.toLocaleLowerCase("tr")}`, query: item.name };
+      void source
+        .offers(ask)
+        .then(async (list) => {
+          const found = validOffers(list, ask)[0];
+          if (!found) return;
+          try {
+            localStorage.setItem(mark, found.id);
+          } catch {
+            // (asked again next time)
+          }
+          await fillIdea(item, found, ask);
+        }, () => undefined)
+        .finally(() => ideaGoing.delete(mark));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- per idea
+  }, [need?.key, available, words0.map((i) => i.id).join(" ")]);
   // A tour saved in another city of the trip (a nearby city's, put on the plan there) isn't offered here again.
   const elsewhere = new Set([...byId.values()].filter((i) => i.status !== "dismissed" && i.url).map((i) => i.url));
-  const offers = all.filter((o) => !taken.includes(o.id) && !elsewhere.has(o.url) && !saved.some((i) => sameTour(i, o))).slice(0, PER_CITY);
+  const fresh = (o: Offer) => !taken.includes(o.id) && !elsewhere.has(o.url) && !saved.some((i) => sameTour(i, o));
+  // 0.47.0 (Emre: "chat ve plan ayrı hareket etmesin"): the tours the chat found for this city come first, then the source's own.
+  const chat = (city ? (trip.chatTours?.find((t) => sameCity(t.city, city))?.offers ?? []) : []).filter(fresh);
+  const fromChat = new Set(chat.map((o) => o.url));
+  // (all of the source's, not cut to three here: a card said "Gerek yok" to gives its place to the next, CollectionRow)
+  const offers = all.filter((o) => fresh(o) && !fromChat.has(o.url));
   // What's on in the city on the stay's days (spec 2026-10-19 SerpApi, item 8): Google's events, their own row.
   const [evGot, setEvGot] = useState<{ key: string; list: Offer[] } | null>(null);
   const evKey = stop ? `${stop.city}|${stop.start}|${stop.end}` : "";
@@ -143,8 +174,18 @@ function useCityOffers(city: string | null, plan: Pick<Plan, "stayBlocks"> | nul
     const item = await addOffer(tripId, o, need);
     await chooseItem(item, []);
   };
-  return { offers, events, put, looking };
+  return { offers, chat, events, put, looking };
 }
+
+/** The ideas being looked for by their words now, and those already filled (once each). */
+const ideaGoing = new Set<string>();
+const ideaDone = (mark: string): boolean => {
+  try {
+    return localStorage.getItem(mark) != null;
+  } catch {
+    return false;
+  }
+};
 
 /** A city's sights from Google (spec 2026-10-19 SerpApi, item 3), asked once per city while its "Yapılacaklar" shows. */
 function useCitySights(city: string | null): Sight[] {
@@ -180,12 +221,18 @@ export function CollectionRow({ vm, onPut, onTakeOff }: CollectionRowProps) {
   const cx = useCollectEnv();
   const plan = cx?.plan ?? null;
   const records = vm.itemIds.map((id) => v82.byId.get(id)).filter((i): i is Item => i != null && i.status !== "dismissed");
-  const { offers, events, put, looking } = useCityOffers(vm.section === "activity" ? vm.head.city : null, plan, records, env.tripId);
+  const { offers: found, chat: foundChat, events: foundEvents, put, looking } = useCityOffers(vm.section === "activity" ? vm.head.city : null, plan, records, env.tripId);
   const sightCity = vm.section === "todo" ? vm.head.city : null;
   const sightList = useCitySights(sightCity);
   // A sight put on the plan or said "Gerek yok" to stays away (its key in the trip's suggestions, not open).
   const gone = new Set((env.trip.suggestions ?? []).filter((s) => s.state !== "open").map((s) => s.key));
   const sights = sightCity ? sightList.map((s) => sightSuggestion(sightCity, s, 0)).filter((s) => !gone.has(s.key)) : [];
+  // A tour or an event said "Gerek yok" to (its ×) stays away the same way, under its own key.
+  // (the chat's all, then the source's three: × on one brings the next in its place, 0.47.0)
+  const chatOffers = foundChat.filter((o) => !gone.has(offerKey(o)));
+  const offers = [...chatOffers, ...found.filter((o) => !gone.has(offerKey(o))).slice(0, PER_CITY)];
+  const events = foundEvents.filter((o) => !gone.has(offerKey(o)));
+  const hideOffer = (o: Offer) => v82.dismissSuggestion?.(offerHidden(o));
   const said = (env.trip.suggestions ?? []).filter((s) => s.state === "added");
   const row = collectionRow(vm, v82.byId, { trip: env.trip, people: v82.selfAt.adults, ctx: env.decisions?.ctx, offers, sights, said });
   const todo = vm.section === "todo";
@@ -194,7 +241,8 @@ export function CollectionRow({ vm, onPut, onTakeOff }: CollectionRowProps) {
   const plans = row.plan.filter((c) => inFilter(c, filter));
   const ideas = row.ideas.filter((c) => inFilter(c, filter));
   const cells = cellsOf(vm.section);
-  const o = rowCells(ideas, cells);
+  // (what the chat found shows too: a second row of cards, "AI ile ara"'s three among them)
+  const o = rowCells(ideas, cells * (chatOffers.length ? 2 : 1));
   const links: SelfSearch[] = todo ? [mapsSearch(vm.head.city, filter)].filter((l): l is SelfSearch => l != null) : selfSearches(vm, v82.selfAt);
   const city = vm.head.city ?? vm.head.name;
   const pano = () => env.onPano(vm.key);
@@ -207,7 +255,7 @@ export function CollectionRow({ vm, onPut, onTakeOff }: CollectionRowProps) {
     }
     if (c.offer) {
       const offer = c.offer;
-      return <OfferCard key={c.key} card={c} onPut={() => void put(offer)} />;
+      return <OfferCard key={c.key} card={c} onPut={() => void put(offer)} onDismiss={v82.dismissSuggestion ? () => hideOffer(offer) : null} />;
     }
     return null;
   };
@@ -288,13 +336,23 @@ export function CollectionRow({ vm, onPut, onTakeOff }: CollectionRowProps) {
             <div className={`q-cards ${rowClass(vm.section)}`} data-row="ideas">
               {o.shown.map(cardOf)}
               {/* K86 (plan v13): "Bulamadın mı?" at the row's end (a full row: a band under it), the sites to search there. */}
-              {links.length > 0 && (
-                <div className={`z-selftile${o.shown.length % cells === 0 ? " wide" : ""}`}>
+              {(links.length > 0 || env.ask) && (
+                // (0.47.0: always a band under the cards, never squeezed into a card's cell; "AI ile ara" asks the chat for
+                // three more, and what it finds lands here as well as in the chat)
+                <div className="z-selftile wide">
                   <span className="z-selt">
                     <b>{L("Bulamadın mı?", "Didn't find it?")}</b>
-                    <small>{todo ? L("Haritada kendin ara; kaydettiğin buraya düşer.", "Search the map yourself; what you save lands here.") : L("Kendin ara; beğendiğini kaydet, buraya düşer.", "Search yourself; what you save lands here.")}</small>
+                    <small>{todo ? L("AI'a arat ya da haritada kendin ara; kaydettiğin buraya düşer.", "Ask the AI or search the map yourself; what you save lands here.") : L("AI'a arat ya da kendin ara; beğendiğini kaydet, buraya düşer.", "Ask the AI or search yourself; what you save lands here.")}</small>
                   </span>
-                  <span className="z-selb">{todo ? <MapSearch link={links[0] ?? null} /> : <SelfLinks links={links} />}</span>
+                  <span className="z-selb">
+                    {env.ask && (
+                      <button type="button" className="z-ask" onClick={() => env.ask!(askMore(vm.section, vm.head.city))}>
+                        <Ic name="spark" size={13} />
+                        {L("AI ile ara", "Search with AI")}
+                      </button>
+                    )}
+                    {todo ? <MapSearch link={links[0] ?? null} /> : <SelfLinks links={links} />}
+                  </span>
                 </div>
               )}
             </div>
@@ -312,7 +370,7 @@ export function CollectionRow({ vm, onPut, onTakeOff }: CollectionRowProps) {
           <div className={`q-cards ${rowClass(vm.section)}`}>
             {events.map((e) => {
               const c = offerCard(e, v82.selfAt.adults);
-              return <OfferCard key={c.key} card={c} onPut={() => void put(e)} />;
+              return <OfferCard key={c.key} card={c} onPut={() => void put(e)} onDismiss={v82.dismissSuggestion ? () => hideOffer(e) : null} />;
             })}
           </div>
         </div>
@@ -342,7 +400,8 @@ function CityGap({ gap: g, section }: { gap: ActivityGap; section: SectionId }) 
   const env = useCardEnv();
   const v82 = useV82Env();
   const cx = useCollectEnv();
-  const { offers, put, looking } = useCityOffers(g.city, cx?.plan ?? null, [], env.tripId);
+  const { offers: pool, chat, put, looking } = useCityOffers(g.city, cx?.plan ?? null, [], env.tripId);
+  const offers = [...chat, ...pool.slice(0, PER_CITY)];
   const links = selfSearches({ kind: "activity", head: { name: g.city, route: null, parts: [], kindWord: null, word: null, wants: [], image: null, city: g.city, date: g.range.start, nights: 0 }, options: [], chosen: null }, v82.selfAt);
   const cards = offers.map((o) => offerCard(o, v82.selfAt.adults));
   const o = rowCells(cards, cellsOf(section));
