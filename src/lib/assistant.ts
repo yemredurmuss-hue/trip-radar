@@ -31,6 +31,7 @@ import { checkPlanned, guardKind, isGeneratedName, plannedInput, plannedItem, pl
 import { bookedUpdate, candidateLabel, changedFields, countryOfPlace, decideBooking, esimPackage, saidKind, sameKind, SECOND_PURCHASE, tripPlaceOf, updateSummary, type BookingExtras } from "./chatBooking";
 import { boardChange, lineOf, withBoardChange } from "./boardChange";
 import { focusOf, RECENT_MS, recentBlock, type RecentFile } from "./chatContext";
+import { modelHistory } from "./modelHistory";
 import { cardKind, cardKindLabel } from "./cardKinds";
 import { isIdea } from "./booking";
 import { sectionOfItem, type SectionId } from "./categories";
@@ -2963,7 +2964,9 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
   // (the chips a step offered beside its tool calls go with the answer that is shown)
   let carried: string[] = [];
   for (let step = 0; step < MAX_STEPS; step++) {
-    const history = currentSession(await listMessages(tripId), provider.id);
+    // (Sohbet Faz 3: the other provider's words carried over as text, only the newest board in full: modelHistory.ts)
+    const everything = await listMessages(tripId);
+    const history = modelHistory(everything, currentSession(everything, provider.id), provider);
     // In the board's language (0.39.1), whatever the trip's start chat spoke: contentLang.
     const answer = await answerInTime(tripId, (signal) => provider.chatStep(history, withLang(contentLang(trip.lang), systemPrompt), withLang(contentLang(trip.lang), tools), { signal }));
     if (!answer) {
