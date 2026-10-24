@@ -915,15 +915,8 @@ function start() {
     what.textContent = `Trip Radar · ${route.from} ✈ ${route.to}`;
     const sub = document.createElement("small");
     sub.textContent = L(`${route.title} planında · destende ${route.deck.length} seçenek`, `on your ${route.title} plan · ${route.deck.length} in your deck`);
-    const shot = document.createElement("button");
-    shot.type = "button";
-    shot.textContent = L("Ekrandakileri desteye ekle", "Add what's on screen");
-    shot.onclick = async () => {
-      shot.disabled = true;
-      const ok = await ask<{ ok: boolean }>({ type: "desk:shot", url: location.href, title: document.title, text: visibleText() });
-      shot.textContent = ok?.ok ? L("✓ Okunuyor, desteye girecek", "✓ Reading, it joins the deck") : L("Olmadı, yeniden dene", "Didn't work, try again");
-      shot.disabled = Boolean(ok?.ok);
-    };
+    // (no "Ekrandakileri desteye ekle": a result goes in by its own "+", one at a time; Emre 2026-10-24: "toplu listeye
+    // ekleme diye bir şey olamaz")
     const open = document.createElement("button");
     open.type = "button";
     open.className = "q";
@@ -941,17 +934,7 @@ function start() {
       layer.replaceChildren();
       cards = [];
     };
-    strip.append(what, sub, shot, open, x);
-  };
-
-  /** The text in view (as the toolbar's save reads it), for "Ekrandakileri desteye ekle". */
-  const visibleText = (): string => {
-    const out: string[] = [];
-    for (const el of findCards()) {
-      const r = el.getBoundingClientRect();
-      if (r.bottom > 0 && r.top < innerHeight) out.push((el as HTMLElement).innerText.replace(/\s+/g, " ").trim());
-    }
-    return out.join("\n").slice(0, 12_000);
+    strip.append(what, sub, open, x);
   };
 
   /**
@@ -975,12 +958,21 @@ function start() {
     const r = el.getBoundingClientRect();
     return r.width >= 200 && r.height >= 120 && r.height <= 760;
   };
+  /** Drawn where an eye can see it: not a screen reader's 1 px text, not hidden. */
+  const shownBox = (el: Element | null): boolean => {
+    if (!el) return false;
+    const r = el.getBoundingClientRect();
+    return r.width > 3 && r.height > 3;
+  };
   const findCards = (): Element[] => {
     const prices: Text[] = [];
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
       acceptNode: (n) => {
         const v = n.nodeValue ?? "";
         if (v.length > 80 || !/\d/.test(v)) return NodeFilter.FILTER_REJECT;
+        // (a price written for screen readers only, 1 px wide, isn't where the card shows it: Skyscanner puts "Total cost
+        // 8,480 TL" in the times' half, and the "+" landed in the middle of the card, on the price; 0.47.3)
+        if (!shownBox(n.parentElement)) return NodeFilter.FILTER_REJECT;
         if (PRICE.test(v)) return NodeFilter.FILTER_ACCEPT;
         // (a price split in two spans: "€" in one, "912" in the next)
         const up = n.parentElement?.parentElement;
