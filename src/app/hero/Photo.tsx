@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { heldPhoto, holdPhoto, sizedPhoto } from "../../lib/photoCache";
 
-export function Photo({ src, width, onError, priority = false }: { src: string; width: number; onError: () => void; priority?: boolean }) {
+export function Photo({ src, width, onError, onLoad, priority = false }: { src: string; width: number; onError: () => void; onLoad?: (img: HTMLImageElement) => void; priority?: boolean }) {
   const url = sizedPhoto(src, width);
   const ready = heldPhoto(url);
   useEffect(() => holdPhoto(url), [url]);
@@ -15,6 +15,7 @@ export function Photo({ src, width, onError, priority = false }: { src: string; 
       loading={priority || ready ? "eager" : "lazy"}
       {...{ fetchpriority: priority ? "high" : "auto" }}
       onError={onError}
+      onLoad={onLoad && ((e) => onLoad(e.currentTarget))}
     />
   );
 }

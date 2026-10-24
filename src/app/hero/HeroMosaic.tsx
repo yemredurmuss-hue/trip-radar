@@ -101,6 +101,11 @@ function Way({ way }: { way: RouteWay }) {
   );
 }
 
+/** The narrowest photo the cover takes (its file's own width): under it, the photo would be stretched to a blur. */
+const COVER_MIN_W = 640;
+/** Cover photos found too small this visit, by address. */
+const smallCovers = new Set<string>();
+
 /** Home, each main place with its nights and its stay's dot, home again (lib/heroRoute.ts). */
 function Route({ route }: { route: HeroRoute }) {
   const points: { name: string; nights?: number | null; booked?: boolean; flag?: string }[] = [...(route.from ? [{ name: route.from }] : []), ...route.stops, ...(route.to ? [{ name: route.to }] : [])];
@@ -145,14 +150,24 @@ export function HeroMosaic({ mosaic, title, where, mood, working, menu, onTile, 
   // A photo that doesn't load is as good as none: its tile goes, the grid takes the rest (C19).
   const [failed, setFailed] = useState<ReadonlySet<string>>(() => new Set());
   const fail = (src: string) => setFailed((s) => new Set(s).add(src));
-  const cover = mosaic.cover && !failed.has(mosaic.cover.image) ? mosaic.cover : null;
-  const tiles = shownTiles(mosaic.tiles, failed);
+  // A cover photo too small for the cover is never stretched over it (2026-10-24: Uluwatu's Wikipedia file is 283 px
+  // wide): the first tile's photo stands in, out of the row; remembered this visit, so it isn't drawn blurred first again.
+  const [, setSmall] = useState(0);
+  const tooSmall = (img: HTMLImageElement, src: string) => {
+    if (img.naturalWidth >= COVER_MIN_W) return;
+    smallCovers.add(src);
+    setSmall((n) => n + 1);
+  };
+  const own = mosaic.cover && !failed.has(mosaic.cover.image) && !smallCovers.has(mosaic.cover.image) ? mosaic.cover : null;
+  const stand = own || !mosaic.cover ? null : (mosaic.tiles.find((t) => t.image && !failed.has(t.image) && !smallCovers.has(t.image)) ?? null);
+  const cover = own ?? (stand ? { image: stand.image!, credit: stand.credit } : null);
+  const tiles = shownTiles(stand ? mosaic.tiles.filter((t) => t !== stand) : mosaic.tiles, failed);
   const busy = L(`${working} kayıt işleniyor`, `Processing ${working}`);
   return (
     <div className={`x-mos${tiles.length ? "" : " solo"}`}>
       <figure className={`x-big${cover ? "" : " empty"}`} data-pit data-pit-photo>
         {cover ? (
-          <Photo key={cover.image} src={cover.image} width={coverWidth(cover.image)} priority onError={() => fail(cover.image)} />
+          <Photo key={cover.image} src={cover.image} width={coverWidth(cover.image)} priority onError={() => fail(cover.image)} onLoad={(img) => tooSmall(img, cover.image)} />
         ) : (
           <span className="x-ph" aria-hidden>
             <XIcon name="image" size={34} stroke={1.6} />

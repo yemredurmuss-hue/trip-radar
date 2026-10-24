@@ -33,10 +33,15 @@ export class NetworkError extends Error {
 
 /** The hero is ~1000 px wide: Wikimedia thumbnails ("/thumb/…/330px-x.jpg") are asked for at 1280 px, neither a blur nor a 20 MB original. */
 const WIDTH = 1280;
+/** A Wikipedia file narrower than this is no city photo for the hero. */
+const MIN_WIDTH = 1000;
 export const sized = (url: string) => (url.includes("/thumb/") && /\/\d+px-/.test(url) ? url.replace(/\/\d+px-/, `/${WIDTH}px-`) : url);
 
 /** A summary's picture: its thumbnail resized when the original is the full file (not a thumbnail URL). */
 function summaryImage(s: any): string | null {
+  // (a file narrower than a cover is never taken: Uluwatu's is 283 px, stretched over the hero it was a blur, 2026-10-24)
+  const wide = Math.max(Number(s?.originalimage?.width) || 0, Number(s?.thumbnail?.width) || 0);
+  if (wide > 0 && wide < MIN_WIDTH) return null;
   const original: string | undefined = s?.originalimage?.source;
   const thumb: string | undefined = s?.thumbnail?.source;
   const src = original && !original.includes("/thumb/") && thumb?.includes("/thumb/") ? thumb : (original ?? thumb);

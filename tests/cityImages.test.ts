@@ -133,3 +133,16 @@ describe("city photos asked again once the proxy works", () => {
     expect(nextHeroImage(wiki, "https://upload.wikimedia.org/other.jpg")).toBe(wiki);
   });
 });
+
+describe("pickCityImage: a file too small for the cover", () => {
+  it("passes over a Wikipedia original narrower than 1000 px (Uluwatu's 283 px panoramio file)", async () => {
+    const small = { originalimage: { source: "https://upload.wikimedia.org/wikipedia/commons/7/73/Uluwatu_-_panoramio.jpg", width: 283, height: 189 }, thumbnail: { source: "https://upload.wikimedia.org/wikipedia/commons/7/73/Uluwatu_-_panoramio.jpg", width: 283, height: 189 } };
+    const fetchJson = async (url: string) => (url.includes("/summary/") ? small : { items: [] });
+    expect(await pickCityImage("Uluwatu", { fetchJson })).toBeNull();
+  });
+  it("takes a wide one as before", async () => {
+    const wide = { originalimage: { source: "https://upload.wikimedia.org/wikipedia/commons/a/ab/Ubud.jpg", width: 4000, height: 3000 }, thumbnail: { source: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Ubud.jpg/330px-Ubud.jpg", width: 330, height: 248 } };
+    const fetchJson = async (url: string) => (url.includes("/summary/") ? wide : { items: [] });
+    expect(await pickCityImage("Ubud", { fetchJson })).toBe("https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Ubud.jpg/1280px-Ubud.jpg");
+  });
+});
