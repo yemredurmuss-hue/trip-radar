@@ -271,12 +271,14 @@ mantık `lib/railDates.ts` ve `lib/rowView.ts`). Etkinlik, Yapılacaklar ve Belg
   Fiyat yüzdeleri, karar motorunun kendi ağırlıklarından toplanır; uydurma yok) ve yanında "Ayarla" (`WeightTuner.tsx`):
   "Neye göre sıralayalım?", Dengeli · Fiyat önce · Yorumlar önce · Konum önce ve üç kadran (0–4, 2 varsayılan); kadran
   grubunun ölçütlerini bu kategori için gezide değiştirir (`decision.withPriorities`), kartlar hemen yeniden sıralanır.
-- **Konaklama / kiralama kartı:** fotoğraf önde ve tam genişlik, üstünde "91 · 1. sırada", köşesinde sayfanın iki fotoğrafı
-  daha ve "+n" (galeri: sayfa kaydedilirken ilk sekiz fotoğrafın yalnız adresi saklanır, `items.galleryOf`; basınca
-  büyük görünüm, ← → ve Esc); "✓ Seçili" mor; ad, site ve semt, puanın üç
-  parçası; sağda fiyat ve büyük Seç ("✓ Seçili"); beş etiketli yuva hep aynı sırada (konaklama: Kahvaltı, İptal,
-  Merkez, Puan, Kaynak; kiralama: Sigorta, İptal, Teslim, Puan, Kaynak); yorumlardan artılar ve eksiler hep açık.
-  Kaydın söylemediği yuva gri "bilinmiyor" (C19).
+- **Konaklama / kiralama kartı (3. tur, onaylı 2026-10-24):** fotoğraf solda 188 px, üstünde "91 · 1. sırada", köşesinde
+  sayfanın iki fotoğrafı daha ve "+n" (galeri: sayfa kaydedilirken ilk sekiz fotoğrafın yalnız adresi saklanır,
+  `items.galleryOf`; basınca büyük görünüm, ← → ve Esc); "✓ Seçili" mor; yanında ad, site ve semt, puanın üç parçası;
+  sağda fiyat ve büyük Seç. Yuvalar kutu değil tek ince satır, hep aynı sırada (konaklama: Kahvaltı, İptal, Merkez, Puan;
+  kiralama: Sigorta, İptal, Teslim, Puan): küçük işaret ve değer, adı üzerine gelince; yeşil iyi, amber dikkat, gri
+  "bilinmiyor" (C19). Satırın sonunda kaynak: sitenin işareti ve adı, ↗; basınca ilanın sayfası yeni sekmede açılır.
+  Kazanılan yer artı ve eksilere: "Yorumlarda öne çıkan" ve "Yorumlarda şikâyet" başlıklı iki sütun, 4'er madde, hep
+  açık. Önerimiz kartın ayağında tek satır. Kap 520 px'in altına inince fotoğraf üste geçer.
 - **Bilet kartı:** biniş kartı (saatler büyük, süre ve aktarma arada), fiyat ve Seç, beş yuva (uçuş: Bagaj, El bagajı,
   İade, Varış, Kaynak; tren ve otobüs: Kalkış, Varış, Süre, İade, Kaynak), "Neden 91?" (önerimizde açık). Birden çok
   günde uçuşlar gün bandının altında (52 px karo, "istenen gün", "bir gün sonra"); komşu günün puanı amber.

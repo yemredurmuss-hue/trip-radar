@@ -949,10 +949,19 @@ try {
   assert.equal(flat([await stayDrawer.locator(".dr-op").first().locator(".dr-why").innerText()])[0], "Önerimiz. En sessiz; 2.'ye göre €45 daha ucuz, 5 Eki'ye kadar ücretsiz iptal ve daha konforlu.");
   assert.equal(await stayDrawer.locator(".dr-why").count(), 1, "the reasons on our pick alone");
   assert.equal(await stayDrawer.locator(".dr-op .dr-sec").count(), 3, "Seç on each (nothing chosen yet)");
-  // (the photo first and wide, the card's whole width; five slots in their order)
-  assert.deepEqual(await stayDrawer.locator(".dr-op").first().locator(".dr-slt small").allInnerTexts(), ["Kahvaltı", await stayDrawer.locator(".dr-op").first().locator(".dr-slt small").nth(1).innerText(), await stayDrawer.locator(".dr-op").first().locator(".dr-slt small").nth(2).innerText(), "Puan", "Kaynak"]);
-  const optRatio = await stayDrawer.locator(".dr-op .dr-ph").first().evaluate((el) => el.getBoundingClientRect().width / el.getBoundingClientRect().height);
-  assert.ok(optRatio > 2 && optRatio < 2.8, `the drawer's option photo is wide (${optRatio.toFixed(2)})`);
+  // (Otel çekmecesi 3. tur, onaylı: the photo on the left; the slots one thin line in their order, each named on hover, the
+  // source last with its site's mark, opening the page; the pros and cons under their headings)
+  const firstOpt = stayDrawer.locator(".dr-op").first();
+  const slotNames = await firstOpt.locator(".dr-sl3 .dr-s3").evaluateAll((els) => els.map((e) => e.getAttribute("title")?.split(":")[0]));
+  assert.equal(slotNames[0], "Kahvaltı");
+  assert.equal(slotNames[3], "Puan");
+  const src = firstOpt.locator(".dr-sl3 a.dr-src");
+  assert.match(flat([await src.innerText()])[0], /Booking\.com/, "the source by its site's name and mark");
+  assert.equal(await src.getAttribute("target"), "_blank");
+  await firstOpt.locator(".dr-pc.w h6", { hasText: "Yorumlarda öne çıkan" }).waitFor();
+  const ph = await firstOpt.locator(".dr-ph").boundingBox();
+  const inn = await firstOpt.locator(".dr-in").boundingBox();
+  assert.ok(ph && inn && ph.x + ph.width <= inn.x + 1 && ph.width < 200, `the photo on the left (${JSON.stringify(ph)})`);
   await app.waitForTimeout(300); // (the drawer's .2 s fade)
   await app.screenshot({ path: `${out}/40b-stay-drawer.png` });
   await app.keyboard.press("Escape");

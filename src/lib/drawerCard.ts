@@ -194,8 +194,8 @@ export function rentalSlots(i: Item, brand: string | null): CardSlot[] {
 // --- what the reviews say ------------------------------------------------------------------------------------------------
 
 /** "Yorumlardan": what it's praised and faulted for (the page's highlights and concerns, the reviews' topics), at most three each. */
-export function prosCons(i: Item, topics: readonly { label: string; up: boolean }[] = []): { pros: string[]; cons: string[]; count: number | null } | null {
-  const uniq = (list: string[]) => [...new Set(list.map((t) => t.trim()).filter(Boolean))].slice(0, 3);
+export function prosCons(i: Item, topics: readonly { label: string; up: boolean }[] = [], max = 3): { pros: string[]; cons: string[]; count: number | null } | null {
+  const uniq = (list: string[]) => [...new Set(list.map((t) => t.trim()).filter(Boolean))].slice(0, max);
   const pros = uniq([...(i.highlights ?? []), ...topics.filter((t) => t.up).map((t) => t.label)]);
   const cons = uniq([...(i.concerns ?? []), ...topics.filter((t) => !t.up).map((t) => t.label)]);
   if (!pros.length && !cons.length) return null;

@@ -142,6 +142,41 @@ function CardPhoto({ o, art }: { o: OptionVM; art: string }) {
   );
 }
 
+/**
+ * The card's slots in one thin line (Otel çekmecesi 3. tur, onaylı 2026-10-24, Emre: "kutulu yerler biraz daha küçük olup
+ * pros cons'a çok yer kalsın; kaynak logolu gelsin, tıklanabilir olsun"): the same order, each a small sign and its value
+ * (its name on hover), green good, amber careful, grey unknown; the source at the end, its site's mark and name, opening
+ * the page.
+ */
+function SlotLine({ slots, url, brand }: { slots: CardSlot[]; url: string | null; brand: OptionVM["brand"] }) {
+  const source = slots.find((s) => s.key === "source");
+  return (
+    <div className="dr-sl3">
+      {slots
+        .filter((s) => s.key !== "source")
+        .map((s) => (
+          <span key={s.key} className={`dr-s3 ${s.tone}`} title={`${s.label}: ${s.value}`}>
+            <Ic name={SLOT_ICON[s.icon]} size={14} />
+            <b>{s.value}</b>
+          </span>
+        ))}
+      {source &&
+        (url && /^https?:\/\//i.test(url) ? (
+          <a className="dr-src" href={url} target="_blank" rel="noopener noreferrer" title={L(`${source.value} sayfasında aç`, `Open on ${source.value}`)}>
+            <Mark color={brand?.color ?? "#8e8aa6"} letter={(brand?.label ?? source.value).trim().charAt(0).toLocaleUpperCase("tr") || "?"} small />
+            <span>{brand?.label ?? source.value}</span>
+            <i aria-hidden>↗</i>
+          </a>
+        ) : (
+          <span className={`dr-s3 ${source.tone}`} title={`${source.label}: ${source.value}`}>
+            <Ic name={SLOT_ICON[source.icon]} size={14} />
+            <b>{source.value}</b>
+          </span>
+        ))}
+    </div>
+  );
+}
+
 /** The five slots, always in the same order so the cards compare; the source opens its page. */
 function Slots({ slots, url, compact = false, go = false }: { slots: CardSlot[]; url: string | null; compact?: boolean; go?: boolean }) {
   return (
@@ -179,24 +214,31 @@ function Slots({ slots, url, compact = false, go = false }: { slots: CardSlot[];
 }
 
 /** "Yorumlardan": what its reviews praise (+) and fault (−), always open. */
-function Reviews({ o }: { o: OptionVM }) {
-  const r = prosCons(o.item, o.topics);
+function Reviews({ o, wide = false }: { o: OptionVM; wide?: boolean }) {
+  // (the card's own, 3. tur: four a side under their headings, the room the slots gave up)
+  const r = prosCons(o.item, o.topics, wide ? 4 : 3);
   if (!r) return null;
   return (
-    <div className="dr-pc">
+    <div className={`dr-pc${wide ? " w" : ""}`}>
       <small>
         <Ic name="spark" size={13} /> {reviewsHead(r.count)}
       </small>
-      <ul className="up">
-        {r.pros.map((t) => (
-          <li key={t}>{t}</li>
-        ))}
-      </ul>
-      <ul className="dn">
-        {r.cons.map((t) => (
-          <li key={t}>{t}</li>
-        ))}
-      </ul>
+      <div>
+        {wide && <h6>{L("Yorumlarda öne çıkan", "What reviews praise")}</h6>}
+        <ul className="up">
+          {r.pros.map((t) => (
+            <li key={t}>{t}</li>
+          ))}
+        </ul>
+      </div>
+      <div>
+        {wide && r.cons.length > 0 && <h6>{L("Yorumlarda şikâyet", "What reviews complain about")}</h6>}
+        <ul className="dn">
+          {r.cons.map((t) => (
+            <li key={t}>{t}</li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }
@@ -304,9 +346,9 @@ export function CardOption({ o, art, current, typical, why, parts, rental, solo,
         <CardPrice o={o} typical={typical} gap={rental ? null : guestGap(o.item, people)} />
         {pick ?? <Pick o={o} current={current} onPick={onPick} big />}
       </div>
-      <Slots slots={slots} url={o.item.url} />
+      <SlotLine slots={slots} url={o.item.url} brand={o.brand} />
+      <Reviews o={o} wide />
       {why && <Why text={why} />}
-      <Reviews o={o} />
     </article>
   );
 }
