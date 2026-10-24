@@ -146,10 +146,16 @@ export function quickPicks(own: Trip[], items: Item[], code: string | null, day:
 }
 const lastAt = (t: Trip, items: Item[]) => Math.max(t.updatedAt, ...items.filter((i) => i.tripId === t.id).map((i) => i.createdAt ?? 0));
 
-const pageKey = (u: string | null | undefined): string | null => {
+/**
+ * A page's own address, its dates and tracking left out; what names the thing itself kept (2026-10-24: every YouTube
+ * video was "youtube.com/watch", so one saved video made each one opened "zaten destende ✓ Eklendi").
+ */
+const ID_PARAMS = ["v", "id", "p", "fbid", "story_fbid"];
+export const pageKey = (u: string | null | undefined): string | null => {
   try {
     const x = new URL(u ?? "");
-    return `${x.hostname.replace(/^www\./, "")}${x.pathname}`.replace(/\/+$/, "");
+    const ids = ID_PARAMS.filter((k) => x.searchParams.get(k)).map((k) => `${k}=${x.searchParams.get(k)}`);
+    return `${x.hostname.replace(/^www\./, "")}${x.pathname}`.replace(/\/+$/, "") + (ids.length ? `?${ids.join("&")}` : "");
   } catch {
     return null;
   }

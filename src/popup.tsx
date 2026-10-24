@@ -31,6 +31,9 @@ function Popup() {
   const [tabId, setTabId] = useState<number | null>(null);
   const [view, setView] = useState<PopupView | null>(null);
   const [choosing, setChoosing] = useState(false);
+  // ("Ekle" asks which trip first, the likeliest on top, nothing picked for the traveller: 2026-10-24, Emre: "ekle dedikten
+  // sonra geziyi seçtirsin bana")
+  const [pickToSave, setPickToSave] = useState(false);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState<Saved | null>(null);
   const [failed, setFailed] = useState(false);
@@ -93,13 +96,20 @@ function Popup() {
     skipIt("along");
   }
 
+  /** The page card's "Ekle": with trips to choose among (and no plan row the page already belongs to), which trip first. */
+  const add = () => {
+    if (!fixed && where?.trips.length) {
+      setPickToSave(true);
+      setChoosing(true);
+    } else void save();
+  };
   // Enter does the card's one thing (the trip known); Escape closes.
   const card = view && !saved && !choosing ? cardKind(view, { mustPick, skip }) : null;
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if (e.key === "Enter" && card === "page" && !busy) {
         e.preventDefault();
-        void save();
+        add();
       }
     };
     addEventListener("keydown", key);
@@ -135,7 +145,10 @@ function Popup() {
   } else if (saved) {
     body = <Done saved={saved} where={where} onSaved={setSaved} />;
   } else if (choosing && where) {
-    body = <Picker where={where} busy={busy} onPick={(p) => void choose(p)} onCancel={() => setChoosing(false)} />;
+    body = (
+      <Picker where={where} busy={busy} onPick={(p) => (pickToSave ? void save(p).then(() => (setPickToSave(false), setChoosing(false))) : void choose(p))}
+        onCancel={() => (setPickToSave(false), setChoosing(false))} />
+    );
   } else if (card === "confirm" && view.confirm) {
     const c = view.confirm;
     body = (
@@ -307,7 +320,7 @@ function Popup() {
           <Say title={view.title} sub={view.sub || null} />
           {view.desk.candidate && tabId != null && <DeskBox tabId={tabId} c={view.desk.candidate} />}
           {view.desk.planned && <small className="pk-line">{L(`Bu arama planında · ${view.desk.planned.from} ✈ ${view.desk.planned.to} · destende ${view.desk.planned.count}`, `On the plan · ${view.desk.planned.from} ✈ ${view.desk.planned.to} · ${view.desk.planned.count} in the deck`)}</small>}
-          <button type="button" className="tb-go" disabled={busy} onClick={() => void save()}>
+          <button type="button" className="tb-go" disabled={busy} onClick={add}>
             {busy ? L("Ekleniyor…", "Adding…") : idea ? L("+ İlham'a ekle", "+ Add to Inspiration") : !trip && !view.desk.candidate ? L("+ Yeni gezi aç ve ekle", "+ Start a trip and add") : L(`+ ${deck} destesine ekle`, `+ Add to ${deck}`)}
             {!busy && <kbd>Enter</kbd>}
           </button>
