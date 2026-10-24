@@ -21,7 +21,7 @@ img.q-logo.q-air { display: block; object-fit: contain; background: #fff; box-sh
 .q-pr small { font-size: var(--q-fs-small); color: var(--q-mut); }
 .q-pr.big b { font-size: var(--q-fs-price); }
 .q-pick { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 38px; padding: 0 18px; border: 0; border-radius: 10px; background: var(--q-acc); color: #fff; font: inherit; font-size: var(--q-fs-info); font-weight: 700; line-height: 1.1; cursor: pointer; white-space: nowrap; transition: background .15s, transform .15s; }
-.q-pick:hover { background: var(--q-acc-d); }
+.q-pick:not(span):hover { background: var(--q-acc-d); }
 .q-take { min-height: 44px; padding: 0 20px; font-size: var(--q-fs-button); border-radius: 12px; box-shadow: 0 4px 12px rgba(91, 69, 224, .26); }
 .q-cta { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 16px 0 10px; border-radius: 12px; background: var(--q-acc); color: #fff !important; font-size: var(--q-fs-button); font-weight: 700; text-decoration: none; white-space: nowrap; box-shadow: 0 4px 12px rgba(91, 69, 224, .26); transition: background .15s, transform .15s; }
 .q-cta:hover { background: var(--q-acc-d); transform: translateY(-1px); }

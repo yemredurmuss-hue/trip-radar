@@ -70,7 +70,7 @@
 .q-sheetp .q-pr small { font-size: 12px; color: var(--q-mut); }
 .q-sheetp .q-pr.big b { font-size: 24px; }
 .q-sheetp .q-pick { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 38px; padding: 0 18px; border: 0; border-radius: 10px; background: var(--q-acc); color: #fff; font: inherit; font-size: 13.5px; font-weight: 700; line-height: 1.1; cursor: pointer; white-space: nowrap; transition: background .15s, transform .15s; }
-.q-sheetp .q-pick:hover { background: var(--q-acc-d); }
+.q-sheetp .q-pick:not(span):hover { background: var(--q-acc-d); }
 .q-sheetp .q-pick:focus-visible, .q-sheetp .q-cmpb:focus-visible, .q-sheetp .q-like:focus-visible, .q-sheetp .q-ihx:focus-visible, .q-sheetp .q-dgo:focus-visible, .q-sheetp .q-ai:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 2px; }
 /* On the plan already: the same place, in green, not a button. */
 .q-sheetp span.q-pick { background: var(--q-ok-s); color: var(--q-ok); cursor: default; }
