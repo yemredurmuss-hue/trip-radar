@@ -22,7 +22,8 @@ import { CarrierLogo } from "./OptionRow";
 
 /**
  * One row open at a time in a category (onay paketi: "aynı anda bir satır açık"); Karar Masası's chosen and bought
- * flights come open on their own (karar 6, 7: "açık gelir, kapanabilir"), each until it is closed (`closed`).
+ * flights come open on their own (karar 6: "açık gelir, kapanabilir"; bought ones no longer, 2026-10-24), each until it is
+ * closed (`closed`, kept for the trip: a category shut and opened again, or the page again, finds it closed).
  */
 export const RowOpenContext = createContext<{ open: string | null; set: (key: string | null) => void; closed?: ReadonlySet<string>; shut?: (key: string, closed: boolean) => void } | null>(null);
 
@@ -408,8 +409,9 @@ export function broughtOf(dt: DataTransfer): Brought | null {
 
 /** A flight, a train, a bus, a boat, a transfer: one thin row; pressed, its ticket (or its search) opens under it. */
 export function TicketRow({ vm, view, art, date, on, ticket, links, onDrawer, menu, acts, chipId, editable, under = null, focused = false, openKey, ask = null, bring = null, brought = null }: TicketRowProps) {
-  // (Karar Masası: chosen, or bought with its ticket still to add, the flight comes open as its ticket; it can be closed)
-  const [open, setOpen] = useRowOpen(openKey ?? vm.key, view.desk && (vm.status === "chosen" || view.stamp != null));
+  // (Karar Masası: chosen, the flight comes open as its ticket; it can be closed. Bought, it stays closed until opened:
+  // 2026-10-24, Emre: "uçak bileti book edildiyse kategoriyi açınca otomatik açılmasın")
+  const [open, setOpen] = useRowOpen(openKey ?? vm.key, view.desk && vm.status === "chosen");
   // (getirme anları: dragged over, the row says it will take it; dropped, it is this row's, never the board's guess)
   const [over, setOver] = useState(false);
   const drop = bring

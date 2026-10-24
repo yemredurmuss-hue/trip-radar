@@ -4,6 +4,7 @@
 // visa (Belgeler ve internet), the intents, and last its "Gizlenenler · n".
 import { useMemo, useState, type ReactNode } from "react";
 import { L } from "../../../lib/i18n";
+import { useCardEnv } from "../../cards/PlanCard";
 import { RowOpenContext } from "./IntentRow";
 
 /** The one-line note at a category's start (q-tinfo): drawn only with something to say. */
@@ -17,6 +18,24 @@ export function CategoryInfo({ text }: { text: string | null | undefined }) {
   );
 }
 
+const CLOSED_KEY = (tripId: string) => `trip-radar:rows-closed:${tripId}`;
+function readClosed(tripId: string): ReadonlySet<string> {
+  try {
+    const raw = JSON.parse(localStorage.getItem(CLOSED_KEY(tripId)) ?? "[]");
+    return new Set(Array.isArray(raw) ? raw.filter((k): k is string => typeof k === "string") : []);
+  } catch {
+    return new Set();
+  }
+}
+function writeClosed(tripId: string, closed: ReadonlySet<string>): void {
+  try {
+    // (the last 200: rows of a trip, never a growing list)
+    localStorage.setItem(CLOSED_KEY(tripId), JSON.stringify([...closed].slice(-200)));
+  } catch {
+    // (no storage: closed for this visit only)
+  }
+}
+
 export function TimelineRail({ info, lead, children, hidden, dated = false }: {
   /** Uçuş, Konaklama, Ulaşım (plan v14): the intents on the date rail (.q-tl), one row open at a time. */
   dated?: boolean;
@@ -27,9 +46,17 @@ export function TimelineRail({ info, lead, children, hidden, dated = false }: {
   /** "Gizlenenler · n", at the end. */
   hidden?: ReactNode;
 }) {
+  const { tripId } = useCardEnv();
   const [open, setOpen] = useState<string | null>(null);
-  // (the rows that come open by themselves, closed by the traveller: Karar Masası's chosen and bought flights)
-  const [closed, setClosed] = useState<ReadonlySet<string>>(() => new Set());
+  // (the rows that come open by themselves, closed by the traveller: Karar Masası's chosen flights), kept for the trip:
+  // the category shut and opened again builds this anew, and a row closed stays closed (2026-10-24, "kapattıysam kapalı kalsın")
+  const [closed, setClosedNow] = useState<ReadonlySet<string>>(() => readClosed(tripId));
+  const setClosed = (next: (c: ReadonlySet<string>) => ReadonlySet<string>) =>
+    setClosedNow((c) => {
+      const n = next(c);
+      if (n !== c) writeClosed(tripId, n);
+      return n;
+    });
   const rows = useMemo(
     () => ({
       open,

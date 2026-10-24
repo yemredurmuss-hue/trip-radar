@@ -1034,7 +1034,9 @@ try {
   assert.equal(await home.getAttribute("data-stage"), "bought");
   assert.equal(flat([await home.locator(".q-rslot .q-proof").innerText()])[0], "Bileti ekle");
   assert.equal(flat([await home.locator(".q-rrow > .q-rfig").innerText()])[0], "", "no paid sum guessed");
-  // (Karar Masası, karar 7: bought with its ticket still to add, the flight comes open by itself; it closes on its row)
+  // (2026-10-24, Emre: bought, the flight no longer comes open by itself; opened on its row, closed on it again)
+  assert.equal(await home.locator(".q-rp .z-tk").count(), 0, "bought: the ticket comes closed");
+  await home.locator(".q-rrow[role=button]").click({ position: { x: 80, y: 20 } });
   await home.locator(".q-rp .z-tk").waitFor();
   assert.match(flat([await routeOf(home)])[0], /19:40.*LIS.*01:35.*\+1.*IST/s);
   assert.match(flat([await home.locator(".q-rp").innerText()])[0], /Son adım: bileti buraya bırak/);
