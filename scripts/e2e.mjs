@@ -959,6 +959,7 @@ try {
   assert.match(flat([await src.innerText()])[0], /Booking\.com/, "the source by its site's name and mark");
   assert.equal(await src.getAttribute("target"), "_blank");
   await firstOpt.locator(".dr-pc.w h6", { hasText: "Yorumlarda öne çıkan" }).waitFor();
+  await app.waitForTimeout(400); // (measured once the drawer and its cards are still: mid-motion the photo can sit over the name)
   const ph = await firstOpt.locator(".dr-ph").boundingBox();
   const inn = await firstOpt.locator(".dr-in").boundingBox();
   // (the photo is a narrow tall column on the left, the name beside it to its right — not the old wide banner on top)
