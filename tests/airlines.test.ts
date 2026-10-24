@@ -1,4 +1,4 @@
-// The airline library (lib/airlines.ts, lib/airlineData.ts; 0.46.0): every active airline's name, 786 logos in the extension.
+// The airline library (lib/airlines.ts, lib/airlineData.ts; 0.46.0): every active airline's name, 785 logos in the extension (VF left out: AJet, not Fly Viking).
 import { existsSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { airlineByName, airlineCode, airlineLogos } from "../src/lib/airlines";
@@ -34,5 +34,11 @@ describe("the logos in the extension", () => {
     for (const c of codes) expect(existsSync(`static/logos/airlines/${c}.png`)).toBe(true);
     expect(airlineLogos("AR")[0]).toBe("logos/airlines/AR.png");
     expect(airlineLogos("FO")[0]).toBe("https://images.kiwi.com/airlines/64/FO.png");
+  });
+  it("a code handed to another airline isn't bundled: AJet (VF) is read from Kiwi, not airlogos' Fly Viking (2026-10-24)", () => {
+    expect(LOGO_CODES.split(" ")).not.toContain("VF");
+    expect(existsSync("static/logos/airlines/VF.png")).toBe(false);
+    expect(airlineCode("AJet")).toBe("VF");
+    expect(airlineLogos("VF")).toEqual(["https://images.kiwi.com/airlines/64/VF.png", "https://pics.avs.io/128/128/VF.png"]);
   });
 });

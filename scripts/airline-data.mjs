@@ -9,11 +9,17 @@ const [logosJs, dat] = process.argv.slice(2);
 const require = createRequire(import.meta.url);
 const raw = require(logosJs);
 const logos = raw.default ?? raw;
+// Codes handed to another airline since the package drew them: its logo is the old holder's, so none is bundled and
+// the code's logo is read from Kiwi (current). The package names no airline, so these are found by looking: the
+// library's known airlines (lib/airlines.ts AIRLINES) were checked by eye on 2026-10-24, only VF was wrong.
+const STALE = {
+  VF: "AJet since 2024; airlogos has Fly Viking's (Emre 2026-10-24: AJet showed as Fly Viking)",
+};
 mkdirSync("static/logos/airlines", { recursive: true });
 const codes = [];
 for (const [code, v] of Object.entries(logos)) {
   const m = typeof v.png === "string" ? v.png.match(/^data:image\/png;base64,(.+)$/) : null;
-  if (!m || !/^[A-Z0-9]{2}$/.test(code)) continue;
+  if (!m || !/^[A-Z0-9]{2}$/.test(code) || code in STALE) continue;
   writeFileSync(`static/logos/airlines/${code}.png`, Buffer.from(m[1], "base64"));
   codes.push(code);
 }

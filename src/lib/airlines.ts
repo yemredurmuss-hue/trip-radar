@@ -1,7 +1,7 @@
 // An airline's two-character IATA code, from its flight number ("TK 52") or its name as a page or a source writes it
 // ("Turkish Airlines", "Türk Hava Yolları"), and where its logo is read: the same logo files the flight card has used
 // since 0.36.18 (Kiwi, else Aviasales; FlightTicket.AirlineLogo). The library (0.46.0, Emre onayladı): every active
-// airline's name (OpenFlights) and 786 logos in the extension (airlogos), the rest read once from Kiwi and kept by the
+// airline's name (OpenFlights) and 785 logos in the extension (airlogos; VF left out, it is AJet now), the rest read once from Kiwi and kept by the
 // browser. One we can't name keeps its letters on a colour, never a code made up from its name.
 import { AIRLINE_NAMES, LOGO_CODES } from "./airlineData";
 
@@ -94,8 +94,9 @@ export function airlineCode(name: string | null | undefined, flightNumber: strin
 export const airlineColor = (code: string | null): string | null => (code ? (COLORS[code] ?? null) : null);
 
 /**
- * The logos in the extension itself (onay paketi 2026-10-22: "her logo gelsin"; airlogos, MIT, static/licenses): all 786
- * the package has, read with nothing fetched. Any other is read from Kiwi, else Aviasales (and kept by the browser).
+ * The logos in the extension itself (onay paketi 2026-10-22: "her logo gelsin"; airlogos, MIT, static/licenses): all the
+ * package has but a code since handed to another airline (scripts/airline-data.mjs STALE: VF is AJet, not Fly Viking),
+ * read with nothing fetched. Any other is read from Kiwi, else Aviasales (and kept by the browser).
  */
 const BUNDLED: ReadonlySet<string> = new Set(LOGO_CODES.split(" "));
 
