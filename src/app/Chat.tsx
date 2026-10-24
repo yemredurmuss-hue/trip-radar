@@ -28,8 +28,8 @@ import { ChatOffers } from "./ChatOffers";
 import { ArrowUp, Back } from "./Icons";
 import { Mascot } from "./Mascot";
 import { show } from "./Progress";
-import { sectionsOfWords } from "../lib/chatSections";
-import { sectionLooking } from "../lib/looking";
+import { chatWork, sectionsOfWords } from "../lib/chatSections";
+import { sectionAdding, sectionEditing, sectionLooking } from "../lib/looking";
 import { DONE_FOR, LONG_WAIT, mascotFace, thinkingLine } from "./thinking";
 
 interface Props {
@@ -183,8 +183,9 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
     let failed = false;
     try {
       const work = sendMessage(trip.id, input);
-      // ("Uçuş ekle": Uçuş's row moves from now until the answer lands, lib/chatSections.ts)
-      for (const section of sectionsOfWords(input)) void sectionLooking.track(section, work).catch(() => undefined);
+      // ("Uçuş ekle": Uçuş's row moves from now until the answer lands, "Ekleniyor"; "kaydır" "Düzenleniyor"; lib/chatSections.ts)
+      const store = { add: sectionAdding, edit: sectionEditing, search: sectionLooking }[chatWork(input)];
+      for (const section of sectionsOfWords(input)) void store.track(section, work).catch(() => undefined);
       await work;
     } catch (e) {
       failed = true;

@@ -52,3 +52,8 @@ export const packLooking = lookStore();
  * row shows it looking, open or shut (2026-10-24, Emre: "her arama yapılırken onun çalışması gerekti").
  */
 export const sectionLooking = lookStore();
+
+/** A category something is being added to now (the chat's "Uçuş ekle"): its row says "Ekleniyor", the same motion. */
+export const sectionAdding = lookStore();
+/** A category something of it is being changed now ("uçuşu 2 gün kaydır"): its row says "Düzenleniyor". */
+export const sectionEditing = lookStore();

@@ -791,7 +791,12 @@ function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
   const records = uniq(b.entries.flatMap((e) => e.itemIds))
     .map((id) => env.byId.get(id))
     .filter(nonNull);
-  const live = records.filter((i) => i.status !== "dismissed");
+  // A plan said in the chat with nothing concrete (no hour, carrier, price or page: bareChatPlan) was only the card's place:
+  // once a real option is there for the need, the options are the choice, drawn as the deck (2026-10-24, Emre: "seçeneklerde
+  // bulunmuş uçaklar olmasına rağmen desteye gelmedi").
+  const real = records.filter((i) => i.status !== "dismissed" && !bareChatPlan(i));
+  const hollowed = real.length > 0 && records.some((i) => i.status !== "dismissed" && bareChatPlan(i));
+  const live = hollowed ? real : records.filter((i) => i.status !== "dismissed");
   // A part of the trip's shape says its frame (a ski pass a stay card in Etkinlik), else the category does.
   const part = live.find((i) => i.part)?.part ?? null;
   const frame: FrameFamily = (part?.frame as PartFrame | undefined) ?? (isCollection(section) ? "stay" : frameOf(section));
@@ -817,7 +822,7 @@ function singleIntent(section: SectionId, b: Bucket, env: Env): IntentVM {
   const farOwn = farOpen && !legMode && Boolean(leg?.choice?.booked);
   const status: IntentStatus = cover
     ? "included"
-    : b.stage == null || farOpen
+    : b.stage == null || farOpen || hollowed
       ? legSaid || farOwn
         ? "arranged"
         : stagelessStatus(live, settled, options, draft, env)

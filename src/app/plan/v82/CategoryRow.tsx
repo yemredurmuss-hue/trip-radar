@@ -65,6 +65,9 @@ export function RingMark({ ring }: { ring: PlanRing }) {
   );
 }
 
+/** The motion's word (2026-10-24, Emre: "yeni bir şey ekleniyorsa Ekleniyor, bilgi değişiyorsa Düzenleniyor"). */
+const WORK_WORD = { search: () => L("Aranıyor", "Searching"), add: () => L("Ekleniyor", "Adding"), edit: () => L("Düzenleniyor", "Updating") } as const;
+
 /** Tamamlandı (0.47.0): how long the light crosses the row and the tick settles (category.css `q-win`). */
 const WIN_MS = 900;
 
@@ -92,7 +95,7 @@ function useCompleted(done: boolean): boolean {
   return on;
 }
 
-export function CategoryRow({ row, meta, open, onToggle, onDecide, decideTip, budgetTip, extraTip, seeking = false, fresh = 0 }: {
+export function CategoryRow({ row, meta, open, onToggle, onDecide, decideTip, budgetTip, extraTip, seeking = false, work = "search", fresh = 0 }: {
   row: RowView;
   meta: SectionMeta;
   open: boolean;
@@ -107,6 +110,8 @@ export function CategoryRow({ row, meta, open, onToggle, onDecide, decideTip, bu
   extraTip: string | null;
   /** While anything of it is searched (open or shut): a light goes back and forth over the row, its icon sends a ring, "Aranıyor" with the dots. */
   seeking?: boolean;
+  /** What the motion says: "Aranıyor", "Ekleniyor" (something put on it), "Düzenleniyor" (something of it changed). */
+  work?: "search" | "add" | "edit";
   /** Shut, after: how many options came, a small number on its icon until it is opened. */
   fresh?: number;
 }) {
@@ -127,7 +132,7 @@ export function CategoryRow({ row, meta, open, onToggle, onDecide, decideTip, bu
           {extraTip && <span className="q-sgn"> · {extraTip}</span>}
           {/* (its words drawn by the style, data-w: the line's own text stays what it says, "2 şehir için · 5 fikir") */}
           {seeking && (
-            <span className="q-seekw" role="status" aria-label={L("Aranıyor", "Searching")} data-w={L("Aranıyor", "Searching")}>
+            <span className="q-seekw" role="status" aria-label={WORK_WORD[work]()} data-w={WORK_WORD[work]()}>
               <SearchDots />
             </span>
           )}

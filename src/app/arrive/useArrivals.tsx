@@ -145,6 +145,17 @@ export function useArrivals({ tripId, items, sections, openCaptures, view, isOpe
     setTimeout(() => {
       const els = placed.map((p) => findTarget({ item: p.id }));
       els.forEach((el) => (pulse(el, "ar-new", RING_MS), stampTick(el)));
+      // A card drawn again while it rings (its need took the new option, its frame changed): the ring goes on on the card
+      // as it is now, for what is left of it (2026-10-24: the ring was lost when the box was built again just after).
+      const rang = Date.now();
+      for (const at of [300, 800]) {
+        setTimeout(() => {
+          placed.forEach((p, n) => {
+            const now = findTarget({ item: p.id });
+            if (now && now !== els[n] && !now.classList.contains("ar-new")) pulse(now, "ar-new", Math.max(0, RING_MS - (Date.now() - rang)));
+          });
+        }, at);
+      }
       for (const sec of new Set(placed.map((p) => p.section))) pulse(document.querySelector(`[data-section="${sec}"] :is(.cat-count, .cat-ideas, .q-ring)`), "ar-pop", POP_MS);
       const seen = live.current.view === "plan" && els.some((el) => el && inView(el));
       if (opts.toast && !seen) setToast({ text: arrivedText(placed), itemId: placed[0].id, at: Date.now() });

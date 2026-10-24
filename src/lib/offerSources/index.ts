@@ -326,7 +326,14 @@ export function makeLiveSource(opts: { kv?: KV; fetcher?: typeof fetch; now?: ()
   events(city: string, start: string, end: string): Promise<Offer[]>;
 } {
   const kv = opts.kv ?? chromeKV;
-  const get = opts.fetcher ?? ((...a: Parameters<typeof fetch>) => fetch(...a));
+  const fetcher = opts.fetcher ?? ((...a: Parameters<typeof fetch>) => fetch(...a));
+  // Only a question that really goes to the server marks its category (its row on the Plan moves, lib/looking.ts): an
+  // answer kept from before is no search (2026-10-24, Emre: "her açıp kapattığımda aranıyor çıkıyor").
+  const get = (url: string): Promise<Response> => {
+    const section = SECTION_OF_KIND[new URL(url).searchParams.get("kind") ?? ""];
+    const going = fetcher(url);
+    return section ? sectionLooking.track(section, going) : going;
+  };
   const now = opts.now ?? Date.now;
   const server = opts.server ?? DEFAULT_SERVER.url;
   const asking = new Map<string, Promise<Answer>>();
@@ -545,20 +552,21 @@ export function makeLiveSource(opts: { kv?: KV; fetcher?: typeof fetch; now?: ()
     return going;
   };
 
-  // (each ask marks its category while it is out: its row on the Plan shows the search, lib/looking.ts)
-  const mark = <T>(section: string, work: Promise<T>): Promise<T> => sectionLooking.track(section, work);
   return {
     available: () => true,
-    offers: (need) => mark(need.section, find(need)),
-    find: (need, narrow) => mark(need.section, find(need, narrow)),
-    candidates: (need) => mark(need.section, candidates(need)),
+    offers: (need) => find(need),
+    find,
+    candidates,
     places,
     price,
-    sights: (city, country) => mark("todo", sights(city, country)),
+    sights,
     days,
-    events: (city, start, end) => mark("activity", events(city, start, end)),
+    events,
   };
 }
+
+/** The Plan's category a question to the server searches for (by its kind); none for a fare's check or a map's place. */
+const SECTION_OF_KIND: Record<string, string> = { stay: "stay", flight: "flight", transfer: "transport", activity: "activity", events: "activity", esim: "other", sights: "todo" };
 
 /**
  * The chat's find_offers: real offers for a need, the cheapest or under a ceiling when asked; [] when the sources

@@ -21,3 +21,14 @@ describe("sectionsOfWords", () => {
     expect(sectionsOfWords("Türkiye'den kampanya var mı")).toEqual([]);
   });
 });
+
+describe("chatWork: what the row says while the chat works", () => {
+  it("added, changed or looked for", async () => {
+    const { chatWork } = await import("../src/lib/chatSections");
+    expect(chatWork("Paris'e uçuş koy")).toBe("add");
+    expect(chatWork("Uçuş ekle")).toBe("add");
+    expect(chatWork("Paristen barcelonaya uçuşu 2 gün kaydır")).toBe("edit");
+    expect(chatWork("oteli sil")).toBe("edit");
+    expect(chatWork("Ubud'da daha ucuz otel bul")).toBe("search");
+  });
+});

@@ -234,18 +234,28 @@ describe("a town the source doesn't know (Emre's Ahangama, 19 Ekim)", () => {
   });
 });
 
-describe("each ask marks its category while it is out (the Plan row's search)", () => {
-  it("a stay's offers mark Konaklama until they answer, a failure too", async () => {
+describe("a question that goes to the server marks its category while it is out (the Plan row's search)", () => {
+  it("a stay's offers mark Konaklama until they answer, a failure too; an answer kept from before marks nothing", async () => {
     let release: () => void = () => undefined;
+    let asked: () => void = () => undefined;
+    const sent = new Promise<void>((resolve) => (asked = resolve));
     const answered = new Promise<void>((resolve) => (release = resolve));
-    const fetcher = (async () => (await answered, { ok: false, json: async () => ({ offers: [] }) } as Response)) as unknown as typeof fetch;
-    const src = makeLiveSource({ kv: memoryKV(), fetcher, now: () => 1, server: "https://srv" });
-    const asked = src.offers(stay);
+    let calls = 0;
+    const fetcher = (async () => (calls++, asked(), await answered, { ok: true, json: async () => ({ offers: [offer("a")] }) } as Response)) as unknown as typeof fetch;
+    const kv = memoryKV();
+    const src = makeLiveSource({ kv, fetcher, now: () => 1, server: "https://srv" });
+    const first = src.offers(stay);
+    await sent;
     expect(sectionLooking.has("stay")).toBe(true);
     expect(sectionLooking.has("flight")).toBe(false);
     release();
-    await asked;
+    await first;
     await Promise.resolve();
     expect(sectionLooking.has("stay")).toBe(false);
+    // (opened again: the same question, kept, never goes out: no search, no motion)
+    const again = src.offers(stay);
+    expect(sectionLooking.has("stay")).toBe(false);
+    await again;
+    expect(calls).toBe(1);
   });
 });

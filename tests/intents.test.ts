@@ -390,3 +390,15 @@ describe("the words", () => {
     expect(withLang("en", () => statusWord("included"))).toBe("Included");
   });
 });
+
+describe("a flight said in the chat with nothing concrete steps back once real flights are found (2026-10-24)", () => {
+  it("the found flights are the deck to choose from, not options of a bare 'İstanbul → Paris'", () => {
+    const bare = flight("İstanbul", "Paris", "2026-11-01", "chosen", { id: "bare", origin: "chat", provider: null, url: null, price: eur(null), flight: { from: "İstanbul", to: "Paris", departure: null, arrival: null, carrier: null, flightNumber: null, stops: null } as never });
+    const found = (id: string, carrier: string, amount: number) =>
+      flight("İstanbul", "Paris", "2026-11-01", "saved", { id, provider: "Aviasales", price: eur(amount), flight: { carrier, flightNumber: null, departure: "2026-11-01T08:40", arrival: "2026-11-01T11:35", from: "SAW", to: "CDG", fromCity: "İstanbul", toCity: "Paris", stops: 0, baggage: null } as never });
+    const after = board(base, [bare, found("tarom", "Tarom", 91), found("ajet", "AJet", 303)]).intents.find((i) => i.itemIds.includes("tarom"))!;
+    expect(after.chosen).toBeNull();
+    expect(after.status).toBe("deciding");
+    expect(after.options.map((o) => o.id).sort()).toEqual(["ajet", "tarom"]);
+  });
+});

@@ -7,7 +7,7 @@ import type { CatSection } from "../../lib/categories";
 import { L } from "../../lib/i18n";
 import { formatPrice } from "../../lib/items";
 import { useFold } from "../motion";
-import { sectionLooking } from "../../lib/looking";
+import { sectionAdding, sectionEditing, sectionLooking, type LookStore } from "../../lib/looking";
 import { lookWord } from "../../lib/stageWords";
 import { UiIcon } from "../cards/Silhouettes";
 import { HiddenList } from "./HiddenList";
@@ -35,9 +35,14 @@ const MIN_SEEK_MS = 2600;
  * reviews it, open or shut, held at least one back and forth; shut, after, `fresh` how many options came meanwhile (the
  * small number on its icon), gone once it is opened.
  */
-function useSectionSearch(id: string, also: boolean, found: number, open: boolean): { seeking: boolean; fresh: number } {
-  const read = () => sectionLooking.has(id);
-  const live = useSyncExternalStore(sectionLooking.subscribe, read, read) || also;
+function useSectionSearch(id: string, also: boolean, found: number, open: boolean): { seeking: boolean; work: SeekWork; fresh: number } {
+  const adding = useIn(sectionAdding, id);
+  const editing = useIn(sectionEditing, id);
+  const searching = useIn(sectionLooking, id);
+  const live = adding || editing || searching || also;
+  // (what the row says, the last thing it was doing kept while the motion is held)
+  const said = useRef<SeekWork>("search");
+  if (live) said.current = adding ? "add" : editing ? "edit" : "search";
   const [held, setHeld] = useState(false);
   const since = useRef(0);
   useEffect(() => {
@@ -54,7 +59,14 @@ function useSectionSearch(id: string, also: boolean, found: number, open: boolea
   const base = useRef<number | null>(null);
   if (open) base.current = null;
   else if (seeking && base.current == null) base.current = found;
-  return { seeking, fresh: !open && !seeking && base.current != null ? Math.max(0, found - base.current) : 0 };
+  return { seeking, work: said.current, fresh: !open && !seeking && base.current != null ? Math.max(0, found - base.current) : 0 };
+}
+
+/** The row's word while it moves: Aranıyor, Ekleniyor (something put on it), Düzenleniyor (something of it changed). */
+export type SeekWork = "search" | "add" | "edit";
+function useIn(store: LookStore, id: string): boolean {
+  const read = () => store.has(id);
+  return useSyncExternalStore(store.subscribe, read, read);
 }
 
 export function Section({ section, row, v82, open, instant = false, onToggle, onAdd, onDecide, decideTip, allotNum = null, suggestions = 0, reviewing = false, found = 0, children }: {
@@ -89,7 +101,7 @@ export function Section({ section, row, v82, open, instant = false, onToggle, on
     <section className={`q-sec${open ? " open" : ""}`} id={`cat-${section.id}`} style={{ "--c": meta.color } as React.CSSProperties} aria-label={label} data-section={section.id}>
       <CategoryRow row={row} meta={meta} open={open} onToggle={onToggle} onDecide={onDecide} decideTip={decideTip}
         budgetTip={budgetTip(section, allotNum)} extraTip={suggestions > 0 ? L(`${suggestions} öneri`, `${suggestions} suggestion${suggestions === 1 ? "" : "s"}`) : null}
-        seeking={shut.seeking} fresh={shut.fresh} />
+        seeking={shut.seeking} work={shut.work} fresh={shut.fresh} />
       {mounted && (
         <div className={`q-fold${fold.expanded ? " on" : ""}${fold.settled ? " settled" : ""}`} inert={!open}>
           <div className="q-fold-in">

@@ -23,3 +23,9 @@ export function sectionsOfWords(text: string): SectionId[] {
   if (WHOLE.test(text)) for (const id of BACKBONE) if (!found.includes(id)) found.push(id);
   return found;
 }
+
+/** What a line asks to be done: added ("Uçuş ekle", "koy"), changed ("kaydır", "düzelt", "sil") or looked for (the rest). */
+export type ChatWork = "add" | "edit" | "search";
+const ADD = /(?<!\p{L})(ekle|koy|ekleyelim|koyalım|add|put)/iu;
+const EDIT = /(?<!\p{L})(değiştir|düzelt|güncelle|kaydır|taşı|ertele|öne al|sil|kaldır|iptal|change|edit|update|move|shift|remove|delete|cancel)/iu;
+export const chatWork = (text: string): ChatWork => (EDIT.test(text) ? "edit" : ADD.test(text) ? "add" : "search");
