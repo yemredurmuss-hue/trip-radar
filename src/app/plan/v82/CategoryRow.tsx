@@ -4,7 +4,9 @@
 // plan a part, dark green bought, light green chosen, empty to decide; all bought, a green disc with a tick (lib/planRing.ts).
 // The words ("1 alındı · 1 seçildi · 2 karar") are kept for a screen reader; with a decision waiting the ring is a button
 // that says which on hover and goes to the first on a tap (F5). A tap anywhere opens or closes it; the name is its button.
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { chime } from "../../chime";
+import { reducedMotion } from "../../motion";
 import type { SectionId } from "../../../lib/categories";
 import { L } from "../../../lib/i18n";
 import type { RowThumb } from "../../../lib/intentFrame";
@@ -61,6 +63,33 @@ export function RingMark({ ring }: { ring: PlanRing }) {
   );
 }
 
+/** Tamamlandı (0.47.0): how long the light crosses the row and the tick settles (category.css `q-win`). */
+const WIN_MS = 900;
+
+/**
+ * True for a moment when the category turns complete while it's on screen (never as the board opens, never twice for
+ * the same row: undone and done again stays quiet), with the small chime.
+ */
+function useCompleted(done: boolean): boolean {
+  const was = useRef(done);
+  const played = useRef(false);
+  // (the board's records still arriving as it opens is no completion)
+  const since = useRef(Date.now());
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    const turned = done && !was.current;
+    was.current = done;
+    if (!turned || played.current || Date.now() - since.current < 2000) return;
+    played.current = true;
+    chime();
+    if (reducedMotion()) return;
+    setOn(true);
+    const t = setTimeout(() => setOn(false), WIN_MS);
+    return () => clearTimeout(t);
+  }, [done]);
+  return on;
+}
+
 export function CategoryRow({ row, meta, open, onToggle, onDecide, decideTip, budgetTip, extraTip }: {
   row: RowView;
   meta: SectionMeta;
@@ -78,8 +107,9 @@ export function CategoryRow({ row, meta, open, onToggle, onDecide, decideTip, bu
   const [failed, setFailed] = useState<ReadonlySet<string>>(() => new Set());
   const said = row.parts.map((p) => p.text).join(" · ");
   const alerts = row.parts.filter((p) => p.tone);
+  const win = useCompleted(Boolean(row.ring && ringDone(row.ring)));
   return (
-    <div className="q-row1" onClick={onToggle}>
+    <div className={`q-row1${win ? " q-win" : ""}`} onClick={onToggle}>
       <span className={`q-ic${MODE_OF[row.id] ? " mc" : ""}`} aria-hidden>
         {MODE_OF[row.id] ? <ModeIcon name={MODE_OF[row.id]!} size={24} /> : <KindIcon kind={meta.icon} size={20} />}
       </span>

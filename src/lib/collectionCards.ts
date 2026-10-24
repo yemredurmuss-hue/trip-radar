@@ -576,8 +576,8 @@ export const moreLabel = (n: number, title: string): string => L(`${title}: ${n}
 export function askMore(section: SectionId, city: string | null): string {
   const where = city ?? L("bu gezi", "this trip");
   return section === "activity"
-    ? L(`${where} için bilet ya da rezervasyon gerektiren birkaç etkinlik ve tur daha öner.`, `Suggest a few more activities and tours for ${where}, the kind that take a ticket or a booking.`)
-    : L(`${where} için gezilecek birkaç yer ve restoran daha öner.`, `Suggest a few more places to see and restaurants for ${where}.`);
+    ? L(`${where} için bilet ya da rezervasyon gerektiren 3 etkinlik ya da tur daha öner.`, `Suggest 3 more activities or tours for ${where}, the kind that take a ticket or a booking.`)
+    : L(`${where} için gezilecek 3 yer ya da restoran daha öner.`, `Suggest 3 more places to see or restaurants for ${where}.`);
 }
 export const askOther = (title: string): string => L(`“${title}” yerine başka bir etkinlik ya da tur öner.`, `Suggest another activity or tour in place of “${title}”.`);
 export const askLike = (card: Pick<KCardVM, "title" | "family">, city: string | null): string =>

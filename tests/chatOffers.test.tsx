@@ -278,6 +278,9 @@ describe("find_offers for a stay: the three picks", () => {
       const reply = (await listMessages("lk")).filter((m) => m.role === "assistant" && m.text.trim()).at(-1)!;
       expect(reply.offers!.need).toMatchObject({ kind: "activity", city: "Ahangama" });
       expect(reply.offers!.offers.map((o) => o.id)).toEqual(["v1", "v2"]);
+      // 0.47.0 (Emre: "chat ve plan ayrı hareket etmesin"): the same tours wait on the trip for the plan's Etkinlik row.
+      const kept = (await (await db()).get("trips", "lk"))!.chatTours!;
+      expect(kept.map((t) => [t.city, t.offers.map((o) => o.id)])).toEqual([["Ahangama", ["v1", "v2"]]]);
       // Ekle saves the tour in the town, an option of Etkinlik.
       const item = await addChatOffer(reply.id, reply.offers!.offers[0], reply.offers!.need);
       expect(item).toMatchObject({ name: "Surf lesson in Ahangama", category: "activity", city: "Ahangama", status: "saved", provider: "Viator" });

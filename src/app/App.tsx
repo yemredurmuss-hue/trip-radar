@@ -229,6 +229,7 @@ export function App() {
             onAddToTrip={addToTrip}
             ctx={startCtx}
             onTrash={() => setHistoryOpen(true)}
+            onDelete={(id) => void moveTripToTrash(id)}
           />
         )
       )}

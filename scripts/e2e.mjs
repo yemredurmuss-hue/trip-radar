@@ -3304,7 +3304,17 @@ try {
   await board.locator(".trip-card").nth(1).waitFor();
   assert.equal(await board.locator(".trip-card").count(), 2);
   await board.screenshot({ path: `${out}/12-trips.png` });
-  console.log("✓ flow: Thailand capture → separate trip + notice; overview lists both trips, each with its own board");
+  // 0.47.0 (Emre: "kartlarımın üzerine gelince mini bir X, bir kere sorsun"): the × on hover asks on the card; Vazgeç keeps it.
+  const tripBox = board.locator(".st-trip", { has: board.locator(".trip-card", { hasText: "Portekiz" }) });
+  await tripBox.hover();
+  await tripBox.locator(".st-trip-x").click();
+  await tripBox.locator(".st-ask", { hasText: "Silinsin mi?" }).waitFor();
+  await tripBox.locator(".st-ask", { hasText: "30 gün içinde geri alınır" }).waitFor();
+  await board.screenshot({ path: `${out}/12b-trips-delete-ask.png` });
+  await tripBox.getByRole("button", { name: "Vazgeç" }).click();
+  await tripBox.locator(".st-ask").waitFor({ state: "detached" });
+  assert.equal(await board.locator(".trip-card").count(), 2, "Vazgeç keeps it");
+  console.log("✓ flow: Thailand capture → separate trip + notice; overview lists both trips, each with its own board; a card's × asks once on the card");
 
   // Revizyon 1: the hero's destinations are the main places. Stays said in Funchal and in Gaula (a parish on
   // Madeira) make the hero say "Porto | Madeira" once the model has said which is inside which; the Plan keeps Gaula.

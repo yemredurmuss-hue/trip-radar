@@ -54,6 +54,8 @@ interface Props {
   ctx: StartCtx;
   /** Geçmiş ve çöp kutusu. */
   onTrash: () => void;
+  /** A card's × (0.47.0): the trip to the trash for 30 days, "Geri al" on the overview. */
+  onDelete: (tripId: string) => void;
 }
 
 /** How long the box's placeholder line stays, and its fade out before the next one (app.css `.st-ph.out`). */
@@ -203,8 +205,10 @@ function ProfileMenu(p: { name: string | null; photo: string | null; model: stri
  * interview waits as a dashed draft card. Under the box (ana-sayfa-v1, 2026-10-19): idea chips that write a sentence into
  * it, "Sürpriz bir yer" (the inspire mode) and "Başka fikirler"; joining a shared trip is in the profile menu.
  */
-export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettings, onStart, onAddToTrip, ctx, onTrash }: Props) {
+export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettings, onStart, onAddToTrip, ctx, onTrash, onDelete }: Props) {
   const [text, setText] = useState("");
+  // (the card whose × was pressed: asked once on the card itself)
+  const [asking, setAsking] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [focused, setFocused] = useState(false);
   const [joining, setJoining] = useState(false);
@@ -653,8 +657,8 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
                 [range ? formatDateRange(range.start, range.end) : null, days > 1 ? L(`${days} gün`, `${days} days`) : null, isDemoTrip(trip) ? L("Örnek", "Sample") : null].filter(Boolean).join(" · ") ||
                 L("Tarih ve yer kaydettikçe netleşir", "Dates and places fill in as you save");
               return (
+                <div key={trip.id} className={`st-trip${asking === trip.id ? " asking" : ""}`}>
                 <TripCard
-                  key={trip.id}
                   title={trip.title}
                   info={info}
                   image={image}
@@ -666,6 +670,30 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
                   onOpen={() => onOpen(trip.id)}
                   tripId={trip.id}
                 />
+                {/* 0.47.0 (Emre: "kartın üzerine gelince mini bir X, bir kere sorsun"): asked on the card, to the trash for 30 days. */}
+                {asking === trip.id ? (
+                  <div className="st-ask" role="alertdialog" aria-label={L(`${trip.title} silinsin mi?`, `Delete ${trip.title}?`)}>
+                    <b>{L("Silinsin mi?", "Delete it?")}</b>
+                    <span>
+                      {trip.shareId
+                        ? L("Yalnız bu bilgisayardan; diğerlerinin kopyası kalır. 30 gün Çöp kutusu'nda durur.", "Only on this computer; the others keep theirs. It stays in the trash for 30 days.")
+                        : L("Çöp kutusuna gider, 30 gün içinde geri alınır.", "It goes to the trash; you can bring it back within 30 days.")}
+                    </span>
+                    <span className="st-ask-b">
+                      <button type="button" className="st-ask-del" onClick={() => (setAsking(null), onDelete(trip.id))}>
+                        {L("Sil", "Delete")}
+                      </button>
+                      <button type="button" onClick={() => setAsking(null)} autoFocus>
+                        {L("Vazgeç", "Cancel")}
+                      </button>
+                    </span>
+                  </div>
+                ) : (
+                  <button type="button" className="st-trip-x" aria-label={L(`${trip.title}: sil`, `${trip.title}: delete`)} title={L("Sil", "Delete")} onClick={() => setAsking(trip.id)}>
+                    ×
+                  </button>
+                )}
+                </div>
               );
             })}
           </div>

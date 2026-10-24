@@ -491,6 +491,23 @@ yukarıdaki tablodadır (Seçildi kum, Alındı yeşil).
 - Bilet gibi: ne → ne ("Havalimanı → Otel"), adlar ve saat alt satırda, notlar Ayrıntı'da.
 - Artı ve eksi birkaç kelimedir; sayfada okunan somut şey kendi sözleriyle yazılır ("Karşısında genelev var").
 
+## Uygulamaya tek basış, kartta ×, öneriler sohbetle bir, küçük ödül (0.47.0)
+
+- **Açılır pencerenin üst şeridi:** her durumda en üstte ince bir şerit: solda logo ve "Trip Radar", sağda lila
+  "Uygulamayı aç ↗" ve ×. Uygulama bir sekmede açıksa yenisi açılmaz, o sekmeye geçilir. Alttaki sessiz satırdaki
+  "Panoyu aç" bu yüzden kalktı.
+- **Seyahatlerim'de ×:** gezi kartının üzerine gelince sağ üstte küçük × (kalan gün sola kayar). Basınca kartın
+  üstünde tek soru: "Silinsin mi? Çöp kutusuna gider, 30 gün içinde geri alınır" · kırmızı Sil · Vazgeç. Paylaşılan
+  gezide "yalnız bu bilgisayardan" denir. Silince Seyahatlerim'de Geri al.
+- **Etkinlik önerileri sohbetle bir:** sohbetin bulduğu tur ve etkinlikler (find_offers) gezide şehir şehir saklanır
+  ve Plan'daki Etkinlik satırında da çıkar, önce onlar. Bir öneriye × basınca kaynağın sıradaki önerisi yerine gelir.
+- **"Bulamadın mı?" kutusu** kartların altında hep tam genişlikte bir banttır (bir kartın hücresine sıkışmaz).
+  İçinde "AI ile ara": sohbete o şehir için 3 öneri daha sorar; bulunanlar sohbette ve satırda ikinci sıra olarak çıkar.
+- **Bir bölüm tamamlanınca:** satırın üstünden yumuşak, yeşilimsi bir ışık bir kez geçer, halkanın ✓'si küçük bir
+  sıçrayışla oturur (900 ms, yerleşim kımıldamaz). İki notalı, çok kısık bir ses (C6, G6; ~150 ms) çalar. Açılışta
+  değil, aynı satırda ikinci kez değil. Ayarlar'da "Küçük sesler" kapatır; "Hareketi duraklat" ya da azaltılmış
+  hareket açıksa ne hareket ne ses.
+
 ## Tek bakış (0.45.0, tuval 15–16)
 
 - Simge penceresi her an tek kart: resim ya da simge, tek cümle, tek büyük düğme, altında tek sessiz satır ("Biriktirdiklerim

@@ -291,6 +291,11 @@ export interface Trip {
    * suggestion ("Plana ekle", "Gerek yok"). A rule's open suggestion isn't stored: it's worked out from the trip.
    */
   suggestions?: Suggestion[];
+  /**
+   * Tours and activities the chat found (find_offers, 0.47.0, Emre: "chat ve plan ayrı hareket etmesin"), by city, the
+   * newest first: the plan's Etkinlik row shows them with its own.
+   */
+  chatTours?: { city: string; offers: Offer[]; at: number }[];
   /** The last AI review of the trip for suggestions (suggestReview.ts): for which state, when, and whether it failed. */
   suggestReview?: { key: string; at: number; failed?: boolean; state?: "running" | "done" | "failed" } | null;
   /** Made by the start chat (spec 2026-10-06 §2): its one-time start card above the plan (startTrip.ts guideSteps). */

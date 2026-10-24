@@ -121,11 +121,8 @@ function Popup() {
     ) : (
       <div className="tb-quiet">
         {left ?? (mine != null ? <span>{L("Biriktirdiklerim", "Saved by us")} <b>{mine}</b></span> : <span />)}
-        {right ?? (
-          <button type="button" className="btn-link" onClick={() => boardOf(tripId)}>
-            {L("Panoyu aç ↗", "Open the board ↗")}
-          </button>
-        )}
+        {/* (the app is the strip's at the top, 0.47.0) */}
+        {right ?? <span />}
       </div>
     );
 
@@ -340,21 +337,30 @@ function Popup() {
   const chip = view && !saved && card !== "first" ? (trip ?? (page ? null : view.pocket?.trip ? { title: view.pocket.trip.title } : null)) : null;
   return (
     <div className="popup-card tb">
+      {/* 0.47.0 (Emre: "simgeye basınca uygulamama kolayca gidebilmem lazım"): the app one press away, whatever the card;
+          an open board tab is brought forward, never a second one. */}
+      <div className="tb-app">
+        <button type="button" className="tb-brand" onClick={() => boardOf(tripId)} aria-label={L("Trip Radar'ı aç", "Open Trip Radar")}>
+          <img src="icons/icon-32.png" alt="" width={18} height={18} />
+          Trip Radar
+        </button>
+        <button type="button" className="tb-open" onClick={() => boardOf(tripId)}>
+          {L("Uygulamayı aç ↗", "Open the app ↗")}
+        </button>
+        <button type="button" className="tb-x" aria-label={L("Kapat", "Close")} onClick={() => window.close()}>
+          ×
+        </button>
+      </div>
       {view?.price && !saved && <PriceBox badge={view.price} />}
-      <div className="tb-top">
-        {chip || (page && where?.trips.length && !saved) ? (
+      {(chip || (page && where?.trips.length && !saved)) && (
+        <div className="tb-top">
           <button type="button" className="tb-chip" disabled={fixed || !where?.trips.length || choosing} onClick={() => setChoosing(true)} aria-label={L("Gezi değiştir", "Change the trip")}>
             <Cover photos={where?.trips.find((x) => x.title === chip?.title)?.photos ?? (view?.pocket?.trip?.photo ? [view.pocket.trip.photo] : [])} title={chip?.title ?? "?"} />
             {chip?.title ?? L("Gezi seç", "Pick a trip")}
             {!fixed && where?.trips.length ? <em aria-hidden>▾</em> : null}
           </button>
-        ) : (
-          <span className="tb-brand">Trip Radar</span>
-        )}
-        <button type="button" className="tb-x" aria-label={L("Kapat", "Close")} onClick={() => window.close()}>
-          ×
-        </button>
-      </div>
+        </div>
+      )}
       {body}
     </div>
   );

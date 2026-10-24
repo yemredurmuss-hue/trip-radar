@@ -70,7 +70,7 @@ const asked = (p, type) => p.evaluate((t) => window.__asked.filter((m) => m.type
 // 1. A place's own page, the trip known: one card, one button, Biriktirdiklerim under it; nothing saved by opening it.
 let p = await open(view(known), "1-page");
 assert.equal((await asked(p, "popup:save")).length, 0, "opening saves nothing");
-assert.match(await text(p), /^Portekiz\n▾\n×\n[\s\S]*Memmo Alfama Hotel\nBooking\.com · konaklama · 12 – 16 Kas\n\+ Konaklama destesine ekle[\s\S]*Biriktirdiklerim 16\nPanoyu aç ↗$/);
+assert.match(await text(p), /^Trip Radar\nUygulamayı aç ↗\n×\nPortekiz\n▾\n[\s\S]*Memmo Alfama Hotel\nBooking\.com · konaklama · 12 – 16 Kas\n\+ Konaklama destesine ekle[\s\S]*Biriktirdiklerim 16$/);
 assert.equal(await p.locator(".tb-go").count(), 1, "one big button");
 await p.keyboard.press("Enter");
 await p.locator(".pk-done").waitFor();
@@ -132,7 +132,7 @@ await p.waitForTimeout(100);
 assert.equal((await asked(p, "popup:retry"))[0].id, "c:f");
 // 10. A new tab: never a dead end; the trip's next thing to do.
 p = await open({ kind: "none", title: "", sub: "", site: null, travelSite: false, along: false, what: "idea", where: null, desk: { candidate: null, planned: null }, key: true, price: null, pocket, hero: null, video: false, confirm: null, glance, fresh: false, failed: null, alongAsked: true }, "11-newtab");
-assert.match(await text(p), /^Portekiz\n×\n!\nSıradaki\nİstanbul → Porto karar bekliyor\n8 Eki · 2 seçenek\nKarar ver\nBu sayfa eklenemez\nPanoyu aç ↗$/);
+assert.match(await text(p), /^Trip Radar\nUygulamayı aç ↗\n×\nPortekiz\n!\nSıradaki\nİstanbul → Porto karar bekliyor\n8 Eki · 2 seçenek\nKarar ver\nBu sayfa eklenemez$/);
 // 11. A travel site without the switch, once: "+ koyayım mı?"; "Ekle" goes on to the page. No key: the quiet line says so.
 p = await open(view(known, { along: false, alongAsked: false, key: false }), "12-along");
 assert.match(await text(p), /Booking\.com'da kartlara \+ koyayım mı\?[\s\S]*Evet, yanımda ol/);

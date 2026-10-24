@@ -12,6 +12,7 @@ import { listGeminiModels } from "../lib/llm/gemini";
 import { retryAllFailed } from "../lib/process";
 import type { Settings as SettingsShape } from "../lib/types";
 import { setStill, stillChosen } from "./motion";
+import { setSounds, soundsOn } from "./chime";
 import { ShareSettings } from "./Share";
 
 // Sonnet first: near Opus on the start chat's trips (2026-10-09, six real messages) and fast enough for its 25 s reading;
@@ -60,6 +61,7 @@ export function Settings({ onClose }: { onClose: () => void }) {
   const [keyTone, setKeyTone] = useState<{ tone: "bad" | "ok"; n: number } | null>(null);
   const keyEnded = (tone: "bad" | "ok") => setKeyTone((prev) => ({ tone, n: (prev?.n ?? 0) + 1 }));
   const [still, setStillOn] = useState(stillChosen);
+  const [sounds, setSoundsOn] = useState(soundsOn);
 
   useEffect(() => {
     void getSettings().then(setS);
@@ -231,6 +233,17 @@ export function Settings({ onClose }: { onClose: () => void }) {
             }}
           />
           {L("Hareketi duraklat (animasyonlar kapalı)", "Pause motion (animations off)")}
+        </label>
+        <label className="field row-inline" style={{ alignItems: "center", gap: 8 }}>
+          <input
+            type="checkbox"
+            checked={sounds}
+            onChange={(e) => {
+              setSoundsOn(e.target.checked);
+              setSounds(e.target.checked);
+            }}
+          />
+          {L("Küçük sesler (bir bölüm tamamlanınca)", "Small sounds (when a section is complete)")}
         </label>
         <ShareSettings />
         <AlongSettings />
