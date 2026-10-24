@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ALL_PLANNED_KINDS, checkPlanned, fillPlanned, plannedItem, PLANNED_KINDS, type PlannedInput } from "../src/lib/planned";
+import { ALL_PLANNED_KINDS, checkPlanned, fillPlanned, guardKind, plannedItem, PLANNED_KINDS, type PlannedInput } from "../src/lib/planned";
 import { isInsurance, isLocalTransfer, isRental, isTrip } from "../src/lib/travelKinds";
 import { makeItem } from "./fixtures/makeItem";
 
@@ -28,11 +28,19 @@ describe("kinds made by the add sheet", () => {
     expect(plannedItem(said({ kind: "food", title: "Cantinho do Avillez", city: "Porto" }), "t1", "f", 1)).toMatchObject({ category: "food", name: "Cantinho do Avillez" });
     expect(plannedItem(said({ kind: "note", title: "Vize randevusu" }), "t1", "n", 1)).toMatchObject({ category: "other", plannedKind: "note" });
   });
-  it("the chat tool still only takes its own kinds", () => {
-    expect(PLANNED_KINDS).not.toContain("minibus");
-    expect(checkPlanned(said({ kind: "minibus", to: "Sagres" }))).toMatch(/Bilinmeyen tür/);
-    expect(checkPlanned(said({ kind: "minibus", to: "Sagres" }), ALL_PLANNED_KINDS)).toBeNull();
-    expect(checkPlanned(said({ kind: "moto_rental" }), ALL_PLANNED_KINDS)).toMatch(/şehirde/);
+  it("the chat tool takes every way of travel and rental (2026-10-24: \"karavan dediğim halde araç kiralama\"); a meal and a note stay the add sheet's", () => {
+    for (const k of ["minibus", "rv_rental", "moto_rental", "bike_rental"] as const) expect(PLANNED_KINDS).toContain(k);
+    expect(checkPlanned(said({ kind: "minibus", to: "Sagres" }), PLANNED_KINDS)).toBeNull();
+    expect(checkPlanned(said({ kind: "moto_rental" }), PLANNED_KINDS)).toMatch(/şehirde/);
+    expect(PLANNED_KINDS).not.toContain("food");
+    expect(checkPlanned(said({ kind: "note", title: "x" }), PLANNED_KINDS)).toMatch(/Bilinmeyen tür/);
+  });
+  it("a camper, a motorbike or a bike said as a car rental is that rental; a car stays a car", () => {
+    expect(guardKind(said({ kind: "car_rental", title: "Madeira Karavan Kiralama (11-18 Ekim)", city: "Funchal" })).kind).toBe("rv_rental");
+    expect(guardKind(said({ kind: "car_rental", title: "Scooter", city: "Lagos" })).kind).toBe("moto_rental");
+    expect(guardKind(said({ kind: "car_rental", title: "Bisiklet kiralama", city: "Porto" })).kind).toBe("bike_rental");
+    expect(guardKind(said({ kind: "car_rental", title: "Araç kiralama", city: "Porto" })).kind).toBe("car_rental");
+    expect(plannedItem(guardKind(said({ kind: "car_rental", title: "Madeira Karavan", city: "Funchal", date: "2026-10-11", end_date: "2026-10-18" })), "t1", "rv", 1).plannedKind).toBe("rv_rental");
   });
 });
 

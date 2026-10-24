@@ -190,9 +190,11 @@ export function rowView(vm: IntentVM): RowView {
     // (its city is the rail's, said where the city changes, its nights there too: onay paketi 2026-10-22, "şehir hatta")
     lead = null;
   } else if (rental) {
-    // (its days as the rail counts them: pick-up to return, both days)
+    // (its days as the rail counts them: 24-hour stretches, pick-up to return)
     const days = railDate(vm)?.notches || null;
-    const kind = vm.head.kindWord ? L(`${vm.head.kindWord} kiralama`, `${vm.head.kindWord} rental`) : L("Kiralama", "Rental");
+    // (a car's own word is already its rental's: "Araç kiralama", never "Araç kiralama kiralama", as intents.ts says it)
+    const word = vm.head.kindWord;
+    const kind = word ? (/kiralama|rental/i.test(word) ? word : L(`${word} kiralama`, `${word} rental`)) : L("Kiralama", "Rental");
     lead = [kind, days ? spanText(days, "day") : null].filter(Boolean).join(" · ");
   } else if (vm.head.kindWord) {
     lead = vm.head.kindWord;
@@ -222,6 +224,8 @@ export function rowView(vm: IntentVM): RowView {
 
   // The line under it.
   const line: RowPart[] = [];
+  // (rides with no day and no road are the whole trip's line, as an eSIM's is: "Uber Yolculukları · Tüm gezi")
+  if (ownName && !route && !vm.head.date) line.push({ text: L("Tüm gezi", "Whole trip") });
   const dayParts = vm.head.parts.filter((p) => !/→/.test(p));
   const shown = chosen && (status === "chosen" || status === "booked" || (status === "suggested" && !pickDeck) || status === "arranged");
   if (ownName && route) line.push({ text: `${route.from} → ${route.to}` });

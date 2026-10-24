@@ -24,10 +24,10 @@ describe("railDate", () => {
     expect(stretchText("2027-03-31", "2027-04-02")).toBe("31 Mar – 2 Nis");
     expect(stretchText("2027-03-27", "2027-03-27")).toBe("27 Mar");
   });
-  it("a rental: its days from pick-up to return", () => {
+  it("a rental: its days are its 24-hour stretches, pick-up to return (11 → 18 Ekim is 7, Emre 2026-10-24)", () => {
     const item = makeItem({ id: "m", category: "transport", dates: { start: "2027-03-28", end: "2027-03-30", source: "page" } });
     const d = railDate({ kind: "transport", head: head({ date: "2027-03-28" }), ticket: { rental: { line: null, pick: null, days: 3, back: null } } as IntentVM["ticket"], chosen: { item } as IntentVM["chosen"] });
-    expect(d).toEqual({ when: "28–30 Mar", sub: "Paz → Sal", span: "3 gün", notches: 3 });
+    expect(d).toEqual({ when: "28–30 Mar", sub: "Paz → Sal", span: "2 gün", notches: 2 });
   });
   it("no day: nothing to say (C19)", () => {
     expect(railDate({ kind: "flight", head: head({}), ticket: null, chosen: null })).toBeNull();

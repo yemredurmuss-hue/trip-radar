@@ -18,7 +18,7 @@ const hero = (n: number) => `https://images.unsplash.com/photo-${n}?ixlib=rb-4.0
 const trip = (id: string, n: number): Trip =>
   ({ id, title: `Gezi ${n}`, confirmedDates: null, budget: null, heroImage: hero(n), createdAt: 1, updatedAt: 100 - n }) as Trip;
 const item = (id: string, tripId: string, imageUrl: string, at: number): Item =>
-  ({ id, tripId, name: id, category: "stay", status: "saved", imageUrl, createdAt: at, updatedAt: at, captureIds: [], dates: { start: null, end: null, source: "none" } }) as Item;
+  ({ id, tripId, name: id, category: "stay", status: "saved", imageUrl, createdAt: at, updatedAt: at, captureIds: [], dates: { start: null, end: null, source: "none" } }) as unknown as Item;
 
 describe("photos for the picker and the pocket", () => {
   it("thumbnail-sized, three for a suggested trip, one for a listed one, no data: picture", async () => {

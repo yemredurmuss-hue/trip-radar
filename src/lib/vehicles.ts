@@ -18,6 +18,17 @@ const MOTO = words("motosiklet\\p{L}*|motorsiklet\\p{L}*|motorbikes?(?!\\p{L})|m
 const BIKE = words("bisiklet\\p{L}*|bikes?(?!\\p{L})|bicycles?|e-?bikes?");
 // "araç" and its endings, never "aracılığıyla" (by means of) or "aracı kurum".
 const CAR = words("araba\\p{L}*|ara[cç](?!ıl)\\p{L}*|otomobil\\p{L}*|cars?(?!\\p{L})|rent ?a ?car|car hire|car rental|kiral[ıi]k ara[cç]\\p{L}*");
+/**
+ * The rental a plan's words name when it was said as a car ("Madeira Karavan" given as car_rental): a camper, a motorbike or
+ * a bike; null for a car or no word (planned.ts guardKind, one reading of the words with vehicleOf).
+ */
+export function rentalKindSaid(text: string): "rv_rental" | "moto_rental" | "bike_rental" | null {
+  if (CAMPER.test(text)) return "rv_rental";
+  if (MOTO.test(text)) return "moto_rental";
+  if (BIKE.test(text) && !CAR.test(text)) return "bike_rental";
+  return null;
+}
+
 /** A vehicle someone rents out: the operator or rental words, on a stay saved from a campervan page. */
 const RENTED_OUT = words("kirala\\p{L}*|kiral[ıi]k|rental\\p{L}*|rent(?!\\p{L})|hire(?!\\p{L})|vermiet\\p{L}*|indie campers|mcrent|roadsurfer|camperdays|motorhome republic|bawhee");
 /** A place to park one, not one: "Madeira Motorhome Park", "Camping Karavan Parkı", "Funchal RV Resort". */

@@ -7,14 +7,18 @@ import { L } from "./i18n";
 import { liveLabels } from "./i18nText";
 import { EMPTY_METRICS, isoDate } from "./items";
 import { cityKeyOf } from "./plan";
+import { rentalKindSaid } from "./vehicles";
 import { choreText, ESIM_WORDS, GENERATED, isGeneratedName, RENTAL_KINDS } from "./travelKinds";
 import type { Category, Item, PlannedKind } from "./types";
 
 export type { PlannedKind } from "./types";
-/** Kinds the chat's plan_item tool may use. */
-export const PLANNED_KINDS = ["flight", "train", "bus", "ferry", "transfer", "taxi", "car_rental", "stay", "activity", "esim", "insurance", "todo", "prep", "other"] as const satisfies readonly PlannedKind[];
+/**
+ * Kinds the chat's plan_item tool may use: every way of travel and every rental (Emre 2026-10-24: "karavan dediğim halde
+ * araç kiralama ekliyor": a camper, a motorbike and a bike were the add sheet's only, the chat could only say a car).
+ */
+export const PLANNED_KINDS = ["flight", "train", "bus", "minibus", "ferry", "transfer", "taxi", "car_rental", "rv_rental", "moto_rental", "bike_rental", "stay", "activity", "esim", "insurance", "todo", "prep", "other"] as const satisfies readonly PlannedKind[];
 /** Kinds only the add sheet makes (the chat says them as one of the above). */
-export const TEMPLATE_ONLY_KINDS = ["minibus", "moto_rental", "rv_rental", "bike_rental", "food", "note"] as const satisfies readonly PlannedKind[];
+export const TEMPLATE_ONLY_KINDS = ["food", "note"] as const satisfies readonly PlannedKind[];
 export const ALL_PLANNED_KINDS: readonly PlannedKind[] = [...PLANNED_KINDS, ...TEMPLATE_ONLY_KINDS];
 
 export interface PlannedInput {
@@ -86,19 +90,30 @@ const text = (v: unknown): string | null => (typeof v === "string" && v.trim() ?
 
 /** The model's input with every missing field as null (the tool is not always schema-constrained). */
 export function plannedInput(raw: any): PlannedInput {
-  return {
+  const said = {
     kind: raw?.kind,
     date: text(raw?.date),
     end_date: text(raw?.end_date),
     time: text(raw?.time),
-    from: text(raw?.from),
-    to: text(raw?.to),
-    city: text(raw?.city),
+    from: place(raw?.from),
+    to: place(raw?.to),
+    city: place(raw?.city),
     title: text(raw?.title),
     booked: raw?.booked === true,
     note: text(raw?.note),
   };
+  // A ride from a place to itself ("Porto → Porto") has no road: where it is is its city (Emre 2026-10-24: "plana A
+  // noktası B noktası getiriyor").
+  if (said.from && said.to && cityKeyOf(said.from) === cityKeyOf(said.to)) return { ...said, city: said.city ?? said.to, from: null, to: null };
+  return said;
 }
+
+/** The trip as a whole said as a place ("Tüm gezi", "genel", "whole trip"): no place, the line is the trip's. */
+const WHOLE_TRIP = /^(t[üu]m|b[üu]t[üu]n)\s+(gezi|seyahat|sezon|yolculuk|tatil)\p{L}*$|^genel$|^(the\s+)?(whole|entire|all(\s+the)?)\s+(trip|journey|holiday)$/iu;
+const place = (v: unknown): string | null => {
+  const s = text(v);
+  return s && WHOLE_TRIP.test(s.trim()) ? null : s;
+};
 
 const POLICY = /sigorta|insurance|seguro|poliçe|policy/i;
 
@@ -108,6 +123,11 @@ const POLICY = /sigorta|insurance|seguro|poliçe|policy/i;
  * "sigorta al") stays a chore. A visa keeps "other" (read as one in Diğer by its words).
  */
 export function guardKind(input: PlannedInput): PlannedInput {
+  // A camper, a motorbike or a bike said as a car rental ("Madeira Karavan", Emre 2026-10-24): the rental its words name.
+  if (input.kind === "car_rental") {
+    const said = rentalKindSaid(`${input.title ?? ""} ${input.note ?? ""}`);
+    return said ? { ...input, kind: said } : input;
+  }
   if (input.kind !== "activity" && input.kind !== "todo" && input.kind !== "other") return input;
   const title = input.title ?? "";
   if (choreText(title)) return input;
@@ -132,7 +152,9 @@ export function checkPlanned(input: PlannedInput, kinds: readonly string[] = PLA
   if (opts.complete === false) return null;
   // A ticket for a day ("12 Ekim'e uçak bileti") is a plan already; where it goes can come later.
   if (TRAVEL.includes(input.kind) && input.kind !== "taxi" && !input.to && !input.city && !input.date) return L("Nereye gidildiğini (to) ya da gününü (date) yaz.", "Give where it goes (to) or its day (date).");
-  if (input.kind === "taxi" && !input.date) return L("Taksinin gününü (date) yaz.", "Give the taxi's day (date).");
+  // (a ride with no day and no road is the whole trip's line, "Uber Yolculukları" priced in one: it needs its name)
+  if (input.kind === "taxi" && !input.date && (input.from || input.to)) return L("Taksinin gününü (date) yaz.", "Give the taxi's day (date).");
+  if ((input.kind === "taxi" || input.kind === "transfer") && !input.date && !input.from && !input.to && !input.title) return L("Tüm gezinin yolculukları için bir ad (title) yaz, ör. \"Uber Yolculukları\".", "Name the trip's rides (title), e.g. \"Uber rides\".");
   if ((RENTAL_KINDS.includes(input.kind) || input.kind === "stay") && !input.city && !input.to) return L("Hangi şehirde olduğunu (city) yaz.", "Give the city it's in (city).");
   return null;
 }

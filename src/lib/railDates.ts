@@ -52,11 +52,13 @@ function rentalStretch(vm: Pick<IntentVM, "ticket" | "head" | "chosen">): { star
   const start = isoDate(vm.head.date) ?? isoDate(vm.chosen?.item.dates.start);
   const end = isoDate(vm.chosen?.item.dates.end);
   if (!start) return null;
+  // (a rental's days are its 24-hour stretches, as the rental company bills them: 11 → 18 Ekim is 7 days, not 8; Emre
+  // 2026-10-24. The ticket's own count, ticketView.ts, is the same)
   if (end && end > start) {
-    const days = Math.round((Date.parse(`${end}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`)) / 86_400_000) + 1;
+    const days = Math.round((Date.parse(`${end}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`)) / 86_400_000);
     return { start, end, days };
   }
-  if (r.days && r.days > 1) return { start, end: addDays(start, r.days - 1), days: r.days };
+  if (r.days && r.days > 0) return { start, end: addDays(start, r.days), days: r.days };
   return null;
 }
 
