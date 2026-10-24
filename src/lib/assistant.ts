@@ -160,6 +160,7 @@ export const WEB_SEARCH_RULES_EN = `Web search (web_search):
 
 /** When the chat asks the offers' sources (find_offers) instead of suggesting from what it knows. */
 export const FIND_OFFERS_RULES_TR = `Fiyatlı öneriler (find_offers):
+- Kullanıcı bir ihtiyacı plana koymak ya da eklemek isterse ("Paris'e uçuş koy", "Ubud'a otel ekle", "deve turu ekle"), aramayı BEKLEME: önce plan_item ile kartı koy (bildiğinle: nereden/nereye, şehir, tarih; bilinmeyen null). Kart planda hemen görünür ve seçeneklerini kendisi arar. Fiyat da göstermek istersen find_offers'ı AYNI adımda çağır: ikisi birlikte çalışır, kart beklemez.
 - Konaklama ya da uçuş için "daha ucuz", "daha ucuz öneriler getir", "alternatif", "öner", "başka otel/uçuş var mı" isteklerinde ÖNCE find_offers'ı çağır (kind stay ya da flight; şehir ya da nereden/nereye, tarihler plandan; kullanıcı bir tavan söylediyse max_per_night: konaklamada gecelik, uçuşta kişi başı, € cinsinden). Daha ucuz istenince prefer "cheap".
 - live true yalnız kullanıcı açıkça "canlı", "şimdi bak", "güncel fiyat", "şu anki fiyat" gibi o anki fiyatı istediğinde (Google Flights / Google Hotels'a bakar, kotası küçük); diğer her durumda false.
 - Sonuçtaki teklifler sohbette kart olarak (en fazla 3, "Ekle" butonuyla) gösterilir: yanıtında yalnız kısaca anlat (hangisi neden), fiyat, puan ya da ad uydurma, link yazma; sayıları sonuçtan al.
@@ -168,6 +169,7 @@ export const FIND_OFFERS_RULES_TR = `Fiyatlı öneriler (find_offers):
 - Kullanıcı bir konaklama türü ya da kısıt söylerse (hostel, villa, kamp, apart, pansiyon, ev; "ucuz", "şehir merkezinde", "denize yakın") find_offers'ı kind stay ve wish ile çağır (kısa İngilizce: "hostel", "villa with pool", "apartment city centre"). Gelen sonuçlar o türdür; "bulamadım" demeden önce sonucu oku. trip.wants gezginin kendi söylediği niyettir (bütçe seviyesi, kimle, istediği ve istemediği konaklama türü, yer): her önerin ona uysun; ekonomik bir gezide hostel ve pansiyonu da say, istemediği türü önerme.
 - Konaklama ya da uçuşta find_offers hiçbir şey döndürmediyse (found 0) genel bilginle öneri verebilirsin; o zaman bunu açıkça "kaynakta bulunamadı, tahmini" diye işaretle. Kendi uydurduğun yerleri asla gerçek teklif gibi sunma.`;
 export const FIND_OFFERS_RULES_EN = `Priced offers (find_offers):
+- When the user wants a need put on the plan or added ("put a flight to Paris", "add a hotel in Ubud", "add a camel tour"), do NOT wait for a search: call plan_item first to put the card down (with what you know: from/to, the city, the date; null for what you don't). The card shows on the plan at once and looks for its options by itself. If you want to show prices too, call find_offers in the SAME step: they run together, the card never waits.
 - For a stay or a flight, when the user asks for "cheaper", "cheaper options", "alternatives", "suggest", "any other hotel/flight", call find_offers FIRST (kind stay or flight; the city or from/to, and the dates from the plan; max_per_night when the user gave a ceiling: a night for a stay, per person for a flight, in €). When cheaper is asked for, prefer "cheap".
 - live true only when the user plainly asks for the price right now ("live", "check now", "current price"): it looks at Google Flights / Google Hotels and its quota is small; false otherwise.
 - The offers in the result show in the chat as cards (at most 3, with an "Add" button): in your reply only say briefly which and why; never make up prices, ratings or names, write no links; take the numbers from the result.
@@ -2997,7 +2999,13 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
     const choices: string[] = [];
     const results: ToolResult[] = [];
     const byId = new Map((await listItems(tripId)).map((i) => [i.id, i]));
-    for (const [n, call] of answer.calls.entries()) {
+    // The card before the search (2026-10-24, Emre: "uçuş bulmayı beklemesin"): a step's find_offers runs after its
+    // changes, so "Paris'e uçuş koy" puts the card down at once and its own search starts beside the chat's (the source
+    // answers one question once). Nothing in one step reads another's answer; the results go back in their order.
+    const runOrder = [...answer.calls.keys()].sort((a, b) => Number(answer.calls[a].name === "find_offers") - Number(answer.calls[b].name === "find_offers"));
+    const byCall = new Map<number, ToolResult>();
+    for (const [k, n] of runOrder.entries()) {
+      const call = answer.calls[n];
       // Said while it's done, the board refreshed after it, a short pause before the next (never all at once).
       const said = describeCall(call.name, call.input, byId);
       if (said) stepStarted(tripId, said);
@@ -3007,17 +3015,18 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
         const content = await runTool(tripId, call.name, call.input, choices, turn);
         if (!READ_ONLY_TOOLS.has(call.name)) {
           notifyChanged();
-          if (n < answer.calls.length - 1) await pause(liveTiming.stepMs);
+          if (k < runOrder.length - 1) await pause(liveTiming.stepMs);
         }
         const change = was && !content.startsWith(UNCHANGED) ? boardChange(was, await listItems(tripId)) : null;
         if (change) changes.push(change);
-        results.push({ call, content: change ? withBoardChange(content, change) : content, isError: false });
+        byCall.set(n, { call, content: change ? withBoardChange(content, change) : content, isError: false });
         turn.done++;
         if (!READ_ONLY_TOOLS.has(call.name) && !content.startsWith(UNCHANGED)) turn.changed++;
       } catch (error) {
-        results.push({ call, content: error instanceof Error ? error.message : String(error), isError: true });
+        byCall.set(n, { call, content: error instanceof Error ? error.message : String(error), isError: true });
       }
     }
+    for (const n of answer.calls.keys()) results.push(byCall.get(n)!);
 
     // A change of city hidden before and given a way now comes back for good (its key goes).
     if (results.some((r) => !r.isError)) await pruneStaleMoves(tripId);

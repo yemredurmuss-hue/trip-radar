@@ -1,6 +1,6 @@
 import "fake-indexeddb/auto";
 import type Anthropic from "@anthropic-ai/sdk";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { currentSession, resetConversation, sendMessage, withDetails } from "../src/lib/assistant";
 import { db, listItems, listMessages, listPreferences } from "../src/lib/db";
 import { addDoc, listDocMeta } from "../src/lib/docs";
@@ -443,5 +443,35 @@ describe("assistant", () => {
     const [done] = calls[1].messages.at(-1)!.content as Anthropic.ToolResultBlockParam[];
     expect(done.is_error).toBeFalsy();
     expect((await listItems("t1")).find((i) => i.id === "r")!.dates.start).toBe("2026-10-12");
+  });
+});
+
+describe("the card before the search (Emre: \"uçuş bulmayı beklemesin\")", () => {
+  it("a step's find_offers runs after its plan_item: the card is on the board when the search goes out; the results keep their order", async () => {
+    await seed();
+    const seenAtSearch: string[][] = [];
+    vi.stubGlobal("fetch", async (url: string) => {
+      if (String(url).includes("/functions/v1/offers")) seenAtSearch.push((await listItems("t1")).filter((i) => i.origin === "chat").map((i) => i.name));
+      return { ok: true, json: async () => ({ offers: [] }) } as Response;
+    });
+    try {
+      const { client, calls } = fakeClient([
+        {
+          stop_reason: "tool_use",
+          content: [
+            { type: "tool_use", id: "f1", name: "find_offers", caller: { type: "direct" }, input: { kind: "flight", city: "", from: "Porto", to: "Paris", start: "2026-10-12", end: "", query: "", wish: "", adults: 0, max_per_night: 0, prefer: "best", live: false } },
+            { type: "tool_use", id: "p1", name: "plan_item", caller: { type: "direct" }, input: { kind: "flight", date: "2026-10-12", end_date: null, time: null, from: "Porto", to: "Paris", city: null, title: null, booked: false, note: null } },
+          ] as Anthropic.ContentBlock[],
+        },
+        { stop_reason: "end_turn", content: [{ type: "text", text: "Paris uçuşunu plana koydum.", citations: null }] as Anthropic.ContentBlock[] },
+      ]);
+      await sendMessage("t1", "Paris'e uçuş koy", anthropicProvider(client, "claude-opus-5"));
+      expect(seenAtSearch.length).toBeGreaterThan(0);
+      expect(seenAtSearch[0]).toContain("Uçuş · Porto → Paris");
+      const results = calls[1].messages.at(-1)!.content as Anthropic.ToolResultBlockParam[];
+      expect(results.map((r) => r.tool_use_id)).toEqual(["f1", "p1"]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
