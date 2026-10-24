@@ -1,5 +1,5 @@
 // Benle gezen eklenti, 0.41.0–0.44.0: the built content script on a Booking hotel's own page (the gezi cebi on the right
-// edge: "+ Konaklama destesine ekle") and on a Booking list (a "+" on each result, "Sonuçlardan seç" in the pocket), with
+// edge: "+ Konaklama destesine ekle") and on a Booking list (a "+" on each result, "+ ile ekle" in the pocket), with
 // the extension's answers stubbed. The first add asks which trip here on the page (Hangi gezi); picked with "hep buraya
 // koy", the next "+" goes there without asking. The pocket's rows: × and tekrar. After an update: "sayfayı yenile".
 // Run after `npm run build`: CHROMIUM_PATH=… node scripts/companion-stay-check.mjs → e2e-output/companion/stay-*.png
@@ -111,10 +111,10 @@ const pins = await inShadow(list, () => document.getElementById("trip-radar-comp
 assert.equal(pins, 3, "a + on each of the three results");
 const tags = await inShadow(list, () => [...document.getElementById("trip-radar-companion").shadowRoot.querySelectorAll(".pin .tag")].map((t) => t.textContent));
 assert.deepEqual(tags, ["Destende var"], "Casa Balthazar is in the deck");
-// The pocket on a list: "Sonuçlardan seç", never the whole list as one record.
+// The pocket on a list: "+ ile ekle", never the whole list as one record, never several at once.
 await shadow(list, (r) => r.querySelector(".tab").click());
 await list.waitForTimeout(100);
-assert.match(await shadow(list, (r) => r.querySelector(".cep .bd").innerText), /^Sonuçlardan seç\n/);
+assert.match(await shadow(list, (r) => r.querySelector(".cep .bd").innerText), /^Beğendiğin sonucun yanındaki \+ ile ekle\n/);
 assert.equal(await shadow(list, (r) => [...r.querySelectorAll(".cep .go")].some((b) => /destesine ekle/.test(b.textContent))), false);
 await list.screenshot({ path: `${out}/stay-4a-pocket.png` });
 await list.keyboard.press("Escape");
@@ -166,17 +166,6 @@ await list.waitForTimeout(200);
 assert.equal((await list.evaluate(() => window.__asked.filter((m) => m.type === "desk:undo"))).length, 1, "Geri al asked");
 const plusAfter = await inShadow(list, () => [...document.getElementById("trip-radar-companion").shadowRoot.querySelectorAll(".pin .plus")].map((b) => b.classList.contains("done")));
 assert.deepEqual(plusAfter, [false, true, false], "the one taken back has its + again");
-// Bu sayfadan seç (from the toolbar): ticks, then all added at once into the known trip.
-await list.evaluate(() => window.__onMessage({ type: "desk:select" }));
-await list.waitForTimeout(150);
-const ticks = await inShadow(list, () => document.getElementById("trip-radar-companion").shadowRoot.querySelectorAll(".plus.tick").length);
-assert.ok(ticks >= 1, "the results not added yet become ticks");
-await inShadow(list, () => document.getElementById("trip-radar-companion").shadowRoot.querySelector(".plus.tick").click());
-await list.waitForTimeout(100);
-await list.screenshot({ path: `${out}/stay-6-select.png` });
-await inShadow(list, () => document.getElementById("trip-radar-companion").shadowRoot.querySelector(".toast.sel .go").click());
-await list.waitForTimeout(500);
-assert.equal((await list.evaluate(() => window.__asked.filter((m) => m.type === "desk:add"))).length, 3, "the ticked one added too");
 // 0.45.1: the name's "+" adds the page in one press (which trip asked first here: none known yet).
 const hotel2 = await open("https://www.booking.com/hotel/pt/memmo-alfama.html?checkin=2026-11-12&checkout=2026-11-16", "booking-hotel.html");
 await shadow(hotel2, (r) => r.querySelector(".pin.open .plus").click());

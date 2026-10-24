@@ -2,7 +2,7 @@
 // one. On a flight search for a flight on the plan a thin strip says which row it is for ("Bangkok ✈ İstanbul, 2 Nis
 // planında · destende 7 seçenek"); each result in view gets a "+" (and where it stands against the deck); a hotel's or a
 // tour's list gets the same "+". On the right edge the gezi cebi (0.44.0, lib/pocket.ts): the current trip, this page ("+ Konaklama
-// destesine ekle" on a place's own page, "Sonuçlardan seç" on a list), what was added last with how each stands, the
+// destesine ekle" on a place's own page, "+ ile ekle" on a list), what was added last with how each stands, the
 // trip's board. The first "+" for a country not yet answered asks which trip, here on the page (Hangi gezi,
 // lib/tripRules.ts). Everything it draws is in its own closed shadow root, over the page, never inside the site's own
 // elements; nothing is saved until a press; no link on the site is changed.
@@ -141,6 +141,7 @@ button:focus-visible, .plus:focus-visible { outline: 3px solid #cfc7ff; outline-
 .cep .st.failed { background: #fde8e4; color: #b23a1d; }
 .cep .x { flex: none; border: 0; background: none; color: #8e8aa6; font: 800 15px/1 system-ui, sans-serif; cursor: pointer; padding: 2px 4px; border-radius: 6px; }
 .cep .x:hover { color: #b23a1d; background: #f4f2ff; }
+.cep .hint { padding: 2px 2px 0; color: #4a36c9; font-size: 12.5px; font-weight: 700; line-height: 1.4; }
 .cep .warn { padding: 8px 10px; border-radius: 10px; background: #fff7e8; color: #8a5a00; font-size: 11.5px; font-weight: 700; }
 .cep .ft { display: flex; justify-content: space-between; gap: 8px; padding: 9px 12px; border-top: 1px solid #efedf5; }
 .cep .ft button { border: 0; background: none; padding: 0; cursor: pointer; font: 800 12px/1.2 "Plus Jakarta Sans", system-ui, sans-serif; color: #4a36c9; }
@@ -189,8 +190,6 @@ button:focus-visible, .plus:focus-visible { outline: 3px solid #cfc7ff; outline-
 .toast.sel { gap: 12px; }
 .toast.sel .go { padding: 8px 12px; border-radius: 99px; background: #5b45e0; color: #fff; }
 .toast.sel .go:disabled { opacity: .5; cursor: default; }
-.plus.tick { background: #fff; color: #5b45e0; box-shadow: inset 0 0 0 2px #5b45e0; font-size: 14px; }
-.plus.tick.on { background: #5b45e0; color: #fff; }
 .hop { position: fixed; z-index: 2147483647; display: flex; align-items: center; gap: 8px; padding: 6px 10px 6px 6px; border-radius: 12px; background: #fff;
   box-shadow: 0 0 0 1.5px #c9bffa, 0 10px 26px rgba(28,26,51,.25); pointer-events: none; font: 800 12.5px/1.2 "Plus Jakarta Sans", system-ui, sans-serif; color: #1c1a33; }
 .hop img { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; flex: none; }
@@ -383,9 +382,8 @@ function start() {
   };
   const nameOf = (el: Element): string => (el.querySelector("h1,h2,h3,h4,b,strong,a")?.textContent ?? (el as HTMLElement).innerText ?? "").replace(/\s+/g, " ").trim();
 
-  // Bu sayfadan seç (0.43.0, from the toolbar): the results' "+" become ticks; the dock says how many, and adds them all.
-  let selecting = false;
-  const chosen = new Set<Element>();
+  // (no picking several and adding them all: a result goes in by its own "+", one at a time; Emre 2026-10-24: "toplu
+  // listeye ekleme diye bir şey olamaz", "Bu listeden seç" gone with it)
   const addCard = async (el: Element, pick: TripPick): Promise<SavedOnSite | null> => {
     reading.add(el);
     drawCards();
@@ -525,7 +523,7 @@ function start() {
       dock.append(box);
       return;
     }
-    if (confirmAsk && !selecting && !toast) {
+    if (confirmAsk && !toast) {
       const c = confirmAsk;
       const box = document.createElement("div");
       box.className = "ask conf";
@@ -566,59 +564,7 @@ function start() {
       dock.append(box);
       return;
     }
-    if (selecting) {
-      const bar = document.createElement("div");
-      bar.className = "toast sel";
-      const words = document.createElement("span");
-      words.textContent = chosen.size ? L(`${chosen.size} seçili`, `${chosen.size} picked`) : cards.length ? L("Eklemek istediklerini işaretle", "Tick what to add") : L("Bu sayfada sonuç bulamadım", "No results found on this page");
-      if (!cards.length) {
-        // (the site's layout changed, no "+" found: what's in view is read instead)
-        const shot = document.createElement("button");
-        shot.type = "button";
-        shot.className = "go";
-        shot.textContent = L("Ekrandakini ekle", "Add what's on screen");
-        shot.onclick = () => {
-          selecting = false;
-          drawCards();
-          addView();
-        };
-        const no = document.createElement("button");
-        no.type = "button";
-        no.textContent = L("Vazgeç", "Cancel");
-        no.onclick = () => ((selecting = false), drawDock());
-        bar.append(words, shot, no);
-        dock.append(bar);
-        return;
-      }
-      const go = document.createElement("button");
-      go.type = "button";
-      go.className = "go";
-      go.textContent = L("Desteye ekle", "Add to the deck");
-      go.disabled = !chosen.size;
-      go.onclick = () =>
-        withTrip(L("Bu sonuçlar", "These results"), async (pick) => {
-          const list = [...chosen];
-          selecting = false;
-          chosen.clear();
-          let lastOk: SavedOnSite | null = null;
-          for (const el of list) lastOk = (await addCard(el, pick)) ?? lastOk;
-          drawCards();
-          if (lastOk) said(lastOk, list.length);
-          else drawDock();
-          return Boolean(lastOk);
-        });
-      const no = document.createElement("button");
-      no.type = "button";
-      no.textContent = L("Vazgeç", "Cancel");
-      no.onclick = () => {
-        selecting = false;
-        chosen.clear();
-        drawCards();
-        drawDock();
-      };
-      bar.append(words, go, no);
-      dock.append(bar);
-    } else if (toast) {
+    if (toast) {
       const t = document.createElement("div");
       t.className = "toast";
       t.setAttribute("role", "status");
@@ -844,16 +790,10 @@ function start() {
       go.disabled = inDeck || pageState === "busy";
       bd.append(go);
     } else if (listy) {
-      bd.append(
-        button("go", L("Sonuçlardan seç", "Pick from the results"), () => {
-          selecting = true;
-          chosen.clear();
-          sideOpen = false;
-          drawCards();
-          drawDock();
-          drawSide();
-        }),
-      );
+      const hint = document.createElement("div");
+      hint.className = "hint";
+      hint.textContent = L("Beğendiğin sonucun yanındaki + ile ekle", "Add a result with the + beside it");
+      bd.append(hint);
     } else {
       bd.append(button("go ghost", L("Ekrandakini ekle", "Add what's on screen"), addView));
     }
@@ -1144,22 +1084,10 @@ function start() {
         plus.append(lbl);
       }
       plus.title = isIn ? L("Desteye girdi; okunuyor", "In the deck; being read") : L("Bunu desteye ekle", "Add this one to the deck");
-      if (selecting && !isIn) {
-        plus.className = `plus tick${chosen.has(el) ? " on" : ""}`;
-        plus.textContent = chosen.has(el) ? "✓" : "";
-        plus.title = L("Seç", "Pick");
-      }
       plus.onclick = (e) => {
         e.preventDefault();
         e.stopPropagation();
         if (added.has(el) || reading.has(el)) return;
-        if (selecting) {
-          if (chosen.has(el)) chosen.delete(el);
-          else chosen.add(el);
-          drawCards();
-          drawDock();
-          return;
-        }
         withTrip(whatOf(kind), async (pick) => {
           const r = await addCard(el, pick);
           drawCards();
@@ -1265,15 +1193,6 @@ function start() {
       sideOpen = false;
       drawSide();
     }
-  });
-  chrome.runtime.onMessage?.addListener((m: { type?: unknown }) => {
-    if (m?.type !== "desk:select" || single) return;
-    sideOpen = false;
-    drawSide();
-    selecting = true;
-    chosen.clear();
-    drawCards();
-    drawDock();
   });
   // (a search page changes its address without loading: the way or the day changed; nothing once cut off by an update)
   const tick = window.setInterval(() => (alive() ? void refresh() : clearInterval(tick)), 1500);

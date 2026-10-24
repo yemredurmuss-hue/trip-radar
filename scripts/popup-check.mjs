@@ -1,7 +1,7 @@
 // Simgeye basınca, tek bakış (0.45.0, tuval 15–16): the built popup (dist/popup.html) with the service worker's answers stubbed. It opens at
 // once and saves nothing by itself; a known trip: one press (or Enter) adds; a new country: the picker, a press saves;
 // already on the plan: "Fiyatı yenile"; then "✓ Eklendi · Değiştir · Geri al". The pocket: the trip on top, what was added
-// last with ×/tekrar, the key line, a list's "Sonuçlardan seç", a page that can't be added. Run after `npm run build`:
+// last with ×/tekrar, the key line, a list's "+ ile tek tek ekle", a page that can't be added. Run after `npm run build`:
 // CHROMIUM_PATH=… node scripts/popup-check.mjs → e2e-output/popup/*.png
 import { chromium } from "playwright-core";
 import assert from "node:assert/strict";
@@ -113,12 +113,14 @@ assert.equal(await p.locator(".tb-hero.video").count(), 1);
 await p.getByRole("button", { name: /İlham'a ekle/ }).click();
 await p.locator(".pk-done").waitFor();
 assert.equal((await asked(p, "popup:save"))[0].idea, true);
-// 7. A list: never one record; "Bu listeden seç" ticks on the page (the switch asked by the same press when off).
+// 7. A list: never one record and never several at once (Emre 2026-10-24): each result by its own "+"; with the switch
+// off, one press puts the "+" on the results.
 p = await open(view(known, { what: "list", title: "Lizbon: 412 otel", along: false }), "8-list");
 assert.equal(await p.getByRole("button", { name: /destesine ekle/ }).count(), 0, "no whole-list save");
-await p.getByRole("button", { name: "Bu listeden seç" }).click();
-await p.waitForTimeout(100);
-assert.equal((await p.evaluate(() => window.__asked.filter((m) => m.tab && m.type === "desk:select"))).length, 1);
+assert.match(await text(p), /Lizbon: 412 otel\nBeğendiğin sonucun yanındaki \+ ile tek tek ekle\nSonuçlara \+ koy/);
+assert.equal(await p.getByText(/Bu listeden seç|hepsini birden/).count(), 0, "no picking several at once");
+p = await open(view(known, { what: "list", title: "Lizbon: 412 otel", along: true }), "8b-list-along");
+assert.equal(await p.locator(".tb-main .tb-go").count(), 0, "the + already on the results: nothing more to press here");
 // 8. A booking's confirmation: said first; "Evet, kaydet" saves it, "Bu değil" goes on to the page.
 p = await open(view(known, { confirm: { code: "4821 993 107", name: "Visesa Ubud Resort", paid: "€378" } }), "9-confirm");
 assert.match(await text(p), /Rezervasyon onayı buldum\nVisesa Ubud Resort\nOnay kodu 4821 993 107 · €378 ödendi\nPortekiz gezisine rezervasyon olarak kaydedeyim mi\?[\s\S]*Evet, kaydet\nBaşka gezi\nBu değil/);

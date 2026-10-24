@@ -74,15 +74,15 @@ function Popup() {
     setChoosing(false);
     if (v) setView(v);
   }
-  // "Bu listeden seç": the results' "+" become ticks on the page (the switch asked first, when it's off).
-  async function select() {
+  // A list: each result goes in by its own "+", one at a time (no picking several at once; Emre 2026-10-24). With the
+  // switch off, one press puts the "+" on the results.
+  async function plusOnResults() {
     if (tabId == null || !view?.site) return;
     if (!view.along) {
       const granted = await chrome.permissions.request({ origins: view.travelSite ? [...COMPANION_SITES] : [view.site] }).catch(() => false);
       if (!granted) return;
       await chrome.scripting.executeScript({ target: { tabId }, files: ["companion.js"] }).catch(() => undefined);
     }
-    await chrome.tabs.sendMessage(tabId, { type: "desk:select" }).catch(() => undefined);
     window.close();
   }
   async function along() {
@@ -289,12 +289,14 @@ function Popup() {
       <>
         <div className="tb-main">
           <Sign tone="acc">☰</Sign>
-          <Say title={view.title} sub={L("Beğendiklerini işaretle, hepsini birden ekle", "Tick the ones you like, add them all at once")} />
-          <button type="button" className="tb-go" onClick={() => void select()}>
-            {L("Bu listeden seç", "Pick from this list")}
-          </button>
+          <Say title={view.title} sub={L("Beğendiğin sonucun yanındaki + ile tek tek ekle", "Add the results you like one by one, with the + beside each")} />
+          {!view.along && (
+            <button type="button" className="tb-go" onClick={() => void plusOnResults()}>
+              {L("Sonuçlara + koy", "Put a + on the results")}
+            </button>
+          )}
         </div>
-        {quiet(<span>{L("ya da kartlardaki +", "or the + on the results")}</span>)}
+        {quiet()}
       </>
     );
   } else if (card === "idea" || card === "page") {
