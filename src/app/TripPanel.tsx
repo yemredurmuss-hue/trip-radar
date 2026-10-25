@@ -454,6 +454,17 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   // photo there now beside every photo the trip has (its start photo, its places', its moments') and the stock proxy's and
   // Commons' wide ones; the model, told what the trip is, keeps the best as the trip's own cover (Trip.coverImage); a new
   // one comes in softly (HeroMosaic). Once per trip and first place (coverLooked); no key or an error: asked again later.
+  // The event's official site's own picture (its og:image, read by the server once): the ticket card's photo (2026-10-25,
+  // Emre: "resmî sitenin de fotoğrafını çekebilirsin"). None found: the event's photo, the cover, stays on it.
+  const askedOfficial = useRef(new Set<string>());
+  useEffect(() => {
+    const site = trip.intent?.url;
+    if (!site || trip.officialImage !== undefined || askedOfficial.current.has(`${trip.id}:${site}`)) return;
+    askedOfficial.current.add(`${trip.id}:${site}`);
+    void liveSource.pageImage(site).then((image) => {
+      if (image) void updateTrip(trip.id, (t) => (t.intent?.url === site ? { ...t, officialImage: image } : t), { touch: false });
+    });
+  }, [trip.id, trip.intent?.url, trip.officialImage]);
   const lookingCover = useRef(new Set<string>());
   useEffect(() => {
     const name = mainNames[0];

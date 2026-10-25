@@ -278,6 +278,8 @@ export interface Trip {
    * own scenes and the styles' ("Yerel lezzetler"), so the plan's hero shows them with their words (Generating.keepPhotos).
    */
   momentNames?: Record<string, string>;
+  /** The picture the event's official site gives itself (offers kind=pageimage, its og:image): its ticket card's photo. */
+  officialImage?: string | null;
   /** The AI's mood sentence for the hero and the cities it was written for (see heroText.ts). */
   mood?: { key: string; text: string } | null;
   /** The style words the model picked for the hero (tripStyle.ts) and what they were picked for. */

@@ -10,6 +10,7 @@ import { removeEntries } from "./removeEntries";
 import { useContext, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { isCampStay } from "../../../lib/campStay";
 import { fromName, L } from "../../../lib/i18n";
+import { airportCode, learnAirport } from "../../../lib/searchLinks";
 import { areaSearch, changeList, currentOption, frameForm, headName, offerNeed, otherOptions, placeholderOf, railState, SHOWN_OPTIONS, statusChip, unlessEmpty } from "../../../lib/intentFrame";
 import { offersLooking } from "../../../lib/looking";
 import { othersLabel, othersOpen, rememberOthers } from "../../../lib/othersFold";
@@ -129,6 +130,25 @@ function useAutoSearch(vm: IntentVM, tripId: string, on: boolean, placeholder: I
   const at = useRef({ trip, items });
   at.current = { trip, items };
   const { selfAt } = useV82Env();
+  // A flight's end the airports table doesn't know (Reno, Merzouga): the server finds its airport, learned for the
+  // board, and the need is made once it has its codes (2026-10-25, Emre: "uçak araması yapmadı yine").
+  const [, setLearned] = useState(0);
+  const unknown = vm.kind === "flight" && !vm.chosen ? [vm.head.route?.from, vm.head.route?.to].filter((c): c is string => !!c?.trim() && !airportCode(c)) : [];
+  const asker = (source as { airport?: (place: string, cc?: string | null) => Promise<string | null> }).airport;
+  useEffect(() => {
+    if (!unknown.length || !asker) return;
+    let alive = true;
+    for (const place of unknown)
+      void asker(place, selfAt.countries[0] ?? null).then((code) => {
+        if (!code || !alive) return;
+        learnAirport(place, code);
+        setLearned((n) => n + 1);
+      });
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per set of unknown ends
+  }, [unknown.join("|"), asker]);
   const need = on ? offerNeed(vm, selfAt) : null;
   const hold = useRef(placeholder);
   hold.current = placeholder;

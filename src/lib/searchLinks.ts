@@ -96,7 +96,17 @@ export function airportCode(placeText: string | null | undefined): string | null
   if (!text) return null;
   if (/^[A-Z]{3}$/.test(text)) return text;
   const key = cityKeyOf(text) ?? "";
-  return CITY_AIRPORTS[key] ?? soleAirport().get(key) ?? null;
+  return CITY_AIRPORTS[key] ?? soleAirport().get(key) ?? learned.get(key) ?? null;
+}
+
+/**
+ * The airports the server found for towns the table above doesn't know (offers kind=airport, 2026-10-25: Reno for Burning
+ * Man, Errachidia for Merzouga), learned while the board is open: a flight's need then has its codes (intentFrame.offerNeed).
+ */
+const learned = new Map<string, string>();
+export function learnAirport(place: string, code: string): void {
+  const key = cityKeyOf(place);
+  if (key && /^[A-Z]{3}$/.test(code)) learned.set(key, code);
 }
 
 /**

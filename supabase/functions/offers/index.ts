@@ -57,6 +57,7 @@ import {
   airaloPacks, airaloPlace, omioName, omioRoutes, pickActivities, pickEsims, pickTransfers, placeKey, serpFlights, serpStays, stayCandidate, stayOffer, ucusFlights, viatorDestination, type AviaFlight, type OfferOut, type StayCandidate,
   placeSearchOk, serpPlaces, GOOGLE_PLACE_FIELDS, googlePhotoUri, googlePlaces, photoNameOk, type PlaceOut,
   type EsimPack, type OmioRoute, type ViProduct, type XoHotel, type XoRate,
+  airportByName, airportNear, flyData, foldPlace, pageImageOf, pageUrlOk, type FlyAirport, type FlyCity,
 } from "./shape.ts";
 import { searchapiFetch, searchapiQuery } from "./searchapi.ts";
 
@@ -74,6 +75,8 @@ const HOURS = { flight: 12, stay: 24, activity: 1, esim: 24, transfer: 24, place
 const CAPS: Record<string, number> = {
   aviasales: 400, xotelo: 400, tripadvisor: 20, links: 300, serpapi: 0, serp_otel: 5, serp_fiyat: 1, serp_yer: 1, serp_etkinlik: 1, serpmaps: 5,
   searchapi: 2, viator: 300, airalo: 6, omio: 4, ucus: 450, googleplaces: 150, googlephoto: 300,
+  // kind=airport's look-up of a town not in the data files (OpenStreetMap's, one a second at most), kind=pageimage's reads
+  nominatim: 300, pages: 300,
 };
 const cap = (source: string) => Number(Deno.env.get(`OFFERS_CAP_${source.toUpperCase()}`)) || CAPS[source];
 
@@ -108,6 +111,73 @@ async function loadNames() {
       zones = new Map();
     }
   }
+}
+
+// Towns and airports with flights (kind=airport), read once per instance.
+let fly: Promise<{ cities: FlyCity[]; airports: FlyAirport[] }> | null = null;
+const flyFiles = () =>
+  (fly ??= Promise.all([
+    fetch("https://api.travelpayouts.com/data/en/cities.json").then((r) => r.json()),
+    fetch("https://api.travelpayouts.com/data/en/airports.json").then((r) => r.json()),
+  ]).then(([c, a]) => flyData(c, a), (error) => ((fly = null), Promise.reject(error))));
+
+/**
+ * A town's airport (kind=airport&q=Merzouga&cc=MA): by its name in Travelpayouts' towns, else where OpenStreetMap puts it
+ * and the nearest airport with flights. Kept a month (an airport doesn't move); none found is never kept.
+ */
+async function airportOf(sb: Sb, q: string, cc: string | null): Promise<{ code: string; city: string; km?: number } | null> {
+  const key = `out|ap|${foldPlace(q)}|${cc ?? ""}`;
+  const had = await cached<{ code: string; city: string; km?: number }>(sb, key, 24 * 30);
+  if (had) return had;
+  const data = await flyFiles();
+  let found: { code: string; city: string; km?: number } | null = airportByName(q, cc, data);
+  if (!found && (await take(sb, "nominatim"))) {
+    const at = new URLSearchParams({ format: "json", limit: "1", q, ...(cc ? { countrycodes: cc.toLowerCase() } : {}) });
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?${at}`, { headers: { "User-Agent": "TripRadar/1.0 (+https://github.com/yemredurmuss-hue/trip-radar)" }, signal: AbortSignal.timeout(8000) });
+    const hit = res.ok ? ((await res.json()) as { lat?: string; lon?: string }[])[0] : null;
+    const point = hit ? { lat: Number(hit.lat), lon: Number(hit.lon) } : null;
+    if (point && Number.isFinite(point.lat) && Number.isFinite(point.lon)) found = airportNear(point, data);
+  }
+  if (found) await store(sb, key, found);
+  return found;
+}
+
+/** A page's own picture (kind=pageimage): its first 400 KB read, three redirects at most, each to a page that may be read. */
+async function pageImage(sb: Sb, page: string): Promise<string | null> {
+  const key = `out|pi|${page}`;
+  const had = await cached<{ image: string | null }>(sb, key, 24 * 7);
+  if (had) return had.image;
+  if (!(await take(sb, "pages"))) return null;
+  let at = page;
+  for (let hop = 0; hop < 4; hop++) {
+    const res = await fetch(at, { redirect: "manual", headers: { "User-Agent": "Mozilla/5.0 (compatible; TripRadar/1.0)", Accept: "text/html" }, signal: AbortSignal.timeout(8000) });
+    if (res.status >= 300 && res.status < 400) {
+      const next = pageUrlOk(new URL(res.headers.get("location") ?? "", at).toString());
+      await res.body?.cancel();
+      if (!next) return null;
+      at = next;
+      continue;
+    }
+    if (!res.ok || !/html/i.test(res.headers.get("content-type") ?? "")) return (await res.body?.cancel(), null);
+    const reader = res.body!.getReader();
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    while (size < 400_000) {
+      const { done, value } = await reader.read();
+      if (done || !value) break;
+      chunks.push(value);
+      size += value.length;
+    }
+    await reader.cancel();
+    const bytes = new Uint8Array(size);
+    let off = 0;
+    for (const c of chunks) (bytes.set(c, off), (off += c.length));
+    const html = new TextDecoder().decode(bytes);
+    const image = pageImageOf(html, at);
+    await store(sb, key, { image });
+    return image;
+  }
+  return null;
 }
 
 /** `stay`: a stay's kind of place in words ("hostels"; 0.39.4), else null: hotels. */
@@ -613,6 +683,14 @@ Deno.serve(async (req: Request) => {
       if (p("json") === "1") return reply(200, { url: photo });
       // The picture itself: an <img> follows this to Google's photo (its address isn't kept past the day).
       return new Response(null, { status: 302, headers: { ...cors, Location: photo, "Cache-Control": "public, max-age=3600" } });
+    } else if (p("kind") === "airport") {
+      const q = placeOk(p("q")), cc = /^[A-Za-z]{2}$/.test(p("cc") ?? "") ? p("cc")!.toUpperCase() : null;
+      if (!q) return reply(400, { error: "ask" });
+      return reply(200, { airport: await airportOf(sb, q, cc) });
+    } else if (p("kind") === "pageimage") {
+      const page = pageUrlOk(p("url"));
+      if (!page) return reply(400, { error: "ask" });
+      return reply(200, { image: await pageImage(sb, page) });
     } else if (p("kind") === "esim") {
       const place = airaloPlace(p("country") ?? "");
       const start = askableDay(p("start"), now), end = askableDay(p("end"), now);
@@ -637,8 +715,11 @@ Deno.serve(async (req: Request) => {
     } else {
       return reply(400, { error: "ask" });
     }
-  } catch {
-    return reply(200, { offers: [] });
+  } catch (error) {
+    // (2026-10-25: a failure here is the server's, never "nothing there": answered as one, so the extension asks again
+    // instead of keeping an empty answer for an hour)
+    console.error("offers failed", p("kind"), String(error).slice(0, 200));
+    return reply(502, { error: "failed" });
   }
   return reply(200, { offers });
 });

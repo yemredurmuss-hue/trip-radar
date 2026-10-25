@@ -18,6 +18,8 @@ import { acceptStyle, type StyleId } from "../tripStyle";
 import type { Trip } from "../types";
 
 const STORE_KEY = "offersSeen";
+/** The towns' airports and the pages' pictures found (kind=airport, kind=pageimage), by their question. */
+const SMALL_KEY = "offersSmall";
 /** A question to the server is given up after this long. */
 const TIMEOUT_MS = 20_000;
 /** An empty answer is kept this long (a full one KEEP_HOURS). */
@@ -351,6 +353,10 @@ export function makeLiveSource(opts: { kv?: KV; fetcher?: typeof fetch; now?: ()
   events(city: string, start: string, end: string): Promise<Offer[]>;
   /** The server failed in the last minute (an outage, a quota, a timeout). */
   down(): boolean;
+  /** A town's airport with flights when the extension's table doesn't know it (kind=airport): its code, else null. */
+  airport(place: string, countryCode?: string | null): Promise<string | null>;
+  /** A page's own picture for sharing (kind=pageimage: a festival's official site's og:image), else null. */
+  pageImage(page: string): Promise<string | null>;
 } {
   const kv = opts.kv ?? chromeKV;
   const fetcher = opts.fetcher ?? ((...a: Parameters<typeof fetch>) => fetch(...a));
@@ -591,9 +597,54 @@ export function makeLiveSource(opts: { kv?: KV; fetcher?: typeof fetch; now?: ()
     return going;
   };
 
+  // A town's airport and a page's picture, kept here for good once found (an airport doesn't move; none found is asked
+  // again another time). Each asked once however many ask at once.
+  const smallAsks = new Map<string, Promise<string | null>>();
+  const small = (kind: "airport" | "pageimage", params: Record<string, string>, pick: (body: Record<string, unknown>) => string | null): Promise<string | null> => {
+    const q = new URLSearchParams({ kind, ...params }).toString();
+    const going =
+      smallAsks.get(q) ??
+      (async (): Promise<string | null> => {
+        try {
+          const kept = (await kv.get<Record<string, string>>(SMALL_KEY)) ?? {};
+          if (kept[q]) return kept[q];
+        } catch {
+          // no storage: asked every time
+        }
+        try {
+          const res = await fetcher(`${server}/functions/v1/offers?${q}`, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+          if (!res.ok) return null;
+          const found = pick((await res.json()) as Record<string, unknown>);
+          if (found) {
+            writing = writing.then(async () => {
+              try {
+                const kept = (await kv.get<Record<string, string>>(SMALL_KEY)) ?? {};
+                await kv.set(SMALL_KEY, Object.fromEntries(Object.entries({ ...kept, [q]: found }).slice(-200)));
+              } catch {
+                // not kept this time
+              }
+            });
+          }
+          return found;
+        } catch {
+          return null;
+        }
+      })().finally(() => smallAsks.delete(q));
+    smallAsks.set(q, going);
+    return going;
+  };
+  const airport = (place: string, countryCode?: string | null) =>
+    small("airport", { q: place.trim(), ...(countryCode && /^[A-Za-z]{2}$/.test(countryCode) ? { cc: countryCode.toUpperCase() } : {}) }, (b) => {
+      const code = (b.airport as { code?: unknown } | null)?.code;
+      return typeof code === "string" && /^[A-Z]{3}$/.test(code) ? code : null;
+    });
+  const pageImage = (page: string) => small("pageimage", { url: page }, (b) => (typeof b.image === "string" && b.image.startsWith("https://") ? b.image : null));
+
   return {
     available: () => true,
     down: () => failedAt > 0 && now() - failedAt < DOWN_MS,
+    airport,
+    pageImage,
     offers: (need) => find(need),
     find,
     candidates,

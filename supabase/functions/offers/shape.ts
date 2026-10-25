@@ -1460,3 +1460,117 @@ export function cityEvents(body: unknown, at: { start: string; end: string; toda
   }
   return out;
 }
+
+// --- A place's airport (kind=airport, 2026-10-25) ---------------------------------------------------------------------
+// The extension's own table knows a few hundred towns; a trip to Reno (Burning Man) or Merzouga (a desert trip) had no
+// code there and its flights were never looked for. Travelpayouts' public data files answer for any town: its own
+// airport by its name, else the nearest one that has flights.
+
+export interface FlyCity {
+  code: string;
+  names: string[];
+  country: string;
+  lat: number;
+  lon: number;
+}
+export interface FlyAirport {
+  code: string;
+  city: string;
+  country: string;
+  lat: number;
+  lon: number;
+}
+
+/** A name as compared: no accents, no case, words kept apart. */
+export const foldPlace = (s: string): string =>
+  s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLocaleLowerCase("en").replace(/[^a-z0-9]+/g, " ").trim();
+
+/** Travelpayouts' cities.json and airports.json as the airport finder reads them: only towns and airports with flights. */
+export function flyData(cities: unknown, airports: unknown): { cities: FlyCity[]; airports: FlyAirport[] } {
+  const cs = (Array.isArray(cities) ? cities : []).flatMap((c: any): FlyCity[] =>
+    c?.has_flightable_airport && typeof c.code === "string" && Number.isFinite(c.coordinates?.lat) && Number.isFinite(c.coordinates?.lon)
+      ? [{ code: c.code, names: [c.name, c.name_translations?.en].filter((n: unknown): n is string => typeof n === "string" && !!n.trim()).map(foldPlace), country: String(c.country_code ?? ""), lat: c.coordinates.lat, lon: c.coordinates.lon }]
+      : [],
+  );
+  const as = (Array.isArray(airports) ? airports : []).flatMap((a: any): FlyAirport[] =>
+    a?.flightable && a.iata_type === "airport" && typeof a.code === "string" && Number.isFinite(a.coordinates?.lat) && Number.isFinite(a.coordinates?.lon)
+      ? [{ code: a.code, city: String(a.city_code ?? a.code), country: String(a.country_code ?? ""), lat: a.coordinates.lat, lon: a.coordinates.lon }]
+      : [],
+  );
+  return { cities: cs, airports: as };
+}
+
+const km = (a: { lat: number; lon: number }, b: { lat: number; lon: number }): number => {
+  const r = Math.PI / 180;
+  const h = Math.sin(((b.lat - a.lat) * r) / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(((b.lon - a.lon) * r) / 2) ** 2;
+  return 12742 * Math.asin(Math.sqrt(h));
+};
+
+/** How far an airport may be from a town to be its own (a desert camp to the nearest airport with flights: Merzouga → ERH). */
+export const AIRPORT_NEAR_KM = 350;
+
+/** A town's airport: the town by its name (in its country when said), its own airport with flights. */
+export function airportByName(q: string, country: string | null, data: { cities: FlyCity[]; airports: FlyAirport[] }): { code: string; city: string } | null {
+  const name = foldPlace(q);
+  if (!name) return null;
+  const hits = data.cities.filter((c) => c.names.includes(name));
+  const city = hits.find((c) => !country || c.country === country.toUpperCase()) ?? (country ? null : hits[0]) ?? null;
+  if (!city) return null;
+  // (its airport of the same code when it has one, Reno's RNO; else its first: a town of several airports by its first)
+  const own = data.airports.find((a) => a.code === city.code) ?? data.airports.find((a) => a.city === city.code);
+  return own ? { code: own.code, city: city.code } : null;
+}
+
+/** The nearest airport with flights to a point, within AIRPORT_NEAR_KM. */
+export function airportNear(at: { lat: number; lon: number }, data: { airports: FlyAirport[] }): { code: string; city: string; km: number } | null {
+  let best: { code: string; city: string; km: number } | null = null;
+  for (const a of data.airports) {
+    const d = km(at, a);
+    if (d <= AIRPORT_NEAR_KM && (!best || d < best.km)) best = { code: a.code, city: a.city, km: Math.round(d) };
+  }
+  return best;
+}
+
+// --- A page's own picture (kind=pageimage, 2026-10-25) ------------------------------------------------------------------
+// A festival's official site (the trip's ticket card, Emre: "resmî sitenin fotoğrafını çekebilirsin"): the picture the
+// site gives itself for sharing (og:image), read from its page. Only a public https page is read, only its picture's
+// address is answered.
+
+/** A page that may be read: https, a name (never an address by its numbers, a local name or another port), short. */
+export function pageUrlOk(raw: string | null): string | null {
+  if (!raw || raw.length > 300) return null;
+  let u: URL;
+  try {
+    u = new URL(raw);
+  } catch {
+    return null;
+  }
+  const host = u.hostname.toLowerCase();
+  if (u.protocol !== "https:" || u.port || u.username || u.password) return null;
+  if (!host.includes(".") || /^[\d.]+$/.test(host) || host.includes(":") || host.startsWith("[")) return null;
+  if (/(^|\.)(localhost|local|internal|intranet|lan|home|corp|supabase\.co|supabase\.in)$/.test(host)) return null;
+  return u.toString();
+}
+
+/** The picture a page names for sharing (og:image, else twitter:image), as an https address; null when none. */
+export function pageImageOf(html: string, page: string): string | null {
+  const metas = html.match(/<meta\b[^>]*>/gi) ?? [];
+  const want = ["og:image:secure_url", "og:image", "og:image:url", "twitter:image", "twitter:image:src"];
+  const found = new Map<string, string>();
+  for (const m of metas) {
+    const key = (m.match(/\b(?:property|name)\s*=\s*["']([^"']+)["']/i)?.[1] ?? "").toLowerCase();
+    const content = m.match(/\bcontent\s*=\s*["']([^"']+)["']/i)?.[1];
+    if (want.includes(key) && content && !found.has(key)) found.set(key, content.trim().replace(/&amp;/g, "&"));
+  }
+  for (const k of want) {
+    const v = found.get(k);
+    if (!v) continue;
+    try {
+      const abs = new URL(v, page);
+      if (abs.protocol === "https:" && abs.toString().length <= 600) return abs.toString();
+    } catch {
+      // the next one
+    }
+  }
+  return null;
+}

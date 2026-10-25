@@ -519,7 +519,7 @@ export function collectionRow(
   vm: Pick<IntentVM, "section" | "itemIds" | "planned" | "wanted" | "suggestions">,
   byId: ReadonlyMap<string, Item>,
   at: Omit<CardCtx, "section"> & {
-    trip: Pick<Trip, "intent"> & Partial<Pick<Trip, "heroImage" | "coverImage">>;
+    trip: Pick<Trip, "intent"> & Partial<Pick<Trip, "heroImage" | "coverImage" | "officialImage">>;
     offers?: readonly Offer[];
     sights?: readonly Suggestion[];
     /** The trip's suggestions already put on the plan: a place put there before 0.39.15 says its why from its own. */
@@ -532,9 +532,10 @@ export function collectionRow(
   const wanted = new Set(vm.wanted.map((o) => o.id));
   const onPlan = live.filter((i) => planned.has(i.id) || wanted.has(i.id));
   const reason = section === "activity" ? reasonItemOf(at.trip, onPlan) : null;
-  // (the trip's reason, a festival's ticket: its official site and the event's photo, the trip's cover, when it has none)
+  // (the trip's reason, a festival's ticket: its official site and the site's own picture, else the event's photo, the
+  // trip's cover, when it has none)
   const site = at.trip.intent?.url && /^https?:\/\//.test(at.trip.intent.url) ? at.trip.intent.url : null;
-  const official = site ? { url: site, photo: at.trip.coverImage ?? at.trip.heroImage ?? null } : null;
+  const official = site ? { url: site, photo: at.trip.officialImage ?? at.trip.coverImage ?? at.trip.heroImage ?? null } : null;
   const card = (item: Item) =>
     saidWhy(recordCard(item, { ...at, section, planned: planned.has(item.id), wanted: wanted.has(item.id), reason: item.id === reason?.id, official: item.id === reason?.id ? official : null }), at.said);
   // The plan's order (intents.ts: booked, then on the plan), the reason first, the places still to fill after.
