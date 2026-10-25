@@ -165,7 +165,3 @@ body.still .q-pbody .q-bvchev, body.still .q-pbody .q-pdel, body.still .q-pbody 
 .q-pbody .q-phmb { all: unset; box-sizing: border-box; cursor: pointer; justify-self: start; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--q-mut); padding: 4px 2px; }
 .q-pbody .q-phmb:hover, .q-pbody .q-phmb:focus-visible { color: var(--q-acc); }
 .q-pbody .q-phmb[aria-expanded="true"] .i { transform: rotate(90deg); }
-
-/* Small buttons a finger can still hit (2026-10-25, WCAG 2.5.8): an unseen area around them, 26-32 px, nothing drawn. */
-.q-pbody .q-bvmx, .z-kb .z-kacc .z-kcode .q-cp, .q-cp, .dr-dt { position: relative; }
-.q-pbody .q-bvmx::after, .z-kb .z-kacc .z-kcode .q-cp::after, .q-cp::after, .dr-dt::after { content: ""; position: absolute; inset: -5px; }
