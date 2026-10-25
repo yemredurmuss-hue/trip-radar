@@ -121,6 +121,9 @@ const autoDone = (key: string): boolean => {
     return false;
   }
 };
+/** When a need's first search that failed or found nothing is asked again (after the first try, after the second). */
+const AUTO_RETRY_MS = [20_000, 60_000];
+
 function useAutoSearch(vm: IntentVM, tripId: string, on: boolean, placeholder: Item | null): void {
   const { offers: source, trip, items } = useEmptyEnv();
   const at = useRef({ trip, items });
@@ -129,10 +132,18 @@ function useAutoSearch(vm: IntentVM, tripId: string, on: boolean, placeholder: I
   const need = on ? offerNeed(vm, selfAt) : null;
   const hold = useRef(placeholder);
   hold.current = placeholder;
+  // (a first search that failed or found nothing is asked again a little later, twice at most; 2026-10-25, Emre: "aramalar
+  // hemen başlamadı, bazen böyle oluyor": a timeout or a server error was never retried until the category was opened)
+  const [tries, setTries] = useState(0);
   useEffect(() => {
     if (!need || !source.available()) return;
     const key = AUTO_KEY(tripId, need.key);
     if (autoGoing.has(key) || autoDone(key)) return;
+    let alive = true;
+    let again: ReturnType<typeof setTimeout> | null = null;
+    const later = () => {
+      if (alive && tries < AUTO_RETRY_MS.length) again = setTimeout(() => setTries((n) => n + 1), AUTO_RETRY_MS[tries]);
+    };
     autoGoing.add(key);
     // (a stay: the drawer's own three, "Sana en uygun · Daha ekonomik · Daha konforlu", priced for these nights; the
     // source's row of offers when it has no candidates)
@@ -152,8 +163,9 @@ function useAutoSearch(vm: IntentVM, tripId: string, on: boolean, placeholder: I
       .then(
         async (list) => {
           const found = (own ?? validOffers(list, need)).slice(0, MAX_OFFERS);
-          // (nothing found: asked again next time it's drawn, the source keeps its answer for hours)
-          if (!found.length) return;
+          // (nothing found: asked again a little later, then next time it's drawn; an empty answer the source keeps is
+          // read from its store, no new request)
+          if (!found.length) return later();
           try {
             localStorage.setItem(key, String(found.length));
           } catch {
@@ -166,11 +178,15 @@ function useAutoSearch(vm: IntentVM, tripId: string, on: boolean, placeholder: I
             spot = null;
           }
         },
-        () => undefined,
+        () => later(),
       )
       .finally(() => autoGoing.delete(key));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per need
-  }, [need?.key, source, tripId]);
+    return () => {
+      alive = false;
+      if (again) clearTimeout(again);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per need (and its retries)
+  }, [need?.key, source, tripId, tries]);
 }
 
 /** Whether a need is looked for by itself now (useAutoSearch's `on`): from its own row, or from its shut category (AutoSearch). */

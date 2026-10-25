@@ -80,6 +80,16 @@ describe("a card's lines", () => {
     expect(c.brand?.label).toBe("Klook");
     expect(c.badge).toMatchObject({ tone: "mine", text: "Senin linkin" });
   });
+  it("the festival's ticket with no page of its own: its official site to buy on and the event's photo, never a tour site's search", () => {
+    const ticket = act("Festival bileti", "chosen", { origin: "chat" });
+    const c = recordCard(ticket, { section: "activity", people: 2, planned: true, wanted: false, reason: true, official: { url: "https://burningman.org/", photo: "https://images.unsplash.com/bm.jpg" } });
+    expect(c).toMatchObject({ official: true, page: "https://burningman.org/", photo: "https://images.unsplash.com/bm.jpg" });
+    expect(c.brand?.label).toBe("burningman.org");
+    // (one with a page of its own keeps it)
+    const own = recordCard({ ...ticket, url: "https://tickets.burningman.org/x" }, { section: "activity", people: 2, planned: true, wanted: false, reason: true, official: { url: "https://burningman.org/", photo: null } });
+    expect(own.page).toBe("https://tickets.burningman.org/x");
+    expect(own.official).toBeUndefined();
+  });
   it("v81 alındı: a bought ticket's day and hour, its meeting place, its code to copy, the map", () => {
     const item = act("Shibuya Sky", "booked", { bookingRef: "KL-90231", location: { address: "Shibuya Scramble Square", area: "Shibuya", approximate: false }, flight: { from: null, to: null, departure: "2026-11-02T17:20", arrival: null, carrier: null, flightNumber: null, stops: null } });
     const c = recordCard(item, { section: "activity", people: 2, planned: true, wanted: false, reason: false });

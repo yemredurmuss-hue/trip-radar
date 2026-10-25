@@ -405,6 +405,13 @@ function RecordFace({ card, vm, plan, search, onPut, onTakeOff }: RecordCardProp
         );
       main = docButton;
     } else if (docs.length) main = docButton;
+    // (the festival's ticket: bought on its official site, never searched on a tour site)
+    else if (card.official && card.page)
+      main = (
+        <a className="z-kgo" href={card.page} target="_blank" rel="noopener noreferrer" title={site ? L(`${site} sitesinde aç`, `Open on ${site}`) : L("Resmî sitede aç", "Open the official site")}>
+          {L("Resmî siteden al", "Buy on the official site")} ↗
+        </a>
+      );
     else if (card.page && card.state === "planned")
       main = (
         <a className="z-kgo" href={card.page} target="_blank" rel="noopener noreferrer" title={site ? L(`${site} sitesinde aç`, `Open on ${site}`) : L("Sayfasında aç", "Open its page")}>

@@ -10,7 +10,7 @@
 // reason for the trip reason.ts's, the days and the done line ideas.ts's. This file only puts them in the cards' shape. Pure.
 import { airportCities, cityOfAirport, countryOfAirport } from "./airports";
 import { brandOf, type Brand } from "./brands";
-import { cardFacts, durationText } from "./cardFacts";
+import { cardFacts, durationText, hostOf } from "./cardFacts";
 import { ticketPrices } from "./cardTicket";
 import { topDate } from "./cardView";
 import { refFromNote } from "./bookingRows";
@@ -86,6 +86,11 @@ export interface KCardVM {
   access: KAccess | null;
   /** Its page (the site to buy on). */
   page: string | null;
+  /**
+   * Its page is the event's official site (2026-10-25, Emre: "festival biletini koymuş ama GetYourGuide ara diyor; resmî
+   * siteyi koymalı otomatik"): the trip's reason with no page of its own, bought there ("Resmî siteden al").
+   */
+  official?: boolean;
   /** Its map (a place's own Maps page, else a search for it). */
   map: string | null;
   /** "+ Plana koy" puts it on the plan (an idea, a suggestion to add, the source's tour). */
@@ -275,7 +280,12 @@ export interface CardCtx {
 }
 
 /** A record's card. */
-export function recordCard(item: Item, at: CardCtx & { planned: boolean; wanted: boolean; reason: boolean }): KCardVM {
+export function recordCard(
+  item: Item,
+  at: CardCtx & { planned: boolean; wanted: boolean; reason: boolean; official?: { url: string; photo: string | null } | null },
+): KCardVM {
+  // (the event's own site and photo, for its ticket with no page of its own: collectionRow)
+  const official = !item.url && at.official ? at.official : null;
   const family = familyOf(at.section, item);
   const state = stateOf(at.section, item, at);
   const facts = cardFacts(item, undefined, at.ctx);
@@ -289,7 +299,7 @@ export function recordCard(item: Item, at: CardCtx & { planned: boolean; wanted:
     state,
     title: item.name,
     // A place's picture is its saved page's (a Maps pin's photo); a ticket's whatever its page gave.
-    photo: event ? facts.image : ideaThumb(item),
+    photo: event ? (facts.image ?? official?.photo ?? null) : ideaThumb(item),
     art: ART[family],
     // A pin saved from Google Maps says "Maps" (the live tile's badge); a source's tour saved from its row its source
     // ("Viator", not a model's idea); anything else who put it there.
@@ -299,14 +309,15 @@ export function recordCard(item: Item, at: CardCtx & { planned: boolean; wanted:
         : event && adderOf(item) === "ai" && item.provider && item.url
           ? { tone: "mine", text: item.provider, initial: null }
           : sourceBadge({ ours: false, source: sourceOf(item) }),
-    brand: event ? brandOf(facts.source?.label, facts.source?.host) : null,
+    brand: event ? (brandOf(facts.source?.label, facts.source?.host) ?? (official ? brandOf(null, hostOf(official.url)) : null)) : null,
     tag: family === "food" ? L("Restoran", "Restaurant") : family === "note" ? L("Not", "Note") : event ? null : L("Gezilecek", "To see"),
     line: state === "done" ? doneLine(item) : event ? eventLine(item, facts, at.people) : family === "note" ? item.summary.trim() || null : placeLine(item),
     reason: at.reason,
     day: event ? null : dayChip(item),
     takesTable: family === "food" && needsBooking(item),
     access: state === "booked" ? accessOf(item, family, at.people) : null,
-    page: item.url,
+    page: item.url ?? official?.url ?? null,
+    ...(official ? { official: true } : {}),
     map: mapOf(item, family),
     canPut: state === "idea",
     deal: event ? recordDeal(item, facts, at.people) : null,
@@ -508,7 +519,7 @@ export function collectionRow(
   vm: Pick<IntentVM, "section" | "itemIds" | "planned" | "wanted" | "suggestions">,
   byId: ReadonlyMap<string, Item>,
   at: Omit<CardCtx, "section"> & {
-    trip: Pick<Trip, "intent">;
+    trip: Pick<Trip, "intent"> & Partial<Pick<Trip, "heroImage" | "coverImage">>;
     offers?: readonly Offer[];
     sights?: readonly Suggestion[];
     /** The trip's suggestions already put on the plan: a place put there before 0.39.15 says its why from its own. */
@@ -521,7 +532,11 @@ export function collectionRow(
   const wanted = new Set(vm.wanted.map((o) => o.id));
   const onPlan = live.filter((i) => planned.has(i.id) || wanted.has(i.id));
   const reason = section === "activity" ? reasonItemOf(at.trip, onPlan) : null;
-  const card = (item: Item) => saidWhy(recordCard(item, { ...at, section, planned: planned.has(item.id), wanted: wanted.has(item.id), reason: item.id === reason?.id }), at.said);
+  // (the trip's reason, a festival's ticket: its official site and the event's photo, the trip's cover, when it has none)
+  const site = at.trip.intent?.url && /^https?:\/\//.test(at.trip.intent.url) ? at.trip.intent.url : null;
+  const official = site ? { url: site, photo: at.trip.coverImage ?? at.trip.heroImage ?? null } : null;
+  const card = (item: Item) =>
+    saidWhy(recordCard(item, { ...at, section, planned: planned.has(item.id), wanted: wanted.has(item.id), reason: item.id === reason?.id, official: item.id === reason?.id ? official : null }), at.said);
   // The plan's order (intents.ts: booked, then on the plan), the reason first, the places still to fill after.
   const plan = [...onPlan.filter((i) => i.id === reason?.id), ...onPlan.filter((i) => i.id !== reason?.id && !wanted.has(i.id)), ...onPlan.filter((i) => i.id !== reason?.id && wanted.has(i.id))].map(card);
   const saved = live.filter((i) => !onPlan.includes(i));
