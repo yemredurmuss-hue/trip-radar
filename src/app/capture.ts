@@ -132,9 +132,10 @@ export async function addTripFiles(tripId: string, files: Iterable<File>, source
       }
     }
   } finally {
-    // Something threw on the way (storage full...): no chip keeps spinning.
+    // Something threw on the way (storage full...): no chip keeps spinning, and the screenshots saved before it are
+    // still read (2026-10-25: they waited for something else to start the reading).
     for (const at of intakes) if (intakeNow().find((e) => e.id === at.id && e.kind === "file" && e.state === "reading")) updateIntake(at.id, { state: "error" });
+    if (screenshots) requestProcessing();
   }
-  if (screenshots) requestProcessing();
   return errors;
 }

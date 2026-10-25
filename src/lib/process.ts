@@ -358,8 +358,11 @@ async function readCapture(capture: Capture, deps: Deps, commit: () => Promise<b
       });
     }
     // The trip as stored now: it may have changed (shared, renamed) while the model was reading.
-    const current = await d.get("trips", item.tripId);
-    if (current) await d.put("trips", { ...current, heroImage: current.heroImage ?? item.imageUrl, updatedAt: Date.now() });
+    // (read and written in one transaction: a share pull or an edit meanwhile is never written over, 2026-10-25)
+    const tx = d.transaction("trips", "readwrite");
+    const current = await tx.store.get(item.tripId);
+    if (current) await tx.store.put({ ...current, heroImage: current.heroImage ?? item.imageUrl, updatedAt: Date.now() });
+    await tx.done;
     await d.put("captures", { ...capture, status: "done", error: null, itemId: item.id });
   } catch (error) {
     if (await commit()) await d.put("captures", { ...capture, status: "error", error: describeError(error) });

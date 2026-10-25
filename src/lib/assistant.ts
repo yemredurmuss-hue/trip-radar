@@ -1185,16 +1185,16 @@ async function keepChatOffers(tripId: string, found: { need: Need; offers: Offer
 }
 /** The chat's tours for a city, kept on the trip so the plan's Etkinlik row offers them too (newest first, 12 a city at most). */
 async function keepChatTours(tripId: string, city: string, offers: readonly Offer[]): Promise<void> {
-  const d = await db();
-  const trip = await d.get("trips", tripId);
-  if (!trip) return;
-  const before = trip.chatTours ?? [];
-  const had = before.find((t) => sameCity(t.city, city))?.offers ?? [];
-  const urls = new Set(offers.map((o) => o.url));
-  const merged = [...offers, ...had.filter((o) => !urls.has(o.url))].slice(0, 12);
-  const chatTours = [{ city, offers: merged, at: Date.now() }, ...before.filter((t) => !sameCity(t.city, city))].slice(0, 12);
-  await d.put("trips", { ...trip, chatTours, updatedAt: Date.now() });
-  notifyChanged();
+  // (read and written in one transaction, changeTrip: a change meanwhile is never written over, 2026-10-25)
+  const done = await changeTrip(tripId, (trip) => {
+    const before = trip.chatTours ?? [];
+    const had = before.find((t) => sameCity(t.city, city))?.offers ?? [];
+    const urls = new Set(offers.map((o) => o.url));
+    const merged = [...offers, ...had.filter((o) => !urls.has(o.url))].slice(0, 12);
+    const chatTours = [{ city, offers: merged, at: Date.now() }, ...before.filter((t) => !sameCity(t.city, city))].slice(0, 12);
+    return { ...trip, chatTours, updatedAt: Date.now() };
+  });
+  if (done) notifyChanged();
 }
 const newTurn = (userText = "", previousReply: string | null = null, who: WhoCtx = null): Turn => ({
   userText, previousReply, removed: new Set(), removedVehicles: new Set(), touched: new Set(), done: 0, changed: 0, who,

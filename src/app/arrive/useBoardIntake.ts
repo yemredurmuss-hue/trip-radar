@@ -3,14 +3,18 @@
 // marked as handed to the board, so the page follows its waiting card.
 import { useEffect } from "react";
 import { addEvent, notifyChanged } from "../../lib/db";
+import { describeError } from "../../lib/llm";
 import { addLinks, addTripFiles, isTripFile } from "../capture";
 import { droppedLinks, useDropZone } from "./useDropZone";
 
 function addFilesToBoard(tripId: string, files: File[]) {
-  void addTripFiles(tripId, files, "board").then((problems) => {
-    const fresh = problems.filter((p) => !p.logged).map((p) => p.text);
-    return fresh.length ? addEvent(tripId, `⚠ ${fresh.join(" ")}`).then(notifyChanged) : undefined;
-  });
+  void addTripFiles(tripId, files, "board")
+    .then((problems) => {
+      const fresh = problems.filter((p) => !p.logged).map((p) => p.text);
+      return fresh.length ? addEvent(tripId, `⚠ ${fresh.join(" ")}`).then(notifyChanged) : undefined;
+    })
+    // (a drop that failed on the way, storage full: said in the chat, never a silent stop; 2026-10-25)
+    .catch((error) => addEvent(tripId, `⚠ ${describeError(error)}`).then(notifyChanged).catch(() => undefined));
 }
 
 const typing = (el: EventTarget | null) =>
