@@ -14,6 +14,7 @@ import { addDays, cityKeyOf, sameCity, type OptionGroup, type Plan } from "../li
 import { retryCapture } from "../lib/process";
 import { contentLang, contentTag, L, withLang } from "../lib/i18n";
 import { modelCoverJudge } from "../lib/coverJudge";
+import { tripLine } from "../lib/coverPhoto";
 import { creditOf, findCityPhoto, imageProxy, keptCredits, lookAgainAtCover, nextCityImage, nextHeroImage, wantsCityImage, type HeroCity } from "../lib/cityImages";
 import { acceptMood, moodKey } from "../lib/heroText";
 import { getProvider, MissingKeyError } from "../lib/llm";
@@ -450,41 +451,52 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     })();
   }, [trip.id, trip.cityImages, mainNames, placesSettled]);
   // The cover looked at once on the plan (2026-10-25, Emre: "gezi üretilirken en hızlısı, plan hero'da farklı olur"): the
-  // photo there now beside the stock proxy's and Commons' wide ones, the model keeps the best; a new one comes in softly
-  // (HeroMosaic). Once per trip and first place (coverLooked); no key or an error: asked again another time.
+  // photo there now beside every photo the trip has (its start photo, its places', its moments') and the stock proxy's and
+  // Commons' wide ones; the model, told what the trip is, keeps the best as the trip's own cover (Trip.coverImage); a new
+  // one comes in softly (HeroMosaic). Once per trip and first place (coverLooked); no key or an error: asked again later.
   const lookingCover = useRef(new Set<string>());
   useEffect(() => {
     const name = mainNames[0];
     const key = name ? cityKeyOf(name) : null;
-    // (asked for what the trip is: a festival by its own name, "Sziget Festival", a place by its English one, "Budapest";
-    // 2026-10-25: "Budapeşte" found nothing on Commons and the cover stayed a fountain. "2:" marks the looks made so, so a
-    // trip looked at the old way is looked at once more. "3:": the photo there now kept unless another is clearly better,
-    // an event seen happening; 2026-10-25 the Boom Festival's crowd had given way to a hazy lake.)
-    const look = key ? `3:${key}` : null;
+    // (asked for what the trip is: a festival by its own name, "Sziget Festival", a place by its English one, "Budapest".
+    // "4:" marks the looks among all the trip's photos (2026-10-25: Maldivler's beach had lost to the first stop's
+    // sandbank, never even a candidate), so a trip looked at before is looked at once more.)
+    const look = key ? `4:${key}` : null;
     if (!placesSettled || !name || !key || trip.coverLooked === look || lookingCover.current.has(`${trip.id}:${look}`)) return;
     // (after the first photo pass: there is something to compare with, or nothing was found)
-    const current = trip.cityImages?.[key];
-    if (current === undefined) return;
+    const first = trip.cityImages?.[key];
+    if (first === undefined) return;
     // (a photo the pass above asks for again, an old Wikipedia one: its answer first, so neither writes over the other)
-    if (wantsCityImage(current, true, creditOf(current, trip.photoCredits)) && !photoDone.current.has(`${trip.id}:${key}`)) return;
+    if (wantsCityImage(first, true, creditOf(first, trip.photoCredits)) && !photoDone.current.has(`${trip.id}:${key}`)) return;
     lookingCover.current.add(`${trip.id}:${look}`);
+    const current = trip.coverImage ?? first;
+    // (the trip's own photos: its start photo, then its places' in route order, then the rest it found: the moments)
+    const mineKeys = mainNames.map((n) => cityKeyOf(n));
+    const more = [
+      trip.heroImage,
+      ...mineKeys.map((k) => (k ? trip.cityImages?.[k] : null)),
+      ...Object.entries(trip.cityImages ?? {})
+        .filter(([k]) => !mineKeys.includes(k))
+        .map(([, url]) => url),
+    ].filter((url): url is string => !!url && /^https:/.test(url));
     const festival = trip.intent?.playbook === "festival" && trip.intent.name?.trim() ? trip.intent.name.trim() : null;
     const query = festival ? eventPhotoQuery(festival, true).query : (knownPlaceOf(name)?.en ?? name);
+    const line = tripLine(trip.title, trip.intent, range?.start);
     void (async () => {
       const proxy = await imageProxy();
-      const { answered, pick } = await lookAgainAtCover(name, current, { proxy, judge: modelCoverJudge, query, event: !!festival });
+      const { answered, pick } = await lookAgainAtCover(name, current, { proxy, judge: modelCoverJudge, query, event: !!festival, more, trip: line, credits: trip.photoCredits });
       if (!answered) return;
       await updateTrip(
         trip.id,
         (t) => {
-          const swap = pick != null && pick.url !== t.cityImages?.[key];
-          const next = { ...t, coverLooked: look!, ...(swap ? { cityImages: { ...t.cityImages, [key]: pick.url }, heroImage: pick.url } : {}) };
+          const swap = pick != null && pick.url !== (t.coverImage ?? t.cityImages?.[key]);
+          const next = { ...t, coverLooked: look!, ...(swap ? { coverImage: pick.url, heroImage: pick.url } : {}) };
           return swap ? { ...next, photoCredits: keptCredits(next, [pick]) } : next;
         },
         { touch: false },
       );
     })();
-  }, [trip.id, trip.coverLooked, trip.cityImages, mainNames, placesSettled, trip.intent]);
+  }, [trip.id, trip.coverLooked, trip.coverImage, trip.cityImages, trip.heroImage, trip.title, mainNames, placesSettled, trip.intent, range?.start]);
   // The mood sentence: written once per set of main places and language by the traveller's model; one with a number is dropped.
   const moodLang = contentLang(trip.lang);
   const moodFor = moodKey(mainNames, contentTag(trip.lang, moodLang));
@@ -739,8 +751,9 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
         // 0.38.3: after the cities, the source's tours for them (Viator's photos); then the moments, a drawing last.
         offers: tourPlaces,
         moments: momentsOf(trip.cityImages, momentPhotoKeys(), (image) => creditOf(image, trip.photoCredits)),
+        chosen: trip.coverImage ? { image: trip.coverImage, credit: creditOf(trip.coverImage, trip.photoCredits) } : null,
       }),
-    [cities, places, route, heroIntents, items, tourPlaces, trip.cityImages, trip.photoCredits],
+    [cities, places, route, heroIntents, items, tourPlaces, trip.cityImages, trip.photoCredits, trip.coverImage],
   );
   const estimated = !!range && !trip.confirmedDates && !plan.range;
   // D15: dates still the guess the start made from a month or a season say only the nights ("~ · 10 gece"); an event's

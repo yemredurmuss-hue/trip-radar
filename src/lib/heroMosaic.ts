@@ -124,8 +124,10 @@ export function shownTiles(tiles: readonly MosaicTile[], failed: ReadonlySet<str
   return all.slice(0, fitTiles(all.length));
 }
 
-export function mosaicOf({ cities, places, links = [], offers = [], moments = [], max = MOSAIC_MAX }: {
+export function mosaicOf({ cities, places, links = [], offers = [], moments = [], chosen = null, max = MOSAIC_MAX }: {
   cities: readonly MosaicCity[];
+  /** The trip's own cover (Trip.coverImage, the plan's look): in place of the first city's photo, which becomes a tile. */
+  chosen?: MosaicPhoto | null;
   places: readonly MosaicPlace[];
   /** What was saved for the trip with a photo (the Pano's links), not on the plan. */
   links?: readonly MosaicPlace[];
@@ -135,7 +137,7 @@ export function mosaicOf({ cities, places, links = [], offers = [], moments = []
   max?: number;
 }): Mosaic {
   const first = cities.find((c) => c.image) ?? null;
-  const cover = first ? { image: first.image!, credit: first.credit } : null;
+  const cover = chosen?.image ? chosen : first ? { image: first.image!, credit: first.credit } : null;
   // Each photo once (never the cover's again), each name once.
   const seenImage = new Set(cover ? [cover.image] : []);
   const seenName = new Set<string>();

@@ -14,6 +14,11 @@ const city = (name: string, image: string | null, nights = "3 gece"): MosaicCity
 const place = (key: string, cityName: string, image: string | null, booked = false): MosaicPlace => ({ key, name: key, city: cityName, image, credit: null, booked });
 
 describe("mosaicOf", () => {
+  it("the trip's own cover in place of the first city's photo, which becomes a tile (Maldivler, not Maafushi's sandbank)", () => {
+    const m = mosaicOf({ cities: [city("Maafushi", "maa.jpg"), city("Dhigurah", "dhi.jpg")], places: [], chosen: { image: "maldives.jpg", credit: null } });
+    expect(m.cover?.image).toBe("maldives.jpg");
+    expect(m.tiles.map((t) => t.image)).toEqual(["maa.jpg", "dhi.jpg"]);
+  });
   it("has no cover photo and no tiles with no photo at all: the cover alone", () => {
     const m = mosaicOf({ cities: [city("Porto", null), city("Lizbon", null)], places: [place("Douro", "Porto", null)] });
     expect(m).toEqual({ cover: null, tiles: [], kind: null });

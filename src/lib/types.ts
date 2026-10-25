@@ -268,6 +268,11 @@ export interface Trip {
   photoCredits?: Record<string, PhotoCredit>;
   /** The place whose cover was looked at once on the plan (coverPhoto.ts): not asked again for it. */
   coverLooked?: string;
+  /**
+   * The trip's own cover, chosen by that look among every photo the trip has and those found for it (2026-10-25, Emre:
+   * "hep en iyi fotoğraflar gelsin"): Maldivler's beach, not the first stop's sandbank. None: the first place's photo.
+   */
+  coverImage?: string | null;
   /** The AI's mood sentence for the hero and the cities it was written for (see heroText.ts). */
   mood?: { key: string; text: string } | null;
   /** The style words the model picked for the hero (tripStyle.ts) and what they were picked for. */

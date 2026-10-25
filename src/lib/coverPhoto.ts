@@ -5,7 +5,7 @@
 // choose (no key, an error, none fit), the old way holds as it was: the stock photo, else Wikipedia's (Emre: "fallbackler
 // yine eski sistem olsun").
 import { z } from "zod";
-import type { PhotoCredit } from "./types";
+import type { PhotoCredit, PlaybookKind } from "./types";
 
 /** A photo that could be the cover: its address as stored, a small copy to be looked at, who to credit. */
 export interface CoverCandidate {
@@ -76,10 +76,36 @@ export function stockThumb(url: string): string {
   return url;
 }
 
-/** What the look is for: an event (seen happening, never its empty grounds), and whether photo 1 is the cover there now. */
+/**
+ * What the look is for: an event (seen happening, never its empty grounds), whether photo 1 is the cover there now, and
+ * the trip in a line (tripLine) so the photo is chosen for this trip, not for the place alone.
+ */
 export interface CoverLook {
   event?: boolean;
   current?: boolean;
+  trip?: string | null;
+}
+
+/** What a kind of trip wants on its cover, in a few words for the model (classic: the place's own most striking view). */
+const KIND_COVER: Partial<Record<PlaybookKind, string>> = {
+  ski: "a ski trip: snow, slopes, mountains",
+  honeymoon: "a honeymoon: romantic, the sea or the view at its most beautiful",
+  wellness: "a wellness trip: calm, water, nature, a spa's quiet",
+  cruise: "a cruise: the ship and the sea",
+  road: "a road trip: the open road through the landscape",
+  festival: "a festival: the stage and the crowd in full swing",
+};
+
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+/** The trip in one line for the cover's look: its name, its kind, the month it starts (so a winter trip isn't summer). */
+export function tripLine(title: string, kind: { playbook: PlaybookKind; label?: string | null } | null | undefined, start: string | null | undefined): string | null {
+  const parts = [
+    title.trim() ? `"${title.trim()}"` : null,
+    kind ? (KIND_COVER[kind.playbook] ?? (kind.playbook === "custom" && kind.label?.trim() ? kind.label.trim() : null)) : null,
+    start && /^\d{4}-\d{2}/.test(start) ? `in ${MONTHS[Number(start.slice(5, 7)) - 1] ?? ""}`.trim() : null,
+  ].filter((p): p is string => !!p && p !== "in");
+  return parts.length ? parts.join(", ") : null;
 }
 
 /** The model's look: which photo makes the cover (1 = the first), or none. */
@@ -91,7 +117,7 @@ export const COVER_JUDGE_SYSTEM =
   "You choose the cover photo of a trip's page. You see numbered photos found for one place or event. Choose the one that " +
   "is most clearly that very place or event and most striking as a wide cover: real scenery, the stage, the crowd, the " +
   "landmark. Never choose a poster, a flyer, a logo, a map, a photo with large words or dates over it, a screenshot, or a " +
-  "close-up of one person. Quality counts as much as the subject: choose the photo a travel magazine would print, sharp, " +
+  "close-up of one person, nor a plate of food. Quality counts as much as the subject: choose the photo a travel magazine would print, sharp, " +
   "well lit and vivid; a dull, hazy, flat or snapshot-like photo loses to a vivid one even when it shows more of the place. " +
   "When none is fit, answer null. Answer with the photo's number, counting from 1.";
 
@@ -100,6 +126,7 @@ export const COVER_JUDGE_SYSTEM =
 export function coverQuestion(subject: string, count: number, how: CoverLook = {}): string {
   return [
     `Photos 1 to ${count}, found for "${subject}". Which one is its cover?`,
+    how.trip ? `The trip: ${how.trip}. Choose the photo that says this trip best at a glance.` : null,
     how.event ? `"${subject}" is an event: choose it happening (the stage, the crowd, the lights, the colour), never its empty grounds or the landscape around it.` : null,
     how.current ? "Photo 1 is the cover now: answer 1 unless another is clearly a better cover, both truer to it and more striking." : null,
   ]

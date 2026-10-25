@@ -2,7 +2,7 @@
 // can't choose, the old way (the stock photo, else Wikipedia's) as it was.
 import { describe, expect, it } from "vitest";
 import { findCityPhoto, lookAgainAtCover, wantsCityImage, nextHeroImage } from "../src/lib/cityImages";
-import { chooseCover, commonsCandidates, coverQuestion, stockThumb, type CoverCandidate } from "../src/lib/coverPhoto";
+import { chooseCover, commonsCandidates, coverQuestion, stockThumb, tripLine, type CoverCandidate } from "../src/lib/coverPhoto";
 
 const page = (title: string, w: number, h: number, mime = "image/jpeg", index = 1) => ({
   title, index,
@@ -104,6 +104,25 @@ describe("lookAgainAtCover: the plan's one look at a cover", () => {
     expect(q).toMatch(/is an event: choose it happening/);
     expect(coverQuestion("Lisbon", 3, { current: true })).not.toMatch(/event/);
     expect(coverQuestion("Lisbon", 3)).toBe('Photos 1 to 3, found for "Lisbon". Which one is its cover?');
+  });
+  it("the trip's own photos are candidates too, and the model is told what the trip is", async () => {
+    let photos = 0;
+    let how: unknown = null;
+    const r = await lookAgainAtCover("Maafushi", "https://images.unsplash.com/photo-maa?w=2400", {
+      proxy, fetchJson, fetchImage: jpeg, trip: '"Maldivler", in February',
+      more: ["https://images.unsplash.com/photo-maldives?w=2400", "https://images.unsplash.com/photo-maa?w=2400"],
+      judge: async (_s, p, h) => ((photos = p.length), (how = h), 2),
+    });
+    expect(r.pick?.url).toBe("https://images.unsplash.com/photo-maldives?w=2400");
+    expect(photos).toBeGreaterThanOrEqual(3);
+    expect(how).toMatchObject({ current: true, trip: '"Maldivler", in February' });
+  });
+  it("tripLine: the name, what the kind wants on its cover, the month", () => {
+    expect(tripLine("Maldivler", { playbook: "classic" }, "2027-02-10")).toBe('"Maldivler", in February');
+    expect(tripLine("Alpler", { playbook: "ski" }, null)).toBe('"Alpler", a ski trip: snow, slopes, mountains');
+    expect(tripLine("Tekne", { playbook: "custom", label: "Liveaboard dalış" }, "2027-07-01")).toBe('"Tekne", Liveaboard dalış, in July');
+    expect(tripLine("", null, null)).toBeNull();
+    expect(coverQuestion("Maafushi", 4, { trip: '"Maldivler"' })).toMatch(/The trip: "Maldivler"\. Choose the photo that says this trip best/);
   });
   it("no key or an error: not answered, nothing picked (the photo there stays, asked again another time)", async () => {
     const r = await lookAgainAtCover("Ozora", "https://images.unsplash.com/photo-1?w=2400", { proxy, judge: async () => { throw new Error("429"); }, fetchJson, fetchImage: jpeg });

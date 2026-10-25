@@ -171,10 +171,25 @@ export async function findCityPhoto(city: string, opts: PhotoOpts = {}): Promise
  * there now, the stock proxy's and Commons' wide ones, and the model's pick among them. `answered` false (no key, an error):
  * asked again another time; the photo there stays whatever happens.
  */
+/** The most photos one look at a cover sends to the model (small copies, ~500 px each). */
+const COVER_LOOK_MAX = 8;
+
 export async function lookAgainAtCover(
   city: string,
   current: string | null,
-  opts: { proxy: ImageProxy | null; judge: CoverJudge; query?: string; event?: boolean; fetchJson?: FetchJson; fetchImage?: typeof fetch },
+  opts: {
+    proxy: ImageProxy | null;
+    judge: CoverJudge;
+    query?: string;
+    event?: boolean;
+    /** The trip's other photos (its start photo, its places', its moments'): candidates too, the cover is the trip's. */
+    more?: readonly string[];
+    /** The trip in a line (coverPhoto.ts tripLine). */
+    trip?: string | null;
+    credits?: Record<string, PhotoCredit> | null;
+    fetchJson?: FetchJson;
+    fetchImage?: typeof fetch;
+  },
 ): Promise<{ answered: boolean; pick: CityPhoto | null }> {
   let failed = false;
   const get = async (url: string, init?: RequestInit) => {
@@ -189,14 +204,19 @@ export async function lookAgainAtCover(
   const stock = opts.proxy ? await get(proxyQuery(opts.proxy.url, q), { headers: opts.proxy.headers }) : null;
   // (the photo server not answering is no look at all: asked again another time, never "looked at" for good)
   if (failed) return { answered: false, pick: null };
-  const commons = await commonsCandidates(q, get).catch(() => []);
+  const commons = await commonsCandidates(q, get, 3).catch(() => []);
   const seen = new Set<string>();
+  const own = (url: string) => ({ url, thumb: isWikiImage(url) ? url.replace(/\/\d+px-/, "/500px-") : stockThumb(url), credit: creditOf(url, opts.credits) });
+  // (the one there now first, then the trip's own, then what was found; eight at most for one look)
   const candidates = [
-    ...(current ? [{ url: current, thumb: isWikiImage(current) ? current.replace(/\/\d+px-/, "/500px-") : stockThumb(current), credit: creditOf(current) }] : []),
+    ...(current ? [own(current)] : []),
+    ...(opts.more ?? []).filter(Boolean).map(own),
     ...(stock?.url ? [{ url: stock.url as string, thumb: stockThumb(stock.url), credit: proxyCredit(stock) }] : []),
     ...commons,
-  ].filter((c) => !seen.has(c.url) && (seen.add(c.url), true));
-  const { answered, pick } = await lookAtCovers(q, candidates, opts.judge, opts.fetchImage, { event: opts.event, current: !!current });
+  ]
+    .filter((c) => !seen.has(c.url) && (seen.add(c.url), true))
+    .slice(0, COVER_LOOK_MAX);
+  const { answered, pick } = await lookAtCovers(q, candidates, opts.judge, opts.fetchImage, { event: opts.event, current: !!current, trip: opts.trip });
   if (pick?.credit) seenCredits.set(pick.url, pick.credit);
   return { answered, pick: pick ? { url: pick.url, credit: pick.credit } : null };
 }
