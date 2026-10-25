@@ -67,11 +67,30 @@ export function useBoard(initialTripId: string | null) {
   }, [selectedId]);
   const loadRef = useRef(load);
   loadRef.current = load;
+  // A burst of change notices (a photo per card, a city photo each, a capture's steps): one read now, and one more after
+  // it for whatever came meanwhile, never one full read per notice (2026-10-25).
+  const reading = useRef(false);
+  const again = useRef(false);
+  const settle = useCallback(async () => {
+    if (reading.current) {
+      again.current = true;
+      return;
+    }
+    reading.current = true;
+    try {
+      do {
+        again.current = false;
+        await loadRef.current().catch((error) => console.warn("board", error));
+      } while (again.current);
+    } finally {
+      reading.current = false;
+    }
+  }, []);
 
   useEffect(() => {
     void load();
-    return onChanged(() => void load());
-  }, [load]);
+    return onChanged(() => void settle());
+  }, [load, settle]);
 
   const selectTrip = useCallback((id: string | null) => {
     try {

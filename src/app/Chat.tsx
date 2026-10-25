@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState, type ClipboardEvent, type ReactNode } from "react";
 import { withNextStep } from "../lib/startTrip";
-import { resumeSearches, sendMessage } from "../lib/assistant";
+import { ChatBusyError, resumeSearches, sendMessage } from "../lib/assistant";
 import { chatCards, quickReplies, type ChatCardVM, type PlanTarget } from "../lib/chatCards";
 import { chatPeek } from "../lib/chatPeek";
 import { chatStatusOf, chatStepsOf, onChatStatus, type ChatStatus, type ChatStep } from "../lib/chatStatus";
@@ -9,6 +9,7 @@ import { reloadIfLangChanged } from "./langSwitch";
 import { nameTargets, splitNames, type NameTarget } from "../lib/chatNames";
 import { noChangeNote } from "../lib/claims";
 import { describeError, errorKind, type ErrorKind } from "../lib/llm";
+import { MissingKeyError } from "../lib/llm/types";
 import { shownReply } from "../lib/replyText";
 import { answerDuplicate, answerHeld, answerStray, RoutingChanged, undoMove } from "../lib/routing";
 import type { Capture, ChatMessage, HeldAnswer, Item, RoutingNote, Trip } from "../lib/types";
@@ -190,6 +191,8 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
     } catch (e) {
       failed = true;
       fail(e);
+      // (refused before it was saved, the chat still busy or no key yet: the words come back to the box, never lost)
+      if (e instanceof ChatBusyError || e instanceof MissingKeyError) setText((t) => t || input);
     } finally {
       answering.current = false;
       setBusy(false);

@@ -166,7 +166,9 @@ export function App() {
       <UpdateBanner />
       {trip ? (
         <div className="board">
+          {/* (one chat a trip: what is queued, busy or wrong in one never goes on with another, 2026-10-25) */}
           <Chat
+            key={trip.id}
             trip={trip}
             messages={board.messages}
             onBack={() => withTripPhoto(() => board.selectTrip(null), trip.id, false)}

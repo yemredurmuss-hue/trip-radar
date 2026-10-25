@@ -52,10 +52,13 @@ function summaryImage(s: any): string | null {
 const defaultFetch: FetchJson = async (url, init) => {
   let r: Response;
   try {
-    r = await fetch(url, init);
+    // (never waiting for ever: 15 s, then a failure like any other)
+    r = await fetch(url, { ...init, signal: init?.signal ?? AbortSignal.timeout(15_000) });
   } catch (e) {
     throw new NetworkError(e instanceof Error ? e.message : undefined);
   }
+  // (the server's own trouble, a quota or an outage, is no "nothing found": asked again later, 2026-10-25)
+  if (r.status === 402 || r.status === 429 || r.status >= 500) throw new NetworkError(`server ${r.status}`);
   if (!r.ok) return null;
   try {
     return await r.json();
@@ -173,15 +176,19 @@ export async function lookAgainAtCover(
   current: string | null,
   opts: { proxy: ImageProxy | null; judge: CoverJudge; query?: string; fetchJson?: FetchJson; fetchImage?: typeof fetch },
 ): Promise<{ answered: boolean; pick: CityPhoto | null }> {
+  let failed = false;
   const get = async (url: string, init?: RequestInit) => {
     try {
       return await (opts.fetchJson ?? defaultFetch)(url, init);
     } catch {
+      failed = true;
       return null;
     }
   };
   const q = opts.query?.trim() || city;
   const stock = opts.proxy ? await get(proxyQuery(opts.proxy.url, q), { headers: opts.proxy.headers }) : null;
+  // (the photo server not answering is no look at all: asked again another time, never "looked at" for good)
+  if (failed) return { answered: false, pick: null };
   const commons = await commonsCandidates(q, get).catch(() => []);
   const seen = new Set<string>();
   const candidates = [

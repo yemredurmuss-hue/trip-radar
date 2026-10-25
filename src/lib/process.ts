@@ -158,6 +158,12 @@ export const timeoutMessage = (): string => {
  * answer that arrives after the deadline is dropped (the capture stays "error" with Tekrar dene, never flips back to done),
  * and a reading that has begun writing finishes before the next capture starts.
  */
+/** A new trip's photo within 8 s, or none: its failure or a stalled lookup never fails the capture it comes with. */
+const PHOTO_WAIT_MS = 8000;
+function photoOrNone(lookup: Promise<string | null>): Promise<string | null> {
+  return Promise.race([lookup.catch(() => null), new Promise<null>((done) => setTimeout(() => done(null), PHOTO_WAIT_MS))]);
+}
+
 export async function processCapture(captureId: string, deps: Deps = defaultDeps, deadlineMs: number = CAPTURE_DEADLINE_MS): Promise<void> {
   const d = await db();
   const found = await d.get("captures", captureId);
@@ -288,7 +294,8 @@ async function readCapture(capture: Capture, deps: Deps, commit: () => Promise<b
       item = { ...item, tripId: target.id, dates: datesIn(item, target, allItems) };
     }
     // A new trip's photo is looked up before anything is written: a slow lookup runs into the deadline, never between writes.
-    const heroImage = item.tripId === newTripId ? await deps.heroImage(extraction.city ?? extraction.country) : null;
+    // (a photo that fails or stalls never costs the save: no photo then, the board asks for it again; 2026-10-25)
+    const heroImage = item.tripId === newTripId ? await photoOrNone(deps.heroImage(extraction.city ?? extraction.country)) : null;
     if (!(await commit())) return; // the deadline came first: this late answer writes nothing
     if (item.tripId === newTripId) {
       const now = Date.now();

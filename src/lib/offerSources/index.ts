@@ -18,6 +18,12 @@ import { acceptStyle, type StyleId } from "../tripStyle";
 import type { Trip } from "../types";
 
 const STORE_KEY = "offersSeen";
+/** A question to the server is given up after this long. */
+const TIMEOUT_MS = 20_000;
+/** An empty answer is kept this long (a full one KEEP_HOURS). */
+const EMPTY_KEEP_MS = 36e5;
+/** After a failure, this long the server counts as down. */
+const DOWN_MS = 60_000;
 const PRICE_KEY = "priceSeen";
 const PRICE_HOURS = 24;
 const SIGHTS_KEY = "sightsSeen";
@@ -216,6 +222,8 @@ export async function cityTours(source: Pick<SuggestionSource, "offers">, need: 
   const plain = town ? townName(town) : null;
   const asked = plain && plain !== town ? { ...need, key: `${need.key}:as:${fold(plain)}`, city: plain } : need;
   let list = await tours(asked, town);
+  // (the server failing: no wider questions on top, they would only fail too; asked again on the next look)
+  if (!list.length && (source as { down?: () => boolean }).down?.()) return [];
   const bare = plain ? unmarked(plain) : null;
   if (!list.length && bare && bare !== plain) list = await tours({ ...asked, key: `${need.key}:as:${bare.toLowerCase()}`, city: bare }, town);
   const wider = list.length ? null : countryNeed(asked, countryCode);
@@ -341,17 +349,29 @@ export function makeLiveSource(opts: { kv?: KV; fetcher?: typeof fetch; now?: ()
   sights(city: string, country?: string | null): Promise<Sight[]>;
   days(ask: PriceAsk): Promise<DayFare[]>;
   events(city: string, start: string, end: string): Promise<Offer[]>;
+  /** The server failed in the last minute (an outage, a quota, a timeout). */
+  down(): boolean;
 } {
   const kv = opts.kv ?? chromeKV;
   const fetcher = opts.fetcher ?? ((...a: Parameters<typeof fetch>) => fetch(...a));
   // Only a question that really goes to the server marks its category (its row on the Plan moves, lib/looking.ts): an
   // answer kept from before is no search (2026-10-24, Emre: "her açıp kapattığımda aranıyor çıkıyor").
+  const now = opts.now ?? Date.now;
+  // The server's last failure (an outage, a quota, a timeout): for a minute after it, a search that came back empty is
+  // taken as the server's, not as "nothing there", and isn't widened into more questions (cityTours, 2026-10-25).
+  let failedAt = 0;
   const get = (url: string): Promise<Response> => {
     const section = SECTION_OF_KIND[new URL(url).searchParams.get("kind") ?? ""];
-    const going = fetcher(url);
+    // (never waiting for ever: a stalled request ends in 20 s as a failure, its "Aranıyor" with it)
+    const going = fetcher(url, { signal: AbortSignal.timeout(TIMEOUT_MS) }).then(
+      (r) => (r.ok ? r : ((failedAt = now()), r)),
+      (error) => {
+        failedAt = now();
+        throw error;
+      },
+    );
     return section ? sectionLooking.track(section, going) : going;
   };
-  const now = opts.now ?? Date.now;
   const server = opts.server ?? DEFAULT_SERVER.url;
   const asking = new Map<string, Promise<Answer>>();
   // Answers are written one after another, each onto the store as it is then: questions asked at once (a board's
@@ -379,7 +399,9 @@ export function makeLiveSource(opts: { kv?: KV; fetcher?: typeof fetch; now?: ()
       // no storage: asked every time
     }
     const had = seen[q];
-    if (had && now() - had.at < KEEP_HOURS * 36e5) return had;
+    // (an empty answer is kept an hour, not six: it may have been the server's bad moment, not the place's)
+    const full = Boolean(had && (had.offers.length || had.candidates?.length || had.places?.length));
+    if (had && now() - had.at < (full ? KEEP_HOURS * 36e5 : EMPTY_KEEP_MS)) return had;
     try {
       const res = await get(`${server}/functions/v1/offers?${q}`);
       if (!res.ok) return { offers: [] };
@@ -432,7 +454,7 @@ export function makeLiveSource(opts: { kv?: KV; fetcher?: typeof fetch; now?: ()
       // no storage: asked every time
     }
     const had = seen[q];
-    if (had && now() - had.at < PRICE_HOURS * 36e5) return had.insight;
+    if (had && now() - had.at < (had.insight ? PRICE_HOURS * 36e5 : EMPTY_KEEP_MS)) return had.insight;
     try {
       const res = await get(`${server}/functions/v1/offers?${q}`);
       if (!res.ok) return null;
@@ -469,7 +491,7 @@ export function makeLiveSource(opts: { kv?: KV; fetcher?: typeof fetch; now?: ()
       // no storage: asked every time
     }
     const had = seen[q];
-    if (had && now() - had.at < SIGHTS_DAYS * 864e5) return had.sights;
+    if (had && now() - had.at < (had.sights.length ? SIGHTS_DAYS * 864e5 : EMPTY_KEEP_MS)) return had.sights;
     try {
       const res = await get(`${server}/functions/v1/offers?${q}`);
       if (!res.ok) return [];
@@ -506,7 +528,7 @@ export function makeLiveSource(opts: { kv?: KV; fetcher?: typeof fetch; now?: ()
       // no storage: asked every time
     }
     const had = seen[q];
-    if (had && now() - had.at < DAYS_HOURS * 36e5) return had.days;
+    if (had && now() - had.at < (had.days.length ? DAYS_HOURS * 36e5 : EMPTY_KEEP_MS)) return had.days;
     try {
       const res = await get(`${server}/functions/v1/offers?${q}`);
       if (!res.ok) return [];
@@ -543,7 +565,7 @@ export function makeLiveSource(opts: { kv?: KV; fetcher?: typeof fetch; now?: ()
       // no storage: asked every time
     }
     const had = seen[q];
-    if (had && now() - had.at < EVENTS_HOURS * 36e5) return had.offers;
+    if (had && now() - had.at < (had.offers.length ? EVENTS_HOURS * 36e5 : EMPTY_KEEP_MS)) return had.offers;
     try {
       const res = await get(`${server}/functions/v1/offers?${q}`);
       if (!res.ok) return [];
@@ -571,6 +593,7 @@ export function makeLiveSource(opts: { kv?: KV; fetcher?: typeof fetch; now?: ()
 
   return {
     available: () => true,
+    down: () => failedAt > 0 && now() - failedAt < DOWN_MS,
     offers: (need) => find(need),
     find,
     candidates,

@@ -145,14 +145,17 @@ export function useArrivals({ tripId, items, sections, openCaptures, view, isOpe
     setTimeout(() => {
       const els = placed.map((p) => findTarget({ item: p.id }));
       els.forEach((el) => (pulse(el, "ar-new", RING_MS), stampTick(el)));
-      // A card drawn again while it rings (its need took the new option, its frame changed): the ring goes on on the card
-      // as it is now, for what is left of it (2026-10-24: the ring was lost when the box was built again just after).
+      // A card drawn again while it rings (its need took the new option, its frame changed), or its classes written anew
+      // by React (it began a search: "busy"), loses the ring the page put on it: it goes on on the card as it is now, for
+      // what is left of it (2026-10-24/25: the ring was lost when the box changed just after).
       const rang = Date.now();
-      for (const at of [300, 800]) {
+      for (const at of [250, 600, 1100]) {
         setTimeout(() => {
-          placed.forEach((p, n) => {
+          const left = RING_MS - (Date.now() - rang);
+          if (left < 200) return;
+          placed.forEach((p) => {
             const now = findTarget({ item: p.id });
-            if (now && now !== els[n] && !now.classList.contains("ar-new")) pulse(now, "ar-new", Math.max(0, RING_MS - (Date.now() - rang)));
+            if (now && !now.classList.contains("ar-new")) pulse(now, "ar-new", left);
           });
         }, at);
       }
