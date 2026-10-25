@@ -104,7 +104,7 @@ describe("the hero's mosaic takes the source's tours", () => {
     expect(tiles).toEqual([{ key: "v1", name: "Sörf dersi", city: "Ahangama", image: "v1.jpg", credit: null, booked: false }]);
   });
 
-  it("the plan's and the saved records' photos first, the cities, the tours, the moments, a drawing last", () => {
+  it("the plan's and the saved records' photos first, the cities, the moments, the tours, a drawing last", () => {
     const place = (key: string, image: string): MosaicPlace => ({ key, name: key, city: "Ahangama", image, credit: null, booked: false });
     const m = mosaicOf({
       cities: [
@@ -119,8 +119,9 @@ describe("the hero's mosaic takes the source's tours", () => {
     });
     expect(m.cover?.image).toBe("a.jpg");
     // The tour named as a place already shown isn't shown twice.
-    // The start's moment fills after the tours (2026-10-25, P9 undone as a filler), the city with no photo drawn last.
-    expect(m.tiles.map((t) => [t.from, t.name])).toEqual([["place", "Villa"], ["link", "Kaydedilen kafe"], ["city", "Kolombo"], ["offer", "Sörf dersi"], ["moment", "Gün batımı"], ["art", "Bali"]]);
+    // The start's moment after the cities, the source's tours (not on the plan) after it (2026-10-25), the city with no
+    // photo drawn last.
+    expect(m.tiles.map((t) => [t.from, t.name])).toEqual([["place", "Villa"], ["link", "Kaydedilen kafe"], ["city", "Kolombo"], ["moment", "Gün batımı"], ["offer", "Sörf dersi"], ["art", "Bali"]]);
     expect(m.kind).toBe("place");
   });
 

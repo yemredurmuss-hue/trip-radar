@@ -137,10 +137,14 @@ describe("placesOfIntents", () => {
 });
 
 describe("the mosaic's other sources", () => {
-  it("links: what was saved with a photo, places only (a stay, a tour, a meal), not what is on the plan", () => {
-    const item = (id: string, category: string, status = "saved", imageUrl: string | null = `${id}.jpg`) => ({ id, name: id, city: "Porto", imageUrl, status, category });
-    const out = linksOf([item("casa", "stay"), item("tour", "activity"), item("tk", "flight"), item("esim", "esim"), item("chosen", "stay", "chosen"), item("gone", "food", "dismissed"), item("bare", "food", "saved", null)], () => null);
-    expect(out.map((p) => p.name)).toEqual(["casa", "tour"]);
+  it("links: what the traveller saved with a photo (a tour, a meal), not what is on the plan; never a stay, never a source's option", () => {
+    const item = (id: string, category: string, status = "saved", imageUrl: string | null = `${id}.jpg`, addedBy?: string) => ({ id, name: id, city: "Porto", imageUrl, status, category, addedBy });
+    const out = linksOf(
+      [item("casa", "stay"), item("tour", "activity"), item("found", "activity", "saved", "f.jpg", "ai"), item("hotel", "stay", "saved", "h.jpg", "ai"), item("tk", "flight"), item("esim", "esim"), item("chosen", "stay", "chosen"), item("gone", "food", "dismissed"), item("bare", "food", "saved", null)],
+      () => null,
+    );
+    // (2026-10-25, Emre: "onaylanmamış oteller gelmesin, otel doluyor altı")
+    expect(out.map((p) => p.name)).toEqual(["tour"]);
   });
   it("moments: the start's scenes kept among the cities' photos, by their words in either language", () => {
     const out = momentsOf({ porto: "p.jpg", "romantik akşam": "r.jpg", "local food": "f.jpg" }, [{ key: "romantik akşam", name: "Romantik akşam" }, { key: "local food", name: "Yerel lezzetler" }, { key: "doğa", name: "Doğa" }], () => null);
@@ -160,7 +164,6 @@ describe("a tile goes to its card (0.38.9: the ATV tour's photo to the ATV tour 
       places: [place("i-atv", "Şarm El-Şeyh", "atv.jpg")],
       links: [place("i-reef", "Şarm El-Şeyh", "reef.jpg")],
       offers: [{ key: "v-123", name: "Ras Muhammed tekne turu", city: "Şarm El-Şeyh", image: "ras.jpg", credit: null, booked: false }],
-      moments: [{ name: "Deniz", image: "sea.jpg", credit: null }],
     });
     expect(m.tiles.map((t) => [t.from, t.target])).toEqual([
       ["place", { item: "i-atv" }],
@@ -168,6 +171,9 @@ describe("a tile goes to its card (0.38.9: the ATV tour's photo to the ATV tour 
       ["city", null],
       ["offer", { offer: "v-123", city: "Şarm El-Şeyh" }],
     ]);
+    // A moment carries no card.
+    const sea = mosaicOf({ cities: [city("Şarm El-Şeyh", "s.jpg")], places: [], moments: [{ name: "Deniz", image: "sea.jpg", credit: null }] }).tiles[0];
+    expect([sea.from, sea.target]).toEqual(["moment", null]);
     const atv = mosaicOf({ cities: [city("Şarm El-Şeyh", "s.jpg")], places: [{ key: "i-atv", name: "ATV turu", city: "Şarm El-Şeyh", image: "atv.jpg", credit: null, booked: true }] }).tiles[0];
     expect(tileGoLabel(atv)).toBe("ATV turu kartına git");
     expect(withLang("en", () => tileGoLabel(atv))).toBe("Go to ATV turu");

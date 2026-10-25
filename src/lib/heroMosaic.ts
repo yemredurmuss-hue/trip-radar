@@ -164,10 +164,11 @@ export function mosaicOf({ cities, places, links = [], offers = [], moments = []
   take(spread(places, places.length).map(placeTile("place")));
   take(spread(links, links.length).map(placeTile("link")));
   take(cities.map((c) => ({ key: `city:${c.name}`, from: "city", target: null, name: c.name, sub: c.nights, image: c.image, credit: c.credit, state: c.state ?? null })));
-  take(spread(offers, offers.length).map(placeTile("offer")));
-  // The start's moments last (2026-10-25, Emre: "bulduklarını plan ilk açıldığında getirebilir; etkinlik seçilince alttakiler
-  // değişir"; P9 had left them out): they fill the tiles while the plan is young, and give way as places, saves and tours come.
+  // The start's moments after the cities (2026-10-25, Emre: "ilk gelen fotoğraflar plan ilk açıldığında da gelebilir;
+  // etkinlik plana alınınca gelebilir"; P9 had left them out): they fill the tiles while the plan is young and give way as
+  // places are planned; the source's tours, not on the plan, only fill what is left.
   take(moments.map((m) => ({ key: `moment:${m.name}`, from: "moment", target: null, name: m.name, sub: null, image: m.image, credit: m.credit, state: null })));
+  take(spread(offers, offers.length).map(placeTile("offer")));
   // Last, a city with no photo yet as a drawing (its name and nights on it), never the cover's own.
   if (first) seenName.add(nameKey(first.name));
   const art: MosaicTile[] = cities
@@ -207,9 +208,14 @@ export function momentsOf(cityImages: Readonly<Record<string, string | null>> | 
  * What was saved for the trip with a photo and isn't on the plan (the Pano's links: a stay, a tour, a meal): the mosaic's
  * second source. Flights, transfers, eSIMs and policies say nothing of what the trip looks like.
  */
-export function linksOf(items: readonly { id: string; name: string; city: string | null; imageUrl: string | null; status: string; category: string }[], creditOf: (image: string | null) => PhotoCredit | null): MosaicPlace[] {
+export function linksOf(
+  items: readonly { id: string; name: string; city: string | null; imageUrl: string | null; status: string; category: string; addedBy?: string }[],
+  creditOf: (image: string | null) => PhotoCredit | null,
+): MosaicPlace[] {
+  // (2026-10-25, Emre: "onaylanmamış oteller gelmesin, otel doluyor altı"): only what the traveller saved, never an option
+  // a source found ("ai"), and never a stay: a hotel comes onto the hero once it is chosen or booked (placesOfIntents).
   return items
-    .filter((i) => i.imageUrl && i.status === "saved" && (i.category === "stay" || i.category === "activity" || i.category === "food"))
+    .filter((i) => i.imageUrl && i.status === "saved" && i.addedBy !== "ai" && (i.category === "activity" || i.category === "food"))
     .map((i) => ({ key: i.id, name: i.name, city: i.city, image: i.imageUrl, credit: creditOf(i.imageUrl), booked: false }));
 }
 
