@@ -458,8 +458,9 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     const key = name ? cityKeyOf(name) : null;
     // (asked for what the trip is: a festival by its own name, "Sziget Festival", a place by its English one, "Budapest";
     // 2026-10-25: "Budapeşte" found nothing on Commons and the cover stayed a fountain. "2:" marks the looks made so, so a
-    // trip looked at the old way is looked at once more.)
-    const look = key ? `2:${key}` : null;
+    // trip looked at the old way is looked at once more. "3:": the photo there now kept unless another is clearly better,
+    // an event seen happening; 2026-10-25 the Boom Festival's crowd had given way to a hazy lake.)
+    const look = key ? `3:${key}` : null;
     if (!placesSettled || !name || !key || trip.coverLooked === look || lookingCover.current.has(`${trip.id}:${look}`)) return;
     // (after the first photo pass: there is something to compare with, or nothing was found)
     const current = trip.cityImages?.[key];
@@ -471,7 +472,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     const query = festival ? eventPhotoQuery(festival, true).query : (knownPlaceOf(name)?.en ?? name);
     void (async () => {
       const proxy = await imageProxy();
-      const { answered, pick } = await lookAgainAtCover(name, current, { proxy, judge: modelCoverJudge, query });
+      const { answered, pick } = await lookAgainAtCover(name, current, { proxy, judge: modelCoverJudge, query, event: !!festival });
       if (!answered) return;
       await updateTrip(
         trip.id,

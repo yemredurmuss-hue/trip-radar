@@ -1,6 +1,6 @@
 import { AiGateSettings } from "./AiGateSettings";
 import { ProfileSettings } from "./Profile";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useDialogKeys } from "./useDialogKeys";
 import { requestProcessing } from "../lib/browser";
 import { DEFAULT_GEMINI_MODEL, DEFAULT_MODEL, exportAll, exportDiagnostics, getSettings, listTrips, saveSettings } from "../lib/db";
@@ -9,6 +9,7 @@ import { COMPANION_SITES, companionName } from "../lib/companion";
 import { countryName } from "../lib/trips";
 import { L, lang, saveLang, type Lang } from "../lib/i18n";
 import { describeError } from "../lib/llm";
+import { checkClaudeKey } from "../lib/llm/anthropic";
 import { listGeminiModels } from "../lib/llm/gemini";
 import { retryAllFailed } from "../lib/process";
 import type { Settings as SettingsShape } from "../lib/types";
@@ -53,6 +54,8 @@ export function LanguagePicker() {
 
 /** A Gemini key as pasted: "AIza…" or Google's newer formats; checked against Google before it's kept. */
 const GEMINI_KEY = /^[A-Za-z0-9._-]{30,200}$/;
+/** A Claude key as pasted: "sk-ant-…"; tried against Anthropic before it's kept, like Gemini's (2026-10-25). */
+const CLAUDE_KEY = /^sk-ant-[A-Za-z0-9_-]{20,300}$/;
 
 export function Settings({ onClose }: { onClose: () => void }) {
   const titleId = useId();
@@ -63,6 +66,11 @@ export function Settings({ onClose }: { onClose: () => void }) {
   // How the key check ended: "bad" reddens the box and its line and shakes it once (hareket dili); "ok" greens the line.
   const [keyTone, setKeyTone] = useState<{ tone: "bad" | "ok"; n: number } | null>(null);
   const keyEnded = (tone: "bad" | "ok") => setKeyTone((prev) => ({ tone, n: (prev?.n ?? 0) + 1 }));
+  const [claudeStatus, setClaudeStatus] = useState<string | null>(null);
+  const [claudeTone, setClaudeTone] = useState<{ tone: "bad" | "ok"; n: number } | null>(null);
+  const claudeEnded = (tone: "bad" | "ok") => setClaudeTone((prev) => ({ tone, n: (prev?.n ?? 0) + 1 }));
+  // (the last try counts: a key typed on while the one before is still being tried)
+  const claudeTry = useRef(0);
   const [still, setStillOn] = useState(stillChosen);
   const [sounds, setSoundsOn] = useState(soundsOn);
 
@@ -94,6 +102,35 @@ export function Settings({ onClose }: { onClose: () => void }) {
     } catch (error) {
       setModelStatus(describeError(error));
       keyEnded("bad");
+    }
+  }
+
+  /**
+   * A Claude key tried as it's pasted, or again with "Anahtarı dene": kept at once when it works, the provider chosen left
+   * as it was, so with Gemini it stands behind Gemini (llm/index.ts withClaudeBackup) and the line says so.
+   */
+  async function connectClaude(key: string, model: string) {
+    const n = ++claudeTry.current;
+    setClaudeStatus(L("Anahtar kontrol ediliyor…", "Checking the key…"));
+    setClaudeTone(null);
+    try {
+      const name = await checkClaudeKey(key, model);
+      if (n !== claudeTry.current) return;
+      const stored = await getSettings();
+      await persist({ ...stored, apiKey: key, model });
+      setClaudeStatus(
+        stored.provider === "gemini"
+          ? L(
+              `✓ Bağlandı (${name}). Gemini'nin hakkı dolunca ${name} devam eder. Claude'u ana model yapmak için Kaydet'e bas.`,
+              `✓ Connected (${name}). When Gemini's requests run out, ${name} goes on. To make Claude the main model, press Save.`,
+            )
+          : L(`✓ Bağlandı (${name}). Hazırsın.`, `✓ Connected (${name}). You're all set.`),
+      );
+      claudeEnded("ok");
+    } catch (error) {
+      if (n !== claudeTry.current) return;
+      setClaudeStatus(describeError(error));
+      claudeEnded("bad");
     }
   }
 
@@ -209,19 +246,43 @@ export function Settings({ onClose }: { onClose: () => void }) {
           <>
             <label className="field">
               {L("Claude API anahtarı", "Claude API key")}
-              <input type="password" value={s.apiKey} placeholder="sk-ant-…" onChange={(e) => update({ apiKey: e.target.value })} autoFocus />
+              <input
+                key={claudeTone?.tone === "bad" ? `bad-${claudeTone.n}` : "key"}
+                className={claudeTone?.tone === "bad" ? "key-bad" : undefined}
+                aria-invalid={claudeTone?.tone === "bad" || undefined}
+                type="password"
+                value={s.apiKey}
+                placeholder="sk-ant-…"
+                onChange={(e) => {
+                  update({ apiKey: e.target.value });
+                  if (CLAUDE_KEY.test(e.target.value.trim())) void connectClaude(e.target.value.trim(), s.model);
+                }}
+                autoFocus
+              />
             </label>
             <p className="muted small">{L("console.anthropic.com → API Keys. Kullandıkça ücretlendirilir.", "console.anthropic.com → API Keys. Billed as you use it.")}</p>
             <label className="field">
               Model
-              <select value={s.model} onChange={(e) => update({ model: e.target.value })}>
-                {claudeModels(s.model).map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.label}
-                  </option>
-                ))}
-              </select>
+              <span className="row-inline">
+                <select
+                  value={s.model}
+                  onChange={(e) => {
+                    update({ model: e.target.value });
+                    if (CLAUDE_KEY.test(s.apiKey.trim())) void connectClaude(s.apiKey.trim(), e.target.value);
+                  }}
+                >
+                  {claudeModels(s.model).map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.label}
+                    </option>
+                  ))}
+                </select>
+                <button className="small-btn" onClick={() => void connectClaude(s.apiKey.trim(), s.model)} disabled={!s.apiKey.trim()}>
+                  {L("Anahtarı dene", "Test the key")}
+                </button>
+              </span>
             </label>
+            {claudeStatus && <p className={`muted small${claudeTone ? ` key-${claudeTone.tone}-line` : ""}`} role="status">{claudeStatus}</p>}
           </>
         )}
 

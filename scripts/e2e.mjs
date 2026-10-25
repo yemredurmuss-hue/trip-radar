@@ -2654,12 +2654,21 @@ try {
   await profile.locator(".profile-photo img").waitFor({ state: "detached" });
   await app.getByRole("radio", { name: /Claude/ }).click();
   await app.getByText("Claude API anahtarı").waitFor();
+  // A pasted Claude key is tried at once (the model's page) and kept behind Gemini, the provider left as it was.
+  await context.route(/api\.anthropic\.com\/v1\/models\//, (route) =>
+    route.fulfill({ json: { id: "claude-sonnet-5-5", display_name: "Claude Sonnet 5.5", type: "model", created_at: "2026-01-01T00:00:00Z" } }),
+  );
+  await app.getByPlaceholder("sk-ant-…").fill("sk-ant-test-000000000000000000000000");
+  await app.getByText(/✓ Bağlandı \(Claude Sonnet 5\.5\)\. Gemini'nin hakkı dolunca/).waitFor();
+  const kept = await app.evaluate(() => chrome.storage.local.get(["provider", "apiKey"]));
+  assert.equal(kept.apiKey, "sk-ant-test-000000000000000000000000");
+  assert.notEqual(kept.provider, "anthropic");
   await app.getByRole("radio", { name: /Gemini/ }).click();
   await app.getByPlaceholder("AIza… (yapıştır)").fill("test-key");
   await app.getByRole("button", { name: "Kaydet", exact: true }).click();
   const stored = await app.evaluate(() => chrome.storage.local.get(["provider", "geminiKey", "geminiModel"]));
   assert.deepEqual(stored, { provider: "gemini", geminiKey: "test-key", geminiModel: "gemini-3-flash-preview" });
-  console.log("✓ settings: Gemini default, provider switch, key saved");
+  console.log("✓ settings: Gemini default, provider switch, Claude key tried and kept behind Gemini, key saved");
 
   // 6. Popup refuses non-web pages with a clear message.
   const popup = await context.newPage();

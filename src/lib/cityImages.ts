@@ -174,7 +174,7 @@ export async function findCityPhoto(city: string, opts: PhotoOpts = {}): Promise
 export async function lookAgainAtCover(
   city: string,
   current: string | null,
-  opts: { proxy: ImageProxy | null; judge: CoverJudge; query?: string; fetchJson?: FetchJson; fetchImage?: typeof fetch },
+  opts: { proxy: ImageProxy | null; judge: CoverJudge; query?: string; event?: boolean; fetchJson?: FetchJson; fetchImage?: typeof fetch },
 ): Promise<{ answered: boolean; pick: CityPhoto | null }> {
   let failed = false;
   const get = async (url: string, init?: RequestInit) => {
@@ -196,7 +196,7 @@ export async function lookAgainAtCover(
     ...(stock?.url ? [{ url: stock.url as string, thumb: stockThumb(stock.url), credit: proxyCredit(stock) }] : []),
     ...commons,
   ].filter((c) => !seen.has(c.url) && (seen.add(c.url), true));
-  const { answered, pick } = await lookAtCovers(q, candidates, opts.judge, opts.fetchImage);
+  const { answered, pick } = await lookAtCovers(q, candidates, opts.judge, opts.fetchImage, { event: opts.event, current: !!current });
   if (pick?.credit) seenCredits.set(pick.url, pick.credit);
   return { answered, pick: pick ? { url: pick.url, credit: pick.credit } : null };
 }

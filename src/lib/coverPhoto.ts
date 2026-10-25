@@ -76,8 +76,14 @@ export function stockThumb(url: string): string {
   return url;
 }
 
+/** What the look is for: an event (seen happening, never its empty grounds), and whether photo 1 is the cover there now. */
+export interface CoverLook {
+  event?: boolean;
+  current?: boolean;
+}
+
 /** The model's look: which photo makes the cover (1 = the first), or none. */
-export type CoverJudge = (subject: string, photos: { data: string; mimeType: "image/jpeg" | "image/png" }[]) => Promise<number | null>;
+export type CoverJudge = (subject: string, photos: { data: string; mimeType: "image/jpeg" | "image/png" }[], how?: CoverLook) => Promise<number | null>;
 
 export const coverPickSchema = z.object({ best: z.number().int().nullable() });
 
@@ -85,7 +91,21 @@ export const COVER_JUDGE_SYSTEM =
   "You choose the cover photo of a trip's page. You see numbered photos found for one place or event. Choose the one that " +
   "is most clearly that very place or event and most striking as a wide cover: real scenery, the stage, the crowd, the " +
   "landmark. Never choose a poster, a flyer, a logo, a map, a photo with large words or dates over it, a screenshot, or a " +
-  "close-up of one person. When none is fit, answer null. Answer with the photo's number, counting from 1.";
+  "close-up of one person. Quality counts as much as the subject: choose the photo a travel magazine would print, sharp, " +
+  "well lit and vivid; a dull, hazy, flat or snapshot-like photo loses to a vivid one even when it shows more of the place. " +
+  "When none is fit, answer null. Answer with the photo's number, counting from 1.";
+
+/** The question for one look (coverJudge.ts): the photo there now is kept unless another is clearly better (2026-10-25, Emre: the
+ * Boom Festival's colourful crowd gave way to a hazy lake, "ikinci gelen çok dandik oldu"); an event is seen happening. */
+export function coverQuestion(subject: string, count: number, how: CoverLook = {}): string {
+  return [
+    `Photos 1 to ${count}, found for "${subject}". Which one is its cover?`,
+    how.event ? `"${subject}" is an event: choose it happening (the stage, the crowd, the lights, the colour), never its empty grounds or the landscape around it.` : null,
+    how.current ? "Photo 1 is the cover now: answer 1 unless another is clearly a better cover, both truer to it and more striking." : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
 
 /** The photos' bytes for the model (each fetched small; one that won't load or isn't a JPEG/PNG is left out). */
 export async function photoBytes(c: CoverCandidate, get: typeof fetch = fetch): Promise<{ data: string; mimeType: "image/jpeg" | "image/png" } | null> {
@@ -108,13 +128,20 @@ export async function photoBytes(c: CoverCandidate, get: typeof fetch = fetch): 
  * `pick` what it chose (null: none fit, or nothing to choose). An error, no key or a photo that won't load: not answered,
  * so it is asked again another time.
  */
-export async function lookAtCovers(subject: string, candidates: CoverCandidate[], judge: CoverJudge | null, get: typeof fetch = fetch): Promise<{ answered: boolean; pick: CoverCandidate | null }> {
+export async function lookAtCovers(
+  subject: string,
+  candidates: CoverCandidate[],
+  judge: CoverJudge | null,
+  get: typeof fetch = fetch,
+  how: CoverLook = {},
+): Promise<{ answered: boolean; pick: CoverCandidate | null }> {
   if (!judge) return { answered: false, pick: null };
   if (candidates.length < 2) return { answered: true, pick: null };
   const looked = (await Promise.all(candidates.map(async (c) => ({ c, bytes: await photoBytes(c, get) })))).filter((x) => x.bytes != null);
   if (looked.length < 2) return { answered: false, pick: null };
   try {
-    const best = await judge(subject, looked.map((x) => x.bytes!));
+    // (photo 1 is the one there now only when it loaded)
+    const best = await judge(subject, looked.map((x) => x.bytes!), { ...how, current: !!how.current && looked[0].c === candidates[0] });
     return { answered: true, pick: best != null && best >= 1 && best <= looked.length ? looked[best - 1].c : null };
   } catch {
     return { answered: false, pick: null };

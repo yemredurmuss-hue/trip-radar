@@ -183,6 +183,12 @@ async function structured<T>(
 export const anthropicNeedsSettings = (error: unknown) => error instanceof Anthropic.AuthenticationError || error instanceof Anthropic.PermissionDeniedError;
 export const anthropicUnreached = (error: unknown) => error instanceof Anthropic.APIConnectionError;
 
+/** A Claude key tried before it's kept (Settings): the model's own page, which costs nothing; its name back, else the error. */
+export async function checkClaudeKey(key: string, model: string, client: Pick<Anthropic, "models"> = new Anthropic({ apiKey: key, dangerouslyAllowBrowser: true })): Promise<string> {
+  const info = await client.models.retrieve(model);
+  return info.display_name || model;
+}
+
 export function describeAnthropicError(error: unknown): string | null {
   if (error instanceof Anthropic.AuthenticationError) {
     return L("Claude API anahtarı geçersiz. Ayarlardan kontrol et.", "The Claude API key isn't valid. Check it in Settings.");

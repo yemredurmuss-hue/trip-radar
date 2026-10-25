@@ -2,7 +2,7 @@
 // can't choose, the old way (the stock photo, else Wikipedia's) as it was.
 import { describe, expect, it } from "vitest";
 import { findCityPhoto, lookAgainAtCover, wantsCityImage, nextHeroImage } from "../src/lib/cityImages";
-import { chooseCover, commonsCandidates, stockThumb, type CoverCandidate } from "../src/lib/coverPhoto";
+import { chooseCover, commonsCandidates, coverQuestion, stockThumb, type CoverCandidate } from "../src/lib/coverPhoto";
 
 const page = (title: string, w: number, h: number, mime = "image/jpeg", index = 1) => ({
   title, index,
@@ -92,6 +92,18 @@ describe("lookAgainAtCover: the plan's one look at a cover", () => {
     const r = await lookAgainAtCover("Ozora", "https://images.unsplash.com/photo-1?w=2400", { proxy, judge: async () => 2, fetchJson, fetchImage: jpeg });
     expect(r.answered).toBe(true);
     expect(r.pick?.credit?.source).toBe("commons");
+  });
+  it("tells the model photo 1 is the cover now, and that an event is seen happening", async () => {
+    let seen: unknown = null;
+    await lookAgainAtCover("Boom Festival", "https://images.unsplash.com/photo-9?w=2400", { proxy, judge: async (_s, _p, how) => ((seen = how), 1), fetchJson, fetchImage: jpeg, event: true });
+    expect(seen).toEqual({ event: true, current: true });
+  });
+  it("the question keeps the cover there now unless another is clearly better; a place gets no event line", () => {
+    const q = coverQuestion("Boom Festival", 4, { event: true, current: true });
+    expect(q).toMatch(/Photo 1 is the cover now: answer 1 unless/);
+    expect(q).toMatch(/is an event: choose it happening/);
+    expect(coverQuestion("Lisbon", 3, { current: true })).not.toMatch(/event/);
+    expect(coverQuestion("Lisbon", 3)).toBe('Photos 1 to 3, found for "Lisbon". Which one is its cover?');
   });
   it("no key or an error: not answered, nothing picked (the photo there stays, asked again another time)", async () => {
     const r = await lookAgainAtCover("Ozora", "https://images.unsplash.com/photo-1?w=2400", { proxy, judge: async () => { throw new Error("429"); }, fetchJson, fetchImage: jpeg });
