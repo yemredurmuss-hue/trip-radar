@@ -15,7 +15,7 @@ import { retryCapture } from "../lib/process";
 import { contentLang, contentTag, L, withLang } from "../lib/i18n";
 import { modelCoverJudge } from "../lib/coverJudge";
 import { tripLine } from "../lib/coverPhoto";
-import { creditOf, findCityPhoto, imageProxy, keptCredits, lookAgainAtCover, nextCityImage, nextHeroImage, wantsCityImage, type HeroCity } from "../lib/cityImages";
+import { creditOf, findCityPhoto, startCover, imageProxy, keptCredits, lookAgainAtCover, nextCityImage, nextHeroImage, wantsCityImage, type HeroCity } from "../lib/cityImages";
 import { acceptMood, moodKey } from "../lib/heroText";
 import { getProvider, MissingKeyError } from "../lib/llm";
 import { resetConversation } from "../lib/assistant";
@@ -469,7 +469,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     // (a photo the pass above asks for again, an old Wikipedia one: its answer first, so neither writes over the other)
     if (wantsCityImage(first, true, creditOf(first, trip.photoCredits)) && !photoDone.current.has(`${trip.id}:${key}`)) return;
     lookingCover.current.add(`${trip.id}:${look}`);
-    const current = trip.coverImage ?? first;
+    const current = trip.coverImage ?? startCover(trip) ?? first;
     // (the trip's own photos: its start photo, then its places' in route order, then the rest it found: the moments)
     const mineKeys = mainNames.map((n) => cityKeyOf(n));
     const more = [
@@ -481,7 +481,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     ].filter((url): url is string => !!url && /^https:/.test(url));
     const festival = trip.intent?.playbook === "festival" && trip.intent.name?.trim() ? trip.intent.name.trim() : null;
     const query = festival ? eventPhotoQuery(festival, true).query : (knownPlaceOf(name)?.en ?? name);
-    const line = tripLine(trip.title, trip.intent, range?.start);
+    const line = tripLine(trip.title, trip.intent, range?.start, Object.values(trip.momentNames ?? {}));
     void (async () => {
       const proxy = await imageProxy();
       const { answered, pick } = await lookAgainAtCover(name, current, { proxy, judge: modelCoverJudge, query, event: !!festival, more, trip: line, credits: trip.photoCredits });
@@ -489,14 +489,14 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
       await updateTrip(
         trip.id,
         (t) => {
-          const swap = pick != null && pick.url !== (t.coverImage ?? t.cityImages?.[key]);
+          const swap = pick != null && pick.url !== (t.coverImage ?? startCover(t) ?? t.cityImages?.[key]);
           const next = { ...t, coverLooked: look!, ...(swap ? { coverImage: pick.url, heroImage: pick.url } : {}) };
           return swap ? { ...next, photoCredits: keptCredits(next, [pick]) } : next;
         },
         { touch: false },
       );
     })();
-  }, [trip.id, trip.coverLooked, trip.coverImage, trip.cityImages, trip.heroImage, trip.title, mainNames, placesSettled, trip.intent, range?.start]);
+  }, [trip.id, trip.coverLooked, trip.coverImage, trip.cityImages, trip.heroImage, trip.title, trip.momentNames, mainNames, placesSettled, trip.intent, range?.start]);
   // The mood sentence: written once per set of main places and language by the traveller's model; one with a number is dropped.
   const moodLang = contentLang(trip.lang);
   const moodFor = moodKey(mainNames, contentTag(trip.lang, moodLang));
@@ -736,6 +736,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
     const countryOf = (place: string) => countryOfCity(place) ?? items.map((i) => (i.status !== "dismissed" && i.category !== "flight" && sameCity(i.city, place) ? placeCountryOf(i) : null)).find(Boolean) ?? null;
     return heroRoute({ places: mains, stays: plan.stayBlocks, legs, flights, countryOf });
   }, [mains, plan.stayBlocks, legs, items]);
+  const chosenCover = trip.coverImage ?? startCover(trip);
   const mosaic = useMemo(
     () =>
       mosaicOf({
@@ -750,10 +751,10 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
         links: linksOf(items, (image) => creditOf(image, trip.photoCredits)),
         // 0.38.3: after the cities, the source's tours for them (Viator's photos); then the moments, a drawing last.
         offers: tourPlaces,
-        moments: momentsOf(trip.cityImages, momentPhotoKeys(), (image) => creditOf(image, trip.photoCredits)),
-        chosen: trip.coverImage ? { image: trip.coverImage, credit: creditOf(trip.coverImage, trip.photoCredits) } : null,
+        moments: momentsOf(trip.cityImages, [...Object.entries(trip.momentNames ?? {}).map(([key, name]) => ({ key, name })), ...momentPhotoKeys()], (image) => creditOf(image, trip.photoCredits)),
+        chosen: chosenCover ? { image: chosenCover, credit: creditOf(chosenCover, trip.photoCredits) } : null,
       }),
-    [cities, places, route, heroIntents, items, tourPlaces, trip.cityImages, trip.photoCredits, trip.coverImage],
+    [cities, places, route, heroIntents, items, tourPlaces, trip.cityImages, trip.photoCredits, chosenCover, trip.momentNames],
   );
   const estimated = !!range && !trip.confirmedDates && !plan.range;
   // D15: dates still the guess the start made from a month or a season say only the nights ("~ · 10 gece"); an event's

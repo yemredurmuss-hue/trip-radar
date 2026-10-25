@@ -14,6 +14,17 @@ const city = (name: string, image: string | null, nights = "3 gece"): MosaicCity
 const place = (key: string, cityName: string, image: string | null, booked = false): MosaicPlace => ({ key, name: key, city: cityName, image, credit: null, booked });
 
 describe("mosaicOf", () => {
+  it("places, saves and tours push the start's moments out as they come (the tiles change with the plan)", () => {
+    const moments = [{ name: "Kızıl yapraklar", image: "leaves.jpg", credit: null }, { name: "Doğa", image: "fuji.jpg", credit: null }];
+    const young = mosaicOf({ cities: [city("Tokyo", "t.jpg"), city("Kyoto", "k.jpg")], places: [], moments });
+    expect(young.tiles.map((t) => t.name)).toEqual(["Kyoto", "Kızıl yapraklar", "Doğa"]);
+    const full = mosaicOf({
+      cities: [city("Tokyo", "t.jpg"), city("Kyoto", "k.jpg")],
+      places: ["A", "B", "C", "D", "E"].map((n) => place(n, "Kyoto", `${n}.jpg`)),
+      moments,
+    });
+    expect(full.tiles.map((t) => t.from)).not.toContain("moment");
+  });
   it("the trip's own cover in place of the first city's photo, which becomes a tile (Maldivler, not Maafushi's sandbank)", () => {
     const m = mosaicOf({ cities: [city("Maafushi", "maa.jpg"), city("Dhigurah", "dhi.jpg")], places: [], chosen: { image: "maldives.jpg", credit: null } });
     expect(m.cover?.image).toBe("maldives.jpg");
@@ -40,15 +51,16 @@ describe("mosaicOf", () => {
     expect(m.tiles.map((t) => [t.from, t.name, t.sub])).toEqual([["place", "Shibuya Sky", "Tokyo"], ["city", "Kyoto", "4 gece"], ["city", "Hakone", "3 gece"], ["city", "Osaka", "3 gece"]]);
   });
 
-  it("row 14: with no place's photo the tiles fill by the order (saved links, cities, a drawing; no moments since P9), none empty", () => {
+  it("row 14: with no place's photo the tiles fill by the order (saved links, cities, the start's moments, a drawing), none empty", () => {
     const m = mosaicOf({
       cities: [city("Porto", "p.jpg"), city("Lizbon", "l.jpg"), city("Sintra", null, "1 gece")],
       places: [place("Douro", "Porto", null)],
       links: [place("Casa", "Porto", "c.jpg"), place("Tram 28", "Lizbon", "t.jpg"), place("No photo", "Lizbon", null)],
       moments: [{ name: "Yerel lezzetler", image: "f.jpg", credit: null }],
     });
-    // P9 (F12): never an abstract moment ("Yerel lezzetler"): the city with no photo is drawn instead.
-    expect(m.tiles.map((t) => [t.from, t.name])).toEqual([["link", "Casa"], ["link", "Tram 28"], ["city", "Lizbon"], ["art", "Sintra"]]);
+    // The start's moment fills after the cities (2026-10-25, Emre: "bulduklarını plan ilk açıldığında getirebilir"); four
+    // photos make the grid whole, so the drawing isn't needed.
+    expect(m.tiles.map((t) => [t.from, t.name])).toEqual([["link", "Casa"], ["link", "Tram 28"], ["city", "Lizbon"], ["moment", "Yerel lezzetler"]]);
     // Six wanted, five photos: the drawing of the city with no photo rounds the grid off (never a hole, never empty).
     const six = mosaicOf({
       cities: [city("Porto", "p.jpg"), city("Lizbon", "l.jpg"), city("Sintra", null, "1 gece")],
@@ -56,8 +68,8 @@ describe("mosaicOf", () => {
       moments: [{ name: "Gün batımı", image: "g.jpg", credit: null }],
     });
     expect(six.tiles.map((t) => [t.from, t.name, t.image])).toEqual([
-      // P9 (F12): no moment tile; four photos make the grid whole, so no drawing is needed.
-      ["place", "A", "1.jpg"], ["place", "B", "2.jpg"], ["place", "C", "3.jpg"], ["city", "Lizbon", "l.jpg"],
+      // The moment after the places and cities; five photos and the drawing make six.
+      ["place", "A", "1.jpg"], ["place", "B", "2.jpg"], ["place", "C", "3.jpg"], ["city", "Lizbon", "l.jpg"], ["moment", "Gün batımı", "g.jpg"], ["art", "Sintra", null],
     ]);
   });
 

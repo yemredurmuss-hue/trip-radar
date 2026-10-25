@@ -21,6 +21,16 @@ describe("the trip's moments", () => {
     expect(photoMoments(bali({ styles: ["beach", "culture"] })).map((m) => m.style)).toEqual(["beach", "culture", "food"]);
   });
 
+  it("a scene said of a stop comes first, added to the styles' (kızıl yapraklar in Kyoto, the food and the nature kept)", () => {
+    const route = { stops: [{ city: "Tokyo", nights: 3 }, { city: "Kyoto", nights: 6, note: "kızıl yapraklar, 1 gece ryokan", scene: "autumn leaves" }], arrive: null, leave: null, confirmed: false, source: "user" } as StartState["route"];
+    const s = bali({ where: { place: "Japonya", country: "Japonya", code: "JP" }, styles: ["culture", "nature"], route });
+    const moments = photoMoments(s);
+    expect(moments.map((m) => m.style)).toEqual([null, "culture", "nature", "food"]);
+    expect(momentLabel(moments[0].key)).toBe("Kızıl yapraklar");
+    expect(photoQuery(moments[0].key, s).query).toBe("Kyoto autumn leaves");
+    expect(photoKeys(s)).toContain(moments[0].key);
+  });
+
   it("an event shows itself, no moments", () => {
     expect(photoMoments(bali({ intent: { kind: "event", name: "Ozora", place: "Ozora", code: "HU" } as StartState["intent"] }))).toEqual([]);
   });

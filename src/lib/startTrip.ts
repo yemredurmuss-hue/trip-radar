@@ -69,6 +69,8 @@ export interface RouteStop {
   nights: number;
   /** What was said of the stop (0.39.10): "kızıl yapraklar", "1 gece ryokan". */
   note?: string | null;
+  /** What of the note can be seen, as an English photo search ("autumn leaves", "ryokan"): the start's photo of it. */
+  scene?: string | null;
   /** The nights were said by the traveller (0.39.10): kept as they are when the length changes; the rest share what's left. */
   said?: boolean;
   /** The stop's country (ISO 3166-1 alpha-2) when the route says it; else the destination's. */
@@ -1403,7 +1405,7 @@ export const extractionSchema = z.object({
   // The one place they stay the whole trip, when they say so (0.38.5; optional, like the event's).
   one_place: z.string().optional(),
   // The stops said over the conversation, in order (0.39.10; optional, like the event's).
-  stops: z.array(z.object({ place: z.string(), nights: z.number(), note: z.string() })).optional(),
+  stops: z.array(z.object({ place: z.string(), nights: z.number(), note: z.string(), photo: z.string().optional() })).optional(),
   // The part of the month said with it ("Kasım sonunda": end; 0.39.10).
   start_part: z.string().optional(),
 });
@@ -1423,7 +1425,7 @@ duration_days: gün olarak süre (gece söylendiyse gece + 1); "1 ay" gibi ay s�
 event: kullanıcı bir etkinliğe, festivale ya da temaya gitmek istiyorsa onun bilinen adı ("burning man africa" → "AfrikaBurn", "kuzey ışıkları" → "Kuzey Işıkları"); yoksa "". event_kind: event | theme. event_place: yapıldığı yer (destination da o olur, ör. "Tankwa Karoo"); event_country_code: ülkesinin ISO kodu. event_start / event_end: bildiğin sıradaki tarihleri (bugünden sonraki ilk) YYYY-MM-DD, bilmiyorsan "". event_dates_sure: yalnız tarihlerden kesin eminsen true.
 choice: cevaplanan soru seçenekleriyle verildiyse ("değer = etiket"), mesajın seçtiği seçeneğin değeri; cevap vermek istemiyorsa ya da hiçbirine uymuyorsa "skip"; seçenek yoksa "".
 one_place: kullanıcı gezi boyunca tek bir yerde kalmak istediğini söylüyorsa ("sabit bir yerde", "Canggu'da sabit", "tek yer", "sadece Canggu", "Canggu'da kalacağız") o yerin adı, ek olmadan; söylemiyorsa "". Bu durumda destination gidilen ada, bölge ya da ülke kalır ("Bali"), one_place kasaba ("Canggu").
-stops: kullanıcı birden çok durak söylediyse ("önce Tokyo'da 3 gece, sonra Kyoto"), bu sohbette şimdiye kadar söylenen bütün durakların GÜNCEL listesi, sırasıyla (önceki mesajlar dahil; yeni mesaj bir durağı değiştiriyorsa o değişmiş hâli). Her durak: place (yalnız yer adı), nights (söylendiyse gece sayısı, söylenmediyse 0), note (o durakla ilgili söylenenler, kısa: "kızıl yapraklar", "1 gece ryokan"; yoksa ""). Bir konaklama türü (ryokan, otel, kamp) ayrı bir yer adı söylenmedikçe durak değildir, ilgili durağın notuna yazılır. Mesaj rotaya hiç değinmiyorsa ve ilk mesaj değilse stops boş kalır. Birden çok şehir durak olarak söylendiyse destination ülkedir ("Japonya"), şehirler değil. Bir durağın gece sayısı gezinin toplam süresi değildir: duration_days yalnız toplam süre söylendiyse dolar.
+stops: kullanıcı birden çok durak söylediyse ("önce Tokyo'da 3 gece, sonra Kyoto"), bu sohbette şimdiye kadar söylenen bütün durakların GÜNCEL listesi, sırasıyla (önceki mesajlar dahil; yeni mesaj bir durağı değiştiriyorsa o değişmiş hâli). Her durak: place (yalnız yer adı), nights (söylendiyse gece sayısı, söylenmediyse 0), note (o durakla ilgili söylenenler, kısa: "kızıl yapraklar", "1 gece ryokan"; yoksa ""), photo (notta gözle görülebilen sahne, kısa İngilizce fotoğraf araması: "autumn leaves", "ryokan"; görülecek bir şey yoksa ""). Bir konaklama türü (ryokan, otel, kamp) ayrı bir yer adı söylenmedikçe durak değildir, ilgili durağın notuna yazılır. Mesaj rotaya hiç değinmiyorsa ve ilk mesaj değilse stops boş kalır. Birden çok şehir durak olarak söylendiyse destination ülkedir ("Japonya"), şehirler değil. Bir durağın gece sayısı gezinin toplam süresi değildir: duration_days yalnız toplam süre söylendiyse dolar.
 Günübirlik gidilen yer ("Capri'ye tekneyle günübirlik") durak değildir: stops'a girmez, bir önceki durağın notuna yazılır ("Capri'ye günübirlik tekne").
 start_part: ayın hangi kısmı söylendiyse ("Kasım sonunda" → end, "ortasında" → mid, "başında" → begin); yoksa "".`,
     `From the user's message in a trip-planning chat, take only what is clearly said. Never invent; what isn't said stays empty ("" or 0 or []).
@@ -1435,7 +1437,7 @@ When "The user is answering" is given, the message answers that question: a plac
 event: when the user wants to go to an event, a festival or a theme, its known name ("burning man africa" → "AfrikaBurn", "the northern lights" → "Northern Lights"); else "". event_kind: event | theme. event_place: where it happens (that is the destination too, e.g. "Tankwa Karoo"); event_country_code: its country's ISO code. event_start / event_end: its next dates you know (the first after today) as YYYY-MM-DD, "" if unsure. event_dates_sure: true only when you are certain of the dates.
 choice: when the question being answered comes with options ("value = label"), the value of the option the message picks; "skip" when they'd rather not say or it fits none; "" when there are no options.
 one_place: when the user says they stay in one place the whole trip ("one base", "just Canggu", "we'll stay in Canggu"), that place's name; else "". Then destination stays the island, region or country they go to ("Bali"), one_place the town ("Canggu").
-stops: when the user says several stops ("first 3 nights in Tokyo, then Kyoto"), the CURRENT list of every stop said in this conversation so far, in order (earlier messages included; when the new message changes a stop, its changed form). Each stop: place (the place's name only), nights (the nights when said, else 0), note (what was said of it, short: "autumn leaves", "1 night in a ryokan"; else ""). A kind of stay (ryokan, hotel, camp) is no stop unless a place of its own is named: it goes in the note of its stop. When the message doesn't touch the route and isn't the first, stops stays empty. When several cities are said as stops, destination is the country ("Japan"), not a city. A stop's nights are not the trip's length: duration_days is filled only when the whole length is said.
+stops: when the user says several stops ("first 3 nights in Tokyo, then Kyoto"), the CURRENT list of every stop said in this conversation so far, in order (earlier messages included; when the new message changes a stop, its changed form). Each stop: place (the place's name only), nights (the nights when said, else 0), note (what was said of it, short: "autumn leaves", "1 night in a ryokan"; else ""), photo (what of the note can be seen, as a short English photo search: "autumn leaves", "ryokan"; else ""). A kind of stay (ryokan, hotel, camp) is no stop unless a place of its own is named: it goes in the note of its stop. When the message doesn't touch the route and isn't the first, stops stays empty. When several cities are said as stops, destination is the country ("Japan"), not a city. A stop's nights are not the trip's length: duration_days is filled only when the whole length is said.
 A place said as a day trip ("a day trip to Capri by boat") is no stop: not in stops, written in the note of the stop before ("day trip to Capri by boat").
 start_part: the part of the month said ("late November" → end, "mid" → mid, "early" → begin); else "".`,
   );
@@ -1692,7 +1694,12 @@ export function acceptExtraction(raw: RawExtraction & { plan?: RawPlan | null },
     out.start = at ? { date: at.date, approx: true, part: at.part } : { date: monthStart(raw.start_month, today), approx: true };
   }
   const stops = (raw.stops ?? [])
-    .map((x) => ({ city: bareName(x.place ?? ""), nights: Number.isInteger(x.nights) && x.nights >= 1 && x.nights <= 60 ? x.nights : null, note: (x.note ?? "").trim().slice(0, 60) || null }))
+    .map((x) => ({
+      city: bareName(x.place ?? ""),
+      nights: Number.isInteger(x.nights) && x.nights >= 1 && x.nights <= 60 ? x.nights : null,
+      note: (x.note ?? "").trim().slice(0, 60) || null,
+      scene: (x.photo ?? "").replace(/[|\n]/g, " ").trim().slice(0, 40) || null,
+    }))
     .filter((x) => x.city && looksLikePlace(x.city, PLACE_WORDS))
     .map((x) => ({ ...x, city: placeOf(x.city).place }))
     .filter((x, i, all) => all.findIndex((y) => samePlace(y.city, x.city)) === i)
@@ -2103,7 +2110,7 @@ export function fitSaidStops(stops: readonly (RouteStop | (SaidStop & { said?: b
   return stops.map((x) => {
     const own = said(x);
     const nights = own ? (x.nights ?? 1) : Math.max(1, each + (extra-- > 0 ? 1 : 0));
-    return { city: x.city, nights, code: ("code" in x ? x.code : null) ?? code, note: x.note ?? null, said: own };
+    return { city: x.city, nights, code: ("code" in x ? x.code : null) ?? code, note: x.note ?? null, scene: ("scene" in x ? x.scene : null) ?? null, said: own };
   });
 }
 
@@ -3403,7 +3410,7 @@ export function joinSameStops<R extends Pick<StartRoute, "stops">>(r: R): R {
   const out: R["stops"] = [];
   for (const x of r.stops) {
     const last = out.at(-1);
-    if (last && sameCity(last.city, x.city)) out[out.length - 1] = { ...last, nights: last.nights + x.nights, note: last.note ?? x.note };
+    if (last && sameCity(last.city, x.city)) out[out.length - 1] = { ...last, nights: last.nights + x.nights, note: last.note ?? x.note, scene: last.scene ?? x.scene };
     else out.push(x);
   }
   return out.length === r.stops.length ? r : { ...r, stops: out };
@@ -3571,6 +3578,16 @@ export function photoPlaces(s: Pick<StartState, "where" | "route">): string[] {
 
 /** A photo of the trip's mood, not of a place (2026-10-09): its key in the prepared photos starts with this. */
 export const MOMENT = "moment:";
+/**
+ * A scene the traveller said of a stop (2026-10-25, Emre: "Kyoto'da kızıl yapraklar diyoruz ama kızıl yapraklı bir şey
+ * gelmiyor"): a moment of its own, "moment:scene:Kyoto|autumn leaves|kızıl yapraklar" (the stop, the search, the words).
+ */
+const SCENE = `${MOMENT}scene:`;
+const sceneKey = (x: Pick<RouteStop, "city" | "scene" | "note">) => `${SCENE}${[x.city, x.scene ?? "", x.note ?? ""].map((p) => p.replace(/\|/g, " ").trim()).join("|")}`;
+const sceneOf = (key: string) => {
+  const [city = "", scene = "", note = ""] = key.slice(SCENE.length).split("|");
+  return { city, scene, note };
+};
 
 /** Each style's scene: what the search is asked (English, after the destination) and what the card says. */
 const MOMENTS: Record<StyleId, { q: string; label: () => string }> = {
@@ -3593,8 +3610,12 @@ const MOMENTS: Record<StyleId, { q: string; label: () => string }> = {
  * fotoğrafları, yemek, etkinlik, manzara"): one per style said (two at most), a couple's trip romantic when no style
  * says so, then the food; three at most, never for an event (its own photo is the point).
  */
-export function photoMoments(s: Pick<StartState, "where" | "styles" | "who" | "intent">): { key: string; style: StyleId }[] {
+export function photoMoments(s: Pick<StartState, "where" | "styles" | "who" | "intent"> & Partial<Pick<StartState, "route">>): { key: string; style: StyleId | null }[] {
   if (!s.where || s.intent?.kind === "event") return [];
+  // What the traveller said they'd see comes first ("kızıl yapraklar" in Kyoto), two at most, added to the styles' scenes,
+  // never in their place (Emre: "bu gelenler çok iyi duruyor, kızıl yaprak da olsa aralarında harika olurdu"); four at most.
+  const scenes = (s.route?.stops ?? []).filter((x) => x.scene?.trim() && x.note?.trim()).slice(0, 2);
+  if (scenes.length) return [...scenes.map((x) => ({ key: sceneKey(x), style: null })), ...photoMoments({ ...s, route: null })].slice(0, 4);
   const said = knownStyles(s.styles ?? []).slice(0, 2);
   const list: StyleId[] = [...said];
   if (s.who?.kind === "partner" && !list.includes("romantic")) list.push("romantic");
@@ -3606,6 +3627,12 @@ export function photoMoments(s: Pick<StartState, "where" | "styles" | "who" | "i
 /** A moment's words on its card ("Romantik akşam"); null for a place. */
 export function momentLabel(key: string): string | null {
   if (!key.startsWith(MOMENT)) return null;
+  // (a scene: the traveller's own words, "Kızıl yapraklar")
+  if (key.startsWith(SCENE)) {
+    // (its first part: "kızıl yapraklar, 1 gece ryokan" → "Kızıl yapraklar", short enough for a tile)
+    const note = sceneOf(key).note.split(/[,;]/)[0].trim();
+    return note ? note.charAt(0).toLocaleUpperCase(lang()) + note.slice(1) : null;
+  }
   const m = MOMENTS[key.slice(MOMENT.length) as StyleId];
   return m ? m.label() : null;
 }
@@ -3651,6 +3678,14 @@ export function eventPhotoQuery(name: string, festival: boolean): PhotoQuery {
  */
 export function photoQuery(place: string, s: Pick<StartState, "where" | "intent">): PhotoQuery {
   // A moment: the destination's scene ("Bali romantic dinner"), else the scene in its country, else the scene alone.
+  if (place.startsWith(SCENE)) {
+    // (a scene said of a stop: there, by its English name: "Kyoto autumn leaves"; else in its country; else alone)
+    const { city, scene } = sceneOf(place);
+    const code = s.where?.code ?? countryCodeOfName(s.where?.country) ?? null;
+    const country = code ? regionName(code, "en") : null;
+    const en = city ? (englishName(city) ?? knownPlaceOf(city)?.en ?? city) : "";
+    return { query: `${en} ${scene}`.trim(), titles: [], alt: [country && country !== en ? `${country} ${scene}` : scene, scene].filter((q, i, all) => q && all.indexOf(q) === i) };
+  }
   if (place.startsWith(MOMENT)) {
     const scene = MOMENTS[place.slice(MOMENT.length) as StyleId]?.q ?? "travel";
     const code = s.where?.code ?? countryCodeOfName(s.where?.country) ?? null;

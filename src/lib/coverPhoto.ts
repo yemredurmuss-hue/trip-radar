@@ -99,11 +99,19 @@ const KIND_COVER: Partial<Record<PlaybookKind, string>> = {
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 /** The trip in one line for the cover's look: its name, its kind, the month it starts (so a winter trip isn't summer). */
-export function tripLine(title: string, kind: { playbook: PlaybookKind; label?: string | null } | null | undefined, start: string | null | undefined): string | null {
+export function tripLine(
+  title: string,
+  kind: { playbook: PlaybookKind; label?: string | null } | null | undefined,
+  start: string | null | undefined,
+  wishes: readonly string[] = [],
+): string | null {
+  const said = [...new Set(wishes.map((w) => w.trim()).filter(Boolean))].slice(0, 4);
   const parts = [
     title.trim() ? `"${title.trim()}"` : null,
     kind ? (KIND_COVER[kind.playbook] ?? (kind.playbook === "custom" && kind.label?.trim() ? kind.label.trim() : null)) : null,
     start && /^\d{4}-\d{2}/.test(start) ? `in ${MONTHS[Number(start.slice(5, 7)) - 1] ?? ""}`.trim() : null,
+    // (what the traveller said they want to see, in their words: "Kızıl yapraklar")
+    said.length ? `wanting ${said.map((w) => `"${w}"`).join(", ")}` : null,
   ].filter((p): p is string => !!p && p !== "in");
   return parts.length ? parts.join(", ") : null;
 }

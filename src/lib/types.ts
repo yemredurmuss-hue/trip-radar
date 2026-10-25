@@ -273,6 +273,11 @@ export interface Trip {
    * "hep en iyi fotoğraflar gelsin"): Maldivler's beach, not the first stop's sandbank. None: the first place's photo.
    */
   coverImage?: string | null;
+  /**
+   * The start's moment photos' words, by their key in cityImages ("kizil yapraklar" → "Kızıl yapraklar"): the traveller's
+   * own scenes and the styles' ("Yerel lezzetler"), so the plan's hero shows them with their words (Generating.keepPhotos).
+   */
+  momentNames?: Record<string, string>;
   /** The AI's mood sentence for the hero and the cities it was written for (see heroText.ts). */
   mood?: { key: string; text: string } | null;
   /** The style words the model picked for the hero (tripStyle.ts) and what they were picked for. */

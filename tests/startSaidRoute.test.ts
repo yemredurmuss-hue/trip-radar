@@ -57,6 +57,12 @@ describe("the stops said are the route (Emre's Japan)", () => {
     expect(s.route!.stops.map((x) => [x.city, x.nights, x.said])).toEqual([["Tokyo", 3, true], ["Kyoto", 6, false]]);
     expect(s.route!.stops[1].note).toBe("kızıl yapraklar, 1 gece ryokan");
   });
+  it("what of a stop's note can be seen is kept as its photo search (2026-10-25: \"kızıl yapraklı bir şey gelmiyor\")", () => {
+    const s0 = { ...newStart("t", "plan", 1, "tr"), messages: [{ role: "user" as const, text: FIRST, at: 1 }] };
+    const said = raw({ ...modelFirst, stops: [{ place: "Tokyo", nights: 3, note: "", photo: "" }, { place: "Kyoto", nights: 0, note: "kızıl yapraklar, 1 gece ryokan", photo: "autumn leaves" }] });
+    const s = applyText(s0, FIRST, mergeExtracted(parseStartText(FIRST, TODAY, null), acceptExtraction(said, TODAY)), 2, null).state;
+    expect(s.route!.stops.map((x) => x.scene ?? null)).toEqual([null, "autumn leaves"]);
+  });
   it("asked back as theirs, the nights worked out said as mine; never \"Tek durak\"", () => {
     const s = { ...firstTurn(), wantDone: true, start: { date: "2026-11-24", approx: false } };
     expect(nextQuestion(s)).toBe("route");

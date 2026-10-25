@@ -171,6 +171,14 @@ export async function findCityPhoto(city: string, opts: PhotoOpts = {}): Promise
  * there now, the stock proxy's and Commons' wide ones, and the model's pick among them. `answered` false (no key, an error):
  * asked again another time; the photo there stays whatever happens.
  */
+/**
+ * The cover the plan opens with, before its look (2026-10-25, Emre: "harika fotoğraflar buluyor ama plan ekranına bunlar
+ * gelmiyor"): the start's first photo (the destination's, Japonya's torii) when it is one the start found, never a page's.
+ */
+export function startCover(t: { heroImage: string | null; cityImages?: Record<string, string | null> }): string | null {
+  return t.heroImage && Object.values(t.cityImages ?? {}).includes(t.heroImage) ? t.heroImage : null;
+}
+
 /** The most photos one look at a cover sends to the model (small copies, ~500 px each). */
 const COVER_LOOK_MAX = 8;
 

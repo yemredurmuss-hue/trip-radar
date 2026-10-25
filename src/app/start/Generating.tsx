@@ -196,6 +196,8 @@ export function Generating({ state, onTripId, onFinished, onBack, onLine }: Prop
           ...t,
           heroImage: t.heroImage ?? found[0].url,
           cityImages: { ...Object.fromEntries(found.map((p) => [cityKeyOf(p.place)!, p.url])), ...t.cityImages },
+          // (the moments' words as shown here, for the plan's hero: "Kızıl yapraklar", not its key)
+          momentNames: { ...Object.fromEntries(found.filter((p) => p.moment && cityKeyOf(p.place)).map((p) => [cityKeyOf(p.place)!, p.place])), ...t.momentNames },
         };
         // Who took them, as the proxy said while they were found.
         return { ...next, photoCredits: keptCredits(next, found.map((p) => ({ url: p.url, credit: creditFor(p.url) }))) };

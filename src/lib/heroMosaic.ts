@@ -165,8 +165,9 @@ export function mosaicOf({ cities, places, links = [], offers = [], moments = []
   take(spread(links, links.length).map(placeTile("link")));
   take(cities.map((c) => ({ key: `city:${c.name}`, from: "city", target: null, name: c.name, sub: c.nights, image: c.image, credit: c.credit, state: c.state ?? null })));
   take(spread(offers, offers.length).map(placeTile("offer")));
-  // P9 (F12): no abstract "moment" tiles ("Romantik akşam", "Sokaklar"): a tile is a real place, a save, a tour or a city.
-  void moments;
+  // The start's moments last (2026-10-25, Emre: "bulduklarını plan ilk açıldığında getirebilir; etkinlik seçilince alttakiler
+  // değişir"; P9 had left them out): they fill the tiles while the plan is young, and give way as places, saves and tours come.
+  take(moments.map((m) => ({ key: `moment:${m.name}`, from: "moment", target: null, name: m.name, sub: null, image: m.image, credit: m.credit, state: null })));
   // Last, a city with no photo yet as a drawing (its name and nights on it), never the cover's own.
   if (first) seenName.add(nameKey(first.name));
   const art: MosaicTile[] = cities
