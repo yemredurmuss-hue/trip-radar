@@ -6,8 +6,8 @@
 // the trip's first opening (opening.ts: each tile 80 ms after the one before). A tile of a thing on the plan is a button to
 // its card (0.38.9: the ATV tour's photo goes to the ATV tour in Etkinlik); a city's or a moment's is only a picture.
 import { Photo } from "./Photo";
-import { coverWidth } from "../../lib/photoCache";
-import { Fragment, useState, type ReactNode } from "react";
+import { coverWidth, sizedPhoto } from "../../lib/photoCache";
+import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { creditLine, type CreditPart } from "../../lib/cityImages";
 import { countdownText, type Countdown } from "../../lib/countdown";
 import { shownTiles, tileGoLabel, type Mosaic, type TileState, type TileTarget } from "../../lib/heroMosaic";
@@ -184,12 +184,27 @@ export function HeroMosaic({ mosaic, title, where, mood, working, menu, onTile, 
   const stand = own || !mosaic.cover ? null : (mosaic.tiles.find((t) => t.image && !failed.has(t.image) && !smallCovers.has(t.image)) ?? null);
   const cover = own ?? (stand ? { image: stand.image!, credit: stand.credit } : null);
   const tiles = shownTiles(stand ? mosaic.tiles.filter((t) => t !== stand) : mosaic.tiles, failed);
+  // A cover that changes while on screen (the plan's one look at it, TripPanel): the one there before fades away over the
+  // new one, never a jump (2026-10-25).
+  const coverBefore = useRef<string | null>(null);
+  const [leaving, setLeaving] = useState<string | null>(null);
+  useEffect(() => {
+    const was = coverBefore.current;
+    coverBefore.current = cover?.image ?? null;
+    if (!was || !cover || was === cover.image) return;
+    setLeaving(was);
+    const t = setTimeout(() => setLeaving(null), 700);
+    return () => clearTimeout(t);
+  }, [cover?.image]);
   const busy = L(`${working} kayıt işleniyor`, `Processing ${working}`);
   return (
     <div className={`x-mos${tiles.length ? "" : " solo"}`}>
       <figure className={`x-big${cover ? "" : " empty"}`} data-pit data-pit-photo>
         {cover ? (
-          <Photo key={cover.image} src={cover.image} width={coverWidth(cover.image)} priority onError={() => fail(cover.image)} onLoad={(img) => tooSmall(img, cover.image)} />
+          <>
+            <Photo key={cover.image} src={cover.image} width={coverWidth(cover.image)} priority onError={() => fail(cover.image)} onLoad={(img) => tooSmall(img, cover.image)} />
+            {leaving && <img key={`was:${leaving}`} className="x-was" src={sizedPhoto(leaving, coverWidth(leaving))} alt="" aria-hidden />}
+          </>
         ) : (
           <span className="x-ph" aria-hidden>
             <XIcon name="image" size={34} stroke={1.6} />

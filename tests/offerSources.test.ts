@@ -2,7 +2,7 @@
 // that a failure is simply no offers.
 import { describe, expect, it } from "vitest";
 import type { Need, Offer } from "../src/lib/offerSource";
-import { cityTours, countryNeed, makeLiveSource, queryOf, tourWords, type StayCandidate } from "../src/lib/offerSources";
+import { cityTours, countryNeed, makeLiveSource, queryOf, tourWords, townName, unmarked, type StayCandidate } from "../src/lib/offerSources";
 import { memoryKV } from "../src/lib/share/store";
 import { sectionLooking } from "../src/lib/looking";
 
@@ -257,5 +257,30 @@ describe("a question that goes to the server marks its category while it is out 
     expect(sectionLooking.has("stay")).toBe(false);
     await again;
     expect(calls).toBe(1);
+  });
+});
+
+describe("a town as Viator knows it (2026-10-25: 'hiç çıkmadı turlar')", () => {
+  it("its airport's words go, its marks go when it has none of its own", () => {
+    expect(townName("Napoli Havalimanı")).toBe("Napoli");
+    expect(townName("Faro Airport")).toBe("Faro");
+    expect(townName("Ubud")).toBe("Ubud");
+    expect([unmarked("Tromsø"), unmarked("Zürich"), unmarked("İzmir"), unmarked("Ubud")]).toEqual(["Tromso", "Zurich", "Izmir", "Ubud"]);
+  });
+  it("Tromsø: nothing by its own spelling, Tromso's tours", async () => {
+    const asked: string[] = [];
+    const source = { offers: async (n: Need) => (asked.push(String(n.city)), n.city === "Tromso" ? [{ ...offer("t1"), kind: "activity" } as Offer] : []) };
+    const need: Need = { key: "a", section: "activity", kind: "activity", city: "Tromsø", start: null, end: null, adults: 2 };
+    const list = await cityTours(source, need, "NO");
+    expect(asked.slice(0, 2)).toEqual(["Tromsø", "Tromso"]);
+    expect(list.map((o) => o.id)).toEqual(["t1"]);
+  });
+  it("Napoli Havalimanı: asked as Napoli, then in its country by its name", async () => {
+    const asked: string[] = [];
+    const source = { offers: async (n: Need) => (asked.push(`${n.city}|${n.query ?? ""}`), n.city === "Italy" && n.query === "Napoli" ? [{ ...offer("n1"), kind: "activity" } as Offer] : []) };
+    const need: Need = { key: "a", section: "activity", kind: "activity", city: "Napoli Havalimanı", start: null, end: null, adults: 2 };
+    const list = await cityTours(source, need, "IT");
+    expect(asked.slice(0, 2)).toEqual(["Napoli|", "Italy|Napoli"]);
+    expect(list.map((o) => o.id)).toContain("n1");
   });
 });

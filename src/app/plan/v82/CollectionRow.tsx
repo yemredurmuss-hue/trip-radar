@@ -91,7 +91,7 @@ function useCityOffers(city: string | null, plan: Pick<Plan, "stayBlocks"> | nul
   // P2 (F48): a trip that is only its event (a festival: "Odak festival") is offered no tours of the source's.
   const onlyFocus = shapeOf(trip).focus === "only";
   const need: Need | null = stop && !onlyFocus ? { key: needKey("activity", stop.city, stop.start, stop.end), section: "activity", kind: "activity", city: stop.city, start: stop.start, end: stop.end, adults: travellers } : null;
-  const country = stop && plan ? stopCountry(plan, stop.city) : null;
+  const country = stop && plan ? stopCountry(plan, stop.city, byId.values()) : null;
   const near = stop && plan ? nearPlaces(plan, byId.values(), stop.city, country) : [];
   const nearKey = near.map((p) => p.city).join("|");
   const [got, setGot] = useState<{ key: string; list: Offer[] } | null>(null);

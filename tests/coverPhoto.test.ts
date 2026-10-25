@@ -1,7 +1,7 @@
 // The cover's photo, chosen (lib/coverPhoto.ts): Commons' wide photos beside the stock one, the model's look; whenever it
 // can't choose, the old way (the stock photo, else Wikipedia's) as it was.
 import { describe, expect, it } from "vitest";
-import { findCityPhoto, wantsCityImage, nextHeroImage } from "../src/lib/cityImages";
+import { findCityPhoto, lookAgainAtCover, wantsCityImage, nextHeroImage } from "../src/lib/cityImages";
 import { chooseCover, commonsCandidates, stockThumb, type CoverCandidate } from "../src/lib/coverPhoto";
 
 const page = (title: string, w: number, h: number, mime = "image/jpeg", index = 1) => ({
@@ -81,5 +81,20 @@ describe("stockThumb", () => {
   it("Unsplash's small copy as a JPEG", () => {
     const u = new URL(stockThumb("https://images.unsplash.com/photo-1?w=2400&auto=format&q=80"));
     expect([u.searchParams.get("fm"), u.searchParams.get("w"), u.searchParams.get("auto")]).toEqual(["jpg", "500", null]);
+  });
+});
+
+describe("lookAgainAtCover: the plan's one look at a cover", () => {
+  const proxy = { url: "https://srv/functions/v1/city-image", headers: {} };
+  const fetchJson = async (url: string) => (url.includes("city-image") ? { url: "https://images.unsplash.com/photo-1?w=2400", source: "unsplash" } : url.includes("commons.wikimedia.org") ? commonsAnswer : null);
+  const jpeg = (async () => new Response(new Uint8Array([255, 216, 255]), { headers: { "content-type": "image/jpeg" } })) as unknown as typeof fetch;
+  it("the photo there now among the others; the model's pick comes back, answered", async () => {
+    const r = await lookAgainAtCover("Ozora", "https://images.unsplash.com/photo-1?w=2400", { proxy, judge: async () => 2, fetchJson, fetchImage: jpeg });
+    expect(r.answered).toBe(true);
+    expect(r.pick?.credit?.source).toBe("commons");
+  });
+  it("no key or an error: not answered, nothing picked (the photo there stays, asked again another time)", async () => {
+    const r = await lookAgainAtCover("Ozora", "https://images.unsplash.com/photo-1?w=2400", { proxy, judge: async () => { throw new Error("429"); }, fetchJson, fetchImage: jpeg });
+    expect(r).toEqual({ answered: false, pick: null });
   });
 });

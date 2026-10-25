@@ -104,17 +104,24 @@ export async function photoBytes(c: CoverCandidate, get: typeof fetch = fetch): 
 }
 
 /**
- * The cover the model picks among the candidates (two or more looked at); null whenever it can't (no judge, too few to
- * look at, an error, none fit): the caller then goes the old way.
+ * The model's look at the candidates: `answered` once it has truly looked (or there was nothing to choose between),
+ * `pick` what it chose (null: none fit, or nothing to choose). An error, no key or a photo that won't load: not answered,
+ * so it is asked again another time.
  */
-export async function chooseCover(subject: string, candidates: CoverCandidate[], judge: CoverJudge | null, get: typeof fetch = fetch): Promise<CoverCandidate | null> {
-  if (!judge || candidates.length < 2) return null;
+export async function lookAtCovers(subject: string, candidates: CoverCandidate[], judge: CoverJudge | null, get: typeof fetch = fetch): Promise<{ answered: boolean; pick: CoverCandidate | null }> {
+  if (!judge) return { answered: false, pick: null };
+  if (candidates.length < 2) return { answered: true, pick: null };
   const looked = (await Promise.all(candidates.map(async (c) => ({ c, bytes: await photoBytes(c, get) })))).filter((x) => x.bytes != null);
-  if (looked.length < 2) return null;
+  if (looked.length < 2) return { answered: false, pick: null };
   try {
     const best = await judge(subject, looked.map((x) => x.bytes!));
-    return best != null && best >= 1 && best <= looked.length ? looked[best - 1].c : null;
+    return { answered: true, pick: best != null && best >= 1 && best <= looked.length ? looked[best - 1].c : null };
   } catch {
-    return null;
+    return { answered: false, pick: null };
   }
+}
+
+/** The cover the model picks among the candidates; null whenever it can't or none fit: the caller goes the old way. */
+export async function chooseCover(subject: string, candidates: CoverCandidate[], judge: CoverJudge | null, get: typeof fetch = fetch): Promise<CoverCandidate | null> {
+  return (await lookAtCovers(subject, candidates, judge, get)).pick;
 }

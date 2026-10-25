@@ -14,7 +14,7 @@ import { L } from "./i18n";
 import { cityKeyOf, sameCity, type Plan } from "./plan";
 import type { IntentVM } from "./intents";
 import type { Need, Offer } from "./offerSource";
-import type { PhotoCredit } from "./types";
+import type { Item, PhotoCredit } from "./types";
 
 export interface MosaicPhoto {
   image: string;
@@ -229,7 +229,7 @@ export function placesOfIntents(intents: readonly Pick<IntentVM, "section" | "fr
  * the same way so the hero's ask is the same one and is answered from the source's store, never a second request): one
  * for each city with an Etkinlik row, its stop's days, its country for a town the source doesn't know.
  */
-export function tourNeeds(plan: Pick<Plan, "stayBlocks">, cities: readonly (string | null | undefined)[], adults: number | null): { need: Need; country: string | null }[] {
+export function tourNeeds(plan: Pick<Plan, "stayBlocks">, cities: readonly (string | null | undefined)[], adults: number | null, items: Iterable<Item> = []): { need: Need; country: string | null }[] {
   const stops = citiesOfPlan(plan);
   const out: { need: Need; country: string | null }[] = [];
   for (const city of cities) {
@@ -237,7 +237,7 @@ export function tourNeeds(plan: Pick<Plan, "stayBlocks">, cities: readonly (stri
     if (!stop || out.some((x) => sameCity(x.need.city ?? null, stop.city))) continue;
     out.push({
       need: { key: needKey("activity", stop.city, stop.start, stop.end), section: "activity", kind: "activity", city: stop.city, start: stop.start, end: stop.end, adults },
-      country: stopCountry(plan, stop.city),
+      country: stopCountry(plan, stop.city, items),
     });
   }
   return out;

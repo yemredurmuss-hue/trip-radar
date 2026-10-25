@@ -14,7 +14,7 @@ import { addDays, cityKeyOf, sameCity, type OptionGroup, type Plan } from "../li
 import { retryCapture } from "../lib/process";
 import { contentLang, contentTag, L, withLang } from "../lib/i18n";
 import { modelCoverJudge } from "../lib/coverJudge";
-import { creditOf, findCityPhoto, imageProxy, keptCredits, nextCityImage, nextHeroImage, wantsCityImage, type HeroCity } from "../lib/cityImages";
+import { creditOf, findCityPhoto, imageProxy, keptCredits, lookAgainAtCover, nextCityImage, nextHeroImage, wantsCityImage, type HeroCity } from "../lib/cityImages";
 import { acceptMood, moodKey } from "../lib/heroText";
 import { getProvider, MissingKeyError } from "../lib/llm";
 import { resetConversation } from "../lib/assistant";
@@ -410,6 +410,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   // per trip and city in a session; a miss then keeps the old picture. The first city's new photo also
   // becomes the trip card's (TripsHome).
   const askedImages = useRef(new Set<string>());
+  // (the places whose photo pass ended this visit: the cover's look waits for its own place's, below)
+  const photoDone = useRef(new Set<string>());
   useEffect(() => {
     if (!placesSettled) return;
     const unasked = mainNames.filter((name) => {
@@ -425,8 +427,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
         const key = cityKeyOf(name)!;
         if (!wantsCityImage(trip.cityImages?.[key], Boolean(proxy), creditOf(trip.cityImages?.[key], trip.photoCredits))) continue;
         try {
-          // (the trip's first place is its cover: looked at with Commons' photos and the model's eye, coverPhoto.ts)
-          const found = await findCityPhoto(name, { proxy, judge: key === firstKey ? modelCoverJudge : null });
+          const found = await findCityPhoto(name, { proxy });
           const url = found?.url ?? null;
           await updateTrip(
             trip.id,
@@ -434,7 +435,7 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
               const next = {
                 ...t,
                 cityImages: { ...t.cityImages, [key]: nextCityImage(t.cityImages?.[key], url) },
-                ...(key === firstKey ? { heroImage: nextHeroImage(t.heroImage, url, found?.credit?.source === "commons") } : {}),
+                ...(key === firstKey ? { heroImage: nextHeroImage(t.heroImage, url) } : {}),
               };
               return { ...next, photoCredits: keptCredits(next, [found]) };
             },
@@ -444,9 +445,39 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
           // An outage is not "no photo": store nothing, so the next visit asks again.
           console.warn("city photo", name, error);
         }
+        photoDone.current.add(`${trip.id}:${key}`);
       }
     })();
   }, [trip.id, trip.cityImages, mainNames, placesSettled]);
+  // The cover looked at once on the plan (2026-10-25, Emre: "gezi üretilirken en hızlısı, plan hero'da farklı olur"): the
+  // photo there now beside the stock proxy's and Commons' wide ones, the model keeps the best; a new one comes in softly
+  // (HeroMosaic). Once per trip and first place (coverLooked); no key or an error: asked again another time.
+  const lookingCover = useRef(new Set<string>());
+  useEffect(() => {
+    const name = mainNames[0];
+    const key = name ? cityKeyOf(name) : null;
+    if (!placesSettled || !name || !key || trip.coverLooked === key || lookingCover.current.has(`${trip.id}:${key}`)) return;
+    // (after the first photo pass: there is something to compare with, or nothing was found)
+    const current = trip.cityImages?.[key];
+    if (current === undefined) return;
+    // (a photo the pass above asks for again, an old Wikipedia one: its answer first, so neither writes over the other)
+    if (wantsCityImage(current, true, creditOf(current, trip.photoCredits)) && !photoDone.current.has(`${trip.id}:${key}`)) return;
+    lookingCover.current.add(`${trip.id}:${key}`);
+    void (async () => {
+      const proxy = await imageProxy();
+      const { answered, pick } = await lookAgainAtCover(name, current, { proxy, judge: modelCoverJudge });
+      if (!answered) return;
+      await updateTrip(
+        trip.id,
+        (t) => {
+          const swap = pick != null && pick.url !== t.cityImages?.[key];
+          const next = { ...t, coverLooked: key, ...(swap ? { cityImages: { ...t.cityImages, [key]: pick.url }, heroImage: pick.url } : {}) };
+          return swap ? { ...next, photoCredits: keptCredits(next, [pick]) } : next;
+        },
+        { touch: false },
+      );
+    })();
+  }, [trip.id, trip.coverLooked, trip.cityImages, mainNames, placesSettled]);
   // The mood sentence: written once per set of main places and language by the traveller's model; one with a number is dropped.
   const moodLang = contentLang(trip.lang);
   const moodFor = moodKey(mainNames, contentTag(trip.lang, moodLang));
@@ -669,8 +700,8 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   // P2 (F48): a trip that is only its event (a festival, a liveaboard) is offered no tours, here or on the mosaic.
   const onlyFocus = shapeOf(trip).focus === "only";
   const tourAsks = useMemo(
-    () => (onlyFocus ? [] : tourNeeds(plan, heroIntents.filter((i) => i.section === "activity" && i.frame === "collection").map((i) => i.head.city), who.count || null)),
-    [plan, heroIntents, who.count, onlyFocus],
+    () => (onlyFocus ? [] : tourNeeds(plan, heroIntents.filter((i) => i.section === "activity" && i.frame === "collection").map((i) => i.head.city), who.count || null, items)),
+    [plan, heroIntents, who.count, onlyFocus, items],
   );
   const tours = useTourOffers(liveSource, tourAsks);
   const tourPlaces = useMemo(() => offerTiles(tours), [tours]);

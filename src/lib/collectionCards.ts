@@ -367,13 +367,20 @@ export function placePhotoCredit(credit: PlaceFound["credit"] | undefined, by?: 
 }
 
 /** The country (ISO alpha-2) of the stay the plan has in a city: its record's, the first that says. */
-export function stopCountry(plan: Pick<Plan, "stayBlocks">, city: string): string | null {
+export function stopCountry(plan: Pick<Plan, "stayBlocks">, city: string, items: Iterable<Item> = []): string | null {
   for (const b of plan.stayBlocks) {
     const item = b.kind === "open" ? b.slot : b.item;
     if (!item?.countryCode || !sameCity(b.city ?? item.city, city)) continue;
     return item.countryCode;
   }
-  return null;
+  // (a stop with no country on its own records, a place the start only made room for: a record of the same town says it,
+  // else the trip's most common country; its tours are then asked in it, 2026-10-25)
+  const all = [...items].filter((i) => i.status !== "dismissed" && i.countryCode);
+  const same = all.find((i) => i.city && sameCity(i.city, city));
+  if (same) return same.countryCode!;
+  const count = new Map<string, number>();
+  for (const i of all) count.set(i.countryCode!, (count.get(i.countryCode!) ?? 0) + 1);
+  return [...count.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
 }
 
 /**

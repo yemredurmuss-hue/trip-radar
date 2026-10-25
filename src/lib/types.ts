@@ -266,6 +266,8 @@ export interface Trip {
    * without one is credited from its address (cityImages.ts creditOf: Wikipedia, Pexels, Unsplash) or not at all.
    */
   photoCredits?: Record<string, PhotoCredit>;
+  /** The place whose cover was looked at once on the plan (coverPhoto.ts): not asked again for it. */
+  coverLooked?: string;
   /** The AI's mood sentence for the hero and the cities it was written for (see heroText.ts). */
   mood?: { key: string; text: string } | null;
   /** The style words the model picked for the hero (tripStyle.ts) and what they were picked for. */

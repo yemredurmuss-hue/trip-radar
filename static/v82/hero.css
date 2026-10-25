@@ -96,6 +96,11 @@ body.still .x-t.go:hover img { transform: none; }
 .x-big .x-cr { right: 12px; bottom: 12px; }
 .tipx-box.x-crtip { pointer-events: auto; }
 .x-crline a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+/* The cover before, fading away over the new one (the plan's one look at the cover). */
+.x-big > img.x-was { animation: x-was .6s ease forwards; }
+@keyframes x-was { to { opacity: 0; } }
+body.still .x-big > img.x-was { animation: none; opacity: 0; }
+@media (prefers-reduced-motion: reduce) { .x-big > img.x-was { animation: none; opacity: 0; } }
 /* The cover's credit, always there and faint (hero-gorsel-v1): under the caption's bottom, on the right. */
 .x-crl { position: absolute; right: 20px; bottom: 9px; z-index: 2; max-width: 60%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11.5px; font-weight: 500; line-height: 1.2; letter-spacing: .01em; color: rgba(255, 255, 255, .74); text-shadow: 0 1px 6px rgba(0, 0, 0, .55); }
 .x-crl a { color: inherit; text-decoration: none; border-bottom: 1px solid rgba(255, 255, 255, .35); }

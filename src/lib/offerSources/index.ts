@@ -211,8 +211,14 @@ export async function cityTours(source: Pick<SuggestionSource, "offers">, need: 
     return into;
   };
   const town = need.city?.trim() ?? null;
-  let list = await tours(need, town);
-  const wider = list.length ? null : countryNeed(need, countryCode);
+  // (2026-10-25, "hiç çıkmadı turlar": Viator knows "Tromso", not "Tromsø", and a stop named by its airport, "Napoli
+  // Havalimanı", by neither) the town by its plain name first, then written without its marks, then in its country
+  const plain = town ? townName(town) : null;
+  const asked = plain && plain !== town ? { ...need, key: `${need.key}:as:${fold(plain)}`, city: plain } : need;
+  let list = await tours(asked, town);
+  const bare = plain ? unmarked(plain) : null;
+  if (!list.length && bare && bare !== plain) list = await tours({ ...asked, key: `${need.key}:as:${bare.toLowerCase()}`, city: bare }, town);
+  const wider = list.length ? null : countryNeed(asked, countryCode);
   if (wider) list = await tours(wider, town);
   if (need.kind !== "activity" || need.query?.trim()) return list;
   // The trip's kind: asked where the town's own were found (the town, or its country by the town's name).
@@ -232,6 +238,17 @@ export async function cityTours(source: Pick<SuggestionSource, "offers">, need: 
   for (const more of await Promise.all(asks)) join(list, more);
   return list;
 }
+
+/** A town as Viator is asked for it: its airport's words left out ("Napoli Havalimanı" → "Napoli", "Faro Airport" → "Faro"). */
+export const townName = (town: string): string =>
+  town.replace(/\s+(uluslararası\s+)?(havalimanı|havaalanı|international\s+airport|airport|aeropuerto|aéroport|aeroporto|flughafen)$/iu, "").trim() || town;
+
+/** A name written without its marks ("Tromsø" → "Tromso", "Zürich" → "Zurich"); Turkish letters too. */
+export const unmarked = (name: string): string =>
+  name
+    .replace(/ø/g, "o").replace(/Ø/g, "O").replace(/æ/g, "ae").replace(/Æ/g, "Ae").replace(/ß/g, "ss").replace(/ı/g, "i").replace(/İ/g, "I").replace(/ł/g, "l").replace(/Ł/g, "L")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
 
 /** The country as the traveller reads it ("Sri Lanka", "Endonezya"). */
 const countryLabel = (code: string): string => {

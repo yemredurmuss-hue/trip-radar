@@ -1,7 +1,7 @@
 // One landscape photo per city for the hero. A sharing-server proxy (Unsplash or Pexels, keys on the server) when
 // it answers; otherwise Wikipedia, skipping flags, coats of arms, maps and drawings. The proxy says who took the
 // photo; the hero credits it ("Fotoğraf: <Ad> / Unsplash", both linked).
-import { chooseCover, commonsCandidates, stockThumb, type CoverJudge } from "./coverPhoto";
+import { chooseCover, commonsCandidates, lookAtCovers, stockThumb, type CoverJudge } from "./coverPhoto";
 import { L, lang } from "./i18n";
 import { getShareConfig } from "./share/store";
 import type { PhotoCredit } from "./types";
@@ -161,6 +161,37 @@ export async function findCityPhoto(city: string, opts: PhotoOpts = {}): Promise
   }
   if (failed) throw failed instanceof NetworkError ? failed : new NetworkError(failed instanceof Error ? failed.message : undefined);
   return null;
+}
+
+/**
+ * The plan's one look at a trip's cover (2026-10-25, Emre: "gezi üretilirken en hızlısı, plan hero'da farklı"): the photo
+ * there now, the stock proxy's and Commons' wide ones, and the model's pick among them. `answered` false (no key, an error):
+ * asked again another time; the photo there stays whatever happens.
+ */
+export async function lookAgainAtCover(
+  city: string,
+  current: string | null,
+  opts: { proxy: ImageProxy | null; judge: CoverJudge; query?: string; fetchJson?: FetchJson; fetchImage?: typeof fetch },
+): Promise<{ answered: boolean; pick: CityPhoto | null }> {
+  const get = async (url: string, init?: RequestInit) => {
+    try {
+      return await (opts.fetchJson ?? defaultFetch)(url, init);
+    } catch {
+      return null;
+    }
+  };
+  const q = opts.query?.trim() || city;
+  const stock = opts.proxy ? await get(proxyQuery(opts.proxy.url, q), { headers: opts.proxy.headers }) : null;
+  const commons = await commonsCandidates(q, get).catch(() => []);
+  const seen = new Set<string>();
+  const candidates = [
+    ...(current ? [{ url: current, thumb: isWikiImage(current) ? current.replace(/\/\d+px-/, "/500px-") : stockThumb(current), credit: creditOf(current) }] : []),
+    ...(stock?.url ? [{ url: stock.url as string, thumb: stockThumb(stock.url), credit: proxyCredit(stock) }] : []),
+    ...commons,
+  ].filter((c) => !seen.has(c.url) && (seen.add(c.url), true));
+  const { answered, pick } = await lookAtCovers(q, candidates, opts.judge, opts.fetchImage);
+  if (pick?.credit) seenCredits.set(pick.url, pick.credit);
+  return { answered, pick: pick ? { url: pick.url, credit: pick.credit } : null };
 }
 
 /** A picture from Wikipedia / Wikimedia (what was stored before the proxy answered). */
