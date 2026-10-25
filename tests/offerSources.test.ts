@@ -284,3 +284,31 @@ describe("a town as Viator knows it (2026-10-25: 'hiç çıkmadı turlar')", () 
     expect(list.map((o) => o.id)).toContain("n1");
   });
 });
+
+describe("the server's bad moments (2026-10-25)", () => {
+  it("an empty answer is asked again after an hour, a full one is kept six", async () => {
+    let t = 1_000_000;
+    let calls = 0;
+    const fetcher = (async () => (calls++, { ok: true, json: async () => ({ offers: [] }) } as Response)) as unknown as typeof fetch;
+    const src = makeLiveSource({ kv: memoryKV(), fetcher, now: () => t, server: "https://srv" });
+    await src.offers(stay);
+    t += 30 * 60_000;
+    await src.offers(stay);
+    expect(calls).toBe(1);
+    t += 31 * 60_000;
+    await src.offers(stay);
+    expect(calls).toBe(2);
+  });
+  it("a failing server is 'down' for a minute, and a town's empty tours aren't widened then", async () => {
+    let t = 1_000_000;
+    const asked: string[] = [];
+    const fetcher = (async (url: string) => (asked.push(url), { ok: false, status: 402, json: async () => ({}) } as Response)) as unknown as typeof fetch;
+    const src = makeLiveSource({ kv: memoryKV(), fetcher, now: () => t, server: "https://srv" });
+    const need: Need = { key: "a", section: "activity", kind: "activity", city: "Tromsø", start: null, end: null, adults: 2 };
+    expect(await cityTours(src, need, "NO")).toEqual([]);
+    expect(asked).toHaveLength(1);
+    expect(src.down()).toBe(true);
+    t += 61_000;
+    expect(src.down()).toBe(false);
+  });
+});

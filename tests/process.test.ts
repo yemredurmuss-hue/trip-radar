@@ -206,3 +206,17 @@ describe("the queue under repeated triggers", () => {
     expect(events.filter((t) => t.startsWith("↻"))).toEqual([]);
   });
 });
+
+describe("a new trip's photo never costs the save (2026-10-25)", () => {
+  it("the photo lookup fails: the trip and its record are made all the same, with no photo", async () => {
+    const extractor: Extractor = async () => ({ ...base, name: "Fotoğrafsız Otel", city: "Kyoto", country: "Japonya", country_code: "JP", trip: { existing_trip_id: null, new_trip_title: "Fotoğrafsız gezi" } });
+    const deps: Deps = { extract: extractor, heroImage: async () => { throw new Error("Failed to fetch"); }, geocode: async () => null };
+    await saveSnapshot(snapshot("https://www.booking.com/hotel/jp/fotografsiz.html", "Fotoğrafsız Otel € 100"), null);
+    await processPending(deps);
+    const all = await listTrips();
+    const trip = all.find((t) => t.title === "Fotoğrafsız gezi");
+    expect(all.map((t) => t.title)).toContain("Fotoğrafsız gezi");
+    expect(trip!.heroImage).toBeNull();
+    expect((await listItems(trip!.id)).map((i) => i.name)).toContain("Fotoğrafsız Otel");
+  });
+});
