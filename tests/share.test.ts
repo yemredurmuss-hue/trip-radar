@@ -408,3 +408,28 @@ describe("sharing a trip end to end (fake server)", () => {
     await expect(joinSharedTrip("TR1:bozuk", "Sabine", { kv, rpc: server.rpc })).rejects.toThrow(/paylaşım kodu değil/);
   });
 });
+
+describe("a code naming another server (security, 2026-10-25)", () => {
+  it("is refused while this computer shares trips on Trip Radar's own server: nothing moves there", async () => {
+    const kv = memoryKV();
+    const d = await db();
+    await d.put("trips", { id: "mine-shared", title: "Benim", confirmedDates: null, budget: null, heroImage: null, shareId: "11111111-1111-4111-8111-111111111111", createdAt: 1, updatedAt: 1 } as Trip);
+    const evil = encodeShareCode({ url: "https://attacker123.supabase.co", anonKey: "sb_publishable_evil", shareId: SHARE_ID, title: "Gel" });
+    const err = await joinSharedTrip(evil, "Emre", { kv }).catch((e) => e);
+    expect(err).toBeInstanceOf(ShareError);
+    expect(String(err.message)).toContain("attacker123.supabase.co");
+    expect((await getShareConfig(kv)).url).not.toContain("attacker123");
+    await d.delete("trips", "mine-shared");
+  });
+});
+
+describe("the AI gate's admin secret goes only to its own server (security, 2026-10-25)", () => {
+  it("set on Trip Radar's own server: never sent once the settings point elsewhere", async () => {
+    const { adminSecretHere, saveAdminSecret } = await import("../src/lib/share/ai");
+    const kv = memoryKV();
+    await saveAdminSecret("a".repeat(48), kv);
+    expect((await adminSecretHere(kv)).secret).toBe("a".repeat(48));
+    await saveShareConfig({ url: "https://attacker123.supabase.co", anonKey: "k", name: "Emre" }, kv);
+    expect((await adminSecretHere(kv)).secret).toBe("");
+  });
+});

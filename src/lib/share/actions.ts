@@ -1,5 +1,5 @@
 // What the board does with sharing: share a trip (→ one code to send), join one with that code, vote.
-import { saveAiTicket } from "./ai";
+import { getAdminSecret, saveAiTicket } from "./ai";
 import { L } from "../i18n";
 import { db, newId, notifyChanged } from "../db";
 import { isDemoTrip } from "../trips";
@@ -9,6 +9,7 @@ import { decodeShareCode, encodeShareCode, normalizeServerUrl } from "./code";
 import { applySettings, settingsFromServer, settingsOf, stableJson } from "./settings";
 import {
   chromeKV,
+  DEFAULT_SERVER,
   getShareConfig,
   getVotes,
   isConfigured,
@@ -78,6 +79,25 @@ export async function joinSharedTrip(pasted: string, name: string, deps: ActionD
   const currentUrl = own ? normalizeServerUrl(own) : null;
   if (currentUrl && currentUrl !== code.url)
     throw new ShareError(L("Bu kod başka bir paylaşım sunucusuna ait. Ayarlar → Gelişmiş'teki adresi silip tekrar dene.", "This code belongs to another sharing server. Clear the address in Settings → Advanced and try again."), "setup");
+  // A code naming another server than Trip Radar's own, while this computer already shares trips (or owns the AI gate):
+  // joining would move every shared trip's sync, and the gate, to that server. Refused, the server named (2026-10-25).
+  if (!currentUrl && code.url !== DEFAULT_SERVER.url) {
+    const d0 = await db();
+    const sharing = (await d0.getAll("trips")).some((t) => t.shareId && t.shareId !== code.shareId);
+    if (sharing || (await getAdminSecret(kv)).length >= 24) {
+      const host = (() => {
+        try {
+          return new URL(code.url).hostname;
+        } catch {
+          return code.url;
+        }
+      })();
+      throw new ShareError(
+        L(`Bu kod başka bir paylaşım sunucusuna ait (${host}). Paylaştığın gezilerin oraya taşınmaması için eklenmedi.`, `This code belongs to another sharing server (${host}). It wasn't added, so your shared trips don't move there.`),
+        "setup",
+      );
+    }
+  }
   const me = (name || current.name).trim();
   if (!me) throw new ShareError(L("Adını yaz (diğer kişi seni bu adla görür).", "Add your name (the others see you by it)."), "setup");
   const ownKey = currentUrl ? current.anonKey : "";

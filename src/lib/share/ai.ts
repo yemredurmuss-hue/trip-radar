@@ -25,20 +25,35 @@ export async function saveAiTicket(ticket: string | null | undefined, kv: KV = c
   if (isTicket(ticket)) await kv.set(TICKET_KEY, ticket);
 }
 
+/** The server the admin secret was set for (kept beside it; one set before 2026-10-25 is Trip Radar's own). */
+const ADMIN_SERVER_KEY = "aiAdminServer";
+
 export async function getAdminSecret(kv: KV = chromeKV): Promise<string> {
   return (await kv.get<string>(ADMIN_KEY)) ?? "";
 }
 export async function saveAdminSecret(secret: string, kv: KV = chromeKV): Promise<void> {
+  const config = await getShareConfig(kv);
   await kv.set(ADMIN_KEY, secret.trim());
+  await kv.set(ADMIN_SERVER_KEY, serverOf(config.url));
+}
+
+/**
+ * The admin secret for the gate on the server the sharing settings point at now: only the server it was set for ever
+ * receives it, "" for any other (2026-10-25: a share code naming another server must never carry the owner's secret there).
+ */
+export async function adminSecretHere(kv: KV = chromeKV): Promise<{ secret: string; server: string }> {
+  const [secret, setFor, config] = await Promise.all([getAdminSecret(kv), kv.get<string>(ADMIN_SERVER_KEY), getShareConfig(kv)]);
+  const server = serverOf(config.url);
+  return { secret: secret && server === (setFor || DEFAULT_SERVER.url) ? secret : "", server };
 }
 
 type Fetch = typeof fetch;
 
 async function admin<T>(body: Record<string, unknown>, deps: { kv?: KV; fetch?: Fetch } = {}): Promise<T | null> {
   const kv = deps.kv ?? chromeKV;
-  const [secret, config] = await Promise.all([getAdminSecret(kv), getShareConfig(kv)]);
+  const { secret, server } = await adminSecretHere(kv);
   if (secret.length < 24) return null;
-  const res = await (deps.fetch ?? fetch)(`${serverOf(config.url)}/functions/v1/ai-admin`, { method: "POST", headers: { "Content-Type": "application/json", "x-admin-secret": secret }, body: JSON.stringify(body) });
+  const res = await (deps.fetch ?? fetch)(`${server}/functions/v1/ai-admin`, { method: "POST", headers: { "Content-Type": "application/json", "x-admin-secret": secret }, body: JSON.stringify(body) });
   if (!res.ok) throw new Error(res.status === 401 ? L("AI kapısı: yönetici anahtarı tutmuyor.", "AI gate: the admin key doesn't match.") : L(`AI kapısı: ${res.status}`, `AI gate: ${res.status}`));
   return (await res.json()) as T;
 }
@@ -89,7 +104,7 @@ async function call<T>(body: Record<string, unknown>, secret: string, deps: { kv
 
 /** Where the gate stands for this computer (no secret yet: as a stranger). */
 export async function gateStanding(deps: { kv?: KV; fetch?: Fetch } = {}): Promise<GateStanding> {
-  return call<GateStanding>({ action: "status" }, await getAdminSecret(deps.kv ?? chromeKV), deps);
+  return call<GateStanding>({ action: "status" }, (await adminSecretHere(deps.kv ?? chromeKV)).secret, deps);
 }
 
 /**
@@ -98,7 +113,10 @@ export async function gateStanding(deps: { kv?: KV; fetch?: Fetch } = {}): Promi
  */
 export async function claimGate(deps: { kv?: KV; fetch?: Fetch; random?: (b: Uint8Array<ArrayBuffer>) => Uint8Array } = {}): Promise<GateStanding> {
   const kv = deps.kv ?? chromeKV;
-  let secret = await getAdminSecret(kv);
+  // (a secret set for another server never goes to this one: 2026-10-25)
+  const stored = await getAdminSecret(kv);
+  let { secret } = await adminSecretHere(kv);
+  if (stored.length >= 24 && !secret) throw new Error(L("AI kapısı: yönetici anahtarı başka bir paylaşım sunucusuna ait.", "AI gate: the admin key belongs to another sharing server."));
   if (secret.length < 24) {
     const bytes: Uint8Array = (deps.random ?? ((b: Uint8Array<ArrayBuffer>) => crypto.getRandomValues(b)))(new Uint8Array(24));
     secret = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -110,6 +128,6 @@ export async function claimGate(deps: { kv?: KV; fetch?: Fetch; random?: (b: Uin
 
 /** The owner hands the gate their Gemini key (it stays on the server; the extension of who's invited never sees it). */
 export async function giveGateKey(key: string, deps: { kv?: KV; fetch?: Fetch } = {}): Promise<boolean> {
-  const out = await call<{ ok?: boolean }>({ action: "set-key", key: key.trim() }, await getAdminSecret(deps.kv ?? chromeKV), deps);
+  const out = await call<{ ok?: boolean }>({ action: "set-key", key: key.trim() }, (await adminSecretHere(deps.kv ?? chromeKV)).secret, deps);
   return !!out.ok;
 }
