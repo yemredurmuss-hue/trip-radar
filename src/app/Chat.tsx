@@ -417,6 +417,7 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
           />
           <input
             type="text"
+            aria-label={L("Asistana yaz", "Write to the assistant")}
             placeholder={L("Bir link bırak, görsel yapıştır veya yaz…", "Drop a link, paste an image or type…")}
             value={text}
             onChange={(e) => setText(e.target.value)}

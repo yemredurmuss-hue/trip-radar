@@ -493,8 +493,20 @@ export function FrameTicket({ vm, form, page, links, info, detail, quiet, on, on
       </button>
     );
     const fareLayer = fareOpen && verdict ? (
-      <div className="z-det z-pvl" role="dialog" aria-label={L("Fiyat geçmişi", "Fare history")}>
-        <button type="button" className="z-dx" aria-label={L("Kapat", "Close")} onClick={() => setFareOpen(false)}>
+      <div className="z-det z-pvl" role="dialog" aria-label={L("Fiyat geçmişi", "Fare history")}
+        // (Escape closes it as the other layers do, and the focus goes back to its pill: 2026-10-25)
+        onKeyDown={(e) => {
+          if (e.key !== "Escape") return;
+          e.stopPropagation();
+          const card = e.currentTarget.closest(".z-tk") ?? e.currentTarget.parentElement;
+          setFareOpen(false);
+          card?.querySelector<HTMLButtonElement>(".z-pv")?.focus();
+        }}>
+        <button type="button" className="z-dx" aria-label={L("Kapat", "Close")} onClick={(e) => {
+          const card = e.currentTarget.closest(".z-tk") ?? e.currentTarget.parentElement?.parentElement;
+          setFareOpen(false);
+          card?.querySelector<HTMLButtonElement>(".z-pv")?.focus();
+        }}>
           <Ic name="x" size={14} />
         </button>
         <FarePanel insight={insight} verdict={verdict} each={fareEach(o.item)} days={fare.days} day={fare.day} />

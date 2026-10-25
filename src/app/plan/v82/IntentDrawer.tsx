@@ -707,7 +707,7 @@ export function IntentDrawer({ vm, options, dropped = [], chosenId, art, links, 
             </div>
           )}
           <div className="dr-ctl">
-            <span className="dr-seg" role="tablist">
+            <span className="dr-seg" role="tablist" aria-label={L("Seçenek görünümü", "Options view")}>
               <button type="button" role="tab" className="dr-tab" aria-selected={pane === "options"} onClick={() => setPane("options")}>
                 {L("Seçenekler", "Options")} <b>{options.length}</b>
               </button>

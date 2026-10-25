@@ -324,7 +324,7 @@ function Popup() {
             {busy ? L("Ekleniyor…", "Adding…") : idea ? L("+ İlham'a ekle", "+ Add to Inspiration") : !trip && !view.desk.candidate ? L("+ Yeni gezi aç ve ekle", "+ Start a trip and add") : L(`+ ${deck} destesine ekle`, `+ Add to ${deck}`)}
             {!busy && <kbd>Enter</kbd>}
           </button>
-          {failed && <p className="warning">{L("Sayfa okunamadı; bir daha dene ya da sağ tık \"Trip Radar'a ekle\".", "Couldn't read the page; try again, or right-click \"Add to Trip Radar\".")}</p>}
+          {failed && <p className="warning" role="alert">{L("Sayfa okunamadı; bir daha dene ya da sağ tık \"Trip Radar'a ekle\".", "Couldn't read the page; try again, or right-click \"Add to Trip Radar\".")}</p>}
         </div>
         {quiet()}
       </>

@@ -12,6 +12,7 @@
 // board's Harita tab only), the big steps, the bar. The trip is made at its own pace and every step ticks as its work
 // finishes, never waiting on the animation; the map plays alongside. The board opens once it's made and the plane has
 // landed, or OPEN_CAP_MS after the map started, whichever comes first.
+import { describeError } from "../../lib/llm";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { creditFor, keptCredits } from "../../lib/cityImages";
 import { COVER_W, sizedPhoto } from "../../lib/photoCache";
@@ -148,7 +149,8 @@ export function Generating({ state, onTripId, onFinished, onBack, onLine }: Prop
         }
       } catch (error) {
         setStatus((s) => ({ ...s, [step.id]: "error" }));
-        setFailed({ id: step.id, text: error instanceof Error ? error.message : String(error) });
+        // (never "timeout" or "Failed to fetch" as it came: said in the board's language, 2026-10-25)
+        setFailed({ id: step.id, text: error instanceof Error && error.message === "timeout" ? L("Yanıt çok uzun sürdü.", "The answer took too long.") : describeError(error) });
         return;
       }
       if (!still) await wait(Math.max(0, MIN_STEP_MS - (Date.now() - began)));

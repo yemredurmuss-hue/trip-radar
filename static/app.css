@@ -4725,7 +4725,7 @@ body.still .work-line i { width: 100%; opacity: .5; }
   /* Alındı: green. */
   --q-ok: #1f7a45; --q-ok-s: #e8f6ee; --q-ok-l: #bfe3c9;
   /* A warning (a document missing) and a must failed. */
-  --q-warn: #b5761c; --q-bad: #c0392b;
+  --q-warn: #9a6215; --q-bad: #c0392b;
   /* An intent box's ground and line, and its dot on the category's rail, by state. */
   --q-rail: #e6e3ee;
   /* Aranıyor and Karar bekliyor: dashed. */

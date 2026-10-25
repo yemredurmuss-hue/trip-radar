@@ -236,7 +236,7 @@ export function App() {
         )
       )}
       {showArrival && (
-        <div className="toast">
+        <div className="toast" role="status" aria-live="polite">
           <span>
             {arrival.text.replace(/^✓\s*/, "✓ ").replace(/ → .*$/, "")} → <b>{arrivalTrip.title}</b>
           </span>

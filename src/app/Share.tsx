@@ -1,6 +1,7 @@
 // Sharing a trip with the person you travel with: settings, the share code, joining, votes, sync status.
 // Everything here is inert until sharing is set up in Ayarlar → Gelişmiş (server) and Profilim (name).
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useId, useMemo, useState, type ReactNode } from "react";
+import { useDialogKeys } from "./useDialogKeys";
 import { requestProcessing, requestShareSync } from "../lib/browser";
 import { db } from "../lib/db";
 import { getPhoto } from "../lib/profile";
@@ -176,6 +177,8 @@ export function ShareLine() {
 // --- the share code (from the trip's menu) --------------------------------------------------------
 
 export function ShareDialog({ trip, onClose, onSettings }: { trip: Trip; onClose: () => void; onSettings: () => void }) {
+  const titleId = useId();
+  useDialogKeys(onClose);
   const [config, setConfig] = useState<ShareConfig | null>(null);
   const [code, setCode] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
@@ -214,8 +217,8 @@ export function ShareDialog({ trip, onClose, onSettings }: { trip: Trip; onClose
 
   return (
     <div className="modal" onClick={onClose}>
-      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-        <h2>{trip.shareId ? L("Paylaşım kodu", "Share code") : L("Bu geziyi paylaş", "Share this trip")}</h2>
+      <div className="modal-card" role="dialog" aria-modal="true" aria-labelledby={titleId} onClick={(e) => e.stopPropagation()}>
+        <h2 id={titleId}>{trip.shareId ? L("Paylaşım kodu", "Share code") : L("Bu geziyi paylaş", "Share this trip")}</h2>
         {!ready ? (
           <>
             <p>{L("Paylaşmak için önce Ayarlar'da adını, Ayarlar → Gelişmiş'te paylaşım sunucusunun adresini ve anahtarını yaz (bir kez).", "To share, first add your name in Settings, and the sharing server's address and key under Settings → Advanced (once).")}</p>

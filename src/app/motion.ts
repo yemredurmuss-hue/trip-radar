@@ -23,7 +23,16 @@ export const stillChosen = (): boolean => {
 };
 
 /** Puts the saved choice on the page (call once at start, and after a change). */
-export const applyStill = (on = stillChosen()): void => {
+/** The system's own "reduce motion" (2026-10-25: it now stills the whole page, as the app's switch does). */
+const systemStill = (): boolean => {
+  try {
+    return matchMedia("(prefers-reduced-motion: reduce)").matches;
+  } catch {
+    return false;
+  }
+};
+
+export const applyStill = (on = stillChosen() || systemStill()): void => {
   if (typeof document !== "undefined") document.body?.classList.toggle("still", on);
 };
 
@@ -34,7 +43,7 @@ export const setStill = (on: boolean): void => {
   } catch {
     /* the switch still works for this page */
   }
-  applyStill(on);
+  applyStill(on || systemStill());
 };
 
 export const reducedMotion = (): boolean => {

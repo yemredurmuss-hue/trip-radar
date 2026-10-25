@@ -124,7 +124,7 @@ export function PanoDeck({ need: all, filter = "all", initial = "cards", fresh, 
           </button>
         )}
         {count > 1 && (
-          <span className="dr-seg pd-seg" role="tablist">
+          <span className="dr-seg pd-seg" role="tablist" aria-label={L("Görünüm", "View")}>
             <button type="button" role="tab" className="dr-tab" aria-selected={mode === "cards"} onClick={() => setMode("cards")}>
               <Ic name="board" size={14} /> {L("Kartlar", "Cards")}
             </button>

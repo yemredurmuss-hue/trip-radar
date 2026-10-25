@@ -226,7 +226,7 @@ export function HistoryDialog({ trip, items, hidden, onClose, onShow, onOpenTrip
           </p>
         )}
         <div className="hs-body">
-          {local && !groups.length && <p className="hs-empty">{trashView ? L("Çöp kutusu boş.", "The trash is empty.") : L("Henüz bir şey yok.", "Nothing yet.")}</p>}
+          {local && !groups.length && <p className="hs-empty">{trashView ? L("Çöp kutusu boş.", "The trash is empty.") : L("Henüz bir değişiklik yok. Yaptıkların burada görünür, geri alabilirsin.", "No changes yet. What you do shows up here, and you can undo it.")}</p>}
           {groups.map((g) => (
             <section key={g.label}>
               <div className="hs-day">{g.label}</div>

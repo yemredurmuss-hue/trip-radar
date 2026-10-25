@@ -84,7 +84,7 @@ function PrepRowFace({ task, trip, today, shopHome, domId }: { task: PrepTask; t
   return (
     <li id={domId} className={`q-pr1${done ? " done" : ""}`} aria-label={task.title} data-task={task.key} data-item-id={item?.id} data-day={task.day ? prepDayText(task.day) : undefined}>
       <button type="button" className="q-ck" role="checkbox" aria-checked={done}
-        aria-label={done ? L(`${task.title}: yapılmadı`, `${task.title}: not done`) : L(`${task.title}: yapıldı`, `${task.title}: done`)}
+        aria-label={task.title}
         onClick={() => void tickTask(trip, task, !done)}>
         {done && <PrepIcon name="check" size={11} stroke={3.2} />}
       </button>

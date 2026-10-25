@@ -129,7 +129,7 @@ export function Bavul({ view, sub, bag, model, looking = false }: {
                         <ul>
                           {rows.map((r) => (
                             <li key={r.key} className={`q-bv1${r.ready ? " done" : r.buy ? " buy" : ""}`} aria-label={r.name}>
-                              <button type="button" className="q-ck q-bvck" role="checkbox" aria-checked={r.ready} aria-label={r.ready ? L(`${r.name}: hazır değil`, `${r.name}: not packed`) : L(`${r.name}: hazır`, `${r.name}: packed`)} onClick={() => tick(r)}>
+                              <button type="button" className="q-ck q-bvck" role="checkbox" aria-checked={r.ready} aria-label={r.name} onClick={() => tick(r)}>
                                 {r.ready && <PrepIcon name="check" size={11} stroke={3.2} />}
                               </button>
                               <span className="q-pt1">

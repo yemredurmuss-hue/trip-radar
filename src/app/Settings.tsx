@@ -1,6 +1,7 @@
 import { AiGateSettings } from "./AiGateSettings";
 import { ProfileSettings } from "./Profile";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
+import { useDialogKeys } from "./useDialogKeys";
 import { requestProcessing } from "../lib/browser";
 import { DEFAULT_GEMINI_MODEL, DEFAULT_MODEL, exportAll, exportDiagnostics, getSettings, listTrips, saveSettings } from "../lib/db";
 import { forgetRule, loadRules } from "../lib/tripRules";
@@ -54,6 +55,8 @@ export function LanguagePicker() {
 const GEMINI_KEY = /^[A-Za-z0-9._-]{30,200}$/;
 
 export function Settings({ onClose }: { onClose: () => void }) {
+  const titleId = useId();
+  useDialogKeys(onClose);
   const [s, setS] = useState<SettingsShape | null>(null);
   const [geminiModels, setGeminiModels] = useState<string[]>([]);
   const [modelStatus, setModelStatus] = useState<string | null>(null);
@@ -133,9 +136,9 @@ export function Settings({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="modal" onClick={onClose}>
-      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-card" role="dialog" aria-modal="true" aria-labelledby={titleId} onClick={(e) => e.stopPropagation()}>
         <LanguagePicker />
-        <h2>{L("Ayarlar", "Settings")}</h2>
+        <h2 id={titleId}>{L("Ayarlar", "Settings")}</h2>
         <ProfileSettings />
 
         <div className="segmented" role="radiogroup" aria-label={L("AI sağlayıcı", "AI provider")}>

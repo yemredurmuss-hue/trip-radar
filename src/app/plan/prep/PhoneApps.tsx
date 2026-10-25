@@ -145,7 +145,7 @@ export function PhoneApps({ model }: { model: PrepModel }) {
 function AppRow({ app: a, label, on, trip, onHide }: { app: PhoneApp; label: string | null; on: boolean; trip: Trip; onHide: (a: PhoneApp) => void }) {
   return (
     <li className={`q-bv1 q-ph1${on ? " done" : ""}`} aria-label={a.name}>
-      <button type="button" className="q-ck q-bvck" role="checkbox" aria-checked={on} aria-label={on ? L(`${a.name}: kurulmadı`, `${a.name}: not installed`) : L(`${a.name}: kurdum`, `${a.name}: installed`)} onClick={() => void setDone(trip, a.key, !on)}>
+      <button type="button" className="q-ck q-bvck" role="checkbox" aria-checked={on} aria-label={a.name} onClick={() => void setDone(trip, a.key, !on)}>
         {on && <PrepIcon name="check" size={11} stroke={3.2} />}
       </button>
       <span className="q-pt1">

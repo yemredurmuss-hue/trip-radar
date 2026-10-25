@@ -303,7 +303,7 @@ function SectionPage({ board, section, fresh, onCompare, onReveal, onAsk }: { bo
   return (
     <>
       <Head title={sectionName(section)} line={recordsText(cat?.count ?? 0)} />
-      {cat ? cat.needs.map((n) => <PanoGroup key={n.key} need={n} fresh={fresh} onCompare={onCompare} onReveal={onReveal} onAsk={onAsk} />) : <Empty text={L("Burada kayıt yok.", "Nothing saved here.")} />}
+      {cat ? cat.needs.map((n) => <PanoGroup key={n.key} need={n} fresh={fresh} onCompare={onCompare} onReveal={onReveal} onAsk={onAsk} />) : <Empty text={L("Burada kayıt yok. Eklentiyle bir sayfa kaydet ya da sohbete bir link bırak.", "Nothing saved here. Save a page with the extension or drop a link in the chat.")} />}
     </>
   );
 }
@@ -350,7 +350,7 @@ function ListPage({ board, view, plan, fresh, onCompare, onReveal, onAsk, onIlha
       {!needs.length && !ideas.length && (
         <Empty
           sleepy={view === "all"}
-          text={view === "all" ? L("Henüz kayıt yok. Eklentiyle bir sayfa kaydet ya da sohbette bir link bırak; hepsi burada birikir.", "Nothing saved yet. Save a page with the extension or drop a link in the chat; it all gathers here.") : L("Burada kayıt yok.", "Nothing saved here.")}
+          text={view === "all" ? L("Henüz kayıt yok. Eklentiyle bir sayfa kaydet ya da sohbette bir link bırak; hepsi burada birikir.", "Nothing saved yet. Save a page with the extension or drop a link in the chat; it all gathers here.") : L("Burada kayıt yok. Eklentiyle bir sayfa kaydet ya da sohbete bir link bırak.", "Nothing saved here. Save a page with the extension or drop a link in the chat.")}
         />
       )}
     </>
