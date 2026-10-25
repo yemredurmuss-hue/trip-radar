@@ -200,10 +200,13 @@ async function loadBase(trip: Trip, items: Item[]): Promise<{ base: DecisionCont
     listListings(items.map(listingKeyOf)),
   ]);
   const cityCenters: DecisionContext["cityCenters"] = {};
-  for (const key of new Set(items.map((i) => cityKey(i.city, i.country)).filter(Boolean))) {
-    const hit = await d.get("geocache", key);
+  // (read side by side, not one city after another: every board read comes through here)
+  const keys = [...new Set(items.map((i) => cityKey(i.city, i.country)).filter(Boolean))];
+  const hits = await Promise.all(keys.map((key) => d.get("geocache", key)));
+  keys.forEach((key, n) => {
+    const hit = hits[n];
     if (hit?.lat != null && hit.lng != null) cityCenters[key] = { lat: hit.lat, lng: hit.lng };
-  }
+  });
   const base = makeContext(trip, items, { rates, cityCenters, analyses, preferences: preferences.map((p) => p.text), listings });
   return { base, preferences };
 }

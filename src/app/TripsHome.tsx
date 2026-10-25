@@ -272,7 +272,10 @@ export function TripsHome({ trips, items, openCaptures, onOpen, onDemo, onSettin
   useEffect(() => {
     const load = () => void getSettings().then(setSettings, () => setSettings(null));
     load();
-    const changed = () => load();
+    // (only the keys settings are made of: the offers' store, flights and rates write here all the time, 2026-10-25)
+    const changed = (ch: Record<string, unknown>, area: string) => {
+      if (area === "local" && ["provider", "apiKey", "model", "geminiKey", "geminiModel"].some((k) => k in ch)) load();
+    };
     chrome.storage?.onChanged?.addListener(changed);
     return () => chrome.storage?.onChanged?.removeListener(changed);
   }, []);

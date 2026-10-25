@@ -69,13 +69,26 @@ const wanted = (item: Item) => item.status === "booked" && liveKey(item) != null
  * Asks the server for the flights whose data may have changed (at most `max` at a time); true when something
  * new came. Quiet on failure: the board works without it.
  */
-export async function refreshFlights(items: Item[], opts: { kv?: KV; now?: Date; fetcher?: typeof fetch; max?: number } = {}): Promise<boolean> {
+/** A flight whose ask failed, by key, this visit: not asked again for 10 minutes (2026-10-25: it was, on every board read). */
+const failedAt = new Map<string, number>();
+const FAILED_WAIT_MS = 10 * 6e4;
+/** The ask going now: a second board read meanwhile waits for it instead of asking the same flights again. */
+let going: Promise<boolean> | null = null;
+
+export function refreshFlights(items: Item[], opts: { kv?: KV; now?: Date; fetcher?: typeof fetch; max?: number } = {}): Promise<boolean> {
+  // (a test's own fetcher or clock: on its own, never sharing the visit's ask)
+  if (opts.fetcher || opts.now) return askFlights(items, opts);
+  return (going ??= askFlights(items, opts).finally(() => (going = null)));
+}
+
+async function askFlights(items: Item[], opts: { kv?: KV; now?: Date; fetcher?: typeof fetch; max?: number }): Promise<boolean> {
   const kv = opts.kv ?? chromeKV;
   const now = opts.now ?? new Date();
   const get = opts.fetcher ?? fetch;
   const stored = await getLiveFlights(kv);
   const keys = [...new Set(items.filter(wanted).map(liveKey))].filter((k): k is string => !!k);
   const due = keys.filter((k) => {
+    if (now.getTime() - (failedAt.get(k) ?? 0) < FAILED_WAIT_MS) return false;
     const had = stored[k];
     if (!had) return true;
     return (now.getTime() - had.at) / 6e4 >= freshFor(had.flight, k.split("|")[1], now);
@@ -85,7 +98,10 @@ export async function refreshFlights(items: Item[], opts: { kv?: KV; now?: Date;
     const [number, day] = k.split("|");
     try {
       const res = await get(`${DEFAULT_SERVER.url}/functions/v1/flight?number=${encodeURIComponent(number)}&day=${day}`);
-      if (!res.ok) continue;
+      if (!res.ok) {
+        failedAt.set(k, now.getTime());
+        continue;
+      }
       const body = (await res.json()) as { flight?: FlightLive | null };
       if (body.flight === undefined) continue;
       if (JSON.stringify(stored[k]?.flight ?? null) !== JSON.stringify(body.flight)) changed = true;
@@ -93,7 +109,8 @@ export async function refreshFlights(items: Item[], opts: { kv?: KV; now?: Date;
       const gate = body.flight?.departure.gate ?? null;
       stored[k] = { flight: body.flight, at: now.getTime(), prevGate: was && gate && was !== gate ? was : (stored[k]?.prevGate ?? null) };
     } catch {
-      // offline or the server's down: asked again next time
+      // offline or the server's down: asked again in a while
+      failedAt.set(k, now.getTime());
     }
   }
   if (due.length) await kv.set(LIVE_KEY, stored);
