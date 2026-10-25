@@ -58,6 +58,20 @@ const spentUntil = new Map<string, number>();
 /** For the tests. */
 export const resetSpentModels = () => spentUntil.clear();
 /** Every model of the chain has used up today's free requests (the Claude backup takes over: llm/index.ts). */
+/**
+ * Gemini said no for now (a 429 of any kind, the gate's 402, a 5xx), whatever its words: with a Claude key, the next
+ * calls go to Claude for a while (2026-10-25, Emre: "kota dolunca Sonnet çalışsın"; a 429 whose message didn't say
+ * "per day" was never taken as the quota, so Claude never came).
+ */
+export const isGeminiLimit = (error: unknown): boolean =>
+  error instanceof GeminiSpentError || (error instanceof ApiError && (error.status === 429 || error.status === 402 || error.status >= 500));
+let limitedUntil = 0;
+const LIMITED_MS = 2 * 60_000;
+export const geminiLimited = (now: number = Date.now()): boolean => limitedUntil > now;
+export const noteGeminiLimit = (error: unknown, now: number = Date.now()): void => {
+  if (isGeminiLimit(error)) limitedUntil = now + LIMITED_MS;
+};
+
 export const geminiSpent = (first: string, now: number = Date.now()): boolean => [first, ...GEMINI_FALLBACKS].every((m) => (spentUntil.get(m) ?? 0) > now);
 
 /** Every Gemini model this key can fall back to has used up its free requests for today. */

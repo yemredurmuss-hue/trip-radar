@@ -5,7 +5,7 @@ import { getSettings } from "../db";
 import { aiGate } from "../share/ai";
 import { L } from "../i18n";
 import { anthropicNeedsSettings, anthropicProvider, anthropicUnreached, describeAnthropicError } from "./anthropic";
-import { describeGeminiError, geminiNeedsSettings, geminiProvider, geminiSpent, GeminiSpentError } from "./gemini";
+import { describeGeminiError, geminiLimited, geminiNeedsSettings, geminiProvider, geminiSpent, GeminiSpentError, isGeminiLimit, noteGeminiLimit } from "./gemini";
 import { queuedProvider, type AiCallOpts } from "./queue";
 import { MissingKeyError, type LlmProvider } from "./types";
 
@@ -28,11 +28,16 @@ async function ownProvider(): Promise<LlmProvider> {
     // 0.39.12 (Emre: "Claude otomatik devreye girsin"): with a Claude key too, Claude takes over once every Gemini model's
     // free requests for today are used up (the chat starts a fresh context with it, assistant.ts currentSession).
     const claude = s.apiKey ? () => (noteClaudeTakeover(s.model), anthropicProvider(new Anthropic({ apiKey: s.apiKey!, dangerouslyAllowBrowser: true }), s.model)) : null;
-    if (claude && geminiSpent(s.geminiModel)) return claude();
+    // (Gemini spent for the day, or said no in the last two minutes: Claude now, the chat too)
+    if (claude && (geminiSpent(s.geminiModel) || geminiLimited())) return claude();
     if (s.geminiKey) return withClaudeBackup(geminiProvider(new GoogleGenAI({ apiKey: s.geminiKey }), s.geminiModel), claude);
     const gate = await aiGate();
-    if (!gate) throw new MissingKeyError();
-    return geminiProvider(new GoogleGenAI({ apiKey: gate.ticket, httpOptions: { baseUrl: gate.baseUrl } }), s.geminiModel);
+    if (!gate) {
+      if (claude) return claude();
+      throw new MissingKeyError();
+    }
+    // (through the inviter's gate too, Claude behind it when this computer has a Claude key)
+    return withClaudeBackup(geminiProvider(new GoogleGenAI({ apiKey: gate.ticket, httpOptions: { baseUrl: gate.baseUrl } }), s.geminiModel), claude);
   }
   if (!s.apiKey) throw new MissingKeyError();
   return anthropicProvider(new Anthropic({ apiKey: s.apiKey, dangerouslyAllowBrowser: true }), s.model);
@@ -44,9 +49,11 @@ async function ownProvider(): Promise<LlmProvider> {
  */
 export function withClaudeBackup(gemini: LlmProvider, claude: (() => LlmProvider) | null): LlmProvider {
   if (!claude) return gemini;
-  const spent = (error: unknown) => error instanceof GeminiSpentError;
+  // (any "not now" from Gemini, its daily quota or its minute's, an overload: Claude goes on with this call)
+  const spent = (error: unknown) => (noteGeminiLimit(error), isGeminiLimit(error));
   return {
     ...gemini,
+    chatStep: (history, system, tools, opts) => gemini.chatStep(history, system, tools, opts).catch((error) => (noteGeminiLimit(error), Promise.reject(error))),
     extract: (capture, facts, trips) => gemini.extract(capture, facts, trips).catch((error) => (spent(error) ? claude().extract(capture, facts, trips) : Promise.reject(error))),
     generateJson: (system, prompt, schema, files, opts) =>
       gemini.generateJson(system, prompt, schema, files, opts).catch((error) => (spent(error) ? claude().generateJson(system, prompt, schema, files, opts) : Promise.reject(error))),

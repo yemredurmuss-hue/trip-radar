@@ -178,3 +178,23 @@ describe("who answered instead, noted for the line", () => {
     expect(state.value).toBeNull();
   });
 });
+
+describe("Claude goes on when Gemini says no for now (2026-10-25, 'kota dolunca Sonnet çalışsın')", () => {
+  it("any 429 (not only one that says 'per day'), the gate's 402, a 5xx: the call goes on with Claude", async () => {
+    const { withClaudeBackup } = await import("../src/lib/llm");
+    const { isGeminiLimit } = await import("../src/lib/llm/gemini");
+    const schema = z.object({ ok: z.boolean() });
+    for (const status of [429, 402, 503]) {
+      const err = new ApiError({ message: "You exceeded your current quota, please check your plan and billing details.", status });
+      expect(isGeminiLimit(err)).toBe(true);
+      const gemini = { generateJson: async () => { throw err; } } as never;
+      const claude = () => ({ generateJson: async () => ({ ok: true }) }) as never;
+      const both = withClaudeBackup(gemini, claude);
+      expect(await both.generateJson("s", "p", schema)).toEqual({ ok: true });
+    }
+  });
+  it("a bad request is not a limit: no Claude for it", async () => {
+    const { isGeminiLimit } = await import("../src/lib/llm/gemini");
+    expect(isGeminiLimit(new ApiError({ message: "bad", status: 400 }))).toBe(false);
+  });
+});

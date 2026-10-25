@@ -111,7 +111,7 @@ import { saveReady } from "../lib/tripShelf";
 import { takeLangUndo } from "./langSwitch";
 import { START_CARD_SHOWN, StartGuideCard } from "./start/StartGuideCard";
 import { WorkLine } from "./WorkPill";
-import { approxDates, dayText, isPlaceholder, momentPhotoKeys } from "../lib/startTrip";
+import { approxDates, dayText, eventPhotoQuery, isPlaceholder, knownPlaceOf, momentPhotoKeys } from "../lib/startTrip";
 
 interface Props {
   trip: Trip;
@@ -456,28 +456,34 @@ export function TripPanel({ trip, items, plan, openCaptures, decisions, onOpenIt
   useEffect(() => {
     const name = mainNames[0];
     const key = name ? cityKeyOf(name) : null;
-    if (!placesSettled || !name || !key || trip.coverLooked === key || lookingCover.current.has(`${trip.id}:${key}`)) return;
+    // (asked for what the trip is: a festival by its own name, "Sziget Festival", a place by its English one, "Budapest";
+    // 2026-10-25: "Budapeşte" found nothing on Commons and the cover stayed a fountain. "2:" marks the looks made so, so a
+    // trip looked at the old way is looked at once more.)
+    const look = key ? `2:${key}` : null;
+    if (!placesSettled || !name || !key || trip.coverLooked === look || lookingCover.current.has(`${trip.id}:${look}`)) return;
     // (after the first photo pass: there is something to compare with, or nothing was found)
     const current = trip.cityImages?.[key];
     if (current === undefined) return;
     // (a photo the pass above asks for again, an old Wikipedia one: its answer first, so neither writes over the other)
     if (wantsCityImage(current, true, creditOf(current, trip.photoCredits)) && !photoDone.current.has(`${trip.id}:${key}`)) return;
-    lookingCover.current.add(`${trip.id}:${key}`);
+    lookingCover.current.add(`${trip.id}:${look}`);
+    const festival = trip.intent?.playbook === "festival" && trip.intent.name?.trim() ? trip.intent.name.trim() : null;
+    const query = festival ? eventPhotoQuery(festival, true).query : (knownPlaceOf(name)?.en ?? name);
     void (async () => {
       const proxy = await imageProxy();
-      const { answered, pick } = await lookAgainAtCover(name, current, { proxy, judge: modelCoverJudge });
+      const { answered, pick } = await lookAgainAtCover(name, current, { proxy, judge: modelCoverJudge, query });
       if (!answered) return;
       await updateTrip(
         trip.id,
         (t) => {
           const swap = pick != null && pick.url !== t.cityImages?.[key];
-          const next = { ...t, coverLooked: key, ...(swap ? { cityImages: { ...t.cityImages, [key]: pick.url }, heroImage: pick.url } : {}) };
+          const next = { ...t, coverLooked: look!, ...(swap ? { cityImages: { ...t.cityImages, [key]: pick.url }, heroImage: pick.url } : {}) };
           return swap ? { ...next, photoCredits: keptCredits(next, [pick]) } : next;
         },
         { touch: false },
       );
     })();
-  }, [trip.id, trip.coverLooked, trip.cityImages, mainNames, placesSettled]);
+  }, [trip.id, trip.coverLooked, trip.cityImages, mainNames, placesSettled, trip.intent]);
   // The mood sentence: written once per set of main places and language by the traveller's model; one with a number is dropped.
   const moodLang = contentLang(trip.lang);
   const moodFor = moodKey(mainNames, contentTag(trip.lang, moodLang));
