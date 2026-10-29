@@ -1,6 +1,6 @@
 # Trip Radar · Gizlilik politikası / Privacy policy
 
-Son güncelleme / Last updated: 2026-10-25 · Sürüm / Version: 0.47.25
+Son güncelleme / Last updated: 2026-10-29 · Sürüm / Version: 0.47.26
 
 ---
 
@@ -62,13 +62,12 @@ Eklenti yalnız "Kaydet"e bastığın sekmeyi, yalnız o anda okur. Arka planda 
   ve eklentinin simgesinde her sekmenin kaçıncı aday olduğunu yazar. Bunun için yalnız açtığı sekmeleri hatırlar
   (tarayıcı kapanınca unutulur); o sekmelerin sayfaları okunmaz. "Burada satın al" dediğin sekme kapanınca plan
   "Aldın mı?" diye sorar. Bunun için `tabGroups` izni kullanılır.
-- **"Sitede benle gel":** yalnız senin tek tek izin verdiğin uçuş sitelerinde (Skyscanner, Kiwi.com; Chrome her site için
-  ayrıca sorar) ve yalnız sayfanın adresi planındaki bir uçuşun araması olduğunda, sayfanın üstünde ince bir şerit ve
-  sonuçların yanında "+" gösterir. Bunun için o sayfadaki sonuçların metnini (saat, fiyat, aktarma) bilgisayarında okur;
-  okunan hiçbir yere gönderilmez. "+" ya da "Ekrandakileri desteye ekle"ye basmadıkça hiçbir şey kaydedilmez; bastığında
-  yalnız o sonucun metni (ya da görünen sonuçlar ve ekran görüntüsü) "Kaydet"teki gibi okunur ve yapay zekâya gider.
-  Sitedeki bağlantılar değiştirilmez. İzni açılır pencerede "…'da benle gelme" ile ya da Chrome'un eklenti ayarlarından
-  geri alırsın.
+- **"Seyahat sitelerinde + düğmesi":** yalnız senin izin verdiğin seyahat sitelerinde (Chrome bir kez sorar) sonuçların
+  yanında "+", sağ kenarda gezinin kaç kaydı olduğunu gösteren küçük bir cep ve bir rezervasyon onayı sayfasında "Kaydedeyim
+  mi?" sorusu gösterir. Bunun için sayfa açılırken, sen kaydırınca ya da fareyi oynatınca o sayfadaki sonuçların metnini
+  (saat, fiyat) bilgisayarında okur; okunan hiçbir yere gönderilmez. "+"ya basmadıkça hiçbir şey kaydedilmez; bastığında
+  yalnız o sonucun metni "Kaydet"teki gibi okunur ve yapay zekâya gider. Sitedeki bağlantılar değiştirilmez. İzni
+  Ayarlar'daki "Seyahat sitelerinde + düğmesi" anahtarıyla ya da Chrome'un eklenti ayarlarından geri alırsın.
 
 Kaydettiğin sayfanın metninde ya da ekran görüntüsünde görünen her şey (örneğin bir rezervasyon sayfasındaki adın)
 okunur ve yapay zekâya gönderilir. Kişisel bilgi gösteren bir sayfayı kaydetmek istemiyorsan "Kaydet"e basma.
@@ -288,6 +287,11 @@ Pratikte:
 Eklenti kendini otomatik günceller. Bu politika değişirse üstteki tarih ve sürüm güncellenir.
 Önemli bir değişiklik (yeni bir veri türü ya da yeni bir alıcı gibi), değişikliği getiren sürümle birlikte bu
 sayfada açıkça yazılır.
+
+0.47.26'da değişenler: seyahat sitelerinde eklenti daha az okur. Sayfanın üstündeki şerit, sonuçların yanındaki etiketler ve
+sitede görülen fiyatın izlenmesi kaldırıldı; sonuçlar artık sayfa her değiştiğinde değil, yalnız sayfa açılırken, sen
+kaydırınca ve fareyi oynatınca bulunur. Bir rezervasyon onayına yalnız adresi ya da başlığı onay sayfası olduğunu söyleyen
+sayfalarda, ilk saniyelerde en çok üç kez bakılır. Yeni bir veri türü ya da alıcı yok.
 
 0.45.0'da değişenler: simge penceresi açıldığında (ve izin verdiğin seyahat sitelerinde) sayfanın bir rezervasyon onayı
 olup olmadığına bu bilgisayarda bakılır (onay sözü ve onay numarası); bulunursa yalnız sorar, sen "Kaydet" demeden hiçbir şey
