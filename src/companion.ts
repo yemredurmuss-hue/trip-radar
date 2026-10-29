@@ -827,7 +827,7 @@ function start() {
     if (stale || confirmAsk || confirmTries >= 3 || where?.saved || document.hidden) return;
     confirmTries++;
     if (!mayConfirm()) return;
-    const c = confirmationOf({ text: (document.body?.innerText ?? "").slice(0, 60_000), jsonLd: ldBlocks(), title: document.title });
+    const c = confirmationOf({ text: (document.body?.innerText ?? "").slice(0, 60_000), jsonLd: ldBlocks(), title: document.title, url: location.href });
     if (!c) return;
     confirmTries = 3;
     confirmAsk = c;
