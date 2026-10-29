@@ -368,7 +368,8 @@ function TripRulesSettings() {
 }
 
 /**
- * "Seyahat sitelerinde benle gel" (0.42.0): one switch for the travel sites (Chrome asks once), and the other sites allowed
+ * "Seyahat sitelerinde + düğmesi" (0.42.0; named so in 0.47.26, Emre: "benle gezen diye bir özellik olmasın"): one switch for
+ * the travel sites (Chrome asks once), and the other sites allowed
  * one by one from the toolbar ("Bu sitede de"), each taken back here.
  */
 function AlongSettings() {
@@ -391,7 +392,7 @@ function AlongSettings() {
     <div className="field">
       <label className="row-inline" style={{ alignItems: "center", gap: 8 }}>
         <input type="checkbox" checked={travel} onChange={(e) => void toggle(e.target.checked)} />
-        {L("Seyahat sitelerinde benle gel", "Come along on travel sites")}
+        {L("Seyahat sitelerinde + düğmesi", "A + on travel sites")}
       </label>
       <span className="muted small">
         {L(

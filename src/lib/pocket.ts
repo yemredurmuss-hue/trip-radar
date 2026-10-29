@@ -100,9 +100,11 @@ export async function pocketFor(tripId: string | null): Promise<Pocket> {
   const mine = trip ? items.filter((i) => i.tripId === trip.id && i.status !== "dismissed") : [];
   const range = trip ? (trip.confirmedDates ?? profileTrips([trip], items)[0]?.range ?? null) : null;
   const photo = trip ? ([trip.heroImage, ...mine.sort((a, b) => b.createdAt - a.createdAt).map((i) => i.imageUrl)].find(photoOk) ?? null) : null;
+  // (a save counts the moment it's pressed, while it's still being read; Emre 2026-10-29: "ekliyorum yine 19 yazıyor")
+  const reading = trip ? captures.filter((c) => c.forTripId === trip.id && (c.status === "pending" || c.status === "processing")).length : 0;
   return {
     // (its small pictures at the size they're drawn, 2x: never a hero's 2400 px photo for a 32 px square)
-    trip: trip ? { id: trip.id, title: trip.title, when: range ? formatDateRange(range.start, range.end) : null, count: mine.length, decks: deckCounts(mine), photo: photo && sizedPhoto(photo, THUMB_W) } : null,
+    trip: trip ? { id: trip.id, title: trip.title, when: range ? formatDateRange(range.start, range.end) : null, count: mine.length + reading, decks: deckCounts(mine), photo: photo && sizedPhoto(photo, THUMB_W) } : null,
     rows: pocketRows(trip?.id ?? null, captures, items).map((r) => (r.photo ? { ...r, photo: sizedPhoto(r.photo, THUMB_W) } : r)),
     waiting: key ? 0 : captures.filter((c) => c.status === "pending" || c.status === "processing").length,
     key,

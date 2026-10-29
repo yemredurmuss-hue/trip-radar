@@ -1,24 +1,22 @@
-// Benle gezen eklenti, seviye 2: "Sitede benle gel" (lib/companion.ts). Runs only on the sites the traveller allowed one by
-// one. On a flight search for a flight on the plan a thin strip says which row it is for ("Bangkok ✈ İstanbul, 2 Nis
-// planında · destende 7 seçenek"); each result in view gets a "+" (and where it stands against the deck); a hotel's or a
-// tour's list gets the same "+". On the right edge the gezi cebi (0.44.0, lib/pocket.ts): the current trip, this page ("+ Konaklama
-// destesine ekle" on a place's own page, "+ ile ekle" on a list), what was added last with how each stands, the
-// trip's board. The first "+" for a country not yet answered asks which trip, here on the page (Hangi gezi,
-// lib/tripRules.ts). Everything it draws is in its own closed shadow root, over the page, never inside the site's own
-// elements; nothing is saved until a press; no link on the site is changed.
+// Sitede "+" (lib/companion.ts), 0.47.26 sade hali (Emre 2026-10-29: "+ basınca desteye eklesin istiyorum sadece"; Skyscanner
+// açıkken bilgisayar donuyordu). Runs only on the sites the traveller allowed. Three things, nothing else:
+//  · a "+" beside each result (and beside a place's own name): one press saves it to the trip's deck, as the toolbar does;
+//  · the gezi cebi's tab on the right edge: the trip's cover and how many are saved on it; a press opens the toolbar's window;
+//  · a booking's confirmation page: "Kaydedeyim mi?", looked for a few times after the page opens, never read again and again.
+// It never watches the page: a change only marks the results stale; they are looked for again on the page's first seconds,
+// after a scroll and when the mouse moves (at most once a second). Gone (0.47.26): the route strip, the labels beside the
+// results, the price seen on the site, the pocket's open panel. The first "+" for a country not yet answered asks which
+// trip, here on the page (lib/tripRules.ts). Everything it draws is in its own closed shadow root, over the page, never
+// inside the site's own elements; nothing is saved until a press; no link on the site is changed.
 import {
-  cardFacts,
-  cardLabel,
   companionSiteOf,
   deckWord,
-  inDeckByName,
   isOfferText,
   isResultText,
   offerPageKind,
   originOf,
   siteKindOf,
   timedSite,
-  type CardFacts,
   type CompanionAsk,
   type CompanionRoute,
   type CompanionWhere,
@@ -26,9 +24,8 @@ import {
   type SiteKind,
   type TripPick,
 } from "./lib/companion";
-import type { Pocket, PocketRow } from "./lib/pocket";
+import type { Pocket } from "./lib/pocket";
 import { confirmationOf, type Confirmation } from "./lib/confirm";
-import { formatPrice } from "./lib/items";
 import { L, loadLang } from "./lib/i18n";
 import { collectPage } from "./lib/pagecapture";
 
@@ -64,19 +61,10 @@ const ask = <T,>(message: CompanionAsk): Promise<T | null> =>
 const CSS = `
 :host { all: initial; }
 [hidden] { display: none !important; }
-.strip { position: fixed; z-index: 2147483646; top: 10px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 10px;
-  max-width: calc(100vw - 32px); padding: 8px 8px 8px 14px; border-radius: 99px; background: #1c1a33; color: #fff;
-  font: 600 13px/1.3 "Plus Jakarta Sans", system-ui, sans-serif; box-shadow: 0 10px 30px -12px rgba(28,26,51,.6); }
-.strip b { font-weight: 800; white-space: nowrap; }
-.strip small { color: #c9c2f5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.strip button { font: 750 12.5px/1 inherit; border: 0; border-radius: 99px; padding: 8px 12px; cursor: pointer; background: #5b45e0; color: #fff; white-space: nowrap; }
-.strip button.q { background: transparent; color: #c9c2f5; padding: 8px; }
 button:focus-visible, .plus:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 1px; }
 .layer { position: absolute; top: 0; left: 0; width: 0; height: 0; z-index: 2147483645; pointer-events: none; }
 .pin { position: absolute; display: flex; align-items: center; gap: 6px; pointer-events: auto; }
 .pin.out { flex-direction: column-reverse; align-items: flex-start; }
-.pin.out .tag { max-width: var(--room, 120px); white-space: normal; border-radius: 10px; }
-.pin.edge .tag { position: absolute; right: calc(15px + var(--step, 0px)); top: calc(4px - var(--h, 30px) / 2); white-space: nowrap; }
 .pin.edge .plus .lbl { display: none; }
 .pin.edge .plus, .pin.edge.hot .plus, .pin.edge .plus:hover { width: 30px; padding: 0; }
 .plus { width: 30px; height: 30px; border-radius: 99px; border: 0; background: #5b45e0; color: #fff; font: 800 18px/1 system-ui, sans-serif; cursor: pointer;
@@ -89,9 +77,6 @@ button:focus-visible, .plus:focus-visible { outline: 3px solid #cfc7ff; outline-
 .pin.hot .plus, .plus:hover, .plus:focus-visible { padding: 0 12px 0 10px; gap: 5px; }
 .plus.done { background: #1f7a45; font-size: 14px; }
 .plus.read { background: #fff; color: #5b45e0; box-shadow: inset 0 0 0 2px #5b45e0; font-size: 12px; }
-.tag { padding: 4px 9px; border-radius: 99px; background: #efecff; color: #4a36c9; font: 800 11.5px/1.2 "Plus Jakarta Sans", system-ui, sans-serif;
-  box-shadow: inset 0 0 0 1px #dcd6fb; white-space: nowrap; }
-.tag.in { background: #e7f5ec; color: #1f7a45; box-shadow: inset 0 0 0 1px #bfe3c9; }
 .dock { position: fixed; z-index: 2147483646; right: 20px; bottom: 20px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
   font: 600 13px/1.4 "Plus Jakarta Sans", system-ui, sans-serif; color: #1c1a33; }
 .tab { position: fixed; z-index: 2147483646; right: 0; top: 38vh; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 8px 7px 8px 9px; border: 0;
@@ -104,48 +89,6 @@ button:focus-visible, .plus:focus-visible { outline: 3px solid #cfc7ff; outline-
 .tab .add { width: 22px; height: 22px; border-radius: 99px; background: #fff; color: #5b45e0; display: grid; place-items: center; font-size: 15px; }
 @keyframes bump { 0% { transform: scale(1); } 40% { transform: scale(1.45); background: #1f7a45; } 100% { transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) { .tab .n.bump { animation: none; } }
-.cep { position: fixed; z-index: 2147483646; right: 0; top: 64px; width: 280px; max-height: calc(100vh - 96px); overflow: auto; border-radius: 14px 0 0 14px; background: #fff;
-  box-shadow: -8px 0 28px rgba(28,26,51,.22), 0 0 0 1px #dcd8e8; display: flex; flex-direction: column; font: 600 12.5px/1.4 "Plus Jakarta Sans", system-ui, sans-serif; color: #1c1a33; }
-.cep .hd { display: flex; align-items: center; gap: 4px; padding: 8px 6px 8px 12px; background: linear-gradient(90deg,#1c1a33,#3b2f7a); color: #fff; }
-.cep .hd .tp { all: unset; flex: 1; min-width: 0; display: flex; align-items: center; gap: 9px; cursor: pointer; border-radius: 8px; }
-.cep .hd .cl { border: 0; background: none; color: #cfc8f5; font: 700 18px/1 system-ui, sans-serif; cursor: pointer; padding: 4px 8px; border-radius: 8px; }
-.cep .hd .cl:hover { background: rgba(255,255,255,.12); }
-.cep .hd .th { width: 32px; height: 32px; border-radius: 8px; overflow: hidden; flex: none; display: grid; place-items: center; background: rgba(255,255,255,.14); font-weight: 800; }
-.cep .hd .th img { width: 100%; height: 100%; object-fit: cover; }
-.cep .hd span.t { min-width: 0; display: grid; }
-.cep .hd b { font-size: 13px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cep .hd small { font-size: 11px; color: #cfc8f5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cep .hd em { margin-left: auto; font-style: normal; color: #cfc8f5; }
-.cep .bd { padding: 12px; display: flex; flex-direction: column; gap: 9px; }
-.cep .go.ghost { background: #fff; color: #4a36c9; box-shadow: inset 0 0 0 1.5px #c9bffa; }
-.cep .r > b { flex: 1; min-width: 0; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cep .r .x { opacity: 0; transition: opacity 120ms; }
-.cep .r:hover .x, .cep .r .x:focus-visible { opacity: 1; }
-@media (hover: none) { .cep .r .x { opacity: 1; } }
-.cep .k { font-size: 10.5px; font-weight: 800; color: #8e8aa6; }
-.cep .pg { font-size: 13px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-.cep .go { font: 800 13px/1.2 "Plus Jakarta Sans", system-ui, sans-serif; border: 0; border-radius: 10px; padding: 10px; background: #5b45e0; color: #fff; cursor: pointer; }
-.cep .go.done { background: #e7f5ec; color: #1f7a45; cursor: default; }
-.cep .go:disabled { cursor: default; }
-.cep .note { font-size: 11.5px; color: #5d5a78; line-height: 1.45; }
-.cep .lnk { align-self: flex-start; border: 0; background: none; padding: 0; color: #4a36c9; font: 800 12px/1.2 "Plus Jakarta Sans", system-ui, sans-serif; cursor: pointer; }
-.cep .r { display: flex; align-items: center; gap: 7px; min-width: 0; }
-.cep .r .th { width: 28px; height: 28px; border-radius: 7px; overflow: hidden; flex: none; display: grid; place-items: center; background: #efecff; color: #4a36c9; font-weight: 800; font-size: 12px; }
-.cep .r .th img { width: 100%; height: 100%; object-fit: cover; }
-.cep .r span.t { flex: 1; min-width: 0; display: grid; }
-.cep .r b { font-weight: 750; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cep .r .lnk { align-self: center; font-size: 11px; }
-.cep .r small { font-size: 10.5px; color: #5d5a78; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cep .st { flex: none; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 99px; background: #e7f5ec; color: #1f7a45; }
-.cep .st.reading { background: #efecff; color: #4a36c9; }
-.cep .st.failed { background: #fde8e4; color: #b23a1d; }
-.cep .x { flex: none; border: 0; background: none; color: #8e8aa6; font: 800 15px/1 system-ui, sans-serif; cursor: pointer; padding: 2px 4px; border-radius: 6px; }
-.cep .x:hover { color: #b23a1d; background: #f4f2ff; }
-.cep .hint { padding: 2px 2px 0; color: #4a36c9; font-size: 12.5px; font-weight: 700; line-height: 1.4; }
-.cep .warn { padding: 8px 10px; border-radius: 10px; background: #fff7e8; color: #8a5a00; font-size: 11.5px; font-weight: 700; }
-.cep .ft { display: flex; justify-content: space-between; gap: 8px; padding: 9px 12px; border-top: 1px solid #efedf5; }
-.cep .ft button { border: 0; background: none; padding: 0; cursor: pointer; font: 800 12px/1.2 "Plus Jakarta Sans", system-ui, sans-serif; color: #4a36c9; }
-.cep .ft button.q { color: #8e8aa6; font-weight: 700; }
 .ask { width: 340px; max-height: min(460px, calc(100vh - 120px)); overflow: auto; padding: 14px; border-radius: 14px; background: #fff;
   box-shadow: 0 0 0 1px #dcd8e8, 0 18px 40px rgba(28,26,51,.22); display: flex; flex-direction: column; gap: 8px; }
 .ask b { font-size: 14.5px; font-weight: 800; }
@@ -249,25 +192,19 @@ function start() {
   const root = host.attachShadow({ mode: "closed" });
   const style = document.createElement("style");
   style.textContent = CSS;
-  const strip = document.createElement("div");
-  strip.className = "strip";
-  strip.hidden = true;
   const layer = document.createElement("div");
   layer.className = "layer";
   const dock = document.createElement("div");
   dock.className = "dock";
   const side = document.createElement("div");
-  root.append(style, strip, layer, side, dock);
+  root.append(style, layer, side, dock);
   document.documentElement.append(host);
 
   let route: CompanionRoute | null = null;
   let where: CompanionWhere | null = null;
   let href = "";
-  let closed = false;
   let single: SiteKind | null = null;
-  // Gezi cebi: hidden on this site (its ×), open or not, what it shows; this page's "Desteye ekle".
-  let sideHidden = false;
-  let sideOpen = false;
+  // Gezi cebi's tab: the trip and how many are saved on it; this page's "Desteye ekle".
   let pocket: Pocket | null = null;
   let pageState: "idle" | "busy" | "done" = "idle";
   let stale = false;
@@ -278,16 +215,13 @@ function start() {
   let confirmTries = 0;
   let toast: string | null = null;
   let asking: { what: string; then: (pick: TripPick) => void } | null = null;
-  let cards: { el: Element; facts: CardFacts; pin: HTMLDivElement }[] = [];
+  // (step: how far the label steps left of the site's own button on the card's top edge, found when the "+" is drawn)
+  let cards: { el: Element; pin: HTMLDivElement; step: number }[] = [];
   const added = new WeakSet<Element>();
   const reading = new WeakSet<Element>();
-  // (fiyat izleme: the chosen flight's price here, asked once a page; its answer, what it saves)
-  let seen: { href: string; save: number | null } | null = null;
-  const HIDE = `pillHidden:${location.hostname}`;
   onStale = () => {
     if (stale) return;
     stale = true;
-    sideOpen = false;
     drawSide();
     drawDock();
   };
@@ -300,8 +234,6 @@ function start() {
   const withTrip = (what: string, send: (pick: TripPick) => Promise<boolean>) => {
     // (the trip on the pocket's top is where it goes: said so, so the save and the pocket never disagree)
     if (!mustAsk()) return void send(!route && knownTrip() ? { tripId: knownTrip()!.id } : {});
-    sideOpen = false;
-    drawSide();
     asking = {
       what,
       then: (pick) => {
@@ -416,7 +348,6 @@ function start() {
       dock.append(t);
       return;
     }
-    if (closed) return;
     if (asking) {
       const box = document.createElement("div");
       box.className = "ask";
@@ -617,7 +548,7 @@ function start() {
     }
   };
 
-  /** What the pocket shows: the trip the page goes to (else the current one) and what was added to it last. */
+  /** The gezi cebi's tab: the trip the page goes to (else the current one) and how many are saved on it. */
   const loadPocket = async (bump = false) => {
     const p = await ask<Pocket>({ type: "desk:pocket", tripId: knownTrip()?.id ?? null });
     if (!p) return;
@@ -642,14 +573,6 @@ function start() {
       }
       return Boolean(ok?.ok);
     });
-  /** "Ekrandakini ekle": what is in view, with its screenshot (a list whose results aren't found, any other page). */
-  const addView = () =>
-    withTrip(L("Ekrandakiler", "What's on screen"), async (pick) => {
-      const r = await ask<SavedOnSite>({ type: "desk:shot", url: location.href, title: document.title, text: collectPage().viewportText.slice(0, 12_000), ...pick });
-      if (r?.ok) said(r);
-      return Boolean(r?.ok);
-    });
-
   const thumb = (photo: string | null | undefined, title: string) => {
     const th = document.createElement("span");
     th.className = "th";
@@ -666,222 +589,31 @@ function start() {
     } else initial();
     return th;
   };
-  const twoLines = (title: string, sub: string) => {
-    const t = document.createElement("span");
-    t.className = "t";
-    const b = document.createElement("b");
-    b.textContent = title;
-    const small = document.createElement("small");
-    small.textContent = sub;
-    t.append(b, small);
-    return t;
-  };
-  const button = (cls: string, text: string, onclick: () => void) => {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = cls;
-    b.textContent = text;
-    b.onclick = onclick;
-    return b;
-  };
-  const DECK_OF: Partial<Record<SiteKind, { cat: "stay" | "flight" | "activity" | "transport"; word: () => string }>> = {
-    stay: { cat: "stay", word: () => L("otel", "stays") },
-    flight: { cat: "flight", word: () => L("uçuş", "flights") },
-    activity: { cat: "activity", word: () => L("tur", "tours") },
-    transport: { cat: "transport", word: () => L("yol", "rides") },
-  };
-  const STATE_WORD: Record<PocketRow["state"], () => string> = {
-    in: () => L("destede", "in the deck"),
-    reading: () => L("okunuyor", "being read"),
-    failed: () => L("okunamadı", "couldn't read"),
-  };
-
-  /** "Bundan sonrakiler hangi geziye?": the trip on the pocket's top changed; what comes next goes there. */
-  const changeTrip = () => {
-    if (!where?.trips.length) return;
-    asking = {
-      what: L("Bundan sonrakiler", "What comes next"),
-      then: (pick) => {
-        asking = null;
-        drawDock();
-        void ask<{ ok: boolean; tripId: string | null; title: string | null }>({ type: "desk:current", ...pick }).then((r) => {
-          if (r?.ok && r.tripId && where) where = { ...where, trip: { id: r.tripId, title: r.title ?? "" } };
-          void loadPocket();
-        });
-      },
-    };
-    sideOpen = false;
-    drawSide();
-    drawDock();
-  };
-
   /**
-   * Gezi cebi on the right edge: closed, a small tab (the trip's cover, how many on it, a "+" on a place's own page);
-   * open, the trip, this page, what was added last, the board. One surface for all four jobs.
+   * Gezi cebi on the right edge (0.47.26 sade, Emre 2026-10-29: "içinde bir şey göstermene gerek yok"): the trip's cover and
+   * how many are saved on it, the number going up with each "+" (saves still being read count too, lib/pocket.ts); a press
+   * opens the toolbar's own window (the same as the icon), else, where Chrome won't, the trip's board.
    */
   const drawSide = (bump = false) => {
     side.replaceChildren();
-    if (stale || closed || sideHidden) return;
     const trip = pocket?.trip ?? null;
-    const listy = !single && !route && cards.length > 0;
-    if (!trip && !single && !listy) return;
-    const inDeck = pageState === "done" || (pageState === "idle" && Boolean(where?.saved));
-    // (the number on the tab: this site's deck on the trip, the hotels on a hotel site; the whole trip elsewhere)
-    const deck = trip && DECK_OF[kind] ? { n: trip.decks?.[DECK_OF[kind]!.cat] ?? 0, word: DECK_OF[kind]!.word() } : null;
-    if (!sideOpen) {
-      const tab = document.createElement("button");
-      tab.type = "button";
-      tab.className = "tab";
-      tab.setAttribute("aria-label", trip ? (deck ? L(`Gezi cebi: ${trip.title}, ${deckWord(kind)} destesinde ${deck.n}`, `Trip pocket: ${trip.title}, ${deck.n} in ${deckWord(kind)}`) : L(`Gezi cebi: ${trip.title}, ${trip.count} kayıt`, `Trip pocket: ${trip.title}, ${trip.count} saved`)) : L("Gezi cebi", "Trip pocket"));
-      tab.append(thumb(trip?.photo, trip?.title ?? "+"));
-      if (trip) {
-        const n = document.createElement("span");
-        n.className = `n${bump ? " bump" : ""}`;
-        n.textContent = String(deck ? deck.n : trip.count);
-        tab.append(n);
-        if (deck) {
-          const w = document.createElement("span");
-          w.className = "w";
-          w.textContent = deck.word;
-          tab.append(w);
-        }
-      }
-      if (single && !inDeck) {
-        const add = document.createElement("span");
-        add.className = "add";
-        add.textContent = "+";
-        tab.append(add);
-      }
-      // (0.45.0, tek bakış: the tab opens the toolbar's own window, the same one card; where Chrome won't, the pocket here)
-      tab.onclick = () =>
-        void ask<{ ok: boolean }>({ type: "desk:popup" }).then((r) => {
-          if (r?.ok || stale) return;
-          sideOpen = true;
-          drawSide();
-          void loadPocket();
-        });
-      side.append(tab);
-      return;
-    }
-    const box = document.createElement("div");
-    box.className = "cep";
-    box.setAttribute("role", "dialog");
-    box.setAttribute("aria-label", L("Gezi cebi", "Trip pocket"));
-    const hd = document.createElement("div");
-    hd.className = "hd";
-    const tp = document.createElement("button");
-    tp.type = "button";
-    tp.className = "tp";
-    // (0.44.2, Emre: "çok karışık, çok daha sade"): the trip and one number; one button; the last three by name; the board.
-    const many = deck ? `${deck.n} ${deck.word}` : trip ? L(`${trip.count} kayıt`, `${trip.count} saved`) : L("İlk ekleme geziyi açar", "The first add starts one");
-    tp.append(thumb(trip?.photo, trip?.title ?? "+"), twoLines(trip?.title ?? L("Henüz gezi yok", "No trip yet"), many));
-    if (where?.trips.length) {
-      const em = document.createElement("em");
-      em.textContent = "▾";
-      tp.append(em);
-      tp.setAttribute("aria-label", L("Başka gezi seç", "Pick another trip"));
-    }
-    tp.onclick = changeTrip;
-    hd.append(
-      tp,
-      button("cl", "×", () => {
-        sideOpen = false;
-        drawSide();
-      }),
-    );
-    hd.lastElementChild!.setAttribute("aria-label", L("Kapat", "Close"));
-    const bd = document.createElement("div");
-    bd.className = "bd";
-    if (single) {
-      const go = button(`go${inDeck ? " done" : ""}`, inDeck ? L("✓ Destede", "✓ In the deck") : pageState === "busy" ? L("Okunuyor…", "Reading…") : L(`+ ${deckWord(single)} destesine ekle`, `+ Add to ${deckWord(single)}`), addPage);
-      go.disabled = inDeck || pageState === "busy";
-      bd.append(go);
-    } else if (listy) {
-      const hint = document.createElement("div");
-      hint.className = "hint";
-      hint.textContent = L("Beğendiğin sonucun yanındaki + ile ekle", "Add a result with the + beside it");
-      bd.append(hint);
-    } else {
-      bd.append(button("go ghost", L("Ekrandakini ekle", "Add what's on screen"), addView));
-    }
-    const rows = (pocket?.rows ?? []).slice(0, 3);
-    if (rows.length) {
-      const k = document.createElement("span");
-      k.className = "k";
-      k.textContent = L("Son eklenenler", "Added last");
-      bd.append(k);
-      for (const r of rows) {
-        const row = document.createElement("div");
-        row.className = "r";
-        const name = document.createElement("b");
-        name.textContent = r.title;
-        row.append(thumb(r.photo, r.title), name);
-        // (only what isn't fine says so; a record in its deck is just its name)
-        if (r.state !== "in") {
-          const st = document.createElement("span");
-          st.className = `st ${r.state}`;
-          st.textContent = STATE_WORD[r.state]();
-          row.append(st);
-        }
-        if (r.state === "failed") row.append(button("lnk", L("tekrar", "retry"), () => void ask({ type: "desk:retry", id: r.id }).then(() => loadPocket())));
-        const x = button("x", "×", () => {
-          row.remove();
-          void ask({ type: "desk:remove", id: r.id }).then(() => loadPocket());
-        });
-        x.setAttribute("aria-label", L(`${r.title} kaldır`, `Remove ${r.title}`));
-        row.append(x);
-        bd.append(row);
-      }
-    }
-    if (pocket && !pocket.key) {
-      const w = document.createElement("div");
-      w.className = "warn";
-      w.textContent = pocket.waiting ? L(`AI bağlı değil · ${pocket.waiting} kayıt bekliyor`, `AI not connected · ${pocket.waiting} waiting`) : L("AI bağlı değil · eklediklerin bekler", "AI not connected · saves wait");
-      bd.append(w);
-    }
-    const ft = document.createElement("div");
-    ft.className = "ft";
-    ft.append(
-      button("", L("Panoyu aç ↗", "Open the board ↗"), () => void ask({ type: "desk:open", tripId: trip?.id ?? "" })),
-      button("q", L("Bu sitede gösterme", "Not on this site"), () => {
-        sideHidden = true;
-        sideOpen = false;
-        void chrome.storage.local.set({ [HIDE]: true }).catch(() => undefined);
-        drawSide();
-      }),
-    );
-    box.append(hd, bd, ft);
-    side.append(box);
-  };
-
-  const drawStrip = () => {
-    strip.replaceChildren();
-    if (!route || closed) return void (strip.hidden = true);
-    strip.hidden = false;
-    const what = document.createElement("b");
-    what.textContent = `Trip Radar · ${route.from} ✈ ${route.to}`;
-    const sub = document.createElement("small");
-    sub.textContent = L(`${route.title} planında · destende ${route.deck.length} seçenek`, `on your ${route.title} plan · ${route.deck.length} in your deck`);
-    // (no "Ekrandakileri desteye ekle": a result goes in by its own "+", one at a time; Emre 2026-10-24: "toplu listeye
-    // ekleme diye bir şey olamaz")
-    const open = document.createElement("button");
-    open.type = "button";
-    open.className = "q";
-    open.textContent = L("Planı aç", "Open the plan");
-    open.onclick = () => void ask({ type: "desk:open", tripId: route!.tripId });
-    const x = document.createElement("button");
-    x.type = "button";
-    x.className = "q";
-    x.setAttribute("aria-label", L("Bu sayfada gizle", "Hide on this page"));
-    x.textContent = "×";
-    x.onclick = () => {
-      closed = true;
-      drawStrip();
-      drawDock();
-      layer.replaceChildren();
-      cards = [];
-    };
-    strip.append(what, sub, open, x);
+    if (stale || !trip) return;
+    const tab = document.createElement("button");
+    tab.type = "button";
+    tab.className = "tab";
+    tab.title = trip.title;
+    tab.setAttribute("aria-label", L(`Gezi cebi: ${trip.title}, ${trip.count} kayıt`, `Trip pocket: ${trip.title}, ${trip.count} saved`));
+    tab.append(thumb(trip.photo, trip.title));
+    const n = document.createElement("span");
+    n.className = `n${bump ? " bump" : ""}`;
+    n.textContent = String(trip.count);
+    tab.append(n);
+    tab.onclick = () =>
+      void ask<{ ok: boolean }>({ type: "desk:popup" }).then((r) => {
+        if (r?.ok || stale) return;
+        void ask({ type: "desk:open", tripId: trip.id });
+      });
+    side.append(tab);
   };
 
   /**
@@ -917,14 +649,15 @@ function start() {
       acceptNode: (n) => {
         const v = n.nodeValue ?? "";
         if (v.length > 80 || !/\d/.test(v)) return NodeFilter.FILTER_REJECT;
+        // (a price, or a price split in two spans: "€" in one, "912" in the next; read before any box is measured, 0.47.26)
+        let price = PRICE.test(v);
+        if (!price) {
+          const near = n.parentElement?.parentElement?.textContent ?? "";
+          price = near.length < 60 && PRICE.test(near);
+        }
         // (a price written for screen readers only, 1 px wide, isn't where the card shows it: Skyscanner puts "Total cost
         // 8,480 TL" in the times' half, and the "+" landed in the middle of the card, on the price; 0.47.3)
-        if (!shownBox(n.parentElement)) return NodeFilter.FILTER_REJECT;
-        if (PRICE.test(v)) return NodeFilter.FILTER_ACCEPT;
-        // (a price split in two spans: "€" in one, "912" in the next)
-        const up = n.parentElement?.parentElement;
-        const near = up?.textContent ?? "";
-        return near.length < 60 && PRICE.test(near) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+        return price && shownBox(n.parentElement) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
       },
     });
     for (let n = walker.nextNode(); n && prices.length < 400; n = walker.nextNode()) prices.push(n as Text);
@@ -962,7 +695,7 @@ function start() {
   const drawTitlePin = () => {
     titlePin?.remove();
     titlePin = null;
-    if (!single || closed || stale || !titleEl()) return;
+    if (!single || stale || !titleEl()) return;
     const inDeck = pageState === "done" || (pageState === "idle" && Boolean(where?.saved));
     const pin = document.createElement("div");
     // (always open on a place's own page: "+ Konaklama destesine ekle", one big target)
@@ -988,7 +721,7 @@ function start() {
     pin.append(plus);
     layer.append(pin);
     titlePin = pin;
-    place();
+    place(true);
   };
   const placeTitle = (x0: number, y0: number) => {
     const h = titlePin && titleEl();
@@ -1002,7 +735,8 @@ function start() {
     titlePin.style.left = `${Math.min(last.right + 12, innerWidth - 200) + x0}px`;
     titlePin.style.transform = "none";
   };
-  const place = () => {
+  /** `look`: after a look for the results (not on a scroll): whether a site's own button sits where the label goes. */
+  const place = (look = false) => {
     const x0 = scrollX, y0 = scrollY;
     placeTitle(x0, y0);
     for (const c of cards) {
@@ -1022,13 +756,12 @@ function start() {
       } else {
         const edge = Math.min(r.right, innerWidth - 16);
         // (the site's own button where the label meets the top edge (a heart, a share): the label steps left of it)
-        let step = 0;
-        if (r.top > 0 && r.top < innerHeight) {
+        if (look && r.top > 0 && r.top < innerHeight) {
           const under = document.elementsFromPoint(edge - 20, r.top + 6).find((x) => x !== host && !host.contains(x));
-          if (under && c.el.contains(under) && under.closest("button, [role='button'], input, select")) step = 44;
+          c.step = under && c.el.contains(under) && under.closest("button, [role='button'], input, select") ? 44 : 0;
         }
         c.pin.style.setProperty("--h", `${r.height}px`);
-        c.pin.style.setProperty("--step", `${step}px`);
+        c.pin.style.setProperty("--step", `${c.step}px`);
         c.pin.style.top = `${r.top + y0 + r.height / 2 - 15}px`;
         c.pin.style.left = `${edge - 15 + x0}px`;
       }
@@ -1037,47 +770,21 @@ function start() {
 
   const drawCards = (force = true) => {
     // (a flight search only for a flight on the plan, or once trips are known; a hotel's own page has its "Desteye ekle")
-    if (closed || single || (!route && !where)) {
+    if (stale || single || (!route && !where)) {
       layer.replaceChildren();
       cards = [];
       titlePin = null;
       if (single) drawTitlePin();
       return;
     }
-    const had = cards.length;
     const els = findCards();
-    // (the same results as drawn: only placed again, nothing rebuilt; the page's own changes come often)
-    if (!force && els.length === cards.length && els.every((el, i) => cards[i]?.el === el)) return place();
+    // (the same results as drawn: only placed again, nothing rebuilt)
+    if (!force && els.length === cards.length && els.every((el, i) => cards[i]?.el === el)) return place(true);
     layer.replaceChildren();
     cards = [];
-    const facts = els.map((el) => cardFacts((el as HTMLElement).innerText));
-    els.forEach((el, i) => {
+    for (const el of els) {
       const pin = document.createElement("div");
       pin.className = "pin";
-      let label: string | null = null;
-      if (route) {
-        const c = route.chosen;
-        const mine = c && c.dep && facts[i].dep === c.dep && facts[i].arr === c.arr && facts[i].price != null;
-        label = cardLabel(facts[i], route.deck, facts);
-        if (mine) {
-          label = seen?.href === href && seen.save ? L(`Seçtiğin uçuş · ${formatPrice(seen.save, facts[i].currency)} ucuz`, `Your flight · ${formatPrice(seen.save, facts[i].currency)} less`) : L("Seçtiğin uçuş", "Your flight");
-          if (seen?.href !== href) {
-            seen = { href, save: null };
-            void ask<{ save: number | null }>({ type: "desk:seen", url: location.href, price: facts[i].price!, currency: facts[i].currency }).then((r) => {
-              if (r?.save && seen?.href === href) {
-                seen.save = r.save;
-                drawCards();
-              }
-            });
-          }
-        }
-      } else if (!timed && where?.names?.length && inDeckByName((el as HTMLElement).innerText, where.names)) label = L("Destende var", "In your deck");
-      if (label) {
-        const tag = document.createElement("span");
-        tag.className = `tag${/Destende|In your deck|Seçtiğin|Your flight/.test(label) ? " in" : ""}`;
-        tag.textContent = label;
-        pin.append(tag);
-      }
       const plus = document.createElement("button");
       plus.type = "button";
       const isIn = added.has(el), busy = reading.has(el);
@@ -1098,23 +805,67 @@ function start() {
         withTrip(whatOf(kind), async (pick) => {
           const r = await addCard(el, pick);
           drawCards();
-          if (r && !route) said(r);
+          if (r) said(r);
           return Boolean(r);
         });
       };
       pin.append(plus);
       layer.append(pin);
-      cards.push({ el, facts: facts[i], pin });
-    });
-    place();
-    // (results came or went: the pocket's "Bu sayfa" says so)
-    if (Boolean(had) !== Boolean(cards.length) && !sideOpen) drawSide();
+      cards.push({ el, pin, step: 0 });
+    }
+    place(true);
+  };
+
+  /**
+   * A booking's confirmation (0.45.0; 0.47.26 sade): only on a page whose address, title or JSON-LD says it might be one
+   * ("success", "confirmation", "onay", a Reservation), its words read at most three times in its first seconds; asked
+   * once whether to save it to the trip.
+   */
+  const CONFIRM_HINT = /confirm|success|thank|receipt|reservation|itinerary|booking-?complete|bestaetigung|bestätigung|onay|tesekkur|teşekkür|rezervasyon/i;
+  const mayConfirm = () => CONFIRM_HINT.test(`${location.pathname} ${location.search} ${document.title}`) || ldTypes().some((t) => /Reservation/.test(t));
+  const checkConfirm = () => {
+    if (stale || confirmAsk || confirmTries >= 3 || where?.saved || document.hidden) return;
+    confirmTries++;
+    if (!mayConfirm()) return;
+    const c = confirmationOf({ text: (document.body?.innerText ?? "").slice(0, 60_000), jsonLd: ldBlocks(), title: document.title });
+    if (!c) return;
+    confirmTries = 3;
+    confirmAsk = c;
+    void ask({ type: "desk:confirmed" });
+    drawDock();
+  };
+
+  /**
+   * Looking for the results (0.47.26, Emre 2026-10-29: "Skyscanner açınca donuyor"). The page is never watched: its changes
+   * only mark the results stale (a flag, nothing else); they are looked for again on the page's first seconds (a live
+   * search's results arrive then), after a scroll, when the mouse moves (at most once a second) and when the tab comes
+   * back. A page that keeps changing by itself (prices turning, ads) costs nothing while nobody touches it.
+   */
+  let dirty = true;
+  let openedAt = Date.now();
+  const look = () => {
+    if (stale || document.hidden) return;
+    // (a hotel's page often says what it is only once its scripts ran: asked in its first seconds only)
+    if (!single && dirty && Date.now() - openedAt < 20_000 && (single = offerPageKind(location.href, ldTypes()))) drawCards();
+    // (the name comes in late on some pages: its "+" then)
+    if (single && !titlePin) drawTitlePin();
+    if (!dirty) return;
+    dirty = false;
+    drawCards(false);
+  };
+  const SETTLE_MS = [700, 1800, 3500, 6000, 10_000, 16_000];
+  let settle: number[] = [];
+  const settleLooks = () => {
+    settle.forEach(clearTimeout);
+    settle = SETTLE_MS.map((ms) => window.setTimeout(look, ms));
+    // (a confirmation page often writes its number once its scripts ran)
+    for (const ms of [0, 2500, 7000]) settle.push(window.setTimeout(checkConfirm, ms));
   };
 
   const refresh = async () => {
     if (location.href === href) return;
     href = location.href;
-    closed = false;
+    openedAt = Date.now();
     pageState = "idle";
     asking = null;
     confirmAsk = null;
@@ -1124,49 +875,43 @@ function start() {
       kind === "flight" ? ask<CompanionRoute>({ type: "desk:route", url: href }) : Promise.resolve(null),
       ask<CompanionWhere>({ type: "desk:where", url: href, title: document.title }),
     ]);
-    drawStrip();
+    dirty = false;
     drawCards();
-    checkConfirm();
     drawDock();
     void loadPocket();
+    settleLooks();
   };
 
-  /** A booking's confirmation on this page (its words and number, or its JSON-LD): asked once, the icon's ✓ beside it. */
-  const checkConfirm = () => {
-    if (confirmTries >= 3 || where?.saved) return;
-    confirmTries++;
-    const c = confirmationOf({ text: (document.body?.innerText ?? "").slice(0, 60_000), jsonLd: ldBlocks(), title: document.title });
-    if (!c) return;
-    confirmTries = 3;
-    confirmAsk = c;
-    void ask({ type: "desk:confirmed" });
-    drawDock();
-  };
-
-  let pending = 0;
-  const later = () => {
-    clearTimeout(pending);
-    pending = window.setTimeout(() => {
-      if (closed) return;
-      // (only while the page is in view; the page's own work first)
-      if (document.hidden) return;
-      // (a hotel's page often says what it is only once its scripts ran)
-      if (!single && (single = offerPageKind(location.href, ldTypes()))) (drawSide(), drawCards());
-      // (the name comes in late on some pages: its "+" then)
-      if (single && !titlePin) drawTitlePin();
-      drawCards(false);
-      // (a confirmation page often writes its number once its scripts ran)
-      if (!confirmAsk && confirmTries < 3) checkConfirm();
-    }, 700);
-  };
-  new MutationObserver(later).observe(document.body, { childList: true, subtree: true });
-  document.addEventListener("visibilitychange", () => !document.hidden && later());
+  new MutationObserver(() => void (dirty = true)).observe(document.body, { childList: true, subtree: true });
+  document.addEventListener("visibilitychange", () => !document.hidden && look());
   let frame = 0;
+  let quiet = 0;
   const follow = () => {
     cancelAnimationFrame(frame);
-    frame = requestAnimationFrame(place);
+    frame = requestAnimationFrame(() => place());
   };
-  addEventListener("scroll", follow, { passive: true, capture: true });
+  addEventListener(
+    "scroll",
+    (e) => {
+      // (the "+"s are in the page's own coordinates: the page's scroll carries them; only a box scrolled inside the page
+      // moves its results from under them)
+      if (e.target !== document && e.target !== document.documentElement) follow();
+      clearTimeout(quiet);
+      quiet = window.setTimeout(look, 300);
+    },
+    { passive: true, capture: true },
+  );
+  let moved = 0;
+  addEventListener(
+    "mousemove",
+    () => {
+      const now = Date.now();
+      if (now - moved < 1000) return;
+      moved = now;
+      look();
+    },
+    { passive: true },
+  );
   // (the card under the mouse: its "+" opens into "+ Ekle")
   let hot: HTMLDivElement | null = null;
   addEventListener(
@@ -1184,30 +929,10 @@ function start() {
     { passive: true, capture: true },
   );
   addEventListener("resize", follow, { passive: true });
-  // (the pocket closes on a press elsewhere, or Escape)
-  addEventListener(
-    "pointerdown",
-    (e) => {
-      if (sideOpen && !e.composedPath().includes(host)) {
-        sideOpen = false;
-        drawSide();
-      }
-    },
-    { capture: true, passive: true },
-  );
-  addEventListener("keydown", (e) => {
-    if ((e as KeyboardEvent).key === "Escape" && sideOpen) {
-      sideOpen = false;
-      drawSide();
-    }
-  });
   // (a search page changes its address without loading: the way or the day changed; nothing once cut off by an update)
   const tick = window.setInterval(() => (alive() ? void refresh() : clearInterval(tick)), 1500);
-  void chrome.storage.local
-    .get(HIDE)
-    .then((got) => (sideHidden = got[HIDE] === true))
+  void loadLang()
     .catch(() => undefined)
-    .then(() => loadLang().catch(() => undefined))
     .then(refresh);
 }
 

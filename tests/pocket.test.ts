@@ -64,7 +64,8 @@ describe("pocketFor, × and tekrar", () => {
     await d.put("captures", capture("f", "error", 3000, { forTripId: "bali", error: "Sayfa yanıt vermedi" }));
     await d.put("captures", capture("p", "pending", 4000, { forTripId: "bali" }));
     const p = await pocketFor("bali");
-    expect(p.trip).toMatchObject({ id: "bali", title: "Bali balayı", count: 1 });
+    // (the save being read counts the moment it's pressed, Emre 2026-10-29: "ekliyorum yine 19 yazıyor"; a failed one doesn't)
+    expect(p.trip).toMatchObject({ id: "bali", title: "Bali balayı", count: 2 });
     expect(p.key).toBe(false);
     expect(p.waiting).toBe(1);
     expect(p.rows.map((r) => r.id)).toEqual(["c:p", "c:f", "i:a"]);

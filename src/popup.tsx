@@ -253,7 +253,7 @@ function Popup() {
           <Sign tone="warn">+</Sign>
           <Say title={L(`${companionName(view.site)}'da kartlara + koyayım mı?`, `Put a + on ${companionName(view.site)}'s results?`)} sub={L("Tek izin, 30 kadar seyahat sitesi. Basmadan hiçbir şey kaydedilmez.", "One permission, some 30 travel sites. Nothing is saved until you press.")} />
           <button type="button" className="tb-go" onClick={() => void along()}>
-            {L("Evet, yanımda ol", "Yes, come along")}
+            {L("Evet, + koy", "Yes, put a +")}
           </button>
         </div>
         {quiet(
