@@ -20,7 +20,23 @@ describe("confirmationOf", () => {
     const ld = [{ "@context": "https://schema.org", "@type": "LodgingReservation", reservationNumber: "ABC12345", reservationFor: { "@type": "LodgingBusiness", name: "Visesa Ubud Resort" } }];
     expect(confirmationOf({ text: "", jsonLd: ld })).toEqual({ code: "ABC12345", name: "Visesa Ubud Resort", paid: null });
   });
+  it("a payment that went through says it's done too, and the label may carry a note before its number (Pegasus)", () => {
+    const text = "Ödeme başarılı. İyi seyahatler dileriz. Rezervasyon (PNR) No 2JB52G PNR No Paylaş Seyahat Detayları";
+    expect(confirmationOf({ title: "Pegasus", text })).toMatchObject({ code: "2JB52G" });
+    expect(confirmationOf({ text: "Payment successful! Booking reference (PNR): 7HG2KQ" })).toMatchObject({ code: "7HG2KQ" });
+    expect(confirmationOf({ text: "İşleminiz başarıyla tamamlandı. PNR kodu: Q4ZT9K" })).toMatchObject({ code: "Q4ZT9K" });
+    expect(confirmationOf({ text: "ÖDEME BAŞARILI · REZERVASYON (PNR) NO 2JB52G" })).toMatchObject({ code: "2JB52G" });
+  });
+  it("a label with no number after it is passed over for the next one that has one", () => {
+    expect(confirmationOf({ text: "Ödeme başarılı. PNR No Paylaş · Rezervasyon kodu: 2JB52G" })).toMatchObject({ code: "2JB52G" });
+  });
+  it("the confirmation page's own address says it's done when its words don't", () => {
+    expect(confirmationOf({ url: "https://web.example-air.com/booking/payment-success", text: "Rezervasyon (PNR) No 2JB52G" })).toMatchObject({ code: "2JB52G" });
+    expect(confirmationOf({ url: "https://secure.example.com/confirmation.html?aid=1", text: "Booking number: 4821993107" })).toMatchObject({ code: "4821993107" });
+    expect(confirmationOf({ url: "https://www.example-air.com/booking/passengers", text: "Rezervasyon (PNR) No 2JB52G" })).toBeNull();
+  });
   it("nothing without both: a hotel's page, a word with no number, a number with no confirming word", () => {
+    expect(confirmationOf({ text: "Ödeme başarılı. PNR No Paylaş" })).toBeNull();
     expect(confirmationOf({ text: "Visesa Ubud Resort · €378 · Rezervasyon yap · Ücretsiz iptal" })).toBeNull();
     expect(confirmationOf({ text: "Rezervasyonunuz onaylandı. Teşekkürler!" })).toBeNull();
     expect(confirmationOf({ text: "Booking reference: XK7Q2M" })).toBeNull();

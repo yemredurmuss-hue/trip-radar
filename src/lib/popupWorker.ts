@@ -199,7 +199,7 @@ export async function popupView(tabId: number): Promise<PopupView> {
   const single = offerPageKind(url, ld);
   const video = isVideo(url);
   const what: PageWhat = video ? "idea" : search ? "flight" : single ?? (travel ? "list" : probe?.result?.price ? "page" : "idea");
-  const confirm = probe?.result ? confirmationOf({ text: probe.result.text, jsonLd: probe.result.jsonLd, title: tab?.title }) : null;
+  const confirm = probe?.result ? confirmationOf({ text: probe.result.text, jsonLd: probe.result.jsonLd, title: tab?.title, url }) : null;
   const facts = parseUrl(url);
   const sub = [companionName(site ?? origin ?? ""), KIND_WORD[what](), facts.checkIn ? formatDateRange(facts.checkIn, facts.checkOut) : null].filter(Boolean).join(" · ");
   // (Benle gezen eklenti, seviye 1: a candidate we opened, or a search for a planned flight)
