@@ -5,7 +5,7 @@
 import { countryOfAirport } from "./airports";
 import { downscale, openBoard } from "./browser";
 import { planFlightFor } from "./bring";
-import { companionName, companionSiteOf, originOf, siteKindOf, type CompanionAsk, type CompanionRoute, type CompanionWhere, type DeckBrief, type TripPick } from "./companion";
+import { originOf, type CompanionAsk, type CompanionRoute, type CompanionWhere, type DeckBrief, type TripPick } from "./companion";
 import { db, listTrips, newId } from "./db";
 import { today } from "./extract";
 import { formatDateRange } from "./items";
@@ -19,8 +19,7 @@ import { loadHome } from "./passport";
 import { currentFor, loadCurrent, loadRules, rememberTrip, ruleFor, RULE_SLACK_DAYS, setCurrent, worthRemembering } from "./tripRules";
 import type { Item, Trip } from "./types";
 import { flightSearchOf, parseUrl } from "./url";
-import { seenCheaper } from "./priceWatchWorker";
-import { pocketFor, pocketRemove, pocketRetry } from "./pocket";
+import { pocketFor } from "./pocket";
 import { printOf } from "./resultMark";
 import { markSaved, marksOn, savedAlready } from "./resultMarks";
 
@@ -188,15 +187,12 @@ export async function whereFor(url: string, title: string): Promise<CompanionWhe
   const listed = [...own].sort((a, b) => Number(match(b)) - Number(match(a)) || b.updatedAt - a.updatedAt);
   const shown = [...picks.map((id) => listed.find((t) => t.id === id)!).filter(Boolean), ...listed.filter((t) => !picks.includes(t.id))].slice(0, 8);
   const key = pageKey(url);
-  const kind = siteKindOf(companionSiteOf(url) ?? originOf(url) ?? "");
-  const category = kind === "stay" ? "stay" : kind === "activity" ? "activity" : kind === "transport" ? "transport" : "flight";
   return {
     trip: trip ? { id: trip.id, title: trip.title } : null,
     country: code ? countryName(code) : null,
     trips: shown.map((t) => ({ id: t.id, title: t.title, when: whenOf(t), match: match(t), photos: photosOf(t, items, picks.includes(t.id) ? 3 : 1), count: items.filter((i) => i.tripId === t.id && i.status !== "dismissed").length })),
     picks,
     saved: Boolean(key && items.some((i) => i.status !== "dismissed" && pageKey(i.url) === key)),
-    names: trip ? items.filter((i) => i.tripId === trip.id && i.category === category && i.status !== "dismissed").map((i) => i.name).slice(0, 60) : [],
   };
 }
 
@@ -304,12 +300,6 @@ function answerOn(m: CompanionAsk, url: string, sender: chrome.runtime.MessageSe
   switch (m.type) {
     case "desk:route":
       return routeFor(url).then((r) => (r ? { tripId: r.tripId, title: r.title, from: r.from, to: r.to, day: r.day, deck: r.deck, chosen: r.chosen ?? null } : null));
-    case "desk:seen":
-      // (fiyat izleme: the chosen flight's price on the site, read as the traveller sees it; said when it's less)
-      return routeFor(url).then(async (r) => {
-        if (!r?.chosenId || typeof m.price !== "number" || !(m.price > 0)) return { save: null };
-        return { save: await seenCheaper(r.chosenId, m.price, typeof m.currency === "string" ? m.currency : null, companionName(companionSiteOf(url) ?? originOf(url) ?? "")) };
-      });
     case "desk:where":
       return whereFor(url, text(m.title, 300));
     case "desk:add":
@@ -325,13 +315,6 @@ function answerOn(m: CompanionAsk, url: string, sender: chrome.runtime.MessageSe
       });
     case "desk:marks":
       return marksOn(url).then((marks) => marks.map(({ p, captureId }) => ({ p, captureId })));
-    case "desk:shot":
-      return bindFor(url, text(m.title, 300), pickOf(m)).then(async (bind) => {
-        const shot = await shotOf(sender.tab!.windowId);
-        const capture = await saveSnapshot(snapshotOf(url, text(m.title, 300), text(m.text, 12_000)), shot, bind);
-        process();
-        return savedOn(sender.tab!.id!, capture.id, bind.forTripId ?? null);
-      });
     case "desk:page": {
       // ("Desteye ekle" on a hotel's or a tour's own page: the page as the toolbar's save reads it, its screenshot too)
       const snap = pageSnapshot(m.snapshot, url);
@@ -362,20 +345,6 @@ function answerOn(m: CompanionAsk, url: string, sender: chrome.runtime.MessageSe
     case "desk:pocket":
       // (Gezi cebi on the page's edge: the trip asked for, else the page's own, else the current one)
       return (async () => pocketFor(text(m.tripId, 80) || (await whereFor(url, "")).trip?.id || null))();
-    case "desk:current":
-      // (the trip on the pocket's top changed: what comes next goes there; a new one for the page's country)
-      return (async () => {
-        const pick = pickOf(m);
-        const d = await db();
-        const trip = pick.tripId ? await d.get("trips", pick.tripId.slice(0, 80)) : undefined;
-        if (trip && !isDemoTrip(trip)) {
-          await setCurrent(trip.id, pageCountry(url, "", await loadHome().catch(() => null)));
-          return { ok: true, tripId: trip.id, title: trip.title };
-        }
-        if (!pick.newTrip) return { ok: false, tripId: null, title: null };
-        const made = (await bindFor(url, "", { newTrip: true, remember: false })).forTripId ?? null;
-        return { ok: Boolean(made), tripId: made, title: made ? ((await d.get("trips", made))?.title ?? null) : null };
-      })();
     case "desk:popup":
       // (the page's tab: the toolbar's window, opened over that tab's window)
       return chrome.action
@@ -388,10 +357,6 @@ function answerOn(m: CompanionAsk, url: string, sender: chrome.runtime.MessageSe
         .setBadgeBackgroundColor({ tabId: sender.tab!.id!, color: "#1f7a45" })
         .then(() => chrome.action.setBadgeText({ tabId: sender.tab!.id!, text: "✓" }))
         .then(() => ({ ok: true }), () => ({ ok: false }));
-    case "desk:remove":
-      return pocketRemove(text(m.id, 90)).then((ok) => ({ ok }));
-    case "desk:retry":
-      return pocketRetry(text(m.id, 90), process).then((ok) => ({ ok }));
     default:
       return Promise.resolve(null);
   }

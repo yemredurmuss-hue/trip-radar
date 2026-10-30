@@ -9,7 +9,7 @@ import { formatPrice } from "./items";
 import { liveSource } from "./offerSources";
 import type { Need, Offer } from "./offerSource";
 import { candidateOffer } from "./stayPicks";
-import { offerPrice, priceDrop, sameOffer, WATCH_DROP, WATCH_MAX, watchable, watchNeed, withPrice } from "./priceWatch";
+import { offerPrice, priceDrop, sameOffer, WATCH_MAX, watchable, watchNeed, withPrice } from "./priceWatch";
 import type { Item, Trip } from "./types";
 
 const LAST = "priceWatchAt";
@@ -93,28 +93,4 @@ export async function checkPrices(source: WatchSource, now = Date.now()): Promis
   }
   if (list.length) notifyChanged();
   return drops;
-}
-
-/**
- * "Sitede benle gel" saw the chosen flight on the site (its hours) for less than the plan says, per person as the sites
- * show it: said once a day per flight (the record's own price isn't changed: the site's may be for one or for all).
- */
-export async function seenCheaper(itemId: string, price: number, currency: string | null, site: string): Promise<number | null> {
-  const d = await db();
-  const item = await d.get("items", itemId);
-  if (!item || item.status !== "chosen" || item.price.amount == null || !currency || item.price.currency !== currency) return null;
-  const trip = await d.get("trips", item.tripId);
-  const people = Math.max(1, (item.price.scope === "per_person" ? 1 : (trip?.travellers?.count ?? item.guests.adults ?? 1)) || 1);
-  const each = Math.round(item.price.amount / people);
-  const save = each - Math.round(price);
-  if (save < WATCH_DROP.amount || save < each * WATCH_DROP.share) return null;
-  const key = `seenCheaper:${itemId}`;
-  const got = await chrome.storage.local.get(key);
-  if (typeof got[key] === "number" && Date.now() - got[key] < DAY_MS) return save;
-  await chrome.storage.local.set({ [key]: Date.now() });
-  const said = L(`${item.name}: ${site}'da kişi başı ${formatPrice(price, currency)}, planındakinden ${formatPrice(save, currency)} ucuz`, `${item.name}: ${formatPrice(price, currency)} each on ${site}, ${formatPrice(save, currency)} less than your plan's`);
-  await addEvent(item.tripId, said);
-  if (trip) tell(trip, L(`${trip.title}: daha ucuzu var`, `${trip.title}: cheaper now`), said, save);
-  notifyChanged();
-  return save;
 }

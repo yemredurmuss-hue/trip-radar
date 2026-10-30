@@ -1,6 +1,6 @@
-// Simgeye basınca (0.43.0, tuval "Benle gezen eklenti" 8 · Simgeye basınca, Emre onayladı): the popup only shows and asks;
-// reading the page, its screenshot, the save and the routing all happen here, in the service worker, only when "Desteye
-// ekle" is pressed. The popup opens at once and stays light (no database, no model in it): it asks these four questions.
+// Simgeye basınca (0.43.0, tuval "Benle gezen eklenti" 8; tek Kaydet 0.47.29): the popup only shows and asks; reading the
+// page, its screenshot, the save and the routing all happen here, in the service worker, only when "Kaydet" is pressed.
+// The popup opens at once and stays light (no database, no model in it): it asks these questions.
 // Every answer is for our own extension pages only (the popup), never a site's.
 import { chooseItem } from "../app/actions";
 import { planFlightFor } from "./bring";
@@ -11,17 +11,14 @@ import { watch } from "./contextSave";
 import { db, hasActiveKey } from "./db";
 import { moveSave, undoSave } from "./saveUndo";
 import { pocketFor, pocketRemove, pocketRetry, type Pocket } from "./pocket";
-import { loadCurrent, rememberTrip, setCurrent } from "./tripRules";
+import { rememberTrip, setCurrent } from "./tripRules";
 import { confirmationOf, type Confirmation } from "./confirm";
-import { tripGlance, type TripGlance } from "./tripGlance";
 import { tripShelf, type Shelf } from "./tripShelf";
-import { today } from "./extract";
 import { pageCountry, pageKey } from "./companionWorker";
 import { loadHome } from "./passport";
 import { L } from "./i18n";
 import { formatDateRange } from "./items";
 import { collectPage } from "./pagecapture";
-import { priceBadge, type PriceBadge } from "./priceBadge";
 import { saveSnapshot } from "./process";
 import type { Item } from "./types";
 import { flightSearchOf, parseUrl } from "./url";
@@ -29,10 +26,9 @@ import { downscale } from "./browser";
 
 export type PopupAsk =
   | { type: "popup:view"; tabId: number }
-  | { type: "popup:save"; tabId: number; pick: TripPick; idea?: boolean; inView?: boolean }
+  | { type: "popup:save"; tabId: number; pick: TripPick; idea?: boolean }
   | { type: "popup:undo"; captureId: string }
   | { type: "popup:move"; captureId: string; pick: TripPick }
-  | { type: "popup:pocket"; tripId: string | null }
   | { type: "popup:remove"; id: string }
   | { type: "popup:retry"; id: string }
   | ({ type: "popup:current"; tabId: number } & TripPick)
@@ -57,17 +53,10 @@ export interface PopupView {
   where: CompanionWhere | null;
   desk: { candidate: { name: string; price: string | null; badge: string; route: string } | null; planned: { title: string; from: string; to: string; day: string; count: number } | null };
   key: boolean;
-  price: PriceBadge | null;
   /** Gezi cebi: the trip, what was added to it last, the saves waiting for a key. */
   pocket: Pocket | null;
-  /** Tek bakış (0.45.0): the page's own picture (og:image), its video when it's one, a booking's confirmation on it. */
-  hero: string | null;
-  video: boolean;
+  /** A booking's confirmation on the page (tek bakış 0.45.0). */
   confirm: Confirmation | null;
-  /** Pano's "Biriktirdiklerim" and the trip's next thing to do. */
-  glance: TripGlance | null;
-  /** No trip picked yet to collect for (the first question is "Hangi gezi için topluyorsun?"). */
-  fresh: boolean;
   /** A save of this trip that couldn't be read, a moment ago (the card says it first). */
   failed: { id: string; title: string } | null;
   /** "Booking'de kartlara + koyayım mı?" was asked once already. */
@@ -80,8 +69,8 @@ export interface PopupView {
   here: { tripId: string; itemId: string; removable: boolean } | null;
 }
 
-/** Read in the page itself, in a blink (no layout): what it says it is, whether a price is written on it, its picture. */
-function probePage(): { ld: string[]; price: boolean; image: string | null; text: string; jsonLd: unknown[] } {
+/** Read in the page itself, in a blink (no layout): what it says it is, whether a price is written on it, its words. */
+function probePage(): { ld: string[]; price: boolean; text: string; jsonLd: unknown[] } {
   const ld: string[] = [];
   const blocks: unknown[] = [];
   const walk = (v: unknown, depth: number): void => {
@@ -102,54 +91,12 @@ function probePage(): { ld: string[]; price: boolean; image: string | null; text
     }
   }
   const text = (document.body?.textContent ?? "").replace(/\s+/g, " ").slice(0, 40_000);
-  const meta = (k: string) => document.querySelector<HTMLMetaElement>(`meta[property="${k}"], meta[name="${k}"]`)?.content ?? null;
-  // (a site that changes pages without loading them, YouTube among them, keeps the first page's og:image: only when its
-  // og:url is this page; else the biggest photo in view)
-  const ogUrl = meta("og:url");
-  const here = (u: string) => {
-    try {
-      const a = new URL(u, location.href), b = new URL(location.href);
-      return a.hostname.replace(/^www\./, "") === b.hostname.replace(/^www\./, "") && a.pathname.replace(/\/+$/, "") === b.pathname.replace(/\/+$/, "");
-    } catch {
-      return false;
-    }
-  };
-  const og = !ogUrl || here(ogUrl) ? ([meta("og:image"), meta("twitter:image")].find((u): u is string => Boolean(u && /^https:\/\//.test(u))) ?? null) : null;
-  let big: { src: string; area: number } | null = null;
-  for (const img of Array.from(document.images).slice(0, 300)) {
-    const r = img.getBoundingClientRect();
-    const src = img.currentSrc || img.src;
-    if (!/^https:\/\//.test(src) || r.width < 200 || r.height < 120 || r.bottom < 0 || r.top > innerHeight) continue;
-    const area = r.width * r.height;
-    if (!big || area > big.area) big = { src, area };
-  }
-  const image = og ?? big?.src ?? null;
-  return { ld, price: /(?:€|£|₺|\$|฿|\b(?:TL|EUR|USD|GBP|TRY|THB)\b)\s?\d|\d\s?(?:€|£|₺|\$|฿|\b(?:TL|EUR|USD|GBP|TRY|THB)\b)/.test(text), image, text: text.slice(0, 30_000), jsonLd: JSON.parse(JSON.stringify(blocks)).slice(0, 12) };
-}
-
-/** A video's own picture from its address (YouTube's thumbnail); null for anything else. */
-export function videoThumb(url: string): string | null {
-  try {
-    const u = new URL(url);
-    const host = u.hostname.replace(/^(?:www|m)\./, "");
-    const id = host === "youtu.be" ? u.pathname.slice(1).split("/")[0] : host === "youtube.com" ? (u.searchParams.get("v") ?? u.pathname.match(/^\/(?:shorts|embed|live)\/([\w-]{6,})/)?.[1] ?? null) : null;
-    return id && /^[\w-]{6,20}$/.test(id) ? `https://i.ytimg.com/vi/${id}/hqdefault.jpg` : null;
-  } catch {
-    return null;
-  }
+  return { ld, price: /(?:€|£|₺|\$|฿|\b(?:TL|EUR|USD|GBP|TRY|THB)\b)\s?\d|\d\s?(?:€|£|₺|\$|฿|\b(?:TL|EUR|USD|GBP|TRY|THB)\b)/.test(text), text: text.slice(0, 30_000), jsonLd: JSON.parse(JSON.stringify(blocks)).slice(0, 12) };
 }
 
 const isVideo = (url: string) => /^https:\/\/(?:(?:www|m)\.)?(?:youtube\.com\/(?:watch|shorts\/)|youtu\.be\/)|^https:\/\/(?:www\.)?vimeo\.com\/\d/.test(url);
 const ALONG_ASKED = "alongAsked";
 const FAILED_FRESH_MS = 15 * 60_000;
-
-/** Pano's count and the next thing to do, for the trip the popup shows. */
-async function glanceOf(tripId: string | null | undefined): Promise<TripGlance | null> {
-  if (!tripId) return null;
-  const d = await db();
-  const trip = await d.get("trips", tripId);
-  return trip ? tripGlance(trip, await d.getAllFromIndex("items", "tripId", tripId), today()) : null;
-}
 
 /** A save of this trip that failed a moment ago: said before anything else, with its "Tekrar dene". */
 async function freshFailure(tripId: string | null | undefined): Promise<{ id: string; title: string } | null> {
@@ -184,13 +131,13 @@ export async function popupView(tabId: number): Promise<PopupView> {
   const tab = await chrome.tabs.get(tabId).catch(() => null);
   const url = tab?.url ?? "";
   const own = chrome.runtime.getURL("");
-  const base: PopupView = { kind: "none", title: tab?.title ?? "", sub: "", site: null, travelSite: false, along: false, what: "idea", where: null, desk: { candidate: null, planned: null }, key: await hasActiveKey(), price: await priceBadge(), pocket: null, hero: null, video: false, confirm: null, glance: null, fresh: false, failed: null, alongAsked: true, shelf: null, favicon: null, here: null };
+  const base: PopupView = { kind: "none", title: tab?.title ?? "", sub: "", site: null, travelSite: false, along: false, what: "idea", where: null, desk: { candidate: null, planned: null }, key: await hasActiveKey(), pocket: null, confirm: null, failed: null, alongAsked: true, shelf: null, favicon: null, here: null };
   // (our own pages, the board or the popup in a tab: their address isn't always visible here, their context is)
   const ours = await chrome.runtime.getContexts({ contextTypes: [chrome.runtime.ContextType.TAB] }).catch(() => []);
   // (our own pages and pages that can't be saved: the pocket still shows the trip and what was added last)
   if (url.startsWith(own) || ours.some((c) => c.tabId === tabId) || !/^https?:/.test(url)) {
     const pocket = await pocketFor(null);
-    return { ...base, kind: url.startsWith(own) || ours.some((c) => c.tabId === tabId) ? "board" : "none", pocket, glance: await glanceOf(pocket.trip?.id), failed: await freshFailure(pocket.trip?.id), shelf: await tripShelf(true) };
+    return { ...base, kind: url.startsWith(own) || ours.some((c) => c.tabId === tabId) ? "board" : "none", pocket, failed: await freshFailure(pocket.trip?.id), shelf: await tripShelf(true) };
   }
   const travel = companionSiteOf(url);
   const origin = originOf(url);
@@ -223,7 +170,6 @@ export async function popupView(tabId: number): Promise<PopupView> {
   const icon = tab?.favIconUrl ?? "";
   const tripId = c?.tripId ?? plannedTrip ?? where.trip?.id ?? null;
   const pocket = await pocketFor(tripId);
-  const cur = await loadCurrent();
   return {
     ...base,
     kind: "page",
@@ -235,12 +181,7 @@ export async function popupView(tabId: number): Promise<PopupView> {
     where,
     desk: { candidate: c ? { name: c.name, price: c.price ?? null, badge: badgeOf(c), route: c.route } : null, planned },
     pocket,
-    hero: videoThumb(url) ?? probe?.result?.image ?? null,
-    video,
     confirm,
-    glance: await glanceOf(tripId ?? pocket.trip?.id),
-    // (no trip picked to collect for, or it's over: the first question)
-    fresh: !cur || Date.now() - cur.at > 24 * 3600_000,
     failed: await freshFailure(tripId ?? pocket.trip?.id),
     alongAsked: await alongAsked(),
     shelf: await tripShelf(true),
@@ -249,8 +190,8 @@ export async function popupView(tabId: number): Promise<PopupView> {
   };
 }
 
-/** "Desteye ekle": the page read and saved now, into its trip (and its row); the popup may close at once. */
-export async function popupSave(tabId: number, pick: TripPick, idea: boolean, process: () => void, inView = false): Promise<{ captureId: string; tripId: string | null; tripTitle: string | null; deck: string } | null> {
+/** "Kaydet": the page read and saved now, into its trip (and its row); the popup may close at once. */
+export async function popupSave(tabId: number, pick: TripPick, idea: boolean, process: () => void): Promise<{ captureId: string; tripId: string | null; tripTitle: string | null; deck: string } | null> {
   const tab = await chrome.tabs.get(tabId).catch(() => null);
   if (!tab?.url || !/^https?:/.test(tab.url)) return null;
   const c = await candidateOf(tabId).catch(() => null);
@@ -260,8 +201,7 @@ export async function popupSave(tabId: number, pick: TripPick, idea: boolean, pr
   const bind = c ? { forTripId: c.tripId } : planned ? { forTripId: planned.tripId, forNeed: planned.forNeed } : await bindFor(tab.url, tab.title ?? "", pick);
   const [result] = await chrome.scripting.executeScript({ target: { tabId }, func: collectPage });
   if (!result?.result) return null;
-  // ("Ekrandakileri ekle" on a list: what is in view, never the whole list as one record)
-  const snap = inView ? { ...result.result, pageText: result.result.viewportText } : result.result;
+  const snap = result.result;
   let shot: string | null = null;
   try {
     shot = await downscale(await chrome.tabs.captureVisibleTab(tab.windowId, { format: "jpeg", quality: 85 }));
@@ -305,7 +245,7 @@ export function popupAnswer(message: PopupAsk | { type?: unknown }, sender: chro
     case "popup:view":
       return popupView(m.tabId);
     case "popup:save":
-      return popupSave(m.tabId, m.pick ?? {}, m.idea === true, process, m.inView === true);
+      return popupSave(m.tabId, m.pick ?? {}, m.idea === true, process);
     case "popup:undo":
       return undoSave(m.captureId);
     case "popup:move":
@@ -318,8 +258,6 @@ export function popupAnswer(message: PopupAsk | { type?: unknown }, sender: chro
         await setCurrent(tripId, moved?.url ? pageCountry(moved.url, moved.title ?? "", await loadHome().catch(() => null)) : null);
         return { tripId, tripTitle: (await (await db()).get("trips", tripId))?.title ?? null };
       })();
-    case "popup:pocket":
-      return pocketFor(typeof m.tripId === "string" ? m.tripId.slice(0, 80) : null);
     case "popup:remove":
       return pocketRemove(String(m.id));
     case "popup:retry":

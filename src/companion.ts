@@ -1,12 +1,14 @@
 // Sitede "+" (lib/companion.ts), 0.47.26 sade hali (Emre 2026-10-29: "+ basınca desteye eklesin istiyorum sadece"; Skyscanner
 // açıkken bilgisayar donuyordu). Runs only on the sites the traveller allowed. Three things, nothing else:
-//  · a "+" beside each result (and beside a place's own name): one press saves it to the trip's deck, as the toolbar does;
-//  · the gezi cebi's tab on the right edge: the trip's cover and how many are saved on it; a press opens the toolbar's window;
+//  · a "+" beside each result (and beside a place's own name): one press saves it to the trip, as the toolbar does; a
+//    result saved before is ✓ again when the page comes back, never saved twice (tek Kaydet 0.47.28, lib/resultMark.ts);
+//  · the gezi cebi's tab on the right edge: the trip's cover and how many are saved on it; a press opens the toolbar's
+//    window; its grip moves it up or down, kept per site; a save's note slides out under it (✓, the trip, ▾ move, ↶);
 //  · a booking's confirmation page: "Kaydedeyim mi?", looked for a few times after the page opens, never read again and again.
 // It never watches the page: a change only marks the results stale; they are looked for again on the page's first seconds,
 // after a scroll and when the mouse moves (at most once a second). Gone (0.47.26): the route strip, the labels beside the
 // results, the price seen on the site, the pocket's open panel. The first "+" for a country not yet answered asks which
-// trip, here on the page (lib/tripRules.ts). Everything it draws is in its own closed shadow root, over the page, never
+// trip, beside that "+" (tek Kaydet 0.47.30; lib/tripRules.ts). Everything it draws is in its own closed shadow root, over the page, never
 // inside the site's own elements; nothing is saved until a press; no link on the site is changed.
 import {
   companionSiteOf,
@@ -218,7 +220,7 @@ function start() {
   let where: CompanionWhere | null = null;
   let href = "";
   let single: SiteKind | null = null;
-  // Gezi cebi's tab: the trip and how many are saved on it; this page's "Desteye ekle".
+  // Gezi cebi's tab: the trip and how many are saved on it; this page's own "Kaydet".
   let pocket: Pocket | null = null;
   // Where the pocket sits on this site, as a share of the window's height (null: where it always was, 38%).
   let pocketAt: number | null = null;
@@ -640,7 +642,7 @@ function start() {
     drawSide(bump);
   };
 
-  /** "+ Konaklama destesine ekle" on a place's own page: the page as the toolbar reads it, its screenshot too. */
+  /** "+ Kaydet" on a place's own page: the page as the toolbar reads it, its screenshot too. */
   const addPage = (at: Element | null = null) =>
     withTrip(whatOf(single ?? kind), async (pick) => {
       pageState = "busy";
@@ -818,7 +820,7 @@ function start() {
     if (!single || stale || !titleEl()) return;
     const inDeck = pageState === "done" || (pageState === "idle" && Boolean(where?.saved));
     const pin = document.createElement("div");
-    // (always open on a place's own page: "+ Konaklama destesine ekle", one big target)
+    // (always open on a place's own page: "+ Kaydet", one big target)
     pin.className = "pin open";
     const plus = document.createElement("button");
     plus.type = "button";
@@ -889,7 +891,7 @@ function start() {
   };
 
   const drawCards = (force = true) => {
-    // (a flight search only for a flight on the plan, or once trips are known; a hotel's own page has its "Desteye ekle")
+    // (a flight search only for a flight on the plan, or once trips are known; a hotel's own page has its own "Kaydet")
     if (stale || single || (!route && !where)) {
       layer.replaceChildren();
       cards = [];
@@ -1039,7 +1041,7 @@ function start() {
     },
     { passive: true },
   );
-  // (the card under the mouse: its "+" opens into "+ Ekle")
+  // (the card under the mouse: its "+" opens into "+ Kaydet")
   let hot: HTMLDivElement | null = null;
   addEventListener(
     "mouseover",

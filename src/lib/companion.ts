@@ -1,8 +1,7 @@
-// Benle gezen eklenti, seviye 2: "Sitede benle gel" (docs/superpowers/plans/2026-10-23-karar-masasi-gecis.md). On a
-// flight site the traveller allowed one by one (optional host permissions), only while its address is a search for a
-// flight on the plan, a thin strip says which row it is for, and each result gets a "+" and where it stands against the
-// deck ("Destende var", "Destedekinden €38 ucuz", "Direktlerin en ucuzu"). Nothing is saved until "+" is pressed; no link
-// on the site is changed (PRIVACY.md §4, §8). What a result says is read from its own text here; pure, tested.
+// Sitede "+" (src/companion.ts), the parts that are pure and tested: which sites it comes along on (optional host
+// permissions, one switch), what kind of site a page is, what a result's own text says (two hours and a price), and what
+// the companion and the service worker say to each other. Nothing is saved until "+" is pressed; no link on the site is
+// changed (PRIVACY.md §4, §8). Tek Kaydet (0.47.28–0.47.31): the "+" saves, a saved result is known again (resultMark.ts).
 import { L } from "./i18n";
 import { formatPrice } from "./items";
 import type { ResultPrint } from "./resultMark";
@@ -241,18 +240,13 @@ export type CompanionAsk =
   | { type: "desk:where"; url: string; title: string }
   | ({ type: "desk:add"; url: string; title: string; text: string; print?: ResultPrint } & TripPick)
   | { type: "desk:marks" }
-  | ({ type: "desk:shot"; url: string; title: string; text: string } & TripPick)
   | ({ type: "desk:page"; url: string; snapshot: unknown } & TripPick)
   | { type: "desk:undo"; captureId: string }
   | ({ type: "desk:move"; captureId: string } & TripPick)
   | { type: "desk:open"; tripId: string }
   | { type: "desk:pocket"; tripId: string | null }
-  | ({ type: "desk:current" } & TripPick)
   | { type: "desk:popup" }
-  | { type: "desk:confirmed" }
-  | { type: "desk:remove"; id: string }
-  | { type: "desk:retry"; id: string }
-  | { type: "desk:seen"; url: string; price: number; currency: string | null };
+  | { type: "desk:confirmed" };
 
 export interface CompanionRoute {
   tripId: string;
@@ -290,8 +284,6 @@ export interface CompanionWhere {
   picks: string[];
   /** This very page is on the plan already. */
   saved: boolean;
-  /** The names of that trip's options of this kind ("Destende var" on a hotel list). */
-  names: string[];
 }
 
 /** What a save on the site answers: where it went, and how many are still being read. */

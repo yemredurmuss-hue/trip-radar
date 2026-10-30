@@ -116,7 +116,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   void answer.then(sendResponse, () => sendResponse(null));
   return true;
 });
-// Sağ tık "Trip Radar'a ekle" (lib/contextSave.ts): the page or the link saved as the toolbar saves it.
+// Sağ tık "Trip Radar'a kaydet" (lib/contextSave.ts): the page or the link saved as the toolbar saves it.
 listenContextMenu(() => void run());
 chrome.tabs.onUpdated.addListener((tabId, info) => {
   if (info.status !== "complete") return;

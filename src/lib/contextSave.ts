@@ -1,8 +1,10 @@
-// Sağ tık "Trip Radar'a ekle" (0.41.0, board E3): the page under the mouse, or a link on it, saved as the toolbar saves it
-// (the click grants activeTab, so no site's permission is needed). Its trip as the toolbar's: the country's remembered
-// trip, else asked once (lib/tripRules.ts). The icon says how it went on that tab (··· → ✓); asked, a notification
-// opens the board where the question waits.
+// Sağ tık "Trip Radar'a kaydet" (0.41.0, board E3; tek Kaydet 0.47.31): the page under the mouse, or a link on it, saved as
+// the toolbar saves it (the click grants activeTab, so no site's permission is needed). Into the selected trip, the
+// popup's own: a planned flight's search, else the country's remembered trip, else the one picked last (bindFor); none,
+// the model routes it and asks once (lib/tripRules.ts). The icon says how it went on that tab (··· → ✓); asked, a
+// notification opens the board where the question waits.
 import { downscale, openBoard } from "./browser";
+import { bindFor } from "./companionWorker";
 import { db } from "./db";
 import { L } from "./i18n";
 import { collectPage } from "./pagecapture";
@@ -14,7 +16,7 @@ const MENU = "trip-radar-save";
 export function setupContextMenu(): void {
   if (!chrome.contextMenus) return;
   chrome.contextMenus.removeAll(() => {
-    chrome.contextMenus.create({ id: MENU, title: L("Trip Radar'a ekle", "Add to Trip Radar"), contexts: ["page", "link", "selection"] }, () => void chrome.runtime.lastError);
+    chrome.contextMenus.create({ id: MENU, title: L("Trip Radar'a kaydet", "Save to Trip Radar"), contexts: ["page", "link", "selection"] }, () => void chrome.runtime.lastError);
   });
 }
 
@@ -32,8 +34,10 @@ export function listenContextMenu(process: () => void): void {
       badge(tabId, "···");
       try {
         let id: string;
-        if (info.linkUrl && /^https?:/.test(info.linkUrl)) id = (await savePastedLink(info.linkUrl)).id;
-        else {
+        if (info.linkUrl && /^https?:/.test(info.linkUrl)) {
+          const bind = await bindFor(info.linkUrl, info.selectionText ?? "", {});
+          id = (await savePastedLink(info.linkUrl, bind.forTripId, undefined, null, bind.forNeed)).id;
+        } else {
           if (!tab.url || !/^https?:/.test(tab.url)) throw new Error("not a page");
           const [result] = await chrome.scripting.executeScript({ target: { tabId }, func: collectPage });
           if (!result?.result) throw new Error("unread");
@@ -43,7 +47,7 @@ export function listenContextMenu(process: () => void): void {
           } catch {
             // (some pages block it: the text is enough)
           }
-          id = (await saveSnapshot(result.result, shot)).id;
+          id = (await saveSnapshot(result.result, shot, await bindFor(tab.url, tab.title ?? "", {}))).id;
         }
         process();
         await watch(id, tabId);
