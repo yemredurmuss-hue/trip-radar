@@ -1,6 +1,6 @@
 # Trip Radar · Gizlilik politikası / Privacy policy
 
-Son güncelleme / Last updated: 2026-10-30 · Sürüm / Version: 0.47.31
+Son güncelleme / Last updated: 2026-10-30 · Sürüm / Version: 0.47.32
 
 ---
 
@@ -72,6 +72,11 @@ Eklenti yalnız "Kaydet"e bastığın sekmeyi, yalnız o anda okur. Arka planda 
   (saat, fiyat) bilgisayarında okur; okunan hiçbir yere gönderilmez. "+"ya basmadıkça hiçbir şey kaydedilmez; bastığında
   yalnız o sonucun metni "Kaydet"teki gibi okunur ve yapay zekâya gider. Sitedeki bağlantılar değiştirilmez. İzni
   Ayarlar'daki "Seyahat sitelerinde + düğmesi" anahtarıyla ya da Chrome'un eklenti ayarlarından geri alırsın.
+
+**Rezervasyon onayı işareti:** Herhangi bir sitede sekmenin adresi bir onay sayfasına benziyorsa ("…/payment-success",
+"…/onay", "…/thank-you") eklentinin simgesi yeşil bir ✓ alır. Adresi Chrome kendisi karşılaştırır (`declarativeContent`);
+eklenti hangi sayfada olduğunu öğrenmez, sayfa okunmaz, adres hiçbir yere gitmez. Sayfa ancak sen simgeye basınca,
+"Kaydet"teki gibi okunur.
 
 Kaydettiğin sayfanın metninde ya da ekran görüntüsünde görünen her şey (örneğin bir rezervasyon sayfasındaki adın)
 okunur ve yapay zekâya gönderilir. Kişisel bilgi gösteren bir sayfayı kaydetmek istemiyorsan "Kaydet"e basma.
@@ -414,6 +419,11 @@ both on yourself:
   screen"; then only that result's text (or the results in view and a screenshot) is read as with "Save" and goes to the
   AI. No link on the site is changed. You take the permission back in the popup ("Stop coming along on …") or in
   Chrome's extension settings.
+
+**A booking confirmation's mark:** on any site, when a tab's address looks like a confirmation page ("…/payment-success",
+"…/confirmation", "…/thank-you"), the extension's icon gets a green ✓. Chrome compares the address itself
+(`declarativeContent`); the extension does not learn which page it is, the page is not read and the address goes nowhere.
+The page is read only when you press the icon, as "Save" does.
 
 Whatever appears in the text or the screenshot of a page you save (for example your name on a booking page) is read
 and sent to the AI. If you do not want a page showing personal details to be processed, do not press "Save" on it.
