@@ -208,5 +208,15 @@ await p.waitForTimeout(100);
 assert.equal((await asked(p, "popup:current"))[0].tripId, "gr");
 p = await open({ ...newTab, shelf: { selected: false, total: 0, trips: [] } }, "10b-empty");
 assert.match(await p.locator(".tb-empty").innerText(), /İlk gezini başlat[\s\S]*\+ Yeni gezi$/);
+
+// 10. A long page name and a long trip name (a YouTube video, 0.47.34): nothing runs past the popup's edge; ×, the
+// rows' "Kaydet" and "+ Yeni gezi" stay in it (they were pushed out of sight, the card as wide as the title).
+const long = { title: "(2) TRAVEL PLAN WITH ME ✈️ (Booking Flights, Budgeting, Itinerary & More!) | How To Plan A Trip Abroad - YouTube", what: "idea", travelSite: false, along: false };
+const longShelf = { ...shelf, trips: [shelfTrip("pa", "Patagonya Gezisi · Şubat 2027", { plan: 30, booked: 0, fresh: false }, 7), ...shelf.trips] };
+p = await open(view(unknown, { ...long, shelf: longShelf }), "11-long");
+const past = await p.evaluate(() => [...document.querySelectorAll(".tk *")].filter((e) => e.getBoundingClientRect().right > innerWidth + 0.5).map((e) => String(e.className)));
+assert.deepEqual(past, [], "nothing past the right edge");
+assert.equal(await p.locator(".tk-trips.ask .tk-save:visible").count(), 3);
+assert.equal(await p.getByRole("button", { name: "+ Yeni gezi" }).isVisible(), true);
 console.log(JSON.stringify({ ok: true }));
 await browser.close();
