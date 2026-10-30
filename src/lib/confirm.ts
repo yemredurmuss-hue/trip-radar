@@ -21,8 +21,14 @@ const DONE =
   /(?<![\p{L}\p{N}])(?:rezervasyon(?:unuz|un)?\s+(?:onaylandi|tamamlandi|alindi)|siparişiniz\s+(?:onaylandi|alindi)|ödeme(?:niz)?\s+(?:başarili|başariyla\s+(?:tamamlandi|alindi|gerçekleşti)|alindi|tamamlandi|onaylandi)|(?:işleminiz|satin\s+alma(?:niz)?|rezervasyon(?:unuz)?)\s+başariyla\s+(?:tamamlandi|gerçekleşti|oluşturuldu)|biletiniz\s+(?:hazir|oluşturuldu)|(?:your\s+)?(?:booking|reservation|order)\s+(?:is\s+|has\s+been\s+)?confirmed|booking\s+confirmation|(?:payment|booking|purchase|order)\s+(?:was\s+|is\s+)?(?:successful|complete(?:d)?)|thank(?:s| you)\s+for\s+(?:your\s+)?(?:booking|reservation|order|purchase)|you'?re\s+(?:all\s+)?booked|buchung\s+(?:ist\s+)?bestätigt|zahlung\s+erfolgreich|reserva\s+confirmada|pago\s+(?:realizado|confirmado)|réservation\s+confirmée|paiement\s+réussi)/iu;
 
 /** The address a confirmation page is served at (".../payment-success", "/confirmation.html", "/thank-you"). */
-const DONE_PATH =
-  /(?:payment|booking|order|purchase|reservation|checkout)[-_/]?(?:success(?:ful)?|complete(?:d)?|confirmed|confirmation)|\/(?:confirmation|confirmed|thank-?you|success|bestaetigung|onay|tesekkurler)(?:[./_-]|$)/i;
+const DONE_PATH_SOURCE =
+  "(?:payment|booking|order|purchase|reservation|checkout)[-_/]?(?:success(?:ful)?|complete(?:d)?|confirmed|confirmation)|/(?:confirmation|confirmed|thank-?you|success|bestaetigung|onay|tesekkurler)(?:[./_?#-]|$)";
+const DONE_PATH = new RegExp(DONE_PATH_SOURCE, "i");
+/**
+ * The same, for Chrome to match a tab's whole address itself (declarativeContent, RE2: no lookbehind, "(?i)" for case):
+ * only in its path, never its host ("successfactors.com") or its query. Chrome tells us nothing of the pages it matches.
+ */
+export const CONFIRM_URL = `(?i)^https?://[^/?#]+[^?#]*?(?:${DONE_PATH_SOURCE})`;
 
 /**
  * "Onay numarası 4821 993 107", "Booking reference: ABC123", "PNR XK7Q2M", "Rezervasyon (PNR) No 2JB52G": what it is

@@ -2,6 +2,7 @@
 import { checkPricesDaily, listenPriceNotices } from "./lib/priceWatchWorker";
 import { candidateClosed, candidateOf, showBadge } from "./lib/candidateTabs";
 import { companionAnswer, syncCompanion } from "./lib/companionWorker";
+import { markConfirmPages } from "./lib/confirmHint";
 import { listenContextMenu, setupContextMenu } from "./lib/contextSave";
 import { popupAnswer } from "./lib/popupWorker";
 import { analyzeStale, isAnalyzing } from "./lib/analysis";
@@ -130,6 +131,8 @@ chrome.runtime.onInstalled.addListener((details) => {
   // Updated from the board: bring the board back where it was.
   if (details.reason === "update") void reopenBoard();
   void syncCompanion();
+  // (a booking's confirmation on any site: the icon turns green; Chrome matches the address, lib/confirmHint.ts)
+  void markConfirmPages();
   void langReady.then(setupContextMenu);
   void run();
 });

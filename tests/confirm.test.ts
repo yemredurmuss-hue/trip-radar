@@ -27,6 +27,17 @@ describe("confirmationOf", () => {
     expect(confirmationOf({ text: "İşleminiz başarıyla tamamlandı. PNR kodu: Q4ZT9K" })).toMatchObject({ code: "Q4ZT9K" });
     expect(confirmationOf({ text: "ÖDEME BAŞARILI · REZERVASYON (PNR) NO 2JB52G" })).toMatchObject({ code: "2JB52G" });
   });
+  it("the address rule Chrome matches by itself (the icon's green ✓): only a confirmation's path, never its host or query", async () => {
+    const { CONFIRM_URL } = await import("../src/lib/confirm");
+    expect(CONFIRM_URL.startsWith("(?i)")).toBe(true);
+    // (RE2 has no lookbehind; Chrome refuses the rule with one)
+    expect(CONFIRM_URL).not.toMatch(/\(\?<[=!]/);
+    const re = new RegExp(CONFIRM_URL.slice(4), "i");
+    for (const yes of ["https://web.flypgs.com/booking/payment-success", "https://x.com/checkout/confirmation?id=1", "https://otel.com.tr/rezervasyon/onay", "https://h.com/thank-you", "https://h.com/tr/tesekkurler.html", "https://h.com/Success#top", "https://h.com/order-complete/123"])
+      expect(re.test(yes), yes).toBe(true);
+    for (const no of ["https://successfactors.com/home", "https://h.com/booking/passengers", "https://h.com/search?next=/success", "https://h.com/onaylar", "https://h.com/"])
+      expect(re.test(no), no).toBe(false);
+  });
   it("a number run into the next word ends where that word begins, a Turkish İ too", () => {
     expect(confirmationOf({ text: "Ödemeniz başarılı Rezervasyon (PNR) No 2JB52Gİstanbul → Atina" })).toMatchObject({ code: "2JB52G" });
     expect(confirmationOf({ text: "Ödemeniz başarılı Rezervasyon (PNR) No 2JB52GToplam 86 €" })).toMatchObject({ code: "2JB52G" });
