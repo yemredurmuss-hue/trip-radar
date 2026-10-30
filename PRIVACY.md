@@ -1,6 +1,6 @@
 # Trip Radar · Gizlilik politikası / Privacy policy
 
-Son güncelleme / Last updated: 2026-10-29 · Sürüm / Version: 0.47.27
+Son güncelleme / Last updated: 2026-10-30 · Sürüm / Version: 0.47.28
 
 ---
 
@@ -41,6 +41,9 @@ Anthropic'in ve aşağıda adı geçen diğer hizmetlerin kendi gizlilik politik
   gönderilmez),
 - yeni gezi başlatırken yarım bıraktığın taslaklar ve sohbet sürerken onlar için hazırlananlar (yerin fotoğraf
   adresleri, rota önerisi, kural önerilerinin başlıkları; en fazla 8 taslak; dışa aktarıma ve paylaşıma girmez),
+- bir sitede "+" ile kaydettiğin sonuçların izi (sayfanın adresi, sonucun saatleri ve kelimeleri; fiyatı değil):
+  o sayfaya dönünce kaydettiklerinin ✓ görünmesi ve aynı sonucun iki kez kaydedilmemesi için; kayıt geri alınınca ya
+  da silinince düşer, 45 günden eskisi kendiliğinden silinir,
 - kendi yapay zekâ anahtarını girdiysen o anahtar.
 
 Bu verileri biz görmeyiz, bize gönderilmez. Bunlar üzerindeki denetim tamamen sende: görebilir, düzeltebilir,
@@ -378,6 +381,9 @@ The following is kept only in this browser's local storage (IndexedDB and `chrom
   either),
 - drafts of a new trip you left unfinished and what is prepared for them while you chat (the place's photo addresses,
   the suggested route, the rules' suggestion titles; at most 8 drafts; not in the export or sharing),
+- a trace of the results you save with "+" on a site (the page's address, the result's times and words; not its price):
+  so what you saved shows ✓ when you come back to that page and the same result is not saved twice; it goes when the
+  save is undone or deleted, and anything older than 45 days is deleted on its own,
 - your own AI key, if you entered one.
 
 We do not see this data and it is not sent to us. You control it fully: you can view, correct and delete it.
