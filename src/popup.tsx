@@ -52,8 +52,9 @@ function Popup() {
   const where = view?.where ?? null;
   const page = view?.kind === "page";
   const confirm = page ? (view?.confirm ?? null) : null;
-  // (a booking's confirmation is never an idea for İlham, whatever else the page looks like)
-  const idea = view?.what === "idea" && !confirm;
+  // (a booking's confirmation, or an address that looks like one, is never an idea for İlham)
+  const booking = Boolean(confirm || (page && view?.confirmUrl));
+  const idea = view?.what === "idea" && !booking;
   const planned = view?.desk.planned ?? null;
   const fixed = Boolean(planned || view?.desk.candidate);
   const trips = view?.shelf?.trips ?? [];
@@ -75,6 +76,11 @@ function Popup() {
 
   async function save(tripId: string | "new") {
     if (tabId == null || busy) return;
+    // (opened by itself over a confirmation: this site may not be read yet; Chrome asks once, here, on this press)
+    if (view?.access) {
+      const granted = await chrome.permissions.request({ origins: [view.access] }).catch(() => false);
+      if (!granted) return;
+    }
     setBusy(tripId);
     setFailed(false);
     const pick: TripPick = fixed ? {} : tripId === "new" ? { newTrip: true, remember: true } : { tripId, remember: Boolean(where?.country) };
@@ -125,7 +131,7 @@ function Popup() {
     return () => removeEventListener("keydown", key);
   });
 
-  const mark = confirm ? "ticket" : planned ? "plane" : null;
+  const mark = booking ? "ticket" : planned ? "plane" : null;
   const showPlus = Boolean(page && view?.site && !view.along && !plusDone && (view.what === "list" || (view.travelSite && !view.alongAsked)));
 
   let body: ReactNode;
@@ -163,7 +169,7 @@ function Popup() {
               )}
             </span>
             <b title={view.title}>{view.title}</b>
-            {mark && <span className="tk-sr">{mark === "ticket" ? L(`Rezervasyon onayı · ${confirm?.code ?? ""}`, `Booking confirmation · ${confirm?.code ?? ""}`) : L("Planındaki uçuşun araması", "A search for your planned flight")}</span>}
+            {mark && <span className="tk-sr">{mark === "ticket" ? [L("Rezervasyon onayı", "Booking confirmation"), confirm?.code].filter(Boolean).join(" · ") : L("Planındaki uçuşun araması", "A search for your planned flight")}</span>}
           </div>
         )}
         {page && view.desk.candidate && tabId != null && (
@@ -177,7 +183,7 @@ function Popup() {
             <IconButton name="retry" label={L("Tekrar dene", "Try again")} onClick={() => void ask({ type: "popup:retry", id: view.failed!.id }).then(close)} />
           </div>
         )}
-        <div className="tk-trips" onMouseEnter={() => (held.current = true)}>
+        <div className={`tk-trips${page && !selectedId && !fixed ? " ask" : ""}`} onMouseEnter={() => (held.current = true)}>
           {page && !selectedId && !fixed && trips.length > 0 && <small className="tk-ask">{L("Hangi geziye?", "Which trip?")}</small>}
           {all && ordered.length >= SEARCH_FROM && (
             <input className="tk-q" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={L("Gezi ara", "Find a trip")} aria-label={L("Gezi ara", "Find a trip")} autoFocus />

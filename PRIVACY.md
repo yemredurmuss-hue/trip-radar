@@ -1,6 +1,6 @@
 # Trip Radar · Gizlilik politikası / Privacy policy
 
-Son güncelleme / Last updated: 2026-10-30 · Sürüm / Version: 0.47.32
+Son güncelleme / Last updated: 2026-10-30 · Sürüm / Version: 0.47.33
 
 ---
 
@@ -59,8 +59,8 @@ onları da görebilir.
 
 ### 4. Sayfa okuma
 
-Eklenti yalnız "Kaydet"e bastığın sekmeyi, yalnız o anda okur. Arka planda sayfa okumaz. Tarama geçmişin,
-şifrelerin ve ödeme bilgilerin okunmaz. İki istisna var, ikisini de sen açarsın:
+Eklenti yalnız "Kaydet"e bastığın sekmeyi, yalnız o anda okur. Arka planda sayfa okumaz. Şifrelerin ve ödeme
+bilgilerin okunmaz; açtığın sayfaların adresine yalnız rezervasyon onayını fark etmek için bakılır (aşağıda). İki istisna var, ikisini de sen açarsın:
 
 - **Sekme grubu ("Adayları sekmelerde aç"):** bir ihtiyacın adaylarını senin isteğinle Chrome'da bir sekme grubunda açar
   ve eklentinin simgesinde her sekmenin kaçıncı aday olduğunu yazar. Bunun için yalnız açtığı sekmeleri hatırlar
@@ -73,10 +73,13 @@ Eklenti yalnız "Kaydet"e bastığın sekmeyi, yalnız o anda okur. Arka planda 
   yalnız o sonucun metni "Kaydet"teki gibi okunur ve yapay zekâya gider. Sitedeki bağlantılar değiştirilmez. İzni
   Ayarlar'daki "Seyahat sitelerinde + düğmesi" anahtarıyla ya da Chrome'un eklenti ayarlarından geri alırsın.
 
-**Rezervasyon onayı işareti:** Herhangi bir sitede sekmenin adresi bir onay sayfasına benziyorsa ("…/payment-success",
-"…/onay", "…/thank-you") eklentinin simgesi yeşil bir ✓ alır. Adresi Chrome kendisi karşılaştırır (`declarativeContent`);
-eklenti hangi sayfada olduğunu öğrenmez, sayfa okunmaz, adres hiçbir yere gitmez. Sayfa ancak sen simgeye basınca,
-"Kaydet"teki gibi okunur.
+**Rezervasyon onayı:** Herhangi bir sitede sekmenin adresi bir onay sayfasına benziyorsa ("…/payment-success",
+"…/onay", "…/thank-you") eklentinin simgesi yeşil bir ✓ alır ve pencere kendiliğinden açılıp "Kaydet" der. Bunun için
+eklenti açtığın sayfaların adresini görür (`webNavigation`; Chrome bunu kurulumda "Göz atma geçmişinizi okuma" diye
+yazar). Her adres yalnız bilgisayarında bu kurala göre karşılaştırılır; saklanmaz, hiçbir yere gönderilmez. Kurala
+uyan adres, pencere onu gösterebilsin diye tarayıcı kapanana kadar bellekte tutulur. Sayfanın kendisi okunmaz: ancak
+"Kaydet"e basınca okunur; kendiliğinden açılan pencerede Chrome o site için bir kez izin sorar (simgeye kendin
+basarsan sormaz). Bu izni verdiğin sitede "+" düğmesi ve gezi cebi de çıkar.
 
 Kaydettiğin sayfanın metninde ya da ekran görüntüsünde görünen her şey (örneğin bir rezervasyon sayfasındaki adın)
 okunur ve yapay zekâya gönderilir. Kişisel bilgi gösteren bir sayfayı kaydetmek istemiyorsan "Kaydet"e basma.
@@ -297,6 +300,11 @@ Eklenti kendini otomatik günceller. Bu politika değişirse üstteki tarih ve s
 Önemli bir değişiklik (yeni bir veri türü ya da yeni bir alıcı gibi), değişikliği getiren sürümle birlikte bu
 sayfada açıkça yazılır.
 
+0.47.28–0.47.33'te değişenler: "+" ile kaydettiğin sonuçların izi (adres, saatler, kelimeler; fiyat değil) yalnız
+bu bilgisayarda tutulur, aynı sonuç iki kez kaydedilmez. Cebin yeri site başına bu bilgisayarda tutulur. Rezervasyon
+onayı her sitede fark edilir: simge yeşil ✓ alır ve pencere kendiliğinden açılır; bunun için açtığın sayfaların adresi
+bilgisayarında karşılaştırılır (`webNavigation`, bölüm 4), hiçbir yere gitmez.
+
 0.47.26'da değişenler: seyahat sitelerinde eklenti daha az okur. Sayfanın üstündeki şerit, sonuçların yanındaki etiketler ve
 sitede görülen fiyatın izlenmesi kaldırıldı; sonuçlar artık sayfa her değiştiğinde değil, yalnız sayfa açılırken, sen
 kaydırınca ve fareyi oynatınca bulunur. Bir rezervasyon onayına yalnız adresi ya da başlığı onay sayfası olduğunu söyleyen
@@ -405,7 +413,8 @@ profile can see it too.
 ### 4. Reading pages
 
 The extension reads only the tab where you press "Save", and only at that moment. It does not read pages in the
-background. Your browsing history, passwords and payment details are not read. There are two exceptions, and you turn
+background. Your passwords and payment details are not read; the addresses of the pages you open are looked at only to
+notice a booking confirmation (below). There are two exceptions, and you turn
 both on yourself:
 
 - **Tab group ("Open the candidates in tabs"):** at your request it opens a need's candidates in one Chrome tab group
@@ -420,10 +429,13 @@ both on yourself:
   AI. No link on the site is changed. You take the permission back in the popup ("Stop coming along on …") or in
   Chrome's extension settings.
 
-**A booking confirmation's mark:** on any site, when a tab's address looks like a confirmation page ("…/payment-success",
-"…/confirmation", "…/thank-you"), the extension's icon gets a green ✓. Chrome compares the address itself
-(`declarativeContent`); the extension does not learn which page it is, the page is not read and the address goes nowhere.
-The page is read only when you press the icon, as "Save" does.
+**A booking confirmation:** on any site, when a tab's address looks like a confirmation page ("…/payment-success",
+"…/confirmation", "…/thank-you"), the extension's icon gets a green ✓ and its window opens by itself with "Save". For
+this the extension sees the addresses of the pages you open (`webNavigation`; Chrome calls it "Read your browsing
+history" at install). Each address is only compared with this rule on your computer; it is not kept and goes nowhere.
+An address that matches is held in memory until the browser closes, so the window can show it. The page itself is not
+read until you press "Save"; in the window that opened by itself Chrome asks once for that site (not when you press
+the icon yourself). On a site you allow this way, the "+" button and the trip pocket show too.
 
 Whatever appears in the text or the screenshot of a page you save (for example your name on a booking page) is read
 and sent to the AI. If you do not want a page showing personal details to be processed, do not press "Save" on it.
@@ -642,6 +654,11 @@ In practice:
 The extension updates itself. When this policy changes, the date and version at the top are updated.
 A significant change (a new kind of data or a new recipient, say) is stated plainly on this page with the version
 that brings it.
+
+Changed in 0.47.28–0.47.33: a trace of the results you save with "+" (address, times, words; not the price) is kept
+only on this computer, and the same result is not saved twice. The pocket's place is kept per site on this computer. A
+booking confirmation is noticed on any site: the icon gets a green ✓ and the window opens by itself; for this the
+addresses of the pages you open are compared on your computer (`webNavigation`, section 4) and go nowhere.
 
 Changed in 0.45.0: when you open the toolbar window (and on the travel sites you allowed), the extension checks on this
 computer whether the page is a booking confirmation (a confirming phrase and a confirmation number); if so it only asks,

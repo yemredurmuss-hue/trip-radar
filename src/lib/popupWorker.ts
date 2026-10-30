@@ -23,6 +23,7 @@ import { saveSnapshot } from "./process";
 import type { Item } from "./types";
 import { flightSearchOf, parseUrl } from "./url";
 import { downscale } from "./browser";
+import { confirmAddress, openedFor } from "./confirmHint";
 
 export type PopupAsk =
   | { type: "popup:view"; tabId: number }
@@ -67,6 +68,12 @@ export interface PopupView {
   favicon: string | null;
   /** This page is on the plan already: in which trip, its card, and whether "Çıkar" may take it (only a card not chosen or booked). */
   here: { tripId: string; itemId: string; removable: boolean } | null;
+  /**
+   * Opened by itself over a booking's confirmation (lib/confirmHint.ts): the page's address looks like one, and the site
+   * this popup may not read yet (Chrome gives that only to a press on the icon): "Kaydet" asks Chrome for it first, once.
+   */
+  confirmUrl: boolean;
+  access: string | null;
 }
 
 /** Read in the page itself, in a blink (no layout): what it says it is, whether a price is written on it, its words. */
@@ -129,9 +136,12 @@ const KIND_WORD: Record<PageWhat, () => string> = {
 
 export async function popupView(tabId: number): Promise<PopupView> {
   const tab = await chrome.tabs.get(tabId).catch(() => null);
-  const url = tab?.url ?? "";
+  // (opened by itself over a confirmation, without a press on the icon: Chrome hides the tab's address; the one it was
+  // opened for, kept for it in this browser session)
+  const opened = tab?.url ? null : await openedFor(tabId);
+  const url = tab?.url ?? opened ?? "";
   const own = chrome.runtime.getURL("");
-  const base: PopupView = { kind: "none", title: tab?.title ?? "", sub: "", site: null, travelSite: false, along: false, what: "idea", where: null, desk: { candidate: null, planned: null }, key: await hasActiveKey(), pocket: null, confirm: null, failed: null, alongAsked: true, shelf: null, favicon: null, here: null };
+  const base: PopupView = { kind: "none", title: tab?.title ?? "", sub: "", site: null, travelSite: false, along: false, what: "idea", where: null, desk: { candidate: null, planned: null }, key: await hasActiveKey(), pocket: null, confirm: null, failed: null, alongAsked: true, shelf: null, favicon: null, here: null, confirmUrl: false, access: null };
   // (our own pages, the board or the popup in a tab: their address isn't always visible here, their context is)
   const ours = await chrome.runtime.getContexts({ contextTypes: [chrome.runtime.ContextType.TAB] }).catch(() => []);
   // (our own pages and pages that can't be saved: the pocket still shows the trip and what was added last)
@@ -173,6 +183,8 @@ export async function popupView(tabId: number): Promise<PopupView> {
   return {
     ...base,
     kind: "page",
+    // (the page's own name is hidden too when it was opened by itself: its site's)
+    title: tab?.title || companionName(site ?? origin ?? ""),
     sub,
     site,
     travelSite: Boolean(travel),
@@ -187,6 +199,9 @@ export async function popupView(tabId: number): Promise<PopupView> {
     shelf: await tripShelf(true),
     favicon: /^(https:|data:image\/)/.test(icon) ? icon.slice(0, 4000) : null,
     here: mine ? { tripId: mine.tripId, itemId: mine.id, removable: mine.status === "saved" } : null,
+    // (the address alone: Chrome's own rule, the same as the icon's green ✓)
+    confirmUrl: confirmAddress(url),
+    access: opened && origin ? origin : null,
   };
 }
 

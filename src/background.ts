@@ -2,7 +2,7 @@
 import { checkPricesDaily, listenPriceNotices } from "./lib/priceWatchWorker";
 import { candidateClosed, candidateOf, showBadge } from "./lib/candidateTabs";
 import { companionAnswer, syncCompanion } from "./lib/companionWorker";
-import { markConfirmPages } from "./lib/confirmHint";
+import { listenConfirmPages, markConfirmPages } from "./lib/confirmHint";
 import { listenContextMenu, setupContextMenu } from "./lib/contextSave";
 import { popupAnswer } from "./lib/popupWorker";
 import { analyzeStale, isAnalyzing } from "./lib/analysis";
@@ -117,6 +117,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   void answer.then(sendResponse, () => sendResponse(null));
   return true;
 });
+// A booking's confirmation on any site: the popup opens over it by itself (lib/confirmHint.ts).
+listenConfirmPages();
 // Sağ tık "Trip Radar'a kaydet" (lib/contextSave.ts): the page or the link saved as the toolbar saves it.
 listenContextMenu(() => void run());
 chrome.tabs.onUpdated.addListener((tabId, info) => {

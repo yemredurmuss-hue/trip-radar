@@ -2971,7 +2971,8 @@ body.popup:has(.tb) { width: 380px; }
 .tk-save.ghost.ok { background: var(--q-ok-s); color: var(--q-ok); }
 .tk-save:disabled { opacity: .7; cursor: default; }
 /* (a row not selected shows its "Kaydet" on hover and on keyboard focus; a touch screen has no hover: always) */
-@media (hover: hover) { .tk-row:not(.sel):not(:hover):not(:focus-within) .tk-save.ghost { visibility: hidden; } }
+/* (no trip selected yet, "Hangi geziye?": every row shows it, there's no one to fall back on) */
+@media (hover: hover) { .tk-trips:not(.ask) .tk-row:not(.sel):not(:hover):not(:focus-within) .tk-save.ghost { visibility: hidden; } }
 .tk-state { display: inline-flex; align-items: center; gap: 5px; padding-left: 4px; font-size: 13.5px; font-weight: 800; color: var(--q-ok); white-space: nowrap; }
 .tk-state .tk-ico { width: 16px; height: 16px; }
 .tk-row.saved .tk-ib { color: var(--q-ok); }

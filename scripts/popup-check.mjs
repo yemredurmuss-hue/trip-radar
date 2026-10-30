@@ -29,7 +29,7 @@ const trips = shelf.trips.map((t) => ({ id: t.id, title: t.title, when: null, ma
 const pocket = { trip: { id: "pt", title: "Portekiz", when: null, count: 23, decks: {}, photo: dot }, rows: [], waiting: 0, key: true };
 const known = { trip: { id: "pt", title: "Portekiz" }, country: "Portekiz", trips, picks: ["pt", "gr"], saved: false };
 const unknown = { ...known, trip: null };
-const view = (where, extra = {}) => ({ kind: "page", title: "Casa do Jardim · Porto", sub: "Booking.com · konaklama", site: "https://www.booking.com/*", travelSite: true, along: true, what: "stay", where, desk: { candidate: null, planned: null }, key: true, pocket, confirm: null, failed: null, alongAsked: true, shelf, favicon: null, here: null, ...extra });
+const view = (where, extra = {}) => ({ kind: "page", title: "Casa do Jardim · Porto", sub: "Booking.com · konaklama", site: "https://www.booking.com/*", travelSite: true, along: true, what: "stay", where, desk: { candidate: null, planned: null }, key: true, pocket, confirm: null, failed: null, alongAsked: true, shelf, favicon: null, here: null, confirmUrl: false, access: null, ...extra });
 const answer = (v, m) =>
   m.type === "popup:view"
     ? v
@@ -54,7 +54,7 @@ async function open(v, name) {
       tabs: { query: async () => [{ id: 7 }], sendMessage: async (_id, m) => void window.__asked.push({ tab: true, ...m }), create: async () => undefined, update: async () => undefined },
       scripting: { executeScript: async () => [] },
       storage: { local: { get: async () => ({ lang: "tr" }), set: async () => undefined, remove: async () => undefined } },
-      permissions: { contains: async () => v.along, request: async () => true, remove: async () => true },
+      permissions: { contains: async () => v.along, request: async (o) => (window.__asked.push({ type: "permission", ...o }), v.grant !== false), remove: async () => true },
       action: { setBadgeText: async () => undefined },
     };
   }, [v, VERSION, answer.toString()]);
@@ -182,6 +182,21 @@ assert.match(await p.locator(".tk-warn").innerText(), /Casa do Bairro okunamadı
 await p.getByRole("button", { name: "Tekrar dene" }).click();
 await p.waitForTimeout(100);
 assert.equal((await asked(p, "popup:retry"))[0].id, "c:f");
+
+// 8b. Opened by itself over a confirmation (no press on the icon): the ticket from the address alone; with no trip
+// selected every row shows its "Kaydet"; a press asks Chrome for that site first, then saves (never as an idea).
+const auto = { what: "idea", confirmUrl: true, access: "https://web.flypgs.com/*", title: "Pegasus" };
+p = await open(view(unknown, auto), "9b-auto");
+assert.equal(await p.locator(".tk-fav em.ok").count(), 1);
+assert.equal(await p.locator(".tk-trips.ask .tk-save:visible").count(), 3, "every row's Kaydet shows");
+await row(p, "Yunanistan").getByRole("button", { name: "Kaydet" }).click();
+await p.locator(".tk-row.saved").waitFor();
+assert.deepEqual((await asked(p, "permission"))[0].origins, ["https://web.flypgs.com/*"]);
+assert.equal((await asked(p, "popup:save"))[0].idea, false);
+p = await open(view(unknown, { ...auto, grant: false }), "9c-auto-denied");
+await row(p, "Yunanistan").getByRole("button", { name: "Kaydet" }).click();
+await p.waitForTimeout(150);
+assert.equal((await asked(p, "popup:save")).length, 0, "no access given: nothing saved");
 
 // 9. A new tab: the trips, no page and no "Kaydet"; a row selects. No trips: one invitation.
 const newTab = { ...view(null), kind: "none", title: "", site: null, travelSite: false, along: false, what: "idea" };
