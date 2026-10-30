@@ -2897,7 +2897,7 @@ body.still .hm-plane { display: none; }
 .pk-open { justify-self: start; font-size: 12.5px; }
 /* Tek bakış (0.45.0): one card at a time; a picture or a sign, one sentence, one big button, one quiet line */
 body.popup:has(.tb) { width: 380px; }
-.popup-card.tb { display: grid; gap: 0; padding: 0; overflow: hidden; }
+.popup-card.tb { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; padding: 0; overflow: hidden; }
 .tb-app { display: flex; align-items: center; gap: 8px; padding: 8px 10px 8px 12px; border-bottom: 1px solid #efedf5; background: #faf9fc; }
 .tb-brand { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 800; color: #1c1a33; margin-right: auto; }
 .tb-brand:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 2px; }
@@ -2945,7 +2945,7 @@ body.popup:has(.tb) { width: 380px; }
 .tk-warn { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 10px 12px 0; padding: 4px 4px 4px 12px; border-radius: 12px; background: #fff3df; color: var(--q-warn); font-size: 13.5px; font-weight: 750; }
 .tk-warn span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tk-warn .tk-ib { color: var(--q-warn); }
-.tk-trips { display: grid; gap: 2px; padding: 8px; }
+.tk-trips { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; padding: 8px; }
 .tk-ask { padding: 4px 8px 2px; font-size: 12.5px; font-weight: 800; color: var(--q-mut); }
 .tk-q { box-sizing: border-box; width: 100%; height: 36px; margin: 0 0 4px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--q-line); background: var(--q-soft); font: inherit; font-size: 14px; color: var(--q-ink); }
 /* (v2: the count right after the name, the ring and the button at the end) */
@@ -2954,7 +2954,7 @@ body.popup:has(.tb) { width: 380px; }
 .tk-row.sel { box-shadow: inset 0 0 0 1.5px #d6cffd; }
 .tk-row.saved { background: var(--q-ok-s); box-shadow: inset 0 0 0 1.5px var(--q-ok-l); }
 .tk-pick { all: unset; box-sizing: border-box; cursor: pointer; flex: 0 1 auto; min-width: 0; display: flex; align-items: center; gap: 11px; padding: 8px 0 8px 8px; align-self: stretch; border-radius: 12px; }
-.tk-pick b { min-width: 0; font-size: 15px; font-weight: 750; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tk-pick b { min-width: 0; font-size: 15px; font-weight: 750; line-height: 1.25; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: anywhere; }
 .tk-th { width: 40px; height: 40px; border-radius: 11px; }
 .tk-th .tk-art { width: 32px; height: 32px; object-fit: contain; mix-blend-mode: multiply; }
 .tk-cnt { all: unset; box-sizing: border-box; cursor: pointer; flex: none; height: 30px; padding: 0 7px; border-radius: 8px; display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; font-weight: 750; color: var(--q-mut); font-variant-numeric: tabular-nums; }
