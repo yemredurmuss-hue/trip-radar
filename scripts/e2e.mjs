@@ -2674,8 +2674,8 @@ try {
   const popup = await context.newPage();
   await popup.setViewportSize({ width: 340, height: 260 });
   await popup.goto(`chrome-extension://${id}/popup.html`);
-  // (açılır kart v1.1, 0.47.2: the trips ahead, else the first trip's invitation; never a decision here)
-  await popup.locator(".ts-band, .tb-empty").first().waitFor();
+  // (tek Kaydet, 0.47.29: the trips ahead as rows, else the first trip's invitation; never a decision here)
+  await popup.locator(".tk-trips, .tb-empty").first().waitFor();
   assert.equal(await popup.getByText(/Karar ver|Sıradaki/).count(), 0);
   await popup.screenshot({ path: `${out}/7-popup.png` });
   console.log("✓ popup: on the board itself, the trips ahead (or the first trip's invitation), no decision");

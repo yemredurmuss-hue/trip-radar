@@ -70,8 +70,10 @@ export function confirmationOf(page: { text: string; jsonLd?: readonly unknown[]
   if (!DONE.test(`${(page.title ?? "").replace(/[ıİ]/g, "i")} ${folded}`) && !DONE_PATH.test(pathOf(page.url))) return null;
   // (each labelled number in turn: "PNR No Paylaş", a label with a button after it, is passed over for the next)
   for (const m of folded.matchAll(LABEL)) {
-    // (a page's text run together, "2JB52GToplam": the number ends where a word begins)
-    const n = m[1].replace(/[A-ZÇĞİÖŞÜ]?[a-zçğıöşü].*$/, "").trim().replace(/[ -]+$/, "");
+    // (a page's text run together, "2JB52GToplam": the number ends where a word begins; read in the page's own letters,
+    // never the folded ones: "2JB52Gİstanbul" folded is "2JB52Gistanbul", and its G would be taken for the word's start)
+    const at = (m.index ?? 0) + m[0].length - m[1].length;
+    const n = text.slice(at, at + m[1].length).replace(/[A-ZÇĞİÖŞÜ]?[a-zçğıöşü].*$/, "").trim().replace(/[ -]+$/, "");
     // (a number is digits or capitals with at least one digit: "Rezervasyonunuz onaylandı" alone, or a word, is not one)
     if (/\d/.test(n) && n.replace(/[^A-Z0-9]/gi, "").length >= 5) return { code: n, name: ld?.name ?? null, paid };
   }

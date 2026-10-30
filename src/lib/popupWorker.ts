@@ -11,12 +11,12 @@ import { watch } from "./contextSave";
 import { db, hasActiveKey } from "./db";
 import { moveSave, undoSave } from "./saveUndo";
 import { pocketFor, pocketRemove, pocketRetry, type Pocket } from "./pocket";
-import { loadCurrent, setCurrent } from "./tripRules";
+import { loadCurrent, rememberTrip, setCurrent } from "./tripRules";
 import { confirmationOf, type Confirmation } from "./confirm";
 import { tripGlance, type TripGlance } from "./tripGlance";
 import { tripShelf, type Shelf } from "./tripShelf";
 import { today } from "./extract";
-import { pageCountry } from "./companionWorker";
+import { pageCountry, pageKey } from "./companionWorker";
 import { loadHome } from "./passport";
 import { L } from "./i18n";
 import { formatDateRange } from "./items";
@@ -72,8 +72,12 @@ export interface PopupView {
   failed: { id: string; title: string } | null;
   /** "Booking'de kartlara + koyayım mı?" was asked once already. */
   alongAsked: boolean;
-  /** Where nothing can be added (a new tab, the board): the trips ahead, the selected one first (açılır kart v1.1). */
+  /** The trips ahead, the selected one first (açılır kart v1.1); on a page too, every one (tek Kaydet: the trip list is the popup). */
   shelf: Shelf | null;
+  /** The page's own little icon (the tab's), https or data only. */
+  favicon: string | null;
+  /** This page is on the plan already: in which trip, its card, and whether "Çıkar" may take it (only a card not chosen or booked). */
+  here: { tripId: string; itemId: string; removable: boolean } | null;
 }
 
 /** Read in the page itself, in a blink (no layout): what it says it is, whether a price is written on it, its picture. */
@@ -180,13 +184,13 @@ export async function popupView(tabId: number): Promise<PopupView> {
   const tab = await chrome.tabs.get(tabId).catch(() => null);
   const url = tab?.url ?? "";
   const own = chrome.runtime.getURL("");
-  const base: PopupView = { kind: "none", title: tab?.title ?? "", sub: "", site: null, travelSite: false, along: false, what: "idea", where: null, desk: { candidate: null, planned: null }, key: await hasActiveKey(), price: await priceBadge(), pocket: null, hero: null, video: false, confirm: null, glance: null, fresh: false, failed: null, alongAsked: true, shelf: null };
+  const base: PopupView = { kind: "none", title: tab?.title ?? "", sub: "", site: null, travelSite: false, along: false, what: "idea", where: null, desk: { candidate: null, planned: null }, key: await hasActiveKey(), price: await priceBadge(), pocket: null, hero: null, video: false, confirm: null, glance: null, fresh: false, failed: null, alongAsked: true, shelf: null, favicon: null, here: null };
   // (our own pages, the board or the popup in a tab: their address isn't always visible here, their context is)
   const ours = await chrome.runtime.getContexts({ contextTypes: [chrome.runtime.ContextType.TAB] }).catch(() => []);
   // (our own pages and pages that can't be saved: the pocket still shows the trip and what was added last)
   if (url.startsWith(own) || ours.some((c) => c.tabId === tabId) || !/^https?:/.test(url)) {
     const pocket = await pocketFor(null);
-    return { ...base, kind: url.startsWith(own) || ours.some((c) => c.tabId === tabId) ? "board" : "none", pocket, glance: await glanceOf(pocket.trip?.id), failed: await freshFailure(pocket.trip?.id), shelf: await tripShelf() };
+    return { ...base, kind: url.startsWith(own) || ours.some((c) => c.tabId === tabId) ? "board" : "none", pocket, glance: await glanceOf(pocket.trip?.id), failed: await freshFailure(pocket.trip?.id), shelf: await tripShelf(true) };
   }
   const travel = companionSiteOf(url);
   const origin = originOf(url);
@@ -214,6 +218,9 @@ export async function popupView(tabId: number): Promise<PopupView> {
     if (p && trip) plannedTrip = trip.id;
   }
   const where = await whereFor(url, tab?.title ?? "");
+  const key = pageKey(url);
+  const mine = key && where.saved ? (await (await db()).getAll("items")).find((i) => i.status !== "dismissed" && pageKey(i.url) === key) : undefined;
+  const icon = tab?.favIconUrl ?? "";
   const tripId = c?.tripId ?? plannedTrip ?? where.trip?.id ?? null;
   const pocket = await pocketFor(tripId);
   const cur = await loadCurrent();
@@ -236,6 +243,9 @@ export async function popupView(tabId: number): Promise<PopupView> {
     fresh: !cur || Date.now() - cur.at > 24 * 3600_000,
     failed: await freshFailure(tripId ?? pocket.trip?.id),
     alongAsked: await alongAsked(),
+    shelf: await tripShelf(true),
+    favicon: /^(https:|data:image\/)/.test(icon) ? icon.slice(0, 4000) : null,
+    here: mine ? { tripId: mine.tripId, itemId: mine.id, removable: mine.status === "saved" } : null,
   };
 }
 
@@ -326,6 +336,8 @@ export function popupAnswer(message: PopupAsk | { type?: unknown }, sender: chro
         if (!tripId && m.newTrip && /^https?:/.test(url)) tripId = (await bindFor(url, tab?.title ?? "", { newTrip: true, remember: false })).forTripId ?? null;
         if (!tripId) return null;
         await setCurrent(tripId, country);
+        // (a row picked on a page of a country: that country's trip from now on, so the pick shows; Ayarlar forgets it)
+        if (m.remember === true) await rememberTrip(country, tripId);
         return popupView(m.tabId);
       })();
     case "popup:along-asked":

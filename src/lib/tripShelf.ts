@@ -74,7 +74,7 @@ export function countdown(range: { start: string; end: string } | null, today: s
  * Which trips and in what order: never a sample, never one over. The selected trip first while it holds (picked within a
  * day); else the nearest (one going on now first). The others by their start, those without dates last.
  */
-export function shelfOrder(trips: readonly Trip[], items: readonly Item[], cur: CurrentTrip | null, today: string, now = Date.now()): { trips: { trip: Trip; range: { start: string; end: string } | null }[]; selected: boolean; total: number } {
+export function shelfOrder(trips: readonly Trip[], items: readonly Item[], cur: CurrentTrip | null, today: string, now = Date.now(), max = SHELF_MAX): { trips: { trip: Trip; range: { start: string; end: string } | null }[]; selected: boolean; total: number } {
   const profiles = profileTrips([...trips], [...items]);
   const live = trips
     .filter((t) => !isDemoTrip(t))
@@ -84,7 +84,7 @@ export function shelfOrder(trips: readonly Trip[], items: readonly Item[], cur: 
   const picked = currentFor(cur, null, [...trips], [...items], today, now);
   const first = live.find((x) => x.trip.id === picked?.id) ?? null;
   const ordered = first ? [first, ...live.filter((x) => x !== first)] : live;
-  return { trips: ordered.slice(0, SHELF_MAX), selected: Boolean(first), total: live.length };
+  return { trips: ordered.slice(0, max), selected: Boolean(first), total: live.length };
 }
 
 /** A trip's drawing by where it sleeps (the plan's own: a camp is a tent, never a hotel). */
@@ -117,11 +117,12 @@ async function loadReady(): Promise<Record<string, Ready>> {
 }
 
 /** The popup's shelf, from the database as it is. */
-export async function tripShelf(): Promise<Shelf> {
+/** `all`: every trip not over (the popup's "Tümü (N)" opens in place, tek Kaydet v2), else the first three. */
+export async function tripShelf(all = false): Promise<Shelf> {
   const d = await db();
   const today = todayIso();
   const [trips, items, cur, kept] = await Promise.all([listTrips(), d.getAll("items"), loadCurrent(), loadReady()]);
-  const order = shelfOrder(trips, items, cur, today);
+  const order = shelfOrder(trips, items, cur, today, Date.now(), all ? Infinity : SHELF_MAX);
   return {
     selected: order.selected,
     total: order.total,

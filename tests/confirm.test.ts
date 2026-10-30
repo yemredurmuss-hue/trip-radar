@@ -27,6 +27,10 @@ describe("confirmationOf", () => {
     expect(confirmationOf({ text: "İşleminiz başarıyla tamamlandı. PNR kodu: Q4ZT9K" })).toMatchObject({ code: "Q4ZT9K" });
     expect(confirmationOf({ text: "ÖDEME BAŞARILI · REZERVASYON (PNR) NO 2JB52G" })).toMatchObject({ code: "2JB52G" });
   });
+  it("a number run into the next word ends where that word begins, a Turkish İ too", () => {
+    expect(confirmationOf({ text: "Ödemeniz başarılı Rezervasyon (PNR) No 2JB52Gİstanbul → Atina" })).toMatchObject({ code: "2JB52G" });
+    expect(confirmationOf({ text: "Ödemeniz başarılı Rezervasyon (PNR) No 2JB52GToplam 86 €" })).toMatchObject({ code: "2JB52G" });
+  });
   it("a label with no number after it is passed over for the next one that has one", () => {
     expect(confirmationOf({ text: "Ödeme başarılı. PNR No Paylaş · Rezervasyon kodu: 2JB52G" })).toMatchObject({ code: "2JB52G" });
   });
