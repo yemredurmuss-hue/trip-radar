@@ -1,6 +1,6 @@
 # Trip Radar · Gizlilik politikası / Privacy policy
 
-Son güncelleme / Last updated: 2026-10-30 · Sürüm / Version: 0.47.30
+Son güncelleme / Last updated: 2026-10-30 · Sürüm / Version: 0.47.31
 
 ---
 
@@ -320,7 +320,7 @@ gönderilmez. Gezi seçicide gezilerinin fotoğrafları gösterilir; bunlar bilg
 0.41.0'da eklenenler: "Sitede benle gel" artık otel ve etkinlik sitelerinde de (Booking.com, Airbnb, GetYourGuide,
 Viator), yine yalnız senin site site izin verdiğin yerlerde: listede her sonuca "+", bir otelin ya da turun kendi
 sayfasında sağ altta "Desteye ekle". Basılana kadar sayfadan hiçbir şey okunup gönderilmez; basınca yalnız o sonucun ya da
-o sayfanın metni kaydedilir (araç çubuğundaki "Kaydet" gibi). Sağ tık menüsünde "Trip Radar'a ekle" (`contextMenus`
+o sayfanın metni kaydedilir (araç çubuğundaki "Kaydet" gibi). Sağ tık menüsünde "Trip Radar'a kaydet" (`contextMenus`
 izni): yalnız tıkladığın sayfa ya da bağlantı kaydedilir. "Hangi gezi": bir ülke için ilk kaydedişte hangi geziye
 koyacağın sorulur, cevabın (ülke kodu ve gezi) yalnız bu bilgisayarda saklanır, Ayarlar'dan silinir. Fiyat düşünce eklenti
 simgesinde küçük bir rozet görünür; plan açılınca gider.
@@ -657,7 +657,7 @@ sent until you press it. The trip picker shows your trips' photos, from the reco
 Added in 0.41.0: "Come along on the site" now also on hotel and activity sites (Booking.com, Airbnb, GetYourGuide,
 Viator), still only where you allow it site by site: a "+" on each result of a list, and "Add to the deck" at the bottom
 right of a hotel's or a tour's own page. Nothing is read from the page or sent until you press it; then only that
-result's or that page's text is saved (as the toolbar's "Save" does). "Add to Trip Radar" in the right-click menu (the
+result's or that page's text is saved (as the toolbar's "Save" does). "Save to Trip Radar" in the right-click menu (the
 `contextMenus` permission): only the page or link you clicked is saved. "Which trip": the first time you save something
 for a country you're asked which trip it goes to; the answer (the country code and the trip) is kept only on this
 computer and can be forgotten in Settings. When a price drops, a small badge shows on the extension's icon until the plan
