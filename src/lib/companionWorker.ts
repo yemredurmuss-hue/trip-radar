@@ -21,6 +21,8 @@ import type { Item, Trip } from "./types";
 import { flightSearchOf, parseUrl } from "./url";
 import { seenCheaper } from "./priceWatchWorker";
 import { pocketFor, pocketRemove, pocketRetry } from "./pocket";
+import { printOf } from "./resultMark";
+import { markSaved, marksOn, savedAlready } from "./resultMarks";
 
 const SCRIPT_ID = "trip-radar-companion";
 
@@ -250,13 +252,16 @@ function pageSnapshot(raw: unknown, url: string): PageSnapshot | null {
 }
 
 /** Saved on the site: "+1" on the icon a moment (on that tab), and what the note says. */
-async function savedOn(tabId: number, captureId: string, tripId: string | null): Promise<{ ok: true; tripId: string | null; tripTitle: string | null; captureId: string; reading: number }> {
-  try {
-    await chrome.action.setBadgeBackgroundColor({ tabId, color: "#1f7a45" });
-    await chrome.action.setBadgeText({ tabId, text: "+1" });
-    setTimeout(() => void chrome.action.setBadgeText({ tabId, text: "" }).catch(() => undefined), 2500);
-  } catch {
-    // (no badge: the page's own ✓ says it)
+async function savedOn(tabId: number, captureId: string, tripId: string | null, badge = true): Promise<{ ok: true; tripId: string | null; tripTitle: string | null; captureId: string; reading: number }> {
+  // (not for one saved before: nothing new went in)
+  if (badge) {
+    try {
+      await chrome.action.setBadgeBackgroundColor({ tabId, color: "#1f7a45" });
+      await chrome.action.setBadgeText({ tabId, text: "+1" });
+      setTimeout(() => void chrome.action.setBadgeText({ tabId, text: "" }).catch(() => undefined), 2500);
+    } catch {
+      // (no badge: the page's own ✓ says it)
+    }
   }
   const trip = tripId ? await (await db()).get("trips", tripId) : undefined;
   return { ok: true, tripId, tripTitle: trip?.title ?? null, captureId, reading: await readingCount() };
@@ -309,10 +314,17 @@ function answerOn(m: CompanionAsk, url: string, sender: chrome.runtime.MessageSe
       return whereFor(url, text(m.title, 300));
     case "desk:add":
       return bindFor(url, text(m.title, 300), pickOf(m)).then(async (bind) => {
+        // (✓ hatırlanır: the same result saved here before, still standing, makes no second record)
+        const print = printOf(m.print);
+        const before = print && !m.newTrip ? await savedAlready(url, print, bind.forTripId ?? null) : null;
+        if (before) return { ...(await savedOn(sender.tab!.id!, before.captureId, before.tripId, false)), again: true };
         const capture = await saveSnapshot(snapshotOf(url, text(m.title, 300), text(m.text, 1500)), null, bind);
+        if (print) await markSaved(url, print, capture.id);
         process();
         return savedOn(sender.tab!.id!, capture.id, bind.forTripId ?? null);
       });
+    case "desk:marks":
+      return marksOn(url).then((marks) => marks.map(({ p, captureId }) => ({ p, captureId })));
     case "desk:shot":
       return bindFor(url, text(m.title, 300), pickOf(m)).then(async (bind) => {
         const shot = await shotOf(sender.tab!.windowId);

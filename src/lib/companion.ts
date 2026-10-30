@@ -5,6 +5,7 @@
 // on the site is changed (PRIVACY.md §4, §8). What a result says is read from its own text here; pure, tested.
 import { L } from "./i18n";
 import { formatPrice } from "./items";
+import type { ResultPrint } from "./resultMark";
 
 /**
  * Seyahat siteleri (0.42.0): the travel sites it comes along on, all asked for at once with one switch ("Seyahat
@@ -238,7 +239,8 @@ export function cardLabel(card: CardFacts, deck: readonly DeckBrief[], visible: 
 export type CompanionAsk =
   | { type: "desk:route"; url: string }
   | { type: "desk:where"; url: string; title: string }
-  | ({ type: "desk:add"; url: string; title: string; text: string } & TripPick)
+  | ({ type: "desk:add"; url: string; title: string; text: string; print?: ResultPrint } & TripPick)
+  | { type: "desk:marks" }
   | ({ type: "desk:shot"; url: string; title: string; text: string } & TripPick)
   | ({ type: "desk:page"; url: string; snapshot: unknown } & TripPick)
   | { type: "desk:undo"; captureId: string }
@@ -299,4 +301,6 @@ export interface SavedOnSite {
   tripTitle?: string | null;
   captureId?: string;
   reading?: number;
+  /** Saved here before and still standing (✓ hatırlanır): no second record was made. */
+  again?: boolean;
 }

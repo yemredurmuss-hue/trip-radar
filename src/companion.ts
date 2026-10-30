@@ -28,6 +28,7 @@ import type { Pocket } from "./lib/pocket";
 import { confirmationOf, type Confirmation } from "./lib/confirm";
 import { L, loadLang } from "./lib/i18n";
 import { collectPage } from "./lib/pagecapture";
+import { resultPrint, sameResult, type ResultPrint } from "./lib/resultMark";
 
 declare global {
   interface Window {
@@ -219,6 +220,11 @@ function start() {
   let cards: { el: Element; pin: HTMLDivElement; step: number }[] = [];
   const added = new WeakSet<Element>();
   const reading = new WeakSet<Element>();
+  // ✓ hatırlanır (tek Kaydet v3): the results saved on this page before (reloaded, back from the Pano), by their prints.
+  let marks: { p: ResultPrint; captureId: string }[] = [];
+  // (textContent, not innerText: no layout asked for; the same reading at the save and at the check)
+  const printOfCard = (el: Element) => resultPrint((el.textContent ?? "").slice(0, 3000), el.querySelector("h1,h2,h3,h4")?.textContent ?? "");
+  const isSaved = (el: Element) => added.has(el) || (marks.length > 0 && marks.some((m) => sameResult(m.p, printOfCard(el))));
   onStale = () => {
     if (stale) return;
     stale = true;
@@ -257,7 +263,9 @@ function start() {
   const said = (r: SavedOnSite, n = 1) => {
     const title = r.tripTitle ?? where?.trips.find((t) => t.id === r.tripId)?.title ?? knownTrip()?.title ?? null;
     const what = n > 1 ? L(`${n} sonuç`, `${n} results`) : "";
-    toast = [
+    // (pressed again on one saved before: nothing new went in, said so)
+    if (r.again) toast = title ? L(`Zaten ${title} destesinde`, `Already in ${title}`) : L("Zaten destede", "Already in the deck");
+    else toast = [
       title ? L(`${what ? `${what} · ` : ""}${title} · ${deckWord(kind)} destesine girdi`, `${what ? `${what} · ` : ""}in ${title} · ${deckWord(kind)}`) : L("Desteye girdi", "In the deck"),
       r.reading && r.reading > 1 ? L(`${r.reading} okunuyor`, `${r.reading} being read`) : L("okunuyor", "being read"),
     ].join(" · ");
@@ -321,12 +329,14 @@ function start() {
   const addCard = async (el: Element, pick: TripPick): Promise<SavedOnSite | null> => {
     reading.add(el);
     drawCards();
-    const r = await ask<SavedOnSite>({ type: "desk:add", url: location.href, title: document.title, text: (el as HTMLElement).innerText.replace(/\s+/g, " ").trim().slice(0, 1500), ...pick });
+    const print = printOfCard(el);
+    const r = await ask<SavedOnSite>({ type: "desk:add", url: location.href, title: document.title, text: (el as HTMLElement).innerText.replace(/\s+/g, " ").trim().slice(0, 1500), print, ...pick });
     reading.delete(el);
     if (r?.ok) {
       added.add(el);
       lastEl = el;
-      fly(el.getBoundingClientRect(), photoOf(el), nameOf(el));
+      if (r.captureId && !marks.some((m) => m.captureId === r.captureId)) marks = [...marks, { p: print, captureId: r.captureId }];
+      if (!r.again) fly(el.getBoundingClientRect(), photoOf(el), nameOf(el));
     }
     return r?.ok ? r : null;
   };
@@ -536,6 +546,7 @@ function start() {
           void ask({ type: "desk:undo", captureId: done.captureId }).then(() => {
             toast = L("Geri alındı", "Taken back");
             if (done.el) added.delete(done.el);
+            marks = marks.filter((m) => m.captureId !== done.captureId);
             last = null;
             if (single) pageState = "idle";
             drawCards();
@@ -787,7 +798,7 @@ function start() {
       pin.className = "pin";
       const plus = document.createElement("button");
       plus.type = "button";
-      const isIn = added.has(el), busy = reading.has(el);
+      const isIn = isSaved(el), busy = reading.has(el);
       plus.className = `plus${isIn ? " done" : busy ? " read" : ""}`;
       plus.textContent = isIn ? "✓" : busy ? "···" : "+";
       // (Pinterest's: a small "+" on the card's top edge; over the card, it says "+ Ekle")
@@ -801,7 +812,7 @@ function start() {
       plus.onclick = (e) => {
         e.preventDefault();
         e.stopPropagation();
-        if (added.has(el) || reading.has(el)) return;
+        if (isSaved(el) || reading.has(el)) return;
         withTrip(whatOf(kind), async (pick) => {
           const r = await addCard(el, pick);
           drawCards();
@@ -871,10 +882,13 @@ function start() {
     confirmAsk = null;
     confirmTries = 0;
     single = offerPageKind(href, ldTypes());
-    [route, where] = await Promise.all([
+    let saved: typeof marks | null;
+    [route, where, saved] = await Promise.all([
       kind === "flight" ? ask<CompanionRoute>({ type: "desk:route", url: href }) : Promise.resolve(null),
       ask<CompanionWhere>({ type: "desk:where", url: href, title: document.title }),
+      ask<typeof marks>({ type: "desk:marks" }),
     ]);
+    marks = Array.isArray(saved) ? saved : [];
     dirty = false;
     drawCards();
     drawDock();
