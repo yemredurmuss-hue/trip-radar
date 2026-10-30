@@ -282,7 +282,7 @@ export interface CompanionWhere {
   /** The page's country as the code reads it from the address and title ("Portekiz"), when it can. */
   country: string | null;
   /** The trips to ask among: the country's first (match), at most eight; a suggested one's three photos (its cover first), a listed one's one, thumbnail-sized. */
-  trips: { id: string; title: string; when: string | null; match: boolean; photos: string[] }[];
+  trips: { id: string; title: string; when: string | null; match: boolean; photos: string[]; count?: number }[];
   /**
    * Önerilen (Pinterest's Quick Picks): at most three of them, the most likely first: the country's trip on the page's
    * day, the country's other trip, the trip saved into last; without a country, the last one and the nearest ahead.

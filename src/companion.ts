@@ -80,7 +80,12 @@ button:focus-visible, .plus:focus-visible { outline: 3px solid #cfc7ff; outline-
 .plus.read { background: #fff; color: #5b45e0; box-shadow: inset 0 0 0 2px #5b45e0; font-size: 12px; }
 .dock { position: fixed; z-index: 2147483646; right: 20px; bottom: 20px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
   font: 600 13px/1.4 "Plus Jakarta Sans", system-ui, sans-serif; color: #1c1a33; }
-.tab { position: fixed; z-index: 2147483646; right: 0; top: 38vh; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 8px 7px 8px 9px; border: 0;
+.pocket { position: fixed; z-index: 2147483646; right: 0; top: 38vh; display: flex; align-items: center; }
+.grip { width: 12px; height: 34px; margin-right: 2px; border-radius: 6px; cursor: ns-resize; touch-action: none; opacity: .5; transition: opacity 160ms ease;
+  background: radial-gradient(circle, #8e8aa6 1.2px, transparent 1.6px) 0 0 / 6px 6px; }
+.pocket:hover .grip, .grip:focus-visible { opacity: 1; }
+.grip:focus-visible { outline: 3px solid #cfc7ff; }
+.tab { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 8px 7px 8px 9px; border: 0;
   border-radius: 14px 0 0 14px; background: #1c1a33; color: #fff; cursor: pointer; box-shadow: -6px 6px 22px -8px rgba(28,26,51,.55); font: 800 12px/1 "Plus Jakarta Sans", system-ui, sans-serif; }
 .tab .th { width: 30px; height: 30px; border-radius: 8px; overflow: hidden; display: grid; place-items: center; background: #3b2f7a; color: #fff; font-size: 13px; }
 .tab .th img { width: 100%; height: 100%; object-fit: cover; }
@@ -94,32 +99,6 @@ button:focus-visible, .plus:focus-visible { outline: 3px solid #cfc7ff; outline-
   box-shadow: 0 0 0 1px #dcd8e8, 0 18px 40px rgba(28,26,51,.22); display: flex; flex-direction: column; gap: 8px; }
 .ask b { font-size: 14.5px; font-weight: 800; }
 .ask small { font-size: 11.5px; font-weight: 800; color: #5d5a78; }
-.ask button.t { font: 700 13px/1.3 "Plus Jakarta Sans", system-ui, sans-serif; text-align: left; border: 0; border-radius: 10px; padding: 9px 11px; cursor: pointer;
-  background: #fff; color: #1c1a33; box-shadow: inset 0 0 0 1px #e3e0ec; display: flex; flex-direction: column; gap: 1px; }
-.ask button.t span { font-weight: 600; font-size: 11.5px; color: #5d5a78; }
-.ask button.t.best { box-shadow: inset 0 0 0 2px #5b45e0; background: #f7f5ff; }
-.ask button.t:hover { background: #f4f2ff; }
-.ask label { display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border-radius: 10px; background: #f7f5ff; font-size: 12px; cursor: pointer; }
-.ask label input { margin: 1px 0 0; accent-color: #5b45e0; }
-.qp { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.qp button { all: unset; cursor: pointer; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.qp .cv { position: relative; height: 70px; border-radius: 12px; overflow: hidden; display: grid; grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr; gap: 2px; background: #efecff; }
-.qp .cv img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.qp .cv img:first-child { grid-row: 1 / 3; }
-.qp .cv img:only-child { grid-column: 1 / 3; }
-.qp .cv img:nth-child(2):last-child { grid-row: 1 / 3; }
-.qp .cv .ini { grid-row: 1 / 3; grid-column: 1 / 3; display: grid; place-items: center; font: 800 20px/1 "Plus Jakarta Sans", system-ui, sans-serif; color: #4a36c9; }
-.qp button.best .cv { box-shadow: 0 0 0 3px #5b45e0; }
-.qp b { font-size: 12.5px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.qp span.w { font-size: 11px; color: #5d5a78; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.qp button:hover .cv { filter: brightness(.95); }
-.ln { all: unset; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 5px 6px; border-radius: 10px; }
-.ln:hover { background: #f4f2ff; }
-.ln .th { width: 34px; height: 34px; border-radius: 9px; overflow: hidden; flex: none; background: #efecff; display: grid; place-items: center; color: #4a36c9; font-weight: 800; font-size: 13px; }
-.ln .th img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.ln b { display: block; font-size: 13px; font-weight: 750; }
-.ln span.w { display: block; font-size: 11px; color: #5d5a78; font-weight: 600; }
-.ln.new { box-shadow: inset 0 0 0 1.5px #d6d2e4; }
 .ask.conf { width: 320px; gap: 6px; box-shadow: 0 0 0 1.5px #bfe3c9, 0 18px 40px rgba(28,26,51,.22); }
 .ask.conf > b { color: #1f7a45; }
 .ask.conf small { font-weight: 700; }
@@ -133,9 +112,42 @@ button:focus-visible, .plus:focus-visible { outline: 3px solid #cfc7ff; outline-
   box-shadow: 0 10px 24px rgba(0,0,0,.25); }
 .toast i { font-style: normal; flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 99px; background: #1f7a45; font-size: 12px; font-weight: 800; }
 .toast button { border: 0; background: none; color: #c9c2f5; font: 800 12px/1 inherit; cursor: pointer; padding: 0; white-space: nowrap; }
-.toast.sel { gap: 12px; }
-.toast.sel .go { padding: 8px 12px; border-radius: 99px; background: #5b45e0; color: #fff; }
-.toast.sel .go:disabled { opacity: .5; cursor: default; }
+/* (under the pocket, along the window's edge: beside it, it fell on a result's "+") */
+.note { position: absolute; right: 8px; top: calc(100% + 8px); display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 6px;
+  border-radius: 14px; background: #1c1a33; color: #fff; white-space: nowrap; box-shadow: -6px 10px 26px -8px rgba(28,26,51,.6); font: 800 13px/1 "Plus Jakarta Sans", system-ui, sans-serif; }
+.note .th { width: 30px; height: 30px; border-radius: 8px; overflow: hidden; display: grid; place-items: center; background: #3b2f7a; font-size: 12px; flex: none; }
+.note .th img { width: 100%; height: 100%; object-fit: cover; }
+.note .ok { width: 20px; height: 20px; border-radius: 99px; display: grid; place-items: center; background: #1f7a45; flex: none; }
+.note .ok svg { width: 12px; height: 12px; }
+.note .nm { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; padding: 6px 4px; border-radius: 8px; }
+.note .nm:hover { background: rgba(255,255,255,.08); }
+.note .nm svg { width: 12px; height: 12px; color: #c9c2f5; flex: none; }
+.note .nm[disabled] { cursor: default; }
+.note .say { padding: 0 6px; }
+.note small { font: 700 12px/1 inherit; color: #c9c2f5; }
+.note .ib { all: unset; cursor: pointer; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; color: #c9c2f5; flex: none; }
+.note .ib:hover { background: rgba(255,255,255,.1); color: #fff; }
+.note .ib svg { width: 17px; height: 17px; }
+.note.in { animation: note-in 220ms cubic-bezier(.3,.7,.2,1); }
+@keyframes note-in { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .note.in { animation: none; } }
+.pick { position: fixed; z-index: 2147483647; width: 280px; max-height: min(420px, calc(100vh - 16px)); overflow: auto; padding: 8px; border-radius: 14px; background: #fff;
+  box-shadow: 0 0 0 1px #dcd8e8, 0 18px 40px rgba(28,26,51,.24); display: flex; flex-direction: column; gap: 2px; font: 600 13px/1.4 "Plus Jakarta Sans", system-ui, sans-serif; color: #1c1a33; }
+.pick .hd { display: flex; align-items: center; justify-content: space-between; padding: 2px 2px 6px 8px; }
+.pick .hd b { font-size: 14px; font-weight: 800; }
+.pick .ib { all: unset; cursor: pointer; width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; color: #5d5a78; }
+.pick .ib:hover { background: #f7f6fb; color: #1c1a33; }
+.pick .ib svg { width: 16px; height: 16px; }
+.pick .tr { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 6px 8px; border-radius: 11px; }
+.pick .tr:hover, .pick .tr:focus-visible { background: #f4f2ff; }
+.pick .tr.best { box-shadow: inset 0 0 0 1.5px #d6cffd; }
+.pick .tr .th { width: 36px; height: 36px; border-radius: 10px; overflow: hidden; flex: none; background: #efecff; display: grid; place-items: center; color: #4a36c9; font-weight: 800; font-size: 13px; }
+.pick .tr .th img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pick .tr b { min-width: 0; font-size: 14px; font-weight: 750; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pick .tr .cnt { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 750; color: #5d5a78; font-variant-numeric: tabular-nums; }
+.pick .tr .cnt svg { width: 13px; height: 13px; }
+.pick .tr.new { color: #4a36c9; }
+.pick .tr.new .th { background: #fff; box-shadow: inset 0 0 0 1.5px #d6cffd; font-size: 18px; }
 .hop { position: fixed; z-index: 2147483647; display: flex; align-items: center; gap: 8px; padding: 6px 10px 6px 6px; border-radius: 12px; background: #fff;
   box-shadow: 0 0 0 1.5px #c9bffa, 0 10px 26px rgba(28,26,51,.25); pointer-events: none; font: 800 12.5px/1.2 "Plus Jakarta Sans", system-ui, sans-serif; color: #1c1a33; }
 .hop img { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; flex: none; }
@@ -198,7 +210,8 @@ function start() {
   const dock = document.createElement("div");
   dock.className = "dock";
   const side = document.createElement("div");
-  root.append(style, layer, side, dock);
+  const pop = document.createElement("div");
+  root.append(style, layer, side, dock, pop);
   document.documentElement.append(host);
 
   let route: CompanionRoute | null = null;
@@ -207,6 +220,16 @@ function start() {
   let single: SiteKind | null = null;
   // Gezi cebi's tab: the trip and how many are saved on it; this page's "Desteye ekle".
   let pocket: Pocket | null = null;
+  // Where the pocket sits on this site, as a share of the window's height (null: where it always was, 38%).
+  let pocketAt: number | null = null;
+  const POCKET_KEY = "pocketAt";
+  const savePocketAt = () => {
+    if (pocketAt == null || !alive()) return;
+    void chrome.storage.local
+      .get(POCKET_KEY)
+      .then((got) => chrome.storage.local.set({ [POCKET_KEY]: { ...((got[POCKET_KEY] as Record<string, number> | undefined) ?? {}), [location.hostname]: Math.round(pocketAt! * 1000) / 1000 } }))
+      .catch(() => undefined);
+  };
   let pageState: "idle" | "busy" | "done" = "idle";
   let stale = false;
   // Rezervasyon onayı (0.45.0): the page is a booking's confirmation; asked once a page whether to save it to the trip.
@@ -214,8 +237,10 @@ function start() {
   // A place's own page (0.45.1, Emre: "detay sayfasındayken artıya basmak kolayca basılır olsun"): the list's "+" beside its name.
   let titlePin: HTMLDivElement | null = null;
   let confirmTries = 0;
-  let toast: string | null = null;
-  let asking: { what: string; then: (pick: TripPick) => void } | null = null;
+  // The note beside the pocket after a save (tek Kaydet v3: feedback in one place): saved, pressed again, or taken back.
+  let note: { kind: "saved" | "again" | "undone"; title: string | null; photo: string | null; fresh: boolean } | null = null;
+  // "Hangi geziye?" (tek Kaydet v3): opened beside what was pressed (the "+", the trip's name in the note), Pinterest's way.
+  let asking: { what: string; then: (pick: TripPick) => void; at: Element | null; move?: string | null } | null = null;
   // (step: how far the label steps left of the site's own button on the card's top edge, found when the "+" is drawn)
   let cards: { el: Element; pin: HTMLDivElement; step: number }[] = [];
   const added = new WeakSet<Element>();
@@ -237,11 +262,12 @@ function start() {
   const mustAsk = () => !knownTrip() && Boolean(where?.trips?.length);
 
   /** Hangi gezi on the page: asked once (its answer kept as the country's trip when said so), then sent. */
-  const withTrip = (what: string, send: (pick: TripPick) => Promise<boolean>) => {
+  const withTrip = (what: string, send: (pick: TripPick) => Promise<boolean>, at: Element | null = null) => {
     // (the trip on the pocket's top is where it goes: said so, so the save and the pocket never disagree)
     if (!mustAsk()) return void send(!route && knownTrip() ? { tripId: knownTrip()!.id } : {});
     asking = {
       what,
+      at,
       then: (pick) => {
         asking = null;
         drawDock();
@@ -260,26 +286,26 @@ function start() {
   let last: { captureId: string; tripId: string | null; el: Element | null } | null = null;
   let lastEl: Element | null = null;
   let toastTimer = 0;
-  const said = (r: SavedOnSite, n = 1) => {
+  const said = (r: SavedOnSite) => {
     const title = r.tripTitle ?? where?.trips.find((t) => t.id === r.tripId)?.title ?? knownTrip()?.title ?? null;
-    const what = n > 1 ? L(`${n} sonuç`, `${n} results`) : "";
+    const photo = where?.trips.find((t) => t.id === r.tripId)?.photos?.[0] ?? (pocket?.trip?.id === r.tripId ? (pocket?.trip?.photo ?? null) : null);
     // (pressed again on one saved before: nothing new went in, said so)
-    if (r.again) toast = title ? L(`Zaten ${title} destesinde`, `Already in ${title}`) : L("Zaten destede", "Already in the deck");
-    else toast = [
-      title ? L(`${what ? `${what} · ` : ""}${title} · ${deckWord(kind)} destesine girdi`, `${what ? `${what} · ` : ""}in ${title} · ${deckWord(kind)}`) : L("Desteye girdi", "In the deck"),
-      r.reading && r.reading > 1 ? L(`${r.reading} okunuyor`, `${r.reading} being read`) : L("okunuyor", "being read"),
-    ].join(" · ");
+    note = { kind: r.again ? "again" : "saved", title, photo, fresh: true };
     last = r.captureId ? { captureId: r.captureId, tripId: r.tripId, el: lastEl } : null;
     lastEl = null;
     // (the trip it went to is the one the next "+" goes to, without asking)
     if (where && r.tripId && title && !where.trip) where = { ...where, trip: { id: r.tripId, title } };
     drawDock();
     void loadPocket(true);
+    noteFor(6000);
+  };
+  /** The note stays this long, longer while the mouse is on it. */
+  const noteFor = (ms: number) => {
     clearTimeout(toastTimer);
     toastTimer = window.setTimeout(() => {
-      toast = null;
+      note = null;
       drawDock();
-    }, 6500);
+    }, ms);
   };
 
   /** "Hop": a small copy of what was added (its photo, its name) flies to the icon's corner; none when motion is off. */
@@ -341,8 +367,201 @@ function start() {
     return r?.ok ? r : null;
   };
 
+  /** One line family for the signs (never a typed character). */
+  const ICONS: Record<string, string> = {
+    check: '<path d="M5 12.5 10 17.5 19 7" stroke-width="2.8"/>',
+    undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
+    down: '<path d="m6 9 6 6 6-6" stroke-width="2.6"/>',
+    x: '<path d="M6 6l12 12M18 6 6 18"/>',
+    board: '<rect x="3.5" y="3.5" width="7" height="9" rx="2" stroke-width="2"/><rect x="13.5" y="3.5" width="7" height="5" rx="2" stroke-width="2"/><rect x="13.5" y="11.5" width="7" height="9" rx="2" stroke-width="2"/><rect x="3.5" y="15.5" width="7" height="5" rx="2" stroke-width="2"/>',
+  };
+  const icon = (name: string): SVGSVGElement => {
+    const t = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    t.setAttribute("viewBox", "0 0 24 24");
+    t.setAttribute("fill", "none");
+    t.setAttribute("stroke", "currentColor");
+    t.setAttribute("stroke-width", "2.2");
+    t.setAttribute("stroke-linecap", "round");
+    t.setAttribute("stroke-linejoin", "round");
+    t.setAttribute("aria-hidden", "true");
+    // (our own fixed drawing, never the page's words)
+    t.innerHTML = ICONS[name] ?? "";
+    return t;
+  };
+  const iconButton = (name: string, label: string, onClick: () => void): HTMLButtonElement => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "ib";
+    b.title = label;
+    b.setAttribute("aria-label", label);
+    b.append(icon(name));
+    b.onclick = (e) => {
+      e.stopPropagation();
+      onClick();
+    };
+    return b;
+  };
+
+  /** "Geri al" in the note: the save taken back, its "+" a "+" again. */
+  const undoLast = () => {
+    const done = last;
+    if (!done) return;
+    void ask({ type: "desk:undo", captureId: done.captureId }).then(() => {
+      note = { kind: "undone", title: null, photo: null, fresh: false };
+      if (done.el) added.delete(done.el);
+      marks = marks.filter((m) => m.captureId !== done.captureId);
+      last = null;
+      if (single) pageState = "idle";
+      drawCards();
+      drawDock();
+      void loadPocket();
+      noteFor(2500);
+    });
+  };
+  /** The trip's name in the note: the trips open beside it, a press moves the save there (the same record). */
+  const moveLast = (at: Element) => {
+    const done = last;
+    if (!done || !where?.trips.some((t) => t.id !== done.tripId)) return;
+    clearTimeout(toastTimer);
+    asking = {
+      what: L("Bunu", "This"),
+      at,
+      move: done.tripId,
+      then: (pick) => {
+        asking = null;
+        void ask<{ ok: boolean; tripId: string | null }>({ type: "desk:move", captureId: done.captureId, ...pick }).then((r) => {
+          lastEl = done.el;
+          if (r?.ok && r.tripId) said({ ok: true, tripId: r.tripId, tripTitle: where?.trips.find((x) => x.id === r.tripId)?.title ?? null, captureId: done.captureId });
+          else drawDock();
+        });
+      },
+    };
+    drawDock();
+  };
+  /** The note: the trip's cover, ✓ and its name (▾: move it), ↶; it slides out of the pocket. */
+  const noteEl = (): HTMLDivElement | null => {
+    if (!note) return null;
+    const n = note;
+    const box = document.createElement("div");
+    box.className = `note${n.fresh ? " in" : ""}`;
+    box.setAttribute("role", "status");
+    n.fresh = false;
+    box.onmouseenter = () => clearTimeout(toastTimer);
+    box.onmouseleave = () => noteFor(2500);
+    if (n.kind === "undone") {
+      const say = document.createElement("span");
+      say.className = "say";
+      say.textContent = L("Geri alındı", "Taken back");
+      box.append(say);
+      return box;
+    }
+    box.append(thumb(n.photo, n.title ?? "✓"));
+    const ok = document.createElement("span");
+    ok.className = "ok";
+    ok.append(icon("check"));
+    box.append(ok);
+    if (n.kind === "again") {
+      const already = document.createElement("small");
+      already.textContent = L("Zaten", "Already");
+      box.append(already);
+    }
+    const name = document.createElement("button");
+    name.type = "button";
+    name.className = "nm";
+    name.textContent = n.title ?? L("Kaydedildi", "Saved");
+    const movable = Boolean(last && where?.trips.some((t) => t.id !== last!.tripId));
+    if (movable) {
+      name.append(icon("down"));
+      name.title = L("Başka geziye taşı", "Move to another trip");
+      name.onclick = () => moveLast(name);
+    } else name.disabled = true;
+    box.append(name);
+    if (last && n.kind === "saved") box.append(iconButton("undo", L("Geri al", "Undo"), undoLast));
+    return box;
+  };
+
+  /** "Hangi geziye?" beside what was pressed: the trips (cover, name, Pano's count), then a new one. A press decides. */
+  const drawPop = () => {
+    pop.replaceChildren();
+    if (!asking || stale) return;
+    const a = asking;
+    const country = where?.country ?? null;
+    const box = document.createElement("div");
+    box.className = "pick";
+    box.setAttribute("role", "dialog");
+    const hd = document.createElement("div");
+    hd.className = "hd";
+    const h = document.createElement("b");
+    h.textContent = a.move !== undefined ? L("Hangi geziye taşıyayım?", "Move it to which trip?") : L("Hangi geziye?", "Which trip?");
+    box.setAttribute("aria-label", h.textContent);
+    hd.append(h, iconButton("x", L("Vazgeç", "Cancel"), closePop));
+    box.append(hd);
+    // (picked here, the country's trip from now on: the next "+" on its pages goes there without asking; Ayarlar forgets)
+    const pick = (p: TripPick) => a.then({ ...p, remember: Boolean(country) });
+    const ids = [...(where?.picks ?? []), ...(where?.trips ?? []).map((t) => t.id)].filter((id, i, all) => all.indexOf(id) === i && id !== a.move);
+    ids.forEach((id, i) => {
+      const t = where?.trips.find((x) => x.id === id);
+      if (!t) return;
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = `tr${i === 0 && t.match ? " best" : ""}`;
+      const nm = document.createElement("b");
+      nm.textContent = t.title;
+      b.append(thumb(t.photos?.[0] ?? null, t.title), nm);
+      if (typeof t.count === "number") {
+        const c = document.createElement("span");
+        c.className = "cnt";
+        c.append(icon("board"), document.createTextNode(String(t.count)));
+        b.append(c);
+      }
+      b.onclick = () => pick({ tripId: t.id });
+      box.append(b);
+    });
+    if (a.move === undefined) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "tr new";
+      const th = document.createElement("span");
+      th.className = "th";
+      th.textContent = "+";
+      const nm = document.createElement("b");
+      nm.textContent = country ? L(`Yeni gezi: ${country}`, `New trip: ${country}`) : L("Yeni gezi", "New trip");
+      b.append(th, nm);
+      b.onclick = () => pick({ newTrip: true });
+      box.append(b);
+    }
+    pop.append(box);
+    placePop();
+    box.querySelector<HTMLButtonElement>(".tr")?.focus({ preventScroll: true });
+  };
+  /** Beside its button: on its left when there's room (over the card, never on the button), else under it. */
+  const placePop = () => {
+    const box = pop.firstElementChild as HTMLElement | null;
+    if (!box || !asking) return;
+    const at = (asking.at?.isConnected ? asking.at : null) ?? side.querySelector(".tab");
+    const w = box.offsetWidth, h = box.offsetHeight;
+    const r = at?.getBoundingClientRect() ?? new DOMRect(innerWidth - 20, innerHeight - 20, 0, 0);
+    let left = r.left - w - 12;
+    let top = r.top + r.height / 2 - 28;
+    if (left < 8) {
+      left = Math.min(Math.max(8, r.right - w), innerWidth - w - 8);
+      top = r.bottom + 8;
+      if (top + h > innerHeight - 8) top = r.top - h - 8;
+    }
+    box.style.left = `${Math.round(left)}px`;
+    box.style.top = `${Math.round(Math.min(Math.max(8, top), innerHeight - h - 8))}px`;
+  };
+  const closePop = () => {
+    asking = null;
+    drawDock();
+    drawCards();
+  };
+
+  /** What sits over the page besides the "+"s: the note (by the pocket), a confirmation's question, the trip question. */
   const drawDock = () => {
     dock.replaceChildren();
+    drawSide();
+    drawPop();
     if (stale) {
       // (the extension was updated while this page was open: said, never broken in silence)
       const t = document.createElement("div");
@@ -358,118 +577,7 @@ function start() {
       dock.append(t);
       return;
     }
-    if (asking) {
-      const box = document.createElement("div");
-      box.className = "ask";
-      box.setAttribute("role", "dialog");
-      const h = document.createElement("b");
-      h.textContent = L(`${asking.what} hangi geziye?`, `${asking.what}: which trip?`);
-      box.append(h);
-      const country = where?.country ?? null;
-      const remember = document.createElement("input");
-      remember.type = "checkbox";
-      remember.checked = true;
-      const pick = (p: TripPick) => asking?.then({ ...p, remember: Boolean(country) && remember.checked });
-      const cover = (t: CompanionWhere["trips"][number], big: boolean) => {
-        const frame = document.createElement("span");
-        frame.className = big ? "cv" : "th";
-        // (no photo, or the site's own rules refuse ours: the trip's first letter)
-        const initial = () => {
-          if (frame.querySelector("img")) return;
-          const ini = document.createElement("span");
-          if (big) ini.className = "ini";
-          ini.textContent = t.title.slice(0, 1).toLocaleUpperCase("tr");
-          frame.replaceChildren(ini);
-        };
-        const photos = (t.photos ?? []).slice(0, big ? 3 : 1);
-        for (const src of photos) {
-          const img = document.createElement("img");
-          // (decoded off the page's own work; a row scrolled to only when it's in view)
-          img.decoding = "async";
-          img.loading = "lazy";
-          img.src = src;
-          img.alt = "";
-          img.referrerPolicy = "no-referrer";
-          img.onerror = () => (img.remove(), initial());
-          frame.append(img);
-        }
-        if (!photos.length) initial();
-        return frame;
-      };
-      const words = (t: CompanionWhere["trips"][number]) => {
-        const w = document.createElement("span");
-        w.className = "w";
-        w.textContent = [t.when, t.match && country ? country : null].filter(Boolean).join(" · ") || L("tarihsiz", "no dates");
-        return w;
-      };
-      // Önerilen (Pinterest's Quick Picks): the three most likely, with their covers; the first picked by one press.
-      const picks = (where?.picks ?? []).map((id) => where!.trips.find((t) => t.id === id)).filter((t): t is CompanionWhere["trips"][number] => Boolean(t));
-      if (picks.length) {
-        const g = document.createElement("small");
-        g.textContent = L("Önerilen", "Suggested");
-        const row = document.createElement("div");
-        row.className = "qp";
-        picks.forEach((t, n) => {
-          const b = document.createElement("button");
-          b.type = "button";
-          if (n === 0) b.className = "best";
-          const name = document.createElement("b");
-          name.textContent = t.title;
-          b.append(cover(t, true), name, words(t));
-          b.onclick = () => pick({ tripId: t.id });
-          row.append(b);
-        });
-        box.append(g, row);
-      }
-      const rest = (where?.trips ?? []).filter((t) => !picks.includes(t));
-      if (rest.length) {
-        const g = document.createElement("small");
-        g.textContent = L("Tüm geziler", "All trips");
-        box.append(g);
-        for (const t of rest) {
-          const b = document.createElement("button");
-          b.type = "button";
-          b.className = "ln";
-          const text = document.createElement("span");
-          const name = document.createElement("b");
-          name.textContent = t.title;
-          text.append(name, words(t));
-          b.append(cover(t, false), text);
-          b.onclick = () => pick({ tripId: t.id });
-          box.append(b);
-        }
-      }
-      if (country) {
-        const fresh = document.createElement("button");
-        fresh.type = "button";
-        fresh.className = "ln new";
-        const plusTh = document.createElement("span");
-        plusTh.className = "th";
-        plusTh.textContent = "+";
-        const text = document.createElement("span");
-        const name = document.createElement("b");
-        name.textContent = L(`Yeni gezi: ${country}`, `New trip: ${country}`);
-        text.append(name);
-        fresh.append(plusTh, text);
-        fresh.onclick = () => pick({ newTrip: true });
-        const label = document.createElement("label");
-        label.append(remember, document.createTextNode(L(`${country} için bundan sonra sormadan buraya`, `${country} goes there from now on`)));
-        box.append(fresh, label);
-      }
-      const no = document.createElement("button");
-      no.type = "button";
-      no.className = "no";
-      no.textContent = L("Vazgeç", "Cancel");
-      no.onclick = () => {
-        asking = null;
-        drawDock();
-        drawCards();
-      };
-      box.append(no);
-      dock.append(box);
-      return;
-    }
-    if (confirmAsk && !toast) {
+    if (confirmAsk && !note && !asking) {
       const c = confirmAsk;
       const box = document.createElement("div");
       box.className = "ask conf";
@@ -491,11 +599,15 @@ function start() {
       yes.onclick = () => {
         confirmAsk = null;
         drawDock();
-        withTrip(L("Bu rezervasyon", "This booking"), async (pick) => {
-          const ok = await ask<SavedOnSite>({ type: "desk:page", url: location.href, snapshot: collectPage(), ...pick });
-          if (ok?.ok) said(ok);
-          return Boolean(ok?.ok);
-        });
+        withTrip(
+          L("Bu rezervasyon", "This booking"),
+          async (pick) => {
+            const ok = await ask<SavedOnSite>({ type: "desk:page", url: location.href, snapshot: collectPage(), ...pick });
+            if (ok?.ok) said(ok);
+            return Boolean(ok?.ok);
+          },
+          null,
+        );
       };
       const no = document.createElement("button");
       no.type = "button";
@@ -510,52 +622,13 @@ function start() {
       dock.append(box);
       return;
     }
-    if (toast) {
-      const t = document.createElement("div");
-      t.className = "toast";
-      t.setAttribute("role", "status");
-      const i = document.createElement("i");
-      i.textContent = "✓";
-      const words = document.createElement("span");
-      words.textContent = toast;
-      t.append(i, words);
-      const done = last;
-      if (done) {
-        const change = document.createElement("button");
-        change.type = "button";
-        change.textContent = L("Değiştir", "Change");
-        change.onclick = () => {
-          if (!where?.trips.length) return;
-          asking = {
-            what: L("Bunu", "This"),
-            then: (pick) => {
-              asking = null;
-              void ask<{ ok: boolean; tripId: string | null }>({ type: "desk:move", captureId: done.captureId, ...pick }).then((r) => {
-                lastEl = done.el;
-                if (r?.ok && r.tripId) said({ ok: true, tripId: r.tripId, tripTitle: where?.trips.find((x) => x.id === r.tripId)?.title ?? null, captureId: done.captureId });
-                else drawDock();
-              });
-            },
-          };
-          drawDock();
-        };
-        const undo = document.createElement("button");
-        undo.type = "button";
-        undo.textContent = L("Geri al", "Undo");
-        undo.onclick = () =>
-          void ask({ type: "desk:undo", captureId: done.captureId }).then(() => {
-            toast = L("Geri alındı", "Taken back");
-            if (done.el) added.delete(done.el);
-            marks = marks.filter((m) => m.captureId !== done.captureId);
-            last = null;
-            if (single) pageState = "idle";
-            drawCards();
-            drawDock();
-            void loadPocket();
-          });
-        t.append(change, undo);
+    // (no pocket on this page: the note where the pocket would be, at the bottom right)
+    if (note && !side.querySelector(".tab")) {
+      const n = noteEl();
+      if (n) {
+        n.style.position = "static";
+        dock.append(n);
       }
-      dock.append(t);
     }
   };
 
@@ -568,7 +641,7 @@ function start() {
   };
 
   /** "+ Konaklama destesine ekle" on a place's own page: the page as the toolbar reads it, its screenshot too. */
-  const addPage = () =>
+  const addPage = (at: Element | null = null) =>
     withTrip(whatOf(single ?? kind), async (pick) => {
       pageState = "busy";
       drawSide();
@@ -583,7 +656,7 @@ function start() {
         said(ok);
       }
       return Boolean(ok?.ok);
-    });
+    }, at);
   const thumb = (photo: string | null | undefined, title: string) => {
     const th = document.createElement("span");
     th.className = "th";
@@ -609,6 +682,39 @@ function start() {
     side.replaceChildren();
     const trip = pocket?.trip ?? null;
     if (stale || !trip) return;
+    const wrap = document.createElement("div");
+    wrap.className = "pocket";
+    if (pocketAt != null) wrap.style.top = `${Math.round(pocketAt * innerHeight)}px`;
+    // (tek Kaydet v3: the pocket moves up and down by its grip, where it covers nothing of this site; kept per site)
+    const grip = document.createElement("span");
+    grip.className = "grip";
+    grip.tabIndex = 0;
+    grip.setAttribute("role", "slider");
+    grip.setAttribute("aria-orientation", "vertical");
+    grip.setAttribute("aria-label", L("Cebi yukarı aşağı taşı", "Move the pocket up or down"));
+    grip.title = grip.getAttribute("aria-label")!;
+    const moveTo = (top: number) => {
+      const y = Math.min(Math.max(48, top), innerHeight - wrap.offsetHeight - 24);
+      wrap.style.top = `${Math.round(y)}px`;
+      pocketAt = y / innerHeight;
+      placePop();
+    };
+    grip.onpointerdown = (e) => {
+      e.preventDefault();
+      grip.setPointerCapture(e.pointerId);
+      const from = e.clientY - wrap.getBoundingClientRect().top;
+      grip.onpointermove = (m) => moveTo(m.clientY - from);
+      grip.onpointerup = grip.onpointercancel = () => {
+        grip.onpointermove = grip.onpointerup = grip.onpointercancel = null;
+        savePocketAt();
+      };
+    };
+    grip.onkeydown = (e) => {
+      if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+      e.preventDefault();
+      moveTo(wrap.getBoundingClientRect().top + (e.key === "ArrowUp" ? -24 : 24));
+      savePocketAt();
+    };
     const tab = document.createElement("button");
     tab.type = "button";
     tab.className = "tab";
@@ -624,7 +730,10 @@ function start() {
         if (r?.ok || stale) return;
         void ask({ type: "desk:open", tripId: trip.id });
       });
-    side.append(tab);
+    wrap.append(grip, tab);
+    const said = noteEl();
+    if (said) wrap.append(said);
+    side.append(wrap);
   };
 
   /**
@@ -718,16 +827,16 @@ function start() {
     if (!inDeck && pageState !== "busy") {
       const lbl = document.createElement("span");
       lbl.className = "lbl";
-      lbl.textContent = L(`${deckWord(single)} destesine ekle`, `Add to ${deckWord(single)}`);
+      lbl.textContent = L("Kaydet", "Save");
       plus.append(lbl);
     }
-    plus.title = inDeck ? L("Destende", "In your deck") : L("Bu sayfayı desteye ekle", "Add this page to the deck");
+    plus.title = inDeck ? L("Kaydedildi", "Saved") : L("Bu sayfayı kaydet", "Save this page");
     plus.setAttribute("aria-label", plus.title);
     plus.onclick = (e) => {
       e.preventDefault();
       e.stopPropagation();
       if (inDeck || pageState === "busy") return;
-      addPage();
+      addPage(plus);
     };
     pin.append(plus);
     layer.append(pin);
@@ -801,24 +910,28 @@ function start() {
       const isIn = isSaved(el), busy = reading.has(el);
       plus.className = `plus${isIn ? " done" : busy ? " read" : ""}`;
       plus.textContent = isIn ? "✓" : busy ? "···" : "+";
-      // (Pinterest's: a small "+" on the card's top edge; over the card, it says "+ Ekle")
+      // (Pinterest's: a small "+" on the card's top edge; over the card, it says "+ Kaydet")
       if (!isIn && !busy) {
         const lbl = document.createElement("span");
         lbl.className = "lbl";
-        lbl.textContent = L("Ekle", "Add");
+        lbl.textContent = L("Kaydet", "Save");
         plus.append(lbl);
       }
-      plus.title = isIn ? L("Desteye girdi; okunuyor", "In the deck; being read") : L("Bunu desteye ekle", "Add this one to the deck");
+      plus.title = isIn ? L("Kaydedildi", "Saved") : L("Bunu kaydet", "Save this one");
       plus.onclick = (e) => {
         e.preventDefault();
         e.stopPropagation();
         if (isSaved(el) || reading.has(el)) return;
-        withTrip(whatOf(kind), async (pick) => {
-          const r = await addCard(el, pick);
-          drawCards();
-          if (r) said(r);
-          return Boolean(r);
-        });
+        withTrip(
+          whatOf(kind),
+          async (pick) => {
+            const r = await addCard(el, pick);
+            drawCards();
+            if (r) said(r);
+            return Boolean(r);
+          },
+          plus,
+        );
       };
       pin.append(plus);
       layer.append(pin);
@@ -943,11 +1056,22 @@ function start() {
     { passive: true, capture: true },
   );
   addEventListener("resize", follow, { passive: true });
+  // (the trip question stays beside its button as the page scrolls; Escape, or a press anywhere else, closes it)
+  addEventListener("scroll", () => asking && placePop(), { passive: true, capture: true });
+  addEventListener("keydown", (e: KeyboardEvent) => e.key === "Escape" && asking && closePop(), true);
+  addEventListener("pointerdown", (e) => asking && !e.composedPath().includes(host) && closePop(), true);
   // (a search page changes its address without loading: the way or the day changed; nothing once cut off by an update)
   const tick = window.setInterval(() => (alive() ? void refresh() : clearInterval(tick)), 1500);
-  void loadLang()
-    .catch(() => undefined)
-    .then(refresh);
+  void Promise.all([
+    loadLang().catch(() => undefined),
+    chrome.storage.local
+      .get(POCKET_KEY)
+      .then((got) => {
+        const at = (got[POCKET_KEY] as Record<string, number> | undefined)?.[location.hostname];
+        if (typeof at === "number" && at > 0 && at < 1) pocketAt = at;
+      })
+      .catch(() => undefined),
+  ]).then(refresh);
 }
 
 if (document.body) start();

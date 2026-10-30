@@ -193,7 +193,7 @@ export async function whereFor(url: string, title: string): Promise<CompanionWhe
   return {
     trip: trip ? { id: trip.id, title: trip.title } : null,
     country: code ? countryName(code) : null,
-    trips: shown.map((t) => ({ id: t.id, title: t.title, when: whenOf(t), match: match(t), photos: photosOf(t, items, picks.includes(t.id) ? 3 : 1) })),
+    trips: shown.map((t) => ({ id: t.id, title: t.title, when: whenOf(t), match: match(t), photos: photosOf(t, items, picks.includes(t.id) ? 3 : 1), count: items.filter((i) => i.tripId === t.id && i.status !== "dismissed").length })),
     picks,
     saved: Boolean(key && items.some((i) => i.status !== "dismissed" && pageKey(i.url) === key)),
     names: trip ? items.filter((i) => i.tripId === trip.id && i.category === category && i.status !== "dismissed").map((i) => i.name).slice(0, 60) : [],
