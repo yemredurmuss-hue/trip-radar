@@ -114,8 +114,9 @@ describe("the chat's language (item 1)", () => {
     expect(items.map((i) => i.name).sort()).toEqual(["Konaklama · Koh Phangan", "Uçuş · Koh Samui → İstanbul", "Uçuş · İstanbul → Koh Samui"]);
     expect(items.find((i) => i.category === "stay")?.countryCode).toBe("TH");
     const last = (await listMessages(s.tripId!)).at(-1)!;
-    expect(last.text).toMatch(/^1 Aylık Koh Phangan Gezisi hazır: 31 gece, 1 durak\./);
-    expect(last.text).toContain("Eksik kalanları buradan konuşalım: gezinin tarzı.");
+    // The spine said back (omurga 2026-10-31): the route with its nights, ending on the question that shapes it most.
+    expect(last.text).toContain("Koh Phangan → **31 gece**");
+    expect(last.text.split("\n").at(-1)).toBe("**Nasıl bir gezi olsun: rahat mı, macera mı, bütçe dostu mu?**");
     expect(lang()).toBe("en");
   });
 });

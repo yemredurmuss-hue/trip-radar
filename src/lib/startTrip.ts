@@ -28,7 +28,7 @@ import { CIRCUITS, englishName, fitCircuit } from "./startCircuits";
 import { daysBetween, eventDays, findEvent, intentAt, intentOf, intentTitle, plusDays, type Intent } from "./startEvents";
 import { tripName, type TitleState } from "./tripName";
 import { STYLES, type BudgetLevel, type StyleId } from "./tripStyle";
-import type { ChatMessage, CustomPlaybook, GroundWay, Item, StayKind, Trip } from "./types";
+import type { ChatMessage, CustomPlaybook, GroundWay, Item, PlaybookKind, StayKind, Trip } from "./types";
 import type { StayWish, TripWants } from "./travelWants";
 import { isPlaceholder, placeholderPrint } from "./placeholders";
 
@@ -4213,6 +4213,102 @@ export function readyText(c: Creation, missing: string[] = [], askNames: boolean
     ? L(`Önce aracı seç, sonra ${firstCity} konaklamasını bulalım.`, `First pick the car, then let's find a place in ${firstCity}.`)
     : L(`Önce uçuşu bul, sonra ${firstCity} konaklamasını seçelim. Her adımda buradayım.`, `First find the flight, then let's pick a place in ${firstCity}. I'm here at every step.`);
   return `${head} ${next}${rough}${ask}`;
+}
+
+// --- the spine said back -----------------------------------------------------------------------------------------
+
+const CONCEPT_EMOJI: [RegExp, string][] = [
+  [/bisiklet|cycl|bike|bisikl/iu, "🚲"],
+  [/dal[ıi]ş|div(e|ing)|liveaboard|şnorkel|snorkel/iu, "🤿"],
+  [/yürüyüş|trek|hik(e|ing)|kamp|camp/iu, "🥾"],
+  [/safari/iu, "🦁"],
+  [/kayak|ski/iu, "⛷️"],
+];
+const KIND_EMOJI: Partial<Record<PlaybookKind, string>> = { festival: "🎪", ski: "⛷️", honeymoon: "💕", wellness: "🧘", cruise: "🚢", road: "🚗" };
+const flagOf = (code: string | null | undefined) =>
+  code && /^[A-Za-z]{2}$/.test(code) ? String.fromCodePoint(...code.toUpperCase().split("").map((ch) => 127397 + ch.charCodeAt(0))) : null;
+const WAY_SAID: Record<GroundWay, () => string> = {
+  bus: () => L("otobüsle", "by bus"),
+  train: () => L("trenle", "by train"),
+  ferry: () => L("feribotla", "by ferry"),
+  car: () => L("kendi aracınla", "in your own car"),
+};
+const STAY_SAID: Partial<Record<StayKind, () => string>> = { camp: () => L("kamp", "camping"), boat: () => L("tekne", "the boat"), vehicle: () => L("karavan", "a camper"), hostel: () => L("hostel", "hostels"), guesthouse: () => L("pansiyon", "guesthouses") };
+
+/** The one question that shapes the plan most, still open (K4: the days first, then where from, who, the kind's own, the style). */
+function spineQuestion(c: Creation, s: StartState): string {
+  if (!c.dates) return s.start && monthOnly(s) ? L("Hangi gün yola çıkıyorsun?", "Which day do you set off?") : L("Hangi tarihlerde gitmek istiyorsun?", "When would you like to go?");
+  if (!s.from && !s.way) return L("Nereden yola çıkacaksın?", "Where are you leaving from?");
+  if (!s.who) return L("Kimlerle gidiyorsun?", "Who's coming with you?");
+  const pb = pbCurrent(s);
+  if (pb) return say(pb.q.text);
+  if (!(s.styles.length || s.budget)) return L("Nasıl bir gezi olsun: rahat mı, macera mı, bütçe dostu mu?", "What kind of trip: easy, adventurous, or on a budget?");
+  return L("Önce neye bakalım: ulaşım mı, konaklama mı?", "What shall we look at first: getting there, or where to stay?");
+}
+
+/**
+ * The spine said back once it is drawn (omurga 2026-10-31, Emre's three examples): a headline, the route with its nights,
+ * at most two lines of what was assumed (only what the made plan really holds: the flights, the car, the way there, the
+ * kind of stay), and the one question that shapes it most, bold, last. The chat's first line on the board.
+ */
+export function spineSummary(c: Creation, s: StartState): string {
+  const label = s.playbook?.label ?? null;
+  const kind = startPlaybook(s);
+  const place = s.where?.place ?? c.title;
+  const code = s.where?.code ?? s.intent?.code ?? null;
+  const emoji = (label && CONCEPT_EMOJI.find(([re]) => re.test(label))?.[1]) ?? KIND_EMOJI[kind] ?? flagOf(code) ?? "🧭";
+  // A length said in months reads as said ("1 Aylık …"): the trip's own title then, never "32 günlük".
+  const days = c.dates && s.duration?.unit !== "month" ? nightsBetween(c.dates.start, c.dates.end) + 1 : null;
+  const head = s.intent?.kind === "event" && s.intent.name
+    ? L(`Geziyi ${s.intent.name} etrafına kurdum.`, `I built the trip around ${s.intent.name}.`)
+    : label
+      ? L(`${days ? `${days} günlük ` : ""}${label} taslağını çizdim.`, `I drew up your ${days ? `${days}-day ` : ""}${label}.`)
+      : s.duration?.unit === "month"
+        ? L(`${c.title} taslağını oluşturdum.`, `I put together your ${c.title} draft.`)
+        : L(`${days ? `${days} günlük ` : ""}${place} taslağını oluşturdum.`, `I put together your ${days ? `${days}-day ` : ""}${place} draft.`);
+
+  // The route: the cities slept in, in order, a city's nights side by side as one.
+  const legs: { city: string; nights: number }[] = [];
+  for (const st of c.stays) {
+    const city = st.city ?? "";
+    const n = st.date && st.end_date ? nightsBetween(st.date, st.end_date) : 0;
+    const last = legs.at(-1);
+    if (last && samePlace(last.city, city)) last.nights += n;
+    else if (city) legs.push({ city, nights: n });
+  }
+  if (!c.dates) for (const l of legs) l.nights = s.route?.stops.find((x) => samePlace(x.city, l.city))?.nights ?? 0;
+  const stayWord = c.stayAs ? (c.stayAs.word ?? STAY_SAID[c.stayAs.kind]?.() ?? null) : null;
+  const route = legs.slice(0, 5).map((l) => {
+    const nights = l.nights ? ` → **${L(`${l.nights} gece`, `${l.nights} night${l.nights === 1 ? "" : "s"}`)}**` : "";
+    const as = stayWord && (!c.stayAs!.city || samePlace(c.stayAs!.city, l.city)) ? ` · ${stayWord}` : "";
+    return `${l.city}${nights}${as}`;
+  });
+  if (legs.length > 5) route.push(L(`… ve ${legs.length - 5} durak daha`, `… and ${legs.length - 5} more stops`));
+
+  // What was assumed: only what the made plan holds.
+  const said: string[] = [];
+  const flights = c.travel.filter((t) => t.kind === "flight");
+  const there = flights[0]?.to ?? null;
+  const home = flights.length > 1 ? flights.at(-1)!.from : null;
+  if (flights.length && there)
+    said.push(home && !samePlace(home, there)
+      ? L(`Uçuşları şimdilik gidiş **${there}**, dönüş **${home}** olarak koydum.`, `For now the flights go into **${there}** and home from **${home}**.`)
+      : L(`Uçuşları şimdilik **${there}** üzerinden koydum.`, `For now the flights go through **${there}**.`));
+  else if (c.way) said.push(L(`Gidiş ve dönüşü **${WAY_SAID[c.way]()}** düşündüm.`, `I took the way there and back as **${WAY_SAID[c.way]()}**.`));
+  const car = c.travel.find((t) => t.kind === "car_rental");
+  if (car?.city) said.push(L(`Kiralık aracı **${car.city}** çıkışlı koydum.`, `The rental car starts in **${car.city}**.`));
+  if (stayWord && said.length < 2) said.push(L(`Konaklamayı şimdilik **${stayWord}** olarak düşündüm.`, `I took the stays as **${stayWord}** for now.`));
+  if (c.routeDraft && said.length < 2) said.push(L("Rotayı ben önerdim; değiştirmek istersen söyle.", "The route is my suggestion; tell me to change it."));
+
+  return [
+    `${emoji} **${head}**`,
+    "",
+    ...route,
+    ...(said.length ? ["", ...said.slice(0, 2)] : []),
+    "",
+    L("Hadi planı netleştirelim.", "Let's firm up the plan."),
+    `**${spineQuestion(c, s)}**`,
+  ].join("\n");
 }
 
 /** The "ready" line's own first step ("Önce uçuşu bul, sonra Porto konaklamasını seçelim."), as written at the start. */

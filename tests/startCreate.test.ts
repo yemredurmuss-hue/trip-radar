@@ -76,7 +76,9 @@ describe("Gezimi oluştur", () => {
     const chat = await listMessages(trip.id);
     expect(chat.map((m) => m.role)).toEqual(["user", "assistant", "user", "assistant"]);
     expect(chat[0].text).toBe("Sabine'yle 10 Aralık'tan 1 ay Bali");
-    expect(chat.at(-1)!.text).toMatch(/^1 Aylık Bali Doğa Gezisi hazır: 31 gece, 3 durak\./);
+    // The spine said back (omurga 2026-10-31): a headline, the route with its nights, one question last.
+    expect(chat.at(-1)!.text).toMatch(/^🇮🇩 \*\*1 Aylık Bali Doğa Gezisi taslağını oluşturdum\.\*\*/);
+    expect(chat.at(-1)!.text.split("\n").at(-1)).toMatch(/^\*\*.+\?\*\*$/);
     expect(chat.every((m) => m.provider === "gemini")).toBe(true);
   });
 
