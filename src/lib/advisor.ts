@@ -72,21 +72,26 @@ async function advisorModel(): Promise<LlmProvider | null> {
 let pending: { id: string; known: string; answer: Promise<Advice | null> } | null = null;
 
 /**
- * Asks the advisor in the background (never awaited here): from the first message, and again whenever what is known
- * changes on the checklist (the dates, who goes, the route; Emre 2026-10-31: "topladığımız bilgiler danışmana gitmiyor"),
- * the newest ask taking the place of the one before. Nothing asked before the destination is known.
+ * Asks the advisor in the background (never awaited here), with all the checklist knows (Emre 2026-10-31: "topladığımız
+ * bilgiler danışmana gitmiyor"): the chat asks once it is complete, or at "Oluştur". The same knowledge is never asked
+ * twice; a change before "Oluştur" asks again, the newest ask taking the place of the one before.
  */
 export function adviseStart(a: { id: string; text: string; known: string; today: string; lang: Lang }, model: () => Promise<LlmProvider | null> = advisorModel): void {
   if (!a.known.trim() || (pending?.id === a.id && pending.known === a.known)) return;
   const answer = (async () => {
     try {
       const llm = await model();
-      if (!llm) return null;
+      if (!llm) return (console.info("[danışman] sorulmadı: AI anahtarı yok"), null);
       const [system, prompt] = withLang(a.lang, () => [adviceSystem(), advicePrompt(a.text, a.today, a.known)]);
       const signal = AbortSignal.timeout(CALL_MS);
-      return await llm.generateJson(system, prompt, adviceSchema, [], { signal, maxRetries: 0 });
+      const started = Date.now();
+      const got = await llm.generateJson(system, prompt, adviceSchema, [], { signal, maxRetries: 0 });
+      // One line for whoever tests (the traveller never sees it): the advisor worked, how fast, what it decided.
+      const special = got.stays.filter((x) => x.kind === "special").map((x) => `${x.what} (${x.place}, ${x.nights} gece)`);
+      console.info(`[danışman] ${llm.id === "anthropic" ? ADVISOR_CLAUDE : ADVISOR_GEMINI} · ${((Date.now() - started) / 1000).toFixed(1)} sn · geceler: ${got.stays.map((x) => `${x.place} ${x.nights}`).join(", ")}${special.length ? ` · özel: ${special.join(", ")}` : ""} · ulaşım: ${got.legs.map((l) => `${l.day}. gün ${l.mode}`).join(", ")} · etkinlik: ${got.anchors.map((x) => x.what).join(", ") || "yok"}`, got);
+      return got;
     } catch (error) {
-      console.warn("[start] the advisor", error);
+      console.warn("[danışman] gelmedi", error);
       return null;
     }
   })();
@@ -99,7 +104,9 @@ export async function adviceFor(id: string, ms: number): Promise<Advice | null> 
   let timer: ReturnType<typeof setTimeout> | undefined;
   const late = new Promise<null>((resolve) => (timer = setTimeout(() => resolve(null), ms)));
   try {
-    return await Promise.race([pending.answer, late]);
+    const got = await Promise.race([pending.answer, late.then(() => "late" as const)]);
+    if (got === "late") console.info(`[danışman] ${ms / 1000} sn içinde yetişmedi, plan danışmansız kuruldu`);
+    return got === "late" ? null : got;
   } finally {
     clearTimeout(timer);
   }

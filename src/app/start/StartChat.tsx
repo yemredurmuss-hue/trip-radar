@@ -123,15 +123,16 @@ export function StartChat({ initial: given, firstText, firstLabel, firstNote, ct
   const [genLines, setGenLines] = useState<string[]>([]);
   // The generating screen's world map read now, while chatting: "Oluştur" starts the flight at once (2026-10-09).
   useEffect(() => void loadWorld().catch(() => null), []);
-  // The start's advisor thinks the spine through in the background (advisor.ts, omurga Tur 18): asked from the first
-  // message once the destination is known, and again as the checklist fills (the newest ask wins); never awaited here.
+  // The start's advisor thinks the spine through in the background (advisor.ts, omurga Tur 18), asked once: when the
+  // checklist is complete (Emre 2026-10-31: "her bilgi değişince sormak gereksiz çağrı, bir kere temiz"), so its answer is
+  // there by "Oluştur"; asked again only when something changed before "Oluştur", or at "Oluştur" when never asked.
+  const askAdvisor = (s: StartState) => {
+    const said = s.messages.filter((m) => m.role === "user").map((m) => m.text).join("\n");
+    if (s.where && said) adviseStart({ id: s.id, text: said, known: T(() => knownLines(s, ctx)), today: today(), lang: s.lang });
+  };
   useEffect(() => {
-    if (phase !== "chat" || !state.where) return;
-    const timer = setTimeout(() => {
-      const s = live.current;
-      const said = s.messages.filter((m) => m.role === "user").map((m) => m.text).join("\n");
-      if (said) adviseStart({ id: s.id, text: said, known: T(() => knownLines(s, ctx)), today: today(), lang: s.lang });
-    }, ADVICE_SETTLE_MS);
+    if (phase !== "chat" || !isComplete(state)) return;
+    const timer = setTimeout(() => askAdvisor(live.current), ADVICE_SETTLE_MS);
     return () => clearTimeout(timer);
   }, [state, phase]);
   // Read after every wait: an answer that comes back after "Gezimi oluştur", or after the screen was left, is dropped.
@@ -767,6 +768,7 @@ export function StartChat({ initial: given, firstText, firstLabel, firstNote, ct
     autoFor.current = memo.for;
     autoStopped.current = memo.stopped;
     setDrawingKey(null);
+    askAdvisor(made);
     setPhase("generating");
   }
 
