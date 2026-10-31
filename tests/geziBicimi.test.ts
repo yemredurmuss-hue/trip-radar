@@ -189,7 +189,7 @@ describe("gezi biçimi: the eleven ready mixes, signal → intent list", () => {
     ]);
   });
 
-  it("day out (by bus): Konaklama and Uçuş closed with why, the bus there and back", () => {
+  it("day out (by bus): Konaklama closed with why, no Uçuş at all, the bus there and back", () => {
     const s = fromIst(typed(fresh(), "Cumartesi günübirlik Şile'ye otobüsle, 2 kişi", { destination: "Şile", destination_country: "Türkiye", destination_country_code: "TR", start_date: "2026-10-24", duration_days: 1 }));
     const b = made(s);
     expect(b.trip.confirmedDates).toEqual({ start: "2026-10-24", end: "2026-10-24" });
@@ -198,7 +198,8 @@ describe("gezi biçimi: the eleven ready mixes, signal → intent list", () => {
       ["transport", "Otobüs", "Şile → İstanbul", "ticket", "searching", ""],
     ]);
     expect(row(b, "stay")).toMatchObject({ closed: "aynı gün dönüş", info: { text: "Günübirlik: aynı gün dönüş, konaklama kapandı." } });
-    expect(row(b, "flight")).toMatchObject({ closed: "otobüsle", info: { text: "Otobüsle gidiliyor; uçuş aranmaz." } });
+    // No flight on the trip, no Uçuş (omurga Tur 11b, Emre: "hiç uçak yoksa uçuş kategorisinin olması doğru değil").
+    expect(b.all.some((c) => c.section.id === "flight")).toBe(false);
   });
 
   it("business (the model's nearest): the transfer, the fair, the meetings as ideas", () => {
@@ -528,13 +529,13 @@ describe("H13 and H10: the way there, a day out, a long name", () => {
     expect(parseStartText("Yazın bir ara Portekiz'e gitmek istiyoruz", TODAY).start).toEqual({ date: "2027-07-01", approx: true });
     expect(parseStartText("In the summer to Rome", TODAY).start).toEqual({ date: "2027-07-01", approx: true });
   });
-  it("by bus: no flight made, the buses there and back, Uçuş closed", () => {
+  it("by bus: no flight made, the buses there and back, no Uçuş", () => {
     const s = fromIst(typed(fresh(), "Bu hafta sonu Bursa'ya otobüsle, 2 kişi", { destination: "Bursa", destination_country: "Türkiye", destination_country_code: "TR" }));
     const c = creationOf(s)!;
     expect(c.travel.map((x) => [x.kind, x.from, x.to])).toEqual([["bus", "İstanbul", "Bursa"], ["bus", "Bursa", "İstanbul"]]);
     const b = made(s);
     expect(b.trip.startGuide?.way).toBe("bus");
-    expect(row(b, "flight")).toMatchObject({ closed: "otobüsle" });
+    expect(b.all.some((c) => c.section.id === "flight")).toBe(false);
     expect(b.intents.some((i) => i.section === "flight" && i.status !== "skipped")).toBe(false);
   });
   it("H10: a 58-letter name read by the model is a place", () => {
@@ -646,22 +647,30 @@ describe("H7: open nights in different cities never merge; two hotels in one cit
 
 // --- the road mode (H5) and a connecting flight (D7) ----------------------------------------------------------------
 
-describe("H5: a road trip's car covers the drives; no flight to imagine", () => {
-  it("the drives between the cities are Dahil with the car and not decisions; Uçuş isn't drawn", () => {
+describe("H5: a road trip's car covers the drives; how one gets there is its own (omurga Tur 11b)", () => {
+  const italy = (way?: StartState["way"]) => {
     let s = applyAnswer(fresh("road"), { q: "where", place: "İtalya", country: "İtalya", code: "IT" }, 2);
     s = applyAnswer(s, { q: "duration", duration: { unit: "night", n: 4 } }, 2);
     s = applyAnswer(s, { q: "start", date: "2027-05-01", approx: false }, 2);
     s = fromIst(s);
-    s = { ...s, route: { stops: ["Milano", "Verona", "Bologna", "Floransa"].map((city) => ({ city, nights: 1, code: "IT" })), arrive: null, leave: null, confirmed: true, source: "user" } };
-    const b = made(s);
-    expect(b.all.some((c) => c.section.id === "flight")).toBe(false);
+    return { ...s, ...(way ? { way } : {}), route: { stops: ["Milano", "Verona", "Bologna", "Floransa"].map((city) => ({ city, nights: 1, code: "IT" })), arrive: null, leave: null, confirmed: true, source: "user" as const } };
+  };
+
+  it("flown to: the flights in and out, the car where one lands, the drives Dahil with it", () => {
+    const b = made(italy());
+    expect(rows(b).filter((r) => r[0] === "flight")).toHaveLength(2);
     expect(rows(b).filter((r) => r[0] === "transport")).toEqual([
       ["transport", "Araç", "Araç kiralama · Milano", "ticket", "searching", ""],
       ["transport", "Şehir değişimi", "Milano → Verona", "ticket", "included", "kiralık araçla"],
       ["transport", "Şehir değişimi", "Verona → Bologna", "ticket", "included", "kiralık araçla"],
       ["transport", "Şehir değişimi", "Bologna → Floransa", "ticket", "included", "kiralık araçla"],
     ]);
-    expect(row(b, "transport")).toMatchObject({ countsText: "1 karar · 3 dahil", counts: { decide: 1 }, info: { text: "Yol gezisi: kiralık araç şehirler arası yolculukları kapsar." } });
+  });
+
+  it("driven from home in one's own car: no flight, no Uçuş, no car to rent", () => {
+    const b = made(italy("car"));
+    expect(b.all.some((c) => c.section.id === "flight")).toBe(false);
+    expect(rows(b).some((r) => r[2].startsWith("Araç kiralama"))).toBe(false);
   });
 });
 

@@ -1221,7 +1221,8 @@ function intentsWith(section: CatSection, env: Env): IntentVM[] {
     own = [...own, ...asked.map((s) => suggestedIntent(section.id, s, env))];
   }
   // D4: a category the trip's shape makes needless (a day out: Konaklama) closes; what's still open in it is "Gerek yok", with why.
-  const reason = env.shape.closes[section.id as PartSection];
+  // A flight the traveller adds on a trip gone to by land opens Uçuş again (omurga Tur 11b): it is theirs, not "Gerek yok".
+  const reason = section.id === "flight" && own.length ? undefined : env.shape.closes[section.id as PartSection];
   const closed = reason ? own.map((i) => (i.status === "searching" || i.status === "deciding" || i.status === "suggested" ? { ...i, status: "skipped" as const, word: statusWord("skipped"), note: reason } : i)) : own;
   return [...closed, ...skippedIntents(section)];
 }
@@ -1234,8 +1235,13 @@ interface Built {
 /** Every category's intents, in the v82 order (a category with no section yet is built empty, for one the shape closes). */
 function sectionsWith(sections: CatSection[], env: Env): Built[] {
   return V82_ORDER.flatMap((id) => {
-    const section = sections.find((s) => s.id === id) ?? (env.shape.closes[id as PartSection] ? emptySection(id) : null);
-    return section ? [{ section, intents: intentsWith(section, env) }] : [];
+    const section = sections.find((s) => s.id === id) ?? (env.shape.closes[id as PartSection] && id !== "flight" ? emptySection(id) : null);
+    if (!section) return [];
+    const intents = intentsWith(section, env);
+    // No flight on a trip gone to by land (one's own car, a bus): no Uçuş at all; it comes with the first flight added
+    // (omurga Tur 11b, Emre: "hiç uçak yoksa uçuş kategorisinin olması doğru değil").
+    if (id === "flight" && env.shape.closes.flight && intents.every((i) => i.status === "skipped")) return [];
+    return [{ section, intents }];
   });
 }
 

@@ -1408,6 +1408,8 @@ export const extractionSchema = z.object({
   stops: z.array(z.object({ place: z.string(), nights: z.number(), note: z.string(), photo: z.string().optional() })).optional(),
   // The part of the month said with it ("Kasım sonunda": end; 0.39.10).
   start_part: z.string().optional(),
+  // How one gets there, read from what is said and common sense (omurga Tur 11b): plane | car | bus | train | ferry | "".
+  arrive_by: z.string().optional(),
 });
 export type RawExtraction = z.infer<typeof extractionSchema>;
 
@@ -1427,7 +1429,8 @@ choice: cevaplanan soru seçenekleriyle verildiyse ("değer = etiket"), mesajın
 one_place: kullanıcı gezi boyunca tek bir yerde kalmak istediğini söylüyorsa ("sabit bir yerde", "Canggu'da sabit", "tek yer", "sadece Canggu", "Canggu'da kalacağız") o yerin adı, ek olmadan; söylemiyorsa "". Bu durumda destination gidilen ada, bölge ya da ülke kalır ("Bali"), one_place kasaba ("Canggu").
 stops: kullanıcı birden çok durak söylediyse ("önce Tokyo'da 3 gece, sonra Kyoto"), bu sohbette şimdiye kadar söylenen bütün durakların GÜNCEL listesi, sırasıyla (önceki mesajlar dahil; yeni mesaj bir durağı değiştiriyorsa o değişmiş hâli). Her durak: place (yalnız yer adı), nights (söylendiyse gece sayısı, söylenmediyse 0), note (o durakla ilgili söylenenler, kısa: "kızıl yapraklar", "1 gece ryokan"; yoksa ""), photo (notta gözle görülebilen sahne, kısa İngilizce fotoğraf araması: "autumn leaves", "ryokan"; görülecek bir şey yoksa ""). Bir konaklama türü (ryokan, otel, kamp) ayrı bir yer adı söylenmedikçe durak değildir, ilgili durağın notuna yazılır. Mesaj rotaya hiç değinmiyorsa ve ilk mesaj değilse stops boş kalır. Birden çok şehir durak olarak söylendiyse destination ülkedir ("Japonya"), şehirler değil. Bir durağın gece sayısı gezinin toplam süresi değildir: duration_days yalnız toplam süre söylendiyse dolar.
 Günübirlik gidilen yer ("Capri'ye tekneyle günübirlik") durak değildir: stops'a girmez, bir önceki durağın notuna yazılır ("Capri'ye günübirlik tekne").
-start_part: ayın hangi kısmı söylendiyse ("Kasım sonunda" → end, "ortasında" → mid, "başında" → begin); yoksa "".`,
+start_part: ayın hangi kısmı söylendiyse ("Kasım sonunda" → end, "ortasında" → mid, "başında" → begin); yoksa "".
+arrive_by: yola çıkılan yerden gidilecek yere NASIL gidildiği; bu alanda söylenenle birlikte sağduyu da kullanılır: plane | car (kendi aracıyla evden) | bus | train | ferry ya da "" (emin değilsen). Yol gezisi (orada araçla dolaşmak) oraya araçla gidildiği anlamına gelmez: İstanbul'dan Amalfi kıyısında yol gezisi → plane (Napoli'ye uçup araç kiralanır); İstanbul'dan Ege'de arabayla road trip ya da aynı ülkede uçuştan söz edilmeyen bir yol gezisi → car; "Napoli'ye trenle" → train; okyanus ötesi → plane.`,
     `From the user's message in a trip-planning chat, take only what is clearly said. Never invent; what isn't said stays empty ("" or 0 or []).
 destination: the place to go (a city, island, region or country), its name only; when several are said, the most specific ("Thailand, Koh Phangan" → "Koh Phangan", country Thailand), spelled correctly. destination_country: its country when known; destination_country_code: that country's ISO 3166-1 alpha-2 code ("TH").
 origin: the city they leave from. companions: solo | partner | friends | family or "". names: the people going with them (not the user).
@@ -1439,7 +1442,8 @@ choice: when the question being answered comes with options ("value = label"), t
 one_place: when the user says they stay in one place the whole trip ("one base", "just Canggu", "we'll stay in Canggu"), that place's name; else "". Then destination stays the island, region or country they go to ("Bali"), one_place the town ("Canggu").
 stops: when the user says several stops ("first 3 nights in Tokyo, then Kyoto"), the CURRENT list of every stop said in this conversation so far, in order (earlier messages included; when the new message changes a stop, its changed form). Each stop: place (the place's name only), nights (the nights when said, else 0), note (what was said of it, short: "autumn leaves", "1 night in a ryokan"; else ""), photo (what of the note can be seen, as a short English photo search: "autumn leaves", "ryokan"; else ""). A kind of stay (ryokan, hotel, camp) is no stop unless a place of its own is named: it goes in the note of its stop. When the message doesn't touch the route and isn't the first, stops stays empty. When several cities are said as stops, destination is the country ("Japan"), not a city. A stop's nights are not the trip's length: duration_days is filled only when the whole length is said.
 A place said as a day trip ("a day trip to Capri by boat") is no stop: not in stops, written in the note of the stop before ("day trip to Capri by boat").
-start_part: the part of the month said ("late November" → end, "mid" → mid, "early" → begin); else "".`,
+start_part: the part of the month said ("late November" → end, "mid" → mid, "early" → begin); else "".
+arrive_by: HOW they get from where they leave to where they go; for this field common sense counts along with what is said: plane | car (their own car, from home) | bus | train | ferry or "" (when unsure). A road trip (getting around there by car) doesn't mean driving there: a road trip on the Amalfi Coast from Istanbul → plane (fly to Naples, rent a car); a road trip by car in the Aegean from Istanbul, or a road trip in the same country with no flight mentioned → car; "to Naples by train" → train; across an ocean → plane.`,
   );
 
 /** What each question asks, in words for the model ("where they leave from"). */
@@ -1712,6 +1716,9 @@ export function acceptExtraction(raw: RawExtraction & { plan?: RawPlan | null },
     if (Object.hasOwn(STYLES, s) && !out.styles.includes(s as StyleId)) out.styles.push(s as StyleId);
   }
   out.budget = (BUDGETS as readonly string[]).includes(raw.budget) ? (raw.budget as BudgetLevel) : null;
+  // The way there by land, as the model read it (a plane, or unsure, leaves the flights to be made).
+  const by = (raw.arrive_by ?? "").trim().toLowerCase();
+  if (by === "car" || by === "bus" || by === "train" || by === "ferry") out.way = by;
   const intent = acceptIntent(raw, today, out.where);
   if (intent) {
     out.intent = intent;
@@ -1790,7 +1797,8 @@ export function mergeExtracted(code: Extracted, model: Extracted | null): Extrac
     budget: code.budget ?? model.budget,
     ...(model.choice || code.choice ? { choice: model.choice || code.choice } : {}),
     ...(model.playbook ? { playbook: model.playbook } : {}),
-    ...(code.way ? { way: code.way } : {}),
+    // The way there: the words said, else the model's reading of the trip (omurga Tur 11b).
+    ...(code.way || model?.way ? { way: code.way ?? model!.way } : {}),
     ...(code.dayTrip ? { dayTrip: true } : {}),
     ...(code.dayTrips?.length ? { dayTrips: code.dayTrips } : {}),
     ...(code.base || model.base ? { base: code.base ?? model.base } : {}),
@@ -3843,7 +3851,8 @@ export function previewOf(s: StartState, ctx: StartCtx): Preview | null {
     people: s.who ? whoText(s.who, ctx.myName) || null : null,
     styles: knownStyles(s.styles),
     budget: s.budget && Object.hasOwn(BUDGET_WORDS, s.budget) ? budgetWord(s.budget) : null,
-    flights: road ? null : air ? (s.from ? `${s.from} ⇄ ${air.arrive}` : air.arrive) : null,
+    // Flights unless the way there is by land (a road trip is flown to unless they drive there: omurga Tur 11b).
+    flights: s.way ? null : air ? (s.from ? `${s.from} ⇄ ${air.arrive}` : air.arrive) : null,
     road,
     country: code ? { code, name: s.where.country ?? s.where.place } : null,
     rules: s.prepared.rules && rulesKey(s) === s.prepared.rules.key ? s.prepared.rules.titles : [],
@@ -3972,20 +3981,22 @@ export function creationOf(s: StartState): Creation | null {
   const first = fitted[0]?.city ?? where.place;
   const { arrive, leave } = airportsOf(s, fitted)!;
   // The way there by land (gezi biçimi: "otobüsle"): its ways there and back to find, never a flight; one's own car: none.
-  const way = road ? null : (s.way ?? null);
+  // How one gets there and how one gets around are two things (omurga Tur 11b): a road trip only says the second.
+  const way = s.way ?? null;
   const last = fitted.at(-1)?.city ?? first;
-  const travel: PlannedInput[] = road
-    ? [said0({ kind: "car_rental", date: dates?.start ?? null, end_date: dates?.end ?? null, city: first })]
-    : way
-      ? way === "car"
-        ? []
-        : [said0({ kind: way, date: dates?.start ?? null, from: s.from, to: first }), ...(dates || s.from ? [said0({ kind: way, date: dates?.end ?? null, from: last, to: s.from })] : [])]
-      : [
-        // None from a place to itself (leaving from Cape Town for AfrikaBurn: no flight to Cape Town).
-        ...(s.from && samePlace(s.from, arrive) ? [] : [said0({ kind: "flight", date: dates?.start ?? null, from: s.from, to: arrive })]),
-        // The flight home needs its day or where home is (an undated one to nowhere is no plan).
-        ...((dates || s.from) && !(s.from && samePlace(leave, s.from)) ? [said0({ kind: "flight", date: dates?.end ?? null, from: leave, to: s.from })] : []),
-      ];
+  const there: PlannedInput[] = way
+    ? way === "car"
+      ? []
+      : [said0({ kind: way, date: dates?.start ?? null, from: s.from, to: first }), ...(dates || s.from ? [said0({ kind: way, date: dates?.end ?? null, from: last, to: s.from })] : [])]
+    : [
+      // None from a place to itself (leaving from Cape Town for AfrikaBurn: no flight to Cape Town).
+      ...(s.from && samePlace(s.from, arrive) ? [] : [said0({ kind: "flight", date: dates?.start ?? null, from: s.from, to: arrive })]),
+      // The flight home needs its day or where home is (an undated one to nowhere is no plan).
+      ...((dates || s.from) && !(s.from && samePlace(leave, s.from)) ? [said0({ kind: "flight", date: dates?.end ?? null, from: leave, to: s.from })] : []),
+    ];
+  // A road trip's car: rented where one arrives (the airport's city when flown), never when driving one's own from home.
+  const around: PlannedInput[] = road && way !== "car" ? [said0({ kind: "car_rental", date: dates?.start ?? null, end_date: dates?.end ?? null, city: way ? first : (arrive ?? first) })] : [];
+  const travel: PlannedInput[] = [...there, ...around];
   const count = peopleCount(s.who);
   const names = s.who?.kind === "solo" ? [] : (s.who?.names ?? []);
   // The country of each stop: the route's own (a trip across two countries), else the destination's.
@@ -4295,11 +4306,13 @@ export interface GuideInput {
 export function guideSteps(trip: Trip, g: GuideInput): GuideStep[] {
   const guide = trip.startGuide;
   const closed = new Set(g.plan.closed.map((c) => c.item.id));
-  const kind = guide?.road ? "transport" : "flight";
+  // A road trip flown to finds its flights first; one gone to by land picks its car; one's own car from home has nothing to pick.
+  const kind = guide?.road && guide.way ? "transport" : "flight";
   const live = g.items.filter((i) => i.category === kind && i.status !== "dismissed" && !closed.has(i.id));
   const travelDone = live.length > 0 && !live.some((i) => isPlaceholder(trip, i));
+  const travel: GuideStep[] = guide?.road && guide.way === "car" ? [] : [kind === "transport" ? { id: "flights", label: L("Aracı seç", "Pick the car"), done: travelDone } : { id: "flights", label: L("Uçuşları bul", "Find the flights"), done: travelDone }];
   return [
-    guide?.road ? { id: "flights", label: L("Aracı seç", "Pick the car"), done: travelDone } : { id: "flights", label: L("Uçuşları bul", "Find the flights"), done: travelDone },
+    ...travel,
     { id: "stays", label: L("Konaklamaları seç", "Choose the stays"), done: g.plan.stayBlocks.length > 0 && g.plan.nights.open === 0 },
     { id: "suggestions", label: L("Önerilere bak", "Look at the suggestions"), done: Boolean(guide?.looked) || g.openSuggestions === 0 },
   ];

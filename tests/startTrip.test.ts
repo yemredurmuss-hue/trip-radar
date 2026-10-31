@@ -327,13 +327,15 @@ describe("what gets made", () => {
     expect(c.countries).toEqual({ lizbon: { code: "PT", name: "Portekiz" }, sevilla: { code: "ES", name: null } });
     expect(c.parents).toBeNull();
   });
-  it("a road trip has a car for the whole trip instead of flights", () => {
+  it("a road trip is flown to unless driven, its car for the whole trip where one lands (omurga Tur 11b)", () => {
     let s = applyAnswer(fresh("road"), { q: "where", place: "Toskana", country: "İtalya" }, 2);
     s = applyAnswer(s, { q: "duration", duration: { unit: "week", n: 1 } }, 2);
     s = applyAnswer(s, { q: "start", date: "2027-05-01", approx: false }, 2);
     const c = creationOf(s)!;
     expect(c.road).toBe(true);
-    expect(c.travel.map((x) => [x.kind, x.city, x.date, x.end_date])).toEqual([["car_rental", "Toskana", "2027-05-01", "2027-05-08"]]);
+    expect(c.travel.filter((x) => x.kind === "flight")).toHaveLength(2);
+    expect(c.travel.filter((x) => x.kind === "car_rental").map((x) => [x.date, x.end_date])).toEqual([["2027-05-01", "2027-05-08"]]);
+    expect(creationOf({ ...s, way: "car" })!.travel).toEqual([]);
   });
   it("nothing without where; with only where, an undated stay and flights to fill, the trip without dates", () => {
     expect(creationOf(fresh())).toBeNull();
@@ -448,10 +450,12 @@ describe("the start card (item 7) and the places the start made", () => {
     // Looked at: the suggestions step is done even with some still open.
     expect(guideSteps(trip({ startGuide: { createdAt: 1, looked: true } }), { items: [], plan: plan(0), openSuggestions: 3 })[2].done).toBe(true);
   });
-  it("a road trip's first step is the car", () => {
+  it("a road trip gone to by land picks its car first; flown to, its flights; driven from home, nothing to pick", () => {
     const car = makeItem({ id: "c1", category: "transport", origin: "chat", status: "chosen" });
-    const t = trip({ startGuide: { createdAt: 1, road: true, placeholders: { c1: placeholderPrint(car) } } });
+    const t = trip({ startGuide: { createdAt: 1, road: true, way: "train", placeholders: { c1: placeholderPrint(car) } } });
     expect(guideSteps(t, { items: [car], plan: plan(0), openSuggestions: 0 })[0]).toEqual({ id: "flights", label: "Aracı seç", done: false });
+    expect(guideSteps(trip({ startGuide: { createdAt: 1, road: true } }), { items: [], plan: plan(0), openSuggestions: 0 })[0].label).toBe("Uçuşları bul");
+    expect(guideSteps(trip({ startGuide: { createdAt: 1, road: true, way: "car" } }), { items: [], plan: plan(0), openSuggestions: 0 }).map((x) => x.id)).toEqual(["stays", "suggestions"]);
     expect(startLead(t, [car], 7)).toBe("1 araç ve 7 gece seni bekliyor.");
   });
 });
