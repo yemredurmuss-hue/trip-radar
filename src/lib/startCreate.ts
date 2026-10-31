@@ -337,8 +337,34 @@ export function playbookCards(s: StartState, c: Creation): { travel: ShapedInput
     .map((x) => (privateRide && x.kind === "transfer" ? { ...x, title: x.title && !/özel|private/i.test(x.title) ? `${ride} · ${x.title}` : ride } : x));
   const moving = (x: PlannedInput) => x.kind === "transfer" || x.kind === "taxi" || x.kind.endsWith("_rental") || x.kind === "ferry";
   const prep = [...p.prep(), ...prepAdded(effects)].map((title): PlannedInput => ({ kind: "prep", date: null, end_date: null, time: null, from: null, to: null, city: null, title, booked: false, note: null }));
-  const plan = cards.filter((x) => !moving(x));
-  return { travel: cards.filter(moving), plan: [...plan, ...wantedCards(s, c, plan)], prep };
+  const ringed = closeRing(cards, c);
+  const plan = ringed.filter((x) => !moving(x));
+  return { travel: ringed.filter(moving), plan: [...plan, ...wantedCards(s, c, plan)], prep };
+}
+
+/** The ways between an airport and the stay a card can be (a transfer, a taxi, a bus, a train, a ferry): one day each. */
+const AIRPORT_WAYS = new Set(["transfer", "taxi", "bus", "train", "ferry"]);
+
+/**
+ * The ring closes (omurga 2026-10-31, Emre: "20 Şubat dönüş uçağı var ama 20 Şubat transfer yok"): a way in from the
+ * airport the kind made (the model's "Havalimanı–şehir merkezi otobüsü") means a way back to it on the day home, the same
+ * kind of way, when none was made. Never on a road trip, never without the flights home.
+ */
+function closeRing(cards: ShapedInput[], c: Creation): ShapedInput[] {
+  const flights = c.travel.filter((t) => t.kind === "flight");
+  if (c.road || flights.length < 2) return cards;
+  const first = c.dates?.start ?? flights[0].date;
+  const last = c.dates?.end ?? flights.at(-1)!.date;
+  if (!first || !last) return cards;
+  const oneDay = (x: ShapedInput) => AIRPORT_WAYS.has(x.kind) && !x.end_date;
+  const into = cards.find((x) => oneDay(x) && x.date === first);
+  if (!into || cards.some((x) => oneDay(x) && x.date === last)) return cards;
+  const back: ShapedInput = {
+    ...into, date: last, from: into.to, to: into.from,
+    title: into.title ? L(`Dönüş · ${into.title}`, `Back · ${into.title}`) : null,
+    ...(into.part ? { part: { ...into.part, ref: `${into.part.ref}-back` } } : {}),
+  };
+  return [...cards, back];
 }
 
 /**

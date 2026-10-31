@@ -100,6 +100,7 @@ describe("gezi biçimi: the eleven ready mixes, signal → intent list", () => {
       ["stay", "", "Budapeşte", "stay", "searching", ""],
       ["transport", "Taksi · transfer", "Havalimanı → Kamp", "ticket", "searching", ""],
       ["transport", "Şehir değişimi", "Ozora → Budapeşte", "ticket", "searching", ""],
+      ["transport", "Taksi · transfer", "Otel → Havalimanı", "ticket", "searching", ""],
       ["activity", "Festival", "Ozora", "collection", "searching", ""],
     ]);
     expect(infos(b)).toEqual({
@@ -126,6 +127,7 @@ describe("gezi biçimi: the eleven ready mixes, signal → intent list", () => {
       ["flight", "", "Hurgada → İstanbul", "ticket", "searching", ""],
       ["stay", "Tekne", "Hurgada", "stay", "searching", ""],
       ["transport", "Transfer", "Havalimanı → Otel", "ticket", "included", "tekne paketiyle"],
+      ["transport", "Transfer", "Otel → Havalimanı", "ticket", "included", "tekne paketiyle"],
       ["activity", "Dalış", "Hurgada", "collection", "included", "tekne paketiyle"],
       ["todo", "Ekipman", "Dalış ekipmanı kiralama", "stay", "searching", ""],
       ["other", "Sigorta", "Dalış sigortası", "stay", "searching", ""],
@@ -140,6 +142,7 @@ describe("gezi biçimi: the eleven ready mixes, signal → intent list", () => {
       ["flight", "", "Sofya → İstanbul", "ticket", "searching", ""],
       ["stay", "", "Bansko", "stay", "searching", ""],
       ["transport", "Taksi · transfer", "Havalimanı → Otel", "ticket", "searching", ""],
+      ["transport", "Taksi · transfer", "Bansko → Sofya", "ticket", "searching", ""],
       ["activity", "Skipass", "Kayak pası", "stay", "searching", ""],
       ["activity", "Ekipman", "Ekipman kiralama", "stay", "searching", ""],
       ["activity", "Okul", "Kayak okulu", "stay", "searching", ""],
@@ -158,6 +161,7 @@ describe("gezi biçimi: the eleven ready mixes, signal → intent list", () => {
       ["stay", "", "Ubud", "stay", "included", "retreat programıyla"],
       ["stay", "Program", "Wellness programı", "stay", "searching", ""],
       ["transport", "Taksi · transfer", "Havalimanı → Otel", "ticket", "included", "retreat programıyla"],
+      ["transport", "Taksi · transfer", "Ubud → Denpasar", "ticket", "included", "retreat programıyla"],
     ]);
     expect(infos(b)).toEqual({ stay: 'Retreat: program konaklamayı ve transferi kapsıyorsa onlar "Dahil" olur.' });
   });
@@ -171,6 +175,7 @@ describe("gezi biçimi: the eleven ready mixes, signal → intent list", () => {
       ["flight", "", "Barselona → İstanbul", "ticket", "searching", ""],
       ["stay", "Kabin", "Barselona", "stay", "searching", ""],
       ["transport", "Taksi · transfer", "Havalimanı → Otel", "ticket", "searching", ""],
+      ["transport", "Taksi · transfer", "Otel → Havalimanı", "ticket", "searching", ""],
       ["activity", "Kıyı turu", "Barselona", "collection", "searching", ""],
     ]);
     expect(infos(b)).toEqual({ transport: "Kruvaziyer: limanlar arası yolculuk kabine dahil; yalnız limana transfer karar ister." });
@@ -211,6 +216,7 @@ describe("gezi biçimi: the eleven ready mixes, signal → intent list", () => {
       ["flight", "", "Frankfurt → İstanbul", "ticket", "searching", ""],
       ["stay", "", "Frankfurt", "stay", "searching", ""],
       ["transport", "Transfer", "Havalimanı → Otel", "ticket", "searching", ""],
+      ["transport", "Transfer", "Otel → Havalimanı", "ticket", "searching", ""],
       ["activity", "Fuar", "Frankfurt", "collection", "searching", ""],
       ["todo", "Toplantı", "Frankfurt", "collection", "searching", ""],
     ]);
@@ -226,6 +232,7 @@ describe("gezi biçimi: the eleven ready mixes, signal → intent list", () => {
       ["flight", "", "Nairobi → İstanbul", "ticket", "searching", ""],
       ["stay", "Kamp", "Masai Mara", "stay", "searching", ""],
       ["transport", "Uçuş", "Havalimanı → Kamp", "ticket", "searching", ""],
+      ["transport", "Uçuş", "Masai Mara → Nairobi", "ticket", "searching", ""],
       ["activity", "Safari", "Safari (game drive)", "stay", "included", "lodge paketiyle"],
       ["other", "Sağlık", "Sarıhumma aşı kartı", "stay", "searching", ""],
     ]);
@@ -241,6 +248,7 @@ describe("gezi biçimi: the eleven ready mixes, signal → intent list", () => {
       ["flight", "", "Malé → İstanbul", "ticket", "searching", ""],
       ["stay", "", "Maldivler", "stay", "searching", ""],
       ["transport", "Taksi · transfer", "Havalimanı → Otel", "ticket", "included", "resort paketiyle"],
+      ["transport", "Taksi · transfer", "Maldivler → Malé", "ticket", "included", "resort paketiyle"],
       ["activity", "", "Maldivler", "collection", "searching", ""],
     ]);
     expect(infos(b)).toEqual({ transport: 'Resort transferi çoğu zaman pakette; onay sayfası söylerse "Dahil" olur.' });
@@ -310,6 +318,7 @@ describe("adı tanınmayan geziler: made from the model's signals alone", () => 
       ["flight", "", "Kayseri → İstanbul", "ticket", "searching", ""],
       ["stay", "", "Göreme", "stay", "searching", ""],
       ["transport", "Transfer", "Havalimanı → Otel", "ticket", "included", "Balon turu ile"],
+      ["transport", "Transfer", "Göreme → Kayseri", "ticket", "included", "Balon turu ile"],
       ["activity", "Balon", "Balon turu", "stay", "searching", ""],
     ]);
   });
@@ -852,5 +861,19 @@ describe("a stay asked for in words is its own card under its own name (omurga 2
     const b = made(s);
     expect(rows(b).filter((r) => r[0] === "stay").map((r) => r[2])).toEqual(["Cam tavanlı kulübe", "Tromsø"]);
     expect(b.all.find((c) => c.section.id === "stay")!.intents.map((i) => i.head.nights)).toEqual([1, 4]);
+  });
+});
+
+
+describe("the ring closes: a way in from the airport means a way back to it (omurga 2026-10-31, Emre: 20 Şubat dönüş uçağı var, transfer yok)", () => {
+  it("the model gave only the bus in: the bus back is made too, on the day home", () => {
+    const s = fromIst(typed(fresh(), "Şubat'ta Tromsø'da 5 gece kuzey ışıkları", {
+      destination: "Tromsø", destination_country: "Norveç", destination_country_code: "NO", start_date: "2027-02-15", duration_days: 6,
+      plan: plan({ label: "Tromsø kuzey ışıkları gezisi", base: "classic", cards: [
+        card({ ref: "bus", kind: "bus", title: "Havalimanı–şehir merkezi otobüsü", anchor: "arrive", section: "transport", frame: "ticket" }),
+      ] }),
+    }));
+    const transport = made(s).all.find((c) => c.section.id === "transport")!;
+    expect(transport.intents.map((i) => i.head.parts.join(" "))).toEqual([expect.stringContaining("15"), expect.stringContaining("20")]);
   });
 });

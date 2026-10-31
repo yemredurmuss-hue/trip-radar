@@ -25,6 +25,7 @@ import type { PlanLink } from "./chat/planLink";
 import { QuickReplies } from "./chat/QuickReplies";
 import { useChatDrawer } from "./chat/useChatDrawer";
 import { EventFold, FOLD_MIN, foldLabel, foldRuns } from "./ChatFold";
+import { replyChoices } from "../lib/chatChoices";
 import { ChatOffers } from "./ChatOffers";
 import { ArrowUp, Back } from "./Icons";
 import { Mascot } from "./Mascot";
@@ -113,9 +114,8 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
   // The names of the trip's options in the assistant's replies are buttons that go to their cards (Karar Panosu #9).
   const names = useMemo(() => nameTargets(items, trip.id), [items, trip.id]);
   const visible = messages.filter((m) => m.text.trim() !== "");
-  // A web search's late line isn't a reply: the reply before it keeps its chips.
-  const last = visible.filter((m) => !m.landed).at(-1);
-  const choices = last?.role === "assistant" && !busy ? last.choices : [];
+  // A web search's late line isn't a reply, nor a change line: the reply before them keeps its chips (lib/chatChoices.ts).
+  const choices = busy ? [] : replyChoices(visible);
   // Links and files handed here this session, with their chips (arrive/ChatArrivals.tsx).
   const arrivals = useChatArrivals({ trip, messages: visible, items, trips, openCaptures });
   // C34: the record each turn put on the board or suggested, as the Plan's compact card; the quick replies under it all.
