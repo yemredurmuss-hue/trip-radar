@@ -6,7 +6,7 @@ import { chooseItem } from "../app/actions";
 import { planFlightFor } from "./bring";
 import { badgeOf, candidateOf, markBuying } from "./candidateTabs";
 import { companionName, companionSiteOf, deckWord, offerPageKind, originOf, siteKindOf, type CompanionWhere, type SiteKind, type TripPick } from "./companion";
-import { bindFor, whereFor } from "./companionWorker";
+import { bindFor, pickOf, whereFor } from "./companionWorker";
 import { watch } from "./contextSave";
 import { db, hasActiveKey } from "./db";
 import { moveSave, undoSave } from "./saveUndo";
@@ -24,10 +24,14 @@ import type { Item } from "./types";
 import { flightSearchOf, parseUrl } from "./url";
 import { downscale } from "./browser";
 import { confirmAddress, openedFor } from "./confirmHint";
+import { askFor, clearAsk, tellPage } from "./popupAsk";
+import { cleanTitle, videoThumb } from "./saveLabels";
+import { saveResult } from "./companionWorker";
+import { savePastedLink } from "./process";
 
 export type PopupAsk =
   | { type: "popup:view"; tabId: number }
-  | { type: "popup:save"; tabId: number; pick: TripPick; idea?: boolean }
+  | { type: "popup:save"; tabId: number; pick: TripPick; idea?: boolean; ask?: boolean }
   | { type: "popup:undo"; captureId: string }
   | { type: "popup:move"; captureId: string; pick: TripPick }
   | { type: "popup:remove"; id: string }
@@ -74,10 +78,14 @@ export interface PopupView {
    */
   confirmUrl: boolean;
   access: string | null;
+  /** The page's own picture for the card on top (v5): a video's frame, its og:image; null: its icon. */
+  photo: string | null;
+  /** What a result's "+" or a right-click on a link asked to save (lib/popupAsk.ts): shown on top instead of the page. */
+  ask: { kind: "result" | "link"; title: string; sub: string; photo: string | null; flight: boolean } | null;
 }
 
 /** Read in the page itself, in a blink (no layout): what it says it is, whether a price is written on it, its words. */
-function probePage(): { ld: string[]; price: boolean; text: string; jsonLd: unknown[] } {
+function probePage(): { ld: string[]; price: boolean; text: string; jsonLd: unknown[]; og: { title: string; image: string; site: string } } {
   const ld: string[] = [];
   const blocks: unknown[] = [];
   const walk = (v: unknown, depth: number): void => {
@@ -98,7 +106,9 @@ function probePage(): { ld: string[]; price: boolean; text: string; jsonLd: unkn
     }
   }
   const text = (document.body?.textContent ?? "").replace(/\s+/g, " ").slice(0, 40_000);
-  return { ld, price: /(?:€|£|₺|\$|฿|\b(?:TL|EUR|USD|GBP|TRY|THB)\b)\s?\d|\d\s?(?:€|£|₺|\$|฿|\b(?:TL|EUR|USD|GBP|TRY|THB)\b)/.test(text), text: text.slice(0, 30_000), jsonLd: JSON.parse(JSON.stringify(blocks)).slice(0, 12) };
+  const meta = (k: string) => (document.querySelector(`meta[property="${k}"], meta[name="${k}"]`)?.getAttribute("content") ?? "").trim().slice(0, 2000);
+  const og = { title: meta("og:title"), image: meta("og:image") || meta("twitter:image"), site: meta("og:site_name") };
+  return { ld, price: /(?:€|£|₺|\$|฿|\b(?:TL|EUR|USD|GBP|TRY|THB)\b)\s?\d|\d\s?(?:€|£|₺|\$|฿|\b(?:TL|EUR|USD|GBP|TRY|THB)\b)/.test(text), text: text.slice(0, 30_000), jsonLd: JSON.parse(JSON.stringify(blocks)).slice(0, 12), og };
 }
 
 const isVideo = (url: string) => /^https:\/\/(?:(?:www|m)\.)?(?:youtube\.com\/(?:watch|shorts\/)|youtu\.be\/)|^https:\/\/(?:www\.)?vimeo\.com\/\d/.test(url);
@@ -141,7 +151,7 @@ export async function popupView(tabId: number): Promise<PopupView> {
   const opened = tab?.url ? null : await openedFor(tabId);
   const url = tab?.url ?? opened ?? "";
   const own = chrome.runtime.getURL("");
-  const base: PopupView = { kind: "none", title: tab?.title ?? "", sub: "", site: null, travelSite: false, along: false, what: "idea", where: null, desk: { candidate: null, planned: null }, key: await hasActiveKey(), pocket: null, confirm: null, failed: null, alongAsked: true, shelf: null, favicon: null, here: null, confirmUrl: false, access: null };
+  const base: PopupView = { kind: "none", title: tab?.title ?? "", sub: "", site: null, travelSite: false, along: false, what: "idea", where: null, desk: { candidate: null, planned: null }, key: await hasActiveKey(), pocket: null, confirm: null, failed: null, alongAsked: true, shelf: null, favicon: null, here: null, confirmUrl: false, access: null, photo: null, ask: null };
   // (our own pages, the board or the popup in a tab: their address isn't always visible here, their context is)
   const ours = await chrome.runtime.getContexts({ contextTypes: [chrome.runtime.ContextType.TAB] }).catch(() => []);
   // (our own pages and pages that can't be saved: the pocket still shows the trip and what was added last)
@@ -180,11 +190,16 @@ export async function popupView(tabId: number): Promise<PopupView> {
   const icon = tab?.favIconUrl ?? "";
   const tripId = c?.tripId ?? plannedTrip ?? where.trip?.id ?? null;
   const pocket = await pocketFor(tripId);
+  const siteName = probe?.result?.og.site || companionName(site ?? origin ?? "");
+  // (the page's own title, cleaned of the tab's noise; YouTube's og:title lags behind its own moves, its tab's doesn't)
+  const named = (!video && probe?.result?.og.title) || tab?.title || "";
+  const image = probe?.result?.og.image ?? "";
+  const asked = await askFor(tabId);
   return {
     ...base,
     kind: "page",
     // (the page's own name is hidden too when it was opened by itself: its site's)
-    title: tab?.title || companionName(site ?? origin ?? ""),
+    title: named ? cleanTitle(named, siteName) : companionName(site ?? origin ?? ""),
     sub,
     site,
     travelSite: Boolean(travel),
@@ -202,7 +217,45 @@ export async function popupView(tabId: number): Promise<PopupView> {
     // (the address alone: Chrome's own rule, the same as the icon's green ✓)
     confirmUrl: confirmAddress(url),
     access: opened && origin ? origin : null,
+    photo: videoThumb(url) ?? (/^https:\/\//.test(image) ? image : null),
+    ask: asked ? askView(asked) : null,
   };
+}
+
+/** What waits to be saved, as the card on top says it: its own words, its site and kind, its picture. */
+function askView(a: NonNullable<Awaited<ReturnType<typeof askFor>>>): NonNullable<PopupView["ask"]> {
+  if (a.kind === "link") {
+    const site = companionSiteOf(a.url) ?? originOf(a.url) ?? "";
+    const kind = offerPageKind(a.url);
+    return { kind: "link", title: cleanTitle(a.title, companionName(site)), sub: [companionName(site), kind ? KIND_WORD[kind]() : L("bağlantı", "link")].join(" · "), photo: a.photo, flight: kind === "flight" };
+  }
+  const site = companionSiteOf(a.url) ?? originOf(a.url) ?? "";
+  // (the result's heading, a hotel's name; a flight's row has none: its own words, airline, times, price)
+  const name = (a.name || a.text).replace(/\s+/g, " ").trim().slice(0, 160);
+  const kind = siteKindOf(companionSiteOf(a.url) ?? "");
+  // (a flight's row has no picture of its own, only an airline's logo: the plane says it better)
+  return { kind: "result", title: cleanTitle(name, null), sub: [companionName(site), KIND_WORD[kind]()].join(" · "), photo: kind === "flight" ? null : a.photo, flight: kind === "flight" };
+}
+
+/** "Kaydet" for what a "+" or a right-click asked (lib/popupAsk.ts): saved into the trip picked, the page told. */
+export async function popupSaveAsk(tabId: number, pick: TripPick, process: () => void): Promise<{ captureId: string; tripId: string | null; tripTitle: string | null; deck: string } | null> {
+  const a = await askFor(tabId);
+  if (!a) return null;
+  const d = await db();
+  if (a.kind === "result") {
+    const r = await saveResult(tabId, a.url, a.title, a.text, a.print, pick, process);
+    await clearAsk(tabId);
+    if (!r.ok || !r.captureId) return null;
+    tellPage(tabId, { type: "companion:asked", saved: true, captureId: r.captureId });
+    return { captureId: r.captureId, tripId: r.tripId, tripTitle: r.tripTitle ?? null, deck: deckWord(siteKindOf(companionSiteOf(a.url) ?? "")) };
+  }
+  const bind = await bindFor(a.url, a.title, pick);
+  const capture = await savePastedLink(a.url, bind.forTripId, undefined, null, bind.forNeed);
+  await clearAsk(tabId);
+  process();
+  void watch(capture.id, tabId);
+  const trip = bind.forTripId ? await d.get("trips", bind.forTripId) : undefined;
+  return { captureId: capture.id, tripId: bind.forTripId ?? null, tripTitle: trip?.title ?? null, deck: deckWord(offerPageKind(a.url) ?? "any") };
 }
 
 /** "Kaydet": the page read and saved now, into its trip (and its row); the popup may close at once. */
@@ -226,6 +279,8 @@ export async function popupSave(tabId: number, pick: TripPick, idea: boolean, pr
   const capture = await saveSnapshot(snap, shot, { ...bind, idea });
   process();
   void watch(capture.id, tabId);
+  // (a place's own page whose "+ Kaydet" opened the popup: its "+" turns ✓)
+  tellPage(tabId, { type: "companion:asked", saved: true, captureId: capture.id });
   const trip = bind.forTripId ? await d.get("trips", bind.forTripId) : undefined;
   const kind = siteKindOf(companionSiteOf(tab.url) ?? "");
   return { captureId: capture.id, tripId: bind.forTripId ?? null, tripTitle: trip?.title ?? null, deck: idea ? L("İlham", "Inspiration") : deckWord(search ? "flight" : (offerPageKind(tab.url) ?? kind)) };
@@ -260,7 +315,7 @@ export function popupAnswer(message: PopupAsk | { type?: unknown }, sender: chro
     case "popup:view":
       return popupView(m.tabId);
     case "popup:save":
-      return popupSave(m.tabId, m.pick ?? {}, m.idea === true, process);
+      return m.ask === true ? popupSaveAsk(m.tabId, pickOf(m.pick ?? {}), process) : popupSave(m.tabId, pickOf(m.pick ?? {}), m.idea === true, process);
     case "popup:undo":
       return undoSave(m.captureId);
     case "popup:move":

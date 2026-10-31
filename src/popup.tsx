@@ -1,9 +1,11 @@
 // Toolbar popup, tek Kaydet (docs/superpowers/specs/2026-10-29-eklenti-tek-kaydet-design.md, v2 + v3, Emre onayladı
-// 2026-10-30): one layout whatever the page. On top the page itself (its icon, its name; a corner mark says a booking's
-// confirmation or a search for a planned flight), under it the trips (cover, name, Pano's count, how ready, one button),
-// at the bottom at most one second thing ("Sonuçlara + koy", or "AI bağlı değil"). Each press means one thing: a row
-// selects that trip, "Kaydet" (or Enter) saves the page there, the count opens the trip, Esc closes. Nothing is saved by
-// opening it; reading and saving happen in the service worker (lib/popupWorker.ts): nothing heavy is loaded here.
+// 2026-10-30; Kaydet penceresi v5, docs/mockups/eklenti-tek-kaydet-v5, 2026-10-31): one layout whatever the page. On top
+// a small card of what is saved: its own picture and title (cleaned of the tab's noise, two lines at most), its site and
+// kind; a result's "+" or a link right-clicked opens it too, their own card then (lib/popupAsk.ts). Under it the trips
+// (cover with Pano's count in its corner, the name with its date small under it, how ready, one button) and "Yeni gezi",
+// opened in place to name it. At the bottom at most one second thing ("Sonuçlara + koy", or "AI bağlı değil"). Each
+// press means one thing: a row selects that trip, "Kaydet" (or Enter) saves there, the count opens the trip, Esc closes.
+// Nothing is saved by opening it; reading and saving happen in the service worker (lib/popupWorker.ts).
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { openBoard } from "./lib/browser";
@@ -11,6 +13,7 @@ import { L, lang, loadLang } from "./lib/i18n";
 import { COMPANION_SITES, companionName, type TripPick } from "./lib/companion";
 import type { PopupAsk, PopupView } from "./lib/popupWorker";
 import type { Ready, ShelfTrip } from "./lib/tripShelf";
+import { splitTripName } from "./lib/saveLabels";
 import { reloadIfStale } from "./lib/update";
 
 const ask = <T,>(m: PopupAsk): Promise<T | null> =>
@@ -39,23 +42,33 @@ function Popup() {
   // ("Çıkar" pressed on the page's card: its row is a plain row again, "Kaydet" saves it anew)
   const [taken, setTaken] = useState(false);
   const [plusDone, setPlusDone] = useState(false);
+  // ("Yeni gezi" opened in place: the name being typed)
+  const [newName, setNewName] = useState<string | null>(null);
   const held = useRef(false);
 
   useEffect(() => {
     void chrome.tabs.query({ active: true, currentWindow: true }).then(async ([tab]) => {
       if (tab?.id == null) return setView({ kind: "none" } as PopupView);
       setTabId(tab.id);
+      // (closed without saving what a "+" or a right-click asked: the page's "+" turns back; lib/popupAsk.ts)
+      try {
+        chrome.runtime.connect({ name: `popup:${tab.id}` });
+      } catch {
+        // (no service worker to tell: nothing waits)
+      }
       setView((await ask<PopupView>({ type: "popup:view", tabId: tab.id })) ?? ({ kind: "none" } as PopupView));
     });
   }, []);
 
   const where = view?.where ?? null;
   const page = view?.kind === "page";
-  const confirm = page ? (view?.confirm ?? null) : null;
+  // (what a result's "+" or a right-clicked link asked to save: shown and saved instead of the page)
+  const asked = page ? (view?.ask ?? null) : null;
+  const confirm = page && !asked ? (view?.confirm ?? null) : null;
   // (a booking's confirmation, or an address that looks like one, is never an idea for İlham)
-  const booking = Boolean(confirm || (page && view?.confirmUrl));
+  const booking = Boolean(confirm || (page && !asked && view?.confirmUrl));
   const idea = view?.what === "idea" && !booking;
-  const planned = view?.desk.planned ?? null;
+  const planned = asked ? null : (view?.desk.planned ?? null);
   const fixed = Boolean(planned || view?.desk.candidate);
   const trips = view?.shelf?.trips ?? [];
   // Which trip is selected: a plan row the page belongs to, else the country's remembered trip, else the current one
@@ -70,11 +83,11 @@ function Popup() {
     const t = ordered.find((x) => x.id === saved.tripId);
     if (t) list.push(t);
   }
-  const here = view?.here && !taken ? view.here : null;
+  const here = view?.here && !taken && !asked ? view.here : null;
   const close = () => window.close();
   const boardOf = (id: string | null | undefined) => void openBoard(id ? `#trip=${encodeURIComponent(id)}` : "").then(close);
 
-  async function save(tripId: string | "new") {
+  async function save(tripId: string | "new", title?: string) {
     if (tabId == null || busy) return;
     // (opened by itself over a confirmation: this site may not be read yet; Chrome asks once, here, on this press)
     if (view?.access) {
@@ -83,11 +96,12 @@ function Popup() {
     }
     setBusy(tripId);
     setFailed(false);
-    const pick: TripPick = fixed ? {} : tripId === "new" ? { newTrip: true, remember: true } : { tripId, remember: Boolean(where?.country) };
-    const r = await ask<Saved>({ type: "popup:save", tabId, pick, idea });
+    const pick: TripPick = fixed ? {} : tripId === "new" ? { newTrip: true, remember: true, title: title?.trim() || undefined } : { tripId, remember: Boolean(where?.country) };
+    const r = await ask<Saved>({ type: "popup:save", tabId, pick, idea, ask: Boolean(asked) });
     setBusy(null);
     if (!r) return setFailed(true);
     setTaken(false);
+    setNewName(null);
     setSaved(r);
   }
   /** "Kaydet" on another trip once saved: the save goes there (the same record, its reading too). */
@@ -122,6 +136,7 @@ function Popup() {
   // Enter saves to the selected trip; Escape closes.
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && newName != null) return setNewName(null);
       if (e.key === "Escape") return close();
       if (e.key !== "Enter" || !page || !selectedId || saved || busy || (e.target as HTMLElement | null)?.closest?.("button, input")) return;
       e.preventDefault();
@@ -132,14 +147,33 @@ function Popup() {
   });
 
   const mark = booking ? "ticket" : planned ? "plane" : null;
-  const showPlus = Boolean(page && view?.site && !view.along && !plusDone && (view.what === "list" || (view.travelSite && !view.alongAsked)));
+  const showPlus = Boolean(page && !asked && view?.site && !view.along && !plusDone && (view.what === "list" || (view.travelSite && !view.alongAsked)));
 
   let body: ReactNode;
   if (!view) {
     body = (
-      <div className="pk-skel tk-pad" aria-label={L("Hazırlanıyor", "Getting ready")}>
-        <span />
-        <span />
+      <div className="tk-skel" role="status" aria-label={L("Hazırlanıyor", "Getting ready")}>
+        <div className="tk-it">
+          <span className="tk-pic">
+            <Sketch />
+          </span>
+          <span className="tk-bars">
+            <i />
+            <i />
+            <i />
+          </span>
+        </div>
+        <div className="tk-trips">
+          {[0, 1, 2].map((n) => (
+            <div key={n} className="tk-row">
+              <span className="tk-sk-th" />
+              <span className="tk-bars">
+                <i />
+                <i />
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
     );
   } else if (!trips.length && !page) {
@@ -159,18 +193,25 @@ function Popup() {
     body = (
       <>
         {page && (
-          <div className="tk-page">
-            <span className="tk-fav" aria-hidden>
-              {view.favicon ? <img src={view.favicon} alt="" width={18} height={18} /> : <i>{(companionName(view.site ?? "") || view.sub || view.title).trim().slice(0, 1).toLocaleUpperCase("tr")}</i>}
-              {mark && (
-                <em className={mark === "ticket" ? "ok" : "acc"}>
-                  <Icon name={mark} />
-                </em>
-              )}
-            </span>
-            <b title={view.title}>{view.title}</b>
+          <Preview
+            photo={asked ? asked.photo : view.photo}
+            // (a result on this page: the site's own icon; a flight's, the plane; a link to elsewhere: its site's letter)
+            favicon={asked?.kind === "link" ? null : view.favicon}
+            plane={Boolean(asked?.flight)}
+            letter={((asked?.kind === "link" ? asked.sub : null) || companionName(view.site ?? "") || view.sub || view.title).trim().slice(0, 1).toLocaleUpperCase("tr")}
+            title={asked ? asked.title : view.title}
+            sub={asked ? asked.sub : view.sub}
+            mark={mark}
+            savedTo={saved ? (saved.tripTitle ?? "") : null}
+          >
             {mark && <span className="tk-sr">{mark === "ticket" ? [L("Rezervasyon onayı", "Booking confirmation"), confirm?.code].filter(Boolean).join(" · ") : L("Planındaki uçuşun araması", "A search for your planned flight")}</span>}
-          </div>
+          </Preview>
+        )}
+        {page && typeof navigator !== "undefined" && navigator.onLine === false && (
+          <p className="tk-off">
+            <Icon name="offline" />
+            {L("İnternet yok. Kaydederim, bağlanınca okunur.", "No internet. I'll save it; it's read once you're back online.")}
+          </p>
         )}
         {page && view.desk.candidate && tabId != null && (
           <div className="tk-pad">
@@ -184,7 +225,7 @@ function Popup() {
           </div>
         )}
         <div className={`tk-trips${page && !selectedId && !fixed ? " ask" : ""}`} onMouseEnter={() => (held.current = true)}>
-          {page && !selectedId && !fixed && trips.length > 0 && <small className="tk-ask">{L("Hangi geziye?", "Which trip?")}</small>}
+          {page && !selectedId && !fixed && !saved && trips.length > 0 && <small className="tk-ask">{L("Hangi geziye?", "Which trip?")}</small>}
           {all && ordered.length >= SEARCH_FROM && (
             <input className="tk-q" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={L("Gezi ara", "Find a trip")} aria-label={L("Gezi ara", "Find a trip")} autoFocus />
           )}
@@ -207,6 +248,18 @@ function Popup() {
               onRemove={() => void ask({ type: "popup:remove", id: `i:${here!.itemId}` }).then((ok) => ok && setTaken(true))}
             />
           ))}
+          {!fixed && !saved && (
+            <NewTrip
+              open={newName != null}
+              value={newName ?? ""}
+              busy={busy === "new"}
+              locked={busy != null}
+              onOpen={() => (page ? setNewName(where?.country ?? "") : void openBoard("#home").then(close))}
+              onChange={setNewName}
+              onCancel={() => setNewName(null)}
+              onCreate={() => void save("new", newName ?? "")}
+            />
+          )}
           {page && !trips.length && <p className="tk-none">{L("Henüz gezin yok: bu sayfayla birini başlat.", "No trip yet: start one with this page.")}</p>}
           {failed && (
             <p className="tk-err" role="alert">
@@ -214,20 +267,13 @@ function Popup() {
             </p>
           )}
         </div>
-        <div className="tk-foot">
-          {!fixed && ordered.length > FIRST ? (
-            <button type="button" className="btn-link muted" aria-expanded={all} onClick={() => (setAll(!all), setQ(""))}>
+        {!fixed && ordered.length > FIRST && (
+          <div className="tk-foot">
+            <button type="button" className="btn-link" aria-expanded={all} onClick={() => (setAll(!all), setQ(""))}>
               {all ? L("Daha az", "Fewer") : L(`Tümü (${ordered.length})`, `All (${ordered.length})`)}
             </button>
-          ) : (
-            <span />
-          )}
-          {!fixed && (
-            <button type="button" className="btn-link" disabled={busy != null} onClick={() => (page ? void save("new") : void openBoard("#home").then(close))}>
-              {busy === "new" ? L("Kaydediliyor…", "Saving…") : page && where?.country ? L(`+ Yeni gezi: ${where.country}`, `+ New trip: ${where.country}`) : L("+ Yeni gezi", "+ New trip")}
-            </button>
-          )}
-        </div>
+          </div>
+        )}
         {!view.key ? (
           <div className="tk-alt warn">
             <span>{L("AI bağlı değil · kayıtlar bekler", "AI not connected · saves wait")}</span>
@@ -322,18 +368,26 @@ function TripRow(p: {
       </button>
     );
   }
+  // (a date written into the name goes under it, small: "Patagonya Gezisi · Şubat 2027"; the trip's own dates first)
+  const label = splitTripName(t.title);
+  const date = t.when ?? label.date;
   return (
     <div className={`tk-row${p.selected ? " sel" : ""}${p.savedHere ? " saved" : ""}`}>
       <button type="button" className="tk-pick" onClick={p.onSelect} aria-pressed={p.selected} aria-label={p.selected ? L(`${t.title}, seçili gezi`, `${t.title}, the selected trip`) : L(`${t.title} gezisini seç`, `Select ${t.title}`)}>
         <span className="pk-th tk-th" aria-hidden>
           {t.photo ? <Photo src={t.photo} title={t.title} /> : <img className="tk-art" src={t.art} alt="" />}
         </span>
-        <b>{t.title}</b>
+        <span className="tk-nm">
+          <b>{label.name}</b>
+          {date && <small>{date}</small>}
+        </span>
       </button>
-      <button type="button" className="tk-cnt" onClick={p.onOpen} aria-label={L(`Pano'yu aç: ${count} kayıt`, `Open the board: ${count} saved`)} title={L("Pano'yu aç", "Open the board")}>
-        <Icon name="board" />
-        {count}
-      </button>
+      {/* (Pano's count: a small number in the cover's corner; it opens the trip) */}
+      {count > 0 && (
+        <button type="button" className={`tk-n${p.savedHere ? " up" : ""}`} onClick={p.onOpen} aria-label={L(`Pano'yu aç: ${count} kayıt`, `Open the board: ${count} saved`)} title={L(`Pano'da ${count} kayıt`, `${count} on the board`)}>
+          {count}
+        </button>
+      )}
       {/* (saved: the row says so in words, the name keeps its room) */}
       {p.savedHere ? null : t.ready && !t.ready.fresh ? <Ring ready={t.ready} /> : <span className="tk-ring-gap" />}
       {end && <span className="tk-end">{end}</span>}
@@ -344,6 +398,120 @@ function TripRow(p: {
 function Photo({ src, title }: { src: string; title: string }) {
   const [gone, setGone] = useState(false);
   return gone ? <i>{title.slice(0, 1).toLocaleUpperCase("tr")}</i> : <img src={src} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={() => setGone(true)} />;
+}
+
+/**
+ * What is saved, on top: its own picture (the drawing stays under it, shimmering, until it has come; none: the site's
+ * icon), its title in two lines at most (all of it on hover), its site and kind; saved, where it went.
+ */
+function Preview(p: { photo: string | null; favicon: string | null; plane?: boolean; letter: string; title: string; sub: string; mark: "ticket" | "plane" | null; savedTo: string | null; children?: ReactNode }) {
+  const [shown, setShown] = useState(false);
+  const [gone, setGone] = useState(false);
+  const photo = p.photo && !gone ? p.photo : null;
+  return (
+    <div className={`tk-it${p.savedTo != null ? " ok" : ""}`}>
+      <span className={`tk-pic${photo && !shown ? " wait" : ""}${photo ? "" : " plain"}`} aria-hidden>
+        {photo ? (
+          <>
+            <Sketch />
+            <img src={photo} alt="" decoding="async" referrerPolicy="no-referrer" className={shown ? "in" : ""} onLoad={() => setShown(true)} onError={() => setGone(true)} />
+          </>
+        ) : p.plane ? (
+          <span className="tk-kind">
+            <Icon name="plane" />
+          </span>
+        ) : p.favicon ? (
+          <img className="tk-fv" src={p.favicon} alt="" width={22} height={22} />
+        ) : (
+          <i>{p.letter}</i>
+        )}
+        {p.savedTo != null && (
+          <span className="tk-done">
+            <Icon name="check" />
+          </span>
+        )}
+        {p.mark && p.savedTo == null && (
+          <em className={p.mark === "ticket" ? "ok" : "acc"}>
+            <Icon name={p.mark} />
+          </em>
+        )}
+      </span>
+      <span className="tk-ix">
+        <b title={p.title}>{p.title}</b>
+        <small>
+          {p.savedTo != null ? (
+            <em>
+              <Icon name="check" />
+              {p.savedTo ? L(`Kaydedildi · ${p.savedTo}`, `Saved · ${p.savedTo}`) : L("Kaydedildi", "Saved")}
+            </em>
+          ) : (
+            p.sub
+          )}
+        </small>
+      </span>
+      {p.children}
+    </div>
+  );
+}
+
+/** The drawing that stands in for a picture not come yet (a slow page, no internet): hills, a sun, a plane. */
+function Sketch() {
+  return (
+    <svg className="tk-sketch" viewBox="0 0 88 58" preserveAspectRatio="xMidYMid slice" aria-hidden>
+      <rect width="88" height="58" fill="#efecf7" />
+      <circle cx="58" cy="14" r="6" fill="#f8f6fd" />
+      <path d="M0 45 16 28l10 7 14-20 11 14 12-9 25 18v20H0z" fill="#d9d3ee" />
+      <path d="M0 52 22 40l14 6 18-9 34 13v8H0z" fill="#cdc6e6" />
+      <path d="m14 13 9 2 5-4 1.5 1-3 4.5 5 1.5-1 1.5-5.5-.5-3 4-1.5-.5 1-4.5-7.5-3.5z" fill="#b3aad8" />
+    </svg>
+  );
+}
+
+/** "Yeni gezi", the list's last row: opened in place to name it (the page's country offered), then made and saved there. */
+function NewTrip(p: { open: boolean; value: string; busy: boolean; locked: boolean; onOpen: () => void; onChange: (v: string) => void; onCancel: () => void; onCreate: () => void }) {
+  if (!p.open) {
+    return (
+      <div className="tk-row tk-new">
+        <button type="button" className="tk-pick" onClick={p.onOpen} disabled={p.locked}>
+          <span className="tk-th tk-plus" aria-hidden>
+            <Icon name="plus" />
+          </span>
+          <span className="tk-nm">
+            <b>{L("Yeni gezi", "New trip")}</b>
+          </span>
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div className="tk-row tk-new open">
+      <span className="tk-th tk-plus" aria-hidden>
+        <Icon name="plus" />
+      </span>
+      <form
+        className="tk-nf"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!p.locked) p.onCreate();
+        }}
+      >
+        <input className="tk-name" value={p.value} onChange={(e) => p.onChange(e.target.value)} placeholder={L("Gezinin adı", "The trip's name")} aria-label={L("Gezinin adı", "The trip's name")} maxLength={60} autoFocus />
+        <span className="tk-nf-row">
+          <button type="button" className="btn-link" onClick={p.onCancel}>
+            {L("Vazgeç", "Cancel")}
+          </button>
+          <button type="submit" className="tk-save" disabled={p.locked}>
+            {p.busy ? "···" : (
+              <>
+                <Icon name="plus" />
+                {L("Oluştur ve kaydet", "Create and save")}
+              </>
+            )}
+          </button>
+        </span>
+      </form>
+    </div>
+  );
 }
 
 /** How ready, as the trip's page says it: booked dark green over planned light green, the share inside. */
@@ -362,9 +530,16 @@ function Ring({ ready }: { ready: Ready }) {
   );
 }
 
-type IconName = "check" | "undo" | "retry" | "ext" | "x" | "trash" | "ticket" | "plane" | "board";
+type IconName = "check" | "undo" | "retry" | "ext" | "x" | "trash" | "ticket" | "plane" | "plus" | "offline";
 const PATHS: Record<IconName, ReactNode> = {
   check: <path d="M5 12.5 10 17.5 19 7" strokeWidth="2.6" />,
+  plus: <path d="M12 5v14M5 12h14" strokeWidth="2.6" />,
+  offline: (
+    <>
+      <path d="M2 8.5a15 15 0 0 1 20 0M5.5 12a10 10 0 0 1 13 0M9 15.5a5 5 0 0 1 6 0" strokeWidth="2" />
+      <path d="M4 3l16 18" strokeWidth="2" />
+    </>
+  ),
   undo: (
     <>
       <path d="M9 14 4 9l5-5" />
@@ -387,14 +562,6 @@ const PATHS: Record<IconName, ReactNode> = {
     </>
   ),
   plane: <path d="M21 15.5 13.5 11V5.2a1.5 1.5 0 0 0-3 0V11L3 15.5v1.8l7.5-2.2v4l-2 1.4V22l3.5-1 3.5 1v-1.5l-2-1.4v-4l7.5 2.2z" fill="currentColor" stroke="none" />,
-  board: (
-    <>
-      <rect x="3.5" y="3.5" width="7" height="9" rx="2" strokeWidth="2" />
-      <rect x="13.5" y="3.5" width="7" height="5" rx="2" strokeWidth="2" />
-      <rect x="13.5" y="11.5" width="7" height="9" rx="2" strokeWidth="2" />
-      <rect x="3.5" y="15.5" width="7" height="5" rx="2" strokeWidth="2" />
-    </>
-  ),
 };
 
 /** One line family for every sign (no typed characters); its name is said on hover and to a screen reader. */

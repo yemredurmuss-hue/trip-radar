@@ -5,7 +5,7 @@
 import { countryOfAirport } from "./airports";
 import { downscale, openBoard } from "./browser";
 import { planFlightFor } from "./bring";
-import { originOf, type CompanionAsk, type CompanionRoute, type CompanionWhere, type DeckBrief, type TripPick } from "./companion";
+import { originOf, type CompanionAsk, type CompanionRoute, type CompanionWhere, type DeckBrief, type SavedOnSite, type TripPick } from "./companion";
 import { db, listTrips, newId } from "./db";
 import { today } from "./extract";
 import { formatDateRange } from "./items";
@@ -19,8 +19,10 @@ import { loadHome } from "./passport";
 import { currentFor, loadCurrent, loadRules, rememberTrip, ruleFor, RULE_SLACK_DAYS, setCurrent, worthRemembering } from "./tripRules";
 import type { Item, Trip } from "./types";
 import { flightSearchOf, parseUrl } from "./url";
+import { L } from "./i18n";
+import { clearAsk, openAsk, setAsk } from "./popupAsk";
 import { pocketFor } from "./pocket";
-import { printOf } from "./resultMark";
+import { printOf, type ResultPrint } from "./resultMark";
 import { markSaved, marksOn, savedAlready } from "./resultMarks";
 
 const SCRIPT_ID = "trip-radar-companion";
@@ -217,7 +219,7 @@ async function bindOnce(url: string, title: string, pick: TripPick): Promise<{ f
   if (pick.newTrip) {
     const trips = await listTrips();
     const now = Date.now();
-    const made: Trip = { id: newId(), title: uniqueTitle(countryName(code) ?? "Yeni gezi", null, trips), confirmedDates: null, budget: null, heroImage: null, createdAt: now, updatedAt: now };
+    const made: Trip = { id: newId(), title: uniqueTitle(pick.title?.trim() || countryName(code) || L("Yeni gezi", "New trip"), null, trips), confirmedDates: null, budget: null, heroImage: null, createdAt: now, updatedAt: now };
     await d.put("trips", made);
     if (pick.remember !== false) await rememberTrip(code, made.id);
     return { forTripId: made.id };
@@ -232,7 +234,12 @@ async function bindOnce(url: string, title: string, pick: TripPick): Promise<{ f
   return where.trip ? { forTripId: where.trip.id } : {};
 }
 
-const pickOf = (m: TripPick): TripPick => ({ tripId: typeof m.tripId === "string" ? m.tripId : undefined, newTrip: m.newTrip === true, remember: m.remember === true });
+export const pickOf = (m: TripPick): TripPick => ({
+  tripId: typeof m.tripId === "string" ? m.tripId : undefined,
+  newTrip: m.newTrip === true,
+  remember: m.remember === true,
+  title: typeof m.title === "string" ? m.title.replace(/\s+/g, " ").trim().slice(0, 60) || undefined : undefined,
+});
 
 /** A whole page's snapshot from the content script (collectPage), checked field by field; its address is the sender's. */
 function pageSnapshot(raw: unknown, url: string): PageSnapshot | null {
@@ -284,6 +291,18 @@ const snapshotOf = (url: string, title: string, text: string): PageSnapshot => (
   images: [],
 });
 
+/** A result saved from its page (its "+", or the popup it opened): one record, its ✓ kept for the page by its print. */
+export async function saveResult(tabId: number, url: string, title: string, text: string, print: ResultPrint | null, pick: TripPick, process: () => void): Promise<SavedOnSite> {
+  const bind = await bindFor(url, title, pick);
+  // (✓ hatırlanır: the same result saved here before, still standing, makes no second record)
+  const before = print && !pick.newTrip ? await savedAlready(url, print, bind.forTripId ?? null) : null;
+  if (before) return { ...(await savedOn(tabId, before.captureId, before.tripId, false)), again: true };
+  const capture = await saveSnapshot(snapshotOf(url, title, text), null, bind);
+  if (print) await markSaved(url, print, capture.id);
+  process();
+  return savedOn(tabId, capture.id, bind.forTripId ?? null);
+}
+
 /**
  * One of the companion's questions answered (null: not the companion's). `process`: the capture queue's run, after a save.
  * Only our own content script on an allowed site is answered; the page's address is the sender's, never the message's.
@@ -303,16 +322,20 @@ function answerOn(m: CompanionAsk, url: string, sender: chrome.runtime.MessageSe
     case "desk:where":
       return whereFor(url, text(m.title, 300));
     case "desk:add":
-      return bindFor(url, text(m.title, 300), pickOf(m)).then(async (bind) => {
-        // (✓ hatırlanır: the same result saved here before, still standing, makes no second record)
-        const print = printOf(m.print);
-        const before = print && !m.newTrip ? await savedAlready(url, print, bind.forTripId ?? null) : null;
-        if (before) return { ...(await savedOn(sender.tab!.id!, before.captureId, before.tripId, false)), again: true };
-        const capture = await saveSnapshot(snapshotOf(url, text(m.title, 300), text(m.text, 1500)), null, bind);
-        if (print) await markSaved(url, print, capture.id);
-        process();
-        return savedOn(sender.tab!.id!, capture.id, bind.forTripId ?? null);
-      });
+      return saveResult(sender.tab!.id!, url, text(m.title, 300), text(m.text, 1500), printOf(m.print), pickOf(m), process);
+    case "desk:ask":
+      // (Kaydet penceresi v5: the popup opens over the page and asks; a place's own page is the page itself, nothing waits)
+      return (async () => {
+        const tabId = sender.tab!.id!;
+        if (m.page === true) await clearAsk(tabId);
+        else {
+          const photo = typeof m.photo === "string" && /^https:\/\//.test(m.photo) ? m.photo.slice(0, 2000) : null;
+          await setAsk(tabId, { kind: "result", url, title: text(m.title, 300), name: text(m.name, 200), text: text(m.text, 1500), print: printOf(m.print), photo, at: Date.now() });
+        }
+        const ok = await openAsk(sender.tab!.windowId);
+        if (!ok) await clearAsk(tabId);
+        return { ok };
+      })();
     case "desk:marks":
       return marksOn(url).then((marks) => marks.map(({ p, captureId }) => ({ p, captureId })));
     case "desk:page": {

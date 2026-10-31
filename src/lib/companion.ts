@@ -240,6 +240,8 @@ export type CompanionAsk =
   | { type: "desk:where"; url: string; title: string }
   | ({ type: "desk:add"; url: string; title: string; text: string; print?: ResultPrint } & TripPick)
   | { type: "desk:marks" }
+  /** Kaydet penceresi v5: a result's "+" (or a place page's) opens the popup, which asks which trip. */
+  | { type: "desk:ask"; title: string; name?: string; text: string; print?: ResultPrint; photo?: string | null; page?: boolean }
   | ({ type: "desk:page"; url: string; snapshot: unknown } & TripPick)
   | { type: "desk:undo"; captureId: string }
   | ({ type: "desk:move"; captureId: string } & TripPick)
@@ -267,6 +269,8 @@ export interface TripPick {
   tripId?: string;
   newTrip?: boolean;
   remember?: boolean;
+  /** A new trip's name as typed in the popup (v5); none: the page's country's. */
+  title?: string;
 }
 
 /** What the extension says of a page on an allowed site before anything is added: where it would go, else the trips to ask. */

@@ -1,14 +1,15 @@
-// Sağ tık "Trip Radar'a kaydet" (0.41.0, board E3; tek Kaydet 0.47.31): the page under the mouse, or a link on it, saved as
-// the toolbar saves it (the click grants activeTab, so no site's permission is needed). Into the selected trip, the
-// popup's own: a planned flight's search, else the country's remembered trip, else the one picked last (bindFor); none,
-// the model routes it and asks once (lib/tripRules.ts). The icon says how it went on that tab (··· → ✓); asked, a
-// notification opens the board where the question waits.
+// Sağ tık "Trip Radar'a kaydet" (0.41.0, board E3; Kaydet penceresi v5 0.47.35, Emre: "sağ tık kaydedince eklenti otomatik
+// açılmalı ve sormalı"): the toolbar's popup opens over the page and asks which trip, as a press on the icon does; a link
+// right-clicked waits for it there (lib/popupAsk.ts), its words and picture on the page shown on top. The click grants
+// activeTab, so no site's permission is needed. Only when Chrome can't open the popup is it saved as before, quietly, into
+// the selected trip (bindFor; none, the model routes it and asks once): the icon says how it went (··· → ✓).
 import { downscale, openBoard } from "./browser";
 import { bindFor } from "./companionWorker";
 import { db } from "./db";
 import { L } from "./i18n";
 import { collectPage } from "./pagecapture";
 import { savePastedLink, saveSnapshot } from "./process";
+import { clearAsk, openAsk, setAsk } from "./popupAsk";
 
 const MENU = "trip-radar-save";
 
@@ -31,6 +32,13 @@ export function listenContextMenu(process: () => void): void {
     if (info.menuItemId !== MENU || tab?.id == null) return;
     const tabId = tab.id;
     void (async () => {
+      const link = info.linkUrl && /^https?:/.test(info.linkUrl) ? info.linkUrl : null;
+      if (link) {
+        const on = await linkOn(tabId, link);
+        await setAsk(tabId, { kind: "link", url: link.slice(0, 2000), from: tab.url ?? "", title: on?.title || info.selectionText?.trim() || link, photo: on?.photo ?? null, at: Date.now() });
+      } else await clearAsk(tabId);
+      if (await openAsk(tab.windowId)) return;
+      await clearAsk(tabId);
       badge(tabId, "···");
       try {
         let id: string;
@@ -61,6 +69,28 @@ export function listenContextMenu(process: () => void): void {
     void openBoard("");
     chrome.notifications.clear(id);
   });
+}
+
+/** A right-clicked link's own words and picture on its page (its card's heading when the link itself says little). */
+async function linkOn(tabId: number, href: string): Promise<{ title: string; photo: string | null } | null> {
+  const [r] = await chrome.scripting
+    .executeScript({
+      target: { tabId },
+      args: [href],
+      func: (href: string) => {
+        const a = Array.from(document.querySelectorAll<HTMLAnchorElement>("a[href]")).find((x) => x.href === href);
+        if (!a) return null;
+        const card = a.closest("article, li, [class*='card'], [class*='item']") ?? a.parentElement;
+        const words = (s: string | null | undefined) => (s ?? "").replace(/\s+/g, " ").trim();
+        let title = words(a.innerText) || words(a.title) || words(a.getAttribute("aria-label"));
+        if (title.length < 4) title = words(card?.querySelector("h1,h2,h3,h4")?.textContent) || title;
+        const img = a.querySelector("img") ?? card?.querySelector("img");
+        const src = img?.currentSrc || img?.src || "";
+        return { title: title.slice(0, 300), photo: /^https:\/\//.test(src) ? src.slice(0, 2000) : null };
+      },
+    })
+    .catch(() => [] as chrome.scripting.InjectionResult<{ title: string; photo: string | null } | null>[]);
+  return r?.result ?? null;
 }
 
 /** Up to two minutes: read (✓, gone after a while), asked (a notification), or failed (!). */

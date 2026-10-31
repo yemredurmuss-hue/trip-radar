@@ -80,6 +80,7 @@ button:focus-visible, .plus:focus-visible { outline: 3px solid #cfc7ff; outline-
 .pin.hot .plus, .plus:hover, .plus:focus-visible { padding: 0 12px 0 10px; gap: 5px; }
 .plus.done { background: #1f7a45; font-size: 14px; }
 .plus.read { background: #fff; color: #5b45e0; box-shadow: inset 0 0 0 2px #5b45e0; font-size: 12px; }
+.plus.wait { background: #fff; color: #5b45e0; box-shadow: inset 0 0 0 2px #5b45e0, 0 0 0 5px rgba(91, 69, 224, .18); }
 .dock { position: fixed; z-index: 2147483646; right: 20px; bottom: 20px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
   font: 600 13px/1.4 "Plus Jakarta Sans", system-ui, sans-serif; color: #1c1a33; }
 .pocket { position: fixed; z-index: 2147483646; right: 0; top: 38vh; display: flex; align-items: center; }
@@ -249,6 +250,9 @@ function start() {
   const reading = new WeakSet<Element>();
   // ✓ hatırlanır (tek Kaydet v3): the results saved on this page before (reloaded, back from the Pano), by their prints.
   let marks: { p: ResultPrint; captureId: string }[] = [];
+  // Kaydet penceresi v5 (Emre 2026-10-31: "sayfadaki + ile eklenti otomatik açılmalı ve sormalı"): the result whose "+"
+  // opened the popup; its "+" waits, ringed, until the popup saves it (✓) or closes (back to "+").
+  let waiting: Element | null = null;
   // (textContent, not innerText: no layout asked for; the same reading at the save and at the check)
   const printOfCard = (el: Element) => resultPrint((el.textContent ?? "").slice(0, 3000), el.querySelector("h1,h2,h3,h4")?.textContent ?? "");
   const isSaved = (el: Element) => added.has(el) || (marks.length > 0 && marks.some((m) => sameResult(m.p, printOfCard(el))));
@@ -351,6 +355,23 @@ function start() {
     return /^https:\/\//.test(src) ? src : null;
   };
   const nameOf = (el: Element): string => (el.querySelector("h1,h2,h3,h4,b,strong,a")?.textContent ?? (el as HTMLElement).innerText ?? "").replace(/\s+/g, " ").trim();
+
+  /** Kaydet penceresi v5: the toolbar's popup opened over the page to ask which trip; false when Chrome couldn't. */
+  const askInPopup = async (m: { title: string; text: string; name?: string; print?: ResultPrint; photo?: string | null; page?: boolean }): Promise<boolean> =>
+    Boolean((await ask<{ ok: boolean }>({ type: "desk:ask", ...m }))?.ok);
+  // (the popup saved what it asked, or closed without saving: the "+" says so)
+  chrome.runtime.onMessage.addListener((m: { type?: string; saved?: boolean; captureId?: string }) => {
+    if (m?.type !== "companion:asked") return;
+    const el = waiting;
+    waiting = null;
+    if (m.saved && el) {
+      added.add(el);
+      if (m.captureId && !marks.some((x) => x.captureId === m.captureId)) marks = [...marks, { p: printOfCard(el), captureId: m.captureId }];
+    } else if (m.saved && single) pageState = "done";
+    drawCards();
+    drawTitlePin();
+    if (m.saved) void loadPocket(true);
+  });
 
   // (no picking several and adding them all: a result goes in by its own "+", one at a time; Emre 2026-10-24: "toplu
   // listeye ekleme diye bir şey olamaz", "Bu listeden seç" gone with it)
@@ -598,9 +619,10 @@ function start() {
       yes.type = "button";
       yes.className = "yes";
       yes.textContent = L("Kaydet", "Save");
-      yes.onclick = () => {
+      yes.onclick = async () => {
         confirmAsk = null;
         drawDock();
+        if (await askInPopup({ page: true, title: document.title, text: "" })) return;
         withTrip(
           L("Bu rezervasyon", "This booking"),
           async (pick) => {
@@ -642,8 +664,10 @@ function start() {
     drawSide(bump);
   };
 
-  /** "+ Kaydet" on a place's own page: the page as the toolbar reads it, its screenshot too. */
+  /** "+ Kaydet" on a place's own page: the popup opens over it and asks (v5); else the page as the toolbar reads it. */
   const addPage = (at: Element | null = null) =>
+    void askInPopup({ page: true, title: document.title, text: "" }).then((opened) => !opened && addPageHere(at));
+  const addPageHere = (at: Element | null = null) =>
     withTrip(whatOf(single ?? kind), async (pick) => {
       pageState = "busy";
       drawSide();
@@ -909,31 +933,38 @@ function start() {
       pin.className = "pin";
       const plus = document.createElement("button");
       plus.type = "button";
-      const isIn = isSaved(el), busy = reading.has(el);
-      plus.className = `plus${isIn ? " done" : busy ? " read" : ""}`;
+      const isIn = isSaved(el), busy = reading.has(el), wait = waiting === el;
+      plus.className = `plus${isIn ? " done" : busy ? " read" : wait ? " wait" : ""}`;
       plus.textContent = isIn ? "✓" : busy ? "···" : "+";
       // (Pinterest's: a small "+" on the card's top edge; over the card, it says "+ Kaydet")
-      if (!isIn && !busy) {
+      if (!isIn && !busy && !wait) {
         const lbl = document.createElement("span");
         lbl.className = "lbl";
         lbl.textContent = L("Kaydet", "Save");
         plus.append(lbl);
       }
-      plus.title = isIn ? L("Kaydedildi", "Saved") : L("Bunu kaydet", "Save this one");
+      plus.title = isIn ? L("Kaydedildi", "Saved") : wait ? L("Pencerede hangi geziye diye soruyor", "The popup asks which trip") : L("Bunu kaydet", "Save this one");
       plus.onclick = (e) => {
         e.preventDefault();
         e.stopPropagation();
-        if (isSaved(el) || reading.has(el)) return;
-        withTrip(
-          whatOf(kind),
-          async (pick) => {
-            const r = await addCard(el, pick);
-            drawCards();
-            if (r) said(r);
-            return Boolean(r);
-          },
-          plus,
-        );
+        if (isSaved(el) || reading.has(el) || waiting === el) return;
+        void askInPopup({ title: document.title, name: (el.querySelector("h1,h2,h3,h4")?.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 200), text: (el as HTMLElement).innerText.replace(/\s+/g, " ").trim().slice(0, 1500), print: printOfCard(el), photo: photoOf(el) }).then((opened) => {
+          if (opened) {
+            waiting = el;
+            return drawCards();
+          }
+          // (Chrome couldn't open the popup: asked here, beside the "+", as before)
+          withTrip(
+            whatOf(kind),
+            async (pick) => {
+              const r = await addCard(el, pick);
+              drawCards();
+              if (r) said(r);
+              return Boolean(r);
+            },
+            plus,
+          );
+        });
       };
       pin.append(plus);
       layer.append(pin);

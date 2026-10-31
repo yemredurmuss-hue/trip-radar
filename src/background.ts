@@ -1,5 +1,6 @@
 // Service worker: runs the capture queue and the decision analyses so they continue after the popup closes.
 import { checkPricesDaily, listenPriceNotices } from "./lib/priceWatchWorker";
+import { clearAsk, tellPage } from "./lib/popupAsk";
 import { candidateClosed, candidateOf, showBadge } from "./lib/candidateTabs";
 import { companionAnswer, syncCompanion } from "./lib/companionWorker";
 import { listenConfirmPages, markConfirmPages } from "./lib/confirmHint";
@@ -116,6 +117,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!answer) return undefined;
   void answer.then(sendResponse, () => sendResponse(null));
   return true;
+});
+// Kaydet penceresi v5 (lib/popupAsk.ts): the popup closed without saving what a "+" or a right-click asked; the page's
+// "+" turns back.
+chrome.runtime.onConnect.addListener((port) => {
+  const m = /^popup:(\d+)$/.exec(port.name);
+  if (!m || port.sender?.id !== chrome.runtime.id) return;
+  const tabId = Number(m[1]);
+  port.onDisconnect.addListener(() => void clearAsk(tabId).then((had) => had && tellPage(tabId, { type: "companion:asked", saved: false })));
 });
 // A booking's confirmation on any site: the popup opens over it by itself (lib/confirmHint.ts).
 listenConfirmPages();

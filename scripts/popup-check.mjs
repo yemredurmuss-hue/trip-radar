@@ -50,7 +50,7 @@ async function open(v, name) {
     const realFetch = window.fetch;
     window.fetch = (u, o) => (String(u).startsWith("chrome-extension://") ? Promise.resolve(new Response('{"version":"0.43.0"}')) : realFetch(u, o));
     window.chrome = {
-      runtime: { lastError: undefined, getURL: (p) => `chrome-extension://x/${p}`, getManifest: () => ({ version }), sendMessage: (m, cb = () => undefined) => (window.__asked.push(m), setTimeout(() => cb(answer(v, m)), 30)) },
+      runtime: { lastError: undefined, getURL: (p) => `chrome-extension://x/${p}`, getManifest: () => ({ version }), sendMessage: (m, cb = () => undefined) => (window.__asked.push(m), setTimeout(() => cb(answer(v, m)), m.type === "popup:view" && v.slow ? 60_000 : 30)), connect: (o) => (window.__asked.push({ type: "connect", ...o }), {}) },
       tabs: { query: async () => [{ id: 7 }], sendMessage: async (_id, m) => void window.__asked.push({ tab: true, ...m }), create: async () => undefined, update: async () => undefined },
       scripting: { executeScript: async () => [] },
       storage: { local: { get: async () => ({ lang: "tr" }), set: async () => undefined, remove: async () => undefined } },
@@ -65,22 +65,26 @@ async function open(v, name) {
   });
   page.on("pageerror", (e) => console.error("page error:", e.message));
   await page.goto("https://popup.test/popup.html");
-  await page.locator(".tk-trips, .tb-empty").first().waitFor();
+  await page.locator(v.slow ? ".tk-skel" : ".tk > .tk-trips, .tb-empty").first().waitFor();
   await page.waitForTimeout(150);
   await page.screenshot({ path: `${out}/${name}.png` });
   return page;
 }
-const rows = (p) => p.locator(".tk-row .tk-pick b").allInnerTexts();
+const rows = (p) => p.locator(".tk-row:not(.tk-new) .tk-pick b").allInnerTexts();
 const asked = (p, type) => p.evaluate((t) => window.__asked.filter((m) => m.type === t), type);
 const row = (p, title) => p.locator(".tk-row", { has: p.locator(".tk-pick b", { hasText: title }) });
 
 // 1. A page, its trip known: the page, the selected trip first, three rows; opening saves nothing; Enter saves there.
 let p = await open(view(known), "1-page");
 assert.equal((await asked(p, "popup:save")).length, 0, "opening saves nothing");
-assert.equal(await p.locator(".tk-page b").innerText(), "Casa do Jardim · Porto");
+assert.equal(await p.locator(".tk-it .tk-ix b").innerText(), "Casa do Jardim · Porto");
+assert.equal(await p.locator(".tk-it .tk-ix small").innerText(), "Booking.com · konaklama");
 assert.deepEqual(await rows(p), ["Portekiz", "Yunanistan", "Kanada"]);
 assert.equal(await p.locator(".tk-row.sel .tk-pick b").innerText(), "Portekiz");
-assert.equal(await p.locator(".tk-foot").innerText(), "Tümü (4)\n+ Yeni gezi: Portekiz");
+assert.equal(await p.locator(".tk-foot").innerText(), "Tümü (4)");
+assert.equal(await p.locator(".tk-new").innerText(), "Yeni gezi");
+assert.deepEqual(await p.locator(".tk-row:not(.tk-new) .tk-n").allInnerTexts(), ["23", "9", "5"], "Pano's count in the cover's corner");
+assert.equal(await p.locator(".tk-nm small").count(), 0, "no dates, no line under the name");
 assert.equal(await p.getByText(/Biriktirdiklerim|Uygulamayı aç|düştü|kaldı/).count(), 0, "nothing but what works");
 await p.keyboard.press("Enter");
 await p.locator(".tk-row.saved").waitFor();
@@ -113,7 +117,7 @@ assert.equal((await asked(p, "popup:save")).length, 0);
 await p.getByRole("button", { name: "Tümü (4)" }).click();
 assert.equal((await rows(p)).length, 4);
 // 2b. The count opens the trip (and the popup goes).
-await row(p, "Kanada").locator(".tk-cnt").click();
+await row(p, "Kanada").locator(".tk-n").click();
 await p.waitForTimeout(100);
 assert.equal(await p.evaluate(() => window.__closed === true), true, "the count opens the trip");
 
@@ -147,7 +151,7 @@ assert.equal((await asked(p, "popup:save"))[0].pick.tripId, "pt");
 
 // 5. A booking's confirmation: the green ticket on the page and in "Kaydet"; never saved as an idea.
 p = await open(view(known, { what: "idea", confirm: { code: "2JB52G", name: null, paid: null } }), "6-confirm");
-assert.equal(await p.locator(".tk-fav em.ok").count(), 1);
+assert.equal(await p.locator(".tk-pic em.ok").count(), 1);
 assert.equal(await p.locator(".tk-row.sel .tk-save.ok").count(), 1);
 await p.locator(".tk-row.sel .tk-save").click();
 await p.locator(".tk-row.saved").waitFor();
@@ -160,9 +164,10 @@ assert.equal((await asked(p, "popup:save"))[0].idea, true);
 
 // 6. A planned flight's search: the plane mark, only its trip, no "Tümü" or new trip (it goes to that row).
 p = await open(view(known, { what: "flight", desk: { candidate: null, planned: { title: "Portekiz", from: "IST", to: "OPO", day: "2026-11-12", count: 2 } } }), "7-planned");
-assert.equal(await p.locator(".tk-fav em.acc").count(), 1);
+assert.equal(await p.locator(".tk-pic em.acc").count(), 1);
 assert.deepEqual(await rows(p), ["Portekiz"]);
 assert.equal(await p.locator(".tk-foot .btn-link").count(), 0);
+assert.equal(await p.locator(".tk-new").count(), 0);
 
 // 7. A list without the "+": the one line at the bottom; with it, nothing there.
 p = await open(view(known, { what: "list", along: false }), "8-list");
@@ -187,7 +192,7 @@ assert.equal((await asked(p, "popup:retry"))[0].id, "c:f");
 // selected every row shows its "Kaydet"; a press asks Chrome for that site first, then saves (never as an idea).
 const auto = { what: "idea", confirmUrl: true, access: "https://web.flypgs.com/*", title: "Pegasus" };
 p = await open(view(unknown, auto), "9b-auto");
-assert.equal(await p.locator(".tk-fav em.ok").count(), 1);
+assert.equal(await p.locator(".tk-pic em.ok").count(), 1);
 assert.equal(await p.locator(".tk-trips.ask .tk-save:visible").count(), 3, "every row's Kaydet shows");
 await row(p, "Yunanistan").getByRole("button", { name: "Kaydet" }).click();
 await p.locator(".tk-row.saved").waitFor();
@@ -201,7 +206,7 @@ assert.equal((await asked(p, "popup:save")).length, 0, "no access given: nothing
 // 9. A new tab: the trips, no page and no "Kaydet"; a row selects. No trips: one invitation.
 const newTab = { ...view(null), kind: "none", title: "", site: null, travelSite: false, along: false, what: "idea" };
 p = await open(newTab, "10-newtab");
-assert.equal(await p.locator(".tk-page").count(), 0);
+assert.equal(await p.locator(".tk-it").count(), 0);
 assert.equal(await p.locator(".tk-save").count(), 0);
 await row(p, "Yunanistan").locator(".tk-pick").click();
 await p.waitForTimeout(100);
@@ -217,6 +222,48 @@ p = await open(view(unknown, { ...long, shelf: longShelf }), "11-long");
 const past = await p.evaluate(() => [...document.querySelectorAll(".tk *")].filter((e) => e.getBoundingClientRect().right > innerWidth + 0.5).map((e) => String(e.className)));
 assert.deepEqual(past, [], "nothing past the right edge");
 assert.equal(await p.locator(".tk-trips.ask .tk-save:visible").count(), 3);
-assert.equal(await p.getByRole("button", { name: "+ Yeni gezi" }).isVisible(), true);
+assert.equal(await p.getByRole("button", { name: "Yeni gezi" }).isVisible(), true);
+// 10b. The trip's name and its date: a date written into the name goes under it, small; the trip's own dates first.
+assert.equal(await row(p, "Patagonya Gezisi").locator(".tk-nm").innerText(), "Patagonya Gezisi\nŞubat 2027");
+const dated = { ...shelf, trips: [{ ...shelfTrip("gr", "Yunanistan", null, 1), when: "12–19 May" }, ...shelf.trips.slice(0, 1)] };
+p = await open(view(unknown, { shelf: dated }), "11b-dated");
+assert.equal(await row(p, "Yunanistan").locator(".tk-nm").innerText(), "Yunanistan\n12–19 May");
+
+// 11. "Yeni gezi" on a page: opened in place with the page's country offered; Enter makes it with the name typed and
+// saves there; Esc shuts it again (not the popup).
+p = await open(view(known), "12-new");
+await p.getByRole("button", { name: "Yeni gezi" }).click();
+assert.equal(await p.locator(".tk-name").inputValue(), "Portekiz");
+await p.keyboard.press("Escape");
+assert.equal(await p.locator(".tk-name").count(), 0);
+assert.equal(await p.evaluate(() => window.__closed === true), false, "Esc shuts the name box, not the popup");
+await p.getByRole("button", { name: "Yeni gezi" }).click();
+await p.locator(".tk-name").fill("Kuzey Portekiz");
+await p.screenshot({ path: `${out}/12b-new-open.png` });
+await p.keyboard.press("Enter");
+await p.locator(".tk-row.saved").waitFor();
+assert.deepEqual((await asked(p, "popup:save"))[0].pick, { newTrip: true, remember: true, title: "Kuzey Portekiz" });
+assert.equal(await p.locator(".tk-new").count(), 0, "saved: no second new trip offered");
+assert.match(await p.locator(".tk-it.ok .tk-ix small").innerText(), /Kaydedildi/);
+
+// 12. Opened by a result's "+" (or a right-click on a link): that result on top, saved instead of the page; the popup
+// tells the worker it is open (closed without saving, the page's "+" turns back).
+const fromPlus = { what: "list", ask: { kind: "result", title: "Atina → İstanbul · 11:15 → 12:40 · €64", sub: "Skyscanner · uçuş", photo: null, flight: true } };
+p = await open(view(known, fromPlus), "13-plus");
+assert.equal(await p.locator(".tk-it .tk-ix b").innerText(), "Atina → İstanbul · 11:15 → 12:40 · €64");
+assert.equal(await p.locator(".tk-alt").count(), 0, "no '+ koy' line over a result's own '+'");
+assert.equal(await p.locator(".tk-pic .tk-kind").count(), 1, "a flight with no picture: the plane");
+assert.equal((await asked(p, "connect"))[0].name, "popup:7");
+await p.keyboard.press("Enter");
+await p.locator(".tk-row.saved").waitFor();
+assert.equal((await asked(p, "popup:save"))[0].ask, true);
+p = await open(view(unknown, { ask: { kind: "link", title: "Hotel Las Torres Patagonia", sub: "Booking.com · konaklama", photo: null }, confirmUrl: true }), "13b-link");
+assert.equal(await p.locator(".tk-pic em").count(), 0, "a link's card is no booking, whatever the page's address");
+assert.equal(await p.locator(".tk-ask").innerText(), "Hangi geziye?");
+
+// 13. Slow (or no internet): the drawing and bars stand in until the answer comes.
+p = await open(view(known, { slow: true }), "14-skeleton");
+assert.equal(await p.locator(".tk-skel .tk-sketch").count(), 1);
+assert.equal(await p.locator(".tk-skel .tk-row").count(), 3);
 console.log(JSON.stringify({ ok: true }));
 await browser.close();
