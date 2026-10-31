@@ -17,7 +17,7 @@ const MENU = "trip-radar-save";
 export function setupContextMenu(): void {
   if (!chrome.contextMenus) return;
   chrome.contextMenus.removeAll(() => {
-    chrome.contextMenus.create({ id: MENU, title: L("Trip Radar'a kaydet", "Save to Trip Radar"), contexts: ["page", "link", "selection"] }, () => void chrome.runtime.lastError);
+    chrome.contextMenus.create({ id: MENU, title: L("Trip Radar'a ekle", "Add to Trip Radar"), contexts: ["page", "link", "selection"] }, () => void chrome.runtime.lastError);
   });
 }
 

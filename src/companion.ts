@@ -221,7 +221,7 @@ function start() {
   let where: CompanionWhere | null = null;
   let href = "";
   let single: SiteKind | null = null;
-  // Gezi cebi's tab: the trip and how many are saved on it; this page's own "Kaydet".
+  // Gezi cebi's tab: the trip and how many are saved on it; this page's own "Ekle".
   let pocket: Pocket | null = null;
   // Where the pocket sits on this site, as a share of the window's height (null: where it always was, 38%).
   let pocketAt: number | null = null;
@@ -491,7 +491,7 @@ function start() {
     const name = document.createElement("button");
     name.type = "button";
     name.className = "nm";
-    name.textContent = n.title ?? L("Kaydedildi", "Saved");
+    name.textContent = n.title ?? L("Eklendi", "Added");
     const movable = Boolean(last && where?.trips.some((t) => t.id !== last!.tripId));
     if (movable) {
       name.append(icon("down"));
@@ -612,13 +612,13 @@ function start() {
       const q = document.createElement("span");
       const trip = knownTrip();
       q.className = "q";
-      q.textContent = trip ? L(`${trip.title} · ${deckWord(single ?? kind)} destesine rezervasyon olarak kaydedeyim mi?`, `Save it to ${trip.title} · ${deckWord(single ?? kind)} as a booking?`) : L("Rezervasyon olarak kaydedeyim mi?", "Save it as a booking?");
+      q.textContent = trip ? L(`${trip.title} · ${deckWord(single ?? kind)} destesine rezervasyon olarak ekleyeyim mi?`, `Add it to ${trip.title} · ${deckWord(single ?? kind)} as a booking?`) : L("Rezervasyon olarak ekleyeyim mi?", "Add it as a booking?");
       const row = document.createElement("div");
       row.className = "row";
       const yes = document.createElement("button");
       yes.type = "button";
       yes.className = "yes";
-      yes.textContent = L("Kaydet", "Save");
+      yes.textContent = L("Ekle", "Add");
       yes.onclick = async () => {
         confirmAsk = null;
         drawDock();
@@ -664,7 +664,7 @@ function start() {
     drawSide(bump);
   };
 
-  /** "+ Kaydet" on a place's own page: the popup opens over it and asks (v5); else the page as the toolbar reads it. */
+  /** "+ Ekle" on a place's own page: the popup opens over it and asks (v5); else the page as the toolbar reads it. */
   const addPage = (at: Element | null = null) =>
     void askInPopup({ page: true, title: document.title, text: "" }).then((opened) => !opened && addPageHere(at));
   const addPageHere = (at: Element | null = null) =>
@@ -844,7 +844,7 @@ function start() {
     if (!single || stale || !titleEl()) return;
     const inDeck = pageState === "done" || (pageState === "idle" && Boolean(where?.saved));
     const pin = document.createElement("div");
-    // (always open on a place's own page: "+ Kaydet", one big target)
+    // (always open on a place's own page: "+ Ekle", one big target)
     pin.className = "pin open";
     const plus = document.createElement("button");
     plus.type = "button";
@@ -853,10 +853,10 @@ function start() {
     if (!inDeck && pageState !== "busy") {
       const lbl = document.createElement("span");
       lbl.className = "lbl";
-      lbl.textContent = L("Kaydet", "Save");
+      lbl.textContent = L("Ekle", "Add");
       plus.append(lbl);
     }
-    plus.title = inDeck ? L("Kaydedildi", "Saved") : L("Bu sayfayı kaydet", "Save this page");
+    plus.title = inDeck ? L("Eklendi", "Added") : L("Bu sayfayı ekle", "Add this page");
     plus.setAttribute("aria-label", plus.title);
     plus.onclick = (e) => {
       e.preventDefault();
@@ -915,7 +915,7 @@ function start() {
   };
 
   const drawCards = (force = true) => {
-    // (a flight search only for a flight on the plan, or once trips are known; a hotel's own page has its own "Kaydet")
+    // (a flight search only for a flight on the plan, or once trips are known; a hotel's own page has its own "Ekle")
     if (stale || single || (!route && !where)) {
       layer.replaceChildren();
       cards = [];
@@ -936,14 +936,14 @@ function start() {
       const isIn = isSaved(el), busy = reading.has(el), wait = waiting === el;
       plus.className = `plus${isIn ? " done" : busy ? " read" : wait ? " wait" : ""}`;
       plus.textContent = isIn ? "✓" : busy ? "···" : "+";
-      // (Pinterest's: a small "+" on the card's top edge; over the card, it says "+ Kaydet")
+      // (Pinterest's: a small "+" on the card's top edge; over the card, it says "+ Ekle")
       if (!isIn && !busy && !wait) {
         const lbl = document.createElement("span");
         lbl.className = "lbl";
-        lbl.textContent = L("Kaydet", "Save");
+        lbl.textContent = L("Ekle", "Add");
         plus.append(lbl);
       }
-      plus.title = isIn ? L("Kaydedildi", "Saved") : wait ? L("Pencerede hangi geziye diye soruyor", "The popup asks which trip") : L("Bunu kaydet", "Save this one");
+      plus.title = isIn ? L("Eklendi", "Added") : wait ? L("Pencerede hangi geziye diye soruyor", "The popup asks which trip") : L("Bunu ekle", "Add this one");
       plus.onclick = (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -1072,7 +1072,7 @@ function start() {
     },
     { passive: true },
   );
-  // (the card under the mouse: its "+" opens into "+ Kaydet")
+  // (the card under the mouse: its "+" opens into "+ Ekle")
   let hot: HTMLDivElement | null = null;
   addEventListener(
     "mouseover",

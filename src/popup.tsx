@@ -4,7 +4,7 @@
 // kind; a result's "+" or a link right-clicked opens it too, their own card then (lib/popupAsk.ts). Under it the trips
 // (cover with Pano's count in its corner, the name with its date small under it, how ready, one button) and "Yeni gezi",
 // opened in place to name it. At the bottom at most one second thing ("Sonuçlara + koy", or "AI bağlı değil"). Each
-// press means one thing: a row selects that trip, "Kaydet" (or Enter) saves there, the count opens the trip, Esc closes.
+// press means one thing: a row selects that trip, "Ekle" (or Enter) saves there, the count opens the trip, Esc closes.
 // Nothing is saved by opening it; reading and saving happen in the service worker (lib/popupWorker.ts).
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
@@ -39,7 +39,7 @@ function Popup() {
   const [failed, setFailed] = useState(false);
   const [all, setAll] = useState(false);
   const [q, setQ] = useState("");
-  // ("Çıkar" pressed on the page's card: its row is a plain row again, "Kaydet" saves it anew)
+  // ("Çıkar" pressed on the page's card: its row is a plain row again, "Ekle" saves it anew)
   const [taken, setTaken] = useState(false);
   const [plusDone, setPlusDone] = useState(false);
   // ("Yeni gezi" opened in place: the name being typed)
@@ -107,7 +107,7 @@ function Popup() {
     setNewName(null);
     setSaved(r);
   }
-  /** "Kaydet" on another trip once saved: the save goes there (the same record, its reading too). */
+  /** "Ekle" on another trip once saved: the save goes there (the same record, its reading too). */
   async function move(tripId: string) {
     if (!saved || busy) return;
     setBusy(tripId);
@@ -273,7 +273,7 @@ function Popup() {
           {page && !trips.length && <p className="tk-none">{L("Henüz gezin yok: bu sayfayla birini başlat.", "No trip yet: start one with this page.")}</p>}
           {failed && (
             <p className="tk-err" role="alert">
-              {L("Sayfa okunamadı; bir daha dene ya da sağ tık \"Trip Radar'a kaydet\".", "Couldn't read the page; try again, or right-click \"Save to Trip Radar\".")}
+              {L("Sayfa okunamadı; bir daha dene ya da sağ tık \"Trip Radar'a ekle\".", "Couldn't read the page; try again, or right-click \"Add to Trip Radar\".")}
             </p>
           )}
         </div>
@@ -349,7 +349,7 @@ function TripRow(p: {
       <>
         <span className="tk-state" role="status">
           <Icon name="check" />
-          {L("Kaydedildi", "Saved")}
+          {L("Eklendi", "Added")}
         </span>
         <IconButton name="undo" label={L("Geri al", "Undo")} onClick={p.onUndo} />
       </>
@@ -368,11 +368,11 @@ function TripRow(p: {
     );
   } else if (p.page) {
     end = (
-      <button type="button" className={`tk-save${p.selected ? "" : " ghost"}${p.mark === "ticket" ? " ok" : ""}`} disabled={p.locked} onClick={p.onSave} title={p.mark === "ticket" ? L("Rezervasyon olarak kaydet", "Save as a booking") : p.afterSave ? L("Kaydı buraya taşı", "Move the save here") : undefined}>
+      <button type="button" className={`tk-save${p.selected ? "" : " ghost"}${p.mark === "ticket" ? " ok" : ""}`} disabled={p.locked} onClick={p.onSave} title={p.mark === "ticket" ? L("Rezervasyon olarak ekle", "Add as a booking") : p.afterSave ? L("Buraya taşı", "Move it here") : undefined}>
         {p.busy ? "···" : (
           <>
             {p.mark && <Icon name={p.mark} />}
-            {L("Kaydet", "Save")}
+            {L("Ekle", "Add")}
           </>
         )}
       </button>
@@ -448,7 +448,7 @@ function Preview(p: { photo: string | null; favicon: string | null; plane?: bool
           {p.savedTo != null ? (
             <em>
               <Icon name="check" />
-              {p.savedTo ? L(`Kaydedildi · ${p.savedTo}`, `Saved · ${p.savedTo}`) : L("Kaydedildi", "Saved")}
+              {p.savedTo ? L(`Eklendi · ${p.savedTo}`, `Added · ${p.savedTo}`) : L("Eklendi", "Added")}
             </em>
           ) : (
             p.sub
@@ -510,7 +510,7 @@ function NewTrip(p: { open: boolean; value: string; busy: boolean; locked: boole
             {p.busy ? "···" : (
               <>
                 <Icon name="plus" />
-                {L("Oluştur ve kaydet", "Create and save")}
+                {L("Oluştur ve ekle", "Create and add")}
               </>
             )}
           </button>

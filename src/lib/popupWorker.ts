@@ -1,5 +1,5 @@
 // Simgeye basınca (0.43.0, tuval "Benle gezen eklenti" 8; tek Kaydet 0.47.29): the popup only shows and asks; reading the
-// page, its screenshot, the save and the routing all happen here, in the service worker, only when "Kaydet" is pressed.
+// page, its screenshot, the save and the routing all happen here, in the service worker, only when "Ekle" is pressed.
 // The popup opens at once and stays light (no database, no model in it): it asks these questions.
 // Every answer is for our own extension pages only (the popup), never a site's.
 import { chooseItem } from "../app/actions";
@@ -74,7 +74,7 @@ export interface PopupView {
   here: { tripId: string; itemId: string; removable: boolean } | null;
   /**
    * Opened by itself over a booking's confirmation (lib/confirmHint.ts): the page's address looks like one, and the site
-   * this popup may not read yet (Chrome gives that only to a press on the icon): "Kaydet" asks Chrome for it first, once.
+   * this popup may not read yet (Chrome gives that only to a press on the icon): "Ekle" asks Chrome for it first, once.
    */
   confirmUrl: boolean;
   access: string | null;
@@ -254,7 +254,7 @@ function askView(a: NonNullable<Awaited<ReturnType<typeof askFor>>>): NonNullabl
   return { kind: "result", title: cleanTitle(name, null), sub: [companionName(site), KIND_WORD[kind]()].join(" · "), photo: kind === "flight" ? null : a.photo, flight: kind === "flight" };
 }
 
-/** "Kaydet" for what a "+" or a right-click asked (lib/popupAsk.ts): saved into the trip picked, the page told. */
+/** "Ekle" for what a "+" or a right-click asked (lib/popupAsk.ts): saved into the trip picked, the page told. */
 export async function popupSaveAsk(tabId: number, pick: TripPick, process: () => void): Promise<{ captureId: string; tripId: string | null; tripTitle: string | null; deck: string } | null> {
   const a = await askFor(tabId);
   if (!a) return null;
@@ -275,7 +275,7 @@ export async function popupSaveAsk(tabId: number, pick: TripPick, process: () =>
   return { captureId: capture.id, tripId: bind.forTripId ?? null, tripTitle: trip?.title ?? null, deck: deckWord(offerPageKind(a.url) ?? "any") };
 }
 
-/** "Kaydet": the page read and saved now, into its trip (and its row); the popup may close at once. */
+/** "Ekle": the page read and saved now, into its trip (and its row); the popup may close at once. */
 export async function popupSave(tabId: number, pick: TripPick, idea: boolean, process: () => void): Promise<{ captureId: string; tripId: string | null; tripTitle: string | null; deck: string } | null> {
   const tab = await chrome.tabs.get(tabId).catch(() => null);
   if (!tab?.url || !/^https?:/.test(tab.url)) return null;
@@ -296,7 +296,7 @@ export async function popupSave(tabId: number, pick: TripPick, idea: boolean, pr
   const capture = await saveSnapshot(snap, shot, { ...bind, idea });
   process();
   void watch(capture.id, tabId);
-  // (a place's own page whose "+ Kaydet" opened the popup: its "+" turns ✓)
+  // (a place's own page whose "+ Ekle" opened the popup: its "+" turns ✓)
   tellPage(tabId, { type: "companion:asked", saved: true, captureId: capture.id });
   const trip = bind.forTripId ? await d.get("trips", bind.forTripId) : undefined;
   const kind = siteKindOf(companionSiteOf(tab.url) ?? "");

@@ -1,8 +1,8 @@
 // Simgeye basınca, tek Kaydet (0.47.29–0.47.31, docs/mockups/eklenti-tek-kaydet-v2 + v3): the built popup (dist/popup.html)
 // with the service worker's answers stubbed. One layout: the page on top (its icon, its name, a corner mark for a booking's
 // confirmation or a planned flight's search), the trips under it (cover, name, Pano's count, how ready, one button), at most
-// one line at the bottom. A row selects, "Kaydet" (or Enter) saves, the count opens the trip; saved: "Kaydedildi" and ↶,
-// another trip's "Kaydet" moves it; on the plan already: ✓, then "Fiyatı yenile" and "Çıkar". Nothing is saved by opening it.
+// one line at the bottom. A row selects, "Ekle" (or Enter) saves, the count opens the trip; saved: "Eklendi" and ↶,
+// another trip's "Ekle" moves it; on the plan already: ✓, then "Fiyatı yenile" and "Çıkar". Nothing is saved by opening it.
 // Run after `npm run build`: CHROMIUM_PATH=… node scripts/popup-check.mjs → e2e-output/popup/*.png
 import { chromium } from "playwright-core";
 import assert from "node:assert/strict";
@@ -90,11 +90,11 @@ assert.equal(await p.getByText(/Biriktirdiklerim|Uygulamayı aç|düştü|kaldı
 await p.keyboard.press("Enter");
 await p.locator(".tk-row.saved").waitFor();
 assert.deepEqual((await asked(p, "popup:save"))[0].pick, { tripId: "pt", remember: true });
-assert.match(await row(p, "Portekiz").innerText(), /Portekiz\n24 kayıt\nKaydedildi/);
+assert.match(await row(p, "Portekiz").innerText(), /Portekiz\n24 kayıt\nEklendi/);
 await p.screenshot({ path: `${out}/2-saved.png` });
-// 1b. Saved: another trip's "Kaydet" moves it there (the same record); ↶ takes it back.
+// 1b. Saved: another trip's "Ekle" moves it there (the same record); ↶ takes it back.
 await row(p, "Yunanistan").hover();
-await row(p, "Yunanistan").getByRole("button", { name: "Kaydet" }).click();
+await row(p, "Yunanistan").getByRole("button", { name: "Ekle" }).click();
 await p.waitForTimeout(100);
 assert.equal((await asked(p, "popup:move"))[0].pick.tripId, "gr");
 assert.equal((await asked(p, "popup:save")).length, 1, "moved, not saved again");
@@ -132,7 +132,7 @@ await p.keyboard.press("Enter");
 await p.waitForTimeout(100);
 assert.equal((await asked(p, "popup:save")).length, 0, "Enter with no trip selected saves nothing");
 await row(p, "Kanada").hover();
-await row(p, "Kanada").getByRole("button", { name: "Kaydet" }).click();
+await row(p, "Kanada").getByRole("button", { name: "Ekle" }).click();
 await p.locator(".tk-row.saved").waitFor();
 assert.equal((await asked(p, "popup:save"))[0].pick.tripId, "ca");
 
@@ -151,7 +151,7 @@ await row(p, "Portekiz").getByRole("button", { name: "Fiyatı yenile" }).click()
 await p.waitForTimeout(100);
 assert.equal((await asked(p, "popup:save"))[0].pick.tripId, "pt");
 
-// 5. A booking's confirmation: the green ticket on the page and in "Kaydet"; never saved as an idea.
+// 5. A booking's confirmation: the green ticket on the page and in "Ekle"; never saved as an idea.
 p = await open(view(known, { what: "idea", confirm: { code: "2JB52G", name: null, paid: null } }), "6-confirm");
 assert.equal(await p.locator(".tk-pic em.ok").count(), 1);
 assert.equal(await p.locator(".tk-row.sel .tk-save.ok").count(), 1);
@@ -191,21 +191,21 @@ await p.waitForTimeout(100);
 assert.equal((await asked(p, "popup:retry"))[0].id, "c:f");
 
 // 8b. Opened by itself over a confirmation (no press on the icon): the ticket from the address alone; with no trip
-// selected every row shows its "Kaydet"; a press asks Chrome for that site first, then saves (never as an idea).
+// selected every row shows its "Ekle"; a press asks Chrome for that site first, then saves (never as an idea).
 const auto = { what: "idea", confirmUrl: true, access: "https://web.flypgs.com/*", title: "Pegasus" };
 p = await open(view(unknown, auto), "9b-auto");
 assert.equal(await p.locator(".tk-pic em.ok").count(), 1);
 assert.equal(await p.locator(".tk-trips.ask .tk-save:visible").count(), 3, "every row's Kaydet shows");
-await row(p, "Yunanistan").getByRole("button", { name: "Kaydet" }).click();
+await row(p, "Yunanistan").getByRole("button", { name: "Ekle" }).click();
 await p.locator(".tk-row.saved").waitFor();
 assert.deepEqual((await asked(p, "permission"))[0].origins, ["https://web.flypgs.com/*"]);
 assert.equal((await asked(p, "popup:save"))[0].idea, false);
 p = await open(view(unknown, { ...auto, grant: false }), "9c-auto-denied");
-await row(p, "Yunanistan").getByRole("button", { name: "Kaydet" }).click();
+await row(p, "Yunanistan").getByRole("button", { name: "Ekle" }).click();
 await p.waitForTimeout(150);
 assert.equal((await asked(p, "popup:save")).length, 0, "no access given: nothing saved");
 
-// 9. A new tab: the trips, no page and no "Kaydet"; a row selects. No trips: one invitation.
+// 9. A new tab: the trips, no page and no "Ekle"; a row selects. No trips: one invitation.
 const newTab = { ...view(null), kind: "none", title: "", site: null, travelSite: false, along: false, what: "idea" };
 p = await open(newTab, "10-newtab");
 assert.equal(await p.locator(".tk-it").count(), 0);
@@ -217,7 +217,7 @@ p = await open({ ...newTab, shelf: { selected: false, total: 0, trips: [] } }, "
 assert.match(await p.locator(".tb-empty").innerText(), /İlk gezini başlat[\s\S]*\+ Yeni gezi$/);
 
 // 10. A long page name and a long trip name (a YouTube video, 0.47.34): nothing runs past the popup's edge; ×, the
-// rows' "Kaydet" and "+ Yeni gezi" stay in it (they were pushed out of sight, the card as wide as the title).
+// rows' "Ekle" and "+ Yeni gezi" stay in it (they were pushed out of sight, the card as wide as the title).
 const long = { title: "(2) TRAVEL PLAN WITH ME ✈️ (Booking Flights, Budgeting, Itinerary & More!) | How To Plan A Trip Abroad - YouTube", what: "idea", travelSite: false, along: false };
 const longShelf = { ...shelf, trips: [shelfTrip("pa", "Patagonya Gezisi · Şubat 2027", { plan: 30, booked: 0, fresh: false }, 7), ...shelf.trips] };
 p = await open(view(unknown, { ...long, shelf: longShelf }), "11-long");
@@ -259,7 +259,7 @@ await p.keyboard.press("Enter");
 await p.locator(".tk-row.saved").waitFor();
 assert.deepEqual((await asked(p, "popup:save"))[0].pick, { newTrip: true, remember: true, title: "Kuzey Portekiz" });
 assert.equal(await p.locator(".tk-new").count(), 0, "saved: no second new trip offered");
-assert.match(await p.locator(".tk-it.ok .tk-ix small").innerText(), /Kaydedildi/);
+assert.match(await p.locator(".tk-it.ok .tk-ix small").innerText(), /Eklendi/);
 
 // 12. Opened by a result's "+" (or a right-click on a link): that result on top, saved instead of the page; the popup
 // tells the worker it is open (closed without saving, the page's "+" turns back).
