@@ -188,8 +188,10 @@ export async function runStep(id: StepId, s: StartState, env: StepEnv = {}): Pro
     // playbook's cards for them: a festival ticket, a ski pass on the days before).
     await dropPlaceholders(tripId, (i) => i.category === "stay" || i.category === "activity");
     const pb = T(() => playbookCards(s, c));
-    await sayAll(tripId, T(() => shapedBase(s, c, [...pb.travel, ...pb.plan])).stays, c, now, T);
-    await sayAll(tripId, pb.plan, c, now, T);
+    // A stay of its own the kind asks for takes its nights out of the city's stay (carveSpecialStays).
+    const carved = T(() => carveSpecialStays(shapedBase(s, c, [...pb.travel, ...pb.plan]).stays, pb.plan));
+    await sayAll(tripId, carved.stays, c, now, T);
+    await sayAll(tripId, pb.plan.filter((x) => !carved.used.includes(x)), c, now, T);
     // The preparation list's lines are the traveller's to tick, never places to fill (said again, each is the same one).
     await sayAll(tripId, pb.prep, c, now, T, false);
   } else if (id === "travel") {
@@ -373,6 +375,40 @@ export function shapedBase(s: StartState, c: Creation, cards: ShapedInput[]): { 
   return { stays, travel };
 }
 
+const DAY_MS = 86_400_000;
+const plusDays = (day: string, n: number) => new Date(Date.parse(day) + n * DAY_MS).toISOString().slice(0, 10);
+
+/** A stay of its own the trip's kind asks for (a glass cabin's night, a ryokan): its own box, nothing covers it or is held. */
+const isOwnStay = (k: ShapedInput) => k.kind !== "stay" && k.part?.section === "stay" && k.part.frame === "stay" && !k.part.by && !k.part.covers?.length;
+
+/**
+ * Stays of their own the kind asks for take their nights out of the city's stay (omurga 2026-10-31, Emre: Tromsø'nun oteli
+ * 5 geceyi tuttu, "1 gece cam tavanlı kulübe" aynı geceye ayrı kart oldu): one night unless its days say more, on its own
+ * day or its city's first night; the stay goes on around it. One with no nights to take (no dates, another city) stays a
+ * card (`used` says which became stays). Pure.
+ */
+export function carveSpecialStays(stays: ShapedInput[], cards: ShapedInput[]): { stays: ShapedInput[]; used: ShapedInput[] } {
+  let out = [...stays];
+  const used: ShapedInput[] = [];
+  for (const k of cards.filter(isOwnStay)) {
+    const at = out.findIndex((x) => x.kind === "stay" && x.date && x.end_date && (!k.city || cityKeyOf(x.city) === cityKeyOf(k.city)) && (!k.date || (k.date >= x.date && k.date < x.end_date)));
+    if (at < 0) continue;
+    const x = out[at];
+    const start = k.date ?? x.date!;
+    const n = k.date && k.end_date && k.end_date > k.date ? Math.round((Date.parse(k.end_date) - Date.parse(k.date)) / DAY_MS) : 1;
+    const end = plusDays(start, n) < x.end_date! ? plusDays(start, n) : x.end_date!;
+    const own: ShapedInput = { ...k, kind: "stay", city: k.city ?? x.city, date: start, end_date: end };
+    const parts = [
+      ...(start > x.date! ? [{ ...x, end_date: start }] : []),
+      own,
+      ...(end < x.end_date! ? [{ ...x, date: end }] : []),
+    ];
+    out = [...out.slice(0, at), ...parts, ...out.slice(at + 1)];
+    used.push(k);
+  }
+  return { stays: out, used };
+}
+
 /** A record as the start places it: with the stop's country (flights leave home, so they keep none), how many go, its part. */
 function placedFor(item: Item, c: Creation, part?: ItemPart): Item {
   const people = c.travellers?.count ?? null;
@@ -421,8 +457,9 @@ export function wouldMake(s: StartState, now = Date.now()): { trip: Trip; items:
     Object.assign(trip, withMusts(trip, intent));
     const items: Item[] = [];
     const base = shapedBase(s, c, [...pb.travel, ...pb.plan]);
+    const carved = carveSpecialStays(base.stays, pb.plan);
     // The playbook's cards after what every trip has (none for a classic trip).
-    for (const raw of [...base.stays, ...base.travel, ...pb.travel, ...pb.plan, ...pb.prep] as ShapedInput[]) {
+    for (const raw of [...carved.stays, ...base.travel, ...pb.travel, ...pb.plan.filter((x) => !carved.used.includes(x)), ...pb.prep] as ShapedInput[]) {
       const input = guardKind(raw);
       if (checkPlanned(input, ALL_PLANNED_KINDS)) continue;
       const { item } = planToSave(input, items, trip.id, `start-preview-${items.length}`, now);
