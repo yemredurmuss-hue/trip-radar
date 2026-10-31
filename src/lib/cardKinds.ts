@@ -31,7 +31,7 @@ const BY_TEXT: [RegExp, TransportMode][] = [
   [/bisiklet|bicycle|\be-?bike\b|\bbike\b/i, "bike"],
   [/minibüs|dolmuş|minibus/i, "minibus"],
   [/vapur|feribot|ferry|ferri/i, "ferry"],
-  [/tren|train|comboio|\brail|renfe|trenitalia|sncf|alfa pendular|intercidades/i, "train"],
+  [/tren|train|comboio|\brail|renfe|trenitalia|sncf|alfa pendular|intercidades|shinkansen|tgv|eurostar|frecciarossa|thalys|\bktx\b/i, "train"],
   [/otobüs|\bbus\b|flixbus|coach|autocarro|rede expressos|\balsa\b/i, "bus"],
   [RENTAL, "car"],
   [LOCAL, "taxi"],

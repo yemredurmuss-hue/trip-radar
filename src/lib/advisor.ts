@@ -169,11 +169,15 @@ export function applyAdvice(s: StartState, a: Advice | null): StartState {
     return { ...x, city, after };
   });
   const specials: SpecialStay[] = [...(s.specialStays ?? [])].map((sp) => {
-    const at = placed.find((x) => x.kind === "special" && x.what && sameThing(x.what, sp.what) && cityKeyOf(x.city) === cityKeyOf(sp.city));
+    const at = placed.find((x) => x.what && sameThing(x.what, sp.what) && cityKeyOf(x.city) === cityKeyOf(sp.city));
     return at && sp.after == null ? { ...sp, after: at.after } : sp;
   });
+  // (a stay asked for in words for part of a stop's nights is a stay of its own, whatever kind it was written as: "bir gece
+  // ryokan" came as a hotel; one for all of a stop's nights is a wish for that stay, kept in the preferences instead)
+  const cityNights = (city: string) => placed.filter((y) => cityKeyOf(y.city) === cityKeyOf(city)).reduce((n, y) => n + y.nights, 0);
+  const own = (x: (typeof placed)[number]) => x.kind === "special" || (Boolean(x.what) && x.source === "user" && x.nights < cityNights(x.city));
   for (const x of placed) {
-    if (x.kind !== "special" || x.source !== "user" || !x.what || specials.some((sp) => sameThing(sp.what, x.what!))) continue;
+    if (!own(x) || x.source !== "user" || !x.what || specials.some((sp) => sameThing(sp.what, x.what!))) continue;
     specials.push({ city: x.city, nights: x.nights, what: x.what, after: x.after });
   }
   // The anchors: the traveller's always; the advisor's own while the budget lasts (a special stay is no anchor).

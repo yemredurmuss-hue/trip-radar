@@ -6,6 +6,7 @@
 // (trip.startGuide.placeholders). Every step can run again: the trip made in step 1 is reused (the state keeps
 // its id) and a plan said again updates the one before (planToSave), so "Tekrar dene" never makes anything twice.
 import { anchorBudget } from "./advisor";
+import { modeOfText } from "./cardKinds";
 import { mergeWants, wantsFromStart, type TripWants } from "./travelWants";
 import { db, getSettings, listItems, listMessages, listPreferences, newId, notifyChanged } from "./db";
 import { L, withLang } from "./i18n";
@@ -52,7 +53,7 @@ export function stepsFor(s: StartState, c: Creation): StepPlan[] {
     const people = [n ? L(`${n} kişi`, n === 1 ? "1 person" : `${n} people`) : "", wantText(s)].filter(Boolean).join(" · ");
     // In the map's order (v5): the trip, the way there (the plane flies), the stays (the stops drop), who goes.
     const steps: StepPlan[] = [
-      { id: "trip", running: L("Gezi kaydı açılıyor…", "Opening the trip…"), done: L(`Gezi açıldı: ${c.title}`, `Trip opened: ${c.title}`) },
+      { id: "trip", running: L("Planın omurgası kuruluyor…", "Drawing the trip's spine…"), done: L(`Gezi açıldı: ${c.title}`, `Trip opened: ${c.title}`) },
       c.road
         ? { id: "travel", running: L("Araç için yer açılıyor…", "Making room for the car…"), done: L(`Araç kiralama yeri açıldı: ${c.travel[0]?.city ?? ""}`, `Room made for a car rental: ${c.travel[0]?.city ?? ""}`) }
         : {
@@ -343,7 +344,7 @@ export function playbookCards(s: StartState, c: Creation): { travel: ShapedInput
     .map((x) => (privateRide && x.kind === "transfer" ? { ...x, title: x.title && !/özel|private/i.test(x.title) ? `${ride} · ${x.title}` : ride } : x));
   const moving = (x: PlannedInput) => x.kind === "transfer" || x.kind === "taxi" || x.kind.endsWith("_rental") || x.kind === "ferry";
   const prep = [...p.prep(), ...prepAdded(effects)].map((title): PlannedInput => ({ kind: "prep", date: null, end_date: null, time: null, from: null, to: null, city: null, title, booked: false, note: null }));
-  const ringed = oneWay(closeRing(fitStops(cards, c), c), c, s.advice);
+  const ringed = oneWay(closeRing(fitStops(typedWays(cards), c), c), c, s.advice);
   const plan = ringed.filter((x) => !moving(x));
   // The advisor's own picks only while the anchor budget has room after the kind's own things to do (Tur 18; the eval's
   // honeymoon: the playbook's spa and dinner and the advisor's three, five in all): what was asked for always goes.
@@ -381,8 +382,29 @@ export function fitStops(cards: ShapedInput[], c: Creation): ShapedInput[] {
     const oneDay = !x.end_date;
     if (oneDay && c.dates && x.date === c.dates.start && away(lands, first)) return [{ ...x, from: lands, to: first }];
     if (oneDay && c.dates && x.date === c.dates.end && away(leaves, last)) return [{ ...x, from: last, to: leaves }];
-    if (stops.length > 1 && named.length === 2) return [];
+    if (stops.length > 1 && named.length === 2) {
+      // A real trip between the stops (the Shinkansen, a ferry) goes on the day they change, from the one to the other:
+      // the change of city takes it as its own way (one card). A transfer or a taxi between them is that change itself.
+      const day = c.stays.find((y) => cityKeyOf(y.city) === cityKeyOf(named[1]))?.date ?? null;
+      return TRIPS.has(x.kind) && day ? [{ ...x, date: day, end_date: null, from: named[0], to: named[1] }] : [];
+    }
     return [x];
+  });
+}
+
+/** The ways that are trips of their own between places (a ticket to find), not a ride to the door. */
+const TRIPS = new Set(["train", "bus", "minibus", "ferry"]);
+
+/**
+ * A card the kind's model wrote as "other" or a transfer whose words say the way ("Tokyo-Kyoto Shinkansen bileti"): that way
+ * (Emre 2026-10-31: "Shinkansen bileti demesine rağmen ulaşım gibi seçmiş"), so it is drawn as a train and the change of city
+ * takes it.
+ */
+export function typedWays(cards: ShapedInput[]): ShapedInput[] {
+  return cards.map((x) => {
+    if (x.kind !== "other" && x.kind !== "transfer") return x;
+    const mode = modeOfText(`${x.title ?? ""} ${x.note ?? ""}`);
+    return mode && TRIPS.has(mode) ? { ...x, kind: mode as ShapedInput["kind"] } : x;
   });
 }
 

@@ -123,16 +123,20 @@ export function StartChat({ initial: given, firstText, firstLabel, firstNote, ct
   const [genLines, setGenLines] = useState<string[]>([]);
   // The generating screen's world map read now, while chatting: "Oluştur" starts the flight at once (2026-10-09).
   useEffect(() => void loadWorld().catch(() => null), []);
-  // The start's advisor thinks the spine through in the background (advisor.ts, omurga Tur 18), asked once: when the
-  // checklist is complete (Emre 2026-10-31: "her bilgi değişince sormak gereksiz çağrı, bir kere temiz"), so its answer is
-  // there by "Oluştur"; asked again only when something changed before "Oluştur", or at "Oluştur" when never asked.
+  // The start's advisor thinks the spine through in the background (advisor.ts, omurga Tur 18): asked once as soon as where
+  // and how long are known (Emre 2026-10-31: the wait sat on the generating screen's first step; asking only when the
+  // checklist was complete was too late), and once more at "Oluştur" only if what is known changed since. Two calls at most.
   const askAdvisor = (s: StartState) => {
     const said = s.messages.filter((m) => m.role === "user").map((m) => m.text).join("\n");
     if (s.where && said) adviseStart({ id: s.id, text: said, known: T(() => knownLines(s, ctx)), today: today(), lang: s.lang });
   };
+  const advised = useRef(false);
   useEffect(() => {
-    if (phase !== "chat" || !isComplete(state)) return;
-    const timer = setTimeout(() => askAdvisor(live.current), ADVICE_SETTLE_MS);
+    if (phase !== "chat" || advised.current || !state.where || !state.duration) return;
+    const timer = setTimeout(() => {
+      advised.current = true;
+      askAdvisor(live.current);
+    }, ADVICE_SETTLE_MS);
     return () => clearTimeout(timer);
   }, [state, phase]);
   // Read after every wait: an answer that comes back after "Gezimi oluştur", or after the screen was left, is dropped.

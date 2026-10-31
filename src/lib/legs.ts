@@ -211,7 +211,9 @@ const ownApart = (a: StayBlock, b: StayBlock): boolean => {
 
 function pointOf(b: StayBlock): LegPoint {
   const item = stayOf(b);
-  return { label: item?.name ?? (b.city ? L(`${b.city} konaklaması`, `${b.city} stay`) : L("Konaklama", "Stay")), city: b.city, item };
+  // (a stay of its own still to find, "Ryokan", by its own name: "Kyoto konaklaması → Ryokan", never the city's twice)
+  const own = slotOf(b)?.part?.ref === "own" ? slotOf(b)!.name : null;
+  return { label: item?.name ?? own ?? (b.city ? L(`${b.city} konaklaması`, `${b.city} stay`) : L("Konaklama", "Stay")), city: b.city, item };
 }
 
 interface Times {
