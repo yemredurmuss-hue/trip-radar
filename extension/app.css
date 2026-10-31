@@ -2929,18 +2929,47 @@ body.popup:has(.tb) { width: 380px; }
 .tk-ib { all: unset; box-sizing: border-box; cursor: pointer; flex: none; width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; color: var(--q-mut); }
 .tk-ib:hover { background: var(--q-soft); color: var(--q-ink); }
 .tk-ib:disabled { opacity: .5; cursor: default; }
-.tk-ib:focus-visible, .tk-pick:focus-visible, .tk-cnt:focus-visible, .tk-save:focus-visible, .tk-sw:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 2px; }
+.tk-ib:focus-visible, .tk-pick:focus-visible, .tk-n:focus-visible, .tk-save:focus-visible, .tk-sw:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 2px; }
 .tk-ico { width: 18px; height: 18px; flex: none; }
 .tk-pad { padding: 12px 14px 0; }
 .tk-pad .popup-desk { margin: 0; }
-.tk-page { position: relative; display: flex; align-items: center; gap: 11px; padding: 12px 16px; border-bottom: 1px solid #efedf5; }
-.tk-page b { min-width: 0; font-size: 14.5px; font-weight: 750; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tk-fav { position: relative; flex: none; width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; background: var(--q-soft); box-shadow: inset 0 0 0 1px var(--q-line); color: var(--q-mut); font-size: 13px; font-weight: 800; }
-.tk-fav i { font-style: normal; }
-.tk-fav em { position: absolute; right: -5px; bottom: -5px; width: 20px; height: 20px; border-radius: 7px; display: grid; place-items: center; color: #fff; box-shadow: 0 0 0 2px #fff; }
-.tk-fav em.ok { background: var(--q-ok); }
-.tk-fav em.acc { background: var(--q-acc); }
-.tk-fav em .tk-ico { width: 12px; height: 12px; }
+/* Kaydet penceresi v5 (docs/mockups/eklenti-tek-kaydet-v5): what is saved, a small card on top */
+.tk-it { position: relative; display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 12px; align-items: center; margin: 12px 12px 4px; padding: 8px; border-radius: 14px; background: var(--q-soft); transition: background-color .3s ease; }
+.tk-it.ok { background: var(--q-ok-s); }
+.tk-pic { position: relative; width: 88px; height: 58px; border-radius: 10px; overflow: hidden; display: grid; place-items: center; background: var(--q-st-wait-bg); box-shadow: inset 0 0 0 1px var(--q-line); color: var(--q-mut); font-size: 18px; font-weight: 800; }
+.tk-pic i { font-style: normal; }
+.tk-kind { color: var(--q-acc); }
+.tk-kind .tk-ico { width: 26px; height: 26px; }
+.tk-pic > img:not(.tk-fv) { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .25s ease; }
+.tk-pic > img.in { opacity: 1; }
+.tk-pic .tk-sketch { position: absolute; inset: 0; width: 100%; height: 100%; }
+.tk-pic.wait::after, .tk-skel .tk-pic::after, .tk-sk-th::after, .tk-bars i::after { content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, .6) 50%, transparent 70%); transform: translateX(-100%); animation: tk-shim 1.6s cubic-bezier(.4, 0, .2, 1) infinite; }
+@keyframes tk-shim { to { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) { .tk-pic.wait::after, .tk-skel .tk-pic::after, .tk-sk-th::after, .tk-bars i::after { animation: none; opacity: 0; } }
+.tk-pic em { position: absolute; right: 4px; bottom: 4px; width: 20px; height: 20px; border-radius: 7px; display: grid; place-items: center; color: #fff; box-shadow: 0 0 0 2px #fff; }
+.tk-pic em.ok { background: var(--q-ok); }
+.tk-pic em.acc { background: var(--q-acc); }
+.tk-pic em .tk-ico { width: 12px; height: 12px; }
+.tk-done { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(31, 122, 69, .55); color: #fff; }
+.tk-done .tk-ico { width: 26px; height: 26px; }
+@media (prefers-reduced-motion: no-preference) { .tk-done { animation: tk-done .35s var(--e-out) both; } }
+@keyframes tk-done { from { opacity: 0; transform: scale(1.15); } }
+.tk-ix { min-width: 0; display: grid; gap: 3px; }
+.tk-ix b { font-size: 14px; font-weight: 750; line-height: 1.28; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: anywhere; }
+.tk-ix small { min-width: 0; font-size: 12.5px; font-weight: 600; color: var(--q-mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tk-ix small em { font-style: normal; display: inline-flex; align-items: center; gap: 4px; color: var(--q-ok); font-weight: 800; }
+.tk-ix small em .tk-ico { width: 13px; height: 13px; }
+.tk-off { display: flex; align-items: center; gap: 8px; margin: 6px 12px 0; padding: 8px 12px; border-radius: 11px; background: var(--q-soft); font-size: 12.5px; font-weight: 650; color: var(--q-mut); }
+.tk-off .tk-ico { width: 16px; height: 16px; }
+.tk-skel { display: grid; }
+.tk-skel .tk-pic { background: var(--q-soft); box-shadow: none; }
+:root[data-theme="dark"] .tk-sketch { filter: invert(.86) hue-rotate(180deg); }
+.tk-bars { position: relative; flex: 1; min-width: 0; display: grid; gap: 7px; }
+.tk-bars i { position: relative; overflow: hidden; display: block; height: 10px; border-radius: 5px; background: var(--q-line); }
+.tk-bars i:nth-child(2) { width: 62%; }
+.tk-bars i:nth-child(3) { width: 40%; height: 8px; }
+.tk-skel .tk-row { gap: 12px; padding: 0 8px; }
+.tk-sk-th { position: relative; overflow: hidden; flex: none; width: 40px; height: 40px; border-radius: 11px; background: var(--q-line); }
 .tk-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .tk-warn { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 10px 12px 0; padding: 4px 4px 4px 12px; border-radius: 12px; background: #fff3df; color: var(--q-warn); font-size: 13.5px; font-weight: 750; }
 .tk-warn span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -2949,20 +2978,33 @@ body.popup:has(.tb) { width: 380px; }
 .tk-ask { padding: 4px 8px 2px; font-size: 12.5px; font-weight: 800; color: var(--q-mut); }
 .tk-q { box-sizing: border-box; width: 100%; height: 36px; margin: 0 0 4px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--q-line); background: var(--q-soft); font: inherit; font-size: 14px; color: var(--q-ink); }
 /* (v2: the count right after the name, the ring and the button at the end) */
-.tk-row { display: flex; align-items: center; gap: 6px; min-height: 56px; padding: 0 8px 0 0; border-radius: 12px; }
+.tk-row { position: relative; display: flex; align-items: center; gap: 6px; min-height: 56px; padding: 0 8px 0 0; border-radius: 12px; }
 .tk-row:hover, .tk-row:focus-within { background: var(--q-soft); }
 .tk-row.sel { box-shadow: inset 0 0 0 1.5px #d6cffd; }
 .tk-row.saved { background: var(--q-ok-s); box-shadow: inset 0 0 0 1.5px var(--q-ok-l); }
 .tk-pick { all: unset; box-sizing: border-box; cursor: pointer; flex: 0 1 auto; min-width: 0; display: flex; align-items: center; gap: 11px; padding: 8px 0 8px 8px; align-self: stretch; border-radius: 12px; }
-.tk-pick b { min-width: 0; font-size: 15px; font-weight: 750; line-height: 1.25; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: anywhere; }
+.tk-nm { min-width: 0; display: grid; gap: 1px; }
+.tk-nm b { min-width: 0; font-size: 15px; font-weight: 750; line-height: 1.25; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: anywhere; }
+/* (the date: small and quiet under the name, never louder than it) */
+.tk-nm small { font-size: 12px; font-weight: 500; color: var(--q-mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
 .tk-th { width: 40px; height: 40px; border-radius: 11px; }
 .tk-th .tk-art { width: 32px; height: 32px; object-fit: contain; mix-blend-mode: multiply; }
-.tk-cnt { all: unset; box-sizing: border-box; cursor: pointer; flex: none; height: 30px; padding: 0 7px; border-radius: 8px; display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; font-weight: 750; color: var(--q-mut); font-variant-numeric: tabular-nums; }
-.tk-cnt:hover { background: var(--q-acc-s); color: var(--q-acc-d); }
-.tk-cnt .tk-ico { width: 14px; height: 14px; }
+/* (Pano's count: a small number in the cover's corner) */
+.tk-n { all: unset; box-sizing: border-box; cursor: pointer; position: absolute; left: 35px; top: calc(50% + 7px); min-width: 19px; height: 18px; padding: 0 4px; border-radius: 9px; display: grid; place-items: center; background: var(--q-st-wait-bg); color: var(--q-ink); font-size: 11px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; box-shadow: 0 1px 3px rgba(28, 26, 51, .28); }
+.tk-n:hover { background: var(--q-acc); color: #fff; }
+.tk-n.up { background: var(--q-ok); color: #fff; }
+.tk-new .tk-plus { display: grid; place-items: center; background: var(--q-st-wait-bg); box-shadow: inset 0 0 0 1.5px #cfc7ff; color: var(--q-acc); }
+.tk-new .tk-plus .tk-ico { width: 18px; height: 18px; }
+.tk-new .tk-nm b { color: var(--q-acc-d); }
+.tk-new.open { align-items: flex-start; gap: 11px; padding: 8px; background: var(--q-acc-s); box-shadow: inset 0 0 0 1.5px #d6cffd; }
+.tk-new.open .tk-plus { flex: none; }
+.tk-nf { flex: 1; min-width: 0; display: grid; gap: 8px; }
+.tk-name { box-sizing: border-box; width: 100%; height: 38px; padding: 0 12px; border-radius: 10px; border: 0; background: var(--q-st-wait-bg); box-shadow: inset 0 0 0 1.5px var(--q-acc); font: inherit; font-size: 15px; font-weight: 750; color: var(--q-ink); outline: none; }
+.tk-nf-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.tk-nf-row .btn-link { padding: 0; font-size: 13px; font-weight: 750; color: var(--q-acc-d); }
 .tk-ring b { position: relative; font-size: 10.5px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--q-ink); }
 .tk-ring-gap { width: 32px; }
-.tk-row > .tk-ring, .tk-row > .tk-ring-gap, .tk-cnt + .tk-end { margin-left: auto; }
+.tk-row > .tk-ring, .tk-row > .tk-ring-gap, .tk-pick + .tk-end, .tk-n + .tk-end { margin-left: auto; }
 .tk-end { display: inline-flex; align-items: center; justify-content: flex-end; gap: 4px; min-width: 96px; }
 .tk-save { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 11px; background: var(--q-acc); color: #fff; font-size: 14px; font-weight: 800; white-space: nowrap; }
 .tk-save .tk-ico { width: 16px; height: 16px; }
@@ -2983,7 +3025,7 @@ body.popup:has(.tb) { width: 380px; }
 @media (hover: none) { .tk-more { display: inline-flex; } .tk-in { display: none; } }
 .tk-none { margin: 4px 8px 6px; font-size: 13.5px; font-weight: 650; color: var(--q-mut); }
 .tk-err { margin: 4px 8px 6px; font-size: 13px; font-weight: 650; color: var(--q-bad); }
-.tk-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 2px 16px 12px; }
+.tk-foot { display: flex; align-items: center; gap: 10px; padding: 0 16px 12px; }
 .tk-foot .btn-link { padding: 0; font-size: 13.5px; font-weight: 800; }
 .tk-alt { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px 10px 16px; border-top: 1px solid #efedf5; font-size: 13.5px; font-weight: 700; color: var(--q-ink); }
 .tk-alt .btn-link { padding: 0; font-size: 13.5px; font-weight: 800; }

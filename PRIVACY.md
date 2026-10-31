@@ -1,6 +1,6 @@
 # Trip Radar · Gizlilik politikası / Privacy policy
 
-Son güncelleme / Last updated: 2026-10-31 · Sürüm / Version: 0.47.34
+Son güncelleme / Last updated: 2026-10-31 · Sürüm / Version: 0.47.35
 
 ---
 
@@ -299,6 +299,12 @@ Pratikte:
 Eklenti kendini otomatik günceller. Bu politika değişirse üstteki tarih ve sürüm güncellenir.
 Önemli bir değişiklik (yeni bir veri türü ya da yeni bir alıcı gibi), değişikliği getiren sürümle birlikte bu
 sayfada açıkça yazılır.
+
+0.47.35'te değişenler: sağ tıkla bir bağlantıyı ya da sitedeki "+" ile bir sonucu kaydedince eklenti penceresi açılır
+ve hangi geziye diye sorar. Pencere cevaplanana kadar kaydedilecek şey (bağlantının adresi, kelimeleri ve resmi ya da
+sonucun kelimeleri) yalnız bu bilgisayarda, tarayıcı oturumunun belleğinde birkaç dakika bekler; kaydedilince ya da
+pencere kapanınca silinir, hiçbir yere gitmez. Pencere sayfanın kendi başlığını ve resmini (`og:image`, YouTube'da
+videonun kapak resmi) gösterir; bu resim pencerede sitenin kendi sunucusundan yüklenir.
 
 0.47.28–0.47.33'te değişenler: "+" ile kaydettiğin sonuçların izi (adres, saatler, kelimeler; fiyat değil) yalnız
 bu bilgisayarda tutulur, aynı sonuç iki kez kaydedilmez. Cebin yeri site başına bu bilgisayarda tutulur. Rezervasyon
@@ -654,6 +660,12 @@ In practice:
 The extension updates itself. When this policy changes, the date and version at the top are updated.
 A significant change (a new kind of data or a new recipient, say) is stated plainly on this page with the version
 that brings it.
+
+Changed in 0.47.35: saving a link with right-click, or a result with a site's "+", opens the extension's popup to
+ask which trip. Until it is answered, what is to be saved (the link's address, words and picture, or the result's
+words) waits on this computer only, in the browser session's memory, for a few minutes; it is deleted once saved or
+once the popup closes, and goes nowhere. The popup shows the page's own title and picture (`og:image`, a YouTube
+video's thumbnail); that picture is loaded in the popup from the site's own server.
 
 Changed in 0.47.28–0.47.33: a trace of the results you save with "+" (address, times, words; not the price) is kept
 only on this computer, and the same result is not saved twice. The pocket's place is kept per site on this computer. A
