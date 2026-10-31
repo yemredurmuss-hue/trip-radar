@@ -521,7 +521,11 @@ function joinStayNeeds(entries: CatEntry[]): CatEntry[] {
     .sort((a, b) => a.block.range.start.localeCompare(b.block.range.start));
   for (let n = 1; n < blocks.length; n++) {
     const [prev, cur] = [blocks[n - 1], blocks[n]];
-    if (prev.block.range.end === cur.block.range.start && sameCity(prev.block.city, cur.block.city)) cur.e.need = prev.e.need;
+    // Two stays said apart for back-to-back nights (the start's carved "1 gece cam tavanlı kulübe", the chat's "7 Ekim
+    // gecesi başka bir otel") are two needs, each its own card (omurga 2026-10-31).
+    const said = (b: typeof prev.block) => (b.kind === "booked" ? null : (b.slot?.id ?? null));
+    const apart = said(prev.block) && said(cur.block) && said(prev.block) !== said(cur.block);
+    if (!apart && prev.block.range.end === cur.block.range.start && sameCity(prev.block.city, cur.block.city)) cur.e.need = prev.e.need;
   }
   return entries;
 }

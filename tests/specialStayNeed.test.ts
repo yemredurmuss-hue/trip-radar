@@ -11,7 +11,12 @@ describe("a stay's search words", () => {
     const need = offerNeed({ kind: "stay", head: head({ name: "Cam tavanlı kulübe (1 gece)", word: "Kulübe" }) } as never, at as never);
     expect(need?.stay).toBe("Cam tavanlı kulübe");
   });
+  it("a stay said under its own name (the start's carved cabin night) searches that name", () => {
+    expect(offerNeed({ kind: "stay", head: head({ name: "Cam tavanlı kulübe" }) } as never, at as never)?.stay).toBe("Cam tavanlı kulübe");
+  });
   it("an ordinary stay keeps the trip's wish", () => {
     expect(offerNeed({ kind: "stay", head: head() } as never, at as never)?.stay).toBe("hotels");
+    expect(offerNeed({ kind: "stay", head: head({ name: "Konaklama · Tromsø" }) } as never, at as never)?.stay).toBe("hotels");
+    expect(offerNeed({ kind: "stay", head: head({ name: "Tromsø konaklaması" }) } as never, at as never)?.stay).toBe("hotels");
   });
 });

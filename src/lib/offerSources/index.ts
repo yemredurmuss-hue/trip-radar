@@ -242,15 +242,21 @@ export async function cityTours(source: Pick<SuggestionSource, "offers">, need: 
   const plain = town ? townName(town) : null;
   const asked = plain && plain !== town ? { ...need, key: `${need.key}:as:${fold(plain)}`, city: plain } : need;
   let list = await tours(asked, town);
+  // The question that found the town's tours, under the name the source knows ("Tromso"): the asked-for ones go there too.
+  let found: Need = asked;
   // (the server failing: no wider questions on top, they would only fail too; asked again on the next look)
   if (!list.length && (source as { down?: () => boolean }).down?.()) return [];
   const bare = plain ? unmarked(plain) : null;
-  if (!list.length && bare && bare !== plain) list = await tours({ ...asked, key: `${need.key}:as:${bare.toLowerCase()}`, city: bare }, town);
+  if (!list.length && bare && bare !== plain) {
+    found = { ...asked, key: `${need.key}:as:${bare.toLowerCase()}`, city: bare };
+    list = await tours(found, town);
+  }
   const wider = list.length ? null : countryNeed(asked, countryCode);
   if (wider) list = await tours(wider, town);
   if (need.kind !== "activity" || need.query?.trim()) return list;
-  // The trip's kind: asked where the town's own were found (the town, or its country by the town's name).
-  const base = wider ?? (list.length ? need : null);
+  // The trip's kind and what was asked for: searched where the town's own were found, under the name that found them
+  // (omurga 2026-10-31: asked under "Tromsø" the husky tours found nothing, only the town's general tours showed).
+  const base = wider ?? (list.length ? found : null);
   const tasted = base
     ? (await Promise.all(words.slice(0, TASTE_MAX).map((w) => tours({ ...base, key: `${base.key}:taste:${fold(w)}`, query: wider ? `${w} ${town}` : w }, town)))).flat()
     : [];
