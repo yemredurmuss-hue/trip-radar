@@ -519,6 +519,24 @@ export function buildPlan(trip: Trip, items: Item[]): Plan {
   const notices: PlanNotice[] = [];
   const range = tripRange(trip, items);
 
+  // The plan widens over a stay booked or chosen outside the dates said, so it never hides; but never quietly
+  // (omurga A3, 2026-10-31): one line says the trip now runs past its dates, and the chat can settle it.
+  const said = trip.confirmedDates;
+  if (range && said && isoDate(said.start) && isoDate(said.end) && said.start < said.end && (range.start < said.start || range.end > said.end)) {
+    for (const i of live) {
+      const r = i.category === "stay" && isSettled(i) ? stayRange(i) : null;
+      if (!r || (r.start >= said.start && r.end <= said.end) || r.start < range.start || r.end > range.end) continue;
+      notices.push({
+        kind: "conflict",
+        date: r.start,
+        text: L(
+          `${i.name} gezinin tarihlerinin (${formatDateRange(said.start, said.end)}) dışında; plan onu göstermek için ${formatDateRange(range.start, range.end)} oldu. Tarihleri uzatmak ya da bu yeri bırakmak için sohbete yaz.`,
+          `${i.name} is outside the trip's dates (${formatDateRange(said.start, said.end)}); the plan shows ${formatDateRange(range.start, range.end)} to keep it in view. Tell the chat to stretch the dates or drop it.`,
+        ),
+      });
+    }
+  }
+
   // Stays. A booking closes every other option that needs any of the same nights.
   const stays = live.filter((i) => i.category === "stay");
   // A stay said in the chat ("Madeira'da kalacağız") gives way to a saved page chosen or booked for those nights.
