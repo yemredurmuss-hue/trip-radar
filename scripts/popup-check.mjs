@@ -83,13 +83,14 @@ assert.deepEqual(await rows(p), ["Portekiz", "Yunanistan", "Kanada"]);
 assert.equal(await p.locator(".tk-row.sel .tk-pick b").innerText(), "Portekiz");
 assert.equal(await p.locator(".tk-foot").innerText(), "Tümü (4)");
 assert.equal(await p.locator(".tk-new").innerText(), "Yeni gezi");
-assert.deepEqual(await p.locator(".tk-row:not(.tk-new) .tk-n").allInnerTexts(), ["23", "9", "5"], "Pano's count in the cover's corner");
-assert.equal(await p.locator(".tk-nm small").count(), 0, "no dates, no line under the name");
+assert.deepEqual(await p.locator(".tk-row:not(.tk-new) .tk-nm small").allInnerTexts(), ["23 kayıt", "9 kayıt", "5 kayıt"], "Pano's count in words under the name");
+assert.equal(await p.locator(".tk-row.sel").count(), 1, "the selected trip in its own box");
+assert.deepEqual(await p.locator(".tk-ask").allInnerTexts(), ["Başka gezi"]);
 assert.equal(await p.getByText(/Biriktirdiklerim|Uygulamayı aç|düştü|kaldı/).count(), 0, "nothing but what works");
 await p.keyboard.press("Enter");
 await p.locator(".tk-row.saved").waitFor();
 assert.deepEqual((await asked(p, "popup:save"))[0].pick, { tripId: "pt", remember: true });
-assert.match(await row(p, "Portekiz").innerText(), /Portekiz\n24\nKaydedildi/);
+assert.match(await row(p, "Portekiz").innerText(), /Portekiz\n24 kayıt\nKaydedildi/);
 await p.screenshot({ path: `${out}/2-saved.png` });
 // 1b. Saved: another trip's "Kaydet" moves it there (the same record); ↶ takes it back.
 await row(p, "Yunanistan").hover();
@@ -116,10 +117,11 @@ assert.deepEqual((await asked(p, "popup:current"))[0], { type: "popup:current", 
 assert.equal((await asked(p, "popup:save")).length, 0);
 await p.getByRole("button", { name: "Tümü (4)" }).click();
 assert.equal((await rows(p)).length, 4);
-// 2b. The count opens the trip (and the popup goes).
-await row(p, "Kanada").locator(".tk-n").click();
+// 2b. The selected trip pressed again opens its Pano (and the popup goes).
+p = await open(view(known), "3b-open");
+await row(p, "Portekiz").locator(".tk-pick").click();
 await p.waitForTimeout(100);
-assert.equal(await p.evaluate(() => window.__closed === true), true, "the count opens the trip");
+assert.equal(await p.evaluate(() => window.__closed === true), true, "the selected trip opens its Pano");
 
 // 3. No trip known: "Hangi geziye?", nothing selected, Enter does nothing; the trip it looks like first.
 p = await open(view(unknown), "4-which");
@@ -224,10 +226,23 @@ assert.deepEqual(past, [], "nothing past the right edge");
 assert.equal(await p.locator(".tk-trips.ask .tk-save:visible").count(), 3);
 assert.equal(await p.getByRole("button", { name: "Yeni gezi" }).isVisible(), true);
 // 10b. The trip's name and its date: a date written into the name goes under it, small; the trip's own dates first.
-assert.equal(await row(p, "Patagonya Gezisi").locator(".tk-nm").innerText(), "Patagonya Gezisi\nŞubat 2027");
+assert.equal(await row(p, "Patagonya Gezisi").locator(".tk-nm").innerText(), "Patagonya Gezisi\nŞubat 2027 · 7 kayıt");
 const dated = { ...shelf, trips: [{ ...shelfTrip("gr", "Yunanistan", null, 1), when: "12–19 May" }, ...shelf.trips.slice(0, 1)] };
 p = await open(view(unknown, { shelf: dated }), "11b-dated");
-assert.equal(await row(p, "Yunanistan").locator(".tk-nm").innerText(), "Yunanistan\n12–19 May");
+assert.equal(await row(p, "Yunanistan").locator(".tk-nm").innerText(), "Yunanistan\n12–19 May · 1 kayıt");
+// 10c. "Tümü" with many trips: the list scrolls in place under a search box; the popup stays short, "Daha az" in view.
+const many = { ...shelf, total: 43, trips: [...shelf.trips, ...Array.from({ length: 39 }, (_, i) => shelfTrip(`t${i}`, `Gezi ${i + 1}`, null, i % 4))] };
+p = await open(view(known, { shelf: many }), "11c-all");
+await p.getByRole("button", { name: "Tümü (43)" }).click();
+await p.screenshot({ path: `${out}/11d-all-open.png` });
+assert.equal(await p.locator(".tk-q").count(), 1, "a search box from six trips on");
+const fit = await p.evaluate(() => ({ list: document.querySelector(".tk-scroll").scrollHeight > document.querySelector(".tk-scroll").clientHeight, page: document.documentElement.scrollHeight, foot: document.querySelector(".tk-foot").getBoundingClientRect().bottom }));
+assert.equal(fit.list, true, "the list scrolls in itself");
+assert.ok(fit.foot <= 600, `"Daha az" in view (${fit.foot})`);
+assert.equal(await p.locator(".tk-foot").innerText(), "Daha az\n43 gezi");
+await p.locator(".tk-q").fill("Gezi 3");
+assert.deepEqual((await rows(p)).slice(1), ["Gezi 3", "Gezi 30", "Gezi 31", "Gezi 32", "Gezi 33", "Gezi 34", "Gezi 35", "Gezi 36", "Gezi 37", "Gezi 38", "Gezi 39"]);
+assert.equal((await rows(p))[0], "Portekiz", "the selected trip stays on top while searching");
 
 // 11. "Yeni gezi" on a page: opened in place with the page's country offered; Enter makes it with the name typed and
 // saves there; Esc shuts it again (not the popup).

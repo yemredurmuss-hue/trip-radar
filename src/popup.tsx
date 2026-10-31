@@ -78,8 +78,11 @@ function Popup() {
   const like = page && !fixed ? (where?.picks.find((id) => id !== selectedId && where.trips.find((t) => t.id === id)?.match) ?? null) : null;
   const ordered = orderTrips(trips, selectedId, like, fixed ? view?.pocket?.trip ?? null : null);
   const fold = (x: string) => x.toLocaleLowerCase(lang() === "tr" ? "tr" : "en");
-  const list = fixed ? ordered.slice(0, 1) : all ? ordered.filter((t) => !q || fold(t.title).includes(fold(q))) : ordered.slice(0, FIRST);
-  if (saved?.tripId && !list.some((t) => t.id === saved.tripId)) {
+  // (v6: the selected trip in its own box on top, the others under "Başka gezi"; "Tümü" scrolls them in place)
+  const top = selectedId ? (ordered.find((t) => t.id === selectedId) ?? null) : null;
+  const others = ordered.filter((t) => t !== top);
+  const list = fixed ? [] : all ? others.filter((t) => !q || fold(t.title).includes(fold(q))) : others.slice(0, top ? FIRST - 1 : FIRST);
+  if (saved?.tripId && saved.tripId !== top?.id && !list.some((t) => t.id === saved.tripId)) {
     const t = ordered.find((x) => x.id === saved.tripId);
     if (t) list.push(t);
   }
@@ -114,7 +117,9 @@ function Popup() {
   }
   /** A row: that trip is the one this page and the next go to; nothing is saved. */
   async function select(tripId: string) {
-    if (tabId == null || fixed || busy || tripId === selectedId) return;
+    // (the selected trip pressed again: its Pano opens, as its count once did)
+    if (tripId === selectedId) return boardOf(tripId);
+    if (tabId == null || fixed || busy) return;
     const v = await ask<PopupView>({ type: "popup:current", tabId, tripId, remember: Boolean(page && where?.country) });
     if (v) setView(v);
   }
@@ -148,6 +153,25 @@ function Popup() {
 
   const mark = booking ? "ticket" : planned ? "plane" : null;
   const showPlus = Boolean(page && !asked && view?.site && !view.along && !plusDone && (view.what === "list" || (view.travelSite && !view.alongAsked)));
+
+  const row = (t: ShelfTrip) => (
+    <TripRow
+      key={t.id}
+      trip={t}
+      selected={t.id === selectedId}
+      page={page}
+      mark={mark}
+      busy={busy === t.id}
+      locked={busy != null}
+      savedHere={saved?.tripId === t.id}
+      afterSave={Boolean(saved)}
+      here={here?.tripId === t.id ? here : null}
+      onSelect={() => void select(t.id)}
+      onSave={() => void (saved ? move(t.id) : save(t.id))}
+      onUndo={() => void ask({ type: "popup:undo", captureId: saved!.captureId }).then(close)}
+      onRemove={() => void ask({ type: "popup:remove", id: `i:${here!.itemId}` }).then((ok) => ok && setTaken(true))}
+    />
+  );
 
   let body: ReactNode;
   if (!view) {
@@ -226,40 +250,26 @@ function Popup() {
         )}
         <div className={`tk-trips${page && !selectedId && !fixed ? " ask" : ""}`} onMouseEnter={() => (held.current = true)}>
           {page && !selectedId && !fixed && !saved && trips.length > 0 && <small className="tk-ask">{L("Hangi geziye?", "Which trip?")}</small>}
-          {all && ordered.length >= SEARCH_FROM && (
+          {top && row(top)}
+          {top && !fixed && (list.length > 0 || all) && <small className="tk-ask">{L("Başka gezi", "Another trip")}</small>}
+          {all && others.length >= SEARCH_FROM && (
             <input className="tk-q" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={L("Gezi ara", "Find a trip")} aria-label={L("Gezi ara", "Find a trip")} autoFocus />
           )}
-          {list.map((t) => (
-            <TripRow
-              key={t.id}
-              trip={t}
-              selected={t.id === selectedId}
-              page={page}
-              mark={mark}
-              busy={busy === t.id}
-              locked={busy != null}
-              savedHere={saved?.tripId === t.id}
-              afterSave={Boolean(saved)}
-              here={here?.tripId === t.id ? here : null}
-              onSelect={() => void select(t.id)}
-              onOpen={() => boardOf(t.id)}
-              onSave={() => void (saved ? move(t.id) : save(t.id))}
-              onUndo={() => void ask({ type: "popup:undo", captureId: saved!.captureId }).then(close)}
-              onRemove={() => void ask({ type: "popup:remove", id: `i:${here!.itemId}` }).then((ok) => ok && setTaken(true))}
-            />
-          ))}
-          {!fixed && !saved && (
-            <NewTrip
-              open={newName != null}
-              value={newName ?? ""}
-              busy={busy === "new"}
-              locked={busy != null}
-              onOpen={() => (page ? setNewName(where?.country ?? "") : void openBoard("#home").then(close))}
-              onChange={setNewName}
-              onCancel={() => setNewName(null)}
-              onCreate={() => void save("new", newName ?? "")}
-            />
-          )}
+          <div className={all ? "tk-scroll" : "tk-list"}>
+            {list.map(row)}
+            {!fixed && !saved && (
+              <NewTrip
+                open={newName != null}
+                value={newName ?? ""}
+                busy={busy === "new"}
+                locked={busy != null}
+                onOpen={() => (page ? setNewName(where?.country ?? "") : void openBoard("#home").then(close))}
+                onChange={setNewName}
+                onCancel={() => setNewName(null)}
+                onCreate={() => void save("new", newName ?? "")}
+              />
+            )}
+          </div>
           {page && !trips.length && <p className="tk-none">{L("Henüz gezin yok: bu sayfayla birini başlat.", "No trip yet: start one with this page.")}</p>}
           {failed && (
             <p className="tk-err" role="alert">
@@ -268,10 +278,11 @@ function Popup() {
           )}
         </div>
         {!fixed && ordered.length > FIRST && (
-          <div className="tk-foot">
+          <div className={`tk-foot${all ? " open" : ""}`}>
             <button type="button" className="btn-link" aria-expanded={all} onClick={() => (setAll(!all), setQ(""))}>
               {all ? L("Daha az", "Fewer") : L(`Tümü (${ordered.length})`, `All (${ordered.length})`)}
             </button>
+            {all && <small>{L(`${ordered.length} gezi`, `${ordered.length} trips`)}</small>}
           </div>
         )}
         {!view.key ? (
@@ -314,7 +325,7 @@ export function orderTrips(trips: readonly ShelfTrip[], selectedId: string | nul
   return out.map((t, n) => ({ t, n })).sort((a, b) => rank(a.t) - rank(b.t) || a.n - b.n).map((x) => x.t);
 }
 
-/** One trip: its cover and name (a press selects it), Pano's count (opens it), how ready, and the row's one button. */
+/** One trip: cover, name, its date and Pano's count (a press selects it; the selected one's opens its Pano), how ready, its one button. */
 function TripRow(p: {
   trip: ShelfTrip;
   selected: boolean;
@@ -326,7 +337,6 @@ function TripRow(p: {
   afterSave: boolean;
   here: { removable: boolean } | null;
   onSelect: () => void;
-  onOpen: () => void;
   onSave: () => void;
   onUndo: () => void;
   onRemove: () => void;
@@ -371,23 +381,19 @@ function TripRow(p: {
   // (a date written into the name goes under it, small: "Patagonya Gezisi · Şubat 2027"; the trip's own dates first)
   const label = splitTripName(t.title);
   const date = t.when ?? label.date;
+  // (Pano's count in words beside the date: "Şub 2027 · 7 kayıt"; never a badge, never beside the ring's number)
+  const sub = [date, count > 0 ? L(`${count} kayıt`, `${count} saved`) : null].filter(Boolean).join(" · ");
   return (
     <div className={`tk-row${p.selected ? " sel" : ""}${p.savedHere ? " saved" : ""}`}>
-      <button type="button" className="tk-pick" onClick={p.onSelect} aria-pressed={p.selected} aria-label={p.selected ? L(`${t.title}, seçili gezi`, `${t.title}, the selected trip`) : L(`${t.title} gezisini seç`, `Select ${t.title}`)}>
+      <button type="button" className="tk-pick" onClick={p.onSelect} aria-pressed={p.selected} aria-label={p.selected ? L(`${t.title}, seçili gezi: Pano'yu aç`, `${t.title}, the selected trip: open its board`) : L(`${t.title} gezisini seç`, `Select ${t.title}`)}>
         <span className="pk-th tk-th" aria-hidden>
           {t.photo ? <Photo src={t.photo} title={t.title} /> : <img className="tk-art" src={t.art} alt="" />}
         </span>
         <span className="tk-nm">
           <b>{label.name}</b>
-          {date && <small>{date}</small>}
+          {sub && <small>{sub}</small>}
         </span>
       </button>
-      {/* (Pano's count: a small number in the cover's corner; it opens the trip) */}
-      {count > 0 && (
-        <button type="button" className={`tk-n${p.savedHere ? " up" : ""}`} onClick={p.onOpen} aria-label={L(`Pano'yu aç: ${count} kayıt`, `Open the board: ${count} saved`)} title={L(`Pano'da ${count} kayıt`, `${count} on the board`)}>
-          {count}
-        </button>
-      )}
       {/* (saved: the row says so in words, the name keeps its room) */}
       {p.savedHere ? null : t.ready && !t.ready.fresh ? <Ring ready={t.ready} /> : <span className="tk-ring-gap" />}
       {end && <span className="tk-end">{end}</span>}

@@ -107,7 +107,24 @@ function probePage(): { ld: string[]; price: boolean; text: string; jsonLd: unkn
   }
   const text = (document.body?.textContent ?? "").replace(/\s+/g, " ").slice(0, 40_000);
   const meta = (k: string) => (document.querySelector(`meta[property="${k}"], meta[name="${k}"]`)?.getAttribute("content") ?? "").trim().slice(0, 2000);
-  const og = { title: meta("og:title"), image: meta("og:image") || meta("twitter:image"), site: meta("og:site_name") };
+  // (the page's own picture: its og:image, often written as a short path ("/img/kapak.jpg"), made whole against the page)
+  const whole = (u: string | null | undefined) => {
+    try {
+      return u ? new URL(u, location.href).href : "";
+    } catch {
+      return "";
+    }
+  };
+  let image = whole(meta("og:image") || meta("og:image:secure_url") || meta("og:image:url") || meta("twitter:image") || meta("twitter:image:src") || document.querySelector('link[rel="image_src"]')?.getAttribute("href"));
+  // (none said: the biggest picture in view, a real one, not an icon)
+  if (!image) {
+    const big = Array.from(document.images)
+      .map((i) => ({ i, r: i.getBoundingClientRect() }))
+      .filter(({ i, r }) => i.naturalWidth >= 200 && i.naturalHeight >= 120 && r.width >= 160 && r.height >= 90 && r.bottom > 0 && r.top < innerHeight)
+      .sort((x, y) => y.r.width * y.r.height - x.r.width * x.r.height)[0];
+    image = whole(big?.i.currentSrc || big?.i.src);
+  }
+  const og = { title: meta("og:title"), image: image.slice(0, 2000), site: meta("og:site_name") };
   return { ld, price: /(?:€|£|₺|\$|฿|\b(?:TL|EUR|USD|GBP|TRY|THB)\b)\s?\d|\d\s?(?:€|£|₺|\$|฿|\b(?:TL|EUR|USD|GBP|TRY|THB)\b)/.test(text), text: text.slice(0, 30_000), jsonLd: JSON.parse(JSON.stringify(blocks)).slice(0, 12), og };
 }
 
@@ -217,7 +234,7 @@ export async function popupView(tabId: number): Promise<PopupView> {
     // (the address alone: Chrome's own rule, the same as the icon's green ✓)
     confirmUrl: confirmAddress(url),
     access: opened && origin ? origin : null,
-    photo: videoThumb(url) ?? (/^https:\/\//.test(image) ? image : null),
+    photo: videoThumb(url) ?? (/^https?:\/\//.test(image) ? image : null),
     ask: asked ? askView(asked) : null,
   };
 }
