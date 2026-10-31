@@ -5,6 +5,7 @@
 // the interview as the trip's chat. What it makes for the flights and stays are places to fill, never choices
 // (trip.startGuide.placeholders). Every step can run again: the trip made in step 1 is reused (the state keeps
 // its id) and a plan said again updates the one before (planToSave), so "Tekrar dene" never makes anything twice.
+import { anchorBudget } from "./advisor";
 import { mergeWants, wantsFromStart, type TripWants } from "./travelWants";
 import { db, getSettings, listItems, listMessages, listPreferences, newId, notifyChanged } from "./db";
 import { L, withLang } from "./i18n";
@@ -344,7 +345,13 @@ export function playbookCards(s: StartState, c: Creation): { travel: ShapedInput
   const prep = [...p.prep(), ...prepAdded(effects)].map((title): PlannedInput => ({ kind: "prep", date: null, end_date: null, time: null, from: null, to: null, city: null, title, booked: false, note: null }));
   const ringed = oneWay(closeRing(fitStops(cards, c), c), c, s.advice);
   const plan = ringed.filter((x) => !moving(x));
-  return { travel: ringed.filter(moving), plan: [...plan, ...wantedCards(s, c, plan)], prep };
+  // The advisor's own picks only while the anchor budget has room after the kind's own things to do (Tur 18; the eval's
+  // honeymoon: the playbook's spa and dinner and the advisor's three, five in all): what was asked for always goes.
+  const kindOwn = plan.filter((x) => x.kind === "activity").length;
+  const nights = c.dates ? nightsBetween(c.dates.start, c.dates.end) : c.stays.reduce((n, x) => n + (x.date && x.end_date ? nightsBetween(x.date, x.end_date) : 0), 0);
+  const room = Math.max(0, anchorBudget(nights) - kindOwn - (s.wanted ?? []).filter((w) => !w.assumed).length);
+  const wanted = { ...s, wanted: (s.wanted ?? []).filter((w) => !w.assumed || (room > 0 && (s.wanted ?? []).filter((x) => x.assumed).indexOf(w) < room)) };
+  return { travel: ringed.filter(moving), plan: [...plan, ...wantedCards(wanted, c, plan)], prep };
 }
 
 /** The ways between an airport and the stay a card can be (a transfer, a taxi, a bus, a train, a ferry): one day each. */

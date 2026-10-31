@@ -150,6 +150,9 @@ function wishLine(w: Advice["wishes"][number]): string[] {
  * traveller's wishes missed by the reading are added, the anchors the advisor chose come within the budget, the question
  * when none was asked, and the ways by day for the judge. Never overrules what the traveller said.
  */
+/** The anchor budget for a trip of these nights (Tur 18): one per two nights, at least one, three at most. */
+export const anchorBudget = (nights: number): number => Math.min(3, Math.max(1, Math.floor(nights / 2)));
+
 export function applyAdvice(s: StartState, a: Advice | null): StartState {
   if (!a) return s;
   const stops = [...new Set([s.where?.place, ...(s.route?.stops ?? []).map((x) => x.city)].filter((x): x is string => Boolean(x)))];
@@ -175,12 +178,12 @@ export function applyAdvice(s: StartState, a: Advice | null): StartState {
   }
   // The anchors: the traveller's always; the advisor's own while the budget lasts (a special stay is no anchor).
   const nights = a.stays.reduce((n, x) => n + x.nights, 0);
-  const budget = Math.min(3, Math.max(1, Math.floor(nights / 2)));
+  const budget = anchorBudget(nights);
   const wanted: WantedActivity[] = [...(s.wanted ?? [])];
   const fresh = a.anchors.filter((x) => !wanted.some((w) => sameThing(w.what, x.what)) && !specials.some((sp) => sameThing(sp.what, x.what)));
   for (const x of [...fresh.filter((x) => x.source === "user"), ...fresh.filter((x) => x.source !== "user")]) {
     if (x.source !== "user" && wanted.length >= budget) continue;
-    wanted.push({ city: stops[0] ?? null, what: x.what, day: null });
+    wanted.push({ city: stops[0] ?? null, what: x.what, day: null, ...(x.source !== "user" ? { assumed: true } : {}) });
   }
   const q = a.question.text.trim();
   // The advisor's question over the reading's (it asked with everything the checklist knows, the route too: Emre's Bali

@@ -99,6 +99,7 @@ import { airportCode } from "./searchLinks";
 type SuggestOutcome = MergeOutcome | "already_added" | "covered_by_rule" | "already_on_plan";
 import { getProvider, type LlmProvider, type ProviderId } from "./llm";
 import { effectsOf, ideaCard, quiet, type IdeaCard, type TriedChange } from "./preview";
+import { beforeTurn, keepTurnUndo } from "./turnUndo";
 import type { ToolResult, ToolSpec } from "./llm/types";
 import {
   AMENITIES,
@@ -2889,8 +2890,11 @@ export async function sendMessage(tripId: string, userText: string, llm?: LlmPro
   // A safety net under the chat's busy state: two turns at once would interleave their history.
   if (answering.has(tripId)) throw new ChatBusyError();
   answering.add(tripId);
+  // A4: the turn can be taken back in one tap (turnUndo.ts): what is there now, read before it.
+  const before = await beforeTurn(tripId).catch(() => null);
   try {
     await sendMessageNow(tripId, userText, llm);
+    if (before) await keepTurnUndo(tripId, before).catch(() => undefined);
   } finally {
     answering.delete(tripId);
     stepsDone(tripId);

@@ -30,6 +30,7 @@ import { ChatOffers } from "./ChatOffers";
 import { ArrowUp, Back } from "./Icons";
 import { Mascot } from "./Mascot";
 import { show } from "./Progress";
+import { undoEvent } from "../lib/eventUndo";
 import { chatWork, sectionsOfWords } from "../lib/chatSections";
 import { sectionAdding, sectionEditing, sectionLooking } from "../lib/looking";
 import { DONE_FOR, LONG_WAIT, mascotFace, thinkingLine } from "./thinking";
@@ -346,6 +347,8 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
                 {m.role === "assistant" && m.offers && <ChatOffers m={m} />}
                 {/* C34: the record this turn put on the board or suggested. */}
                 {m.role === "assistant" && cardOf(m.id)}
+                {/* A4: what this turn changed, taken back in one tap (turnUndo.ts). */}
+                {m.role === "assistant" && m.undo && <TurnUndoLink m={m} />}
               </div>
             );
             return row.file ? (
@@ -634,6 +637,33 @@ const hostOf = (url: string) => {
     return url;
   }
 };
+
+/** A4 (omurga): "Bu değişiklikleri geri al" under a reply that changed the plan; "Geri alındı" once done. */
+function TurnUndoLink({ m }: { m: ChatMessage }) {
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  if (m.undoneAt) return <p className="msg-note">{L("Bu değişiklikler geri alındı.", "These changes were undone.")}</p>;
+  const n = m.undo?.kind === "fields" ? (m.undo.records?.length ?? 0) + (m.undo.made?.length ?? 0) + (m.undo.fields.length ? 1 : 0) : 0;
+  return (
+    <p className="msg-note">
+      <button
+        type="button"
+        className="btn-link"
+        disabled={busy}
+        onClick={() => {
+          setBusy(true);
+          setProblem(null);
+          void undoEvent(m.id)
+            .catch((e) => setProblem(describeError(e)))
+            .finally(() => setBusy(false));
+        }}
+      >
+        {n > 1 ? L(`Bu ${n} değişikliği geri al`, `Undo these ${n} changes`) : L("Bu değişikliği geri al", "Undo this change")}
+      </button>
+      {problem && <span className="muted"> · {problem}</span>}
+    </p>
+  );
+}
 
 type ArrivalRow = ReturnType<typeof useChatArrivals>["rows"][number];
 

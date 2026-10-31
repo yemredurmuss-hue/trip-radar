@@ -144,7 +144,13 @@ export interface AdviceNote {
   wishes?: string[];
 }
 /** An activity the traveller plainly asked for ("bir gün husky turu"): a card on the plan, as said. */
-export interface WantedActivity { city: string | null; what: string; day: string | null }
+export interface WantedActivity {
+  city: string | null;
+  what: string;
+  day: string | null;
+  /** The start's advisor's own pick, not asked for (advisor.ts): made only while the anchor budget has room after the trip kind's own. */
+  assumed?: boolean;
+}
 
 export interface StartState {
   id: string;
