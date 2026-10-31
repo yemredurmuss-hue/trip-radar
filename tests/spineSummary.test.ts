@@ -3,7 +3,7 @@
 // nights, at most two lines of what was assumed (only what the plan really did), and the question that shapes it most.
 import { describe, expect, it } from "vitest";
 import { withLang } from "../src/lib/i18n";
-import { applyAnswer, creationOf, newStart, spineSummary, type StartState } from "../src/lib/startTrip";
+import { applyAnswer, creationOf, newStart, spineChoices, spineSummary, type StartState } from "../src/lib/startTrip";
 
 const japan = (over: Partial<StartState> = {}): StartState => {
   let s = applyAnswer(newStart("jp", "plan", 1, "tr"), { q: "where", place: "Japonya", country: "Japonya", code: "JP" }, 2);
@@ -56,6 +56,14 @@ describe("the spine said back", () => {
     const text = say(japan({ from: "İstanbul", specialStays: [{ city: "Kyoto", nights: 1, what: "ryokan" }], wanted: [{ city: "Kyoto", what: "çay seremonisi", day: null }] }));
     expect(text).toContain("1 geceyi **ryokan** olarak ayırdım (Kyoto).");
     expect(text).toContain("**Çay seremonisi** için Etkinlik'e kart açtım.");
+  });
+
+  it("the question's taps: the model's with its question, the fallback's own otherwise", () => {
+    const s = japan({ from: "İstanbul", who: { kind: "partner", names: [] }, spineQuestion: "Kyoto'da bir gece ryokanda kalmak ister misin?", spineChoices: ["Evet", "Hayır"] });
+    expect(withLang("tr", () => spineChoices(creationOf(s)!, s))).toEqual(["Evet", "Hayır"]);
+    const plain = japan({ from: "İstanbul", who: { kind: "partner", names: [] } });
+    expect(withLang("tr", () => spineChoices(creationOf(plain)!, plain))).toEqual(["Rahat", "Macera dolu", "Bütçe dostu"]);
+    expect(withLang("tr", () => spineChoices(creationOf(japan())!, japan()))).toEqual([]);
   });
 
   it("in English too", () => {

@@ -160,6 +160,8 @@ export interface StartState {
   /** What the traveller plainly asked for (omurga 2026-10-31): the plan holds these as said, never the model's own guess. */
   specialStays?: SpecialStay[];
   wanted?: WantedActivity[];
+  /** The taps that answer it ("İlk gece", "Son gece"), shown under the summary's question. */
+  spineChoices?: string[];
   /** The one question that would shape the spine most now, as the start's model put it (omurga 2026-10-31): the summary's last line. */
   spineQuestion?: string | null;
   /** Gezi biçimi: a day out, back the same day ("günübirlik"). */
@@ -826,6 +828,7 @@ export interface Extracted {
   /** How the trip is reached when it isn't by plane ("otobüsle"): no flight is made for it. */
   way?: GroundWay | null;
   spineQuestion?: string | null;
+  spineChoices?: string[];
   specialStays?: SpecialStay[];
   wanted?: WantedActivity[];
   /** A day out ("günübirlik"): one day, no night. */
@@ -1426,6 +1429,7 @@ export const extractionSchema = z.object({
   arrive_by: z.string().optional(),
   // The one question that would shape the spine most now (omurga 2026-10-31): answerable now, said as an invitation.
   spine_question: z.string().optional(),
+  spine_choices: z.array(z.string()).optional(),
   // What the user plainly asked for (omurga 2026-10-31): stays of their own at a stop, activities wanted.
   special_stays: z.array(z.object({ place: z.string(), nights: z.number(), what: z.string() })).optional(),
   wanted: z.array(z.object({ place: z.string(), what: z.string(), day: z.string() })).optional(),
@@ -1450,7 +1454,8 @@ stops: kullanıcı birden çok durak söylediyse ("önce Tokyo'da 3 gece, sonra 
 Günübirlik gidilen yer ("Capri'ye tekneyle günübirlik") durak değildir: stops'a girmez, bir önceki durağın notuna yazılır ("Capri'ye günübirlik tekne").
 start_part: ayın hangi kısmı söylendiyse ("Kasım sonunda" → end, "ortasında" → mid, "başında" → begin); yoksa "".
 arrive_by: yola çıkılan yerden gidilecek yere NASIL gidildiği; bu alanda söylenenle birlikte sağduyu da kullanılır: plane | car (kendi aracıyla evden) | bus | train | ferry ya da "" (emin değilsen). Yol gezisi (orada araçla dolaşmak) oraya araçla gidildiği anlamına gelmez: İstanbul'dan Amalfi kıyısında yol gezisi → plane (Napoli'ye uçup araç kiralanır); İstanbul'dan Ege'de arabayla road trip ya da aynı ülkede uçuştan söz edilmeyen bir yol gezisi → car; "Napoli'ye trenle" → train; okyanus ötesi → plane.
-spine_question: gezi şimdi oluşturulsa, planın omurgasını (tarih, geceler, rota, konaklama biçimi, gezinin sebebi) EN ÇOK şekillendirecek, kullanıcının ŞU AN cevaplayabileceği tek soru; davet eden, net bir dille ("Kulübede hangi gece kalmak istersin?", "Husky turunu hangi güne koyalım?"). Henüz seçilmemiş bir şeyin ayrıntısını (seçilmemiş resortun transferi) sorma; seçenek listesi verme ("ulaşım mı konaklama mı" gibi); sorulacak önemli bir şey yoksa "".
+spine_question: gezi şimdi oluşturulsa, planın omurgasını (tarih, geceler, rota, konaklama biçimi, gezinin sebebi) EN ÇOK şekillendirecek, kullanıcının ŞU AN cevaplayabileceği tek soru; davet eden, net bir dille ("Kulübede hangi gece kalmak istersin?", "Husky turunu hangi güne koyalım?"). Henüz seçilmemiş bir şeyin ayrıntısını (seçilmemiş resortun transferi) sorma; seçenek listesi verme ("ulaşım mı konaklama mı" gibi); sorulacak önemli bir şey yoksa "". TEK soru: iki soruyu birleştirme ("…hangi gece, husky turunu da hangi güne?" olmaz; önce en önemlisi).
+spine_choices: spine_question'ın 2-4 kısa, tıklanacak cevabı ("İlk gece", "Son gece", "Fark etmez"); soru yoksa [].
 special_stays: kullanıcı bir yerde belirli gece için ayrı bir konaklama AÇIKÇA istediyse ("bir gece cam tavanlı kulübede kalalım", "Kyoto'da 2 gece ryokan"), bu sohbette şimdiye kadar söylenenlerin GÜNCEL listesi: place (şehir), nights (söylenen gece; "bir gece" → 1), what (kullanıcının sözüyle kısa: "cam tavanlı kulübe"). Senin önerin ya da tahminin buraya girmez; yoksa [].
 wanted: kullanıcının AÇIKÇA istediği etkinlikler ("bir gün husky turu olsun", "balon turuna bineceğiz"), GÜNCEL liste: place (şehir ya da ""), what (kullanıcının sözüyle kısa: "husky turu"), day (söylendiyse YYYY-MM-DD, yoksa ""). Gezinin kendisi (kuzey ışıkları, festival) ya da senin önerin buraya girmez; yoksa [].`,
     `From the user's message in a trip-planning chat, take only what is clearly said. Never invent; what isn't said stays empty ("" or 0 or []).
@@ -1466,7 +1471,8 @@ stops: when the user says several stops ("first 3 nights in Tokyo, then Kyoto"),
 A place said as a day trip ("a day trip to Capri by boat") is no stop: not in stops, written in the note of the stop before ("day trip to Capri by boat").
 start_part: the part of the month said ("late November" → end, "mid" → mid, "early" → begin); else "".
 arrive_by: HOW they get from where they leave to where they go; for this field common sense counts along with what is said: plane | car (their own car, from home) | bus | train | ferry or "" (when unsure). A road trip (getting around there by car) doesn't mean driving there: a road trip on the Amalfi Coast from Istanbul → plane (fly to Naples, rent a car); a road trip by car in the Aegean from Istanbul, or a road trip in the same country with no flight mentioned → car; "to Naples by train" → train; across an ocean → plane.
-spine_question: if the trip were made now, the ONE question that would shape its spine most (dates, nights, route, how they stay, what the trip is for) and that the user can answer NOW, said as a clear invitation ("Which night would you like in the cabin?", "Which day shall we put the husky tour on?"). Never the detail of something not chosen yet (the transfer of a resort not picked); never a list of options ("travel or stays?"); "" when nothing important is left to ask.
+spine_question: if the trip were made now, the ONE question that would shape its spine most (dates, nights, route, how they stay, what the trip is for) and that the user can answer NOW, said as a clear invitation ("Which night would you like in the cabin?", "Which day shall we put the husky tour on?"). Never the detail of something not chosen yet (the transfer of a resort not picked); never a list of options ("travel or stays?"); "" when nothing important is left to ask. ONE question: never two joined ("…which night, and which day for the husky tour?" is not one; the most important first).
+spine_choices: 2-4 short answers to tap for spine_question ("First night", "Last night", "Doesn't matter"); [] when no question.
 special_stays: when the user PLAINLY asks for a separate stay for some nights at a place ("let's spend one night in a glass-roof cabin", "2 nights in a ryokan in Kyoto"), the CURRENT list of what was said so far: place (the city), nights (as said; "one night" → 1), what (short, in their words: "glass-roof cabin"). Never your own suggestion or guess; else [].
 wanted: the activities the user PLAINLY asks for ("a husky tour one day", "we'll take a balloon ride"), the CURRENT list: place (the city or ""), what (short, in their words: "husky tour"), day (YYYY-MM-DD when said, else ""). Not the trip's own reason (the northern lights, the festival), never your suggestion; else [].`,
   );
@@ -1745,7 +1751,14 @@ export function acceptExtraction(raw: RawExtraction & { plan?: RawPlan | null },
   const by = (raw.arrive_by ?? "").trim().toLowerCase();
   if (by === "car" || by === "bus" || by === "train" || by === "ferry") out.way = by;
   const sq = (raw.spine_question ?? "").replace(/\s+/g, " ").trim();
-  if (sq.length >= 8 && sq.length <= 140 && sq.endsWith("?")) out.spineQuestion = sq;
+  // One question only: one "?", and no second question joined to it ("…hangi gece, … hangi güne koyalım?").
+  const asks = sq.toLocaleLowerCase("tr").match(/(?<!\p{L})(hangi|ne zaman|nerede|nereye|kaç|nasıl|which|when|where|how many|how)(?!\p{L})/gu) ?? [];
+  const single = (sq.match(/\?/g) ?? []).length === 1 && asks.length <= 1;
+  if (sq.length >= 8 && sq.length <= 140 && sq.endsWith("?") && single) {
+    out.spineQuestion = sq;
+    const taps = (raw.spine_choices ?? []).map((x) => (typeof x === "string" ? x.replace(/\s+/g, " ").trim() : "")).filter((x) => x && x.length <= 30);
+    if (taps.length >= 2) out.spineChoices = [...new Set(taps)].slice(0, 4);
+  }
   const clean = (v: unknown, n = 60) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, n) : "");
   const specials = (raw.special_stays ?? [])
     .map((x) => ({ city: clean(x.place), nights: Number.isInteger(x.nights) ? x.nights : 0, what: clean(x.what) }))
@@ -1837,7 +1850,7 @@ export function mergeExtracted(code: Extracted, model: Extracted | null): Extrac
     ...(model.playbook ? { playbook: model.playbook } : {}),
     // The way there: the words said, else the model's reading of the trip (omurga Tur 11b).
     ...(code.way || model?.way ? { way: code.way ?? model!.way } : {}),
-    ...(model?.spineQuestion ? { spineQuestion: model.spineQuestion } : {}),
+    ...(model?.spineQuestion ? { spineQuestion: model.spineQuestion, spineChoices: model.spineChoices ?? [] } : {}),
     ...(model?.specialStays?.length ? { specialStays: model.specialStays } : {}),
     ...(model?.wanted?.length ? { wanted: model.wanted } : {}),
     ...(code.dayTrip ? { dayTrip: true } : {}),
@@ -2375,7 +2388,10 @@ export function applyExtracted(s: StartState, e: Extracted, now: number): StartS
   if (e.start) next.start = e.start;
   if (e.duration) next.duration = e.duration;
   if (e.way) next.way = e.way;
-  if (e.spineQuestion) next.spineQuestion = e.spineQuestion;
+  if (e.spineQuestion) {
+    next.spineQuestion = e.spineQuestion;
+    next.spineChoices = e.spineChoices ?? [];
+  }
   // The model gives the current lists; what it said before stays unless said again differently (same place and thing).
   const key = (x: { city: string | null; what: string }) => `${x.city ?? ""} ${x.what}`.toLocaleLowerCase("tr").normalize("NFD").replace(/\p{M}/gu, "").replace(/\s+/g, " ").trim();
   const same = (a: { city: string | null; what: string }, b: { city: string | null; what: string }) => key(a) === key(b);
@@ -4321,6 +4337,17 @@ function spineQuestion(c: Creation, s: StartState): string {
   return L("Hadi ilk adımı atalım: uçuşları bulayım mı?", "Let's take the first step: shall I find the flights?");
 }
 
+/** The taps under the summary's question: the model's, only when its question is the one asked. */
+export function spineChoices(c: Creation, s: StartState): string[] {
+  const q = spineQuestion(c, s);
+  if (s.spineQuestion && q === s.spineQuestion) return s.spineChoices ?? [];
+  // The fallbacks' own taps (a question of the code's, when the model gave none or two in one).
+  if (q === L("Nasıl bir gezi istiyorsun: rahat mı, macera dolu mu, bütçe dostu mu?", "What kind of trip do you want: easy, adventurous, or on a budget?"))
+    return [L("Rahat", "Easy"), L("Macera dolu", "Adventurous"), L("Bütçe dostu", "On a budget")];
+  if (q === L("Hadi ilk adımı atalım: uçuşları bulayım mı?", "Let's take the first step: shall I find the flights?")) return [L("Evet, bul", "Yes, find them"), L("Sonra", "Later")];
+  return [];
+}
+
 /**
  * The spine said back once it is drawn (omurga 2026-10-31, Emre's three examples): a headline, the route with its nights,
  * at most two lines of what was assumed (only what the made plan really holds: the flights, the car, the way there, the
@@ -4411,7 +4438,7 @@ export function withNextStep(text: string, next: string | null | undefined): str
  * format (Claude text blocks, Gemini parts), the same role twice in a row joined, always starting with the
  * traveller and ending with the assistant's "ready" line, so the next message on the board continues it.
  */
-export function historyRows(messages: StartMsg[], closing: string, provider: "gemini" | "anthropic", tripId: string): Omit<ChatMessage, "id">[] {
+export function historyRows(messages: StartMsg[], closing: string, provider: "gemini" | "anthropic", tripId: string, closingChoices: string[] = []): Omit<ChatMessage, "id">[] {
   const turns: { role: "user" | "assistant"; text: string; at: number }[] = [];
   // P8 (F43): "Hazırım, birkaç saniye içinde oluşturuyorum" said while counting is done by now: not carried over.
   const ready = readyLine();
@@ -4434,7 +4461,7 @@ export function historyRows(messages: StartMsg[], closing: string, provider: "ge
     choices: [],
     provider,
     createdAt: (at = Math.max(at + 1, t.at)),
-    ...(i < turns.length - 1 ? { start: true as const } : {}),
+    ...(i < turns.length - 1 ? { start: true as const } : { choices: closingChoices }),
   }));
 }
 

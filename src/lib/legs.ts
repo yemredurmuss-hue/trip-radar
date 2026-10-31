@@ -201,6 +201,13 @@ function hubLabel(t: Travel | null, end: "from" | "to", city: string | null, mod
 // --- stays and their house rules -------------------------------------------------------------------------
 
 const stayOf = (b: StayBlock): Item | null => (b.kind === "open" ? null : b.item);
+/** The slot a block's nights were said for (a stay of its own, the chat's), none when booked. */
+const slotOf = (b: StayBlock): Item | null => (b.kind === "booked" ? null : (b.slot ?? null));
+/** Two back-to-back blocks said apart, one of them a stay asked for in words ("own"): two places, a change between. */
+const ownApart = (a: StayBlock, b: StayBlock): boolean => {
+  const [x, y] = [slotOf(a), slotOf(b)];
+  return Boolean(x && y && x.id !== y.id && (x.part?.ref === "own" || y.part?.ref === "own"));
+};
 
 function pointOf(b: StayBlock): LegPoint {
   const item = stayOf(b);
@@ -438,6 +445,10 @@ export function buildLegs(plan: Plan, trip: Pick<Trip, "legs">, listings: Map<st
         ),
       ];
       here.push(local("change", date, i + 1, from, to, {}, notes));
+    } else if (ownApart(a, b)) {
+      // A stay asked for in words (the glass cabin's night) and the city's other nights: a change of place, though neither
+      // place is picked yet (omurga 2026-10-31: a ring of the trip's spine).
+      here.push(local("change", date, i + 1, from, to, {}, [L("Yeni yere geçiş: çıkış ve giriş saatlerini sonra netleştirelim.", "Moving to the new place: we'll set the check-out and check-in times later.")]));
     }
     middle.set(i + 1, here);
   }

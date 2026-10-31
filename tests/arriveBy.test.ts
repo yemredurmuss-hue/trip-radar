@@ -20,6 +20,15 @@ describe("the model reads the way there", () => {
     expect(acceptExtraction(raw({ spine_question: "ok" } as Partial<RawExtraction>), "2026-10-31").spineQuestion).toBeUndefined();
   });
 
+  it("the spine question is one question, its answers as taps", () => {
+    const e = acceptExtraction(raw({ spine_question: "Cam tavanlı kulübede hangi gece kalmak istersin?", spine_choices: ["İlk gece", "Ortadaki bir gece", "Son gece", ""] } as Partial<RawExtraction>), "2026-10-31");
+    expect(e.spineQuestion).toBe("Cam tavanlı kulübede hangi gece kalmak istersin?");
+    expect(e.spineChoices).toEqual(["İlk gece", "Ortadaki bir gece", "Son gece"]);
+    // two questions in one are no question to tap on
+    expect(acceptExtraction(raw({ spine_question: "Kulübede hangi gece kalmak istersin, husky turunu hangi güne koyalım?" } as Partial<RawExtraction>), "2026-10-31").spineQuestion).toBeUndefined();
+    expect(acceptExtraction(raw({ spine_question: "Hangi gece? Hangi gün?" } as Partial<RawExtraction>), "2026-10-31").spineQuestion).toBeUndefined();
+  });
+
   it("a plane, or unsure: no ground way", () => {
     expect(acceptExtraction(raw({ arrive_by: "plane" } as Partial<RawExtraction>), "2026-10-31").way).toBeUndefined();
     expect(acceptExtraction(raw({ arrive_by: "" } as Partial<RawExtraction>), "2026-10-31").way).toBeUndefined();

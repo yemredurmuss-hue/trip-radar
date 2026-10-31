@@ -15,7 +15,7 @@ import type { PlannedInput } from "./planned";
 import { cardsAfter, hasMust, prepAdded, startPlaybook, startPlaybookObj, tripIntentOf, withMusts } from "./playbooks";
 import { styleKeyFor } from "./startBoard";
 import { suggestionsReview } from "./startHooks";
-import { creationOf, dative, historyRows, isPlaceholder, missingInfo, namesToAsk, narrowPlaceholders, pbEffects, pbWants, placeholderPrint, readyText, spineSummary, wantText, whoText, type Creation, type StartCtx, type StartState } from "./startTrip";
+import { creationOf, dative, historyRows, isPlaceholder, missingInfo, namesToAsk, narrowPlaceholders, pbEffects, pbWants, placeholderPrint, readyText, spineChoices, spineSummary, wantText, whoText, type Creation, type StartCtx, type StartState } from "./startTrip";
 import { withTravellers } from "./tripSettings";
 import { uniqueTitle } from "./trips";
 import type { Item, ItemPart, Trip } from "./types";
@@ -221,7 +221,7 @@ export async function runStep(id: StepId, s: StartState, env: StepEnv = {}): Pro
       const provider = env.provider ?? (await getSettings()).provider;
       // What wasn't said is asked there, in the same conversation (item 4).
       // The spine said back, ending on the one question that shapes it most (omurga 2026-10-31).
-      for (const row of T(() => historyRows(s.messages, spineSummary(c, s), provider, tripId))) await d.put("messages", { ...row, id: newId() });
+      for (const row of T(() => historyRows(s.messages, spineSummary(c, s), provider, tripId, spineChoices(c, s)))) await d.put("messages", { ...row, id: newId() });
     }
   } else if (id === "suggestions") {
     const review = suggestionsReview();

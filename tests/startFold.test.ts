@@ -18,5 +18,11 @@ describe("the interview in the trip's chat", () => {
     expect(rows.slice(0, -1).every((r) => r.start === true)).toBe(true);
     expect(rows.at(-1)!.start).toBeUndefined();
     expect(rows.at(-1)!.text).toContain("İlk planın hazır");
+    expect(rows.at(-1)!.choices).toEqual([]);
+  });
+
+  it("the summary's question comes with its answers to tap", () => {
+    const rows = historyRows([{ role: "user", text: "Tromsø", at: 1 }] as never, "Soru?", "gemini", "t1", ["İlk gece", "Son gece"]);
+    expect(rows.at(-1)!.choices).toEqual(["İlk gece", "Son gece"]);
   });
 });
