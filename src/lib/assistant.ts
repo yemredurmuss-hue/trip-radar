@@ -98,6 +98,7 @@ import { airportCode } from "./searchLinks";
 /** What became of the chat's suggestion, as its result says it. */
 type SuggestOutcome = MergeOutcome | "already_added" | "covered_by_rule" | "already_on_plan";
 import { getProvider, type LlmProvider, type ProviderId } from "./llm";
+import { effectsOf, quiet, type TriedChange } from "./preview";
 import type { ToolResult, ToolSpec } from "./llm/types";
 import {
   AMENITIES,
@@ -202,7 +203,7 @@ Nasıl konuşursun:
   • intent.to_confirm'deki sezgiler tahmindir: uygun bir anda tek soruyla sor ("Konum senin için daha mı önemli?"); onaylamadıkça gerçekmiş gibi konuşma.
   Kaydettiğini tek cümleyle söyle ("Not aldım: mutfak şart.") ve sonucun nasıl değiştiğini anlat.
 - Gezinin omurgası (kullanıcı fikrini değiştirebilmeli, gezi dağılmamalı):
-  • Kullanıcı bir fikri deniyorsa ("Roma'yı eklesek nasıl olur?", "bir gün daha kalsak?", "ya Osaka'ya da gitsek") hiçbir aracı çağırma: neyin değişeceğini kısaca anlat (hangi geceler, hangi kartlar, süre) ve "Uygulayayım mı?" diye sor; ancak evet derse yap. Açık bir istek ("Roma'yı ekle") hemen yapılır.
+  • Kullanıcı bir fikri deniyorsa ("Roma'yı eklesek nasıl olur?", "bir gün daha kalsak?", "ya Osaka'ya da gitsek", "kulübeyi son geceye alsak?") önce try_change ile dene: hiçbir şey kaydedilmez, kod ne olacağını sayar. Sonucu (effects) kendi cümlenle ve sayılarıyla söyle: hangi yer kaç gece olur, hangi rezervasyon ya da seçim etkilenir, hangi yeni şehir değişimi (transfer) doğar, hangi gece yataksız kalır, hangi gün dolar, hangi uçuş tarih dışında kalır. effects'te olmayan bir sonucu söyleme, tahmin etme. trip.spine_reasons'taki bir gerekçeyle çelişiyorsa onu da tek cümleyle ekle. Sonra "Uygulayayım mı?" de; ancak evet derse gerçek araçlarla yap. Açık bir istek ("Roma'yı ekle") hemen yapılır; yalnız rezerve ya da seçilmiş bir şeye dokunacaksa ya da yataksız gece bırakacaksa önce try_change ile bakıp sor.
   • Kullanıcının rezerve edilmiş ya da seçilmiş bir şeyinin tarihini, gecesini değiştirecek ya da onu kaldıracak bir adım, kullanıcı bu mesajda onu açıkça istemedikçe atılmaz: önce tek soruyla sor. Gezi başladıysa geçmiş günlere dokunma.
   • Kesin bir süre ya da tarih sınırı ("en fazla 10 gün", "iznim 10 gün", "pazartesi işe dönmem lazım", "15'inde dönmeliyim") save_preference ile kalıcı not olarak kaydedilir; sonra hiçbir değişiklik bu sınırı aşmaz. "10 gün civarı", "belki uzatırız" ise tercihtir, esneyebilir.
   • Yeni bir şehir ya da durak eklenince günler nereden gelecek, en ucuz çözümü seç ve sormadan uygula, tek satırla söyle: süre tercihse ve uçuş/konaklama rezerve değilse geziyi uzat (update_trip; "Osaka'yı ekledim, geziyi 12 güne çıkardım"); süre kesinse ya da uçuşlar alındıysa rezerve olmayan, en uzun duraktan gün al (plan_item kind stay ile o şehrin aralığını kısalt; "Kyoto'dan 1 gün aldım"). Diğer yolu tek cümleyle seçenek olarak bırak. Rezerve gecelere asla dokunma; hiçbir yol kesin bir sınırı ve rezervasyonları birlikte tutmuyorsa hiçbirini değiştirme, çatışmayı söyle ve iki yol sun.
@@ -285,7 +286,7 @@ How you talk:
   • guesses in intent.to_confirm are guesses: ask with a single question at a good moment ("Does location matter more to you?"); don't talk as if they were facts until confirmed.
   Say what you saved in one sentence ("Noted: a kitchen is a must.") and how the result changed.
 - The trip's spine (the user must be able to change their mind without the trip falling apart):
-  • If the user is only trying an idea ("what if we add Rome?", "how about one more day?", "maybe Osaka too"), call no tool: say briefly what would change (which nights, which cards, the length) and ask "Shall I apply it?"; do it only on a yes. A plain request ("add Rome") is done right away.
+  • If the user is only trying an idea ("what if we add Rome?", "how about one more day?", "maybe Osaka too", "the cabin on the last night?"), try it first with try_change: nothing is saved, the code counts what would happen. Say the result (effects) in your words with its numbers: the nights each place gets, which booking or choice it touches, which new change of city (a transfer) it makes, which night is left with no bed, which day gets too full, which flight falls outside the dates. Never say a result that isn't in effects; never guess. When it goes against one of trip.spine_reasons, add that in one sentence. Then ask "Shall I apply it?"; do it with the real tools only on a yes. A plain request ("add Rome") is done right away; only when it would touch something booked or chosen, or leave a night with no bed, look with try_change first and ask.
   • A step that would change the dates or nights of something the user booked or chosen, or take it off, is not taken unless the user asks for that in this message: ask one question first. Once the trip has started, never touch days already past.
   • A firm limit on length or dates ("10 days at most", "I have 10 days off", "I must be back at work on Monday", "we fly home on the 15th") is saved with save_preference as a lasting note; no change after it goes past that limit. "About 10 days", "maybe longer" is a preference and can stretch.
   • A new city or stop: pick the cheapest fix for where its days come from, do it without asking and say it in one line: if the length is a preference and no flight or stay is booked, stretch the trip (update_trip; "Added Osaka, the trip is now 12 days"); if the length is firm or the flights are booked, take days from the longest stop that isn't booked (plan_item kind stay shortening that city's range; "Took one day from Kyoto"). Leave the other way as one sentence of choice. Never touch booked nights; if no way keeps a firm limit and the bookings together, change nothing, say the conflict and offer two ways.
@@ -823,6 +824,39 @@ function buildTools(en: boolean): ToolSpec[] {
       },
     },
     {
+      name: "try_change",
+      description: t(
+        "Bir değişikliği planın bir kopyasında dener, HİÇBİR ŞEY KAYDETMEZ; kodun saydığı sonuçları döner (yerlerin gece sayısı, etkilenen rezervasyon ve seçimler, yeni ya da kalkan şehir değişimleri, yataksız geceler, dolan günler, tarih dışı uçuşlar, yeni uyarılar). Fikir denenirken ve rezerve/seçilmiş bir şeye dokunmadan önce kullan.",
+        "Tries a change on a copy of the plan and SAVES NOTHING; returns what the code counts it would do (each place's nights, bookings and choices it touches, changes of city it adds or takes away, nights with no bed, days too full, flights outside the dates, new warnings). Use it when an idea is being tried and before touching anything booked or chosen.",
+      ),
+      schema: {
+        type: "object",
+        properties: {
+          // (plain strings, "" when not given: no unions, so every tool stays within Claude's strict-schema budget)
+          start: { type: "string", description: t("Yeni başlangıç YYYY-MM-DD; değişmiyorsa \"\"", "New start YYYY-MM-DD; \"\" when it stays") },
+          end: { type: "string", description: t("Yeni bitiş YYYY-MM-DD; değişmiyorsa \"\"", "New end YYYY-MM-DD; \"\" when it stays") },
+          moves: {
+            type: "array",
+            description: t("Başka günlere taşınan kayıtlar (bir konaklamanın geceleri, bir etkinliğin günü); end_date yoksa \"\"", "Records put on other days (a stay's nights, an activity's day); end_date \"\" when none"),
+            items: { type: "object", properties: { item_id: { type: "string" }, date: { type: "string" }, end_date: { type: "string" } }, required: ["item_id", "date", "end_date"], additionalProperties: false },
+          },
+          removes: { type: "array", items: { type: "string" }, description: t("Plandan çıkacak kayıtların id'leri", "The ids of records taken off the plan") },
+          adds: {
+            type: "array",
+            description: t("Yeni planlar (bir durağın geceleri: kind stay; bir günün etkinliği: kind activity)", "New plans (a stop's nights: kind stay; a day's activity: kind activity)"),
+            items: {
+              type: "object",
+              properties: { kind: { type: "string", enum: [...PLANNED_KINDS] }, title: { type: "string" }, city: { type: "string" }, date: { type: "string" }, end_date: { type: "string" } },
+              required: ["kind", "title", "city", "date", "end_date"],
+              additionalProperties: false,
+            },
+          },
+        },
+        required: ["start", "end", "moves", "removes", "adds"],
+        additionalProperties: false,
+      },
+    },
+    {
       name: "offer_choices",
       description: t("Son mesajının altında kullanıcıya en fazla 2 hızlı yanıt butonu gösterir.", "Shows the user at most 2 quick-reply buttons under your last message. Write them in English."),
       schema: {
@@ -1235,7 +1269,7 @@ const newTurn = (userText = "", previousReply: string | null = null, who: WhoCtx
 });
 
 /** Tools that only read or show something: they never make "I changed it" true. */
-const READ_ONLY_TOOLS = new Set(["search_page", "offer_choices", "web_search", "find_offers"]);
+const READ_ONLY_TOOLS = new Set(["search_page", "offer_choices", "web_search", "find_offers", "try_change"]);
 
 /**
  * The chat says what it's doing while it does it (0.36.47, Emre: "ne yaptığını söylesin, sağdaki değişiklikler canlı
@@ -1302,6 +1336,8 @@ function describeCall(name: string, input: any, byId: Map<string, Item>): string
       return L(`Öneri bırakıyorum: ${titled(input?.title) ?? ""}`.trim(), `Leaving a suggestion: ${titled(input?.title) ?? ""}`.trim());
     case "search_page":
       return L("Kayıtlı sayfada arıyorum", "Looking in the saved page");
+    case "try_change":
+      return L("Planda deniyorum (kaydetmeden)", "Trying it on the plan (nothing saved)");
     default:
       return null;
   }
@@ -2386,6 +2422,21 @@ async function runTool(tripId: string, name: string, input: any, choices: string
       const found = await findOffersTool(tripId, input, items);
       if (found.offers.length) turn.offers = { ...found, added: await keepChatOffers(tripId, found, items) };
       return JSON.stringify(offersToolResult(found));
+    }
+    case "try_change": {
+      // Tried on copies, nothing saved (omurga Tur 19): the chat says what it would do and asks before doing it.
+      const trip = await d.get("trips", tripId);
+      if (!trip) throw new ToolError(L("Gezi bulunamadı.", "Trip not found."));
+      const blank = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
+      const change: TriedChange = {
+        start: blank(input.start),
+        end: blank(input.end),
+        moves: (Array.isArray(input.moves) ? input.moves : []).map((m: any) => ({ item_id: String(m.item_id), date: blank(m.date), end_date: blank(m.end_date) })),
+        removes: (Array.isArray(input.removes) ? input.removes : []).map(String),
+        adds: (Array.isArray(input.adds) ? input.adds : []).map((a: any) => ({ kind: a.kind, title: blank(a.title), city: blank(a.city), date: blank(a.date), end_date: blank(a.end_date) })),
+      };
+      const effects = effectsOf(trip, items.map(withEdits), change);
+      return JSON.stringify({ saved: false, nothing_changes: quiet(effects), effects });
     }
     case "offer_choices":
       choices.splice(0, choices.length, ...(input.options as string[]).slice(0, 2));

@@ -13,7 +13,7 @@ describe("the chat keeps the trip's spine", () => {
     for (const said of [
       "Gezinin omurgası",
       "Kullanıcı bir fikri deniyorsa",
-      "hiçbir aracı çağırma",
+      "önce try_change ile dene",
       "Uygulayayım mı?",
       "rezerve edilmiş ya da seçilmiş",
       "geçmiş günlere",
@@ -39,7 +39,7 @@ describe("the chat keeps the trip's spine", () => {
     for (const said of [
       "The trip's spine",
       "If the user is only trying an idea",
-      "call no tool",
+      "try it first with try_change",
       "Shall I apply it?",
       "booked or chosen",
       "days already past",
