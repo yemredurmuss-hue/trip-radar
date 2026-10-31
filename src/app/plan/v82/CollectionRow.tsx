@@ -21,7 +21,7 @@ import type { IntentVM, OptionVM } from "../../../lib/intents";
 import { formatDateRange } from "../../../lib/items";
 import { withPlacePhoto } from "../../../lib/placeSuggest";
 import { photoFromOffers, sameTour, validOffers, type Need, type Offer } from "../../../lib/offerSource";
-import { askedWords, cityEvents, cityTours, citySights, tourWords } from "../../../lib/offerSources";
+import { cityEvents, cityTours, citySights, tourWords } from "../../../lib/offerSources";
 import { locative } from "../../../lib/i18nText";
 import { sightSuggestion, type Sight } from "../../../lib/citySights";
 import { sameCity, type Plan } from "../../../lib/plan";
@@ -85,8 +85,9 @@ function useCityOffers(city: string | null, plan: Pick<Plan, "stayBlocks"> | nul
   const { offers: source, travellers } = useEmptyEnv();
   const { byId } = useV82Env();
   const { trip } = useCardEnv();
-  // What was asked for in this city ("Husky safari turu") is searched first, so its offers show on its card (omurga).
-  const words = [...new Set([...askedWords(saved), ...tourWords(trip)])];
+  // The city's own suggestions by the trip's taste; what was asked for (a husky tour) gets its offers on its own card, never
+  // in place of these (omurga 2026-10-31, Emre: "bütün etkinlik önerilerini husky'ye odaklarsak öneriler çöp olur").
+  const words = tourWords(trip);
   const wordsKey = words.join("|");
   const stop = city && plan ? (citiesOfPlan(plan).find((c) => sameCity(c.city, city)) ?? null) : null;
   // P2 (F48): a trip that is only its event (a festival: "Odak festival") is offered no tours of the source's.

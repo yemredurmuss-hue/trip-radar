@@ -841,3 +841,16 @@ describe("the eleven signals", () => {
     });
   });
 });
+
+
+describe("a stay asked for in words is its own card under its own name (omurga 2026-10-31, Emre: Tromsø'da kulübe)", () => {
+  it("one night 'Cam tavanlı kulübe', the city's four nights 'Tromsø'; the husky tour a card of its own", () => {
+    let s = applyAnswer(fresh(), { q: "where", place: "Tromsø", country: "Norveç", code: "NO" }, 2);
+    s = applyAnswer(s, { q: "duration", duration: { unit: "night", n: 5 } }, 2);
+    s = applyAnswer(s, { q: "start", date: "2027-02-15", approx: false }, 2);
+    s = { ...fromIst(s), specialStays: [{ city: "Tromsø", nights: 1, what: "cam tavanlı kulübe" }], wanted: [{ city: "Tromsø", what: "husky turu", day: null }] };
+    const b = made(s);
+    expect(rows(b).filter((r) => r[0] === "stay").map((r) => r[2])).toEqual(["Cam tavanlı kulübe", "Tromsø"]);
+    expect(b.all.find((c) => c.section.id === "stay")!.intents.map((i) => i.head.nights)).toEqual([1, 4]);
+  });
+});

@@ -413,6 +413,17 @@ const HUB_WORDS = new Set(
 const KNOWN_PLACES = new Set([...Object.keys(CITY_ALIASES), ...Object.values(CITY_ALIASES)]);
 
 /** A city's name reduced to compare: case, accents and other languages' names don't matter. */
+/**
+ * A stay's own name, said apart from its city ("Cam tavanlı kulübe", the start's carved night or the chat's): never the
+ * city's ("Tromsø", "Tromsø konaklaması"), never a made-up line ("Konaklama · Tromsø").
+ */
+export function ownStayName(name: string | null | undefined, city: string | null | undefined): string | null {
+  const n = (name ?? "").replace(/\s*\([^)]*\)/g, "").trim();
+  if (!n || n.includes("·") || /konaklama|\bstay\b/iu.test(n)) return null;
+  if (city && (sameCity(n, city) || n.toLocaleLowerCase("tr").includes(city.toLocaleLowerCase("tr")))) return null;
+  return n;
+}
+
 export function cityKeyOf(city: string | null | undefined): string | null {
   if (!city) return null;
   const plain = city

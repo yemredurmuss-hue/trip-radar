@@ -4027,9 +4027,11 @@ export function splitSpecialStays(stays: PlannedInput[], specials: readonly Spec
     const x = out[at];
     const title = sp.what.charAt(0).toLocaleUpperCase("tr") + sp.what.slice(1);
     const end = plus(x.date!, sp.nights);
+    // Marked as a stay of its own (its word, the card's name): its card keeps the name and is searched for it.
+    const own = { ...x, title, part: { ref: "own", section: "stay", frame: "stay", word: title } } as PlannedInput;
     out = end < x.end_date!
-      ? [...out.slice(0, at), { ...x, title, end_date: end }, { ...x, date: end }, ...out.slice(at + 1)]
-      : [...out.slice(0, at), { ...x, title }, ...out.slice(at + 1)];
+      ? [...out.slice(0, at), { ...own, end_date: end }, { ...x, date: end }, ...out.slice(at + 1)]
+      : [...out.slice(0, at), own, ...out.slice(at + 1)];
   }
   return out;
 }

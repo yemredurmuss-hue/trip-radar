@@ -13,7 +13,7 @@ import { statusWord, type AccessVM, type Collection, type IntentStatus, type Int
 import { shortDay } from "./ideas";
 import { isEmptyRecord, needKey } from "./emptyCards";
 import type { Need } from "./offerSource";
-import { addDays, sameCity, stayRange } from "./plan";
+import { addDays, stayRange } from "./plan";
 import { namesSomething } from "./planned";
 import { providerLinks, type ProviderKind } from "./providers";
 import { airportCode, BRANDS, insuranceLinks } from "./searchLinks";
@@ -350,8 +350,7 @@ export function offerNeed(vm: Pick<IntentVM, "kind" | "head"> & { ticket?: Inten
     // A stay of its own the trip's kind asks for ("Cam tavanlı kulübe") is searched in its own words (omurga 2026-10-31).
     // So is one said under a name of its own (the start's carved cabin night): not the city's, not "Konaklama · …".
     const name = (vm.head.name ?? "").replace(/\s*\([^)]*\)/g, "").trim();
-    const generic = !name || name.includes("·") || sameCity(name, city) || name.toLocaleLowerCase("tr").includes(city.toLocaleLowerCase("tr")) || /konaklama|\bstay\b/iu.test(name);
-    const own = vm.head.word || !generic ? name : "";
+    const own = vm.head.word ? name : "";
     const stay = own || at.stay;
     return { key: needKey("stay", city, start, end), section: "stay", kind: "stay", city, start, end, adults: at.adults, country: at.countries[0] ?? null, ...(home ? { home } : {}), ...(stay ? { stay } : {}) };
   }

@@ -45,7 +45,7 @@ import { noCounts, type Stage } from "./lifecycle";
 import { cancellationText } from "./needs";
 import { ratingText } from "./offerSource";
 import { adderOf } from "./pano";
-import { cityKeyOf, groupKeyOf, sameCity, stayRange, type Plan } from "./plan";
+import { cityKeyOf, groupKeyOf, ownStayName, sameCity, stayRange, type Plan } from "./plan";
 import { bareChatPlan } from "./emptyCards";
 import type { BudgetSlice } from "./progress";
 import { coverWords, shapeOf, type SignalId, type TripShape } from "./playbooks/shape";
@@ -620,8 +620,15 @@ function headOf(section: SectionId, frame: FrameFamily, b: Bucket, lead: Item | 
     const n = nightsOf(b, lead);
     const parts = [n.nights ? nNights(n.nights) : null, n.start ? formatDateRange(n.start, n.end) : null, peoplePart(lead, env)].filter(nonNull);
     // A part that isn't a stay itself (a retreat's programme in Konaklama) goes by its own name.
-    const name = lead && lead.category !== "stay" ? lead.name : (n.city ?? first.row.name);
-    return { name, route: null, parts, kindWord, word, wants, image, city: n.city, date: n.start, nights: n.nights };
+    // A stay said apart under its own name (the start's "1 gece cam tavanlı kulübe", the chat's) keeps that name, so it
+    // reads as its own card and is searched for itself (omurga 2026-10-31).
+    // Only one marked so (its part's word), never a hotel said by name in the chat ("Casa Alfama": its city's card still).
+    const block = first.piece.kind === "entry" && first.piece.entry.kind === "stay" ? first.piece.entry.block : null;
+    const slot = block && block.kind !== "booked" ? (block.slot ?? null) : null;
+    const ownWord = slot?.part?.ref === "own" ? (slot.part.word ?? null) : null;
+    const said = ownWord ? (ownStayName(slot!.name, n.city) ?? ownWord) : null;
+    const name = lead && lead.category !== "stay" ? lead.name : (said ?? n.city ?? first.row.name);
+    return { name, route: null, parts, kindWord, word: word ?? ownWord, wants, image, city: n.city, date: n.start, nights: n.nights };
   }
   if (frame === "ticket") {
     const route = routeOf(b, lead, leg);
