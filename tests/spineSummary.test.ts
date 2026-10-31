@@ -41,6 +41,17 @@ describe("the spine said back", () => {
     expect(text).not.toMatch(/[Uu]çuş/);
   });
 
+  it("opens with the first plan, and after the essentials asks the model's own question", () => {
+    const s = japan({ from: "İstanbul", who: { kind: "partner", names: [] }, spineQuestion: "Kyoto'da bir gece ryokanda kalmak ister misin?" });
+    const lines = say(s).split("\n").filter(Boolean);
+    expect(lines[0]).toBe("🇯🇵 **İlk planın hazır: 10 günlük Japonya.**");
+    expect(lines.at(-1)).toBe("**Kyoto'da bir gece ryokanda kalmak ister misin?**");
+  });
+
+  it("the model's question waits for the dates and where from", () => {
+    expect(say(japan({ spineQuestion: "Kyoto'da bir gece ryokanda kalmak ister misin?" })).split("\n").filter(Boolean).at(-1)).toBe("**Nereden yola çıkacaksın?**");
+  });
+
   it("in English too", () => {
     const s = japan();
     const text = withLang("en", () => spineSummary(creationOf(s)!, s));

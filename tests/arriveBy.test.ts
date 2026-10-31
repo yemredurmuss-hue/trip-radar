@@ -15,6 +15,11 @@ describe("the model reads the way there", () => {
     ["car", "car"], ["bus", "bus"], ["train", "train"], ["ferry", "ferry"],
   ])("arrive_by %s → way %s", (by, way) => expect(acceptExtraction(raw({ arrive_by: by } as Partial<RawExtraction>), "2026-10-31").way).toBe(way));
 
+  it("the model's spine question: kept when it is a real question", () => {
+    expect(acceptExtraction(raw({ spine_question: "Kulübede hangi gece kalmak istersin?" } as Partial<RawExtraction>), "2026-10-31").spineQuestion).toBe("Kulübede hangi gece kalmak istersin?");
+    expect(acceptExtraction(raw({ spine_question: "ok" } as Partial<RawExtraction>), "2026-10-31").spineQuestion).toBeUndefined();
+  });
+
   it("a plane, or unsure: no ground way", () => {
     expect(acceptExtraction(raw({ arrive_by: "plane" } as Partial<RawExtraction>), "2026-10-31").way).toBeUndefined();
     expect(acceptExtraction(raw({ arrive_by: "" } as Partial<RawExtraction>), "2026-10-31").way).toBeUndefined();

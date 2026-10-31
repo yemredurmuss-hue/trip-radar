@@ -116,7 +116,7 @@ describe("the chat's language (item 1)", () => {
     const last = (await listMessages(s.tripId!)).at(-1)!;
     // The spine said back (omurga 2026-10-31): the route with its nights, ending on the question that shapes it most.
     expect(last.text).toContain("Koh Phangan → **31 gece**");
-    expect(last.text.split("\n").at(-1)).toBe("**Nasıl bir gezi olsun: rahat mı, macera mı, bütçe dostu mu?**");
+    expect(last.text.split("\n").at(-1)).toBe("**Nasıl bir gezi istiyorsun: rahat mı, macera dolu mu, bütçe dostu mu?**");
     expect(lang()).toBe("en");
   });
 });

@@ -68,7 +68,7 @@ describe("the trip's language", () => {
     expect(names).toEqual(["Flight · Denpasar → Istanbul", "Flight · Istanbul → Denpasar", "Stay · Bali"]);
     const chat = (await listMessages(s.tripId!)).map((m) => m.text).join("\n");
     expect(chat).toMatch(/^Plan a new trip\n/);
-    expect(chat).toContain("Bali draft");
+    expect(chat).toContain("Your first plan is ready");
     expect(chat).not.toMatch(/Nereye|Yeni gezi|gece|hazır/);
     // The AI review (the start's last step registers it) is asked in the board's language, Turkish; its key says so.
     const { reviewNewTrip } = await import("../src/app/start/registerReview");

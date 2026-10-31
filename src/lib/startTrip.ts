@@ -152,6 +152,8 @@ export interface StartState {
   playbook?: CustomPlaybook | null;
   /** Gezi biçimi: how the trip is reached when it isn't by plane ("otobüsle", "trenle", "arabayla"). */
   way?: GroundWay | null;
+  /** The one question that would shape the spine most now, as the start's model put it (omurga 2026-10-31): the summary's last line. */
+  spineQuestion?: string | null;
   /** Gezi biçimi: a day out, back the same day ("günübirlik"). */
   dayTrip?: boolean;
   /** Places said as a day out from a stop ("Capri'ye tekneyle günübirlik"; 0.39.13): never a stop with nights. */
@@ -815,6 +817,7 @@ export interface Extracted {
   choice?: string | null;
   /** How the trip is reached when it isn't by plane ("otobüsle"): no flight is made for it. */
   way?: GroundWay | null;
+  spineQuestion?: string | null;
   /** A day out ("günübirlik"): one day, no night. */
   dayTrip?: boolean;
   /** Places said as a day out from a stop ("Capri'ye günübirlik"): no nights there (0.39.13). */
@@ -1411,6 +1414,8 @@ export const extractionSchema = z.object({
   start_part: z.string().optional(),
   // How one gets there, read from what is said and common sense (omurga Tur 11b): plane | car | bus | train | ferry | "".
   arrive_by: z.string().optional(),
+  // The one question that would shape the spine most now (omurga 2026-10-31): answerable now, said as an invitation.
+  spine_question: z.string().optional(),
 });
 export type RawExtraction = z.infer<typeof extractionSchema>;
 
@@ -1431,7 +1436,8 @@ one_place: kullanıcı gezi boyunca tek bir yerde kalmak istediğini söylüyors
 stops: kullanıcı birden çok durak söylediyse ("önce Tokyo'da 3 gece, sonra Kyoto"), bu sohbette şimdiye kadar söylenen bütün durakların GÜNCEL listesi, sırasıyla (önceki mesajlar dahil; yeni mesaj bir durağı değiştiriyorsa o değişmiş hâli). Her durak: place (yalnız yer adı), nights (söylendiyse gece sayısı, söylenmediyse 0), note (o durakla ilgili söylenenler, kısa: "kızıl yapraklar", "1 gece ryokan"; yoksa ""), photo (notta gözle görülebilen sahne, kısa İngilizce fotoğraf araması: "autumn leaves", "ryokan"; görülecek bir şey yoksa ""). Bir konaklama türü (ryokan, otel, kamp) ayrı bir yer adı söylenmedikçe durak değildir, ilgili durağın notuna yazılır. Mesaj rotaya hiç değinmiyorsa ve ilk mesaj değilse stops boş kalır. Birden çok şehir durak olarak söylendiyse destination ülkedir ("Japonya"), şehirler değil. Bir durağın gece sayısı gezinin toplam süresi değildir: duration_days yalnız toplam süre söylendiyse dolar.
 Günübirlik gidilen yer ("Capri'ye tekneyle günübirlik") durak değildir: stops'a girmez, bir önceki durağın notuna yazılır ("Capri'ye günübirlik tekne").
 start_part: ayın hangi kısmı söylendiyse ("Kasım sonunda" → end, "ortasında" → mid, "başında" → begin); yoksa "".
-arrive_by: yola çıkılan yerden gidilecek yere NASIL gidildiği; bu alanda söylenenle birlikte sağduyu da kullanılır: plane | car (kendi aracıyla evden) | bus | train | ferry ya da "" (emin değilsen). Yol gezisi (orada araçla dolaşmak) oraya araçla gidildiği anlamına gelmez: İstanbul'dan Amalfi kıyısında yol gezisi → plane (Napoli'ye uçup araç kiralanır); İstanbul'dan Ege'de arabayla road trip ya da aynı ülkede uçuştan söz edilmeyen bir yol gezisi → car; "Napoli'ye trenle" → train; okyanus ötesi → plane.`,
+arrive_by: yola çıkılan yerden gidilecek yere NASIL gidildiği; bu alanda söylenenle birlikte sağduyu da kullanılır: plane | car (kendi aracıyla evden) | bus | train | ferry ya da "" (emin değilsen). Yol gezisi (orada araçla dolaşmak) oraya araçla gidildiği anlamına gelmez: İstanbul'dan Amalfi kıyısında yol gezisi → plane (Napoli'ye uçup araç kiralanır); İstanbul'dan Ege'de arabayla road trip ya da aynı ülkede uçuştan söz edilmeyen bir yol gezisi → car; "Napoli'ye trenle" → train; okyanus ötesi → plane.
+spine_question: gezi şimdi oluşturulsa, planın omurgasını (tarih, geceler, rota, konaklama biçimi, gezinin sebebi) EN ÇOK şekillendirecek, kullanıcının ŞU AN cevaplayabileceği tek soru; davet eden, net bir dille ("Kulübede hangi gece kalmak istersin?", "Husky turunu hangi güne koyalım?"). Henüz seçilmemiş bir şeyin ayrıntısını (seçilmemiş resortun transferi) sorma; seçenek listesi verme ("ulaşım mı konaklama mı" gibi); sorulacak önemli bir şey yoksa "".`,
     `From the user's message in a trip-planning chat, take only what is clearly said. Never invent; what isn't said stays empty ("" or 0 or []).
 destination: the place to go (a city, island, region or country), its name only; when several are said, the most specific ("Thailand, Koh Phangan" → "Koh Phangan", country Thailand), spelled correctly. destination_country: its country when known; destination_country_code: that country's ISO 3166-1 alpha-2 code ("TH").
 origin: the city they leave from. companions: solo | partner | friends | family or "". names: the people going with them (not the user).
@@ -1444,7 +1450,8 @@ one_place: when the user says they stay in one place the whole trip ("one base",
 stops: when the user says several stops ("first 3 nights in Tokyo, then Kyoto"), the CURRENT list of every stop said in this conversation so far, in order (earlier messages included; when the new message changes a stop, its changed form). Each stop: place (the place's name only), nights (the nights when said, else 0), note (what was said of it, short: "autumn leaves", "1 night in a ryokan"; else ""), photo (what of the note can be seen, as a short English photo search: "autumn leaves", "ryokan"; else ""). A kind of stay (ryokan, hotel, camp) is no stop unless a place of its own is named: it goes in the note of its stop. When the message doesn't touch the route and isn't the first, stops stays empty. When several cities are said as stops, destination is the country ("Japan"), not a city. A stop's nights are not the trip's length: duration_days is filled only when the whole length is said.
 A place said as a day trip ("a day trip to Capri by boat") is no stop: not in stops, written in the note of the stop before ("day trip to Capri by boat").
 start_part: the part of the month said ("late November" → end, "mid" → mid, "early" → begin); else "".
-arrive_by: HOW they get from where they leave to where they go; for this field common sense counts along with what is said: plane | car (their own car, from home) | bus | train | ferry or "" (when unsure). A road trip (getting around there by car) doesn't mean driving there: a road trip on the Amalfi Coast from Istanbul → plane (fly to Naples, rent a car); a road trip by car in the Aegean from Istanbul, or a road trip in the same country with no flight mentioned → car; "to Naples by train" → train; across an ocean → plane.`,
+arrive_by: HOW they get from where they leave to where they go; for this field common sense counts along with what is said: plane | car (their own car, from home) | bus | train | ferry or "" (when unsure). A road trip (getting around there by car) doesn't mean driving there: a road trip on the Amalfi Coast from Istanbul → plane (fly to Naples, rent a car); a road trip by car in the Aegean from Istanbul, or a road trip in the same country with no flight mentioned → car; "to Naples by train" → train; across an ocean → plane.
+spine_question: if the trip were made now, the ONE question that would shape its spine most (dates, nights, route, how they stay, what the trip is for) and that the user can answer NOW, said as a clear invitation ("Which night would you like in the cabin?", "Which day shall we put the husky tour on?"). Never the detail of something not chosen yet (the transfer of a resort not picked); never a list of options ("travel or stays?"); "" when nothing important is left to ask.`,
   );
 
 /** What each question asks, in words for the model ("where they leave from"). */
@@ -1720,6 +1727,8 @@ export function acceptExtraction(raw: RawExtraction & { plan?: RawPlan | null },
   // The way there by land, as the model read it (a plane, or unsure, leaves the flights to be made).
   const by = (raw.arrive_by ?? "").trim().toLowerCase();
   if (by === "car" || by === "bus" || by === "train" || by === "ferry") out.way = by;
+  const sq = (raw.spine_question ?? "").replace(/\s+/g, " ").trim();
+  if (sq.length >= 8 && sq.length <= 140 && sq.endsWith("?")) out.spineQuestion = sq;
   const intent = acceptIntent(raw, today, out.where);
   if (intent) {
     out.intent = intent;
@@ -1800,6 +1809,7 @@ export function mergeExtracted(code: Extracted, model: Extracted | null): Extrac
     ...(model.playbook ? { playbook: model.playbook } : {}),
     // The way there: the words said, else the model's reading of the trip (omurga Tur 11b).
     ...(code.way || model?.way ? { way: code.way ?? model!.way } : {}),
+    ...(model?.spineQuestion ? { spineQuestion: model.spineQuestion } : {}),
     ...(code.dayTrip ? { dayTrip: true } : {}),
     ...(code.dayTrips?.length ? { dayTrips: code.dayTrips } : {}),
     ...(code.base || model.base ? { base: code.base ?? model.base } : {}),
@@ -2335,6 +2345,7 @@ export function applyExtracted(s: StartState, e: Extracted, now: number): StartS
   if (e.start) next.start = e.start;
   if (e.duration) next.duration = e.duration;
   if (e.way) next.way = e.way;
+  if (e.spineQuestion) next.spineQuestion = e.spineQuestion;
   if (e.dayTrip) next.dayTrip = true;
   if (e.dayTrips?.length) next.dayTrips = [...new Set([...(s.dayTrips ?? []), ...e.dayTrips])];
   // One place said (0.38.5); another country said without one: no longer that town.
@@ -4240,10 +4251,12 @@ function spineQuestion(c: Creation, s: StartState): string {
   if (!c.dates) return s.start && monthOnly(s) ? L("Hangi gün yola çıkıyorsun?", "Which day do you set off?") : L("Hangi tarihlerde gitmek istiyorsun?", "When would you like to go?");
   if (!s.from && !s.way) return L("Nereden yola çıkacaksın?", "Where are you leaving from?");
   if (!s.who) return L("Kimlerle gidiyorsun?", "Who's coming with you?");
+  // After the essentials, the start's model's own question: the one that shapes this trip's spine most, answerable now.
+  if (s.spineQuestion) return s.spineQuestion;
   const pb = pbCurrent(s);
   if (pb) return say(pb.q.text);
-  if (!(s.styles.length || s.budget)) return L("Nasıl bir gezi olsun: rahat mı, macera mı, bütçe dostu mu?", "What kind of trip: easy, adventurous, or on a budget?");
-  return L("Önce neye bakalım: ulaşım mı, konaklama mı?", "What shall we look at first: getting there, or where to stay?");
+  if (!(s.styles.length || s.budget)) return L("Nasıl bir gezi istiyorsun: rahat mı, macera dolu mu, bütçe dostu mu?", "What kind of trip do you want: easy, adventurous, or on a budget?");
+  return L("Hadi ilk adımı atalım: uçuşları bulayım mı?", "Let's take the first step: shall I find the flights?");
 }
 
 /**
@@ -4259,13 +4272,14 @@ export function spineSummary(c: Creation, s: StartState): string {
   const emoji = (label && CONCEPT_EMOJI.find(([re]) => re.test(label))?.[1]) ?? KIND_EMOJI[kind] ?? flagOf(code) ?? "🧭";
   // A length said in months reads as said ("1 Aylık …"): the trip's own title then, never "32 günlük".
   const days = c.dates && s.duration?.unit !== "month" ? nightsBetween(c.dates.start, c.dates.end) + 1 : null;
+  // It opens by saying what it is: the first plan (Emre: "başında bir şey olmalı, ilk plan falan").
   const head = s.intent?.kind === "event" && s.intent.name
-    ? L(`Geziyi ${s.intent.name} etrafına kurdum.`, `I built the trip around ${s.intent.name}.`)
+    ? L(`İlk planın hazır: geziyi ${s.intent.name} etrafına kurdum.`, `Your first plan is ready: I built the trip around ${s.intent.name}.`)
     : label
-      ? L(`${days ? `${days} günlük ` : ""}${label} taslağını çizdim.`, `I drew up your ${days ? `${days}-day ` : ""}${label}.`)
+      ? L(`İlk planın hazır: ${days ? `${days} günlük ` : ""}${label}.`, `Your first plan is ready: ${days ? `${days}-day ` : ""}${label}.`)
       : s.duration?.unit === "month"
-        ? L(`${c.title} taslağını oluşturdum.`, `I put together your ${c.title} draft.`)
-        : L(`${days ? `${days} günlük ` : ""}${place} taslağını oluşturdum.`, `I put together your ${days ? `${days}-day ` : ""}${place} draft.`);
+        ? L(`İlk planın hazır: ${c.title}.`, `Your first plan is ready: ${c.title}.`)
+        : L(`İlk planın hazır: ${days ? `${days} günlük ` : ""}${place}.`, `Your first plan is ready: ${days ? `${days} days in ` : ""}${place}.`);
 
   // The route: the cities slept in, in order, a city's nights side by side as one.
   const legs: { city: string; nights: number }[] = [];
