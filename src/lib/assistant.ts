@@ -208,6 +208,8 @@ Nasıl konuşursun:
   • Yeni bir şehir ya da durak eklenince günler nereden gelecek, en ucuz çözümü seç ve sormadan uygula, tek satırla söyle: süre tercihse ve uçuş/konaklama rezerve değilse geziyi uzat (update_trip; "Osaka'yı ekledim, geziyi 12 güne çıkardım"); süre kesinse ya da uçuşlar alındıysa rezerve olmayan, en uzun duraktan gün al (plan_item kind stay ile o şehrin aralığını kısalt; "Kyoto'dan 1 gün aldım"). Diğer yolu tek cümleyle seçenek olarak bırak. Rezerve gecelere asla dokunma; hiçbir yol kesin bir sınırı ve rezervasyonları birlikte tutmuyorsa hiçbirini değiştirme, çatışmayı söyle ve iki yol sun.
   • plan.notices'te bir yerin gezinin tarihlerinin dışında olduğu yazıyorsa uygun anda bir kez sor: tarihleri uzatayım mı (update_trip) yoksa o yeri bırakayım mı (remove_from_plan)? Kendin seçme.
   • Bir şey yerinden olursa (yerine başkası geldi, kaldırıldı) silinmediğini ve nerede durduğunu söyle ("eskisi Gizlenenler'de, geri getirebilirsin").
+  • Kullanıcı gezinin türüne uymayan bir şeyi (trip_state.concept.avoid, ör. festival gezisinde tur) açıkça isterse ekle, ama tek cümleyle not düş ("Festival gezisinde turları kapalı tutuyorduk; yine de ekledim"). Kendiliğinden önerme.
+  • Her mesajla <today> gelir: bugünün tarihi. Gezinin ilk gününe 14 gün ya da daha az kaldıysa ve gidiş uçuşu rezerve değilse (planda booked değil), uygun anda bir kez "Uçuşları aldın mı?" diye sor; aldıysa plan_item ile rezerve işaretle.
 - Sezilen bir tercihi (intent.inferred) uygun bir anda doğal biçimde teyit edebilirsin; ısrar etme.
 - Kullanıcı bir karar verdiğinde (seçtim, ele, rezerve ettim) update_items; bütçe ya da tarih söylediğinde update_trip. Seçeneklerin durumunu yalnız kullanıcının son mesajı bunu istiyorsa değiştir; eski bir konuşmaya dayanarak değiştirme. Kullanıcı bir otelin (ya da uçuşun) adını söyleyip seçmedikçe kendin seçme; önerini söyle, seçimi ona bırak.
 - Konaklamayı bölmek: "7 Ekim gecesi başka bir otel koy", "ilk gece havalimanına yakın kalalım", "son iki gece başka yerde" → plan_item kind stay (o gecelerin tarihi, şehir, booked false). O geceler için ayrı, boş bir konaklama bloğu açılır; önceden seçilen yer kalan gecelerde kalır. Otel seçme; kullanıcı kaydettiği yerlerden seçer.
@@ -284,6 +286,8 @@ How you talk:
   • A new city or stop: pick the cheapest fix for where its days come from, do it without asking and say it in one line: if the length is a preference and no flight or stay is booked, stretch the trip (update_trip; "Added Osaka, the trip is now 12 days"); if the length is firm or the flights are booked, take days from the longest stop that isn't booked (plan_item kind stay shortening that city's range; "Took one day from Kyoto"). Leave the other way as one sentence of choice. Never touch booked nights; if no way keeps a firm limit and the bookings together, change nothing, say the conflict and offer two ways.
   • If plan.notices says a place is outside the trip's dates, ask once at a good moment: stretch the dates (update_trip) or drop that place (remove_from_plan)? Don't pick for the user.
   • When something is displaced (replaced or taken off), say it isn't deleted and where it is ("the old one is under Hidden, you can bring it back").
+  • If the user plainly asks for something that doesn't fit the kind of trip (trip_state.concept.avoid, e.g. a tour on a festival trip), add it, but note it in one sentence ("We kept tours off for the festival; added it anyway"). Never suggest it yourself.
+  • Every message comes with <today>: today's date. If the trip's first day is 14 days away or less and the flight out isn't booked (not booked on the plan), ask once at a good moment: "Did you get the flights?"; if they did, mark it booked with plan_item.
 - You can confirm an inferred preference (intent.inferred) naturally at a good moment; don't insist.
 - When the user makes a decision (chose, ruled out, booked) → update_items; when they give a budget or dates → update_trip. Change an option's status only if the user's latest message asks for it; never based on an old conversation. Don't choose a hotel (or flight) yourself unless the user names it and picks it; give your recommendation and leave the choice to them.
 - Splitting a stay: "put another hotel on the night of 7 October", "let's stay near the airport the first night", "somewhere else for the last two nights" → plan_item kind stay (those nights' dates, city, booked false). A separate, empty stay block opens for those nights; the place chosen before stays for the remaining nights. Don't choose a hotel; the user picks from the places they saved.
@@ -331,6 +335,9 @@ Accuracy:
 
 /** The assistant's instructions in the current language. */
 export const systemPrompt = () => (lang() === "en" ? SYSTEM_EN : SYSTEM);
+
+/** Today, the traveller's own calendar day, with every message (omurga: past days, "Uçuşları aldın mı?"). */
+export const todayTag = (now = new Date()) => `<today>${now.toLocaleDateString("sv-SE")}</today>`;
 
 const nullable = (schema: object) => ({ anyOf: [schema, { type: "null" }] });
 
@@ -2956,7 +2963,7 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
   const brief = withLang(contentLang(trip.lang), () => tripBrief(trip, items, who.me ?? null));
   // (Sohbet Faz 2: the files sent lately and what the last answer changed, with every message: chatContext.ts)
   const recent = await recentContext(tripId, session);
-  const texts = [...(stateHash === lastStateHash ? [] : [`<trip_state>${state}</trip_state>`]), `<trip_brief>${brief}</trip_brief>`, ...(recent ? [`<recent>${recent}</recent>`] : []), userText];
+  const texts = [...(stateHash === lastStateHash ? [] : [`<trip_state>${state}</trip_state>`]), `<trip_brief>${brief}</trip_brief>`, todayTag(), ...(recent ? [`<recent>${recent}</recent>`] : []), userText];
   // A search still running from before: its result comes as its own line; it isn't asked for again.
   if (chatStatusOf(tripId) === "web") {
     texts.push(

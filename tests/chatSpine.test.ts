@@ -2,7 +2,7 @@
 // idea; what is booked, chosen or past never moves quietly; a firm limit is kept; a new city says how the days were
 // balanced; a stay outside the dates is settled with one question. The AI understands, the rules hold (TR and EN).
 import { afterEach, describe, expect, it } from "vitest";
-import { systemPrompt } from "../src/lib/assistant";
+import { systemPrompt, todayTag } from "../src/lib/assistant";
 import { setLang } from "../src/lib/i18n";
 
 afterEach(() => setLang("tr"));
@@ -23,6 +23,9 @@ describe("the chat keeps the trip's spine", () => {
       "en ucuz çözümü",
       "gezinin tarihlerinin",
       "Gizlenenler",
+      "gezinin türüne uymayan",
+      "Uçuşları aldın mı?",
+      "<today>",
     ]) expect(p).toContain(said);
   });
 
@@ -42,6 +45,16 @@ describe("the chat keeps the trip's spine", () => {
       "cheapest fix",
       "outside the trip's dates",
       "Hidden",
+      "doesn't fit the kind of trip",
+      "Did you get the flights?",
+      "<today>",
     ]) expect(p).toContain(said);
+  });
+});
+
+describe("today goes with every message", () => {
+  it("as the traveller's own calendar day", () => {
+    expect(todayTag(new Date(2026, 9, 31, 23, 30))).toBe("<today>2026-10-31</today>");
+    expect(todayTag(new Date(2026, 0, 5, 0, 10))).toBe("<today>2026-01-05</today>");
   });
 });
