@@ -15,7 +15,7 @@ import { validOffers, type Need, type Offer, type SuggestionSource } from "../of
 import { validDays, validInsight, type DayFare, type PriceAsk, type PriceInsight } from "../priceVerdict";
 import { validSights, type Sight } from "../citySights";
 import { acceptStyle, type StyleId } from "../tripStyle";
-import type { Trip } from "../types";
+import type { Item, Trip } from "../types";
 
 const STORE_KEY = "offersSeen";
 /** The towns' airports and the pages' pictures found (kind=airport, kind=pageimage), by their question. */
@@ -146,6 +146,24 @@ const STYLE_WORDS: Partial<Record<StyleId, readonly string[]>> = {
 };
 /** Words asked at most (each one more question to the source, kept for hours like the rest). */
 export const TASTE_MAX = 3;
+
+/** Words that say "a tour, an outing" and nothing of what it is ("Husky safari turu" is "husky safari"). */
+const GENERIC_ACTIVITY = new Set("tur turu turlari turlar tour tours gezi gezisi deneyim deneyimi aktivite aktivitesi ziyaret ziyareti bilet bileti etkinlik etkinligi".split(" "));
+
+/**
+ * What the traveller asked for in a city and has no page of yet (a card the start or the chat made: "Husky safari turu"),
+ * as tour search words, searched before the trip's own taste so its offers show on its card (omurga 2026-10-31). Each once,
+ * at most TASTE_MAX. Pure.
+ */
+export function askedWords(items: readonly Item[]): string[] {
+  const out: string[] = [];
+  for (const i of items) {
+    if (i.category !== "activity" || i.url || i.status === "booked" || i.status === "dismissed") continue;
+    const words = fold(i.name).replace(/ı/g, "i").split(" ").filter((w) => w && !GENERIC_ACTIVITY.has(w)).join(" ");
+    if (words && !out.includes(words)) out.push(words);
+  }
+  return out.slice(0, TASTE_MAX);
+}
 
 /**
  * What the trip is for, as tour search words (Emre, 0.38.5: "etkinlikler bu turun niyetine göre zengin gelsin"): its

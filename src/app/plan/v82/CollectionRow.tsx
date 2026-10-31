@@ -21,7 +21,7 @@ import type { IntentVM, OptionVM } from "../../../lib/intents";
 import { formatDateRange } from "../../../lib/items";
 import { withPlacePhoto } from "../../../lib/placeSuggest";
 import { photoFromOffers, sameTour, validOffers, type Need, type Offer } from "../../../lib/offerSource";
-import { cityEvents, cityTours, citySights, tourWords } from "../../../lib/offerSources";
+import { askedWords, cityEvents, cityTours, citySights, tourWords } from "../../../lib/offerSources";
 import { locative } from "../../../lib/i18nText";
 import { sightSuggestion, type Sight } from "../../../lib/citySights";
 import { sameCity, type Plan } from "../../../lib/plan";
@@ -85,7 +85,8 @@ function useCityOffers(city: string | null, plan: Pick<Plan, "stayBlocks"> | nul
   const { offers: source, travellers } = useEmptyEnv();
   const { byId } = useV82Env();
   const { trip } = useCardEnv();
-  const words = tourWords(trip);
+  // What was asked for in this city ("Husky safari turu") is searched first, so its offers show on its card (omurga).
+  const words = [...new Set([...askedWords(saved), ...tourWords(trip)])];
   const wordsKey = words.join("|");
   const stop = city && plan ? (citiesOfPlan(plan).find((c) => sameCity(c.city, city)) ?? null) : null;
   // P2 (F48): a trip that is only its event (a festival: "Odak festival") is offered no tours of the source's.
