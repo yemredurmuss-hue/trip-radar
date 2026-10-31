@@ -355,28 +355,27 @@ const stopCities = (c: Creation): string[] => [...new Map(c.stays.filter((x) => 
 const plain = (t: string | null | undefined) => (t ?? "").toLocaleLowerCase("tr").normalize("NFD").replace(/\p{M}/gu, "");
 
 /**
- * The ways between the stops where they happen (omurga Tur 18, Emre's Bali: "Ubud-Uluwatu özel transfer" over the whole
- * stay beside the board's own change of city): a way a card names from one stop to another goes on the day they change,
- * from the one to the other, so the move's own leg takes it (one card, never two). The way home on the last day leaves
- * from the last stop, the way in on the first day goes to the first.
+ * The ways in, between the stops and home where they happen (omurga Tur 18-19, Emre's Bali): the way in on the first day
+ * goes from where the flight lands to the first stop ("Denpasar → Ubud", never "Ubud Havalimanı → Konaklama"), the way home
+ * from the last stop to where the flight leaves ("Uluwatu → Denpasar"); a way a card names between two stops is the board's
+ * own change of city (its leg, "Şehir değişimi"), never a second card beside it.
  */
 export function fitStops(cards: ShapedInput[], c: Creation): ShapedInput[] {
   const stops = stopCities(c);
-  if (stops.length < 2) return cards;
-  const startOf = (city: string) => c.stays.find((x) => cityKeyOf(x.city) === cityKeyOf(city))?.date ?? null;
-  return cards.map((x) => {
-    if (!AIRPORT_WAYS.has(x.kind)) return x;
+  if (!stops.length || c.road) return cards;
+  const flights = c.travel.filter((t) => t.kind === "flight");
+  const lands = flights[0]?.to ?? null;
+  const leaves = flights.length > 1 ? (flights.at(-1)!.from ?? null) : null;
+  const [first, last] = [stops[0], stops.at(-1)!];
+  const away = (city: string | null, stop: string) => Boolean(city) && cityKeyOf(city) !== cityKeyOf(stop);
+  return cards.flatMap((x): ShapedInput[] => {
+    if (!AIRPORT_WAYS.has(x.kind)) return [x];
     const named = stops.filter((city) => plain(`${x.from} ${x.to} ${x.title}`).includes(plain(city)));
-    if (x.end_date && named.length === 2) {
-      const [a, b] = named;
-      const day = startOf(b);
-      return day ? { ...x, date: day, end_date: null, from: a, to: b } : x;
-    }
-    if (x.end_date) return x;
-    const [first, last] = [stops[0], stops.at(-1)!];
-    if (c.dates && x.date === c.dates.end && named.length && !named.includes(last) && plain(x.from).includes(plain(named[0]))) return { ...x, from: last };
-    if (c.dates && x.date === c.dates.start && named.length && !named.includes(first) && plain(x.to).includes(plain(named[0]))) return { ...x, to: first };
-    return x;
+    const oneDay = !x.end_date;
+    if (oneDay && c.dates && x.date === c.dates.start && away(lands, first)) return [{ ...x, from: lands, to: first }];
+    if (oneDay && c.dates && x.date === c.dates.end && away(leaves, last)) return [{ ...x, from: last, to: leaves }];
+    if (stops.length > 1 && named.length === 2) return [];
+    return [x];
   });
 }
 

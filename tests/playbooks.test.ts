@@ -247,7 +247,7 @@ describe("the trip kind's questions", () => {
     expect(skipped.items).toEqual(plain.items);
     expect(skipped.trip).toEqual(plain.trip);
   });
-  it("Ozora: the festival's nights are a tent camp from the start (never a hotel), nothing to book; the ticket and transfer stay", () => {
+  it("Ozora: the festival's nights are a tent camp from the start (never a hotel), nothing to book; the ticket stays, the way there is the change of city", () => {
     const s = ozoraReady();
     const ozoraStay = (m: ReturnType<typeof wouldMake>) => m!.items.find((i) => i.category === "stay" && i.city === "Ozora");
     // Unanswered: a camp all the same.
@@ -268,7 +268,9 @@ describe("the trip kind's questions", () => {
     // "Book a spot" is no line any more: the ticket covers the ground.
     expect(titles(made.items.filter(isPrep))).not.toContain("Kamp yeri ayır");
     expect(made.items.find((i) => i.name === "Festival bileti")).toBeTruthy();
-    expect(made.items.find((i) => i.plannedKind === "transfer")).toMatchObject({ city: "Ozora", dates: { start: "2027-07-26" } });
+    // Budapeşte → Ozora on the 26th is the board's own change of city (its leg, "Şehir değişimi"): never a second card
+    // beside it (omurga Tur 19, Emre: "ikisi aynı anda olmaz").
+    expect(made.items.find((i) => i.plannedKind === "transfer")).toBeUndefined();
     // Typed: "kamp yapacağız" is read by the code the same way.
     expect(ozoraStay(wouldMake(typed(s, "kamp yapacağız")))).toMatchObject({ metrics: { stayKind: "camp" } });
   });
