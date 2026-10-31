@@ -7,6 +7,7 @@ import { formatDateRange, isoDate } from "./items";
 import { buildLegs } from "./legs";
 import { addDays, buildPlan, cityKeyOf, stayRange, type Plan } from "./plan";
 import { plannedItem, type PlannedInput } from "./planned";
+import { L } from "./i18n";
 import type { Item, Trip } from "./types";
 
 export interface TriedChange {
@@ -138,3 +139,45 @@ export function effectsOf(trip: Trip, items: Item[], change: TriedChange, now = 
 export const quiet = (e: Effects): boolean =>
   !e.dates && !e.nights.length && !e.no_bed.length && !e.held.length && !e.moves_added.length && !e.moves_gone.length && !e.full_days.length && !e.flights_outside.length && !e.warnings.length;
 
+
+/** Ideas weighed in a turn (weigh_ideas): what the code says back as the decision card. */
+export interface IdeaCard {
+  source: string;
+  take: { title: string; city: string | null; date: string | null; why: string }[];
+  skip: { title: string; why: string }[];
+  pooled: number;
+  effects: Effects;
+}
+
+/** What a change would do, in short lines for the reader ("12 Aralık çok doluyor"). */
+export function effectLines(e: Effects): string[] {
+  return [
+    ...e.full_days.map((d) => L(`${d} çok doluyor (3 ya da daha fazla plan)`, `${d} gets too full (3 plans or more)`)),
+    ...e.no_bed.map((d) => L(`${d} gecesi yataksız kalıyor`, `The night of ${d} is left with no bed`)),
+    ...e.held.map((h) => L(`${h.status === "booked" ? "Rezerve" : "Seçili"} ${h.name} etkileniyor`, `${h.status === "booked" ? "Booked" : "Chosen"} ${h.name} is touched`)),
+    ...e.moves_added.map((m) => L(`Yeni şehir değişimi: ${m} (transfer gerekir)`, `A new change of city: ${m} (a transfer to find)`)),
+    ...e.flights_outside.map((f) => L(`${f} tarihlerin dışında kalıyor`, `${f} falls outside the dates`)),
+    ...e.warnings,
+  ];
+}
+
+/**
+ * The decision card, written by the code from the decision itself (omurga Tur 19 step 3; the model's own reply came back as
+ * one line): what goes on the plan (not yet: "Uygula"), what was left out and why, where the rest waits, and what to watch.
+ */
+export function ideaCard(c: IdeaCard): string {
+  const when = (x: IdeaCard["take"][number]) => [x.city, x.date ? formatDateRange(x.date, null) : null].filter(Boolean).join(", ");
+  const total = c.take.length + c.skip.length + c.pooled;
+  const lines = [
+    L(`${c.source.charAt(0).toLocaleUpperCase("tr")}${c.source.slice(1)} için ${total} fikre baktım: niyetine, temposuna, gün ve yer uyumuna göre seçtim.`, `I went through ${total} ideas from ${c.source}, picked by your intent, your pace, and how they fit the days and places.`),
+  ];
+  if (c.take.length)
+    lines.push("", L("**Plana koyduklarım** (henüz eklemedim):", "**On the plan** (not added yet):"), ...c.take.map((x) => `- ${x.title}${when(x) ? ` (${when(x)})` : ""}${x.why ? `: ${x.why}` : ""}`));
+  if (c.skip.length || c.pooled) {
+    lines.push("", L("**Almadıklarım:**", "**Left out:**"), ...c.skip.map((x) => `- ${x.title}${x.why ? `: ${x.why}` : ""}`));
+    if (c.pooled) lines.push(L(`Kalan ${c.pooled} fikir Öneriler'de duruyor.`, `The other ${c.pooled} are waiting in Suggestions.`));
+  }
+  const watch = effectLines(c.effects);
+  if (watch.length) lines.push("", L("**Dikkat:**", "**Watch out:**"), ...watch.map((w) => `- ${w}`));
+  return lines.join("\n");
+}

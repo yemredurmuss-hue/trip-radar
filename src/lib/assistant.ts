@@ -98,7 +98,7 @@ import { airportCode } from "./searchLinks";
 /** What became of the chat's suggestion, as its result says it. */
 type SuggestOutcome = MergeOutcome | "already_added" | "covered_by_rule" | "already_on_plan";
 import { getProvider, type LlmProvider, type ProviderId } from "./llm";
-import { effectsOf, quiet, type TriedChange } from "./preview";
+import { effectsOf, ideaCard, quiet, type IdeaCard, type TriedChange } from "./preview";
 import type { ToolResult, ToolSpec } from "./llm/types";
 import {
   AMENITIES,
@@ -208,6 +208,11 @@ Nasıl konuşursun:
   • Kesin bir süre ya da tarih sınırı ("en fazla 10 gün", "iznim 10 gün", "pazartesi işe dönmem lazım", "15'inde dönmeliyim") save_preference ile kalıcı not olarak kaydedilir; sonra hiçbir değişiklik bu sınırı aşmaz. "10 gün civarı", "belki uzatırız" ise tercihtir, esneyebilir.
   • Yeni bir şehir ya da durak eklenince günler nereden gelecek, en ucuz çözümü seç ve sormadan uygula, tek satırla söyle: süre tercihse ve uçuş/konaklama rezerve değilse geziyi uzat (update_trip; "Osaka'yı ekledim, geziyi 12 güne çıkardım"); süre kesinse ya da uçuşlar alındıysa rezerve olmayan, en uzun duraktan gün al (plan_item kind stay ile o şehrin aralığını kısalt; "Kyoto'dan 1 gün aldım"). Diğer yolu tek cümleyle seçenek olarak bırak. Rezerve gecelere asla dokunma; hiçbir yol kesin bir sınırı ve rezervasyonları birlikte tutmuyorsa hiçbirini değiştirme, çatışmayı söyle ve iki yol sun.
   • plan.notices'te bir yerin gezinin tarihlerinin dışında olduğu yazıyorsa uygun anda bir kez sor: tarihleri uzatayım mı (update_trip) yoksa o yeri bırakayım mı (remove_from_plan)? Kendin seçme.
+  • Kullanıcı dışarıdan bir fikir getirirse (yapıştırılmış bir blog yazısı, başka bir yerden hazır bir plan, uzun bir öneri listesi) kontrolü sen al, körü körüne uygulama:
+    1) Anla: bu bir fikir havuzu mu (blog, liste) yoksa hazır bir plan mı; kullanıcı ne istiyor ("uygula", "buna göre planla", "ne dersin").
+    2) Tart: her fikri şu sırayla değerlendir: kullanıcının kendi sözü > rezerve ya da seçilmiş olanlar > niyet ve profil (trip.wants, trip.spine_reasons, gezinin türü) > yer ve zaman uyumu (hangi durakta, kaç saat yol, hangi boş gün) > tempo ve çapa bütçesi (her 2 geceye en fazla 1 yeni etkinlik; boş gün boş kalabilir) > kaynağın güvenilirliği. 15 öneriyle 10 günü doldurma.
+    3) weigh_ideas'ı çağır: take = plana koymayı önerdiklerin (gün ve şehriyle), pool = Öneriler'e bıraktıkların, skip = almadıkların (kısa nedenle). Kod take'lerin sonucunu sayar; havuzdakileri Öneriler'e kaynağıyla koyar. Hazır bir plan geldiyse take'ler onun seninkinden farkıdır (geceler moves ile).
+    4) Karar kartını (Plana koyduklarım, Almadıklarım, Dikkat) kod senin kararından yazar; sen onu tekrar etme, yalnız varsa tek soru ya da kısa bir ek yaz. offer_choices ile "Uygula" ve "Vazgeç" göster. Kullanıcı "Uygula" derse take'leri gerçek araçlarla (plan_item; taşıma için ilgili araç) uygula; "Vazgeç" derse hiçbir şeye dokunma. Rezerve olana asla sessizce dokunma.
   • trip.spine_reasons planın neden böyle kurulduğudur (başlangıçtaki planlayıcının gerekçesi ve yerle ilgili bilgiler). Kullanıcı "neden" diye sorarsa ondan cevapla. Bir istek ya da fikir bu gerekçeyle çelişiyorsa uygulamadan önce sonucunu tek cümleyle söyle ("Cam tavanlı geceyi ortaya koymuştuk ki ışık için yedek gece kalsın; sona alırsak yedek kalmaz. Yine de alayım mı?"); kullanıcının sözü kazanır. Gerekçeyi kendiliğinden okuyup sıralama.
   • Bir şey yerinden olursa (yerine başkası geldi, kaldırıldı) silinmediğini ve nerede durduğunu söyle ("eskisi Gizlenenler'de, geri getirebilirsin").
   • Kullanıcı gezinin türüne uymayan bir şeyi (trip_state.concept.avoid, ör. festival gezisinde tur) açıkça isterse ekle, ama tek cümleyle not düş ("Festival gezisinde turları kapalı tutuyorduk; yine de ekledim"). Kendiliğinden önerme.
@@ -291,6 +296,11 @@ How you talk:
   • A firm limit on length or dates ("10 days at most", "I have 10 days off", "I must be back at work on Monday", "we fly home on the 15th") is saved with save_preference as a lasting note; no change after it goes past that limit. "About 10 days", "maybe longer" is a preference and can stretch.
   • A new city or stop: pick the cheapest fix for where its days come from, do it without asking and say it in one line: if the length is a preference and no flight or stay is booked, stretch the trip (update_trip; "Added Osaka, the trip is now 12 days"); if the length is firm or the flights are booked, take days from the longest stop that isn't booked (plan_item kind stay shortening that city's range; "Took one day from Kyoto"). Leave the other way as one sentence of choice. Never touch booked nights; if no way keeps a firm limit and the bookings together, change nothing, say the conflict and offer two ways.
   • If plan.notices says a place is outside the trip's dates, ask once at a good moment: stretch the dates (update_trip) or drop that place (remove_from_plan)? Don't pick for the user.
+  • When the user brings ideas from elsewhere (a pasted blog post, a ready-made plan from somewhere else, a long list of suggestions), take charge; never apply them blindly:
+    1) Understand: is it a pool of ideas (a blog, a list) or a ready-made plan; what does the user want ("apply it", "plan it like this", "what do you think").
+    2) Weigh each idea in this order: the user's own words > what is booked or chosen > the intent and profile (trip.wants, trip.spine_reasons, the kind of trip) > place and time (which stop, how many hours away, which free day) > pace and the anchor budget (at most 1 new activity per 2 nights; a free day may stay free) > how reliable the source is. Never fill 10 days with 15 suggestions.
+    3) Call weigh_ideas: take = what you propose to put on the plan (with its day and city), pool = what you leave in Suggestions, skip = what you leave out (with a short why). The code counts what the takes would do and puts the pool in Suggestions with its source. For a ready-made plan the takes are how it differs from this one (nights with moves).
+    4) The decision card (On the plan, Left out, Watch out) is written by the code from your decision; don't repeat it, write only one question or a short note if any. Show "Apply" and "Cancel" with offer_choices. On "Apply", apply the takes with the real tools (plan_item; the right tool for a move); on "Cancel", touch nothing. Never touch anything booked silently.
   • trip.spine_reasons is why the plan is built as it is (the start planner's reasons and facts about the place). When the user asks "why", answer from it. When a wish or an idea goes against those reasons, say what it costs in one sentence before doing it ("We put the glass-roof night in the middle so a night for the lights is left either side; at the end there's none. Still move it?"); the user's word wins. Never recite the reasons unprompted.
   • When something is displaced (replaced or taken off), say it isn't deleted and where it is ("the old one is under Hidden, you can bring it back").
   • If the user plainly asks for something that doesn't fit the kind of trip (trip_state.concept.avoid, e.g. a tour on a festival trip), add it, but note it in one sentence ("We kept tours off for the festival; added it anyway"). Never suggest it yourself.
@@ -824,6 +834,52 @@ function buildTools(en: boolean): ToolSpec[] {
       },
     },
     {
+      name: "weigh_ideas",
+      description: t(
+        "Kullanıcının dışarıdan getirdiği fikirleri (blog yazısı, hazır plan, uzun liste) tarttığın kararla kaydeder: take = plana koymayı önerdiklerin (değişiklik olarak; HENÜZ PLANA GİRMEZ), pool = Öneriler'e kaynağıyla bıraktıkların (öneri kartı olur), skip = almadıkların (nedeniyle). Kod take'lerin sonucunu sayar (try_change gibi, kaydetmeden). Cevabını bu sonuca göre yaz; take'leri ancak kullanıcı 'Uygula' derse gerçek araçlarla uygula.",
+        "Records your decision on ideas the user brought from elsewhere (a blog post, a ready-made plan, a long list): take = what you propose to put on the plan (as changes; NOT ON THE PLAN YET), pool = what you leave in Suggestions with its source (a suggestion card), skip = what you leave out (with why). The code counts what the takes would do (like try_change, nothing saved). Write your reply from that result; apply the takes with the real tools only when the user says 'Apply'.",
+      ),
+      schema: {
+        type: "object",
+        properties: {
+          source: { type: "string", description: t("Fikirlerin nereden geldiği, kısa: \"blog\", \"hazır plan\", sitenin adı", "Where the ideas came from, short: \"blog\", \"ready-made plan\", the site's name") },
+          take: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                kind: { type: "string", enum: [...PLANNED_KINDS] },
+                title: { type: "string" },
+                city: { type: "string" },
+                date: { type: "string", description: "YYYY-MM-DD | \"\"" },
+                end_date: { type: "string", description: "YYYY-MM-DD | \"\"" },
+                why: { type: "string", description: t("Hangi ölçütle seçtin, kısa", "Which measure picked it, short") },
+              },
+              required: ["kind", "title", "city", "date", "end_date", "why"],
+              additionalProperties: false,
+            },
+          },
+          pool: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: { section: { type: "string", enum: [...SUGGESTION_SECTIONS] }, title: { type: "string" }, city: { type: "string" }, why: { type: "string" } },
+              required: ["section", "title", "city", "why"],
+              additionalProperties: false,
+            },
+          },
+          skip: { type: "array", items: { type: "object", properties: { title: { type: "string" }, why: { type: "string" } }, required: ["title", "why"], additionalProperties: false } },
+          moves: {
+            type: "array",
+            description: t("take'ler için gereken taşımalar (bir konaklamanın gecelerini kısaltmak gibi); end_date yoksa \"\"", "Moves the takes need (a stay's nights shortened, say); end_date \"\" when none"),
+            items: { type: "object", properties: { item_id: { type: "string" }, date: { type: "string" }, end_date: { type: "string" } }, required: ["item_id", "date", "end_date"], additionalProperties: false },
+          },
+        },
+        required: ["source", "take", "pool", "skip", "moves"],
+        additionalProperties: false,
+      },
+    },
+    {
       name: "try_change",
       description: t(
         "Bir değişikliği planın bir kopyasında dener, HİÇBİR ŞEY KAYDETMEZ; kodun saydığı sonuçları döner (yerlerin gece sayısı, etkilenen rezervasyon ve seçimler, yeni ya da kalkan şehir değişimleri, yataksız geceler, dolan günler, tarih dışı uçuşlar, yeni uyarılar). Fikir denenirken ve rezerve/seçilmiş bir şeye dokunmadan önce kullan.",
@@ -1228,6 +1284,8 @@ interface Turn {
   pendingSearches: PendingSearch[];
   /** find_offers: the offers the reply shows as cards, and the honest line when none was under the ceiling. */
   offers?: { need: Need; offers: Offer[]; overMax: string | null; added?: string[] } | null;
+  /** weigh_ideas: the decision the reply's card is written from (preview.ts ideaCard). */
+  ideas?: IdeaCard | null;
 }
 
 /**
@@ -1338,6 +1396,8 @@ function describeCall(name: string, input: any, byId: Map<string, Item>): string
       return L("Kayıtlı sayfada arıyorum", "Looking in the saved page");
     case "try_change":
       return L("Planda deniyorum (kaydetmeden)", "Trying it on the plan (nothing saved)");
+    case "weigh_ideas":
+      return L("Fikirleri tartıyorum", "Weighing the ideas");
     default:
       return null;
   }
@@ -2423,6 +2483,47 @@ async function runTool(tripId: string, name: string, input: any, choices: string
       if (found.offers.length) turn.offers = { ...found, added: await keepChatOffers(tripId, found, items) };
       return JSON.stringify(offersToolResult(found));
     }
+    case "weigh_ideas": {
+      // Ideas from elsewhere weighed (omurga Tur 19, step 3): the takes tried on copies (nothing on the plan yet), the pool
+      // left as suggestion cards with their source ("Blogdan: …"), the skips only said. The chat asks before applying.
+      const trip = await d.get("trips", tripId);
+      if (!trip) throw new ToolError(L("Gezi bulunamadı.", "Trip not found."));
+      const blank = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
+      const source = blank(input.source) ?? L("dışarıdan", "elsewhere");
+      const takes = (Array.isArray(input.take) ? input.take : []).slice(0, 8);
+      const effects = effectsOf(trip, items.map(withEdits), {
+        moves: (Array.isArray(input.moves) ? input.moves : []).map((m: any) => ({ item_id: String(m.item_id), date: blank(m.date), end_date: blank(m.end_date) })),
+        adds: takes.map((a: any) => ({ kind: a.kind, title: blank(a.title), city: blank(a.city), date: blank(a.date), end_date: blank(a.end_date) })),
+      });
+      const now = Date.now();
+      const from = L(`Kaynak: ${source}`, `Source: ${source}`);
+      // (an activity idea waits in Yapılacaklar: Etkinlikler takes only real tours as cards; one refused is said, never lost silently)
+      const refused: { title: string; why: string }[] = [];
+      const pooled = (Array.isArray(input.pool) ? input.pool : []).slice(0, 12).flatMap((p: any) => {
+        const section = p.section === "activity" ? "todo" : p.section;
+        const checked = checkSuggestionInput({ section, kind: "add", title: p.title, why: `${from}: ${blank(p.why) ?? ""}`.trim(), template: "", city: p.city ?? "", start: "", end: "" }, "chat", now);
+        if (typeof checked === "string") refused.push({ title: String(p.title ?? ""), why: checked });
+        return typeof checked === "string" ? [] : [checked];
+      });
+      if (pooled.length) await changeTrip(tripId, (t) => ({ ...t, suggestions: mergeIncoming(t.suggestions, pooled).list }));
+      turn.ideas = {
+        source,
+        take: takes.map((a: any) => ({ title: String(a.title ?? ""), city: blank(a.city), date: blank(a.date), why: String(a.why ?? "") })),
+        skip: (Array.isArray(input.skip) ? input.skip : []).slice(0, 12).map((x: any) => ({ title: String(x.title ?? ""), why: String(x.why ?? "") })),
+        pooled: pooled.length,
+        effects,
+      };
+      return JSON.stringify({
+        card: L("Karar kartı (Plana koyduklarım, Almadıklarım, Dikkat) cevabın başına kodla yazılır; sen tekrar etme, yalnız varsa tek soru ya da kısa bir ek yaz.", "The decision card (On the plan, Left out, Watch out) is written at the top of your reply by the code; don't repeat it, write only a question or a short note if any."),
+        on_plan_yet: false,
+        take: takes.map((a: any) => ({ title: a.title, city: a.city, date: a.date, why: a.why })),
+        pooled: pooled.length,
+        pooled_note: L(`${pooled.length} fikir Öneriler'de (${from}).`, `${pooled.length} ideas in Suggestions (${from}).`),
+        ...(refused.length ? { not_pooled: refused } : {}),
+        nothing_changes: quiet(effects),
+        effects,
+      });
+    }
     case "try_change": {
       // Tried on copies, nothing saved (omurga Tur 19): the chat says what it would do and asks before doing it.
       const trip = await d.get("trips", tripId);
@@ -3168,6 +3269,14 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
         // The question is in the model's own turn, so "Evet, kaldır" next time answers it.
         if (Array.isArray(content)) content = [...content, ...(provider.assistantContent(question.text) as unknown[])];
       }
+    }
+    // Ideas weighed this turn (weigh_ideas): the decision card, written by the code from the decision, before the model's
+    // words; its taps "Uygula" / "Vazgeç" when the model gave none (omurga Tur 19 step 3).
+    if (last && turn.ideas) {
+      const card = withLang(contentLang(trip.lang), () => ideaCard(turn.ideas!));
+      text = text ? `${card}\n\n${text}` : card;
+      if (Array.isArray(content)) content = [...(provider.assistantContent(card) as unknown[]), ...content];
+      if (!choices.length) choices.push(...withLang(contentLang(trip.lang), () => [L("Uygula", "Apply"), L("Vazgeç", "Cancel")]));
     }
     // A web search this turn: its sources at the end ("Kaynak: …"), and the plain word when it couldn't search.
     if (last && (turn.searchFound || turn.searchDown)) {
