@@ -19,12 +19,12 @@ export function foldLabel(texts: readonly string[]): string {
   return parts.length ? parts.join(", ") : L(`${texts.length} değişiklik`, `${texts.length} changes`);
 }
 
-export function EventFold({ count, label, children }: { count: number; label?: string; children: ReactNode }) {
+export function EventFold({ count, label, icon = "✓", children }: { count: number; label?: string; icon?: string; children: ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
     <div className={`ev-fold${open ? " open" : ""}`}>
       <button type="button" className="ev-fold-btn" aria-expanded={open} onClick={() => setOpen(!open)}>
-        <span aria-hidden>✓</span>
+        <span aria-hidden>{icon}</span>
         {label ?? L(`${count} değişiklik`, `${count} changes`)}
         <span className="ev-fold-chev" aria-hidden>
           ▾

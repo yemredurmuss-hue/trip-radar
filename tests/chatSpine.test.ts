@@ -29,6 +29,7 @@ describe("the chat keeps the trip's spine", () => {
       "Tek yön",
       "örnek bir taslak",
       "Oraya nasıl gidiyorsun?",
+      "henüz seçmediği bir şeyin ayrıntısını",
     ]) expect(p).toContain(said);
   });
 
@@ -54,6 +55,7 @@ describe("the chat keeps the trip's spine", () => {
       "One way",
       "a sample draft",
       "How are you getting there?",
+      "the detail of something they haven't chosen yet",
     ]) expect(p).toContain(said);
   });
 });

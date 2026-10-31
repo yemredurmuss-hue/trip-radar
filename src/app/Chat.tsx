@@ -24,7 +24,7 @@ import { ChatCard } from "./chat/ChatCard";
 import type { PlanLink } from "./chat/planLink";
 import { QuickReplies } from "./chat/QuickReplies";
 import { useChatDrawer } from "./chat/useChatDrawer";
-import { EventFold, foldLabel, foldRuns } from "./ChatFold";
+import { EventFold, FOLD_MIN, foldLabel, foldRuns } from "./ChatFold";
 import { ChatOffers } from "./ChatOffers";
 import { ArrowUp, Back } from "./Icons";
 import { Mascot } from "./Mascot";
@@ -648,7 +648,20 @@ function foldRows(all: ArrivalRow[], render: (row: ArrivalRow) => ReactNode): Re
     const q = asked(row);
     return !q || !all.slice(i + 1).some((later) => asked(later) === q);
   });
-  return foldRuns(rows, (row) => row.kind === "msg" && row.m.role === "event" && !row.m.routing && !row.file).map((g) =>
+  // The start's interview, moved into the trip's chat, folds under one line: the spine said back is what's seen first
+  // (omurga 2026-10-31, Emre: "yukarıdakiler kafa karıştırıyor").
+  const isStart = (row: ArrivalRow) => row.kind === "msg" && row.m.start === true;
+  const starts = rows.filter(isStart);
+  const head: ReactNode[] =
+    starts.length >= FOLD_MIN
+      ? [
+          <EventFold key="start-fold" icon="💬" count={starts.length} label={L(`Başlangıç sohbeti · ${starts.length} mesaj`, `How it started · ${starts.length} messages`)}>
+            {starts.map(render)}
+          </EventFold>,
+        ]
+      : starts.map(render);
+  const rest = starts.length ? rows.filter((row) => !isStart(row)) : rows;
+  return [...head, ...foldRuns(rest, (row) => row.kind === "msg" && row.m.role === "event" && !row.m.routing && !row.file).map((g) =>
     "fold" in g ? (
       <EventFold key={`fold-${g.fold[0].kind === "msg" ? g.fold[0].m.id : ""}`} count={g.fold.length} label={foldLabel(g.fold.map((r) => (r.kind === "msg" ? r.m.text : "")))}>
         {g.fold.map(render)}
@@ -656,5 +669,5 @@ function foldRows(all: ArrivalRow[], render: (row: ArrivalRow) => ReactNode): Re
     ) : (
       render(g.row)
     ),
-  );
+  )];
 }

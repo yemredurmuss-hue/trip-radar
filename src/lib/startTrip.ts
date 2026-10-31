@@ -4357,7 +4357,8 @@ export function historyRows(messages: StartMsg[], closing: string, provider: "ge
   if (turns[0]?.role === "assistant") turns.unshift({ role: "user", text: L("Yeni gezi planla", "Plan a new trip"), at: turns[0].at - 1 });
   const content = (text: string) => (provider === "anthropic" ? [{ type: "text", text }] : [{ text }]);
   let at = 0;
-  return turns.map((t) => ({
+  // The interview's turns are the start's (the board folds them under one line); the closing line is the chat's first.
+  return turns.map((t, i) => ({
     tripId,
     role: t.role,
     content: content(t.text),
@@ -4365,6 +4366,7 @@ export function historyRows(messages: StartMsg[], closing: string, provider: "ge
     choices: [],
     provider,
     createdAt: (at = Math.max(at + 1, t.at)),
+    ...(i < turns.length - 1 ? { start: true as const } : {}),
   }));
 }
 

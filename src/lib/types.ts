@@ -883,6 +883,8 @@ export interface ChatMessage {
   id: string;
   tripId: string;
   role: "user" | "assistant" | "event";
+  /** A turn of the start's interview, moved into the trip's chat: folded under one line on the board (omurga 2026-10-31). */
+  start?: boolean;
   /** Full API content for user/assistant turns (tool_use/tool_result included) so history replays exactly. */
   content: unknown;
   text: string;
