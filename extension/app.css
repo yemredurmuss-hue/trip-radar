@@ -2929,7 +2929,7 @@ body.popup:has(.tb) { width: 380px; }
 .tk-ib { all: unset; box-sizing: border-box; cursor: pointer; flex: none; width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; color: var(--q-mut); }
 .tk-ib:hover { background: var(--q-soft); color: var(--q-ink); }
 .tk-ib:disabled { opacity: .5; cursor: default; }
-.tk-ib:focus-visible, .tk-pick:focus-visible, .tk-n:focus-visible, .tk-save:focus-visible, .tk-sw:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 2px; }
+.tk-ib:focus-visible, .tk-pick:focus-visible, .tk-save:focus-visible, .tk-sw:focus-visible { outline: 3px solid #cfc7ff; outline-offset: 2px; }
 .tk-ico { width: 18px; height: 18px; flex: none; }
 .tk-pad { padding: 12px 14px 0; }
 .tk-pad .popup-desk { margin: 0; }
@@ -2975,12 +2975,22 @@ body.popup:has(.tb) { width: 380px; }
 .tk-warn span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tk-warn .tk-ib { color: var(--q-warn); }
 .tk-trips { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; padding: 8px; }
-.tk-ask { padding: 4px 8px 2px; font-size: 12.5px; font-weight: 800; color: var(--q-mut); }
+.tk-ask { padding: 8px 8px 2px; font-size: 12.5px; font-weight: 800; color: var(--q-mut); }
 .tk-q { box-sizing: border-box; width: 100%; height: 36px; margin: 0 0 4px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--q-line); background: var(--q-soft); font: inherit; font-size: 14px; color: var(--q-ink); }
+.tk-q:focus { outline: none; border-color: var(--q-acc); box-shadow: 0 0 0 3px #e3defe; }
 /* (v2: the count right after the name, the ring and the button at the end) */
 .tk-row { position: relative; display: flex; align-items: center; gap: 6px; min-height: 56px; padding: 0 8px 0 0; border-radius: 12px; }
 .tk-row:hover, .tk-row:focus-within { background: var(--q-soft); }
-.tk-row.sel { box-shadow: inset 0 0 0 1.5px #d6cffd; }
+/* (v6: the selected trip, where it saves, in its own box; the same inset on every side) */
+.tk-row.sel { margin: 0 4px; padding: 10px; gap: 10px; background: var(--q-acc-s); box-shadow: inset 0 0 0 1.5px #d6cffd; }
+.tk-row.sel:hover, .tk-row.sel:focus-within { background: var(--q-acc-s); }
+.tk-row.sel .tk-pick { padding: 0; gap: 12px; }
+.tk-row.sel .tk-th { width: 48px; height: 48px; border-radius: 12px; }
+.tk-row.sel .tk-nm b { font-size: 16px; }
+.tk-row.sel.saved, .tk-row.sel.saved:hover { background: var(--q-ok-s); box-shadow: inset 0 0 0 1.5px var(--q-ok-l); }
+.tk-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; }
+/* ("Tümü": the list scrolls in place, about four rows, Chrome caps a popup at 600 px; it never grows past that, "Daha az" stays in view) */
+.tk-scroll { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; max-height: 240px; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 18px; scrollbar-width: thin; scrollbar-color: var(--q-line) transparent; -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 26px), transparent); mask-image: linear-gradient(180deg, #000 calc(100% - 26px), transparent); }
 .tk-row.saved { background: var(--q-ok-s); box-shadow: inset 0 0 0 1.5px var(--q-ok-l); }
 .tk-pick { all: unset; box-sizing: border-box; cursor: pointer; flex: 0 1 auto; min-width: 0; display: flex; align-items: center; gap: 11px; padding: 8px 0 8px 8px; align-self: stretch; border-radius: 12px; }
 .tk-nm { min-width: 0; display: grid; gap: 1px; }
@@ -2989,10 +2999,6 @@ body.popup:has(.tb) { width: 380px; }
 .tk-nm small { font-size: 12px; font-weight: 500; color: var(--q-mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
 .tk-th { width: 40px; height: 40px; border-radius: 11px; }
 .tk-th .tk-art { width: 32px; height: 32px; object-fit: contain; mix-blend-mode: multiply; }
-/* (Pano's count: a small number in the cover's corner) */
-.tk-n { all: unset; box-sizing: border-box; cursor: pointer; position: absolute; left: 35px; top: calc(50% + 7px); min-width: 19px; height: 18px; padding: 0 4px; border-radius: 9px; display: grid; place-items: center; background: var(--q-st-wait-bg); color: var(--q-ink); font-size: 11px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; box-shadow: 0 1px 3px rgba(28, 26, 51, .28); }
-.tk-n:hover { background: var(--q-acc); color: #fff; }
-.tk-n.up { background: var(--q-ok); color: #fff; }
 .tk-new .tk-plus { display: grid; place-items: center; background: var(--q-st-wait-bg); box-shadow: inset 0 0 0 1.5px #cfc7ff; color: var(--q-acc); }
 .tk-new .tk-plus .tk-ico { width: 18px; height: 18px; }
 .tk-new .tk-nm b { color: var(--q-acc-d); }
@@ -3025,7 +3031,9 @@ body.popup:has(.tb) { width: 380px; }
 @media (hover: none) { .tk-more { display: inline-flex; } .tk-in { display: none; } }
 .tk-none { margin: 4px 8px 6px; font-size: 13.5px; font-weight: 650; color: var(--q-mut); }
 .tk-err { margin: 4px 8px 6px; font-size: 13px; font-weight: 650; color: var(--q-bad); }
-.tk-foot { display: flex; align-items: center; gap: 10px; padding: 0 16px 12px; }
+.tk-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 16px 12px; }
+.tk-foot.open { padding-top: 8px; border-top: 1px solid var(--q-line); }
+.tk-foot small { font-size: 12px; font-weight: 650; color: var(--q-mut); }
 .tk-foot .btn-link { padding: 0; font-size: 13.5px; font-weight: 800; }
 .tk-alt { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px 10px 16px; border-top: 1px solid #efedf5; font-size: 13.5px; font-weight: 700; color: var(--q-ink); }
 .tk-alt .btn-link { padding: 0; font-size: 13.5px; font-weight: 800; }
