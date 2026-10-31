@@ -10,6 +10,7 @@ import { setLang } from "../src/lib/i18n";
 import type { LlmProvider } from "../src/lib/llm/types";
 import { fitStops, oneWay, runStep, stepsFor, type ShapedInput } from "../src/lib/startCreate";
 import { db } from "../src/lib/db";
+import { tripState } from "../src/lib/assistant";
 import { applyAnswer, creationOf, newStart, type Creation, type StartState } from "../src/lib/startTrip";
 
 afterEach(() => resetAdvice());
@@ -63,6 +64,10 @@ it("Tromsø: the reading missed both wishes; the advice makes the glass night th
   expect(acts).toContain("Husky turu");
   expect(acts).toContain("Kuzey ışığı avı turu");
   expect(acts.some((n) => /fiyort|cam tavanlı/i.test(n))).toBe(false);
+  // The reasons stay with the trip, and the trip's chat reads them (omurga Tur 19: "neden 3. gece?").
+  const trip = (await (await db()).get("trips", state.tripId!))!;
+  expect(trip.spine).toEqual({ rationale: TROMSO.rationale, facts: TROMSO.facts });
+  expect(JSON.parse(tripState(trip, items, [])).trip.spine_reasons.rationale).toBe(TROMSO.rationale);
 });
 
 it("never overrules what was said: the traveller's own stay keeps its words, only its place among the nights comes from the advice", () => {

@@ -118,6 +118,8 @@ export interface StepEnv {
 }
 
 /** The start's intent on top of what the trip already had (null: nothing known). */
+/** The advisor's reasons kept on the trip (omurga Tur 19): the trip's chat answers "why" from them. */
+const spineOf = (s: StartState): Trip["spine"] => (s.advice?.rationale ? { rationale: s.advice.rationale, facts: s.advice.facts } : null);
 // (the advisor's wishes read from the traveller's own words: "Ubud · Konaklama → ormana bakan"; advisor.ts)
 const startWants = (s: StartState, had?: TripWants | null): TripWants | null =>
   mergeWants(had, mergeWants(mergeWants(wantsFromStart(s), pbWants(s)), s.advice?.wishes?.length ? { said: s.advice.wishes } : null));
@@ -147,6 +149,7 @@ export async function runStep(id: StepId, s: StartState, env: StepEnv = {}): Pro
         ...(c.budget && !existing.budget ? { budget: c.budget } : {}),
         // The intent said at the start (the money level, who goes, the kind of stay), over what the trip had.
         ...(startWants(s, existing.wants) ? { wants: startWants(s, existing.wants) } : {}),
+        ...(spineOf(s) ? { spine: spineOf(s) } : {}),
         confirmedDates: c.dates,
         startGuide: { ...(existing.startGuide ?? { createdAt: now() }), road: c.road || undefined, approxStart: c.approxStart, way: c.way ?? undefined, dayTrip: c.dayTrip || undefined, routeDraft: c.routeDraft || undefined },
         lang: s.lang,
@@ -165,6 +168,7 @@ export async function runStep(id: StepId, s: StartState, env: StepEnv = {}): Pro
       budget: c.budget,
       // The intent said at the start: "Ekonomik", who goes, the kind of stay (travelWants.ts); every suggestion reads it.
       ...(startWants(s) ? { wants: startWants(s) } : {}),
+      ...(spineOf(s) ? { spine: spineOf(s) } : {}),
       heroImage: null,
       startGuide: { createdAt: now(), ...(c.road ? { road: true } : {}), ...(c.approxStart ? { approxStart: c.approxStart } : {}), ...(c.way ? { way: c.way } : {}), ...(c.dayTrip ? { dayTrip: true } : {}), ...(c.routeDraft ? { routeDraft: true } : {}) },
       // The conversation's language: the trip's chat and its suggestions go on in it.
