@@ -9,6 +9,8 @@ import { packCount, packKey, withName, type PackRow, type PackView } from "../..
 import { shopFor } from "../../../lib/providers";
 import { UNDO_MS } from "../../../lib/undo";
 import type { Trip } from "../../../lib/types";
+import { addEvent } from "../../../lib/db";
+import { withAnswer } from "../../../lib/travelWants";
 import { updateTrip } from "../../actions";
 import { useCardEnv } from "../../cards/PlanCard";
 import type { PrepModel } from "./usePrep";
@@ -28,15 +30,21 @@ function setReady(trip: Trip, key: string, ready: boolean) {
   );
 }
 
-function setAnswer(trip: Trip, id: string, answer: string | null) {
-  return updateTrip(
+/**
+ * An answer to a Bavul question: on the list, and in the trip's intent too (Tercihler, every model), with one line in the
+ * chat saying it was noted (omurga 2026-10-31, Emre: "çadır dedim ama tercihlere işlenmedi, chatte de görünmedi").
+ */
+async function setAnswer(trip: Trip, id: string, answer: string | null, question: string) {
+  await updateTrip(
     trip.id,
     (t) => {
       const { [id]: _was, ...rest } = t.packing?.answers ?? {};
-      return { ...t, packing: { ...t.packing, answers: answer == null ? rest : { ...rest, [id]: answer } } };
+      const wants = withAnswer(t.wants, question, answer);
+      return { ...t, wants: wants ?? undefined, packing: { ...t.packing, answers: answer == null ? rest : { ...rest, [id]: answer } } };
     },
     { touch: false },
   );
+  if (answer != null) await addEvent(trip.id, L(`Not aldım: ${question} ${answer}`, `Noted: ${question} ${answer}`)).catch(() => undefined);
 }
 
 export function Bavul({ view, sub, bag, model, looking = false }: {
@@ -99,7 +107,7 @@ export function Bavul({ view, sub, bag, model, looking = false }: {
                   a.answer ? (
                     <span key={a.id} className="q-bvq done">
                       <small>{a.text}</small>
-                      <button type="button" className="q-bvans" aria-label={L(`${a.text} ${a.answer}: cevabı değiştir`, `${a.text} ${a.answer}: change the answer`)} onClick={() => void setAnswer(trip, a.id, null)}>
+                      <button type="button" className="q-bvans" aria-label={L(`${a.text} ${a.answer}: cevabı değiştir`, `${a.text} ${a.answer}: change the answer`)} onClick={() => void setAnswer(trip, a.id, null, a.text)}>
                         {a.answer}
                       </button>
                     </span>
@@ -107,7 +115,7 @@ export function Bavul({ view, sub, bag, model, looking = false }: {
                     <span key={a.id} className="q-bvq" role="group" aria-label={a.text}>
                       <small>{a.text}</small>
                       {a.options.map((o) => (
-                        <button key={o} type="button" className="q-bva" onClick={() => void setAnswer(trip, a.id, o)}>
+                        <button key={o} type="button" className="q-bva" onClick={() => void setAnswer(trip, a.id, o, a.text)}>
                           {o}
                         </button>
                       ))}

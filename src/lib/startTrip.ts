@@ -29,6 +29,7 @@ import { daysBetween, eventDays, findEvent, intentAt, intentOf, intentTitle, plu
 import { tripName, type TitleState } from "./tripName";
 import { STYLES, type BudgetLevel, type StyleId } from "./tripStyle";
 import type { ChatMessage, CustomPlaybook, GroundWay, Item, StayKind, Trip } from "./types";
+import type { StayWish, TripWants } from "./travelWants";
 import { isPlaceholder, placeholderPrint } from "./placeholders";
 
 // --- the state -----------------------------------------------------------------------------------------
@@ -1867,8 +1868,26 @@ export function pbAsks(s: StartState): PbAsk[] {
 /** The trip kind's question still to ask (one per turn), or null. */
 export const pbCurrent = (s: StartState): PbAsk | null => pbAsks(s).find((a) => !Object.hasOwn(s.pbAnswers ?? {}, a.key)) ?? null;
 
+/**
+ * The kind's answers as the trip's intent (omurga 2026-10-31, Emre: "çadır dedim ama tercihlere işlenmedi"): each answer in
+ * words ("Çadır kampı"; a question whose answer says little alone, with it: "Bilet aldın mı? → Aldım"), and the kind of
+ * stay an answer sets. Kept on the trip (Trip.wants) so Tercihler and every model read them.
+ */
+export function pbWants(s: StartState): TripWants | null {
+  const said: string[] = [];
+  const stays: StayWish[] = [];
+  for (const a of pbAsks(s)) {
+    const chip = a.chips.find((c) => c.value === s.pbAnswers?.[a.key]);
+    if (!chip) continue;
+    const stay = chip.effects.find((e) => e.op === "setStay");
+    if (stay?.op === "setStay" && stay.kind !== "vehicle") stays.push(stay.kind);
+    said.push(stay ? say(chip.label) : `${say(a.q.text)} → ${say(chip.label)}`);
+  }
+  return said.length ? { said, ...(stays.length ? { stays } : {}) } : null;
+}
+
 /** What the answers so far do to the made trip, in the order asked (an answer skipped does nothing). */
-export const pbEffects = (s: StartState): PbEffect[] => (s.pbAnswers ? pbAsks(s).flatMap((a) => effectsOf(a.q, a.chips, s.pbAnswers?.[a.key])) : []);
+export const pbEffects =(s: StartState): PbEffect[] => (s.pbAnswers ? pbAsks(s).flatMap((a) => effectsOf(a.q, a.chips, s.pbAnswers?.[a.key])) : []);
 
 /** A trip kind's question left unanswered (skipped, or a typed answer nothing came of): asked no more. */
 export function skipPb(s: StartState, key: string | null, now: number): StartState {

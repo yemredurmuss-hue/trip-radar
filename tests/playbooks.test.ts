@@ -15,6 +15,7 @@ import {
 import { acceptReview, reviewSystem } from "../src/lib/suggestReview";
 import { ruleSuggestions } from "../src/lib/suggestions";
 import type { Item, Suggestion } from "../src/lib/types";
+import { wantsEntries, wantsLine } from "../src/lib/travelWants";
 
 const TODAY = "2026-10-06";
 
@@ -368,5 +369,20 @@ describe("the trip kind's questions", () => {
     expect(moneyOf("150 bin TL")).toEqual({ amount: 150000, currency: "TRY" });
     expect(moneyOf("2 kişi 5000 euro")).toEqual({ amount: 5000, currency: "EUR" });
     expect(moneyOf("5 gün")).toBeNull();
+  });
+});
+
+describe("the kind's answers reach the trip's intent (omurga, 2026-10-31, Emre: 'çadır dedim ama tercihlere işlenmedi')", () => {
+  it("a tent camp answered: the stay kind and the answer itself, in Tercihler and in what the AI reads", () => {
+    let s = ozoraReady();
+    while (pbCurrent(s) && !pbCurrent(s)!.chips.some((c) => c.value === "camp")) s = chip(s, withLang("tr", () => questionOf(s, "pb", ctx)).chips[0].label);
+    s = chip(s, "Çadır kampı");
+    const wants = wouldMake(s)!.trip.wants!;
+    expect(wants.stays).toContain("camp");
+    expect(wants.said?.some((x) => x.includes("Çadır kampı"))).toBe(true);
+    expect(withLang("tr", () => wantsEntries(wants)).some((e) => e.text.includes("Çadır kampı"))).toBe(true);
+    expect(withLang("tr", () => wantsLine(wants))).toContain("Çadır kampı");
+    // who goes, said at the start, stays too
+    expect(wants.company).toBe("solo");
   });
 });

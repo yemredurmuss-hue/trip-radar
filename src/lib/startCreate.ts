@@ -15,7 +15,7 @@ import type { PlannedInput } from "./planned";
 import { cardsAfter, hasMust, prepAdded, startPlaybook, startPlaybookObj, tripIntentOf, withMusts } from "./playbooks";
 import { styleKeyFor } from "./startBoard";
 import { suggestionsReview } from "./startHooks";
-import { creationOf, dative, historyRows, isPlaceholder, missingInfo, namesToAsk, narrowPlaceholders, pbEffects, placeholderPrint, readyText, wantText, whoText, type Creation, type StartCtx, type StartState } from "./startTrip";
+import { creationOf, dative, historyRows, isPlaceholder, missingInfo, namesToAsk, narrowPlaceholders, pbEffects, pbWants, placeholderPrint, readyText, wantText, whoText, type Creation, type StartCtx, type StartState } from "./startTrip";
 import { withTravellers } from "./tripSettings";
 import { uniqueTitle } from "./trips";
 import type { Item, ItemPart, Trip } from "./types";
@@ -119,7 +119,7 @@ export interface StepEnv {
 }
 
 /** The start's intent on top of what the trip already had (null: nothing known). */
-const startWants = (s: StartState, had?: TripWants | null): TripWants | null => mergeWants(had, wantsFromStart(s));
+const startWants = (s: StartState, had?: TripWants | null): TripWants | null => mergeWants(had, mergeWants(wantsFromStart(s), pbWants(s)));
 
 /** What a step did: the trip's id (step "trip" makes it), and its line when it has its own words ("3 öneri"). */
 export interface StepResult {

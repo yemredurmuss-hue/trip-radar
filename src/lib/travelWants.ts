@@ -22,6 +22,11 @@ export interface TripWants {
   avoid?: StayWish[];
   /** Wishes about where to stay, as short words the hotels' search reads ("city centre", "beachfront"). */
   near?: string[];
+  /**
+   * The trip kind's questions answered at the start ("Çadır kampı", "Bilet aldın mı? → Aldım"; omurga 2026-10-31,
+   * Emre: "çadır dedim ama tercihlere işlenmedi"): kept so Tercihler and every model read them, a long chat included.
+   */
+  said?: string[];
 }
 
 /** Each kind: how it is said (Turkish and English, any suffix: "hostelde", "villada") and how a hotel search asks for it. */
@@ -100,12 +105,16 @@ export function mergeWants(old: TripWants | null | undefined, add: TripWants | n
   const near = uniq([...(a.near ?? []), ...(b.near ?? [])]).slice(0, 4);
   const budget = b.budget ?? a.budget ?? null;
   const company = b.company ?? a.company ?? null;
+  // A newer answer to the same question ("X → …") takes the older one's place.
+  const topic = (x: string) => x.split(" → ")[0];
+  const said = uniq([...(a.said ?? []).filter((x) => !(b.said ?? []).some((y) => topic(y) === topic(x))), ...(b.said ?? [])]).slice(-8);
   const out: TripWants = {
     ...(budget ? { budget } : {}),
     ...(company ? { company } : {}),
     ...(stays.length ? { stays } : {}),
     ...(avoid.length ? { avoid } : {}),
     ...(near.length ? { near } : {}),
+    ...(said.length ? { said } : {}),
   };
   return Object.keys(out).length ? out : null;
 }
@@ -159,6 +168,18 @@ const BUDGET: Record<BudgetLevel, () => string> = { low: () => L("ekonomik", "bu
  * The intent as one line for a model's prompt ("Gezginin niyeti: bütçe ekonomik; arkadaşlarla; istenen konaklama: hostel;
  * yer: city centre."), or null when nothing is known. In the current language.
  */
+/**
+ * An answer given on the board (the Bavul's "Nasıl konaklayacaksın? · Çadır") as the trip's intent (omurga 2026-10-31): kept
+ * as said, a kind of stay in it asked for; a newer answer replaces the older; taken back (null), its line goes.
+ */
+export function withAnswer(wants: TripWants | null | undefined, question: string, answer: string | null): TripWants | null {
+  const topic = `${question} → `;
+  const rest: TripWants = { ...(wants ?? {}), said: (wants?.said ?? []).filter((x) => !x.startsWith(topic)) };
+  if (!rest.said!.length) delete rest.said;
+  if (answer == null) return Object.keys(rest).length ? rest : null;
+  return mergeWants(rest, { said: [`${topic}${answer}`], stays: stayWishesIn(answer).stays });
+}
+
 /** What the start chat understood, one entry each (the hero's Tercihler): its words and the wants without it (its ×). */
 export function wantsEntries(wants: TripWants | null | undefined): { key: string; text: string; without: (w: TripWants) => TripWants }[] {
   const w = wants ?? {};
@@ -168,6 +189,7 @@ export function wantsEntries(wants: TripWants | null | undefined): { key: string
   for (const s of w.stays ?? []) out.push({ key: `stay:${s}`, text: L(`Konaklama: ${s}`, `Stay: ${s}`), without: (x) => ({ ...x, stays: (x.stays ?? []).filter((y) => y !== s) }) });
   for (const s of w.avoid ?? []) out.push({ key: `avoid:${s}`, text: L(`${s} olmasın`, `No ${s}`), without: (x) => ({ ...x, avoid: (x.avoid ?? []).filter((y) => y !== s) }) });
   for (const s of w.near ?? []) out.push({ key: `near:${s}`, text: L(`Yer: ${s}`, `Where: ${s}`), without: (x) => ({ ...x, near: (x.near ?? []).filter((y) => y !== s) }) });
+  for (const s of w.said ?? []) out.push({ key: `said:${s}`, text: s, without: (x) => ({ ...x, said: (x.said ?? []).filter((y) => y !== s) }) });
   return out;
 }
 
@@ -179,6 +201,7 @@ export function wantsLine(wants: TripWants | null | undefined): string | null {
     w.stays?.length ? `${L("istenen konaklama", "stay asked for")}: ${w.stays.join(", ")}` : null,
     w.avoid?.length ? `${L("istemediği", "ruled out")}: ${w.avoid.join(", ")}` : null,
     w.near?.length ? `${L("yer", "where")}: ${w.near.join(", ")}` : null,
+    w.said?.length ? `${L("başlangıçta söyledikleri", "said at the start")}: ${w.said.join("; ")}` : null,
   ].filter(Boolean);
   if (!parts.length) return null;
   return L(`Gezginin niyeti (kendisi söyledi; her öneri buna uyar): ${parts.join("; ")}.`, `The traveller's intent (said by them; every suggestion keeps to it): ${parts.join("; ")}.`);
