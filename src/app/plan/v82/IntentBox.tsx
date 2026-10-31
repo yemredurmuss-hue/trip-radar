@@ -29,7 +29,7 @@ import { withLegChoice } from "../../../lib/legs";
 import { agreeRoute } from "../../../lib/startTrip";
 import { candidateOffer, pickList, pickThree, picksContext, savedAlready } from "../../../lib/stayPicks";
 import { shapeOf } from "../../../lib/playbooks/shape";
-import { autoSearchBlock, restoredOwnStay } from "../../../lib/autoSearch";
+import { autoSearchBlock, holdsOwnStay, restoredOwnStay } from "../../../lib/autoSearch";
 import { addOffer, fillOffer, putItem, setHidden, setInstalled, setItemStatus, cancelBooking, markBooked, updateTrip } from "../../actions";
 import { ProofAsk } from "./ProofAsk";
 import type { MenuEntry } from "../../cards/CardShell";
@@ -212,7 +212,8 @@ function useAutoSearch(vm: IntentVM, tripId: string, on: boolean, placeholder: I
 /** Whether a need is looked for by itself now (useAutoSearch's `on`): from its own row, or from its shut category (AutoSearch). */
 function autoOn(vm: IntentVM, form: ReturnType<typeof frameForm>, need: ReturnType<typeof offerNeed> | null, placeholder: Item | null, shape: ReturnType<typeof shapeOf>, byId: V82Env["byId"]): boolean {
   // (never against what the trip already says: the van's nights, a day trip, the car's drives, a route still to agree: 0.40.3)
-  const ownStay = vm.kind === "stay" && vm.itemIds.some((id) => isCampStay(byId.get(id)));
+  // A camp's night or one asked for in words ("1 gece cam tavanlı kulübe"): never filled by the search (holdsOwnStay).
+  const ownStay = vm.kind === "stay" && vm.itemIds.some((id) => holdsOwnStay(byId.get(id)));
   const autoBlock = need ? autoSearchBlock(need, shape, { ownStay, covered: vm.cover != null }) : "covered";
   // (0.40.5: a stop of a proposed route too, it has its own nights: found, its row is a deck, "Seç 3")
   return form === "searching" && autoBlock == null && (vm.options.length === 0 || placeholder != null) && !(vm.more?.length);

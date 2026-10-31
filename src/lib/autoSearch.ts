@@ -3,12 +3,20 @@
 // already answers it: nights spent in the van, the camp, the boat; a day trip; a way the van or the car drives; a need a
 // package covers. (0.40.5: a proposed route's stops are looked for too, each has its own nights: Emre, "öneri bulduğu halde
 // boş gözüküyor".) Pure, tested.
+import { isCampStay } from "./campStay";
 import { EMPTY_METRICS } from "./items";
 import type { Need } from "./offerSource";
 import type { TripShape } from "./playbooks/shape";
 import type { Item, StayKind } from "./types";
 
 /** Why a need isn't looked for by itself; null when it may be. */
+/**
+ * A stay the board's own search never fills with the first hotel it finds: a camp's or a van's night, and one asked for in
+ * words ("1 gece cam tavanlı kulübe", part "own"): its card stays as asked, searched by the traveller (omurga 2026-10-31,
+ * Emre: kart ilk başta ayrıydı, arama başlayınca adı Tromsø oldu).
+ */
+export const holdsOwnStay = (item: Item | null | undefined): boolean => isCampStay(item) || item?.part?.ref === "own";
+
 export type AutoSearchBlock = "covered" | "closed" | "ownStay" | "sleep" | "drives";
 
 export function autoSearchBlock(
