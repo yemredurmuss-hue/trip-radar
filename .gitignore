@@ -8,3 +8,5 @@ store/*.zip
 
 # chat eval results (vitest.eval.config.ts)
 evals/out/
+dist-web/
+dist-web-check/
