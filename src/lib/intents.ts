@@ -1221,14 +1221,14 @@ function intentsWith(section: CatSection, env: Env): IntentVM[] {
       .filter((b) => !(road && emptyWay(b)) && !(aboard?.size && onPlane(b, aboard)) && !(aboard && pastExit(b, env.input.items)))
       .map((b) => singleIntent(section.id, b, env));
     if (section.id === "flight") own = joinConnections(own, env);
-    // The ways in the order they happen (Emre 2026-10-31: "ulaşım tarih sırasına göre yapılmamış"): the day's own leg
-    // before a rental starting that day; one with no day last.
-    if (section.id === "transport") own = [...own].sort((a, b) => (a.head.date ?? "9999").localeCompare(b.head.date ?? "9999"));
     // The AI's "Havalimanı transferi" for a day the trip lands or leaves on is that way's own box (its ends, the landing's
     // hour, Önerimiz), never a second, empty one beside it (0.39.1, Emre: "havaalanı transferi boş gelmiş").
     const roads = new Set(own.flatMap((i) => (i.legKey && /:(arrival|departure):/.test(i.legKey) ? [i.legKey.slice(0, 10)] : [])));
     const asked = (env.input.suggestions?.[section.id] ?? []).filter((s) => s.kind === "add" && !(isTransferSuggestion(s) && roads.has(isoDate(s.payload?.start ?? null) ?? "")));
     own = [...own, ...asked.map((s) => suggestedIntent(section.id, s, env))];
+    // The ways in the order they happen, the suggested ones too (Emre 2026-10-31: "ulaşım tarih sırasına göre yapılmamış",
+    // the motorbike from 1 May came after 15 May): the day's own leg before a rental starting that day; one with no day last.
+    if (section.id === "transport") own = [...own].sort((a, b) => (a.head.date ?? "9999").localeCompare(b.head.date ?? "9999"));
   }
   // D4: a category the trip's shape makes needless (a day out: Konaklama) closes; what's still open in it is "Gerek yok", with why.
   // A flight the traveller adds on a trip gone to by land opens Uçuş again (omurga Tur 11b): it is theirs, not "Gerek yok".

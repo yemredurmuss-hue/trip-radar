@@ -11,7 +11,7 @@ import type { LlmProvider } from "../src/lib/llm/types";
 import { fitStops, oneWay, runStep, stepsFor, type ShapedInput } from "../src/lib/startCreate";
 import { db } from "../src/lib/db";
 import { tripState } from "../src/lib/assistant";
-import { applyAnswer, creationOf, newStart, type Creation, type StartState } from "../src/lib/startTrip";
+import { acceptExtraction, applyAnswer, creationOf, newStart, type Creation, type StartState } from "../src/lib/startTrip";
 
 afterEach(() => resetAdvice());
 
@@ -34,7 +34,7 @@ const TROMSO: Advice = {
   ],
   facts: ["Kuzey ışığı garanti değil"],
   wishes: [{ place: "Tromsø", about: "stay", text: "cam tavanlı" }, { place: null, about: "general", text: "  " }],
-  question: { text: "Kuzey ışıklarını rehberli bir turla mı kovalayalım?", choices: ["Rehberli tur", "Kendimiz bakarız"] },
+  question: { text: "Kuzey ışıklarını rehberli bir turla mı kovalayalım?", topic: "main_experience", choices: ["Rehberli tur", "Kendimiz bakarız"] },
 };
 
 function tromso(): StartState {
@@ -153,6 +153,15 @@ it("Bali, two stops: in from where the flight lands, home from the last stop, no
 it("the summary asks the advisor's question, not the reading's asked before the route was agreed", () => {
   const s = applyAdvice({ ...tromso(), spineQuestion: "Ubud'da kaç gece kalıp Uluwatu'ya geçelim?" }, TROMSO);
   expect(s.spineQuestion).toBe("Kuzey ışıklarını rehberli bir turla mı kovalayalım?");
+});
+
+it("never asks first about what the plan decided itself: the nights, the route, the special night, the ways", () => {
+  const nights = { ...TROMSO, question: { text: "Ubud'daki ormana bakan villada kaç gece kalmak istersiniz?", topic: "nights" as const, choices: ["3 gece", "7 gece"] } };
+  expect(applyAdvice(tromso(), nights).spineQuestion).toBeUndefined();
+  const read = acceptExtraction({ spine_question: "Ubud'da kaç gece kalıp Uluwatu'ya geçelim?", spine_topic: "nights" } as never, "2026-10-31");
+  expect(read.spineQuestion).toBeUndefined();
+  const good = acceptExtraction({ spine_question: "Husky turu yarım gün mü olsun, tam gün mü?", spine_topic: "main_experience" } as never, "2026-10-31");
+  expect(good.spineQuestion).toBe("Husky turu yarım gün mü olsun, tam gün mü?");
 });
 
 it("the start's title is the one made, even when another trip has it (no month put on it)", async () => {

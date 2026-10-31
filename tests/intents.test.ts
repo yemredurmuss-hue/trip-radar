@@ -242,6 +242,14 @@ describe("what's missing, said not needed, covered by a ticket", () => {
     expect(b.intents.find((i) => i.section === "other")).toMatchObject({ kind: "insurance", status: "searching", word: "Aranıyor", estimate: null, note: "Yurt dışına çıkıyorsun.", head: { name: "Seyahat sağlık sigortası", parts: ["1–7 Kasım"] } });
   });
 
+  it("the ways in the order they happen, a suggested one too (Emre, 31 Ekim: the motorbike from the 1st came after the 3rd)", () => {
+    const moto = { key: "ai:moto2", section: "transport" as const, kind: "add" as const, title: "Motosiklet kiralama", why: "", source: "ai" as const, payload: { start: "2026-11-01", end: "2026-11-03" }, createdAt: 1, state: "open" as const };
+    const b = board(base, [stay("Hyatt", "Tokyo", "2026-11-01", "2026-11-04", "booked"), ride("Shinkansen", "train", "Tokyo", "Kyoto", "2026-11-03", "saved")], { suggestions: { transport: [moto] } });
+    const ways = b.intents.filter((i) => i.section === "transport").map((i) => i.head.date);
+    expect(ways).toEqual([...ways].sort((x, y) => (x ?? "9999").localeCompare(y ?? "9999")));
+    expect(b.intents.find((i) => i.key === "suggestion:ai:moto2")?.head.date).toBe("2026-11-01");
+  });
+
   it("an AI suggestion for a way of travel is named and drawn by what it is (Emre, 19 Ekim: a motorbike, not 'Sahil ulaşımı')", () => {
     const moto = { key: "ai:moto", section: "transport" as const, kind: "add" as const, title: "Sahil ulaşımı için motosiklet kiralama", why: "Ahangama içindeki sörf noktalarına kolayca ulaşım sağlar", source: "ai" as const, createdAt: 1, state: "open" as const };
     const b = board(base, [stay("Hyatt", "Tokyo", "2026-11-01", "2026-11-04", "booked")], { suggestions: { transport: [moto] } });

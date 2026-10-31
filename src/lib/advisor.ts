@@ -12,7 +12,7 @@ import { anthropicProvider } from "./llm/anthropic";
 import { geminiProvider } from "./llm/gemini";
 import type { LlmProvider } from "./llm/types";
 import { cityKeyOf } from "./plan";
-import type { SpecialStay, StartState, WantedActivity } from "./startTrip";
+import { asksDecided, QUESTION_TOPICS, type SpecialStay, type StartState, type WantedActivity } from "./startTrip";
 
 export const ADVISOR_CLAUDE = "claude-haiku-5-5";
 export const ADVISOR_GEMINI = "gemini-3.5-flash-lite";
@@ -28,7 +28,7 @@ export const adviceSchema = z.object({
   anchors: z.array(z.object({ what: z.string(), day: z.number().int().nullable(), source })),
   facts: z.array(z.string()),
   wishes: z.array(z.object({ place: z.string().nullable(), about: z.enum(["stay", "food", "activity", "transport", "general"]), text: z.string() })),
-  question: z.object({ text: z.string(), choices: z.array(z.string()) }),
+  question: z.object({ text: z.string(), topic: z.enum(QUESTION_TOPICS), choices: z.array(z.string()) }),
 });
 export type Advice = z.infer<typeof adviceSchema>;
 
@@ -41,7 +41,7 @@ Kurallar:
 3. Her bacağa tek ulaşım biçimi seç. Araç kiralarsan (car_rental) havalimanı bacaklarını da o karşılar, ayrıca transfer yazma. Yer değiştirilen günlerde bacak yaz.
 4. Çapa bütçesi: her 2 geceye en fazla 1, toplam en fazla 3, kullanıcının istekleri dahil. Özel konaklama çapa değildir. Kalan günler boş kalır.
 5. rationale: 2-3 cümle gerekçe. facts: yere özgü en fazla 3 kısa bilgi.
-6. question: gezinin en büyük kartını (gezinin sebebi olan deneyim, ana konaklama, uçuş) şekillendiren ve kullanıcının niyetini netleştiren tek soru, 2-4 kısa seçenek. Senin karar verdiğin şeyi (gece bölüşü, özel gecenin yeri, ulaşım) sorma; o kararları gerekçende söyle.
+6. question: (topic: sorunun konusu) gezinin en büyük kartını (gezinin sebebi olan deneyim, ana konaklama, uçuş) şekillendiren ve kullanıcının niyetini netleştiren tek soru, 2-4 kısa seçenek. Senin karar verdiğin şeyi (gece bölüşü, özel gecenin yeri, ulaşım) sorma; o kararları gerekçende söyle.
 7. wishes: kullanıcının KENDİ sözlerinde geçen istekler, yeriyle ve türüyle ("Ubud'da ormana bakan bir yer" → place "Ubud", about "stay", text "ormana bakan"). Kısa, kullanıcının kelimeleriyle; senin önerin buraya girmez. Yoksa boş liste.
 8. Kiralama (araç, motosiklet, bisiklet) bir durak içindir: duraklar uzaksa aralarını transferle bağla, kiralamayı her durağın kendi günlerine yaz. Gezinin türüne uymuyorsa (balayı, yaşlı aile, ilk kez giden) kiralama koyma.`,
     `You are an experienced travel planner. Build the trip's SPINE: where for how many nights, how they get there and around, and the few things they do. No hotel, tour or venue names and no prices: kinds only. Keep it short.
@@ -51,7 +51,7 @@ Rules:
 3. One way per leg. A rental car (car_rental) covers the airport legs too: no transfer besides it. A leg on every day they change places.
 4. Anchor budget: at most 1 per 2 nights, 3 in all, the traveller's wishes included. A special stay is not an anchor. The other days stay free.
 5. rationale: 2-3 sentences. facts: at most 3 short facts about the place.
-6. question: the one question that shapes the trip's biggest card (the experience it is for, the main stay, the flights) and makes the traveller's intent clearer, 2-4 short choices. Never what you decided yourself (how the nights split, where the special stay goes, the ways): say those in rationale.
+6. question: (topic: what it is about) the one question that shapes the trip's biggest card (the experience it is for, the main stay, the flights) and makes the traveller's intent clearer, 2-4 short choices. Never what you decided yourself (how the nights split, where the special stay goes, the ways): say those in rationale.
 7. wishes: what the traveller asked for in THEIR OWN words, with its place and kind ("somewhere facing the jungle in Ubud" → place "Ubud", about "stay", text "facing the jungle"). Short, their words; nothing of yours. An empty list when none.
 8. A rental (car, motorbike, bike) belongs to one stop: when the stops are far apart, a transfer joins them and each stop gets its own rental days. None when the trip's kind doesn't suit it (a honeymoon, an elderly family, a first visit).`,
   );
@@ -185,7 +185,9 @@ export function applyAdvice(s: StartState, a: Advice | null): StartState {
   const q = a.question.text.trim();
   // The advisor's question over the reading's (it asked with everything the checklist knows, the route too: Emre's Bali
   // asked "Ubud'da kaç gece?" after the route was agreed 7 and 7).
-  const asks = q.endsWith("?") && q.split("?").length === 2 && q.length <= 120;
+  // Never about what the plan decided itself (the nights split, the special night's place, the ways): the model names the
+  // question's topic, the code holds the rule (Emre's Bali: "Ubud'daki ormana bakan villada kaç gece?" after 7 and 7).
+  const asks = q.endsWith("?") && q.split("?").length === 2 && q.length <= 120 && !asksDecided(a.question.topic);
   const choices = a.question.choices.map((c) => c.trim()).filter((c) => c && c.length <= 30).slice(0, 4);
   return {
     ...s,

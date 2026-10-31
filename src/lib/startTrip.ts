@@ -115,6 +115,16 @@ export interface Who {
 }
 
 /** A stay of its own the traveller asked for at a stop ("bir gece cam tavanlı kulübe"): its nights, carved from the stop's. */
+/** What the summary's one question can be about (omurga 2026-10-31). */
+export const QUESTION_TOPICS = ["dates", "flights", "main_experience", "stay_style", "who", "budget", "nights", "route", "special_night", "transport", "other"] as const;
+/**
+ * The topics the plan decides itself (the nights along the route, which night a special stay is, the ways): never the
+ * first question (Emre 2026-10-31: "zaten 7 gece 7 gece planlamış, başka bir soru sorması lazım"); the traveller changes
+ * them in words when they like. The model names the topic, the code holds the rule.
+ */
+const DECIDED_TOPICS = new Set<string>(["nights", "route", "special_night", "transport"]);
+export const asksDecided = (topic: unknown): boolean => typeof topic === "string" && DECIDED_TOPICS.has(topic.trim().toLowerCase());
+
 export interface SpecialStay {
   city: string;
   nights: number;
@@ -1449,6 +1459,8 @@ export const extractionSchema = z.object({
   // The one question that would shape the spine most now (omurga 2026-10-31): answerable now, said as an invitation.
   spine_question: z.string().optional(),
   spine_choices: z.array(z.string()).optional(),
+  // What the question is about (QUESTION_TOPICS): one about what the plan decides itself is never asked.
+  spine_topic: z.string().optional(),
   // What the user plainly asked for (omurga 2026-10-31): stays of their own at a stop, activities wanted.
   special_stays: z.array(z.object({ place: z.string(), nights: z.number(), what: z.string() })).optional(),
   wanted: z.array(z.object({ place: z.string(), what: z.string(), day: z.string() })).optional(),
@@ -1474,7 +1486,8 @@ Günübirlik gidilen yer ("Capri'ye tekneyle günübirlik") durak değildir: sto
 start_part: ayın hangi kısmı söylendiyse ("Kasım sonunda" → end, "ortasında" → mid, "başında" → begin); yoksa "".
 arrive_by: yola çıkılan yerden gidilecek yere NASIL gidildiği; bu alanda söylenenle birlikte sağduyu da kullanılır: plane | car (kendi aracıyla evden) | bus | train | ferry ya da "" (emin değilsen). Yol gezisi (orada araçla dolaşmak) oraya araçla gidildiği anlamına gelmez: İstanbul'dan Amalfi kıyısında yol gezisi → plane (Napoli'ye uçup araç kiralanır); İstanbul'dan Ege'de arabayla road trip ya da aynı ülkede uçuştan söz edilmeyen bir yol gezisi → car; "Napoli'ye trenle" → train; okyanus ötesi → plane.
 spine_question: gezi şimdi oluşturulsa, gezinin EN BÜYÜK kartını (gezinin sebebi olan deneyim, ana konaklama, uçuş) şekillendiren ve kullanıcının niyetini netleştiren, ŞU AN cevaplayabileceği tek soru; davet eden, net bir dille ("Kuzey ışıklarını rehberli bir av turuyla mı kovalayalım, yoksa kulübeden mi izlersiniz?", "Husky turu yarım gün mü olsun, tam gün mü?"). Planın kendisinin karar verdiği şeyi sorma: rotadaki gece bölüşü, özel gecenin hangi gece olacağı, ulaşım biçimi (bunları plan önerir, kullanıcı isterse değiştirir). Henüz seçilmemiş bir şeyin ayrıntısını (seçilmemiş resortun transferi) sorma; seçenek listesi verme ("ulaşım mı konaklama mı" gibi); sorulacak önemli bir şey yoksa "". TEK soru: iki soruyu birleştirme ("…hangi gece, husky turunu da hangi güne?" olmaz; önce en önemlisi).
-spine_choices: spine_question'ın 2-4 kısa, tıklanacak cevabı ("İlk gece", "Son gece", "Fark etmez"); soru yoksa [].
+spine_choices: spine_question'ın 2-4 kısa, tıklanacak cevabı ("Rehberli tur", "Kulübeden izleriz"); soru yoksa [].
+spine_topic: spine_question'ın konusu, tek kelime: dates, flights, main_experience, stay_style, who, budget, nights, route, special_night, transport, other.
 special_stays: kullanıcı bir yerde belirli gece için ayrı bir konaklama AÇIKÇA istediyse ("bir gece cam tavanlı kulübede kalalım", "Kyoto'da 2 gece ryokan"), bu sohbette şimdiye kadar söylenenlerin GÜNCEL listesi: place (şehir), nights (söylenen gece; "bir gece" → 1), what (kullanıcının sözüyle kısa: "cam tavanlı kulübe"). Senin önerin ya da tahminin buraya girmez; yoksa [].
 wanted: kullanıcının AÇIKÇA istediği etkinlikler ("bir gün husky turu olsun", "balon turuna bineceğiz"), GÜNCEL liste: place (şehir ya da ""), what (kullanıcının sözüyle kısa: "husky turu"), day (söylendiyse YYYY-MM-DD, yoksa ""). Gezinin kendisi (kuzey ışıkları, festival) ya da senin önerin buraya girmez; yoksa [].`,
     `From the user's message in a trip-planning chat, take only what is clearly said. Never invent; what isn't said stays empty ("" or 0 or []).
@@ -1491,7 +1504,8 @@ A place said as a day trip ("a day trip to Capri by boat") is no stop: not in st
 start_part: the part of the month said ("late November" → end, "mid" → mid, "early" → begin); else "".
 arrive_by: HOW they get from where they leave to where they go; for this field common sense counts along with what is said: plane | car (their own car, from home) | bus | train | ferry or "" (when unsure). A road trip (getting around there by car) doesn't mean driving there: a road trip on the Amalfi Coast from Istanbul → plane (fly to Naples, rent a car); a road trip by car in the Aegean from Istanbul, or a road trip in the same country with no flight mentioned → car; "to Naples by train" → train; across an ocean → plane.
 spine_question: if the trip were made now, the ONE question that shapes the trip's BIGGEST card (the experience the trip is for, the main stay, the flights) and makes the traveller's intent clearer, answerable NOW, said as a clear invitation ("Shall we chase the northern lights on a guided tour, or watch from the cabin?", "A half-day husky tour or a full day?"). Never what the plan decides itself: how the nights split along the route, which night a special stay is, the way of travel (the plan proposes them; the traveller changes them if they like). Never the detail of something not chosen yet (the transfer of a resort not picked); never a list of options ("travel or stays?"); "" when nothing important is left to ask. ONE question: never two joined ("…which night, and which day for the husky tour?" is not one; the most important first).
-spine_choices: 2-4 short answers to tap for spine_question ("First night", "Last night", "Doesn't matter"); [] when no question.
+spine_choices: 2-4 short answers to tap for spine_question ("A guided tour", "From the cabin"); [] when no question.
+spine_topic: what spine_question is about, one word: dates, flights, main_experience, stay_style, who, budget, nights, route, special_night, transport, other.
 special_stays: when the user PLAINLY asks for a separate stay for some nights at a place ("let's spend one night in a glass-roof cabin", "2 nights in a ryokan in Kyoto"), the CURRENT list of what was said so far: place (the city), nights (as said; "one night" → 1), what (short, in their words: "glass-roof cabin"). Never your own suggestion or guess; else [].
 wanted: the activities the user PLAINLY asks for ("a husky tour one day", "we'll take a balloon ride"), the CURRENT list: place (the city or ""), what (short, in their words: "husky tour"), day (YYYY-MM-DD when said, else ""). Not the trip's own reason (the northern lights, the festival), never your suggestion; else [].`,
   );
@@ -1773,7 +1787,7 @@ export function acceptExtraction(raw: RawExtraction & { plan?: RawPlan | null },
   // One question only: one "?", and no second question joined to it ("…hangi gece, … hangi güne koyalım?").
   const asks = sq.toLocaleLowerCase("tr").match(/(?<!\p{L})(hangi|ne zaman|nerede|nereye|kaç|nasıl|which|when|where|how many|how)(?!\p{L})/gu) ?? [];
   const single = (sq.match(/\?/g) ?? []).length === 1 && asks.length <= 1;
-  if (sq.length >= 8 && sq.length <= 140 && sq.endsWith("?") && single) {
+  if (sq.length >= 8 && sq.length <= 140 && sq.endsWith("?") && single && !asksDecided(raw.spine_topic)) {
     out.spineQuestion = sq;
     const taps = (raw.spine_choices ?? []).map((x) => (typeof x === "string" ? x.replace(/\s+/g, " ").trim() : "")).filter((x) => x && x.length <= 30);
     if (taps.length >= 2) out.spineChoices = [...new Set(taps)].slice(0, 4);
