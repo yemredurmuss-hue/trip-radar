@@ -188,10 +188,12 @@ export async function runStep(id: StepId, s: StartState, env: StepEnv = {}): Pro
     // playbook's cards for them: a festival ticket, a ski pass on the days before).
     await dropPlaceholders(tripId, (i) => i.category === "stay" || i.category === "activity");
     const pb = T(() => playbookCards(s, c));
-    // A stay of its own the kind asks for takes its nights out of the city's stay (carveSpecialStays).
-    const carved = T(() => carveSpecialStays(shapedBase(s, c, [...pb.travel, ...pb.plan]).stays, pb.plan));
+    // A stay of its own the kind asks for takes its nights out of the city's stay (carveSpecialStays); one the traveller
+    // asked for in words is already carved (splitSpecialStays), so the model's card for that city isn't made again.
+    const plan = pb.plan.filter((x) => !askedThere(s, x));
+    const carved = T(() => carveSpecialStays(shapedBase(s, c, [...pb.travel, ...plan]).stays, plan));
     await sayAll(tripId, carved.stays, c, now, T);
-    await sayAll(tripId, pb.plan.filter((x) => !carved.used.includes(x)), c, now, T);
+    await sayAll(tripId, plan.filter((x) => !carved.used.includes(x)), c, now, T);
     // The preparation list's lines are the traveller's to tick, never places to fill (said again, each is the same one).
     await sayAll(tripId, pb.prep, c, now, T, false);
   } else if (id === "travel") {
@@ -316,7 +318,7 @@ export function playbookCards(s: StartState, c: Creation): { travel: ShapedInput
     const extra: PlannedInput[] = privateRide && flight?.to && first?.city
       ? [{ kind: "transfer", date: first.date, end_date: null, time: null, from: flight.to, to: first.city, city: null, title: ride, booked: false, note: null }]
       : [];
-    return { travel: extra, plan: [], prep: [] };
+    return { travel: extra, plan: wantedCards(s, c, []), prep: [] };
   }
   const p = startPlaybookObj(s);
   // The trip kind's answers (the same operations for every kind): cards dropped, marked booked, moved; lines added.
@@ -335,7 +337,24 @@ export function playbookCards(s: StartState, c: Creation): { travel: ShapedInput
     .map((x) => (privateRide && x.kind === "transfer" ? { ...x, title: x.title && !/özel|private/i.test(x.title) ? `${ride} · ${x.title}` : ride } : x));
   const moving = (x: PlannedInput) => x.kind === "transfer" || x.kind === "taxi" || x.kind.endsWith("_rental") || x.kind === "ferry";
   const prep = [...p.prep(), ...prepAdded(effects)].map((title): PlannedInput => ({ kind: "prep", date: null, end_date: null, time: null, from: null, to: null, city: null, title, booked: false, note: null }));
-  return { travel: cards.filter(moving), plan: cards.filter((x) => !moving(x)), prep };
+  const plan = cards.filter((x) => !moving(x));
+  return { travel: cards.filter(moving), plan: [...plan, ...wantedCards(s, c, plan)], prep };
+}
+
+/**
+ * The activities the traveller plainly asked for ("bir gün husky turu"), each a card on its city (omurga 2026-10-31): on its
+ * day when said and within the trip, under their own words; one the kind's playbook already makes is not made twice.
+ */
+function wantedCards(s: StartState, c: Creation, made: readonly PlannedInput[]): ShapedInput[] {
+  const key = (t: string | null | undefined) => (t ?? "").toLocaleLowerCase("tr").normalize("NFD").replace(/\p{M}/gu, "").replace(/\s+/g, " ").trim();
+  return (s.wanted ?? []).flatMap((w): ShapedInput[] => {
+    const what = key(w.what);
+    if (made.some((m) => key(m.title).includes(what) || (key(m.title) && what.includes(key(m.title))))) return [];
+    const stay = (w.city ? c.stays.find((x) => cityKeyOf(x.city) === cityKeyOf(w.city)) : null) ?? c.stays[0] ?? null;
+    const day = w.day && c.dates && w.day >= c.dates.start && w.day <= c.dates.end ? w.day : null;
+    const title = w.what.charAt(0).toLocaleUpperCase("tr") + w.what.slice(1);
+    return [{ kind: "activity", date: day, end_date: null, time: null, from: null, to: null, city: w.city ?? stay?.city ?? null, title, booked: false, note: null }];
+  });
 }
 
 /** A plan to say with the part of the trip's spine it stands for (gezi biçimi), kept on the record it makes (Item.part). */
@@ -378,6 +397,10 @@ export function shapedBase(s: StartState, c: Creation, cards: ShapedInput[]): { 
 const DAY_MS = 86_400_000;
 const plusDays = (day: string, n: number) => new Date(Date.parse(day) + n * DAY_MS).toISOString().slice(0, 10);
 
+/** A model card for a stay of its own in a city where the traveller's own words already carved one (s.specialStays). */
+const askedThere = (s: StartState, k: ShapedInput) =>
+  isOwnStay(k) && (s.specialStays ?? []).some((sp) => !k.city || cityKeyOf(sp.city) === cityKeyOf(k.city));
+
 /** A stay of its own the trip's kind asks for (a glass cabin's night, a ryokan): its own box, nothing covers it or is held. */
 const isOwnStay = (k: ShapedInput) => k.kind !== "stay" && k.part?.section === "stay" && k.part.frame === "stay" && !k.part.by && !k.part.covers?.length;
 
@@ -396,6 +419,8 @@ export function carveSpecialStays(stays: ShapedInput[], cards: ShapedInput[]): {
     const x = out[at];
     const start = k.date ?? x.date!;
     const n = k.date && k.end_date && k.end_date > k.date ? Math.round((Date.parse(k.end_date) - Date.parse(k.date)) / DAY_MS) : 1;
+    // A card spread over the whole stay (the model's "stay" anchor) says no nights of its own: it takes none.
+    if (n >= Math.round((Date.parse(x.end_date!) - Date.parse(x.date!)) / DAY_MS)) continue;
     const end = plusDays(start, n) < x.end_date! ? plusDays(start, n) : x.end_date!;
     const own: ShapedInput = { ...k, kind: "stay", city: k.city ?? x.city, date: start, end_date: end };
     const parts = [
@@ -456,10 +481,11 @@ export function wouldMake(s: StartState, now = Date.now()): { trip: Trip; items:
     };
     Object.assign(trip, withMusts(trip, intent));
     const items: Item[] = [];
-    const base = shapedBase(s, c, [...pb.travel, ...pb.plan]);
-    const carved = carveSpecialStays(base.stays, pb.plan);
+    const plan = pb.plan.filter((x) => !askedThere(s, x));
+    const base = shapedBase(s, c, [...pb.travel, ...plan]);
+    const carved = carveSpecialStays(base.stays, plan);
     // The playbook's cards after what every trip has (none for a classic trip).
-    for (const raw of [...carved.stays, ...base.travel, ...pb.travel, ...pb.plan.filter((x) => !carved.used.includes(x)), ...pb.prep] as ShapedInput[]) {
+    for (const raw of [...carved.stays, ...base.travel, ...pb.travel, ...plan.filter((x) => !carved.used.includes(x)), ...pb.prep] as ShapedInput[]) {
       const input = guardKind(raw);
       if (checkPlanned(input, ALL_PLANNED_KINDS)) continue;
       const { item } = planToSave(input, items, trip.id, `start-preview-${items.length}`, now);

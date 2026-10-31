@@ -52,6 +52,12 @@ describe("the spine said back", () => {
     expect(say(japan({ spineQuestion: "Kyoto'da bir gece ryokanda kalmak ister misin?" })).split("\n").filter(Boolean).at(-1)).toBe("**Nereden yola çıkacaksın?**");
   });
 
+  it("says what was plainly asked for first: the night carved out, the activity's card", () => {
+    const text = say(japan({ from: "İstanbul", specialStays: [{ city: "Kyoto", nights: 1, what: "ryokan" }], wanted: [{ city: "Kyoto", what: "çay seremonisi", day: null }] }));
+    expect(text).toContain("1 geceyi **ryokan** olarak ayırdım (Kyoto).");
+    expect(text).toContain("**Çay seremonisi** için Etkinlik'e kart açtım.");
+  });
+
   it("in English too", () => {
     const s = japan();
     const text = withLang("en", () => spineSummary(creationOf(s)!, s));

@@ -36,6 +36,12 @@ describe("a stay of its own", () => {
     expect(carveSpecialStays([{ ...stay("Tromsø", "", ""), date: null, end_date: null }], [cabin({ date: null })]).used).toEqual([]);
   });
 
+  it("a card spread over the whole stay (the model's 'stay' anchor) takes no nights: the stay stays whole", () => {
+    const { stays, used } = carveSpecialStays([stay("Tromsø", "2027-02-12", "2027-02-17")], [cabin({ end_date: "2027-02-17" })]);
+    expect(used).toEqual([]);
+    expect(nights(stays)).toEqual(["Tromsø 2027-02-12..2027-02-17"]);
+  });
+
   it("what a package covers (a boat's transfer) or a covering part is no stay of its own", () => {
     const held = cabin({ part: { ref: "dive", section: "stay", frame: "stay", by: "stay" } });
     expect(carveSpecialStays([stay("Tromsø", "2027-02-12", "2027-02-17")], [held]).used).toEqual([]);
