@@ -347,7 +347,10 @@ export function offerNeed(vm: Pick<IntentVM, "kind" | "head"> & { ticket?: Inten
   const end = start && nights ? addDays(start, nights) : null;
   if (vm.kind === "stay" && city && start && end) {
     const home = wantsHome(nights, at.adults, vm.options ?? []);
-    return { key: needKey("stay", city, start, end), section: "stay", kind: "stay", city, start, end, adults: at.adults, country: at.countries[0] ?? null, ...(home ? { home } : {}), ...(at.stay ? { stay: at.stay } : {}) };
+    // A stay of its own the trip's kind asks for ("Cam tavanlı kulübe") is searched in its own words (omurga 2026-10-31).
+    const own = vm.head.word ? vm.head.name.replace(/\s*\([^)]*\)/g, "").trim() : "";
+    const stay = own || at.stay;
+    return { key: needKey("stay", city, start, end), section: "stay", kind: "stay", city, start, end, adults: at.adults, country: at.countries[0] ?? null, ...(home ? { home } : {}), ...(stay ? { stay } : {}) };
   }
   const route = vm.head.route;
   if (vm.kind === "flight" && route?.from && route.to && start) {
