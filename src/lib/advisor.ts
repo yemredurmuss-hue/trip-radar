@@ -24,9 +24,10 @@ export const adviceSchema = z.object({
   // Never "thinking": a model reads that as asking for its own reasoning and refuses (Sonnet, 2026-10-31).
   rationale: z.string(),
   stays: z.array(z.object({ place: z.string(), nights: z.number().int(), kind: z.enum(["hotel", "special", "camp", "apartment", "villa", "resort"]), what: z.string().nullable(), source })),
-  legs: z.array(z.object({ from: z.string(), to: z.string(), day: z.number().int(), mode: z.enum(["flight", "transfer", "bus", "train", "ferry", "taxi", "car_rental", "bike", "walk"]), source })),
+  legs: z.array(z.object({ from: z.string(), to: z.string(), day: z.number().int(), mode: z.enum(["flight", "transfer", "bus", "train", "ferry", "taxi", "car_rental", "moto_rental", "bike_rental", "walk"]), source })),
   anchors: z.array(z.object({ what: z.string(), day: z.number().int().nullable(), source })),
   facts: z.array(z.string()),
+  wishes: z.array(z.object({ place: z.string().nullable(), about: z.enum(["stay", "food", "activity", "transport", "general"]), text: z.string() })),
   question: z.object({ text: z.string(), choices: z.array(z.string()) }),
 });
 export type Advice = z.infer<typeof adviceSchema>;
@@ -40,7 +41,9 @@ Kurallar:
 3. Her bacağa tek ulaşım biçimi seç. Araç kiralarsan (car_rental) havalimanı bacaklarını da o karşılar, ayrıca transfer yazma. Yer değiştirilen günlerde bacak yaz.
 4. Çapa bütçesi: her 2 geceye en fazla 1, toplam en fazla 3, kullanıcının istekleri dahil. Özel konaklama çapa değildir. Kalan günler boş kalır.
 5. rationale: 2-3 cümle gerekçe. facts: yere özgü en fazla 3 kısa bilgi.
-6. question: planı en çok netleştirecek tek soru, 2-4 kısa seçenek.`,
+6. question: planı en çok netleştirecek tek soru, 2-4 kısa seçenek.
+7. wishes: kullanıcının KENDİ sözlerinde geçen istekler, yeriyle ve türüyle ("Ubud'da ormana bakan bir yer" → place "Ubud", about "stay", text "ormana bakan"). Kısa, kullanıcının kelimeleriyle; senin önerin buraya girmez. Yoksa boş liste.
+8. Kiralama (araç, motosiklet, bisiklet) bir durak içindir: duraklar uzaksa aralarını transferle bağla, kiralamayı her durağın kendi günlerine yaz. Gezinin türüne uymuyorsa (balayı, yaşlı aile, ilk kez giden) kiralama koyma.`,
     `You are an experienced travel planner. Build the trip's SPINE: where for how many nights, how they get there and around, and the few things they do. No hotel, tour or venue names and no prices: kinds only. Keep it short.
 Rules:
 1. What the traveller said is fixed, never changed (source "user"). Everything you add is an assumption (source "assumed").
@@ -48,7 +51,9 @@ Rules:
 3. One way per leg. A rental car (car_rental) covers the airport legs too: no transfer besides it. A leg on every day they change places.
 4. Anchor budget: at most 1 per 2 nights, 3 in all, the traveller's wishes included. A special stay is not an anchor. The other days stay free.
 5. rationale: 2-3 sentences. facts: at most 3 short facts about the place.
-6. question: the one question that would shape the plan most, 2-4 short choices.`,
+6. question: the one question that would shape the plan most, 2-4 short choices.
+7. wishes: what the traveller asked for in THEIR OWN words, with its place and kind ("somewhere facing the jungle in Ubud" → place "Ubud", about "stay", text "facing the jungle"). Short, their words; nothing of yours. An empty list when none.
+8. A rental (car, motorbike, bike) belongs to one stop: when the stops are far apart, a transfer joins them and each stop gets its own rental days. None when the trip's kind doesn't suit it (a honeymoon, an elderly family, a first visit).`,
   );
 }
 
@@ -81,17 +86,21 @@ export function adviseStart(a: { id: string; text: string; known: string; today:
   const answer = (async () => {
     try {
       const llm = await model();
-      if (!llm) return (console.info("[danışman] sorulmadı: AI anahtarı yok"), null);
+      if (!llm) return (console.info(L("[danışman] sorulmadı: AI anahtarı yok", "[advisor] not asked: no AI key")), null);
       const [system, prompt] = withLang(a.lang, () => [adviceSystem(), advicePrompt(a.text, a.today, a.known)]);
       const signal = AbortSignal.timeout(CALL_MS);
       const started = Date.now();
       const got = await llm.generateJson(system, prompt, adviceSchema, [], { signal, maxRetries: 0 });
       // One line for whoever tests (the traveller never sees it): the advisor worked, how fast, what it decided.
-      const special = got.stays.filter((x) => x.kind === "special").map((x) => `${x.what} (${x.place}, ${x.nights} gece)`);
-      console.info(`[danışman] ${llm.id === "anthropic" ? ADVISOR_CLAUDE : ADVISOR_GEMINI} · ${((Date.now() - started) / 1000).toFixed(1)} sn · geceler: ${got.stays.map((x) => `${x.place} ${x.nights}`).join(", ")}${special.length ? ` · özel: ${special.join(", ")}` : ""} · ulaşım: ${got.legs.map((l) => `${l.day}. gün ${l.mode}`).join(", ")} · etkinlik: ${got.anchors.map((x) => x.what).join(", ") || "yok"}`, got);
+      const used = llm.id === "anthropic" ? ADVISOR_CLAUDE : ADVISOR_GEMINI;
+      const sec = ((Date.now() - started) / 1000).toFixed(1);
+      const nights = got.stays.map((x) => `${x.place} ${x.nights}${x.kind === "special" ? ` (${x.what})` : ""}`).join(", ");
+      const legs = got.legs.map((l) => `${l.day}:${l.mode}`).join(", ");
+      const acts = got.anchors.map((x) => x.what).join(", ") || "-";
+      console.info(withLang(a.lang, () => L(`[danışman] ${used} · ${sec} sn · geceler: ${nights} · ulaşım: ${legs} · etkinlik: ${acts}`, `[advisor] ${used} · ${sec} s · nights: ${nights} · ways: ${legs} · activities: ${acts}`)), got);
       return got;
     } catch (error) {
-      console.warn("[danışman] gelmedi", error);
+      console.warn("[advisor] failed", error);
       return null;
     }
   })();
@@ -105,7 +114,7 @@ export async function adviceFor(id: string, ms: number): Promise<Advice | null> 
   const late = new Promise<null>((resolve) => (timer = setTimeout(() => resolve(null), ms)));
   try {
     const got = await Promise.race([pending.answer, late.then(() => "late" as const)]);
-    if (got === "late") console.info(`[danışman] ${ms / 1000} sn içinde yetişmedi, plan danışmansız kuruldu`);
+    if (got === "late") console.info(L(`[danışman] ${ms / 1000} sn içinde yetişmedi, plan danışmansız kuruldu`, `[advisor] not in within ${ms / 1000} s: the plan was made without it`));
     return got === "late" ? null : got;
   } finally {
     clearTimeout(timer);
@@ -127,6 +136,14 @@ const sameThing = (a: string, b: string) => {
   const words = new Set(x.split(" ").filter(telling));
   return y.split(" ").some((w) => telling(w) && words.has(w));
 };
+
+/** A wish as the trip's preferences keep it ("Ubud · Konaklama → ormana bakan"): one per place and kind, the latest wins. */
+function wishLine(w: Advice["wishes"][number]): string[] {
+  const text = w.text.trim().slice(0, 80);
+  if (!text) return [];
+  const about = { stay: L("Konaklama", "Stay"), food: L("Yemek", "Food"), activity: L("Etkinlik", "Activity"), transport: L("Ulaşım", "Transport"), general: L("Genel", "General") }[w.about];
+  return [`${w.place?.trim() ? `${w.place.trim()} · ` : ""}${about} → ${text}`];
+}
 
 /**
  * The advice folded into the start (pure): the stays asked for in words get their place among the city's nights, the
@@ -173,6 +190,6 @@ export function applyAdvice(s: StartState, a: Advice | null): StartState {
     specialStays: specials,
     wanted,
     ...(asks ? { spineQuestion: q, spineChoices: choices.length >= 2 ? choices : [] } : {}),
-    advice: { legs: a.legs.map((l) => ({ day: l.day, mode: l.mode })), rationale: a.rationale, facts: a.facts.slice(0, 3) },
+    advice: { legs: a.legs.map((l) => ({ day: l.day, mode: l.mode })), rationale: a.rationale, facts: a.facts.slice(0, 3), wishes: a.wishes.flatMap(wishLine).slice(0, 6) },
   };
 }

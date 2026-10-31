@@ -8,7 +8,8 @@ import { listItems } from "../src/lib/db";
 import { holdsOwnStay } from "../src/lib/autoSearch";
 import { setLang } from "../src/lib/i18n";
 import type { LlmProvider } from "../src/lib/llm/types";
-import { oneWay, runStep, stepsFor, type ShapedInput } from "../src/lib/startCreate";
+import { fitStops, oneWay, runStep, stepsFor, type ShapedInput } from "../src/lib/startCreate";
+import { db } from "../src/lib/db";
 import { applyAnswer, creationOf, newStart, type Creation, type StartState } from "../src/lib/startTrip";
 
 afterEach(() => resetAdvice());
@@ -31,6 +32,7 @@ const TROMSO: Advice = {
     { what: "fiyort teknesi", day: 5, source: "assumed" },
   ],
   facts: ["Kuzey ışığı garanti değil"],
+  wishes: [{ place: "Tromsø", about: "stay", text: "cam tavanlı" }, { place: null, about: "general", text: "  " }],
   question: { text: "Cam tavanlı gece ortada kalsın mı?", choices: ["Ortada kalsın", "Son gece olsun"] },
 };
 
@@ -70,11 +72,12 @@ it("never overrules what was said: the traveller's own stay keeps its words, onl
   expect(s.wanted?.map((w) => w.what)).toEqual(["husky turu", "kuzey ışığı avı turu"]);
   expect(s.spineQuestion).toBe("Uçuşları bulayım mı?");
   expect(s.advice?.legs).toEqual([{ day: 1, mode: "transfer" }, { day: 6, mode: "transfer" }]);
+  expect(s.advice?.wishes).toEqual(["Tromsø · Konaklama → cam tavanlı"]);
   expect(applyAdvice(said, null)).toBe(said);
 });
 
 const at = (kind: string, date: string, end: string | null = null): ShapedInput => ({ kind, date, end_date: end, time: null, from: null, to: null, city: "Tromsø", title: null, booked: false, note: null }) as ShapedInput;
-const trip = (travel: ShapedInput[] = []) => ({ dates: { start: "2027-02-15", end: "2027-02-20" }, travel }) as unknown as Creation;
+const trip = (travel: ShapedInput[] = []) => ({ dates: { start: "2027-02-15", end: "2027-02-20" }, travel, stays: [] }) as unknown as Creation;
 
 it("one way per leg: a rental car and the airport bus on its days never both", () => {
   const bus = at("bus", "2027-02-15");
@@ -102,4 +105,54 @@ it("asked again when the checklist knows more; the newest answer is the one used
   expect(await adviceFor("b", 1000)).toBeNull();
   adviseStart({ id: "c", text: "x", known: "Nereye: Tromsø", today: "2026-10-31", lang: "tr" }, model("geç", 500));
   expect(await adviceFor("c", 20)).toBeNull();
+});
+
+const bali = (travel: ShapedInput[] = []) =>
+  ({
+    dates: { start: "2027-05-01", end: "2027-05-15" },
+    road: false,
+    travel,
+    stays: [
+      { kind: "stay", city: "Ubud", date: "2027-05-01", end_date: "2027-05-08" },
+      { kind: "stay", city: "Uluwatu", date: "2027-05-08", end_date: "2027-05-15" },
+    ],
+  }) as unknown as Creation;
+const way = (kind: string, date: string, end: string | null, from: string | null, to: string | null, title: string | null = null) =>
+  ({ kind, date, end_date: end, time: null, from, to, city: null, title, booked: false, note: null }) as ShapedInput;
+
+it("Bali, two stops: the way between them on the day they change, home from the last stop, the motorbike one per stop", () => {
+  const cards = [
+    way("taxi", "2027-05-01", null, "Denpasar", "Ubud"),
+    way("transfer", "2027-05-01", "2027-05-15", null, null, "Ubud-Uluwatu özel transfer"),
+    way("taxi", "2027-05-15", null, "Ubud", "Denpasar"),
+    way("moto_rental", "2027-05-01", "2027-05-15", null, null, "Motosiklet kiralama"),
+  ];
+  const fitted = fitStops(cards, bali());
+  expect(fitted[1]).toMatchObject({ date: "2027-05-08", end_date: null, from: "Ubud", to: "Uluwatu" });
+  expect(fitted[2]).toMatchObject({ from: "Uluwatu", to: "Denpasar" });
+  expect(fitted[0]).toMatchObject({ from: "Denpasar", to: "Ubud" });
+  // No advice: the motorbike stays, one per stop on its days.
+  const motos = oneWay(fitted, bali(), null).filter((x) => x.kind === "moto_rental");
+  expect(motos.map((x) => [x.title, x.date, x.end_date])).toEqual([
+    ["Motosiklet kiralama · Ubud", "2027-05-01", "2027-05-08"],
+    ["Motosiklet kiralama · Uluwatu", "2027-05-08", "2027-05-15"],
+  ]);
+  // A honeymoon the advisor gave transfers only: no motorbike.
+  const honeymoon = { legs: [{ day: 1, mode: "transfer" }, { day: 8, mode: "transfer" }, { day: 15, mode: "transfer" }], rationale: "", facts: [] };
+  expect(oneWay(fitted, bali(), honeymoon).some((x) => x.kind === "moto_rental")).toBe(false);
+});
+
+it("the start's title is the one made, even when another trip has it (no month put on it)", async () => {
+  setLang("tr");
+  const titles: string[] = [];
+  for (const id of ["t1", "t2"]) {
+    let state: StartState = { ...tromso(), id };
+    for (const step of stepsFor(state, creationOf(state)!)) {
+      const { tripId } = await runStep(step.id, state, { provider: "gemini" });
+      if (step.id === "trip") state = { ...state, tripId };
+    }
+    titles.push((await (await db()).get("trips", state.tripId!))!.title);
+  }
+  expect(titles[1]).toBe(titles[0]);
+  expect(titles[1]).not.toMatch(/Şubat|2027/);
 });

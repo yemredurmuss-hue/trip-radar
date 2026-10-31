@@ -17,7 +17,6 @@ import { styleKeyFor } from "./startBoard";
 import { suggestionsReview } from "./startHooks";
 import { creationOf, dative, historyRows, isPlaceholder, missingInfo, namesToAsk, narrowPlaceholders, pbEffects, pbWants, placeholderPrint, readyText, spineChoices, spineSummary, wantText, whoText, type AdviceNote, type Creation, type StartCtx, type StartState } from "./startTrip";
 import { withTravellers } from "./tripSettings";
-import { uniqueTitle } from "./trips";
 import type { Item, ItemPart, Trip } from "./types";
 
 export type StepId = "trip" | "route" | "travel" | "people" | "suggestions";
@@ -119,7 +118,9 @@ export interface StepEnv {
 }
 
 /** The start's intent on top of what the trip already had (null: nothing known). */
-const startWants = (s: StartState, had?: TripWants | null): TripWants | null => mergeWants(had, mergeWants(wantsFromStart(s), pbWants(s)));
+// (the advisor's wishes read from the traveller's own words: "Ubud · Konaklama → ormana bakan"; advisor.ts)
+const startWants = (s: StartState, had?: TripWants | null): TripWants | null =>
+  mergeWants(had, mergeWants(mergeWants(wantsFromStart(s), pbWants(s)), s.advice?.wishes?.length ? { said: s.advice.wishes } : null));
 
 /** What a step did: the trip's id (step "trip" makes it), and its line when it has its own words ("3 öneri"). */
 export interface StepResult {
@@ -155,11 +156,11 @@ export async function runStep(id: StepId, s: StartState, env: StepEnv = {}): Pro
       notifyChanged();
       return { tripId: existing.id };
     }
-    const trips = await d.getAll("trips");
     const intent = tripIntentOf(s);
     const trip: Trip = {
       id: newId(),
-      title: T(() => uniqueTitle(c.title, c.dates?.start ?? null, trips)),
+      // The title as made, even when another trip has it (Emre 2026-10-31: "başlığa tarih gelmiş"; the hero says the dates).
+      title: c.title,
       confirmedDates: c.dates,
       budget: c.budget,
       // The intent said at the start: "Ekonomik", who goes, the kind of stay (travelWants.ts); every suggestion reads it.
@@ -337,7 +338,7 @@ export function playbookCards(s: StartState, c: Creation): { travel: ShapedInput
     .map((x) => (privateRide && x.kind === "transfer" ? { ...x, title: x.title && !/özel|private/i.test(x.title) ? `${ride} · ${x.title}` : ride } : x));
   const moving = (x: PlannedInput) => x.kind === "transfer" || x.kind === "taxi" || x.kind.endsWith("_rental") || x.kind === "ferry";
   const prep = [...p.prep(), ...prepAdded(effects)].map((title): PlannedInput => ({ kind: "prep", date: null, end_date: null, time: null, from: null, to: null, city: null, title, booked: false, note: null }));
-  const ringed = oneWay(closeRing(cards, c), c, s.advice);
+  const ringed = oneWay(closeRing(fitStops(cards, c), c), c, s.advice);
   const plan = ringed.filter((x) => !moving(x));
   return { travel: ringed.filter(moving), plan: [...plan, ...wantedCards(s, c, plan)], prep };
 }
@@ -345,19 +346,66 @@ export function playbookCards(s: StartState, c: Creation): { travel: ShapedInput
 /** The ways between an airport and the stay a card can be (a transfer, a taxi, a bus, a train, a ferry): one day each. */
 const AIRPORT_WAYS = new Set(["transfer", "taxi", "bus", "train", "ferry"]);
 
+/** The trip's stops in order, each once ("Ubud", "Uluwatu"). */
+const stopCities = (c: Creation): string[] => [...new Map(c.stays.filter((x) => x.city).map((x) => [cityKeyOf(x.city)!, x.city!])).values()];
+const plain = (t: string | null | undefined) => (t ?? "").toLocaleLowerCase("tr").normalize("NFD").replace(/\p{M}/gu, "");
+
 /**
- * One way per leg (omurga Tur 18, Emre: "hem araba kiralama önermiş hem otobüs demiş"): a rental car the advisor didn't
- * choose isn't opened, and a rental car kept covers the airport ways on its days, unless the advisor chose that way for
- * that day (Napoli's first days without a car, the car from the third). Without advice the car covers them.
+ * The ways between the stops where they happen (omurga Tur 18, Emre's Bali: "Ubud-Uluwatu özel transfer" over the whole
+ * stay beside the board's own change of city): a way a card names from one stop to another goes on the day they change,
+ * from the one to the other, so the move's own leg takes it (one card, never two). The way home on the last day leaves
+ * from the last stop, the way in on the first day goes to the first.
+ */
+export function fitStops(cards: ShapedInput[], c: Creation): ShapedInput[] {
+  const stops = stopCities(c);
+  if (stops.length < 2) return cards;
+  const startOf = (city: string) => c.stays.find((x) => cityKeyOf(x.city) === cityKeyOf(city))?.date ?? null;
+  return cards.map((x) => {
+    if (!AIRPORT_WAYS.has(x.kind)) return x;
+    const named = stops.filter((city) => plain(`${x.from} ${x.to} ${x.title}`).includes(plain(city)));
+    if (x.end_date && named.length === 2) {
+      const [a, b] = named;
+      const day = startOf(b);
+      return day ? { ...x, date: day, end_date: null, from: a, to: b } : x;
+    }
+    if (x.end_date) return x;
+    const [first, last] = [stops[0], stops.at(-1)!];
+    if (c.dates && x.date === c.dates.end && named.length && !named.includes(last) && plain(x.from).includes(plain(named[0]))) return { ...x, from: last };
+    if (c.dates && x.date === c.dates.start && named.length && !named.includes(first) && plain(x.to).includes(plain(named[0]))) return { ...x, to: first };
+    return x;
+  });
+}
+
+const isRental = (kind: string) => kind.endsWith("_rental");
+
+/**
+ * One way per leg (omurga Tur 18, Emre: "hem araba kiralama önermiş hem otobüs demiş"; Bali: "motor kiralama tavsiyesi
+ * yerinde ama ikisi aynı anda olmaz"): a rental (a car, a motorbike, a bike) the advisor didn't choose isn't opened; one
+ * kept on a trip of several stops is one per stop, on its days ("Motosiklet kiralama · Ubud", "· Uluwatu"), the ways between
+ * them transfers; a car kept covers the airport ways on its days, unless the advisor chose that way for that day (Napoli's
+ * first days without a car). A road trip's car goes the whole way. Without advice the car covers them.
  */
 export function oneWay(cards: ShapedInput[], c: Creation, advice: AdviceNote | null | undefined): ShapedInput[] {
   const first = c.dates?.start ?? null;
   const dayOf = (date: string | null) => (first && date ? nightsBetween(first, date) + 1 : null);
   const chose = (mode: string, day: number | null) => Boolean(advice?.legs.some((l) => l.mode === mode && (day == null || l.day === day)));
-  const kept = advice && !chose("car_rental", null) ? cards.filter((x) => x.kind !== "car_rental") : cards;
-  const cars = [...kept, ...c.travel].filter((x) => x.kind === "car_rental");
+  const kept = advice ? cards.filter((x) => !isRental(x.kind) || chose(x.kind, null)) : cards;
+  const stops = stopCities(c);
+  const split = c.road || stops.length < 2 ? kept : kept.flatMap((x): ShapedInput[] => {
+    if (!isRental(x.kind) || !x.date || !x.end_date) return [x];
+    const parts = stops.flatMap((city) => {
+      const days = c.stays.filter((y) => cityKeyOf(y.city) === cityKeyOf(city) && y.date && y.end_date);
+      const from = days.map((y) => y.date!).sort()[0];
+      const to = days.map((y) => y.end_date!).sort().at(-1);
+      const date = from && from > x.date! ? from : x.date!;
+      const end = to && to < x.end_date! ? to : x.end_date!;
+      return from && to && date < end ? [{ ...x, date, end_date: end, city, title: x.title ? `${x.title} · ${city}` : null, ...(x.part ? { part: { ...x.part, ref: `${x.part.ref}-${cityKeyOf(city)}` } } : {}) }] : [];
+    });
+    return parts.length > 1 ? parts : [x];
+  });
+  const cars = [...split, ...c.travel].filter((x) => x.kind === "car_rental");
   const covered = (date: string | null) => cars.some((car) => !date || !car.date || (date >= car.date && date <= (car.end_date ?? car.date)));
-  return kept.filter((x) => !(AIRPORT_WAYS.has(x.kind) && !x.end_date && covered(x.date) && !chose(x.kind, dayOf(x.date))));
+  return split.filter((x) => !(AIRPORT_WAYS.has(x.kind) && !x.end_date && covered(x.date) && !chose(x.kind, dayOf(x.date))));
 }
 
 /**
@@ -374,9 +422,11 @@ function closeRing(cards: ShapedInput[], c: Creation): ShapedInput[] {
   const oneDay = (x: ShapedInput) => AIRPORT_WAYS.has(x.kind) && !x.end_date;
   const into = cards.find((x) => oneDay(x) && x.date === first);
   if (!into || cards.some((x) => oneDay(x) && x.date === last)) return cards;
+  // (a trip of several stops goes home from its last one: "Uluwatu → Denpasar", never back from the first)
+  const lastStop = stopCities(c).length > 1 ? (c.stays.at(-1)?.city ?? null) : null;
   const back: ShapedInput = {
-    ...into, date: last, from: into.to, to: into.from,
-    title: into.title ? L(`Dönüş · ${into.title}`, `Back · ${into.title}`) : null,
+    ...into, date: last, from: lastStop ?? into.to, to: into.from,
+    title: into.title && !lastStop ? L(`Dönüş · ${into.title}`, `Back · ${into.title}`) : null,
     ...(into.part ? { part: { ...into.part, ref: `${into.part.ref}-back` } } : {}),
   };
   return [...cards, back];

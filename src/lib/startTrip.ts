@@ -130,6 +130,8 @@ export interface AdviceNote {
   legs: { day: number; mode: string }[];
   rationale: string;
   facts: string[];
+  /** What the traveller asked for, in their words, by place and kind ("Ubud · Konaklama → ormana bakan"): the trip's preferences. */
+  wishes?: string[];
 }
 /** An activity the traveller plainly asked for ("bir gün husky turu"): a card on the plan, as said. */
 export interface WantedActivity { city: string | null; what: string; day: string | null }

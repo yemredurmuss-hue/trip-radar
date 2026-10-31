@@ -102,13 +102,11 @@ describe("Gezimi oluştur", () => {
     expect((await listMessages(s.tripId!)).length).toBe(4);
   });
 
-  it("a step before the trip exists stops with a reason; a second trip with the same name gets its own", async () => {
+  it("a step before the trip exists stops with a reason; a second trip with the same name keeps it (no month put on it: the hero says the dates)", async () => {
     await expect(runStep("route", interview(true), { provider: "gemini" })).rejects.toThrow("Gezi kaydı bulunamadı.");
     const again = await runAll(interview(false));
     const trip = (await (await db()).get("trips", again.tripId!))!;
-    expect(trip.title).toMatch(/^1 Aylık Bali Doğa Gezisi( · Aralık 2026| \d+)$/);
-    const titles = (await (await db()).getAll("trips")).map((t) => t.title);
-    expect(new Set(titles).size).toBe(titles.length);
+    expect(trip.title).toBe("1 Aylık Bali Doğa Gezisi");
   });
 
   it("the suggestions step shows only when their review is there, and runs it", async () => {
