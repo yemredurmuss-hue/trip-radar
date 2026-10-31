@@ -6,7 +6,9 @@
     "build": "node scripts/build.mjs",
     "watch": "node scripts/build.mjs --watch",
     "typecheck": "tsc -p .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "web": "node scripts/build-web.mjs --serve",
+    "build:web": "node scripts/build-web.mjs"
   },
   "license": "UNLICENSED",
   "dependencies": {
