@@ -1,0 +1,105 @@
+// tests/advisor.test.ts: the start's advisor (omurga Tur 18): its spine folded into the start never overrules what was
+// said, fills what the reading missed (the stay asked for, the husky tour), places the special night where it decided,
+// keeps the anchors within the budget, and the judge leaves one way per leg (a rental car and a bus never both).
+import "fake-indexeddb/auto";
+import { afterEach, expect, it } from "vitest";
+import { adviceFor, adviseStart, applyAdvice, resetAdvice, type Advice } from "../src/lib/advisor";
+import { listItems } from "../src/lib/db";
+import { holdsOwnStay } from "../src/lib/autoSearch";
+import { setLang } from "../src/lib/i18n";
+import type { LlmProvider } from "../src/lib/llm/types";
+import { oneWay, runStep, stepsFor, type ShapedInput } from "../src/lib/startCreate";
+import { applyAnswer, creationOf, newStart, type Creation, type StartState } from "../src/lib/startTrip";
+
+afterEach(() => resetAdvice());
+
+const TROMSO: Advice = {
+  rationale: "Ana amaç kuzey ışığı; cam tavanlı gece ortada, önce ve sonra ışık şansı kalsın. Kışın araç gereksiz.",
+  stays: [
+    { place: "Tromsø", nights: 2, kind: "hotel", what: null, source: "assumed" },
+    { place: "Tromsø çevresi", nights: 1, kind: "special", what: "cam tavanlı konaklama", source: "user" },
+    { place: "Tromsø", nights: 2, kind: "hotel", what: null, source: "assumed" },
+  ],
+  legs: [
+    { from: "havalimanı", to: "Tromsø", day: 1, mode: "transfer", source: "assumed" },
+    { from: "Tromsø", to: "havalimanı", day: 6, mode: "transfer", source: "assumed" },
+  ],
+  anchors: [
+    { what: "kuzey ışığı avı turu", day: 1, source: "assumed" },
+    { what: "husky turu", day: 2, source: "user" },
+    { what: "cam tavanlı yerde ışık gecesi", day: 3, source: "assumed" },
+    { what: "fiyort teknesi", day: 5, source: "assumed" },
+  ],
+  facts: ["Kuzey ışığı garanti değil"],
+  question: { text: "Cam tavanlı gece ortada kalsın mı?", choices: ["Ortada kalsın", "Son gece olsun"] },
+};
+
+function tromso(): StartState {
+  let s = applyAnswer(newStart("adv", "plan", 1, "tr"), { q: "where", place: "Tromsø", country: "Norveç", code: "NO" }, 2);
+  s = applyAnswer(s, { q: "duration", duration: { unit: "night", n: 5 } }, 3);
+  s = applyAnswer(s, { q: "start", date: "2027-02-15", approx: false }, 4);
+  return { ...s, from: "İstanbul", who: { kind: "partner", names: [] } };
+}
+
+it("Tromsø: the reading missed both wishes; the advice makes the glass night the middle one and the husky card, two anchors in all", async () => {
+  setLang("tr");
+  let state = applyAdvice(tromso(), TROMSO);
+  expect(state.wanted?.map((w) => w.what)).toEqual(["husky turu", "kuzey ışığı avı turu"]);
+  for (const step of stepsFor(state, creationOf(state)!)) {
+    const { tripId } = await runStep(step.id, state, { provider: "gemini" });
+    if (step.id === "trip") state = { ...state, tripId };
+  }
+  const items = await listItems(state.tripId!);
+  const stays = items.filter((i) => i.category === "stay").sort((a, b) => (a.dates.start ?? "").localeCompare(b.dates.start ?? ""));
+  expect(stays.map((i) => [i.dates.start, i.dates.end, holdsOwnStay(i)])).toEqual([
+    ["2027-02-15", "2027-02-17", false],
+    ["2027-02-17", "2027-02-18", true],
+    ["2027-02-18", "2027-02-20", false],
+  ]);
+  expect(stays[1].name).toBe("Cam tavanlı konaklama");
+  const acts = items.filter((i) => i.category === "activity").map((i) => i.name);
+  expect(acts).toContain("Husky turu");
+  expect(acts).toContain("Kuzey ışığı avı turu");
+  expect(acts.some((n) => /fiyort|cam tavanlı/i.test(n))).toBe(false);
+});
+
+it("never overrules what was said: the traveller's own stay keeps its words, only its place among the nights comes from the advice", () => {
+  const said = { ...tromso(), specialStays: [{ city: "Tromsø", nights: 1, what: "cam tavanlı kulübe" }], wanted: [{ city: "Tromsø", what: "husky turu", day: null }], spineQuestion: "Uçuşları bulayım mı?" };
+  const s = applyAdvice(said, TROMSO);
+  expect(s.specialStays).toEqual([{ city: "Tromsø", nights: 1, what: "cam tavanlı kulübe", after: 2 }]);
+  expect(s.wanted?.map((w) => w.what)).toEqual(["husky turu", "kuzey ışığı avı turu"]);
+  expect(s.spineQuestion).toBe("Uçuşları bulayım mı?");
+  expect(s.advice?.legs).toEqual([{ day: 1, mode: "transfer" }, { day: 6, mode: "transfer" }]);
+  expect(applyAdvice(said, null)).toBe(said);
+});
+
+const at = (kind: string, date: string, end: string | null = null): ShapedInput => ({ kind, date, end_date: end, time: null, from: null, to: null, city: "Tromsø", title: null, booked: false, note: null }) as ShapedInput;
+const trip = (travel: ShapedInput[] = []) => ({ dates: { start: "2027-02-15", end: "2027-02-20" }, travel }) as unknown as Creation;
+
+it("one way per leg: a rental car and the airport bus on its days never both", () => {
+  const bus = at("bus", "2027-02-15");
+  const car = at("car_rental", "2027-02-15", "2027-02-20");
+  // No advice: the car covers the airport way.
+  expect(oneWay([bus, car], trip(), null).map((x) => x.kind)).toEqual(["car_rental"]);
+  // The advisor chose no car (Tromsø in winter): the car the model opened goes, the bus stays.
+  expect(oneWay([bus, car], trip(), { legs: [{ day: 1, mode: "bus" }], rationale: "", facts: [] }).map((x) => x.kind)).toEqual(["bus"]);
+  // Napoli: a transfer on day 1, the car (the road trip's own) from day 3: both, each on its days.
+  const napoli = { legs: [{ day: 1, mode: "transfer" }, { day: 3, mode: "car_rental" }], rationale: "", facts: [] };
+  expect(oneWay([at("transfer", "2027-02-15")], trip([car]), napoli).map((x) => x.kind)).toEqual(["transfer"]);
+});
+
+it("asked again when the checklist knows more; the newest answer is the one used, a late one is not waited for", async () => {
+  const answers: string[] = [];
+  const model = (rationale: string, ms = 0) => async () =>
+    ({ generateJson: async (_s: string, prompt: string) => (answers.push(prompt), await new Promise((r) => setTimeout(r, ms)), { ...TROMSO, rationale }) }) as unknown as LlmProvider;
+  adviseStart({ id: "a", text: "Tromsø 5 gece", known: "Nereye: Tromsø", today: "2026-10-31", lang: "tr" }, model("ilk"));
+  adviseStart({ id: "a", text: "Tromsø 5 gece", known: "Nereye: Tromsø", today: "2026-10-31", lang: "tr" }, model("aynı"));
+  await new Promise((r) => setTimeout(r, 0));
+  expect(answers).toHaveLength(1);
+  adviseStart({ id: "a", text: "Tromsø 5 gece", known: "Nereye: Tromsø\nKimle: çocuklarla", today: "2026-10-31", lang: "tr" }, model("yeni"));
+  expect((await adviceFor("a", 1000))?.rationale).toBe("yeni");
+  expect(answers[1]).toContain("çocuklarla");
+  expect(await adviceFor("b", 1000)).toBeNull();
+  adviseStart({ id: "c", text: "x", known: "Nereye: Tromsø", today: "2026-10-31", lang: "tr" }, model("geç", 500));
+  expect(await adviceFor("c", 20)).toBeNull();
+});

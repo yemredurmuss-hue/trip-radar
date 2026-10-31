@@ -13,6 +13,7 @@
 // finishes, never waiting on the animation; the map plays alongside. The board opens once it's made and the plane has
 // landed, or OPEN_CAP_MS after the map started, whichever comes first.
 import { describeError } from "../../lib/llm";
+import { adviceFor, applyAdvice } from "../../lib/advisor";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { creditFor, keptCredits } from "../../lib/cityImages";
 import { COVER_W, sizedPhoto } from "../../lib/photoCache";
@@ -61,6 +62,9 @@ function Card({ i, place, url }: { i: number; place: string; url: string | null 
     </div>
   );
 }
+
+/** The advisor's answer is waited for this long at most once "Oluştur" is pressed (it was asked while chatting). */
+const ADVICE_WAIT_MS = 10_000;
 
 export function Generating({ state, onTripId, onFinished, onBack, onLine }: Props) {
   const T = <R,>(fn: () => R): R => withLang(state.lang, fn);
@@ -137,6 +141,8 @@ export function Generating({ state, onTripId, onFinished, onBack, onLine }: Prop
         continue;
       }
       try {
+        // The advisor's spine (advisor.ts), waited for a little while the map runs, folded in before the trip is made.
+        if (step.id === "trip" && !current.current.tripId) current.current = applyAdvice(current.current, await adviceFor(state.id, ADVICE_WAIT_MS));
         const out = await runStep(step.id, current.current);
         if (step.id === "trip") {
           current.current = { ...current.current, tripId: out.tripId };

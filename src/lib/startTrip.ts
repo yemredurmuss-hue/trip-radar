@@ -115,7 +115,22 @@ export interface Who {
 }
 
 /** A stay of its own the traveller asked for at a stop ("bir gece cam tavanlı kulübe"): its nights, carved from the stop's. */
-export interface SpecialStay { city: string; nights: number; what: string }
+export interface SpecialStay {
+  city: string;
+  nights: number;
+  what: string;
+  /** The city's nights before it (the advisor's order: "cam tavan ortada" → 2 of 4); unset: its first nights. */
+  after?: number;
+}
+/**
+ * What the start's advisor decided for the spine (advisor.ts, omurga Tur 18), kept for the judge: the way of each leg by
+ * day (1 = the day they arrive) and its reasons, never shown as they are.
+ */
+export interface AdviceNote {
+  legs: { day: number; mode: string }[];
+  rationale: string;
+  facts: string[];
+}
 /** An activity the traveller plainly asked for ("bir gün husky turu"): a card on the plan, as said. */
 export interface WantedActivity { city: string | null; what: string; day: string | null }
 
@@ -160,6 +175,8 @@ export interface StartState {
   /** What the traveller plainly asked for (omurga 2026-10-31): the plan holds these as said, never the model's own guess. */
   specialStays?: SpecialStay[];
   wanted?: WantedActivity[];
+  /** The start's advisor's spine (advisor.ts): read by the judge that makes the ways (one way per leg). */
+  advice?: AdviceNote | null;
   /** The taps that answer it ("İlk gece", "Son gece"), shown under the summary's question. */
   spineChoices?: string[];
   /** The one question that would shape the spine most now, as the start's model put it (omurga 2026-10-31): the summary's last line. */
@@ -4042,12 +4059,15 @@ export function splitSpecialStays(stays: PlannedInput[], specials: readonly Spec
     if (at < 0) continue;
     const x = out[at];
     const title = sp.what.charAt(0).toLocaleUpperCase("tr") + sp.what.slice(1);
-    const end = plus(x.date!, sp.nights);
+    // Where among the city's nights the advisor put it (the middle: a night of the lights either side), never past them.
+    const skip = Math.max(0, Math.min(sp.after ?? 0, nightsBetween(x.date!, x.end_date!) - sp.nights));
+    const from = plus(x.date!, skip);
+    const end = plus(from, sp.nights);
     // Marked as a stay of its own (its word, the card's name): its card keeps the name and is searched for it.
-    const own = { ...x, title, part: { ref: "own", section: "stay", frame: "stay", word: title } } as PlannedInput;
-    out = end < x.end_date!
-      ? [...out.slice(0, at), { ...own, end_date: end }, { ...x, date: end }, ...out.slice(at + 1)]
-      : [...out.slice(0, at), own, ...out.slice(at + 1)];
+    const own = { ...x, title, date: from, end_date: end, part: { ref: "own", section: "stay", frame: "stay", word: title } } as PlannedInput;
+    const before = skip > 0 ? [{ ...x, end_date: from }] : [];
+    const afterIt = end < x.end_date! ? [{ ...x, date: end }] : [];
+    out = [...out.slice(0, at), ...before, own, ...afterIt, ...out.slice(at + 1)];
   }
   return out;
 }

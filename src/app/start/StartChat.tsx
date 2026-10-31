@@ -41,6 +41,7 @@ import { Checklist, ChecklistBar, GenerateCard } from "./Checklist";
 import { UiIcon } from "../cards/Silhouettes";
 import { loadWorld } from "./FlightMap";
 import { Generating } from "./Generating";
+import { adviseStart } from "../../lib/advisor";
 import { askNext, findPhotos, modelAvailable, proposeRoute, READ_MS, readAndReply, REPLY_MS, within, type ModelReply } from "./model";
 // The suggestions' review as the generating screen's last step, and the rules' preview (registered through startHooks).
 import "./registerReview";
@@ -64,6 +65,8 @@ type Stage = "thinking" | "writing" | null;
 
 
 const today = () => new Date().toISOString().slice(0, 10);
+/** The checklist settles this long before the advisor is asked again (a burst of answers asks once). */
+const ADVICE_SETTLE_MS = 1200;
 const LATE = Symbol("late");
 
 /**
@@ -120,6 +123,17 @@ export function StartChat({ initial: given, firstText, firstLabel, firstNote, ct
   const [genLines, setGenLines] = useState<string[]>([]);
   // The generating screen's world map read now, while chatting: "Oluştur" starts the flight at once (2026-10-09).
   useEffect(() => void loadWorld().catch(() => null), []);
+  // The start's advisor thinks the spine through in the background (advisor.ts, omurga Tur 18): asked from the first
+  // message once the destination is known, and again as the checklist fills (the newest ask wins); never awaited here.
+  useEffect(() => {
+    if (phase !== "chat" || !state.where) return;
+    const timer = setTimeout(() => {
+      const s = live.current;
+      const said = s.messages.filter((m) => m.role === "user").map((m) => m.text).join("\n");
+      if (said) adviseStart({ id: s.id, text: said, known: T(() => knownLines(s, ctx)), today: today(), lang: s.lang });
+    }, ADVICE_SETTLE_MS);
+    return () => clearTimeout(timer);
+  }, [state, phase]);
   // Read after every wait: an answer that comes back after "Gezimi oluştur", or after the screen was left, is dropped.
   const phaseNow = useRef<"chat" | "generating">("chat");
   const setPhase = (p: "chat" | "generating") => {

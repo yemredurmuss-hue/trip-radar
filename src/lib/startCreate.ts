@@ -15,7 +15,7 @@ import type { PlannedInput } from "./planned";
 import { cardsAfter, hasMust, prepAdded, startPlaybook, startPlaybookObj, tripIntentOf, withMusts } from "./playbooks";
 import { styleKeyFor } from "./startBoard";
 import { suggestionsReview } from "./startHooks";
-import { creationOf, dative, historyRows, isPlaceholder, missingInfo, namesToAsk, narrowPlaceholders, pbEffects, pbWants, placeholderPrint, readyText, spineChoices, spineSummary, wantText, whoText, type Creation, type StartCtx, type StartState } from "./startTrip";
+import { creationOf, dative, historyRows, isPlaceholder, missingInfo, namesToAsk, narrowPlaceholders, pbEffects, pbWants, placeholderPrint, readyText, spineChoices, spineSummary, wantText, whoText, type AdviceNote, type Creation, type StartCtx, type StartState } from "./startTrip";
 import { withTravellers } from "./tripSettings";
 import { uniqueTitle } from "./trips";
 import type { Item, ItemPart, Trip } from "./types";
@@ -337,13 +337,28 @@ export function playbookCards(s: StartState, c: Creation): { travel: ShapedInput
     .map((x) => (privateRide && x.kind === "transfer" ? { ...x, title: x.title && !/özel|private/i.test(x.title) ? `${ride} · ${x.title}` : ride } : x));
   const moving = (x: PlannedInput) => x.kind === "transfer" || x.kind === "taxi" || x.kind.endsWith("_rental") || x.kind === "ferry";
   const prep = [...p.prep(), ...prepAdded(effects)].map((title): PlannedInput => ({ kind: "prep", date: null, end_date: null, time: null, from: null, to: null, city: null, title, booked: false, note: null }));
-  const ringed = closeRing(cards, c);
+  const ringed = oneWay(closeRing(cards, c), c, s.advice);
   const plan = ringed.filter((x) => !moving(x));
   return { travel: ringed.filter(moving), plan: [...plan, ...wantedCards(s, c, plan)], prep };
 }
 
 /** The ways between an airport and the stay a card can be (a transfer, a taxi, a bus, a train, a ferry): one day each. */
 const AIRPORT_WAYS = new Set(["transfer", "taxi", "bus", "train", "ferry"]);
+
+/**
+ * One way per leg (omurga Tur 18, Emre: "hem araba kiralama önermiş hem otobüs demiş"): a rental car the advisor didn't
+ * choose isn't opened, and a rental car kept covers the airport ways on its days, unless the advisor chose that way for
+ * that day (Napoli's first days without a car, the car from the third). Without advice the car covers them.
+ */
+export function oneWay(cards: ShapedInput[], c: Creation, advice: AdviceNote | null | undefined): ShapedInput[] {
+  const first = c.dates?.start ?? null;
+  const dayOf = (date: string | null) => (first && date ? nightsBetween(first, date) + 1 : null);
+  const chose = (mode: string, day: number | null) => Boolean(advice?.legs.some((l) => l.mode === mode && (day == null || l.day === day)));
+  const kept = advice && !chose("car_rental", null) ? cards.filter((x) => x.kind !== "car_rental") : cards;
+  const cars = [...kept, ...c.travel].filter((x) => x.kind === "car_rental");
+  const covered = (date: string | null) => cars.some((car) => !date || !car.date || (date >= car.date && date <= (car.end_date ?? car.date)));
+  return kept.filter((x) => !(AIRPORT_WAYS.has(x.kind) && !x.end_date && covered(x.date) && !chose(x.kind, dayOf(x.date))));
+}
 
 /**
  * The ring closes (omurga 2026-10-31, Emre: "20 Şubat dönüş uçağı var ama 20 Şubat transfer yok"): a way in from the
