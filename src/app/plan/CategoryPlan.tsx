@@ -54,6 +54,8 @@ import { Ic } from "./v82/icons";
 import { stayTimings } from "../../lib/stayTiming";
 import { intentEl, V82EnvContext, type V82Env } from "./v82/v82Env";
 import { VisaRow } from "./VisaRow";
+import { sinceLine } from "../../lib/sinceLastLook";
+import { useSinceLastLook } from "./useSinceLastLook";
 
 /**
  * v82 geçişi (C raporu §3): the categories drawn with the new intent boxes (lib/intents.ts) instead of their old timeline.
@@ -169,6 +171,7 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
   tourPhotos?: readonly { image: string | null }[];
 }) {
   const env = useCardEnv();
+  const since = useSinceLastLook(env.trip.id, items);
   const empty = useEmptyEnv();
   const n = plan.nights;
   const waiting = (s: CatSection) => pending?.bySection[s.id] != null;
@@ -334,6 +337,7 @@ export function CategoryPlan({ allot = null, plan, sections, isOpen, onOpen, onA
             ⚠ {x.text}
           </div>
         ))}
+        {since && <div className="muted small">{sinceLine(since)}</div>}
         {pending?.lead && <div className="ar-lead">{pending.lead}</div>}
         {/* Karar Masası, getirme anları: what was brought and read, its place not found ("Nereye koyalım?") */}
         <Gelenler tripId={env.trip.id} />
