@@ -66,7 +66,7 @@ it("Tromsø: the reading missed both wishes; the advice makes the glass night th
   expect(acts.some((n) => /fiyort|cam tavanlı/i.test(n))).toBe(false);
   // The reasons stay with the trip, and the trip's chat reads them (omurga Tur 19: "neden 3. gece?").
   const trip = (await (await db()).get("trips", state.tripId!))!;
-  expect(trip.spine).toEqual({ rationale: TROMSO.rationale, facts: TROMSO.facts });
+  expect(trip.spine).toMatchObject({ rationale: TROMSO.rationale, facts: TROMSO.facts });
   expect(JSON.parse(tripState(trip, items, [])).trip.spine_reasons.rationale).toBe(TROMSO.rationale);
 });
 

@@ -294,7 +294,12 @@ export interface Trip {
    * Why the plan was built as it is (omurga Tur 19): the start's advisor's reasons and its facts about the place
    * (advisor.ts), so the trip's chat can answer "neden 3. gece?" and weigh an idea against them. Unset: made without it.
    */
-  spine?: { rationale: string; facts: string[] } | null;
+  spine?: {
+    rationale: string;
+    facts: string[];
+    /** The summary's question still waiting (its topic): a tapped answer is kept in wants.said ("Konaklama → her şey dahil resort"). */
+    ask?: { text: string; topic: string; choices: string[] } | null;
+  } | null;
   /**
    * The hero card's "Tercihler": the model's 1–3 word name for a note the code can't name itself
    * (preferences.ts noteLabelKey → "Şarap tadımı"); "" when its answer wasn't one (the first words stand).

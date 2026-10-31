@@ -283,6 +283,11 @@ export interface CoverVM {
 
 export interface IntentHead {
   name: string;
+  /**
+   * What is wanted of it, as said (omurga 2026-10-31, Emre: "niyet kartı; mini infolar"): the small line under the name,
+   * before any option ("her şey dahil resort", "ormana bakan", its place when the name is the wish). Unset: nothing said.
+   */
+  intent?: string[];
   /** A ticket's two ends, as its big text says them ("İstanbul" → "Tokyo"). */
   route: { from: string; to: string } | null;
   /** The one info line's parts: "IST → HND", "1 Nis"; "3 gece", "2–5 Nis". The trip's own head count is never one. */
@@ -604,6 +609,30 @@ function peoplePart(lead: Item | null, env: Env): string | null {
   return parts.length ? parts.join(" · ") : null;
 }
 
+/** Words that say a kind of stay: a wish that names one is the stay's title ("Su üstü villa"); one that doesn't stays small. */
+const STAY_NOUN = /villa|resort|otel|hotel|ev\b|apart|kulübe|kulube|ryokan|bungalov|bungalow|çadır|cadir|kamp|camp|hostel|pansiyon|tekne|cabin|kabin|lodge|dağ evi|glamping/i;
+const cap = (t: string) => t.charAt(0).toLocaleUpperCase("tr") + t.slice(1);
+
+/**
+ * What was said of a stay in this city (the trip's preferences, wants.said): "Maafushi · Konaklama → su üstü villa", a
+ * stay wish with no place or with the trip's destination, and the summary's tapped answer ("Konaklama → her şey dahil
+ * resort"). The newest first is not needed: the order said.
+ */
+function intentOfStay(city: string | null, env: Env): string[] {
+  const said = env.input.trip.wants?.said ?? [];
+  const stops = new Set(env.input.items.filter((i) => i.category === "stay" && i.city).map((i) => cityKeyOf(i.city)));
+  const out: string[] = [];
+  for (const line of said) {
+    const [topic, text] = line.split(" → ");
+    if (!text?.trim()) continue;
+    const [place, about] = topic.includes(" · ") ? topic.split(" · ") : [null, topic];
+    if (!/^(konaklama|stay)$/i.test(about.trim())) continue;
+    const here = !place || !stops.has(cityKeyOf(place)) || cityKeyOf(place) === cityKeyOf(city);
+    if (here && !out.some((x) => x.toLocaleLowerCase("tr") === text.trim().toLocaleLowerCase("tr"))) out.push(text.trim());
+  }
+  return out.slice(0, 3);
+}
+
 function headOf(section: SectionId, frame: FrameFamily, b: Bucket, lead: Item | null, leg: Leg | null, kind: CardKind, env: Env): IntentHead {
   const first = b.entries[0];
   const facts = lead ? env.facts(lead) : null;
@@ -627,8 +656,14 @@ function headOf(section: SectionId, frame: FrameFamily, b: Bucket, lead: Item | 
     const slot = block && block.kind !== "booked" ? (block.slot ?? null) : null;
     const ownWord = slot?.part?.ref === "own" ? (slot.part.word ?? null) : null;
     const said = ownWord ? (ownStayName(slot!.name, n.city) ?? ownWord) : null;
-    const name = lead && lead.category !== "stay" ? lead.name : (said ?? n.city ?? first.row.name);
-    return { name, route: null, parts, kindWord, word: word ?? ownWord, wants, image, city: n.city, date: n.start, nights: n.nights };
+    const asked = intentOfStay(n.city, env);
+    // The stay by what is wanted of it ("Su üstü villa"), when that says a kind of stay; its place joins the small line.
+    const titled = !said && !(lead && lead.category !== "stay") && asked.length && STAY_NOUN.test(asked[0]) ? cap(asked[0]) : null;
+    const name = lead && lead.category !== "stay" ? lead.name : (said ?? titled ?? n.city ?? first.row.name);
+    // (who goes leads it, as the traveller reads a search: "2 kişi · her şey dahil resort · Maafushi")
+    const count = asked.length ? (env.input.people ?? whoGoes({ travellers: env.input.trip.travellers }).count) : null;
+    const intent = asked.length ? [...(count ? [L(`${count} kişi`, `${count} people`)] : []), ...(titled ? asked.slice(1) : asked), ...(titled && n.city ? [n.city] : [])] : [];
+    return { name, route: null, parts, kindWord, word: word ?? ownWord, wants, image, city: n.city, date: n.start, nights: n.nights, ...(intent.length ? { intent } : {}) };
   }
   if (frame === "ticket") {
     const route = routeOf(b, lead, leg);

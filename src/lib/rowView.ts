@@ -220,7 +220,9 @@ export function rowView(vm: IntentVM): RowView {
   // only made from the route ("Taksi · Havalimanı → Bonfim"), or a page's transfer (kararMasasiKoruma), keeps the route as the title.
   const route = ticket && vm.head.route ? vm.head.route : null;
   const ownName = ticket && chosen && chosen.item.origin === "chat" && LOCAL_KINDS.includes(chosen.item.plannedKind ?? "") && chosen.item.name.trim() && !isGeneratedName(chosen.item.name) ? chosen.item.name.trim() : null;
-  const title = ownName ?? (route ? `${route.from} → ${route.to}` : !ticket && chosen && (status === "chosen" || status === "booked" || (status === "suggested" && !pickDeck)) ? chosen.title : headName(vm));
+  // (a card named by what is wanted of it keeps that name until the traveller picks: an option of ours never renames it)
+  const wanted = Boolean(vm.head.intent?.length);
+  const title = ownName ?? (route ? `${route.from} → ${route.to}` : !ticket && chosen && (status === "chosen" || status === "booked" || (status === "suggested" && !pickDeck && !wanted)) ? chosen.title : headName(vm));
 
   // The line under it.
   const line: RowPart[] = [];
@@ -239,6 +241,10 @@ export function rowView(vm: IntentVM): RowView {
     }
     if (tf.mid.top) line.push({ text: tf.mid.top });
     if (tf.mid.bottom) line.push({ text: tf.mid.bottom, tone: tf.mid.tone ?? undefined });
+  } else if (!ticket && shown && chosen && wanted && status === "suggested") {
+    // (our one pick under the wanted name: what is wanted first, then the pick, as a deck says it)
+    for (const t of vm.head.intent!) line.push({ text: t });
+    line.push({ text: `✨ ${L("önerimiz", "our pick")} ${chosen.title}` });
   } else if (!ticket && shown && chosen) {
     // (its days and nights are on the rail beside it)
     if (chosen.brand?.label) line.push({ text: chosen.brand.label });
@@ -246,10 +252,12 @@ export function rowView(vm: IntentVM): RowView {
     if (vm.people) line.push({ text: L(`${vm.people} kişi`, `${vm.people} people`) });
     if (rental && vm.ticket?.rental?.line) line.push({ text: vm.ticket.rental.line });
   } else if (!ticket) {
+    // (what is wanted of it first, small, as said: "2 kişi · her şey dahil resort · Maafushi"; the options never change it)
+    if (vm.head.intent?.length) for (const t of vm.head.intent) line.push({ text: t });
     // (a stay's deck: our pick named first, as a flight's deck names its carrier)
     if (pickDeck && chosen) line.push({ text: `✨ ${L("önerimiz", "our pick")} ${chosen.title}` });
     for (const p of dayParts) if (!isDayPart(p)) line.push({ text: p });
-    if (vm.people) line.push({ text: L(`${vm.people} kişi`, `${vm.people} people`) });
+    if (vm.people && !vm.head.intent?.length) line.push({ text: L(`${vm.people} kişi`, `${vm.people} people`) });
     if (!line.length && vm.head.word) line.push({ text: vm.head.word });
   } else if (desk && deciding) {
     // (a deck: its best one's carrier, hours and stops, as the drawer's first card says them; our pick's when it has one)

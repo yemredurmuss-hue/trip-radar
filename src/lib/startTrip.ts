@@ -199,6 +199,8 @@ export interface StartState {
   spineChoices?: string[];
   /** The one question that would shape the spine most now, as the start's model put it (omurga 2026-10-31): the summary's last line. */
   spineQuestion?: string | null;
+  /** What that question is about (QUESTION_TOPICS): its tapped answer is kept as the trip's preference (the card says it). */
+  spineTopic?: string | null;
   /** Gezi biçimi: a day out, back the same day ("günübirlik"). */
   dayTrip?: boolean;
   /** Places said as a day out from a stop ("Capri'ye tekneyle günübirlik"; 0.39.13): never a stop with nights. */
@@ -864,6 +866,7 @@ export interface Extracted {
   way?: GroundWay | null;
   spineQuestion?: string | null;
   spineChoices?: string[];
+  spineTopic?: string | null;
   specialStays?: SpecialStay[];
   wanted?: WantedActivity[];
   /** A day out ("günübirlik"): one day, no night. */
@@ -1795,6 +1798,7 @@ export function acceptExtraction(raw: RawExtraction & { plan?: RawPlan | null },
   const single = (sq.match(/\?/g) ?? []).length === 1 && asks.length <= 1;
   if (sq.length >= 8 && sq.length <= 140 && sq.endsWith("?") && single && !asksDecided(raw.spine_topic)) {
     out.spineQuestion = sq;
+    if (typeof raw.spine_topic === "string" && raw.spine_topic.trim()) out.spineTopic = raw.spine_topic.trim().toLowerCase();
     const taps = (raw.spine_choices ?? []).map((x) => (typeof x === "string" ? x.replace(/\s+/g, " ").trim() : "")).filter((x) => x && x.length <= 30);
     if (taps.length >= 2) out.spineChoices = [...new Set(taps)].slice(0, 4);
   }
@@ -1889,7 +1893,7 @@ export function mergeExtracted(code: Extracted, model: Extracted | null): Extrac
     ...(model.playbook ? { playbook: model.playbook } : {}),
     // The way there: the words said, else the model's reading of the trip (omurga Tur 11b).
     ...(code.way || model?.way ? { way: code.way ?? model!.way } : {}),
-    ...(model?.spineQuestion ? { spineQuestion: model.spineQuestion, spineChoices: model.spineChoices ?? [] } : {}),
+    ...(model?.spineQuestion ? { spineQuestion: model.spineQuestion, spineChoices: model.spineChoices ?? [], spineTopic: model.spineTopic ?? null } : {}),
     ...(model?.specialStays?.length ? { specialStays: model.specialStays } : {}),
     ...(model?.wanted?.length ? { wanted: model.wanted } : {}),
     ...(code.dayTrip ? { dayTrip: true } : {}),
@@ -2430,6 +2434,7 @@ export function applyExtracted(s: StartState, e: Extracted, now: number): StartS
   if (e.spineQuestion) {
     next.spineQuestion = e.spineQuestion;
     next.spineChoices = e.spineChoices ?? [];
+    next.spineTopic = e.spineTopic ?? null;
   }
   // The model gives the current lists; what it said before stays unless said again differently (same place and thing).
   const key = (x: { city: string | null; what: string }) => `${x.city ?? ""} ${x.what}`.toLocaleLowerCase("tr").normalize("NFD").replace(/\p{M}/gu, "").replace(/\s+/g, " ").trim();
@@ -3580,9 +3585,13 @@ export type RawRoute = z.infer<typeof routeSchema>;
 
 export const routeSystem = () =>
   `${L(
-    "Bu tarz ve gece sayısı için yerin klasik rotasını öner: 1-4 gerçek şehir, kasaba ya da ada, gezilecek sırayla; geceler tam sayı, toplamı tam verilen gece. Bir ülke ya da büyük bölgede 7+ gece için 2-4 durak (ör. Sri Lanka 14 gece: Sigiriya 3, Kandy 3, Ella 3, Mirissa 5); bir şehir tek durak. Yurt dışında yola çıkılan şehir durak olmaz. country_code: durağın ISO 3166-1 alpha-2 kodu. arrival_airport_city / departure_airport_city: ilk uçuşun indiği, dönüşün kalktığı havalimanlı şehir (ör. Kolombo); bilmiyorsan \"\".",
-    "Suggest the place's classic route for this style and length: 1-4 real cities, towns or islands in travel order; whole nights adding up to exactly the total. For 7+ nights in a country or large region, 2-4 stops (e.g. Sri Lanka 14 nights: Sigiriya 3, Kandy 3, Ella 3, Mirissa 5); a city is one stop. Abroad, the city they leave from is never a stop. country_code: the stop's ISO 3166-1 alpha-2 code. arrival_airport_city / departure_airport_city: the city with the airport the first flight lands in and the flight home leaves from (e.g. Colombo); \"\" if unsure.",
+    "Bu tarz ve gece sayısı için yerin klasik rotasını öner: 1-4 gerçek şehir, kasaba ya da ada, gezilecek sırayla; geceler tam sayı, toplamı tam verilen gece. Bir ülke ya da büyük bölgede 7+ gece için 2-4 durak (ör. Sri Lanka 14 gece: Sigiriya 3, Kandy 3, Ella 3, Mirissa 5); bir şehir tek durak. Yurt dışında yola çıkılan şehir durak olmaz. country_code: durağın ISO 3166-1 alpha-2 kodu. arrival_airport_city / departure_airport_city: ilk uçuşun indiği, dönüşün kalktığı havalimanlı şehir (ör. Kolombo); bilmiyorsan \"\". Durak, gezginin sözlerindeki konaklamanın olduğu yer olmalı (su üstü villa: resort atolü, yerel ada değil).",
+    "Suggest the place's classic route for this style and length: 1-4 real cities, towns or islands in travel order; whole nights adding up to exactly the total. For 7+ nights in a country or large region, 2-4 stops (e.g. Sri Lanka 14 nights: Sigiriya 3, Kandy 3, Ella 3, Mirissa 5); a city is one stop. Abroad, the city they leave from is never a stop. country_code: the stop's ISO 3166-1 alpha-2 code. arrival_airport_city / departure_airport_city: the city with the airport the first flight lands in and the flight home leaves from (e.g. Colombo); \"\" if unsure. A stop must have the stay the traveller's words ask for (an overwater villa: a resort atoll, not a local island).",
   )}\n${L("Yer adlarını Türkçe yaz.", "Write the place names in English.")}`;
+
+/** The traveller's own typed words at the start, joined and kept short (the route reads what they asked for). */
+const typedWords = (s: StartState): string =>
+  (s.messages ?? []).filter((m) => m.role === "user").map((m) => m.text.trim()).filter(Boolean).join(" · ").replace(/"/g, "'").slice(0, 400);
 
 export function routePrompt(s: StartState): string {
   const total = totalNights(s);
@@ -3596,6 +3605,9 @@ export function routePrompt(s: StartState): string {
     s.mode === "road" ? L("Yol gezisi (araçla).", "A road trip (by car).") : "",
     stopsWanted(s) ? L(`Durak sayısı: tam ${stopsWanted(s)} (gezgin böyle istedi).`, `Number of stops: exactly ${stopsWanted(s)} (the traveller asked so).`) : "",
     s.dayTrips?.length ? L(`Günübirlik gidilecek (durak değil, gece verme): ${s.dayTrips.join(", ")}`, `Day trips (not stops, no nights): ${s.dayTrips.join(", ")}`) : "",
+    // (what they asked for, in their words: the stops are chosen where it exists; Emre's Maldives, 2026-10-31: an overwater
+    // villa asked for, the route went to Maafushi and Dhigurah, local islands with guesthouses)
+    typedWords(s) ? `${L("Gezginin sözleri", "The traveller's words")}: "${typedWords(s)}"` : "",
     "</route_request>",
   ].filter(Boolean).join("\n");
 }
@@ -4367,7 +4379,7 @@ const WAY_SAID: Record<GroundWay, () => string> = {
 const STAY_SAID: Partial<Record<StayKind, () => string>> = { camp: () => L("kamp", "camping"), boat: () => L("tekne", "the boat"), vehicle: () => L("karavan", "a camper"), hostel: () => L("hostel", "hostels"), guesthouse: () => L("pansiyon", "guesthouses") };
 
 /** The one question that shapes the plan most, still open (K4: the days first, then where from, who, the kind's own, the style). */
-function spineQuestion(c: Creation, s: StartState): string {
+export function spineQuestion(c: Creation, s: StartState): string {
   if (!c.dates) return s.start && monthOnly(s) ? L("Hangi gün yola çıkıyorsun?", "Which day do you set off?") : L("Hangi tarihlerde gitmek istiyorsun?", "When would you like to go?");
   if (!s.from && !s.way) return L("Nereden yola çıkacaksın?", "Where are you leaving from?");
   if (!s.who) return L("Kimlerle gidiyorsun?", "Who's coming with you?");

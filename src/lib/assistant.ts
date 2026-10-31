@@ -2588,6 +2588,26 @@ export function heldTouched(name: string, input: any, byId: Map<string, Item>, o
   return [];
 }
 
+/** What a summary's question topic is about, as the preferences say it ("Konaklama → her şey dahil resort"). */
+const ASK_ABOUT: Record<string, [string, string]> = {
+  stay_style: ["Konaklama", "Stay"], main_experience: ["Etkinlik", "Activity"], flights: ["Uçuş", "Flights"], budget: ["Bütçe", "Budget"],
+  who: ["Kimle", "Who"], dates: ["Tarih", "Dates"], other: ["Genel", "General"],
+};
+
+/** A tap on the summary's waiting question: its answer into wants.said under its topic; the question waits no more. */
+export async function keepSpineAnswer(tripId: string, userText: string): Promise<boolean> {
+  const said = userText.trim();
+  let kept = false;
+  await changeTrip(tripId, (t) => {
+    const ask = t.spine?.ask;
+    if (!ask || !ask.choices.some((c) => c.trim().toLocaleLowerCase("tr") === said.toLocaleLowerCase("tr"))) return t;
+    const [tr, en] = ASK_ABOUT[ask.topic] ?? ASK_ABOUT.other;
+    kept = true;
+    return { ...t, wants: mergeWants(t.wants, { said: [`${L(tr, en)} → ${said}`] }), spine: { ...t.spine!, ask: null } };
+  });
+  return kept;
+}
+
 /** A positive number from the model (12 or "12,5"), else null. */
 const positive = (v: unknown): number | null => {
   const n = typeof v === "number" ? v : typeof v === "string" ? Number(v.replace(",", ".")) : NaN;
@@ -2890,6 +2910,9 @@ export async function sendMessage(tripId: string, userText: string, llm?: LlmPro
   // A safety net under the chat's busy state: two turns at once would interleave their history.
   if (answering.has(tripId)) throw new ChatBusyError();
   answering.add(tripId);
+  // The summary's question answered with one of its taps ("Her şey dahil resort"): kept as the trip's preference, so the
+  // card it is about says it (Emre 2026-10-31: "su üstünde her şey dahil resort olarak kartım gözüksün").
+  await keepSpineAnswer(tripId, userText).catch(() => undefined);
   // A4: the turn can be taken back in one tap (turnUndo.ts): what is there now, read before it.
   const before = await beforeTurn(tripId).catch(() => null);
   try {

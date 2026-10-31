@@ -17,7 +17,7 @@ import type { PlannedInput } from "./planned";
 import { cardsAfter, hasMust, prepAdded, startPlaybook, startPlaybookObj, tripIntentOf, withMusts } from "./playbooks";
 import { styleKeyFor } from "./startBoard";
 import { suggestionsReview } from "./startHooks";
-import { creationOf, dative, historyRows, isPlaceholder, missingInfo, namesToAsk, narrowPlaceholders, pbEffects, pbWants, placeholderPrint, readyText, spineChoices, spineSummary, wantText, whoText, type AdviceNote, type Creation, type StartCtx, type StartState } from "./startTrip";
+import { creationOf, dative, historyRows, isPlaceholder, missingInfo, namesToAsk, narrowPlaceholders, pbEffects, pbWants, placeholderPrint, readyText, spineChoices, spineQuestion, spineSummary, wantText, whoText, type AdviceNote, type Creation, type StartCtx, type StartState } from "./startTrip";
 import { withTravellers } from "./tripSettings";
 import type { Item, ItemPart, Trip } from "./types";
 
@@ -121,7 +121,13 @@ export interface StepEnv {
 
 /** The start's intent on top of what the trip already had (null: nothing known). */
 /** The advisor's reasons kept on the trip (omurga Tur 19): the trip's chat answers "why" from them. */
-const spineOf = (s: StartState): Trip["spine"] => (s.advice?.rationale ? { rationale: s.advice.rationale, facts: s.advice.facts } : null);
+const spineOf = (s: StartState): Trip["spine"] => {
+  // (the summary's own question, when it is the one asked and its topic is known: its tap becomes the trip's preference)
+  const c = creationOf(s);
+  const asked = c && s.spineQuestion && s.spineTopic && spineQuestion(c, s) === s.spineQuestion ? { text: s.spineQuestion, topic: s.spineTopic, choices: s.spineChoices ?? [] } : null;
+  if (!s.advice?.rationale && !asked) return null;
+  return { rationale: s.advice?.rationale ?? "", facts: s.advice?.facts ?? [], ...(asked ? { ask: asked } : {}) };
+};
 // (the advisor's wishes read from the traveller's own words: "Ubud · Konaklama → ormana bakan"; advisor.ts)
 const startWants = (s: StartState, had?: TripWants | null): TripWants | null =>
   mergeWants(had, mergeWants(mergeWants(wantsFromStart(s), pbWants(s)), s.advice?.wishes?.length ? { said: s.advice.wishes } : null));

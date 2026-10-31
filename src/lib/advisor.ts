@@ -200,7 +200,7 @@ export function applyAdvice(s: StartState, a: Advice | null): StartState {
     ...s,
     specialStays: specials,
     wanted,
-    ...(asks ? { spineQuestion: q, spineChoices: choices.length >= 2 ? choices : [] } : {}),
+    ...(asks ? { spineQuestion: q, spineChoices: choices.length >= 2 ? choices : [], spineTopic: a.question.topic } : {}),
     advice: { legs: a.legs.map((l) => ({ day: l.day, mode: l.mode })), rationale: a.rationale, facts: a.facts.slice(0, 3), wishes: a.wishes.flatMap(wishLine).slice(0, 6) },
   };
 }

@@ -21,6 +21,7 @@ import { isPlaceholder } from "../src/lib/startTrip";
 import { buildTimeline } from "../src/lib/timeline";
 import type { Item, Suggestion, Trip } from "../src/lib/types";
 import { makeItem } from "./fixtures/makeItem";
+import { rowView } from "../src/lib/rowView";
 
 const TODAY = "2026-10-01";
 const base: Trip = {
@@ -240,6 +241,22 @@ describe("what's missing, said not needed, covered by a ticket", () => {
     const suggestion = { key: "rule:insurance", section: "other" as const, kind: "add" as const, title: "Seyahat sağlık sigortası", why: "Yurt dışına çıkıyorsun.", source: "rule" as const, template: "insurance", createdAt: 1, state: "open" as const };
     const b = board(base, [stay("Hyatt", "Tokyo", "2026-11-01", "2026-11-04", "booked")], { suggestions: { other: [suggestion] } });
     expect(b.intents.find((i) => i.section === "other")).toMatchObject({ kind: "insurance", status: "searching", word: "Aranıyor", estimate: null, note: "Yurt dışına çıkıyorsun.", head: { name: "Seyahat sağlık sigortası", parts: ["1–7 Kasım"] } });
+  });
+
+  it("a stay named by what is wanted of it (Emre, 31 Ekim: 'Su üstü villa · 2 kişi · her şey dahil resort'); our options never rename it", () => {
+    const trip: Trip = { ...base, wants: { said: ["Maafushi · Konaklama → su üstü villa", "Konaklama → her şey dahil resort"] } };
+    const b = board(trip, [stay("Chao guest house", "Maafushi", "2026-11-01", "2026-11-04", "saved"), stay("Whaleshark Beach", "Maafushi", "2026-11-01", "2026-11-04", "saved")]);
+    const vm = b.intents.find((i) => i.kind === "stay")!;
+    expect(vm.head).toMatchObject({ name: "Su üstü villa", intent: ["2 kişi", "her şey dahil resort", "Maafushi"] });
+    const view = rowView(vm);
+    expect(view.title).toBe("Su üstü villa");
+    expect(view.line.slice(0, 3).map((p) => p.text)).toEqual(["2 kişi", "her şey dahil resort", "Maafushi"]);
+  });
+
+  it("a wish that names no kind of stay stays small under the city's name", () => {
+    const trip: Trip = { ...base, wants: { said: ["Tokyo · Konaklama → ormana bakan"] } };
+    const vm = board(trip, [stay("A", "Tokyo", "2026-11-01", "2026-11-04", "saved")]).intents.find((i) => i.kind === "stay")!;
+    expect(vm.head).toMatchObject({ name: "Tokyo", intent: ["2 kişi", "ormana bakan"] });
   });
 
   it("the ways in the order they happen, a suggested one too (Emre, 31 Ekim: the motorbike from the 1st came after the 3rd)", () => {
