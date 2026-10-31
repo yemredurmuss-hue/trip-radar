@@ -254,9 +254,11 @@ export async function cityTours(source: Pick<SuggestionSource, "offers">, need: 
   const wider = list.length ? null : countryNeed(asked, countryCode);
   if (wider) list = await tours(wider, town);
   if (need.kind !== "activity" || need.query?.trim()) return list;
-  // The trip's kind and what was asked for: searched where the town's own were found, under the name that found them
-  // (omurga 2026-10-31: asked under "Tromsø" the husky tours found nothing, only the town's general tours showed).
-  const base = wider ?? (list.length ? found : null);
+  // The trip's kind: asked where the town's own were found (the town, or its country by the town's name). (Kept on the
+  // town's own name as before 0.47.43: asked under the name that found the town's tours, the style's words led the
+  // suggestions and pushed the town's own, the northern lights, down: Emre, 2026-10-31, "öneriler bozuldu".)
+  const base = wider ?? (list.length ? need : null);
+  void found;
   const tasted = base
     ? (await Promise.all(words.slice(0, TASTE_MAX).map((w) => tours({ ...base, key: `${base.key}:taste:${fold(w)}`, query: wider ? `${w} ${town}` : w }, town)))).flat()
     : [];
