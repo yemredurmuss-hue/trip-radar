@@ -59,7 +59,7 @@ const said = (input: Partial<PlannedInput> & Pick<PlannedInput, "kind">, over: P
 /** plan_item's full input, as a schema-bound model sends it. */
 const plan = (over: Record<string, unknown>) => ({
   kind: "esim", date: null, end_date: null, time: null, from: null, to: null, city: null, title: null, booked: false, note: null,
-  replaces: null, item_id: null, provider: null, price: null, currency: null, ...over,
+  replaces: null, item_id: null, provider: null, price: null, currency: null, confirmed: true, ...over,
 });
 
 async function put(items: Item[]) {
@@ -84,7 +84,7 @@ describe("the eSIM already on the plan: '10 GB aldım' (the report)", () => {
 
   it("what the model did (update_items with the package as a note) puts the package on the card, not only in its note", async () => {
     await put([hotel(), esim()]);
-    const { llm } = fake([use({ name: "update_items", input: { changes: [{ item_id: "esim", status: "booked", note: "Bought 10GB eSIM." }] } }), say("Done!")]);
+    const { llm } = fake([use({ name: "update_items", input: { changes: [{ item_id: "esim", status: "booked", note: "Bought 10GB eSIM." }], confirmed: true } }), say("Done!")]);
     await sendMessage(T, "10 GB aldım", llm);
     const items = await all();
     const esims = items.filter((i) => cardKind(i) === "esim");
@@ -376,14 +376,14 @@ describe("review fixes (0f7dbd5)", () => {
   it("update_items with '5 GB daha aldım' never rewrites a booked 10 GB eSIM's package; one with none gets it, with Geri al", async () => {
     const e = withGb(said({ kind: "esim", city: "Portugal", title: "10 GB eSIM", booked: true }, { id: "e", countryCode: "PT" }), 10);
     await putTrip([hotel(), e]);
-    const more = fake([use({ name: "update_items", input: { changes: [{ item_id: "e", status: "booked", note: "Bought 5 GB more" }] } }), say("ok")]);
+    const more = fake([use({ name: "update_items", input: { changes: [{ item_id: "e", status: "booked", note: "Bought 5 GB more" }], confirmed: true } }), say("ok")]);
     await sendMessage(T, "5 GB daha aldım", more.llm);
     expect((await all()).find((i) => i.id === "e")).toMatchObject({ name: "10 GB eSIM", metrics: { dataGb: 10 } });
     const plain = said({ kind: "esim", city: "Porto" }, { id: "p", status: "booked" });
     await putTrip([hotel(), plain]);
     const seen: TripChange[] = [];
     const stop = onTripChange((c) => seen.push(c));
-    const first = fake([use({ name: "update_items", input: { changes: [{ item_id: "p", status: "booked", note: "Bought 10GB eSIM." }] } }), say("ok")]);
+    const first = fake([use({ name: "update_items", input: { changes: [{ item_id: "p", status: "booked", note: "Bought 10GB eSIM." }], confirmed: true } }), say("ok")]);
     await sendMessage(T, "10 GB aldım", first.llm);
     stop();
     expect((await all()).find((i) => i.id === "p")!.metrics?.dataGb).toBe(10);

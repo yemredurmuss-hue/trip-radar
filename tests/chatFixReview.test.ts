@@ -81,7 +81,7 @@ describe("D1: a cancel clause is read only up to what comes in its place", () =>
     const camper = { name: "plan_item", input: { kind: "car_rental", date: "2026-10-11", end_date: "2026-10-18", time: null, from: null, to: null, city: "Madeira", title: "Karavan", booked: true, note: null, replaces: null } };
     const { llm, calls } = fake([
       use(camper),
-      use({ name: "update_items", input: { changes: [{ item_id: "vanpage", status: "booked", note: null }] } }, { name: "remove_from_plan", input: { target_id: "sixt" } }),
+      use({ name: "update_items", input: { changes: [{ item_id: "vanpage", status: "booked", note: null }] } }, { name: "remove_from_plan", input: { target_id: "sixt", confirmed: true } }),
       say("Karavanı rezerve olarak işaretledim, araç kiralamayı çıkardım."),
     ]);
     await sendMessage(T, "araç kiralamayı iptal ettik yerine karavan kiraladık", llm);
@@ -175,7 +175,7 @@ describe("echo, last step, hidden moves, fresh writes, the filter", () => {
     await put([opo(), van(), hotel()]);
     let renamed = false;
     // The board renames the trip while the model is thinking.
-    const { llm } = fake([use({ name: "remove_from_plan", input: { target_id: MOVE } }), say("Tamam.")], async () => {
+    const { llm } = fake([use({ name: "remove_from_plan", input: { target_id: MOVE, confirmed: true } }), say("Tamam.")], async () => {
       if (renamed) return;
       renamed = true;
       const d = await db();

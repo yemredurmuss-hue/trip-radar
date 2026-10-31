@@ -64,7 +64,7 @@ describe("a turn: the board read back, the answer after it", () => {
       },
       {
         stop_reason: "tool_use",
-        content: [{ type: "tool_use", id: "r1", name: "remove_from_plan", caller: { type: "direct" }, input: { target_id: "airport" } }] as Anthropic.ContentBlock[],
+        content: [{ type: "tool_use", id: "r1", name: "remove_from_plan", caller: { type: "direct" }, input: { target_id: "airport", confirmed: true } }] as Anthropic.ContentBlock[],
       },
       { stop_reason: "end_turn", content: [{ type: "text", text: "Uber Yolculukları tüm gezi için Ulaşım'da; havalimanı taksisini kaldırdım.", citations: null }] as Anthropic.ContentBlock[] },
     ]);

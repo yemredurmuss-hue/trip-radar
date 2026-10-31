@@ -138,7 +138,7 @@ describe("Bug 1b: 'Gaula → Madeira' in Ulaşım can be removed", () => {
     await put([opo(), van(), hotel()]);
     const toasts: HiddenByChat[] = [];
     const stop = onHidden((h) => toasts.push(h));
-    const { llm, calls } = fake([use({ name: "remove_from_plan", input: { target_id: MOVE } }), say("Gaula → Madeira'yı kaldırdım.")]);
+    const { llm, calls } = fake([use({ name: "remove_from_plan", input: { target_id: MOVE, confirmed: true } }), say("Gaula → Madeira'yı kaldırdım.")]);
     await sendMessage(T, "gaula medeira var ulaşımda onu kaldır", llm);
     stop();
     const [result] = resultsOf(calls, 1);
@@ -177,7 +177,7 @@ describe("Bug 1b: 'Gaula → Madeira' in Ulaşım can be removed", () => {
     await put([opo(), van(), hotel(), flight]);
     const legs = buildLegs(buildPlan(trip, await listItems(T)), trip);
     const withFlight = legs.find((l) => l.kind === "move" && l.travel)!;
-    const { llm, calls } = fake([use({ name: "remove_from_plan", input: { target_id: withFlight.key } }), say("Kaldıramadım.")]);
+    const { llm, calls } = fake([use({ name: "remove_from_plan", input: { target_id: withFlight.key, confirmed: true } }), say("Kaldıramadım.")]);
     await sendMessage(T, "porto gaula geçişini kaldır", llm);
     const [result] = resultsOf(calls, 1);
     expect(result.is_error).toBe(true);
@@ -191,7 +191,7 @@ describe("Bug 1b: 'Gaula → Madeira' in Ulaşım can be removed", () => {
 
   it("an unknown target is an error that lists the transfers, and nothing is removed", async () => {
     await put([opo(), van(), hotel()]);
-    const { llm, calls } = fake([use({ name: "remove_from_plan", input: { target_id: "gaula-madeira" } }), say("Bulamadım.")]);
+    const { llm, calls } = fake([use({ name: "remove_from_plan", input: { target_id: "gaula-madeira", confirmed: true } }), say("Bulamadım.")]);
     await sendMessage(T, "gaula madeira'yı kaldır", llm);
     const [result] = resultsOf(calls, 1);
     expect(result.is_error).toBe(true);
@@ -206,7 +206,7 @@ describe("Bug 1b: 'Gaula → Madeira' in Ulaşım can be removed", () => {
     await addDoc(said, new File(["%PDF-1.4"], "taksi.pdf", { type: "application/pdf" }));
     const removed: Removed[] = [];
     const stop = onRemoved((r) => removed.push(r));
-    const { llm, calls } = fake([use({ name: "remove_from_plan", input: { target_id: "tr" } }, { name: "remove_from_plan", input: { target_id: "taxi" } }), say("İkisini de kaldırdım.")]);
+    const { llm, calls } = fake([use({ name: "remove_from_plan", input: { target_id: "tr", confirmed: true } }, { name: "remove_from_plan", input: { target_id: "taxi", confirmed: true } }), say("İkisini de kaldırdım.")]);
     await sendMessage(T, "ulaşımdaki gaula madeira transferini ve taksiyi kaldır", llm);
     stop();
     expect(removed).toEqual([]);
@@ -230,7 +230,7 @@ describe("Bug 1b: 'Gaula → Madeira' in Ulaşım can be removed", () => {
 
   it("the tool fits the strict schema budget and is in both languages' tool lists", () => {
     const tool = TOOLS.find((t) => t.name === "remove_from_plan")!;
-    expect(tool.schema).toMatchObject({ required: ["target_id"], additionalProperties: false });
+    expect(tool.schema).toMatchObject({ required: ["target_id", "confirmed"], additionalProperties: false });
     expect((TOOLS.find((t) => t.name === "plan_item")!.schema as { required: string[] }).required).toContain("replaces");
   });
 });
@@ -284,7 +284,7 @@ describe("vehicles (pure)", () => {
 describe("Bug 2: 'X iptal, yerine Y' takes X out in the same turn", () => {
   const camperPlan = (over: object = {}) => ({
     name: "plan_item",
-    input: { kind: "car_rental", date: "2026-10-11", end_date: "2026-10-18", time: null, from: null, to: null, city: "Madeira", title: "Karavan", booked: true, note: null, replaces: null, ...over },
+    input: { kind: "car_rental", date: "2026-10-11", end_date: "2026-10-18", time: null, from: null, to: null, city: "Madeira", title: "Karavan", booked: true, note: null, replaces: null, confirmed: true, ...over },
   });
 
   for (const [lang, text] of [
@@ -336,7 +336,7 @@ describe("Bug 2: 'X iptal, yerine Y' takes X out in the same turn", () => {
   it("the model forgets X altogether: the reply asks about it, with buttons, instead of guessing", async () => {
     const page = van({ id: "vanpage", status: "saved", dates: { start: "2026-10-11", end: "2026-10-18", source: "page" } });
     await put([opo(), sixt(), page]);
-    const { llm } = fake([use({ name: "update_items", input: { changes: [{ item_id: "vanpage", status: "booked", note: null }] } }), say("Karavanı rezerve olarak işaretledim.")]);
+    const { llm } = fake([use({ name: "update_items", input: { changes: [{ item_id: "vanpage", status: "booked", note: null }], confirmed: true } }), say("Karavanı rezerve olarak işaretledim.")]);
     await sendMessage(T, "araç kiralama iptal, yerine karavan kiraladık", llm);
     const reply = await lastReply();
     expect(reply.text).toContain("Sixt rent a car Madeira hâlâ planda");

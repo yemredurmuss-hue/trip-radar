@@ -204,7 +204,7 @@ Nasıl konuşursun:
   Kaydettiğini tek cümleyle söyle ("Not aldım: mutfak şart.") ve sonucun nasıl değiştiğini anlat.
 - Gezinin omurgası (kullanıcı fikrini değiştirebilmeli, gezi dağılmamalı):
   • Kullanıcı bir fikri deniyorsa ("Roma'yı eklesek nasıl olur?", "bir gün daha kalsak?", "ya Osaka'ya da gitsek", "kulübeyi son geceye alsak?") önce try_change ile dene: hiçbir şey kaydedilmez, kod ne olacağını sayar. Sonucu (effects) kendi cümlenle ve sayılarıyla söyle: hangi yer kaç gece olur, hangi rezervasyon ya da seçim etkilenir, hangi yeni şehir değişimi (transfer) doğar, hangi gece yataksız kalır, hangi gün dolar, hangi uçuş tarih dışında kalır. effects'te olmayan bir sonucu söyleme, tahmin etme. trip.spine_reasons'taki bir gerekçeyle çelişiyorsa onu da tek cümleyle ekle. Sonra "Uygulayayım mı?" de; ancak evet derse gerçek araçlarla yap. Açık bir istek ("Roma'yı ekle") hemen yapılır; yalnız rezerve ya da seçilmiş bir şeye dokunacaksa ya da yataksız gece bırakacaksa önce try_change ile bakıp sor.
-  • Kullanıcının rezerve edilmiş ya da seçilmiş bir şeyinin tarihini, gecesini değiştirecek ya da onu kaldıracak bir adım, kullanıcı bu mesajda onu açıkça istemedikçe atılmaz: önce tek soruyla sor. Gezi başladıysa geçmiş günlere dokunma.
+  • Kullanıcının rezerve edilmiş ya da seçilmiş bir şeyinin tarihini, gecesini değiştirecek ya da onu kaldıracak bir adım, kullanıcı bu mesajda onu açıkça istemedikçe atılmaz: önce tek soruyla sor. Araçlar bunu ancak confirmed: true ile yapar (kullanıcı bu mesajda istediyse ya da sorduğuna evet dediyse); aksi halde hata döner ve hiçbir şey değişmez. Gezi başladıysa geçmiş günlere dokunma.
   • Kesin bir süre ya da tarih sınırı ("en fazla 10 gün", "iznim 10 gün", "pazartesi işe dönmem lazım", "15'inde dönmeliyim") save_preference ile kalıcı not olarak kaydedilir; sonra hiçbir değişiklik bu sınırı aşmaz. "10 gün civarı", "belki uzatırız" ise tercihtir, esneyebilir.
   • Yeni bir şehir ya da durak eklenince günler nereden gelecek, en ucuz çözümü seç ve sormadan uygula, tek satırla söyle: süre tercihse ve uçuş/konaklama rezerve değilse geziyi uzat (update_trip; "Osaka'yı ekledim, geziyi 12 güne çıkardım"); süre kesinse ya da uçuşlar alındıysa rezerve olmayan, en uzun duraktan gün al (plan_item kind stay ile o şehrin aralığını kısalt; "Kyoto'dan 1 gün aldım"). Diğer yolu tek cümleyle seçenek olarak bırak. Rezerve gecelere asla dokunma; hiçbir yol kesin bir sınırı ve rezervasyonları birlikte tutmuyorsa hiçbirini değiştirme, çatışmayı söyle ve iki yol sun.
   • plan.notices'te bir yerin gezinin tarihlerinin dışında olduğu yazıyorsa uygun anda bir kez sor: tarihleri uzatayım mı (update_trip) yoksa o yeri bırakayım mı (remove_from_plan)? Kendin seçme.
@@ -292,7 +292,7 @@ How you talk:
   Say what you saved in one sentence ("Noted: a kitchen is a must.") and how the result changed.
 - The trip's spine (the user must be able to change their mind without the trip falling apart):
   • If the user is only trying an idea ("what if we add Rome?", "how about one more day?", "maybe Osaka too", "the cabin on the last night?"), try it first with try_change: nothing is saved, the code counts what would happen. Say the result (effects) in your words with its numbers: the nights each place gets, which booking or choice it touches, which new change of city (a transfer) it makes, which night is left with no bed, which day gets too full, which flight falls outside the dates. Never say a result that isn't in effects; never guess. When it goes against one of trip.spine_reasons, add that in one sentence. Then ask "Shall I apply it?"; do it with the real tools only on a yes. A plain request ("add Rome") is done right away; only when it would touch something booked or chosen, or leave a night with no bed, look with try_change first and ask.
-  • A step that would change the dates or nights of something the user booked or chosen, or take it off, is not taken unless the user asks for that in this message: ask one question first. Once the trip has started, never touch days already past.
+  • A step that would change the dates or nights of something the user booked or chosen, or take it off, is not taken unless the user asks for that in this message: ask one question first. The tools do it only with confirmed: true (the user asked in this message, or said yes to your question); otherwise they return an error and nothing changes. Once the trip has started, never touch days already past.
   • A firm limit on length or dates ("10 days at most", "I have 10 days off", "I must be back at work on Monday", "we fly home on the 15th") is saved with save_preference as a lasting note; no change after it goes past that limit. "About 10 days", "maybe longer" is a preference and can stretch.
   • A new city or stop: pick the cheapest fix for where its days come from, do it without asking and say it in one line: if the length is a preference and no flight or stay is booked, stretch the trip (update_trip; "Added Osaka, the trip is now 12 days"); if the length is firm or the flights are booked, take days from the longest stop that isn't booked (plan_item kind stay shortening that city's range; "Took one day from Kyoto"). Leave the other way as one sentence of choice. Never touch booked nights; if no way keeps a firm limit and the bookings together, change nothing, say the conflict and offer two ways.
   • If plan.notices says a place is outside the trip's dates, ask once at a good moment: stretch the dates (update_trip) or drop that place (remove_from_plan)? Don't pick for the user.
@@ -481,8 +481,9 @@ function buildTools(en: boolean): ToolSpec[] {
               additionalProperties: false,
             },
           },
+          confirmed: { type: "boolean", description: t("Kullanıcı BU mesajda bu değişikliği açıkça istedi ya da az önceki soruna onay verdi mi? Rezerve ya da seçilmiş bir kayda dokunan adım yalnız true ile yapılır; emin değilsen false gönder ve önce sor.", "Did the user plainly ask for this change in THIS message, or say yes to your question just before? A step that touches something booked or chosen is done only with true; when unsure send false and ask first.") },
         },
-        required: ["changes"],
+        required: ["changes", "confirmed"],
         additionalProperties: false,
       },
     },
@@ -611,8 +612,9 @@ function buildTools(en: boolean): ToolSpec[] {
           budget_amount: { ...nullable({ type: "number" }), description: t("Hedef bütçe", "Target budget") },
           budget_currency: nullable({ type: "string" }),
           budget_ceiling: { ...nullable({ type: "number" }), description: t("Tavan: kesinlikle aşılmayacak toplam; 0 tavanı kaldırır", "Ceiling: the total never to go over; 0 removes the ceiling") },
+          confirmed: { type: "boolean", description: t("Kullanıcı BU mesajda bu değişikliği açıkça istedi ya da az önceki soruna onay verdi mi? Rezerve ya da seçilmiş bir kayda dokunan adım yalnız true ile yapılır; emin değilsen false gönder ve önce sor.", "Did the user plainly ask for this change in THIS message, or say yes to your question just before? A step that touches something booked or chosen is done only with true; when unsure send false and ask first.") },
         },
-        required: ["title", "start", "end", "budget_amount", "budget_currency", "budget_ceiling"],
+        required: ["title", "start", "end", "budget_amount", "budget_currency", "budget_ceiling", "confirmed"],
         additionalProperties: false,
       },
     },
@@ -696,8 +698,9 @@ function buildTools(en: boolean): ToolSpec[] {
           provider: { ...nullable({ type: "string" }), description: t("Söylendiyse satıcı/şirket (Airalo, Europcar, Allianz, havayolu)", "The shop or company if said (Airalo, Europcar, Allianz, the airline)") },
           price: { ...nullable({ type: "number" }), description: t("Söylendiyse toplam fiyat (sayı)", "The total price if said (a number)") },
           currency: { ...nullable({ type: "string" }), description: t("Fiyatın para birimi, ISO kodu (EUR, TRY, USD)", "The price's currency, an ISO code (EUR, TRY, USD)") },
+          confirmed: { type: "boolean", description: t("Kullanıcı BU mesajda bu değişikliği açıkça istedi ya da az önceki soruna onay verdi mi? Rezerve ya da seçilmiş bir kayda dokunan adım yalnız true ile yapılır; emin değilsen false gönder ve önce sor.", "Did the user plainly ask for this change in THIS message, or say yes to your question just before? A step that touches something booked or chosen is done only with true; when unsure send false and ask first.") },
         },
-        required: ["kind", "date", "end_date", "time", "from", "to", "city", "title", "booked", "note", "replaces", "item_id", "provider", "price", "currency"],
+        required: ["kind", "date", "end_date", "time", "from", "to", "city", "title", "booked", "note", "replaces", "item_id", "provider", "price", "currency", "confirmed"],
         additionalProperties: false,
       },
     },
@@ -764,8 +767,8 @@ function buildTools(en: boolean): ToolSpec[] {
         t("Kullanıcının 'kaldır / sil / gerek yok' dediği bir şeyi panodan kaldırır. target_id bir seçeneğin items[].id'si (plandan çıkar, silinmez; belgeleriyle Gizlenenler'de durur) ya da bir transferin plan.legs[].key'i (transfer ya da boş bir şehir değişimi 'Gerek yok' gibi gizlenir). Hepsi Gizlenenler'den geri getirilebilir. Sonuç gerçekten ne olduğunu söyler; hata dönerse hiçbir şey kaldırılmadı.", "Removes something the user said to remove / delete / that isn't needed from the board. target_id is an option's items[].id (it leaves the plan, not deleted; it waits under Hidden with its files) or a transfer's plan.legs[].key (a transfer or an empty change of city is hidden like 'Not needed'). All of it can be brought back from Hidden. The result says what really happened; on an error nothing was removed."),
       schema: {
         type: "object",
-        properties: { target_id: { type: "string", description: t("items[].id ya da plan.legs[].key", "items[].id or plan.legs[].key") } },
-        required: ["target_id"],
+        properties: { target_id: { type: "string", description: t("items[].id ya da plan.legs[].key", "items[].id or plan.legs[].key") }, confirmed: { type: "boolean", description: t("Kullanıcı BU mesajda bu değişikliği açıkça istedi ya da az önceki soruna onay verdi mi? Rezerve ya da seçilmiş bir kayda dokunan adım yalnız true ile yapılır; emin değilsen false gönder ve önce sor.", "Did the user plainly ask for this change in THIS message, or say yes to your question just before? A step that touches something booked or chosen is done only with true; when unsure send false and ask first.") } },
+        required: ["target_id", "confirmed"],
         additionalProperties: false,
       },
     },
@@ -1800,6 +1803,21 @@ async function runTool(tripId: string, name: string, input: any, choices: string
   const d = await db();
   const items = await listItems(tripId);
   const byId = new Map(items.map((i) => [i.id, i]));
+  // A2 (omurga, Emre 2026-10-31: "seçilen, rezerve edilen sohbetle sessizce oynamaz"): the rule held by the code, not the
+  // model's good will: a step that would change, replace or take off something booked or chosen, or leave it outside the
+  // trip's dates, is done only when the call says the user asked for it in this message; else nothing changes.
+  if (input?.confirmed !== true) {
+    const trip = name === "update_trip" ? await d.get("trips", tripId) : undefined;
+    const held = heldTouched(name, input, byId, trip ? (change) => effectsOf(trip, items.map(withEdits), change).held.map((h) => h.name) : null);
+    if (held.length) {
+      throw new ToolError(
+        L(
+          `Bu adım rezerve ya da seçilmiş şuna dokunur: ${held.join(", ")}. Kullanıcı bu mesajda bunu açıkça istemedi: önce tek soruyla sor (ne olacağını söyle); kullanıcı isterse aynı çağrıyı confirmed: true ile yap. Hiçbir şey değişmedi.`,
+          `This step touches something booked or chosen: ${held.join(", ")}. The user didn't plainly ask for it in this message: ask first in one question (say what would happen); if they want it, make the same call with confirmed: true. Nothing changed.`,
+        ),
+      );
+    }
+  }
   switch (name) {
     case "update_items": {
       // An id taken out earlier in this turn (plan_item's replaces, remove_from_plan) is done already.
@@ -2545,6 +2563,28 @@ async function runTool(tripId: string, name: string, input: any, choices: string
     default:
       throw new ToolError(L(`Bilinmeyen araç: ${name}`, `Unknown tool: ${name}`));
   }
+}
+
+/**
+ * The booked or chosen records a tool call would change, replace, take off or leave outside the dates (A2): their names.
+ * Marking a chosen one booked, or details of a booking the user tells, are theirs to say and not counted.
+ */
+export function heldTouched(name: string, input: any, byId: Map<string, Item>, outsideAfter: ((change: TriedChange) => string[]) | null): string[] {
+  const held = (id: unknown) => {
+    const item = typeof id === "string" ? byId.get(id) : undefined;
+    return item && (item.status === "booked" || item.status === "chosen") ? item : null;
+  };
+  if (name === "update_items") {
+    const changes = Array.isArray(input?.changes) ? input.changes : [];
+    return changes.flatMap((c: any) => {
+      const item = held(c?.item_id);
+      return item && c.status !== item.status && c.status !== "booked" ? [item.name] : [];
+    });
+  }
+  if (name === "remove_from_plan") return [held(input?.target_id)?.name].filter((x): x is string => Boolean(x));
+  if (name === "plan_item") return [held(input?.replaces)?.name].filter((x): x is string => Boolean(x));
+  if (name === "update_trip" && outsideAfter && (input?.start || input?.end)) return outsideAfter({ start: input.start ?? null, end: input.end ?? null });
+  return [];
 }
 
 /** A positive number from the model (12 or "12,5"), else null. */

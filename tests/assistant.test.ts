@@ -63,13 +63,13 @@ describe("assistant", () => {
       {
         stop_reason: "tool_use",
         content: [
-          { type: "tool_use", id: "tu4", name: "update_items", input: { changes: [{ item_id: "a", status: "chosen", note: null }, { item_id: "zzz", status: "dismissed", note: null }] }, caller: { type: "direct" } },
+          { type: "tool_use", id: "tu4", name: "update_items", input: { changes: [{ item_id: "a", status: "chosen", note: null }, { item_id: "zzz", status: "dismissed", note: null }], confirmed: true }, caller: { type: "direct" } },
         ] as Anthropic.ContentBlock[],
       },
       {
         stop_reason: "tool_use",
         content: [
-          { type: "tool_use", id: "tu5", name: "update_items", input: { changes: [{ item_id: "a", status: "chosen", note: null }] }, caller: { type: "direct" } },
+          { type: "tool_use", id: "tu5", name: "update_items", input: { changes: [{ item_id: "a", status: "chosen", note: null }], confirmed: true }, caller: { type: "direct" } },
         ] as Anthropic.ContentBlock[],
       },
       { stop_reason: "end_turn", content: [{ type: "text", text: "Ekledim.", citations: null }] as Anthropic.ContentBlock[] },
@@ -376,7 +376,7 @@ describe("assistant", () => {
     // under Gizlenenler with its file, and "Geri al" there makes it planned again.
     const taxi = plans.find((i) => i.plannedKind === "taxi")!;
     const { client: c2 } = fakeClient([
-      { stop_reason: "tool_use", content: [{ type: "tool_use", id: "u1", name: "update_items", caller: { type: "direct" }, input: { changes: [{ item_id: taxi.id, status: "dismissed", note: null }] } }] as Anthropic.ContentBlock[] },
+      { stop_reason: "tool_use", content: [{ type: "tool_use", id: "u1", name: "update_items", caller: { type: "direct" }, input: { changes: [{ item_id: taxi.id, status: "dismissed", note: null }], confirmed: true } }] as Anthropic.ContentBlock[] },
       { stop_reason: "end_turn", content: [{ type: "text", text: "Taksiyi kaldırdım.", citations: null }] as Anthropic.ContentBlock[] },
     ]);
     await addDoc(taxi, new File(["%PDF-1.4"], "taksi.pdf", { type: "application/pdf" }));
@@ -400,8 +400,8 @@ describe("assistant", () => {
     const hotel = { ...items[0], status: "booked" as const };
     await d.put("items", hotel);
     const { client, calls } = fakeClient([
-      { stop_reason: "tool_use", content: [{ type: "tool_use", id: "c1", name: "update_items", caller: { type: "direct" }, input: { changes: [{ item_id: hotel.id, status: "cancelled", note: "iade 3 güne yatar" }] } }] as Anthropic.ContentBlock[] },
-      { stop_reason: "tool_use", content: [{ type: "tool_use", id: "c2", name: "update_items", caller: { type: "direct" }, input: { changes: [{ item_id: items[1].id, status: "cancelled", note: null }] } }] as Anthropic.ContentBlock[] },
+      { stop_reason: "tool_use", content: [{ type: "tool_use", id: "c1", name: "update_items", caller: { type: "direct" }, input: { changes: [{ item_id: hotel.id, status: "cancelled", note: "iade 3 güne yatar" }], confirmed: true } }] as Anthropic.ContentBlock[] },
+      { stop_reason: "tool_use", content: [{ type: "tool_use", id: "c2", name: "update_items", caller: { type: "direct" }, input: { changes: [{ item_id: items[1].id, status: "cancelled", note: null }], confirmed: true } }] as Anthropic.ContentBlock[] },
       { stop_reason: "end_turn", content: [{ type: "text", text: "İptal ettim.", citations: null }] as Anthropic.ContentBlock[] },
     ]);
     await sendMessage("t1", `${hotel.name}'i iptal ettim, iade 3 güne yatar`, anthropicProvider(client, "claude-opus-5"));
