@@ -1,10 +1,10 @@
 // Bundles the board as a web page into dist-web/ (src/web/main.ts: the board and its worker in one page, extension APIs
-// answered by src/web/chromeShim.ts). Usage: node scripts/build-web.mjs [--serve] → http://localhost:8787
+// answered by src/web/chromeShim.ts). Usage: node scripts/build-web.mjs [--serve] [--out=dir] → http://localhost:8787
 import * as esbuild from "esbuild";
 import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 
 const serve = process.argv.includes("--serve");
-const out = "dist-web";
+const out = process.argv.find((a) => a.startsWith("--out="))?.slice(6) ?? "dist-web";
 
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
