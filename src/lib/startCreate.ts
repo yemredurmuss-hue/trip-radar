@@ -476,7 +476,11 @@ export function oneWay(cards: ShapedInput[], c: Creation, advice: AdviceNote | n
       const end = to && to < x.end_date! ? to : x.end_date!;
       return from && to && date < end ? [{ ...x, date, end_date: end, city, title: x.title ? `${x.title} · ${city}` : null, ...(x.part ? { part: { ...x.part, ref: `${x.part.ref}-${cityKeyOf(city)}` } } : {}) }] : [];
     });
-    return parts.length > 1 ? parts : [x];
+    // Only at the stops the advisor chose it for, when it said where (Emre's Thailand: a bike for all 33 days of a month
+    // on the road); one that sits on no stop isn't kept on a trip of several.
+    const placed = advice?.legs.filter((l) => l.mode === x.kind && (l.from || l.to)) ?? [];
+    const mine = placed.length ? parts.filter((y) => placed.some((l) => cityKeyOf(l.from ?? null) === cityKeyOf(y.city) || cityKeyOf(l.to ?? null) === cityKeyOf(y.city))) : parts;
+    return mine.length > 1 || placed.length ? mine : parts.length ? parts : [];
   });
   const cars = [...split, ...c.travel].filter((x) => x.kind === "car_rental");
   const covered = (date: string | null) => cars.some((car) => !date || !car.date || (date >= car.date && date <= (car.end_date ?? car.date)));

@@ -149,6 +149,9 @@ it("Bali, two stops: in from where the flight lands, home from the last stop, no
   // A honeymoon the advisor gave transfers only: no motorbike.
   const honeymoon = { legs: [{ day: 1, mode: "transfer" }, { day: 8, mode: "transfer" }, { day: 15, mode: "transfer" }], rationale: "", facts: [] };
   expect(oneWay(fitted, bali(flights), honeymoon).some((x) => x.kind === "moto_rental")).toBe(false);
+  // Chosen for one stop (Emre's Thailand: a bike for all 33 days of a month on the road): that stop's days only.
+  const ubudOnly = { legs: [{ day: 2, mode: "moto_rental", from: "Ubud", to: "Ubud", note: null }], rationale: "", facts: [] };
+  expect(oneWay(fitted, bali(flights), ubudOnly).filter((x) => x.kind === "moto_rental").map((x) => [x.title, x.date, x.end_date])).toEqual([["Motosiklet kiralama · Ubud", "2027-05-01", "2027-05-08"]]);
 });
 
 it("the summary asks the advisor's question, not the reading's asked before the route was agreed", () => {
