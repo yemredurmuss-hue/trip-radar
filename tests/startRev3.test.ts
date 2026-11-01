@@ -3,6 +3,7 @@
 // for popular countries at once, refined by the model's proposal, built by "Oluştur" when nothing else is there; a
 // late reading fills only what is still empty; the generating screen's map (projection, framing, the flight's curve,
 // the bundled data) and the photo search's words.
+import { routeAfterDrawing } from "../src/lib/advisor";
 import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { within } from "../src/app/start/model";
@@ -110,15 +111,16 @@ describe("instant capture, most important first (the owner's second report)", ()
     // "Yes": the canonical name, said back once in full; then where from (no names, no day first).
     const yes = withLang("en", () => applyAnswer(s, { q: "guess", accept: true }, 3));
     expect(yes.where).toEqual({ place: "Papua New Guinea", country: "Papua New Guinea", code: "PG" });
-    expect(nextQuestion(yes)).toBe("day");
-    expect(withLang("en", () => replyText(s, yes, ctx, false, true))).toBe("Papua New Guinea, 3 weeks in November with a friend.\nWhich day in November are you setting off for Papua New Guinea?");
+    // (Tur 22c: what shapes the route first: what they're after before the day.)
+    expect(nextQuestion(yes)).toBe("want");
+    expect(withLang("en", () => replyText(s, yes, ctx, false, true))).toMatch(/^Papua New Guinea, 3 weeks in November with a friend\.\n/);
     expect(canGenerate(yes)).toBe(true);
-    // Then the day (not needed), the style, who: never the names.
+    // Then the style, the day (not needed), the route: never the names.
     let next = withLang("en", () => applyAnswer(yes, { q: "from", city: "London" }, 4));
-    expect(nextQuestion(next)).toBe("day");
-    next = skip(next, "day", 5);
     expect(nextQuestion(next)).toBe("want");
     next = withLang("en", () => applyAnswer(next, { q: "want", styles: ["adventure"], budget: null }, 6));
+    expect(nextQuestion(next)).toBe("day");
+    next = skip(next, "day", 5);
     expect(nextQuestion(next)).toBe("route");
   });
 
@@ -152,8 +154,8 @@ describe("instant capture, most important first (the owner's second report)", ()
     expect(s.who).toEqual({ kind: "friends", names: [], count: 2 });
     expect(s.duration).toEqual({ unit: "week", n: 3 });
     expect(s.start).toEqual({ date: "2026-11-01", approx: true });
-    expect(nextQuestion(s)).toBe("day");
-    expect(withLang("tr", () => replyText(before, s, ctx))).toBe("Bir arkadaşınla Papua Yeni Gine, Kasım'da 3 hafta.\nPapua Yeni Gine'ye Kasım'da hangi gün çıkıyorsunuz?");
+    expect(nextQuestion(s)).toBe("want");
+    expect(withLang("tr", () => replyText(before, s, ctx))).toMatch(/^Bir arkadaşınla Papua Yeni Gine, Kasım'da 3 hafta\.\n/);
     expect(withLang("tr", () => checklist(s, ctx).find((r) => r.id === "when"))).toMatchObject({ done: true, value: "Kasım · 3 hafta" });
   });
 
@@ -232,6 +234,9 @@ describe("classic circuits (fix 2)", () => {
 
   it("proposed at once in the chat; the model's proposal refines it; one agreed is never replaced", () => {
     let s = typed(newStart("lk2", "plan", 1, "tr"), SRI_LANKA);
+    // (Tur 22c: never the circuit while the advisor is drawing; once it answered with nothing, the circuit stands in.)
+    expect(s.route).toBeFalsy();
+    s = restoreRoute(withPreparedRoute(s, routeKey(s)!, null));
     expect(s.route?.source).toBe("circuit");
     s = withLang("tr", () => applyAnswer(s, { q: "from", city: "İstanbul" }, 3));
     s = withLang("tr", () => applyAnswer(s, { q: "want", styles: ["nature"], budget: null }, 4));
@@ -263,7 +268,11 @@ describe("Oluştur with what there is (fix 3)", () => {
 
   it("the best route there is: the agreed one, the proposal on screen, the circuit, one stop when skipped", () => {
     const s = base();
-    const r = routeForGenerate(s)!;
+    // (Tur 22c: pressed while the advisor draws, one stop stands in and the generating screen waits; with no route from it,
+    // the classic circuit.)
+    const standIn = routeForGenerate(s)!;
+    expect(standIn).toMatchObject({ source: "single", drawing: true, proposed: true });
+    const r = routeAfterDrawing({ ...s, route: standIn }, null)!;
     expect(r.confirmed).toBe(true);
     expect(r.source).toBe("circuit");
     const made = withLang("tr", () => creationOf({ ...s, route: r }))!;

@@ -7,6 +7,7 @@ import {
   EMPTY_EXTRACTED, guessOrigin, guideSteps, guideVisible, historyRows, mergeExtracted, monthOf, namesToAsk, newStart, nextDate, nextQuestion,
   parseRouteText, parseStartText, peopleCount, progressOf, questionOf, replyText, singleRoute, skip, totalNights, tripNamedIn,
   wantsRouteAdvice, weekendStart, whenText, type RawExtraction, type StartCtx, type StartState,
+  routeKey,
 } from "../src/lib/startTrip";
 import type { Item, Trip } from "../src/lib/types";
 import { makeItem } from "./fixtures/makeItem";
@@ -121,16 +122,17 @@ describe("reading a message with the model (strict shape, checked)", () => {
 });
 
 describe("the interview", () => {
-  it("asks only what the first message left out (item 2, K4 order): what you're after, then the route, then where from", () => {
+  it("asks only what the first message left out (Tur 22c order): what you're after, then where from, the route last", () => {
     const { state, understood } = typed(fresh(), "Sabine'yle 10 Aralık'tan 1 ay Bali");
     expect(understood).toBe(true);
     expect(nextQuestion(state)).toBe("want");
     const want = applyAnswer(state, { q: "want", styles: ["nature", "beach"], budget: "mid" }, 4);
-    expect(nextQuestion(want)).toBe("route");
+    // (Tur 22c: the route is agreed last, once drawn: where from is asked while it is)
+    expect(nextQuestion(want)).toBe("from");
     expect(totalNights(want)).toBe(31);
     expect(whenText(want)).toBe("10 Aralık – 10 Ocak · 31 gece");
-    const routed = skip(want, "route", 5);
-    expect(nextQuestion(routed)).toBe("from");
+    const from = applyAnswer(want, { q: "from", city: "İstanbul" }, 5);
+    expect(nextQuestion(from)).toBe("route");
   });
   it("the full order from nothing (K4, 2026-10-09: where, how long, the start, the day, what you're after, the route, who, where from; never the names)", () => {
     let s = fresh();
@@ -140,8 +142,8 @@ describe("the interview", () => {
     s = applyAnswer(s, { q: "duration", duration: { unit: "week", n: 1 } }, 2);
     expect(nextQuestion(s)).toBe("start");
     s = applyAnswer(s, { q: "start", date: "2026-11-01", approx: true }, 2);
-    // A month only: never a day made up; the day is asked next, before anything else (it settles every card's date).
-    expect(nextQuestion(s)).toBe("day");
+    // A month only: never a day made up; what shapes the route is asked first (Tur 22c), the day after it.
+    expect(nextQuestion(s)).toBe("want");
     const day = questionOf(s, "day", ctx);
     expect(day.text).toBe("Lizbon'a Kasım'da hangi gün çıkıyorsun?");
     expect(day.chips.map((c) => [c.label, (c.answer as { date: string }).date])).toEqual([["Ayın başı", "2026-11-01"], ["Ortası", "2026-11-15"], ["Sonu", "2026-11-24"]]);
@@ -281,10 +283,9 @@ describe("the route (item 1)", () => {
     expect(parseRouteText("Ubud 10, Canggu 21", 31)).toEqual({ route: { stops: [{ city: "Ubud", nights: 10 }, { city: "Canggu", nights: 21 }], arrive: null, leave: null, confirmed: true, source: "user" } });
     expect(parseRouteText("Ubud 10 ve Canggu 10", 31)).toEqual({ error: "Geceler toplamı 31 olmalı (yazdığın: 20)." });
     const longer = applyAnswer(ok, { q: "duration", duration: { unit: "week", n: 2 } }, 4);
-    // The route agreed for 31 nights is gone; Bali's classic circuit for 14 nights is proposed at once (rev 3).
-    expect(longer.route?.source).toBe("circuit");
-    expect(longer.route?.confirmed).toBe(false);
-    expect(longer.route?.stops.reduce((n, x) => n + x.nights, 0)).toBe(14);
+    // The route agreed for 31 nights is gone; nothing stands in while the advisor draws the one for 14 (Tur 22c).
+    expect(longer.route ?? null).toBeNull();
+    expect(routeKey(longer)).toMatch(/\|14$/);
   });
 });
 

@@ -3,6 +3,7 @@
 // line), three trips the code has no name for made from the model's signals alone, the Dahil count (spec §1.3), the
 // answers that open and close parts (`when`), a signal that doesn't hold dropped alone, the spine with no signal at all,
 // a day out closing Konaklama, a connecting flight as one intent, and the ticket frame's view.
+import { restoreRoute, routeKey, withPreparedRoute } from "../src/lib/startTrip";
 import { describe, expect, it } from "vitest";
 import { categorize, type CatSection } from "../src/lib/categories";
 import { isEmptyRecord } from "../src/lib/emptyCards";
@@ -558,7 +559,11 @@ describe("H13 and H10: the way there, a day out, a long name", () => {
 // --- D5: the AI's route nobody agreed ------------------------------------------------------------------------------
 
 describe("D5: a route only proposed is built as Önerimiz", () => {
-  const lanka = () => fromIst(typed(fresh(), "Sabine ile 20 Kasım'dan 2 hafta Sri Lanka"));
+  // (Tur 22c: the advisor answered with no route of its own, so the classic circuit stands in on screen.)
+  const lanka = () => {
+    const s = fromIst(typed(fresh(), "Sabine ile 20 Kasım'dan 2 hafta Sri Lanka"));
+    return restoreRoute(withPreparedRoute(s, routeKey(s)!, null));
+  };
   const generated = (s: StartState) => ({ ...s, route: routeForGenerate(s) });
   const status = (b: ReturnType<typeof made>, section: string) => b.intents.filter((i) => i.section === section).map((i) => [i.head.name, i.status, i.routeDraft ?? false]);
 

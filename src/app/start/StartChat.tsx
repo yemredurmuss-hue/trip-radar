@@ -31,7 +31,7 @@ import { rulesPreview } from "../../lib/startHooks";
 import {
   applyAnswer, applyExtracted, applyText, askAgain, budgetChips, historyOf, placeOf, budgetWord, canGenerate, checklist, autoPrint, drawingLine, isComplete, isGoCommand, knownLines, lineLink, mergeExtracted, startName,
   missingForGenerate, modelReplyText, modelWordsQuestion, NOT_UNDERSTOOD, nextQuestion, assumeAnswered, stillOpen, onlyEmpty, parseRouteText, parseStartText, pbCurrent, pbPromptOf, photosToFind, preparedRoute, previewOf, skipPb,
-  questionOf, readingLine, readingName, readingRows, replyText, restoreRoute, routeThinkingLine, shouldAutoStart, autoHeld, memoAfterGenerate, AUTO_SECONDS, autoSeconds, waitingInstead, routeForGenerate, routeKey, routeToPrepare, rulesKey, saysSomething, singleRoute, skip, totalNights, wantsRouteAdvice,
+  questionOf, readingLine, readingName, readingRows, replyText, restoreRoute, routeThinkingLine, shouldAutoStart, autoHeld, memoAfterGenerate, AUTO_SECONDS, autoSeconds, waitingInstead, routeForGenerate, routeKey, routeShaped, routeToPrepare, rulesKey, saysSomething, singleRoute, skip, totalNights, wantsRouteAdvice,
   tentativeWhere, whereKey, withGuessTaken, withoutOverruled, withPhotos, withPreparedRoute, withTypedLang,
   type Answer, type Extracted, type QuestionId, type SlotId, type StartCtx, type StartRoute, type StartState,
 } from "../../lib/startTrip";
@@ -134,7 +134,8 @@ export function StartChat({ initial: given, firstText, firstLabel, firstNote, ct
   };
   const advised = useRef(false);
   useEffect(() => {
-    if (phase !== "chat" || advised.current || !state.where || !state.duration) return;
+    // (Tur 22c: once what shapes the spine is known: the month, what they're after, who goes, as well as where and how long)
+    if (phase !== "chat" || advised.current || !state.where || !state.duration || !routeShaped(state)) return;
     // (the route's own ask is the advisor's when a route is drawn: one call, Tur 22)
     if (routeJob.current && routeJob.current.key === routeKey(state)) return void (advised.current = true);
     const timer = setTimeout(() => {
@@ -780,8 +781,11 @@ export function StartChat({ initial: given, firstText, firstLabel, firstNote, ct
     const memo = T(() => memoAfterGenerate(made, ctx));
     autoFor.current = memo.for;
     autoStopped.current = memo.stopped;
+    // The advisor: the ask drawing the route goes on (Tur 22c, the generating screen waits for it); else asked now with all
+    // that's known, the route left for it to draw while it's still a stand-in.
+    const drawingNow = Boolean(route?.drawing && routeKey(made) && drawingRef.current === routeKey(made));
     setDrawingKey(null);
-    askAdvisor(made);
+    if (!drawingNow) askAdvisor(route?.drawing ? { ...made, route: null } : made);
     setPhase("generating");
   }
 

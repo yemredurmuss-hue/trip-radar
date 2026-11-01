@@ -64,7 +64,8 @@ describe("the stops said are the route (Emre's Japan)", () => {
     expect(s.route!.stops.map((x) => x.scene ?? null)).toEqual([null, "autumn leaves"]);
   });
   it("asked back as theirs, the nights worked out said as mine; never \"Tek durak\"", () => {
-    const s = { ...firstTurn(), wantDone: true, start: { date: "2026-11-24", approx: false } };
+    // (Tur 22c: the route is agreed last, after who goes and where from)
+    const s = { ...firstTurn(), wantDone: true, start: { date: "2026-11-24", approx: false }, who: { kind: "solo" as const, names: [] }, from: "İstanbul" };
     expect(nextQuestion(s)).toBe("route");
     const q = questionOf(s, "route", ctx);
     expect(q.text).toBe("Rotanı şöyle aldım: Tokyo 3 gece → Kyoto 6 gece (kızıl yapraklar, 1 gece ryokan). Bu olsun mu?");

@@ -100,6 +100,8 @@ export interface StartRoute {
   source: "ai" | "user" | "single" | "circuit" | "event";
   /** D5: built by "Oluştur" while it was only proposed (the model's or the classic circuit): its intents are Önerimiz until agreed. */
   proposed?: boolean;
+  /** "Oluştur" pressed while the advisor was still drawing it (Tur 22c): one stop for now; the generating screen waits for its route. */
+  drawing?: boolean;
 }
 export interface StartMsg {
   role: "user" | "assistant";
@@ -712,6 +714,19 @@ const NOT_COUNTRIES = new Set(["EU", "EZ", "UN", "QO", "XA", "XB", "ZZ", "AQ", "
 export function countryCodeOfName(name: string | null | undefined): string | null {
   if (!name) return null;
   return countryNames().get(plain(name)) ?? null;
+}
+
+/** The countries named in words ("tayland laos kamboçya" → TH, LA, KH), where they leave from left out. */
+export function countriesNamed(text: string, home: string | null): Map<string, string> {
+  const words = text.split(/[\s,.;:!?()/·-]+/).map((w) => w.split(/['’]/)[0]).filter(Boolean);
+  const homeCode = home ? countryCodeOfName(home) : null;
+  const out = new Map<string, string>();
+  for (let n = 0; n < words.length; n++)
+    for (const len of [1, 2]) {
+      const code = words.length >= n + len ? countryCodeOfName(words.slice(n, n + len).join(" ")) : null;
+      if (code && code !== homeCode) out.set(code, words.slice(n, n + len).join(" "));
+    }
+  return out;
 }
 
 /** A country's name in a language (Intl), or null. */
@@ -1932,12 +1947,21 @@ const said = (e: Extracted) => Boolean(e.where || e.intent || e.from || e.who ||
 // every flight, stay, event, eSIM and insurance card at once; what the trip is for picks the stays and the ideas; the
 // route gives one stay card per stop; who goes and where from open the fewest (the searches' guests and the flights'
 // starting point), so they come last. A contradiction or the event's own question always comes before all of them.
+// (omurga Tur 22c, Emre 2026-11-01: the questions that shape the route come first, so the advisor draws it with all of them
+// while the rest are asked: where, how long, the month (the season), the trip kind's own questions (which ski resort, a tent
+// or a hotel), what they're after (a backpacker's route isn't a comfortable one), who goes (a honeymoon, a family). The day
+// of the month and where from change no stop; the route is agreed last, once drawn.)
 const ORDER: Record<StartMode, QuestionId[]> = {
-  plan: ["where", "venue", "clash", "duration", "start", "day", "pb", "want", "route", "who", "count", "from"],
-  road: ["where", "venue", "clash", "duration", "start", "day", "pb", "want", "route", "who", "count", "from"],
-  lastminute: ["where", "venue", "clash", "duration", "start", "day", "pb", "want", "route", "who", "count", "from"],
-  inspire: ["want", "where", "venue", "clash", "duration", "start", "day", "pb", "route", "who", "count", "from"],
+  plan: ["where", "venue", "clash", "duration", "start", "pb", "want", "who", "count", "day", "from", "route"],
+  road: ["where", "venue", "clash", "duration", "start", "pb", "want", "who", "count", "day", "from", "route"],
+  lastminute: ["where", "venue", "clash", "duration", "start", "pb", "want", "who", "count", "day", "from", "route"],
+  inspire: ["want", "where", "venue", "clash", "duration", "start", "pb", "who", "count", "day", "from", "route"],
 };
+
+/** The route's own questions are answered (or skipped): where, how long, the month, the kind's own, what they're after, who (Tur 22c). */
+export function routeShaped(s: StartState): boolean {
+  return Boolean(s.where && totalNights(s)) && !s.guess && !open(s, "start") && !open(s, "pb") && !open(s, "want") && !open(s, "who");
+}
 
 // --- the trip kind's own questions (playbooks/questions.ts: data, run the same for every kind) ---------------------
 
@@ -2281,6 +2305,9 @@ function keepRoute(before: StartState, next: StartState): StartState {
     if (total != null && sum !== total) return { ...after, route: { ...after.route, stops: fitSaidStops(after.route.stops, total, after.where?.code ?? null) } };
     return after;
   }
+  // The advisor's route when the length moves by a night or two (the day of a month said after it was drawn): the
+  // longest stop takes the difference, never drawn again (Tur 22c).
+  if (!placeChanged && total != null && after.route.source === "ai" && sum !== total && Math.abs(sum - total) <= 3) return { ...after, route: refitNights(after.route, total) };
   if (placeChanged || total == null || (sum !== total && after.route.source !== "single")) return restoreRoute({ ...after, route: null, editingRoute: false });
   // A classic circuit proposed (not agreed) is made again when where they leave from changes (never a stop; rev 3).
   if (after.route.source === "circuit" && !after.route.confirmed && after.from !== before.from) {
@@ -2290,6 +2317,15 @@ function keepRoute(before: StartState, next: StartState): StartState {
   // A single stop follows the length.
   if (after.route.source === "single" && sum !== total) return { ...after, route: { ...after.route, stops: [{ ...after.route.stops[0], nights: total }] } };
   return after;
+}
+
+/** The route's nights made to add up to the total: the longest stop takes the difference (each keeps one night at least). */
+export function refitNights<R extends Pick<StartRoute, "stops">>(r: R, total: number): R {
+  const sum = r.stops.reduce((a, b) => a + b.nights, 0);
+  if (sum === total || !r.stops.length) return r;
+  const at = r.stops.reduce((best, x, n) => (x.nights > r.stops[best].nights ? n : best), 0);
+  const nights = Math.max(1, r.stops[at].nights + total - sum);
+  return { ...r, stops: r.stops.map((x, n) => (n === at ? { ...x, nights } : x)) };
 }
 
 export type Answer =
@@ -2790,7 +2826,7 @@ export function questionOf(s: StartState, q: QuestionId, ctx: StartCtx): Questio
   const we = Boolean(s.who && s.who.kind !== "solo");
   const you = (one: string, many: string) => (we ? many : one);
   // (The one place said for the whole trip, when there is one: "Canggu'ya", 0.38.5.)
-  const goal = s.intent?.kind === "event" ? s.intent.name : (s.base ?? s.where?.place ?? null);
+  const goal = s.intent?.kind === "event" ? s.intent.name : (s.base ?? tripPlaceName(s) ?? null);
   // "Bali'ye", "Ozora Festivali için" (an event's name may end in a possessive: never a wrong ending).
   const toGoal = goal ? (s.intent?.kind === "event" ? `${goal} için` : dative(goal)) : "";
   // "Canggu'da": where they are, for what they'll do there (an event's name takes none).
@@ -3313,8 +3349,26 @@ export function tripTitle(s: TitleState): string {
 }
 
 /** What the start screen calls the trip while it's made: the event's name ("AfrikaBurn"), else the place's. */
-export function startName(s: Pick<StartState, "where" | "intent" | "guess">): string | null {
-  return s.intent?.name ?? s.where?.place ?? tentativeWhere(s)?.place ?? null;
+export function startName(s: Pick<StartState, "where" | "intent" | "guess"> & Partial<Pick<StartState, "messages" | "from" | "base">>): string | null {
+  return s.intent?.name ?? (s.where ? tripPlaceName(s) : null) ?? tentativeWhere(s)?.place ?? null;
+}
+
+/**
+ * The other countries the traveller named beside the destination (Tur 22c, Emre: "tayland laos kamboçya", read as Thailand):
+ * in this language ("Laos", "Kamboçya"); none for an event, one place for the whole trip, or one country.
+ */
+export function otherCountries(s: Pick<StartState, "where" | "intent"> & Partial<Pick<StartState, "messages" | "from" | "base">>): string[] {
+  if (!s.where || s.base || s.intent?.kind === "event") return [];
+  const said = (s.messages ?? []).filter((m) => m.role === "user").map((m) => m.text).join(" ");
+  const own = s.where.code?.toUpperCase() ?? countryCodeOfName(s.where.country ?? s.where.place);
+  return [...countriesNamed(said, s.from ?? null)].filter(([code]) => code !== own).map(([code, word]) => regionName(code, lang()) ?? word);
+}
+
+/** The trip's place as said back: "Tayland", or "Tayland, Laos ve Kamboçya" when several countries were named. */
+export function tripPlaceName(s: Pick<StartState, "where" | "intent"> & Partial<Pick<StartState, "messages" | "from" | "base">>): string | null {
+  if (!s.where) return null;
+  const others = otherCountries(s);
+  return others.length ? andList([s.where.place, ...others]) : s.where.place;
 }
 
 // --- the checklist -----------------------------------------------------------------------------------------------
@@ -3394,7 +3448,7 @@ export function checklist(s: StartState, ctx: StartCtx): ChecklistRow[] {
   const rows: ChecklistRow[] = [
     tentativeWhere(s)
       ? { id: "where", label: L("Nereye", "Where to"), value: `${tentativeWhere(s)!.place}?`, done: false, tentative: true, ask: "guess", required: true, skipped: false }
-      : { id: "where", label: L("Nereye", "Where to"), value: s.where ? [...new Set([s.intent?.name, s.where.place, s.where.country])].filter(Boolean).join(" · ") : L("Nereye gidiyoruz?", "Where are we going?"), done: !!s.where, ask: "where", required: true, skipped: s.skipped.includes("where") },
+      : { id: "where", label: L("Nereye", "Where to"), value: s.where ? [...new Set([s.intent?.name, s.where.place, ...(otherCountries(s).length ? otherCountries(s) : [s.where.country])])].filter(Boolean).join(" · ") : L("Nereye gidiyoruz?", "Where are we going?"), done: !!s.where, ask: "where", required: true, skipped: s.skipped.includes("where") },
     { id: "from", label: L("Nereden", "Where from"), value: s.from ?? L("Nereden yola çıkıyorsun?", "Where are you leaving from?"), done: !!s.from, ask: "from", required: false, skipped: s.skipped.includes("from") },
     { id: "who", label: L("Kimle", "Who's coming"), value: whoText(s.who, ctx.myName) || L("Kimle gidiyorsun?", "Who's coming?"), done: !!s.who && !open(s, "count"), ask: s.who && open(s, "count") ? "count" : "who", required: false, skipped: s.skipped.includes("who") },
     {
@@ -3577,6 +3631,9 @@ function routeToMake(s: StartState): StartRoute | null {
   const single = singleRoute(s);
   if (s.skipped.includes("route")) return single ? { ...single, confirmed: true } : null;
   const kept = preparedRoute(s);
+  // The advisor still drawing (Tur 22c): one stop for now, never the country's circuit; the map plays while it finishes.
+  if (kept === undefined && wantsRouteAdvice(s) && (!s.route || s.route.source === "circuit" || s.route.source === "single") && single)
+    return { ...single, confirmed: true, proposed: true, drawing: true };
   const best = (s.route && s.route.source !== "single" ? s.route : null) ?? (kept?.source === "ai" ? kept : null) ?? circuitRoute(s) ?? s.route ?? single;
   if (!best) return null;
   const proposed = (best.source === "ai" || best.source === "circuit") && best.stops.length > 1;
@@ -3716,7 +3773,7 @@ export function preparedRoute(s: StartState): StartRoute | null | undefined {
  */
 export function routeToPrepare(s: StartState): string | null {
   // Not while a loosely spelt place waits for its yes (the destination may still change).
-  if (s.guess || stableNights(s) == null || !wantsRouteAdvice(s) || s.route?.confirmed) return null;
+  if (s.guess || stableNights(s) == null || !wantsRouteAdvice(s) || s.route?.confirmed || !routeShaped(s)) return null;
   const k = routeKey(s);
   return k && !Object.hasOwn(s.prepared.routes, k) ? k : null;
 }
@@ -3966,7 +4023,11 @@ export function restoreRoute(s: StartState): StartState {
   if (s.intent?.kind === "event" || (s.intent?.kind === "theme" && s.intent.places?.length)) return s;
   const kept = preparedRoute(s);
   // The model's proposal kept; else the classic circuit at once (rev 3); else what was kept (one stop).
-  const found = (kept?.source === "ai" ? kept : null) ?? (s.guess ? null : circuitRoute(s)) ?? kept;
+  // (Tur 22c: never the country's classic circuit while the advisor is drawing the route: Emre's Thailand · Laos · Cambodia
+  // showed Thailand's own circuit for the wait, and the chat went on as if it were Thailand only. Once it answered, or
+  // when it is never asked, the circuit stands in as before.)
+  const waiting = kept === undefined && wantsRouteAdvice(s);
+  const found = (kept?.source === "ai" ? kept : null) ?? (s.guess || waiting ? null : circuitRoute(s)) ?? kept;
   // The number of stops asked for (F59): one is the single stop; more are the route cut to them.
   const n = stopsWanted(s);
   const cut = found ? withoutDayTrips(found, s.dayTrips, totalNights(s)) : null;

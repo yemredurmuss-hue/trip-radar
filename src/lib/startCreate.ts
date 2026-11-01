@@ -243,6 +243,9 @@ export async function runStep(id: StepId, s: StartState, env: StepEnv = {}): Pro
       done = T(() => (n > 0 ? L(`${n} öneri bölümlerinde`, `${n} suggestion${n === 1 ? "" : "s"} in their sections`) : L("Şimdilik öneri yok", "No suggestions for now")));
     }
   }
+  // The stays' and the way's words from what was made (Tur 22c: the route drawn after "Oluştur" isn't the one the screen
+  // started with).
+  if (!done && (id === "route" || id === "travel")) done = stepsFor(s, c).find((x) => x.id === id)?.done;
   notifyChanged();
   return { tripId, done };
 }

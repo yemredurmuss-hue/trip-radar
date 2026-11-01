@@ -4,10 +4,10 @@
 // its own more than half the trip, a way for every change), the route proposal is the advisor's with the way to each stop,
 // and those ways become the plan's cards on the days they change.
 import { expect, it } from "vitest";
-import { applyAdvice, routeFaults, routeOfAdvice, type Advice } from "../src/lib/advisor";
+import { applyAdvice, routeAfterDrawing, routeFaults, routeOfAdvice, type Advice } from "../src/lib/advisor";
 import { setLang } from "../src/lib/i18n";
 import { stopWays } from "../src/lib/startCreate";
-import { acceptRoute, applyAnswer, creationOf, maxStops, newStart, waysText, type StartState } from "../src/lib/startTrip";
+import { acceptRoute, applyAnswer, checklist, creationOf, maxStops, newStart, nextQuestion, otherCountries, routeForGenerate, routeShaped, routeToPrepare, tripPlaceName, waysText, withPreparedRoute, type StartState } from "../src/lib/startTrip";
 
 const SAID = "1 aylık tayland laos kamboçya rotası planı yap backpacking";
 const stay = (place: string, nights: number, country_code: string) => ({ place, country_code, nights, kind: "hotel" as const, what: null, source: "assumed" as const });
@@ -104,4 +104,62 @@ it("the flight home from elsewhere than the last stop: a fault without the way t
   s = applyAnswer(s, { q: "start", date: "2027-01-01", approx: false }, 4);
   s = { ...s, from: "İstanbul", route: { ...routeOfAdvice(withWay, 31, "İstanbul", "TH")!, confirmed: true } };
   expect(stopWays(s, creationOf(s)!, []).at(-1)).toMatchObject({ kind: "bus", date: "2027-02-01", from: "Kampot", to: "Bangkok" });
+});
+
+// --- Tur 22c: what shapes the route first, the advisor behind the questions, the route agreed last -------------------
+
+const thai = (id: string) => {
+  let s: StartState = applyAnswer(newStart(id, "plan", 1, "tr"), { q: "where", place: "Tayland", country: "Tayland", code: "TH" }, 2);
+  s = applyAnswer(s, { q: "duration", duration: { unit: "month", n: 1 } }, 3);
+  const out: StartState = { ...s, messages: [{ role: "user", text: SAID, at: 1 }] };
+  return out;
+};
+
+it("the advisor is asked once the route's own questions are answered: the month, what they're after, who goes", () => {
+  setLang("tr");
+  let s = thai("rs4");
+  expect(nextQuestion(s)).toBe("start");
+  s = applyAnswer(s, { q: "start", date: "2027-03-01", approx: true }, 4);
+  expect(nextQuestion(s)).toBe("want");
+  expect(routeShaped(s)).toBe(false);
+  expect(routeToPrepare(s)).toBeNull();
+  s = applyAnswer(s, { q: "want", styles: ["adventure"], budget: "low" }, 5);
+  expect(nextQuestion(s)).toBe("who");
+  s = applyAnswer(s, { q: "who", kind: "solo" }, 6);
+  expect(routeShaped(s)).toBe(true);
+  expect(routeToPrepare(s)).toBe("tayland|TH|31");
+  // The day and where from are asked while it draws; the route comes last.
+  expect(nextQuestion(s)).toBe("day");
+});
+
+it("nothing stands in while it draws; its route, drawn for a month, follows a day said after it by a night", () => {
+  setLang("tr");
+  let s = applyAnswer(applyAnswer(applyAnswer(thai("rs5"), { q: "start", date: "2027-03-15", approx: true }, 4), { q: "want", styles: ["adventure"], budget: "low" }, 5), { q: "who", kind: "solo" }, 6);
+  expect(s.route ?? null).toBeNull();
+  s = withPreparedRoute(s, routeToPrepare(s)!, routeOfAdvice({ ...GOOD, stays: GOOD.stays.map((x) => (x.place === "Kampot" ? { ...x, nights: 5 } : x)) }, 30, null, "TH")!);
+  expect(s.route?.stops.reduce((n, x) => n + x.nights, 0)).toBe(30);
+  // February: one night fewer, Kampot (the longest stop) gives it; never drawn again.
+  const feb = applyAnswer(s, { q: "start", date: "2027-02-01", approx: false }, 7);
+  expect(feb.route?.source).toBe("ai");
+  expect(feb.route?.stops.reduce((n, x) => n + x.nights, 0)).toBe(28);
+});
+
+it("several countries named: the place is said back as all of them, never as the first alone", () => {
+  setLang("tr");
+  const s = thai("rs6");
+  expect(otherCountries(s)).toEqual(["Laos", "Kamboçya"]);
+  expect(tripPlaceName(s)).toBe("Tayland, Laos ve Kamboçya");
+  expect(checklist(s, { myName: null, today: "2026-11-01" } as never).find((r) => r.id === "where")?.value).toBe("Tayland · Laos · Kamboçya");
+  expect(tripPlaceName({ ...s, messages: [{ role: "user", text: "Tayland'a 1 ay", at: 1 }] })).toBe("Tayland");
+});
+
+it("Oluştur while it draws: one stop stands in, then the advisor's route (or the classic circuit when none came)", () => {
+  setLang("tr");
+  const s = applyAnswer(applyAnswer(applyAnswer(thai("rs7"), { q: "start", date: "2027-01-01", approx: false }, 4), { q: "want", styles: ["adventure"], budget: "low" }, 5), { q: "who", kind: "solo" }, 6);
+  const standIn = routeForGenerate(s)!;
+  expect(standIn).toMatchObject({ drawing: true, proposed: true, stops: [{ city: "Tayland", nights: 31 }] });
+  const drawn = routeAfterDrawing({ ...s, route: standIn }, GOOD)!;
+  expect(drawn).toMatchObject({ source: "ai", confirmed: true, proposed: true });
+  expect(drawn.stops).toHaveLength(9);
+  expect(routeAfterDrawing({ ...s, route: standIn }, null)?.source).toBe("circuit");
 });

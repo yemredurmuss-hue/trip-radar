@@ -12,7 +12,7 @@ import { anthropicProvider } from "./llm/anthropic";
 import { geminiProvider } from "./llm/gemini";
 import type { LlmProvider } from "./llm/types";
 import { cityKeyOf } from "./plan";
-import { acceptRoute, asksDecided, countryCodeOfName, maxStops, QUESTION_TOPICS, type SpecialStay, type StartRoute, type StartState, type WantedActivity } from "./startTrip";
+import { acceptRoute, asksDecided, circuitRoute, countriesNamed, maxStops, totalNights, QUESTION_TOPICS, type SpecialStay, type StartRoute, type StartState, type WantedActivity } from "./startTrip";
 
 // (Sonnet, not Haiku, Tur 22: the spine is drawn here once a trip, the route too; Haiku flew a backpacker between every
 // stop and zigzagged Bangkok → Siem Reap → Luang Prabang → Chiang Mai → Krabi)
@@ -166,20 +166,6 @@ const stopsOf = (a: Pick<Advice, "stays">) => {
   return out;
 };
 
-/** The countries the traveller named in their words ("tayland laos kamboçya" → TH, LA, KH), where they leave from left out. */
-function countriesSaid(text: string, home: string | null): Map<string, string> {
-  const words = text.split(/[\s,.;:!?()/·-]+/).map((w) => w.split(/['’]/)[0]).filter(Boolean);
-  const homeCode = home ? countryCodeOfName(home) : null;
-  const out = new Map<string, string>();
-  for (let n = 0; n < words.length; n++)
-    for (const len of [1, 2]) {
-      const phrase = words.slice(n, n + len).join(" ");
-      const code = words.length >= n + len ? countryCodeOfName(phrase) : null;
-      if (code && code !== homeCode) out.set(code, phrase);
-    }
-  return out;
-}
-
 /**
  * What breaks the route's rules, each in a line for the advisor to fix (Tur 22, Emre's Thailand · Laos · Cambodia: 4 stops,
  * 17 nights in Siem Reap, no way between them): the nights add up, every country named is on it, at most one stop per 3
@@ -191,7 +177,7 @@ export function routeFaults(a: Pick<Advice, "stays" | "legs"> & Partial<Pick<Adv
   const sum = stops.reduce((n, x) => n + x.nights, 0);
   if (sum !== nights) out.push(L(`gecelerin toplamı ${sum}, olmalı ${nights}`, `the nights add up to ${sum}, they must be ${nights}`));
   const codes = new Set(stops.map((x) => x.code));
-  for (const [code, name] of countriesSaid(said, home)) if (!codes.has(code)) out.push(L(`söylenen ülke rotada yok: ${name}`, `a country named is not on the route: ${name}`));
+  for (const [code, name] of countriesNamed(said, home)) if (!codes.has(code)) out.push(L(`söylenen ülke rotada yok: ${name}`, `a country named is not on the route: ${name}`));
   if (stops.length > maxStops(nights)) out.push(L(`${stops.length} durak, bu gece sayısına en fazla ${maxStops(nights)}`, `${stops.length} stops, at most ${maxStops(nights)} for these nights`));
   if (stops.length > 1) for (const x of stops) if (!x.user && x.nights * 2 > nights) out.push(L(`${x.city} gezinin yarısından fazlası (${x.nights} gece)`, `${x.city} takes more than half the trip (${x.nights} nights)`));
   const k = (t: string) => cityKeyOf(t);
@@ -324,4 +310,15 @@ export function applyAdvice(s: StartState, a: Advice | null): StartState {
     ...(asks ? { spineQuestion: q, spineChoices: choices.length >= 2 ? choices : [], spineTopic: a.question.topic } : {}),
     advice: { legs: a.legs.map((l) => ({ day: l.day, mode: l.mode, from: l.from, to: l.to, note: l.note?.trim() || null })), rationale: a.rationale, facts: a.facts.slice(0, 3), wishes: a.wishes.flatMap(wishLine).slice(0, 6) },
   };
+}
+
+/**
+ * The route once "Oluştur" was pressed while it was still drawn (Tur 22c): the advisor's, else the country's classic
+ * circuit (no key of their own, late, failed), else the stand-in's one stop; still Önerimiz on the board until agreed.
+ */
+export function routeAfterDrawing(s: StartState, a: Advice | null): StartRoute | null {
+  if (!s.route?.drawing) return s.route;
+  const drawn = a ? routeOfAdvice(a, totalNights(s) ?? 0, s.from, s.where?.code ?? null) : null;
+  const best = drawn ?? circuitRoute(s);
+  return best ? { ...best, confirmed: true, proposed: true } : { ...s.route, drawing: false };
 }

@@ -53,12 +53,14 @@ describe("one place for the whole trip", () => {
     // Said back in one line, then the start, the place named.
     expect(tr(() => replyText(before, after, ctx))).toBe("Sabin ile Bali, 3 hafta, tek yer: Canggu.\nCanggu'ya ne zaman yola çıkmayı düşünüyorsunuz?");
     // Kasım, Sonu, the styles: the route is never asked.
+    // (Tur 22c: what they're after before the day: it shapes the route, the day doesn't.)
     const month = applyAnswer(after, { q: "start", date: "2026-11-01", approx: true }, 3);
-    expect(nextQuestion(month)).toBe("day");
-    expect(tr(() => questionOf(month, "day", ctx).text)).toBe("Canggu'ya Kasım'da hangi gün çıkıyorsunuz?");
-    const day = applyAnswer(month, { q: "day", date: "2026-11-24", part: "end" }, 4);
-    expect(tr(() => replyText(month, day, ctx, false, true))).toBe("24 Kasım'ı başlangıç aldım, değiştirebilirsin.\nCanggu'da en çok ne yapmak istersiniz? (birden çok seçebilirsiniz)");
-    const want = applyAnswer(day, { q: "want", styles: ["nature", "beach", "nightlife"], budget: null }, 5);
+    expect(nextQuestion(month)).toBe("want");
+    expect(tr(() => questionOf(month, "want", ctx).text)).toBe("Canggu'da en çok ne yapmak istersiniz? (birden çok seçebilirsiniz)");
+    const styled = applyAnswer(month, { q: "want", styles: ["nature", "beach", "nightlife"], budget: null }, 4);
+    expect(nextQuestion(styled)).toBe("day");
+    expect(tr(() => questionOf(styled, "day", ctx).text)).toBe("Canggu'ya Kasım'da hangi gün çıkıyorsunuz?");
+    const want = applyAnswer(styled, { q: "day", date: "2026-11-24", part: "end" }, 5);
     expect(nextQuestion(want)).not.toBe("route");
     expect(want.route).toMatchObject({ stops: [{ city: "Canggu", nights: 21 }], confirmed: true });
     expect(routeForGenerate(want)?.stops).toEqual([{ city: "Canggu", nights: 21, code: "ID" }]);
@@ -82,7 +84,9 @@ describe("one place for the whole trip", () => {
     // Not said: the route is proposed as before.
     const free = first("Bali 3 hafta canggu ve ubud görmek istiyoruz").after;
     expect(free.base).toBeUndefined();
-    expect(free.route?.confirmed).toBe(false);
+    // (Tur 22c: drawn by the advisor, nothing on screen meanwhile)
+    expect(free.route?.confirmed ?? false).toBe(false);
+    expect(wantsRouteAdvice(free)).toBe(true);
   });
 });
 

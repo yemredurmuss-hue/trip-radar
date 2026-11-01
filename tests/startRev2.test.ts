@@ -47,6 +47,11 @@ const typedFrom = (s: StartState, text: string, model: RawExtraction | null = nu
 const yes = (s: StartState) => withLang(s.lang, () => applyAnswer(s, { q: "guess", accept: true }, 3));
 /** The owner's sentence without the model: "Kohphandan" is asked back ("Koh Phangan mı demek istedin?"), then "Evet". */
 const opening = (id: string) => yes(typed(newStart(id, "plan", 1), SENTENCE_TR));
+/** What shapes the route answered too (Tur 22c): the advisor is asked only then. */
+const shaped = (s: StartState) => {
+  const styled = { ...s, wantDone: true };
+  return styled.who ? styled : applyAnswer(styled, { q: "who", kind: "solo" }, 2);
+};
 
 const ENGLISH = /\b(Got it|Where|people|nights|Great|sounds)\b/;
 
@@ -278,7 +283,9 @@ describe("prepared while chatting (item 7)", () => {
     const monthOnly = typed(newStart("p1", "plan", 1), "Koh Phangan 1 ay");
     // A month is 28 to 31 nights: it waits for the start.
     expect(routeToPrepare(monthOnly)).toBeNull();
-    const s = opening("p2");
+    // (Tur 22c: not before what they're after and who goes are known: they shape the route.)
+    expect(routeToPrepare(opening("p2b"))).toBeNull();
+    const s = shaped(opening("p2"));
     const key = routeToPrepare(s)!;
     expect(key).toBe(routeKey(s));
     expect(key).toMatch(/^kohphangan\|TH\|31$/);
@@ -292,7 +299,7 @@ describe("prepared while chatting (item 7)", () => {
   });
 
   it("changing where drops the prepared route and photos; coming back brings the route back without asking again", () => {
-    const s = opening("p4");
+    const s = shaped(opening("p4"));
     const key = routeToPrepare(s)!;
     let kept = withPreparedRoute(s, key, route([["Koh Phangan", 21], ["Koh Samui", 10]]));
     kept = withPhotos(kept, whereKey(kept)!, { "Koh Phangan": "https://img.test/kp.jpg", Tayland: null });
@@ -301,12 +308,12 @@ describe("prepared while chatting (item 7)", () => {
     expect(photosToFind(kept)).toEqual(["Koh Samui", "moment:food", "moment:nature"]);
     const bali = typed(kept, "Aslında Bali'ye gidelim", null, 3);
     expect(bali.where?.place).toBe("Bali");
-    // Koh Phangan's route is gone; Bali's classic circuit is proposed at once (rev 3), the model still asked.
-    expect(bali.route?.source).toBe("circuit");
+    // Koh Phangan's route is gone; nothing stands in while the advisor draws Bali's (Tur 22c).
+    expect(bali.route ?? null).toBeNull();
     expect(bali.prepared.photos).toBeNull();
     expect(preparedPhotos(bali)).toEqual([]);
     expect(routeToPrepare(bali)).toBe("bali|ID|31");
-    expect(photosToFind(bali)).toEqual(["Bali", "Ubud", "Sidemen", "Canggu", "moment:food", "moment:nature"]);
+    expect(photosToFind(bali)).toEqual(["Bali", "Endonezya", "moment:food", "moment:nature"]);
     // Photos found for Koh Phangan after the change are not Bali's.
     expect(withPhotos(bali, whereKey(kept)!, { "Koh Phangan": "https://img.test/late.jpg" })).toBe(bali);
     const back = typed(bali, "Aslında Koh Phangan'a gidelim", null, 4);
