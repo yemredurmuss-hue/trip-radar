@@ -342,6 +342,17 @@ describe("a page that isn't travel", () => {
     expect((await events("pt")).find((m) => m.routing?.kind === "ask")?.routing).toMatchObject({ reason: "travel" });
   });
 
+  it("a travel site's page read with nothing in it (an Airbnb listing) goes on the trip's Pano, never asked (Tur 24)", async () => {
+    await portugalTrip();
+    pages = { airbnb: () => ({ ...base, category: "other", name: "Water Villa with Private Pool & Floating Breakfast" }) };
+    await savePastedLink("https://www.airbnb.com/rooms/123456", undefined, "pt");
+    await processPending(deps);
+    expect(await names("pt")).toContain("Water Villa with Private Pool & Floating Breakfast");
+    expect((await events("pt")).some((m) => m.routing?.kind === "ask")).toBe(false);
+    // A site of stays only: the page is a stay, an option for the trip's stay card.
+    expect((await listItems("pt")).find((i) => i.name.startsWith("Water Villa"))?.category).toBe("stay");
+  });
+
   it("a screenshot dropped on the board is checked the same way", async () => {
     await portugalTrip();
     pages = { "": robots };

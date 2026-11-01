@@ -1,4 +1,5 @@
 // Capture pipeline: URL facts -> model extraction -> trip assignment -> merge or insert item.
+import { providerOfLink } from "./providers";
 import { addEvent, db, listTrips, newId, nextTime, notifyChanged } from "./db";
 import { moveDocsToTrip } from "./docs";
 import { today, type Extraction } from "./extract";
@@ -198,7 +199,11 @@ async function readCapture(capture: Capture, deps: Deps, commit: () => Promise<b
   try {
     const facts = parseUrl(capture.url ?? "");
     const trips = await listTrips();
-    const extraction = await deps.extract(capture, facts, trips);
+    const read = await deps.extract(capture, facts, trips);
+    // A site of one kind (Airbnb: stays) says what a page read with nothing in it is (Tur 24: the villa saved there landed
+    // as "other", never under the stay card it was for).
+    const only = providerOfLink(capture.url);
+    const extraction: Extraction = read.category === "other" && only?.serves === "trip" && only.kinds.length === 1 && only.kinds[0] === "stay" ? { ...read, category: "stay" } : read;
     // A capture from a shared trip goes into that trip, wherever its country or dates would send it.
     const forced = capture.forTripId ? trips.find((t) => t.id === capture.forTripId) : undefined;
     // Where it was handed over (a trip's board or chat): what the place check measures it against.
@@ -278,7 +283,8 @@ async function readCapture(capture: Capture, deps: Deps, commit: () => Promise<b
           anchorId: anchor?.id ?? null,
           board: Boolean(forced),
           home,
-          travel: Boolean(capture.idea) || looksLikeTravel(extraction),
+          // (a travel site's page is travel however little was read of it: an Airbnb listing read with no city, Tur 24)
+          travel: Boolean(capture.idea) || looksLikeTravel(extraction) || providerOfLink(capture.url)?.serves === "trip",
           trips,
           items: allItems,
         });
