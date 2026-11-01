@@ -6,6 +6,7 @@
 // whenever it lands, while what it fills is still empty); the screen stops waiting for the reply's words after
 // REPLY_MS. Both stop when the screen is left (the caller's signal). The route call is short, never retried, and
 // aborted at ROUTE_MS: the classic circuit or one stop stands meanwhile.
+import { routeOfAdvice, type Advice } from "../../lib/advisor";
 import { hasActiveKey } from "../../lib/db";
 import { imageProxy, pickCityImage } from "../../lib/cityImages";
 import { withLang, type Lang } from "../../lib/i18n";
@@ -143,10 +144,21 @@ export function within<T, F>(p: Promise<T>, ms: number, fallback: F): Promise<T 
  * A route for the place and length: the model's when it's asked and holds (1–4 stops, the nights add up, never the
  * origin), else null (the caller keeps the circuit or one stop). One try, ROUTE_MS at most.
  */
-export async function proposeRoute(s: StartState, useModel: boolean, signal?: AbortSignal): Promise<StartRoute | null> {
+export async function proposeRoute(s: StartState, useModel: boolean, signal?: AbortSignal, advise?: () => Promise<Advice | null>): Promise<StartRoute | null> {
   const single = withLang(s.lang, () => singleRoute(s));
   const total = totalNights(s);
   if (!useModel || !total || !wantsRouteAdvice(s)) return single;
+  // One brain draws the spine (Tur 22): the advisor's route, the way to every stop with it; the short route ask below only
+  // when it gave none (no key of the traveller's own, late, failed).
+  const drawn = advise ? await advise().catch(() => null) : null;
+  const theirs = drawn && !signal?.aborted ? withLang(s.lang, () => routeOfAdvice(drawn, total, s.from, s.where?.code ?? null)) : null;
+  if (theirs) {
+    const cut = withoutDayTrips(theirs, s.dayTrips, total);
+    const n = stopsWanted(s);
+    const route = cut && n === 1 ? single : cut && n ? trimRoute(cut, n, total) : cut;
+    if (route) return route;
+  }
+  if (signal?.aborted) return single;
   try {
     const llm = await getProvider({ priority: "now" }); // the start chat waits on it
     const [system, prompt] = withLang(s.lang, () => [routeSystem(), routePrompt(s)]);

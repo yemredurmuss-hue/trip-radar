@@ -76,6 +76,8 @@ export interface RouteStop {
   said?: boolean;
   /** The stop's country (ISO 3166-1 alpha-2) when the route says it; else the destination's. */
   code?: string | null;
+  /** How they get here from the stop before (Tur 22, the advisor's: "boat", "2-day slow boat from the Huay Xai border"). */
+  way?: { mode: string; note: string | null } | null;
 }
 /** A place said: its name, its country's name and code (ISO 3166-1 alpha-2), when known. */
 export interface Place {
@@ -90,6 +92,8 @@ export interface StartRoute {
   /** Where the flight in lands and the one out leaves, when it isn't the first/last stop ("Denpasar" for Ubud). */
   arrive: string | null;
   leave: string | null;
+  /** How they get from the last stop to `leave` for the flight home (Tur 22: Kampot → Bangkok), when it isn't the last stop. */
+  leaveWay?: { mode: string; note: string | null } | null;
   /** "Bu olsun" pressed (or typed by the traveller), or "Oluştur" pressed with it: only then is it built as more than one stop. */
   confirmed: boolean;
   /** The model's proposal, the traveller's own, one stop, or the classic circuit for the country (rev 3: at once, no model). */
@@ -137,7 +141,7 @@ export interface SpecialStay {
  * day (1 = the day they arrive) and its reasons, never shown as they are.
  */
 export interface AdviceNote {
-  legs: { day: number; mode: string }[];
+  legs: { day: number; mode: string; from?: string; to?: string; note?: string | null }[];
   rationale: string;
   facts: string[];
   /** What the traveller asked for, in their words, by place and kind ("Ubud · Konaklama → ormana bakan"): the trip's preferences. */
@@ -2960,7 +2964,7 @@ export function questionOf(s: StartState, q: QuestionId, ctx: StartCtx): Questio
       return {
         id: q,
         text: many ? L(`Rota önerim: ${routeText(s.route)}. Bu olsun mu?`, `My route: ${routeText(s.route)}. Shall we go with it?`) : L(`Tek durak öneriyorum: ${routeText(s.route)}. Bu olsun mu?`, `I'd keep it to one stop: ${routeText(s.route)}. Go with it?`),
-        hint: many ? L("Geceler buna göre bölünür; sonra sohbetten değişir.", "The nights are split this way; you can change it later in the chat.") : undefined,
+        hint: many ? (waysText(s.route) ?? L("Geceler buna göre bölünür; sonra sohbetten değişir.", "The nights are split this way; you can change it later in the chat.")) : undefined,
         chips: [
           { label: L("Bu olsun", "Go with it"), answer: { q: "route", action: "accept" } },
           { label: L("Değiştir", "Change it"), answer: { q: "route", action: "change" } },
@@ -2968,6 +2972,22 @@ export function questionOf(s: StartState, q: QuestionId, ctx: StartCtx): Questio
       };
     }
   }
+}
+
+const WAY_WORD: Record<string, [string, string]> = {
+  flight: ["uçak", "flight"], train: ["tren", "train"], night_train: ["gece treni", "night train"], bus: ["otobüs", "bus"], night_bus: ["gece otobüsü", "night bus"],
+  ferry: ["feribot", "ferry"], boat: ["tekne", "boat"], transfer: ["transfer", "transfer"], taxi: ["taksi", "taxi"], car_rental: ["araç", "car"], moto_rental: ["motosiklet", "motorbike"],
+};
+
+/** How the route goes from stop to stop, under its proposal ("Chiang Rai → Luang Prabang: 2 günlük yavaş tekne · …"); null when unknown. */
+export function waysText(r: StartRoute): string | null {
+  const ways = r.stops.flatMap((x, n) => {
+    if (!n || !x.way) return [];
+    const word = WAY_WORD[x.way.mode];
+    const how = x.way.note ?? (word ? L(word[0], word[1]) : null);
+    return how ? [`${r.stops[n - 1].city} → ${x.city}: ${how}`] : [];
+  });
+  return ways.length ? `${L("Yol", "The way")}: ${ways.join(" · ")}` : null;
 }
 
 /** What the last answer added, said back in a few words before the next question ("Harika, Bali!"). */
@@ -3585,8 +3605,8 @@ export type RawRoute = z.infer<typeof routeSchema>;
 
 export const routeSystem = () =>
   `${L(
-    "Bu tarz ve gece sayısı için yerin klasik rotasını öner: 1-4 gerçek şehir, kasaba ya da ada, gezilecek sırayla; geceler tam sayı, toplamı tam verilen gece. Bir ülke ya da büyük bölgede 7+ gece için 2-4 durak (ör. Sri Lanka 14 gece: Sigiriya 3, Kandy 3, Ella 3, Mirissa 5); bir şehir tek durak. Yurt dışında yola çıkılan şehir durak olmaz. country_code: durağın ISO 3166-1 alpha-2 kodu. arrival_airport_city / departure_airport_city: ilk uçuşun indiği, dönüşün kalktığı havalimanlı şehir (ör. Kolombo); bilmiyorsan \"\". Durak, gezginin sözlerindeki konaklamanın olduğu yer olmalı (su üstü villa: resort atolü, yerel ada değil).",
-    "Suggest the place's classic route for this style and length: 1-4 real cities, towns or islands in travel order; whole nights adding up to exactly the total. For 7+ nights in a country or large region, 2-4 stops (e.g. Sri Lanka 14 nights: Sigiriya 3, Kandy 3, Ella 3, Mirissa 5); a city is one stop. Abroad, the city they leave from is never a stop. country_code: the stop's ISO 3166-1 alpha-2 code. arrival_airport_city / departure_airport_city: the city with the airport the first flight lands in and the flight home leaves from (e.g. Colombo); \"\" if unsure. A stop must have the stay the traveller's words ask for (an overwater villa: a resort atoll, not a local island).",
+    "Bu tarz ve gece sayısı için yerin klasik rotasını öner: gerçek şehir, kasaba ya da adalar, gezilecek sırayla; geceler tam sayı, toplamı tam verilen gece. Bir ülke ya da büyük bölgede 7+ gece için 2-4 durak (ör. Sri Lanka 14 gece: Sigiriya 3, Kandy 3, Ella 3, Mirissa 5), 3+ hafta ya da birkaç ülke: 3 gecede bir durak; bir şehir tek durak. Yurt dışında yola çıkılan şehir durak olmaz. country_code: durağın ISO 3166-1 alpha-2 kodu. arrival_airport_city / departure_airport_city: ilk uçuşun indiği, dönüşün kalktığı havalimanlı şehir (ör. Kolombo); bilmiyorsan \"\". Durak, gezginin sözlerindeki konaklamanın olduğu yer olmalı (su üstü villa: resort atolü, yerel ada değil).",
+    "Suggest the place's classic route for this style and length: real cities, towns or islands in travel order; whole nights adding up to exactly the total. For 7+ nights in a country or large region, 2-4 stops (e.g. Sri Lanka 14 nights: Sigiriya 3, Kandy 3, Ella 3, Mirissa 5), one per 3 nights for 3 weeks and more or several countries; a city is one stop. Abroad, the city they leave from is never a stop. country_code: the stop's ISO 3166-1 alpha-2 code. arrival_airport_city / departure_airport_city: the city with the airport the first flight lands in and the flight home leaves from (e.g. Colombo); \"\" if unsure. A stop must have the stay the traveller's words ask for (an overwater villa: a resort atoll, not a local island).",
   )}\n${L("Yer adlarını Türkçe yaz.", "Write the place names in English.")}`;
 
 /** The traveller's own typed words at the start, joined and kept short (the route reads what they asked for). */
@@ -3614,13 +3634,20 @@ export function routePrompt(s: StartState): string {
 
 const STOP_NAME = /^[\p{L}][\p{L} .'’-]{1,40}$/u;
 
+/**
+ * The most stops a trip of these nights can have (Tur 22): four for a short trip, one per 2.5 nights on a long one (a month
+ * through Thailand, Laos and Cambodia is 8-10 stops, a night on the slow boat one of them; four heaped 17 nights on Siem
+ * Reap), twelve at most.
+ */
+export const maxStops = (total: number): number => Math.min(12, Math.max(4, Math.floor(total / 2.5)));
+
 /** The model's route, kept only when it holds: 1–4 distinct real-looking names, whole nights adding up to the total. */
 export function acceptRoute(raw: RawRoute, total: number, origin: string | null = null, whereCode: string | null = null): StartRoute | null {
   const stops: RouteStop[] = (raw.stops ?? []).map((x) => {
     const code = isoCode(x.country_code);
     return { city: (x.city ?? "").trim(), nights: x.nights, ...(code ? { code } : {}) };
   });
-  if (stops.length < 1 || stops.length > 4) return null;
+  if (stops.length < 1 || stops.length > maxStops(total)) return null;
   // Abroad, the city they leave from is never a stop (item 2: the route comes from the destination, never the
   // origin); a trip at home may pass through it (Ankara → İstanbul → Bodrum, all in Türkiye).
   const originCode = origin ? (knownPlaceOf(origin) ? knownCode(knownPlaceOf(origin)!) : countryCodeOfName(origin)) : null;
@@ -3642,7 +3669,7 @@ export function parseRouteText(text: string, total: number): { route: StartRoute
   const stops = parts.map((m) => ({ city: bareName(m[1].replace(/\b(ve|and|sonra|then)\b/gi, "").trim().replace(ROUTE_FILLER, "").trim()), nights: Number(m[2]) })).filter((x) => x.city);
   // A sentence is no place ("rota yok sadece ahangama" read whole): a stop's name is at most three words.
   if (!stops.length || stops.some((x) => x.city.split(/\s+/).length > 3)) return { error: L("Şehirleri gece sayısıyla yaz, ör. \"Ubud 12, Canggu 19\".", "Type each place with its nights, e.g. \"Ubud 12, Canggu 19\".") };
-  if (stops.length > 4) return { error: L("En fazla 4 durak olabilir.", "At most 4 stops.") };
+  if (stops.length > maxStops(total)) return { error: L(`En fazla ${maxStops(total)} durak olabilir.`, `At most ${maxStops(total)} stops.`) };
   const sum = stops.reduce((a, b) => a + b.nights, 0);
   if (sum !== total) return { error: L(`Geceler toplamı ${total} olmalı (yazdığın: ${sum}).`, `The nights must add up to ${total} (you wrote ${sum}).`) };
   return {

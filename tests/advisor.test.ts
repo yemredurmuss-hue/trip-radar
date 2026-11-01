@@ -18,13 +18,13 @@ afterEach(() => resetAdvice());
 const TROMSO: Advice = {
   rationale: "Ana amaç kuzey ışığı; cam tavanlı gece ortada, önce ve sonra ışık şansı kalsın. Kışın araç gereksiz.",
   stays: [
-    { place: "Tromsø", nights: 2, kind: "hotel", what: null, source: "assumed" },
-    { place: "Tromsø çevresi", nights: 1, kind: "special", what: "cam tavanlı konaklama", source: "user" },
-    { place: "Tromsø", nights: 2, kind: "hotel", what: null, source: "assumed" },
+    { place: "Tromsø", country_code: "", nights: 2, kind: "hotel", what: null, source: "assumed" },
+    { place: "Tromsø çevresi", country_code: "", nights: 1, kind: "special", what: "cam tavanlı konaklama", source: "user" },
+    { place: "Tromsø", country_code: "", nights: 2, kind: "hotel", what: null, source: "assumed" },
   ],
   legs: [
-    { from: "havalimanı", to: "Tromsø", day: 1, mode: "transfer", source: "assumed" },
-    { from: "Tromsø", to: "havalimanı", day: 6, mode: "transfer", source: "assumed" },
+    { from: "havalimanı", to: "Tromsø", day: 1, mode: "transfer", note: "", source: "assumed" },
+    { from: "Tromsø", to: "havalimanı", day: 6, mode: "transfer", note: "", source: "assumed" },
   ],
   anchors: [
     { what: "kuzey ışığı avı turu", day: 1, source: "assumed" },
@@ -34,6 +34,7 @@ const TROMSO: Advice = {
   ],
   facts: ["Kuzey ışığı garanti değil"],
   wishes: [{ place: "Tromsø", about: "stay", text: "cam tavanlı" }, { place: null, about: "general", text: "  " }],
+  arrival_airport_city: "", departure_airport_city: "",
   question: { text: "Kuzey ışıklarını rehberli bir turla mı kovalayalım?", topic: "main_experience", choices: ["Rehberli tur", "Kendimiz bakarız"] },
 };
 
@@ -75,7 +76,7 @@ it("never overrules what was said: the traveller's own stay keeps its words, onl
   const s = applyAdvice(said, TROMSO);
   expect(s.specialStays).toEqual([{ city: "Tromsø", nights: 1, what: "cam tavanlı kulübe", after: 2 }]);
   expect(s.wanted?.map((w) => w.what)).toEqual(["husky turu", "kuzey ışığı avı turu"]);
-  expect(s.advice?.legs).toEqual([{ day: 1, mode: "transfer" }, { day: 6, mode: "transfer" }]);
+  expect(s.advice?.legs).toEqual([{ day: 1, mode: "transfer", from: "havalimanı", to: "Tromsø", note: null }, { day: 6, mode: "transfer", from: "Tromsø", to: "havalimanı", note: null }]);
   expect(s.advice?.wishes).toEqual(["Tromsø · Konaklama → cam tavanlı"]);
   expect(applyAdvice(said, null)).toBe(said);
 });

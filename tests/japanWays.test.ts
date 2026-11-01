@@ -51,10 +51,11 @@ it("a ryokan night written as a hotel is a stay of its own; the ways in and out 
   const advice: Advice = {
     rationale: "", facts: [], wishes: [], anchors: [], legs: [],
     stays: [
-      { place: "Tokyo", nights: 3, kind: "hotel", what: null, source: "assumed" },
-      { place: "Kyoto", nights: 3, kind: "hotel", what: null, source: "assumed" },
-      { place: "Kyoto", nights: 1, kind: "hotel", what: "ryokan", source: "user" },
+      { place: "Tokyo", country_code: "", nights: 3, kind: "hotel", what: null, source: "assumed" },
+      { place: "Kyoto", country_code: "", nights: 3, kind: "hotel", what: null, source: "assumed" },
+      { place: "Kyoto", country_code: "", nights: 1, kind: "hotel", what: "ryokan", source: "user" },
     ],
+    arrival_airport_city: "", departure_airport_city: "",
     question: { text: "Tapınaklar mı yemek mi?", topic: "main_experience", choices: [] },
   };
   let s = applyAdvice(japan("jw3"), advice);

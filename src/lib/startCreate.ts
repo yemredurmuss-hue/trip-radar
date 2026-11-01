@@ -5,7 +5,7 @@
 // the interview as the trip's chat. What it makes for the flights and stays are places to fill, never choices
 // (trip.startGuide.placeholders). Every step can run again: the trip made in step 1 is reused (the state keeps
 // its id) and a plan said again updates the one before (planToSave), so "Tekrar dene" never makes anything twice.
-import { anchorBudget } from "./advisor";
+import { anchorBudget, WAY_KIND } from "./advisor";
 import { modeOfText } from "./cardKinds";
 import { mergeWants, wantsFromStart, type TripWants } from "./travelWants";
 import { db, getSettings, listItems, listMessages, listPreferences, newId, notifyChanged } from "./db";
@@ -331,7 +331,8 @@ export function playbookCards(s: StartState, c: Creation): { travel: ShapedInput
     const extra: PlannedInput[] = privateRide && flight?.to && first?.city
       ? [{ kind: "transfer", date: first.date, end_date: null, time: null, from: flight.to, to: first.city, city: null, title: ride, booked: false, note: null }]
       : [];
-    return { travel: extra, plan: wantedCards(s, c, []), prep: [] };
+    const ways = stopWays(s, c, []);
+    return { travel: [...extra, ...ways.filter(moving)], plan: [...ways.filter((x) => !moving(x)), ...wantedCards(s, c, [])], prep: [] };
   }
   const p = startPlaybookObj(s);
   // The trip kind's answers (the same operations for every kind): cards dropped, marked booked, moved; lines added.
@@ -348,9 +349,9 @@ export function playbookCards(s: StartState, c: Creation): { travel: ShapedInput
   const cards = cardsAfter(skeleton, effects, { dest: s.where?.place ?? "" })
     .map(({ ref: _ref, ...x }): ShapedInput => x)
     .map((x) => (privateRide && x.kind === "transfer" ? { ...x, title: x.title && !/özel|private/i.test(x.title) ? `${ride} · ${x.title}` : ride } : x));
-  const moving = (x: PlannedInput) => x.kind === "transfer" || x.kind === "taxi" || x.kind.endsWith("_rental") || x.kind === "ferry";
   const prep = [...p.prep(), ...prepAdded(effects)].map((title): PlannedInput => ({ kind: "prep", date: null, end_date: null, time: null, from: null, to: null, city: null, title, booked: false, note: null }));
-  const ringed = oneWay(closeRing(fitStops(typedWays(cards), c), c), c, s.advice);
+  const fitted = oneWay(closeRing(fitStops(typedWays(cards), c), c), c, s.advice);
+  const ringed = [...fitted, ...stopWays(s, c, fitted)];
   const plan = ringed.filter((x) => !moving(x));
   // The advisor's own picks only while the anchor budget has room after the kind's own things to do (Tur 18; the eval's
   // honeymoon: the playbook's spa and dinner and the advisor's three, five in all): what was asked for always goes.
@@ -359,6 +360,39 @@ export function playbookCards(s: StartState, c: Creation): { travel: ShapedInput
   const room = Math.max(0, anchorBudget(nights) - kindOwn - (s.wanted ?? []).filter((w) => !w.assumed).length);
   const wanted = { ...s, wanted: (s.wanted ?? []).filter((w) => !w.assumed || (room > 0 && (s.wanted ?? []).filter((x) => x.assumed).indexOf(w) < room)) };
   return { travel: ringed.filter(moving), plan: [...plan, ...wantedCards(wanted, c, plan)], prep };
+}
+
+/** The cards the travel step makes (a ride, a rental, a ferry); the rest are made with the stays. */
+const moving = (x: PlannedInput) => x.kind === "transfer" || x.kind === "taxi" || x.kind.endsWith("_rental") || x.kind === "ferry";
+
+/**
+ * The way to each stop the spine knows (Tur 22: the advisor's "2-day slow boat from the Huay Xai border", kept on the route
+ * or in its legs): a card on the day they change, from the one stop to the other, its words in the note (a place to fill,
+ * never a booking). None where a card already goes between those two stops, nor for a way that isn't a ticket.
+ */
+export function stopWays(s: StartState, c: Creation, made: PlannedInput[]): PlannedInput[] {
+  const stops = stopCities(c);
+  if (c.road || stops.length < 2) return [];
+  const k = (t: string | null | undefined) => cityKeyOf(t ?? null);
+  return stops.slice(1).flatMap((to, n): PlannedInput[] => {
+    const from = stops[n];
+    const leg = s.advice?.legs.find((l) => k(l.from) === k(from) && k(l.to) === k(to));
+    const way = s.route?.stops.find((x) => k(x.city) === k(to))?.way ?? (leg ? { mode: leg.mode, note: leg.note ?? null } : null);
+    const kind = way ? WAY_KIND[way.mode as keyof typeof WAY_KIND] : undefined;
+    const day = c.stays.find((y) => k(y.city) === k(to))?.date ?? null;
+    if (!kind || made.some((x) => k(x.from) === k(from) && k(x.to) === k(to))) return [];
+    return [{ kind, date: day, end_date: null, time: null, from, to, city: null, title: null, booked: false, note: way!.note }];
+  }).concat(homeWay(s, c, stops.at(-1)!, made));
+}
+
+/** The way from the last stop to where the flight home leaves (Kampot → Bangkok), on the day home, when the route knows it. */
+function homeWay(s: StartState, c: Creation, last: string, made: PlannedInput[]): PlannedInput[] {
+  const k = (t: string | null | undefined) => cityKeyOf(t ?? null);
+  const leave = s.route?.leave ?? null;
+  const way = s.route?.leaveWay ?? null;
+  const kind = way ? WAY_KIND[way.mode as keyof typeof WAY_KIND] : undefined;
+  if (!leave || !kind || k(leave) === k(last) || made.some((x) => k(x.from) === k(last) && k(x.to) === k(leave))) return [];
+  return [{ kind, date: c.dates?.end ?? null, end_date: null, time: null, from: last, to: leave, city: null, title: null, booked: false, note: way!.note }];
 }
 
 /** The ways between an airport and the stay a card can be (a transfer, a taxi, a bus, a train, a ferry): one day each. */

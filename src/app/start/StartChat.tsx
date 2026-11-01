@@ -41,7 +41,7 @@ import { Checklist, ChecklistBar, GenerateCard } from "./Checklist";
 import { UiIcon } from "../cards/Silhouettes";
 import { loadWorld } from "./FlightMap";
 import { Generating } from "./Generating";
-import { adviseStart } from "../../lib/advisor";
+import { adviceFor, adviseStart } from "../../lib/advisor";
 import { askNext, findPhotos, modelAvailable, proposeRoute, READ_MS, readAndReply, REPLY_MS, within, type ModelReply } from "./model";
 // The suggestions' review as the generating screen's last step, and the rules' preview (registered through startHooks).
 import "./registerReview";
@@ -67,6 +67,8 @@ type Stage = "thinking" | "writing" | null;
 const today = () => new Date().toISOString().slice(0, 10);
 /** The checklist settles this long before the advisor is asked again (a burst of answers asks once). */
 const ADVICE_SETTLE_MS = 1200;
+/** How long the route waits for the advisor that draws it (it is drawn in the background while the chat goes on). */
+const ROUTE_ADVICE_MS = 100_000;
 const LATE = Symbol("late");
 
 /**
@@ -128,11 +130,13 @@ export function StartChat({ initial: given, firstText, firstLabel, firstNote, ct
   // checklist was complete was too late), and once more at "Oluştur" only if what is known changed since. Two calls at most.
   const askAdvisor = (s: StartState) => {
     const said = s.messages.filter((m) => m.role === "user").map((m) => m.text).join("\n");
-    if (s.where && said) adviseStart({ id: s.id, text: said, known: T(() => knownLines(s, ctx)), today: today(), lang: s.lang });
+    if (s.where && said) adviseStart({ id: s.id, text: said, known: T(() => knownLines(s, ctx)), today: today(), lang: s.lang, nights: totalNights(s), home: s.from });
   };
   const advised = useRef(false);
   useEffect(() => {
     if (phase !== "chat" || advised.current || !state.where || !state.duration) return;
+    // (the route's own ask is the advisor's when a route is drawn: one call, Tur 22)
+    if (routeJob.current && routeJob.current.key === routeKey(state)) return void (advised.current = true);
     const timer = setTimeout(() => {
       advised.current = true;
       askAdvisor(live.current);
@@ -256,7 +260,12 @@ export function StartChat({ initial: given, firstText, firstLabel, firstNote, ct
   function startRoute(s: StartState): Promise<StartRoute | null> {
     const key = routeKey(s)!;
     const controller = track();
-    const promise = (async () => proposeRoute(s, await model.current!, controller.signal))();
+    // The advisor draws it (Tur 22): asked now with what the checklist knows, waited for in the background.
+    const advise = () => {
+      askAdvisor(s);
+      return adviceFor(s.id, ROUTE_ADVICE_MS);
+    };
+    const promise = (async () => proposeRoute(s, await model.current!, controller.signal, advise))();
     routeJob.current = { key, promise };
     setDrawingKey(key);
     void promise.then((route) => {

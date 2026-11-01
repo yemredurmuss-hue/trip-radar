@@ -10,7 +10,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { afterAll, describe, expect, it } from "vitest";
 import { z } from "zod";
-import { ADVISOR_CLAUDE, adviceFor, adviseStart, applyAdvice, type Advice } from "../src/lib/advisor";
+import { ADVISOR_CLAUDE, adviceFor, adviseStart, applyAdvice, routeFaults, routeOfAdvice, type Advice } from "../src/lib/advisor";
 import { db, listItems } from "../src/lib/db";
 import { buildLegs } from "../src/lib/legs";
 import { buildPlan } from "../src/lib/plan";
@@ -40,7 +40,17 @@ interface Case {
   wishes: string[];
   /** The judge's yes/no questions: yes is good. */
   judge: string[];
+  /** Styles picked at the start ("adventure", "budget"). */
+  styles?: string[];
 }
+
+/** Asked of every case whose route the advisor drew (Tur 22): rules for any trip, never one place's. */
+const ROUTE_JUDGE = [
+  "Durakların geceleri orada yapılacaklarla orantılı mı (bir durağa gereğinden fazla gece yığılmamış)?",
+  "Rota haritada mantıklı bir çizgi ya da halka mı (geri dönüşlü zikzak yok)?",
+  "Duraklar arası ulaşım gezinin tarzına ve bölgenin bilinen yollarına uygun mu?",
+  "Gezginin saydığı her ülke ya da yer rotada var mı?",
+];
 
 const CASES: Case[] = [
   {
@@ -76,6 +86,31 @@ const CASES: Case[] = [
     judge: ["Havalimanından resorta deniz uçağı ya da tekne transferi düşünülmüş mü?", "Plan dinlenmeye yer bırakıyor mu (her gün dolu değil)?", "Konaklama durakları su üstü villa isteğine uygun mu (resort adası; misafirhaneli yerel ada değil)?"],
   },
   {
+    id: "gda-sirt", said: "1 aylık tayland laos kamboçya rotası planı yap backpacking",
+    where: { place: "Tayland", country: "Tayland", code: "TH" }, nights: 31, start: "2027-01-01", from: "İstanbul", who: { kind: "solo", names: [] }, styles: ["adventure", "budget"],
+    wishes: [], judge: [],
+  },
+  {
+    id: "peru-bolivya", said: "Peru ve Bolivya'yı 3 hafta sırt çantasıyla gezmek istiyorum, Machu Picchu ve Uyuni şart.",
+    where: { place: "Peru", country: "Peru", code: "PE" }, nights: 21, start: "2027-05-10", from: "İstanbul", who: { kind: "solo", names: [] }, styles: ["adventure", "budget"],
+    wishes: ["machu", "uyuni"], judge: ["Yükseklik için yavaş tırmanış (Cusco'ya ya da La Paz'a uyum günü) düşünülmüş mü?"],
+  },
+  {
+    id: "balkan-tren", said: "Balkanları trenle ve otobüsle 2 hafta gezeceğiz: Slovenya, Hırvatistan, Bosna, Karadağ.",
+    where: { place: "Balkanlar", country: "Hırvatistan", code: "HR" }, nights: 14, start: "2027-06-01", from: "İstanbul", who: { kind: "partner", names: [] },
+    wishes: [], judge: [],
+  },
+  {
+    id: "japonya-jr", said: "Japonya'ya 14 gece, JR Pass ile Tokyo, Kyoto, Hiroşima ve Osaka; bir gece de ryokanda kalmak istiyoruz.",
+    where: { place: "Japonya", country: "Japonya", code: "JP" }, nights: 14, start: "2027-04-05", from: "İstanbul", who: { kind: "partner", names: [] },
+    wishes: ["ryokan"], judge: ["Şehirler arası Shinkansen/tren olarak mı geçiliyor?"],
+  },
+  {
+    id: "vietnam", said: "Vietnam'ı kuzeyden güneye 3 hafta gezmek istiyorum, Ha Long'da teknede bir gece.",
+    where: { place: "Vietnam", country: "Vietnam", code: "VN" }, nights: 21, start: "2027-03-01", from: "İstanbul", who: { kind: "solo", names: [] }, styles: ["adventure"],
+    wishes: ["ha long"], judge: [],
+  },
+  {
     id: "paris-aile", said: "İki çocuğumuzla (5 ve 8 yaşında) Paris'e 5 gece gidiyoruz; Disneyland'e bir gün gitmek istiyoruz.",
     where: { place: "Paris", country: "Fransa", code: "FR" }, nights: 5, start: "2027-07-12", from: "İstanbul", who: { kind: "family", names: [] },
     wishes: ["disney"],
@@ -91,6 +126,7 @@ function state(c: Case): StartState {
     ...s,
     from: c.from,
     who: c.who,
+    ...(c.styles ? { styles: c.styles as StartState["styles"] } : {}),
     ...(c.way ? { way: c.way } : {}),
     ...(c.stops ? { route: { stops: c.stops.map((x) => ({ ...x, code: c.where.code })), arrive: null, leave: null, confirmed: true, source: "user" as const } } : {}),
     messages: [{ role: "user" as const, text: c.said, at: 1 }],
@@ -142,7 +178,8 @@ async function judgeOf(c: Case, items: Item[], trip: Trip): Promise<z.infer<type
     .concat((trip.wants?.said ?? []).map((w) => `- tercih · ${w}`))
     .join("\n");
   const system = "Deneyimli bir seyahat danışmanısın. Sana bir gezginin isteği ve uygulamanın çizdiği ilk plan (omurga) verilir. Her soruyu yalnız plana bakarak evet ya da hayır diye yanıtla; why tek kısa cümle. Planda olmayanı varsayma.";
-  const prompt = `İstek: ${c.said}\nGeceler: ${c.nights}, başlangıç ${c.start}\n\nPlan:\n${lines}\n\nSorular:\n${c.judge.map((q, n) => `${n + 1}. ${q}`).join("\n")}`;
+  const questions = [...c.judge, ...(c.stops || c.nights < 14 ? [] : ROUTE_JUDGE)];
+  const prompt = `İstek: ${c.said}\nGeceler: ${c.nights}, başlangıç ${c.start}\n\nPlan:\n${lines}\n\nSorular:\n${questions.map((q, n) => `${n + 1}. ${q}`).join("\n")}`;
   return (await claude(JUDGE).generateJson(system, prompt, verdict, [], { maxRetries: 1 })).answers;
 }
 
@@ -157,18 +194,28 @@ describe.skipIf(!key)("omurga: the start's spine on the real models", () => {
     console.log(`omurga: kod ${summary.code_ok}/${summary.cases} · yargıç ${summary.judge_yes}`);
   });
 
-  for (const c of CASES) {
+  for (const c of CASES.filter((x) => !process.env.EVAL_ONLY || process.env.EVAL_ONLY.split(",").includes(x.id))) {
     it(c.id, async () => {
       setLang("tr");
       const started = Date.now();
       let s = state(c);
-      // No route said: the route the start would propose (the traveller's model, as the extension asks it).
+      const ask = () => adviseStart({ id: s.id, text: c.said, known: withLang("tr", () => knownLines(s, { myName: null } as never)), today: "2026-10-31", lang: "tr", nights: c.nights, home: c.from }, async () => claude(ADVISOR_CLAUDE));
+      // No route said: the advisor draws it (Tur 22, as the start asks it); the short route ask only when it gave none.
+      let drawn: Advice | null = null;
+      let routeSec: number | null = null;
+      const routeFrom = { advisor: false };
       if (!c.stops && wantsRouteAdvice(s)) {
-        const raw = await withLang("tr", () => claude(ROUTER).generateJson(routeSystem(), routePrompt(s), routeSchema, [], { maxRetries: 1 }));
-        const route = acceptRoute(raw, totalNights(s) ?? c.nights, c.from, c.where.code);
+        const t0 = Date.now();
+        ask();
+        drawn = await adviceFor(s.id, 120_000);
+        routeSec = (Date.now() - t0) / 1000;
+        const theirs = drawn ? withLang("tr", () => routeOfAdvice(drawn!, totalNights(s) ?? c.nights, c.from, c.where.code)) : null;
+        routeFrom.advisor = Boolean(theirs);
+        const route = theirs ?? acceptRoute(await withLang("tr", () => claude(ROUTER).generateJson(routeSystem(), routePrompt(s), routeSchema, [], { maxRetries: 1 })), totalNights(s) ?? c.nights, c.from, c.where.code);
         if (route) s = { ...s, route: { ...route, confirmed: true } };
       }
-      adviseStart({ id: s.id, text: c.said, known: withLang("tr", () => knownLines(s, { myName: null } as never)), today: "2026-10-31", lang: "tr" }, async () => claude(ADVISOR_CLAUDE));
+      // "Oluştur": asked once more with the agreed route (the generating screen waits 10 s, then the route's advice stands).
+      ask();
       const advice = await adviceFor(s.id, 60_000);
       s = applyAdvice(s, advice);
       for (const step of stepsFor(s, creationOf(s)!)) {
@@ -178,9 +225,11 @@ describe.skipIf(!key)("omurga: the start's spine on the real models", () => {
       }
       const items = (await listItems(s.tripId!)).filter((i) => i.status !== "dismissed");
       const wrong = checks(c, s, items, advice, (await (await db()).get("trips", s.tripId!))?.wants?.said ?? []);
+      // (a city come back to is folded into the stop before it by routeOfAdvice: the route the traveller sees has it once)
+      if (drawn) wrong.push(...withLang("tr", () => routeFaults(drawn!, c.said, c.nights, c.from)).filter((f) => !f.includes("iki kez geçiyor")).map((f) => `rota: ${f}`));
       const trip = (await (await db()).get("trips", s.tripId!))!;
       const judge = await judgeOf(c, items, trip).catch((e) => [{ question: "yargıç", yes: false, why: String(e).slice(0, 120) }]);
-      rows.push({ id: c.id, ok: wrong.length === 0, wrong, advisor: Boolean(advice), question: s.spineQuestion ?? null, judge, seconds: (Date.now() - started) / 1000, ...(s.route ? { route: s.route.stops.map((x) => `${x.city} ${x.nights}`).join(" → ") } : {}) } as (typeof rows)[number]);
+      rows.push({ id: c.id, ok: wrong.length === 0, wrong, advisor: Boolean(advice), question: s.spineQuestion ?? null, judge, seconds: (Date.now() - started) / 1000, routeSec, advice2: advice?.stays.map((x) => `${x.place}/${x.country_code}/${x.nights}/${x.kind}/${x.source}`), specials: s.specialStays, stays: items.filter((i) => i.category === "stay").map((i) => `${i.city ?? i.name} ${i.dates.start}`), ways: items.filter((i) => i.category === "transport" || i.category === "flight").map((i) => `${i.dates.start} ${i.plannedKind ?? i.category} ${i.name}`), routeFrom: routeFrom.advisor ? "danışman" : c.stops ? "kullanıcı" : "rota modeli", ...(s.route ? { route: s.route.stops.map((x) => `${x.city} ${x.nights}`).join(" → ") } : {}) } as (typeof rows)[number]);
       expect(advice, "danışman cevap vermedi").toBeTruthy();
       expect(wrong).toEqual([]);
     });

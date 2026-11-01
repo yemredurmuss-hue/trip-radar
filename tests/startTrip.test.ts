@@ -258,7 +258,7 @@ describe("the route (item 1)", () => {
     expect(acceptRoute({ stops: [{ city: "Ubud", nights: 31.5, country_code: "" }], arrival_airport_city: "", departure_airport_city: "" }, 31)).toBeNull();
     expect(acceptRoute({ stops: [{ city: "Ubud", nights: 20, country_code: "" }, { city: "ubud", nights: 11, country_code: "" }], arrival_airport_city: "", departure_airport_city: "" }, 31)).toBeNull();
     expect(acceptRoute({ stops: [{ city: "1) Ubud!!", nights: 31, country_code: "" }], arrival_airport_city: "", departure_airport_city: "" }, 31)).toBeNull();
-    expect(acceptRoute({ stops: Array.from({ length: 5 }, (_, i) => ({ city: `Yer${"abcde"[i]}`, nights: i === 0 ? 27 : 1, country_code: "" })), arrival_airport_city: "", departure_airport_city: "" }, 31)).toBeNull();
+    expect(acceptRoute({ stops: Array.from({ length: 13 }, (_, i) => ({ city: `Yer${"abcdefghijklm"[i]}`, nights: i === 0 ? 19 : 1, country_code: "" })), arrival_airport_city: "", departure_airport_city: "" }, 31)).toBeNull();
   });
   it("short trips and single cities are one stop; a long trip to an island asks the model", () => {
     expect(wantsRouteAdvice(ready())).toBe(true);
