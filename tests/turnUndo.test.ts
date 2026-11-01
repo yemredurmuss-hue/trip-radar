@@ -74,3 +74,15 @@ it("a turn that changed nothing has no undo", () => {
   const trip: Trip = { id: "x", title: "A", confirmedDates: null, budget: null, heroImage: null, createdAt: 1, updatedAt: 1 };
   expect(turnUndo({ at: 1, trip, items: [] }, { ...trip, updatedAt: 9 }, [])).toBeNull();
 });
+
+it("only what the turn's own tools touched: the searches' options added meanwhile and the photos found are never taken back", () => {
+  const trip: Trip = { id: "tu9", title: "Tayland", confirmedDates: null, budget: null, heroImage: null, createdAt: 1, updatedAt: 1 };
+  const bike = makeItem({ id: "bike", tripId: "tu9", category: "transport", name: "Bisiklet kiralama", status: "saved" });
+  const before = { at: 1, trip, items: [bike] };
+  const option = makeItem({ id: "hotel-option", tripId: "tu9", category: "stay", name: "Lis Hotel Chiang Mai", status: "saved" });
+  const after = [{ ...bike, status: "dismissed" as const, updatedAt: 5 }, option];
+  const undo = turnUndo(before, { ...trip, coverImage: "https://img.test/x.jpg" } as Trip, after, new Set(["bike"]))!;
+  expect((undo.records ?? []).map((r) => r.before.id)).toEqual(["bike"]);
+  expect(undo.made).toEqual([]);
+  expect(undo.fields).toEqual([]);
+});

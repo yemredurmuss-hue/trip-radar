@@ -98,7 +98,7 @@ import { airportCode } from "./searchLinks";
 /** What became of the chat's suggestion, as its result says it. */
 type SuggestOutcome = MergeOutcome | "already_added" | "covered_by_rule" | "already_on_plan";
 import { getProvider, type LlmProvider, type ProviderId } from "./llm";
-import { effectsOf, ideaCard, quiet, type IdeaCard, type TriedChange } from "./preview";
+import { effectsOf, ideaCard, planFaults, quiet, type IdeaCard, type TriedChange } from "./preview";
 import { beforeTurn, keepTurnUndo } from "./turnUndo";
 import type { ToolResult, ToolSpec } from "./llm/types";
 import {
@@ -1290,6 +1290,8 @@ interface Turn {
   offers?: { need: Need; offers: Offer[]; overMax: string | null; added?: string[] } | null;
   /** weigh_ideas: the decision the reply's card is written from (preview.ts ideaCard). */
   ideas?: IdeaCard | null;
+  /** The advisor's review (omurga Tur 23): stopped when the traveller writes; at most `cap` changes; nothing held touched. */
+  review?: { signal: AbortSignal; cap: number } | null;
 }
 
 /**
@@ -1807,9 +1809,12 @@ async function runTool(tripId: string, name: string, input: any, choices: string
   // A2 (omurga, Emre 2026-10-31: "seçilen, rezerve edilen sohbetle sessizce oynamaz"): the rule held by the code, not the
   // model's good will: a step that would change, replace or take off something booked or chosen, or leave it outside the
   // trip's dates, is done only when the call says the user asked for it in this message; else nothing changes.
-  if (input?.confirmed !== true) {
+  // (the advisor's review never touches it, whatever the call says: nobody asked in a message; it asks instead, Tur 23)
+  if (input?.confirmed !== true || turn.review) {
     const trip = name === "update_trip" ? await d.get("trips", tripId) : undefined;
     const held = heldTouched(name, input, byId, trip ? (change) => effectsOf(trip, items.map(withEdits), change).held.map((h) => h.name) : null);
+    if (held.length && turn.review)
+      throw new ToolError(L(`Danışman turunda rezerve ya da seçilmiş kayda dokunulmaz: ${held.join(", ")}. Değişmesi gerekiyorsa kullanıcıya tek soruyla sor. Hiçbir şey değişmedi.`, `The advisor's review never touches what is booked or chosen: ${held.join(", ")}. If it must change, ask the user in one question. Nothing changed.`));
     if (held.length) {
       throw new ToolError(
         L(
@@ -2907,6 +2912,12 @@ export class ChatBusyError extends Error {
 }
 
 export async function sendMessage(tripId: string, userText: string, llm?: LlmProvider): Promise<void> {
+  // The traveller first: an advisor's review still running is stopped (Tur 23), its words never in the way.
+  const running = reviewing.get(tripId);
+  if (running) {
+    running.stop.abort();
+    await running.finished;
+  }
   // A safety net under the chat's busy state: two turns at once would interleave their history.
   if (answering.has(tripId)) throw new ChatBusyError();
   answering.add(tripId);
@@ -2917,13 +2928,93 @@ export async function sendMessage(tripId: string, userText: string, llm?: LlmPro
   const before = await beforeTurn(tripId).catch(() => null);
   try {
     await sendMessageNow(tripId, userText, llm);
-    if (before) await keepTurnUndo(tripId, before).catch(() => undefined);
+    const kept = before ? await keepTurnUndo(tripId, before, toolTouched.get(tripId) ?? null).catch(() => null) : null;
+    // A turn that moved the spine (a stay, a way, the dates): the advisor tidies what follows from it, a moment later.
+    const undo = kept?.undo?.kind === "fields" ? kept.undo : null;
+    const made = new Set(undo?.made ?? []);
+    const touched = undo ? [...(undo.records ?? []).map((r) => r.before), ...(await listItems(tripId)).filter((i) => made.has(i.id))] : [];
+    const moved = Boolean(undo && (undo.fields.includes("confirmedDates") || touched.some((i) => i.category === "stay" || i.category === "transport")));
+    if (moved && kept && !llm) setTimeout(() => void reviewTrip(tripId, L(`Kullanıcı az önce sohbette planı değiştirdi ("${userText.slice(0, 120)}"). Bu değişikliğin sonuçlarını toparla (geceler, duraklar arası yol, etkinlikler); isteği geri alma.`, `The user just changed the plan in the chat ("${userText.slice(0, 120)}"). Tidy what follows from it (nights, the ways between stops, activities); never undo what they asked.`), `chat:${kept.id}`, llm), REVIEW_AFTER_CHAT_MS);
   } finally {
     answering.delete(tripId);
     stepsDone(tripId);
     stepsCleared(tripId);
     // A search that landed while this turn was answering goes in now, after its reply (never inside its tool calls).
     await saveLanded(tripId).catch(() => undefined);
+  }
+}
+
+/** The advisor's reviews running, by trip: stopped when the traveller writes. */
+const reviewing = new Map<string, { stop: AbortController; finished: Promise<void> }>();
+/** At most this many changes in one review; one review at a time, never two within REVIEW_GAP_MS. */
+export const REVIEW_CAP = 3;
+export const reviewTiming = { gapMs: 2 * 60_000 };
+const REVIEW_AFTER_CHAT_MS = 1500;
+/** The review's word for "nothing to change or ask". */
+const NOTHING = /^\s*(TAMAM|OK)\.?\s*$/i;
+
+/** The note the review starts from, never shown: why now, what the code found, its rules (Emre's, Tur 23). */
+export function reviewNote(why: string, faults: string[]): string {
+  return [
+    L("(Danışman turu: kullanıcı bu mesajı görmez.)", "(The advisor's review: the user doesn't see this message.)"),
+    L(`Neden şimdi: ${why}`, `Why now: ${why}`),
+    ...(faults.length ? [L("Kodun bulduğu sorunlar:", "What the code found:"), ...faults.map((f) => `- ${f}`)] : []),
+    L(
+      `Planın omurgasına bak, gerekiyorsa düzelt. Kurallar: 1) En fazla ${REVIEW_CAP} değişiklik. 2) Seçili ya da rezerve kayda dokunma; değişmesi gerekiyorsa tek soruyla sor. 3) Kullanıcının söylediğini ve son isteğini geri alma; sonuçlarını toparla. 4) Mantık hatalarını düzelt: bütün geziye yayılan kiralama, yataksız gece, aynı güne iki ulaşım, durağına uymayan etkinlik. 5) Bir durağın yeri kesinleştiyse (bir resort, bir otel) o durağın etkinliklerini ve oraya ulaşımı o yere göre seç; uzak kalanı kaldır. 6) Cevabın 1-2 cümle: ne değiştirdin, neden; soruyorsan önce sorunu tek cümlede söyle ("Dönüş günü otobüs ve uçuş aynı gün: …"). Değiştirmediğin şeyi değiştirdim deme, değiştirdiğini değiştirmedim deme. Değiştirecek ya da soracak bir şey yoksa yalnız TAMAM yaz.`,
+      `Look at the plan's spine and fix it if needed. Rules: 1) At most ${REVIEW_CAP} changes. 2) Never touch what is chosen or booked; if it must change, ask in one question. 3) Never undo what the user said or just asked; tidy what follows from it. 4) Fix the logic errors: a rental over the whole trip, a night with no bed, two ways on one day, an activity that doesn't fit its stop. 5) A stop whose place is settled (a resort, a hotel): its activities and the way there chosen for that place; what is far from it goes. 6) Your answer is 1-2 sentences: what you changed and why; asking, first say the problem in one sentence ("The bus and the flight home are on the same day: …"). Never say you changed what you didn't, or didn't what you did. Nothing to change or ask: write only OK.`,
+    ),
+  ].join("\n");
+}
+
+/**
+ * The advisor's review (omurga Tur 23, Emre 2026-11-01: "danışman bir daha baktığında düzeltebilmeli"): a chat turn of its
+ * own, started by an event (a stay settled, the spine changed in the chat, the plan just made, the trip drawing near), the
+ * note never shown. The code holds its rules: once per event, never two close together, never while the traveller's turn
+ * runs, three changes at most, nothing booked or chosen touched, stopped the moment the traveller writes. Its reply is said
+ * with 🧭 and its "Geri al"; nothing to say leaves no trace.
+ */
+export async function reviewTrip(tripId: string, why: string, key: string, llm?: LlmProvider, now = Date.now()): Promise<"done" | "silent" | "skipped"> {
+  if (answering.has(tripId) || reviewing.has(tripId)) return "skipped";
+  const trip = await (await db()).get("trips", tripId);
+  const past = trip?.advisorReviews ?? [];
+  if (!trip || past.some((r) => r.key === key) || past.some((r) => now - r.at < reviewTiming.gapMs)) return "skipped";
+  await changeTrip(tripId, (t) => ({ ...t, advisorReviews: [...(t.advisorReviews ?? []), { key, at: now }].slice(-30) }));
+  const stop = new AbortController();
+  let finish = () => undefined as void;
+  reviewing.set(tripId, { stop, finished: new Promise<void>((resolve) => (finish = resolve)) });
+  answering.add(tripId);
+  const started = Date.now();
+  try {
+    const before = await beforeTurn(tripId);
+    const faults = withLang(contentLang(trip.lang), () => planFaults(trip, before.items));
+    await sendMessageNow(tripId, withLang(contentLang(trip.lang), () => reviewNote(why, faults)), llm, { signal: stop.signal, cap: REVIEW_CAP });
+    const kept = await keepTurnUndo(tripId, before, toolTouched.get(tripId) ?? null).catch(() => null);
+    const d = await db();
+    const mine = (await listMessages(tripId)).filter((m) => m.createdAt >= started && m.role !== "event");
+    // One line for whoever tests (the traveller sees only the reply): it ran, why, what it changed.
+    console.info(L(`[danışman turu] ${key} · ${((Date.now() - started) / 1000).toFixed(1)} sn · ${kept?.undo?.kind === "fields" ? `${(kept.undo.records?.length ?? 0) + (kept.undo.made?.length ?? 0)} değişiklik` : "değişiklik yok"}`, `[advisor review] ${key} · ${((Date.now() - started) / 1000).toFixed(1)} s · ${kept?.undo?.kind === "fields" ? `${(kept.undo.records?.length ?? 0) + (kept.undo.made?.length ?? 0)} changes` : "no change"}`));
+    const reply = mine.filter((m) => m.role === "assistant" && m.text.trim()).at(-1);
+    if (!kept && (!reply || NOTHING.test(reply.text) || stop.signal.aborted)) {
+      for (const m of mine) await d.delete("messages", m.id);
+      notifyChanged();
+      return stop.signal.aborted ? "skipped" : "silent";
+    }
+    if (reply) {
+      const latest = (await d.get("messages", reply.id)) ?? reply;
+      const said = NOTHING.test(latest.text) ? L("Planda küçük bir düzeltme yaptım.", "I made a small fix to the plan.") : latest.text;
+      await d.put("messages", { ...latest, text: `🧭 ${said}` });
+      notifyChanged();
+    }
+    return "done";
+  } catch (error) {
+    if (!stop.signal.aborted) console.warn(L("[danışman turu] olmadı", "[advisor review] failed"), error);
+    return "skipped";
+  } finally {
+    answering.delete(tripId);
+    reviewing.delete(tripId);
+    finish();
+    stepsDone(tripId);
+    stepsCleared(tripId);
   }
 }
 
@@ -2945,8 +3036,11 @@ async function recentContext(tripId: string, session: ChatMessage[], now = Date.
   return recentBlock(files, focusOf(lastAnswer?.touched, every), now);
 }
 
-async function answerInTime<T>(tripId: string, ask: (signal: AbortSignal) => Promise<T>): Promise<T> {
+async function answerInTime<T>(tripId: string, ask: (signal: AbortSignal) => Promise<T>, outer?: AbortSignal | null): Promise<T> {
   const stop = new AbortController();
+  // (the advisor's review stopped when the traveller writes: its request is called off with it)
+  if (outer?.aborted) stop.abort();
+  else outer?.addEventListener("abort", () => stop.abort(), { once: true });
   let timer: ReturnType<typeof setTimeout> | undefined;
   const late = new Promise<never>((_, reject) => {
     timer = setTimeout(() => {
@@ -3128,13 +3222,17 @@ export async function resumeSearches(tripId: string, llm?: LlmProvider): Promise
   );
 }
 
-async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvider): Promise<void> {
+/** The records the running turn's tools changed, by trip (its undo's scope). */
+const toolTouched = new Map<string, Set<string>>();
+
+async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvider, review: Turn["review"] = null): Promise<void> {
+  toolTouched.set(tripId, new Set());
   const d = await db();
   const trip = await d.get("trips", tripId);
   if (!trip) throw new Error(L("Gezi bulunamadı.", "Trip not found."));
   // The traveller is waiting on this one: first in the model's line (llm/queue.ts).
   const provider = llm ?? (await getProvider({ priority: "now" }));
-  await keepWantsSaid(tripId, userText);
+  if (!review) await keepWantsSaid(tripId, userText);
 
   let session = currentSession(await listMessages(tripId), provider.id);
   if (JSON.stringify(session.map((m) => m.content)).length > SESSION_CHAR_LIMIT) {
@@ -3150,7 +3248,7 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
   const who = await loadWho(trip);
   // A web search's late line isn't a reply: the reply before it keeps its question.
   const asked = session.findLast((m) => m.role === "assistant" && m.text.trim() && !m.landed);
-  if (asked?.ask && session.filter((m) => m.role !== "event" && !m.landed).at(-1)?.id === asked.id) {
+  if (!review && asked?.ask && session.filter((m) => m.role !== "event" && !m.landed).at(-1)?.id === asked.id) {
     const answer = await answerAsk(tripId, asked.ask, asked.choices, userText);
     if (answer != null) {
       // What comes next ("Sabine dönüşte de Alicante'ye mi?" after my name) is asked the same way, in bold.
@@ -3208,7 +3306,8 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
     tripId,
     role: "user",
     content: provider.userContent(texts),
-    text: userText,
+    // (the advisor's review note is the model's to read, never a bubble on screen)
+    text: review ? "" : userText,
     choices: [],
     stateHash,
     provider: provider.id,
@@ -3216,6 +3315,7 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
 
   const turn = newTurn(userText, session.findLast((m) => m.role === "assistant" && m.text.trim() && !m.landed)?.text ?? null, who);
   turn.provider = provider;
+  turn.review = review;
   let askedAgain = false;
   // What the model wrote beside its tool calls (Sohbet Faz 1): kept in its history, never on screen before the results
   // ("ekledim" before anything was added); the last step's answer is shown, this one only when that is empty.
@@ -3230,7 +3330,8 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
     const everything = await listMessages(tripId);
     const history = modelHistory(everything, currentSession(everything, provider.id), provider);
     // In the board's language (0.39.1), whatever the trip's start chat spoke: contentLang.
-    const answer = await answerInTime(tripId, (signal) => provider.chatStep(history, withLang(contentLang(trip.lang), systemPrompt), withLang(contentLang(trip.lang), tools), { signal }));
+    if (review?.signal.aborted) return;
+    const answer = await answerInTime(tripId, (signal) => provider.chatStep(history, withLang(contentLang(trip.lang), systemPrompt), withLang(contentLang(trip.lang), tools), { signal }), review?.signal);
     if (!answer) {
       // (nothing more after its tools: what it wrote beside them, with its chips, is the answer; Sohbet Faz 1)
       if (narratedId) {
@@ -3260,6 +3361,11 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
     const byCall = new Map<number, ToolResult>();
     for (const [k, n] of runOrder.entries()) {
       const call = answer.calls[n];
+      // The advisor's review: three changes at most (Tur 23); the rest is said, never done.
+      if (turn.review && !READ_ONLY_TOOLS.has(call.name) && turn.changed >= turn.review.cap) {
+        byCall.set(n, { call, content: L(`Danışman turunda en fazla ${turn.review.cap} değişiklik; bunu yapmadım, kullanıcıya öner.`, `At most ${turn.review.cap} changes in the advisor's review; not done, suggest it instead.`), isError: true });
+        continue;
+      }
       // Said while it's done, the board refreshed after it, a short pause before the next (never all at once).
       const said = describeCall(call.name, call.input, byId);
       if (said) stepStarted(tripId, said);
@@ -3273,6 +3379,8 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
         }
         const change = was && !content.startsWith(UNCHANGED) ? boardChange(was, await listItems(tripId)) : null;
         if (change) changes.push(change);
+        // (the records this turn's tools changed: its undo takes back only these, never the searches' work meanwhile)
+        if (change) for (const l of [...change.added, ...change.changed, ...change.removed]) toolTouched.get(tripId)?.add(l.id);
         byCall.set(n, { call, content: change ? withBoardChange(content, change) : content, isError: false });
         turn.done++;
         if (!READ_ONLY_TOOLS.has(call.name) && !content.startsWith(UNCHANGED)) turn.changed++;
@@ -3321,6 +3429,8 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
       text = "";
     } else {
       if (!text && narrated) text = narrated;
+      // (the advisor's review: what it found, said before its tools, stays with its short last line, Tur 23)
+      else if (review && narrated && text && !text.includes(narrated)) text = `${narrated}\n\n${text}`;
       // (nothing written at all after a change: the code says what really changed)
       if (!text) text = summaryLine(changes) ?? "";
       if (!choices.length && carried.length) choices.push(...carried);

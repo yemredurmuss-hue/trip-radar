@@ -294,6 +294,8 @@ export interface Trip {
    * Why the plan was built as it is (omurga Tur 19): the start's advisor's reasons and its facts about the place
    * (advisor.ts), so the trip's chat can answer "neden 3. gece?" and weigh an idea against them. Unset: made without it.
    */
+  /** The advisor's reviews of the plan (omurga Tur 23): what started each (its key, never twice) and when. */
+  advisorReviews?: { key: string; at: number }[];
   spine?: {
     rationale: string;
     facts: string[];

@@ -1,6 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState, type ClipboardEvent, type ReactNode } from "react";
 import { withNextStep } from "../lib/startTrip";
 import { ChatBusyError, resumeSearches, sendMessage } from "../lib/assistant";
+import { useAdvisorReviews } from "./useAdvisorReviews";
 import { chatCards, quickReplies, type ChatCardVM, type PlanTarget } from "../lib/chatCards";
 import { chatPeek } from "../lib/chatPeek";
 import { chatStatusOf, chatStepsOf, onChatStatus, type ChatStatus, type ChatStep } from "../lib/chatStatus";
@@ -79,6 +80,8 @@ export function Chat({ trip, messages, onBack, items, trips, openCaptures, pendi
     void resumeSearches(trip.id).catch(() => undefined);
     return stop;
   }, [trip.id]);
+  // The advisor looks again when a stay is settled, once the plan is first opened, as the trip draws near (Tur 23).
+  useAdvisorReviews(trip, items);
   const [error, setError] = useState<string | null>(null);
   // What the traveller can do about it: "settings" (a key to add or fix) and "offline" get the banner atop the chat, not the line.
   const [errKind, setErrKind] = useState<ErrorKind | null>(null);

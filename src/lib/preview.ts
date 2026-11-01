@@ -181,3 +181,25 @@ export function ideaCard(c: IdeaCard): string {
   if (watch.length) lines.push("", L("**Dikkat:**", "**Watch out:**"), ...watch.map((w) => `- ${w}`));
   return lines.join("\n");
 }
+
+/**
+ * What a look at the plan finds wrong by itself (omurga Tur 23, the advisor's review reads it): a rental spread over more
+ * than one stop (Emre's Thailand: a bike for all 33 days), nights with no bed, the board's own warnings. Short lines.
+ */
+export function planFaults(trip: Trip, items: Item[]): string[] {
+  const live = items.filter(LIVE);
+  const plan = buildPlan(trip, live);
+  const stays = live.filter((i) => i.category === "stay").map((i) => ({ city: cityKeyOf(i.city), r: stayRange(i) })).filter((x) => x.city && x.r);
+  const out: string[] = [];
+  if (new Set(stays.map((x) => x.city)).size > 1) {
+    for (const i of live.filter((x) => (x.plannedKind ?? "").endsWith("_rental"))) {
+      const s = isoDate(i.dates.start), e = isoDate(i.dates.end) ?? s;
+      if (!s || !e) continue;
+      const over = new Set(stays.filter((x) => x.r!.start < e && s < x.r!.end).map((x) => x.city));
+      if (over.size > 1) out.push(L(`${i.name} ${over.size} durağa yayılmış (${formatDateRange(s, e)}): kiralama bir durağın günleri içindir`, `${i.name} spans ${over.size} stops (${formatDateRange(s, e)}): a rental is for one stop's days`));
+    }
+  }
+  const nights = [...bedless(plan, live)].slice(0, 3).map((d) => formatDateRange(d, null));
+  if (nights.length) out.push(L(`yataksız geceler: ${nights.join(", ")}`, `nights with no bed: ${nights.join(", ")}`));
+  return [...out, ...plan.notices.map((n) => n.text).slice(0, 2)];
+}
