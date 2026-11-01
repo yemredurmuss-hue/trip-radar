@@ -129,6 +129,21 @@ describe("the code's own line when the model writes nothing (Sohbet Faz 4, the r
     const shown = (await listMessages("t7")).filter((m) => m.role === "assistant" && m.text.trim()).map((m) => m.text);
     expect(shown).toEqual(["Eklendi: Fado gösterisi"]);
   });
+
+  it("a read-only tool and then nothing (Emre: 'balon çıktı, cevap yok'): said honestly, never a silent chat", async () => {
+    const d = await db();
+    await d.put("trips", { id: "t-beach", title: "X", confirmedDates: { start: "2027-03-01", end: "2027-03-10" }, budget: null, heroImage: null, createdAt: 1, updatedAt: 1 } as Trip);
+    const { client } = fakeClient([
+      {
+        stop_reason: "tool_use",
+        content: [{ type: "tool_use", id: "r1", name: "try_change", caller: { type: "direct" }, input: { start: "", end: "", moves: [], removes: [], adds: [{ kind: "stay", title: "", city: "Krabi", date: "2027-03-08", end_date: "2027-03-10" }] } }] as Anthropic.ContentBlock[],
+      },
+      { stop_reason: "end_turn", content: [] as Anthropic.ContentBlock[] },
+    ]);
+    await sendMessage("t-beach", "şöyle bir sahil koyar mısın rotaya", anthropicProvider(client, "claude-opus-5"));
+    const shown = (await listMessages("t-beach")).filter((m) => m.role === "assistant" && m.text.trim()).map((m) => m.text);
+    expect(shown).toEqual(["Bu mesaja şu an bir cevap çıkaramadım. Bir daha yazar mısın?"]);
+  });
 });
 
 describe("the whole trip asked in the traveller's words (the real-model eval's 'Porto için değil, genel olsun')", () => {

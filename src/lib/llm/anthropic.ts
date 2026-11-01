@@ -42,7 +42,10 @@ export function anthropicProvider(client: Anthropic, model: string): LlmProvider
 
     async chatStep(history: ChatMessage[], system: string, tools: ToolSpec[], opts: CallOptions = {}): Promise<ChatStep | null> {
       const effort = outputEffort(model, "medium");
-      const strictAll = strictTools(tools.map((t) => t.schema));
+      // (at most as many strict tools as last fitted: the API's grammar limit is counted more strictly than schemaBudget's
+      // estimate; Tur 22d: the chat's tools had grown past it and every turn's first request came back 400)
+      let left = strictRoom;
+      const strictAll = strictTools(tools.map((t) => t.schema)).map((on) => on && left-- > 0);
       const ask = (strict: boolean[]) => client.messages.create({
         model,
         max_tokens: 16000,
@@ -58,9 +61,15 @@ export function anthropicProvider(client: Anthropic, model: string): LlmProvider
         ...("effort" in effort ? { output_config: effort } : {}),
       }, opts.signal ? { signal: opts.signal } : undefined);
       // Past the API's grammar limit (counted more strictly than schemaBudget's estimate): asked again with no strict tool.
-      const response = await ask(strictAll).catch((error) => {
-        if (tooLarge(error)) return ask(strictAll.map(() => false));
-        throw error;
+      // Too large: half as many strict tools, remembered for the next requests; then none.
+      const response = await ask(strictAll).catch(async (error) => {
+        if (!tooLarge(error)) throw error;
+        const fewer = Math.floor(strictAll.filter(Boolean).length / 2);
+        let n = fewer;
+        const half = strictAll.map((on) => on && n-- > 0);
+        const got = await ask(half).catch((again) => (tooLarge(again) ? null : Promise.reject(again)));
+        strictRoom = got ? fewer : 0;
+        return got ?? ask(strictAll.map(() => false));
       });
       // An empty assistant turn would make every later request invalid, so it is never stored.
       if (response.content.length === 0) return null;
@@ -106,6 +115,9 @@ export function jsonText(text: string): string {
  * the strict limits (the page extraction has dozens of nullable fields) is asked for by instruction
  * and validated here, with one retry that shows the model what was wrong.
  */
+/** How many tools can be strict in one chat request (lowered when the API says the grammar is too large). */
+let strictRoom = Number.POSITIVE_INFINITY;
+
 const tooLarge = (error: unknown) => error instanceof Anthropic.BadRequestError && /grammar is too large|too complex/i.test(String(error.message));
 
 async function structured<T>(

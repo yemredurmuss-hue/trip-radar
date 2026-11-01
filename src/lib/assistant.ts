@@ -3241,8 +3241,10 @@ async function sendMessageNow(tripId: string, userText: string, llm?: LlmProvide
           notifyChanged();
         }
       } else {
-        // (no words at all, but the board changed: the code's line, never a silent chat)
-        const line = summaryLine(changes);
+        // (no words at all, but the board changed: the code's line, never a silent chat; nothing changed either (a
+        // read-only tool and then nothing): said honestly, Tur 22d, Emre: "balon çıktı, cevap yok")
+        const line = summaryLine(changes) || L("Bu mesaja şu an bir cevap çıkaramadım. Bir daha yazar mısın?", "I couldn't come up with an answer to that just now. Could you send it again?");
+        if (!summaryLine(changes)) console.warn(L(`[sohbet] model ${step + 1}. adımda boş döndü`, `[chat] the model answered nothing at step ${step + 1}`));
         if (line) await saveMessage({ tripId, role: "assistant", content: provider.assistantContent(line), text: line, choices: carried, provider: provider.id });
       }
       return;
