@@ -68,7 +68,7 @@ export function anthropicProvider(client: Anthropic, model: string): LlmProvider
         let n = fewer;
         const half = strictAll.map((on) => on && n-- > 0);
         const got = await ask(half).catch((again) => (tooLarge(again) ? null : Promise.reject(again)));
-        strictRoom = got ? fewer : 0;
+        keepRoom(got ? fewer : 0);
         return got ?? ask(strictAll.map(() => false));
       });
       // An empty assistant turn would make every later request invalid, so it is never stored.
@@ -115,8 +115,24 @@ export function jsonText(text: string): string {
  * the strict limits (the page extraction has dozens of nullable fields) is asked for by instruction
  * and validated here, with one retry that shows the model what was wrong.
  */
-/** How many tools can be strict in one chat request (lowered when the API says the grammar is too large). */
-let strictRoom = Number.POSITIVE_INFINITY;
+/** How many tools can be strict in one chat request (lowered when the API says the grammar is too large), kept across pages. */
+const ROOM_KEY = "tr.strictRoom";
+let strictRoom = (() => {
+  try {
+    const kept = globalThis.localStorage?.getItem(ROOM_KEY);
+    return kept != null && Number.isFinite(Number(kept)) ? Number(kept) : Number.POSITIVE_INFINITY;
+  } catch {
+    return Number.POSITIVE_INFINITY;
+  }
+})();
+const keepRoom = (n: number) => {
+  strictRoom = n;
+  try {
+    globalThis.localStorage?.setItem(ROOM_KEY, String(n));
+  } catch {
+    // (a page without storage asks again next time)
+  }
+};
 
 const tooLarge = (error: unknown) => error instanceof Anthropic.BadRequestError && /grammar is too large|too complex/i.test(String(error.message));
 
