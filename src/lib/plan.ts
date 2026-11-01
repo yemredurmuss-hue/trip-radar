@@ -37,6 +37,22 @@ export interface OptionGroup {
   booked: Item | null;
 }
 
+/** A stay block's country: its record's, else its city's. */
+const blockCode = (b: StayBlock): string | null => {
+  const own = b.kind === "open" ? (b.slot?.countryCode ?? null) : b.item.countryCode;
+  return own ?? countryOfCity(b.city);
+};
+
+/** The longest stay still to fill for options of no matching town: in their country, or the trip's only one. */
+function longestInCountry(options: Item[], blocks: StayBlock[]): StayBlock | null {
+  const code = options.map((i) => i.countryCode ?? countryCodeNamed(i.country) ?? countryOfCity(i.city)).find(Boolean) ?? null;
+  const free = blocks.filter((b) => b.kind !== "booked");
+  const codes = new Set(free.map(blockCode).filter(Boolean));
+  const mine = code ? free.filter((b) => blockCode(b) === code) : codes.size <= 1 ? free : [];
+  const [first, second] = [...mine].sort((a, b) => b.nights - a.nights);
+  return first && (!second || second.nights < first.nights) ? first : null;
+}
+
 export type StayBlock =
   | {
       kind: "booked";
@@ -776,7 +792,9 @@ export function buildPlan(trip: Trip, items: Item[]): Plan {
       );
       // Two stretches in its city (a night said apart, the rest chosen): the one still open.
       const open = fits.filter((b) => b.kind === "open");
-      const block = fits.length === 1 ? fits[0] : open.length === 1 ? open[0] : null;
+      // (none in its city, Tur 24: the Airbnb villa read with no town never joined "Su üstü villa"; the longest stay still to
+      // fill in its country, or, with no place read, in the trip's one country; never a guess across countries)
+      const block = fits.length === 1 ? fits[0] : open.length === 1 ? open[0] : fits.length ? null : longestInCountry(group.items, stayBlocks);
       if (!block || block.kind === "booked") {
         looseStays.push(group);
         continue;
