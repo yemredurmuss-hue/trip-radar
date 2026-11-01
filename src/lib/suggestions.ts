@@ -412,10 +412,25 @@ export function shownSuggestions(
     const topic = topicOf(s);
     if (arrangedTransfer(s, legs)) return false;
     if (drivenOver(s, items)) return false;
+    if (stayTaken(s.section === "stay" ? s.payload?.city : null, s.payload?.start ?? null, s.payload?.end ?? null, items)) return false;
     return !(topic && (ruleTopics.has(topic) || dismissedTopics.has(topic) || coveringItems(s, items).length));
   });
   return sortSuggestions([...fromRules, ...others]);
 }
+
+/**
+ * The stay that already holds a city's nights (Tur 24, Emre's Maldives: the route's Malé night and a "Malé'de ilk gece
+ * otel" for the same night, two cards): one stay per city per night, never a second one beside it. With no day, any stay
+ * in that city. Null when none.
+ */
+export function stayTaken(city: string | null | undefined, start: string | null, end: string | null, items: readonly Item[]): Item | null {
+  const key = cityKeyOf(city ?? null);
+  if (!key) return null;
+  const from = isoDate(start);
+  const to = isoDate(end) ?? (from ? addDaysIso(from, 1) : null);
+  return items.find((i) => i.category === "stay" && i.status !== "dismissed" && cityKeyOf(i.city) === key && (!from || !to || (i.dates.start != null && i.dates.start < to && (i.dates.end ?? addDaysIso(i.dates.start, 1)) > from))) ?? null;
+}
+const addDaysIso = (d: string, n: number) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
 
 /** The shown suggestions by section, for the Plan's headers ("1 öneri") and cards. */
 export function bySection(list: readonly Suggestion[]): Partial<Record<SectionId, Suggestion[]>> {

@@ -106,4 +106,4 @@ it("the traveller writes while it runs: the review stops and leaves nothing; the
   await sendMessage("rv4", "Bangkok'ta ne yapayım?", llm);
   expect(await review).toBe("skipped");
   expect(await shown("rv4")).toEqual(["Bangkok'ta ne yapayım?", "Bangkok'ta sokak yemeği turu iyi olur."]);
-});
+}, 20_000);

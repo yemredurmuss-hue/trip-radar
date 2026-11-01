@@ -78,6 +78,7 @@ import {
   mergeIncoming,
   prepFromSuggestion,
   shownSuggestions,
+  stayTaken,
   SUGGESTION_KINDS,
   SUGGESTION_SECTIONS,
   SUGGESTION_TEMPLATES,
@@ -2129,6 +2130,11 @@ async function runTool(tripId: string, name: string, input: any, choices: string
       // A wrong value is refused here; what's missing (the city of a hire already on the plan) only for a new one.
       const problem = checkPlanned(said, PLANNED_KINDS, { complete: false });
       if (problem) throw new ToolError(problem);
+      // One stay per city per night in the advisor's review (Tur 24: nobody asked for a second one; the traveller may say a
+      // night apart in the same city, "7 Ekim gecesi başka bir yerde kalalım", and that is theirs to ask)
+      const holds = turn.review && said.kind === "stay" && !said.booked && !text(input.replaces) && !text(input.item_id) ? stayTaken(said.city, said.date, said.end_date, items) : null;
+      if (holds)
+        throw new ToolError(L(`Bu gecelerde ${holds.city ?? said.city} için zaten konaklama var: "${holds.name}" (item_id ${holds.id}). İkinci konaklama açma: onu güncelle (item_id) ya da yerine koy (replaces). Hiçbir şey değişmedi.`, `A stay already holds these nights in ${holds.city ?? said.city}: "${holds.name}" (item_id ${holds.id}). Don't open a second one: update it (item_id) or put this in its place (replaces). Nothing changed.`));
       // "Araç kiralama iptal, yerine karavan": the record this plan takes the place of.
       const replacesId = text(input.replaces);
       const replaced = replacesId ? byId.get(replacesId) : undefined;
