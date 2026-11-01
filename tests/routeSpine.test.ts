@@ -7,7 +7,7 @@ import { expect, it } from "vitest";
 import { applyAdvice, routeAfterDrawing, routeFaults, routeOfAdvice, type Advice } from "../src/lib/advisor";
 import { setLang } from "../src/lib/i18n";
 import { stopWays } from "../src/lib/startCreate";
-import { acceptRoute, applyAnswer, checklist, creationOf, maxStops, newStart, nextQuestion, otherCountries, routeForGenerate, routeShaped, routeToPrepare, tripPlaceName, waysText, withPreparedRoute, type StartState } from "../src/lib/startTrip";
+import { acceptExtraction, acceptRoute, applyAnswer, spineSummary, checklist, creationOf, maxStops, newStart, nextQuestion, otherCountries, routeForGenerate, routeShaped, routeToPrepare, tripPlaceName, waysText, withPreparedRoute, type StartState } from "../src/lib/startTrip";
 
 const SAID = "1 aylık tayland laos kamboçya rotası planı yap backpacking";
 const stay = (place: string, nights: number, country_code: string) => ({ place, country_code, nights, kind: "hotel" as const, what: null, source: "assumed" as const });
@@ -162,4 +162,21 @@ it("Oluştur while it draws: one stop stands in, then the advisor's route (or th
   expect(drawn).toMatchObject({ source: "ai", confirmed: true, proposed: true });
   expect(drawn.stops).toHaveLength(9);
   expect(routeAfterDrawing({ ...s, route: standIn }, null)?.source).toBe("circuit");
+});
+
+it("countries named are never stops (the advisor draws the towns); towns are", () => {
+  setLang("tr");
+  const read = acceptExtraction({ stops: [{ place: "Tayland", nights: 11, note: "", photo: "" }, { place: "Laos", nights: 10, note: "", photo: "" }, { place: "Kamboçya", nights: 10, note: "", photo: "" }] } as never, "2026-11-01");
+  expect(read.stops).toBeUndefined();
+  const towns = acceptExtraction({ stops: [{ place: "Bangkok", nights: 4, note: "", photo: "" }, { place: "Luang Prabang", nights: 3, note: "", photo: "" }] } as never, "2026-11-01");
+  expect(towns.stops?.map((x) => x.city)).toEqual(["Bangkok", "Luang Prabang"]);
+});
+
+it("the summary says why, in the advisor's first sentence: the traveller sees it worked", () => {
+  setLang("tr");
+  let s: StartState = applyAnswer(newStart("rs8", "plan", 1, "tr"), { q: "where", place: "Tayland", country: "Tayland", code: "TH" }, 2);
+  s = applyAnswer(applyAnswer(s, { q: "duration", duration: { unit: "night", n: 31 } }, 3), { q: "start", date: "2027-01-01", approx: false }, 4);
+  s = applyAdvice({ ...s, from: "İstanbul" }, { ...GOOD, rationale: "Sırt çantasıyla kara yolunu seçtim: gece treni ve Mekong teknesi. Kampot'ta dinlenirsin." });
+  expect(spineSummary(creationOf(s)!, s)).toContain("🧭 Sırt çantasıyla kara yolunu seçtim: gece treni ve Mekong teknesi.");
+  expect(spineSummary(creationOf(s)!, s)).not.toContain("Kampot'ta dinlenirsin");
 });

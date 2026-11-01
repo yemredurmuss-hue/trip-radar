@@ -1797,6 +1797,9 @@ export function acceptExtraction(raw: RawExtraction & { plan?: RawPlan | null },
       scene: (x.photo ?? "").replace(/[|\n]/g, " ").trim().slice(0, 40) || null,
     }))
     .filter((x) => x.city && looksLikePlace(x.city, PLACE_WORDS))
+    // (a country is never a stop: "tayland laos kamboçya" read as Tayland 11 → Laos 10 → Kamboçya 10, Tur 22c; the advisor
+    // draws its towns. A city that is a country of its own, Singapur, stays.)
+    .filter((x) => !countryCodeOfName(x.city) || Boolean(knownPlaceOf(x.city)?.city))
     .map((x) => ({ ...x, city: placeOf(x.city).place }))
     .filter((x, i, all) => all.findIndex((y) => samePlace(y.city, x.city)) === i)
     .slice(0, 8);
@@ -4551,10 +4554,13 @@ export function spineSummary(c: Creation, s: StartState): string {
   if (stayWord && said.length < 2) said.push(L(`Konaklamayı şimdilik **${stayWord}** olarak düşündüm.`, `I took the stays as **${stayWord}** for now.`));
   if (c.routeDraft && said.length < 2) said.push(L("Rotayı ben önerdim; değiştirmek istersen söyle.", "The route is my suggestion; tell me to change it."));
 
+  // Why it is drawn so, in the advisor's own first sentence (Tur 22d, Emre: "danışmanın çalışıp çalışmadığını bilmiyorum").
+  const why = (s.advice?.rationale ?? "").split(/(?<=[.!?])\s+/)[0]?.trim() ?? "";
   return [
     `${emoji} **${head}**`,
     "",
     ...route,
+    ...(why && why.length <= 220 ? ["", `🧭 ${why}`] : []),
     ...(said.length ? ["", ...said.slice(0, 2)] : []),
     "",
     L("Hadi planı netleştirelim.", "Let's firm up the plan."),

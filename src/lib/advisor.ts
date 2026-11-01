@@ -46,7 +46,7 @@ Kurallar:
 2. Gece = yatak. stays gecelerinin toplamı söylenen gece sayısına eşit; her gecenin bir yeri var. Gün 1 = varış günü. place, gezinin duraklarından biri olsun ("Tromsø"); şehir dışındaki özel bir yer için de en yakın durak. country_code: durağın ISO 3166-1 alpha-2 kodu.
 3. Her bacağa tek ulaşım biçimi seç. Araç kiralarsan (car_rental) havalimanı bacaklarını da o karşılar, ayrıca transfer yazma. Yer değiştirilen günlerde bacak yaz.
 4. Çapa bütçesi: her 2 geceye en fazla 1, toplam en fazla 3, kullanıcının istekleri dahil. Özel konaklama çapa değildir. Kalan günler boş kalır.
-5. rationale: 2-3 cümle gerekçe. facts: yere özgü en fazla 3 kısa bilgi.
+5. rationale: gezgine "sen" diye hitap eden 2-3 cümle gerekçe, ilk cümle en önemli kararın nedeni ("Sırt çantasıyla kara yolunu seçtim: …"); gezgin bunu okur. facts: yere özgü en fazla 3 kısa bilgi.
 6. question: (topic: sorunun konusu) gezinin en büyük kartını (gezinin sebebi olan deneyim, ana konaklama, uçuş) şekillendiren ve kullanıcının niyetini netleştiren tek soru, 2-4 kısa seçenek. Senin karar verdiğin şeyi (gece bölüşü, özel gecenin yeri, ulaşım) sorma; o kararları gerekçende söyle.
 7. wishes: kullanıcının KENDİ sözlerinde geçen istekler, yeriyle ve türüyle ("Ubud'da ormana bakan bir yer" → place "Ubud", about "stay", text "ormana bakan"). Kısa, kullanıcının kelimeleriyle; senin önerin buraya girmez. Yoksa boş liste.
 8. Kiralama (araç, motosiklet, bisiklet) bir durak içindir: duraklar uzaksa aralarını transferle bağla, kiralamayı her durağın kendi günlerine yaz. Gezinin türüne uymuyorsa (balayı, yaşlı aile, ilk kez giden) kiralama koyma.
@@ -58,7 +58,7 @@ Rules:
 2. A night is a bed. The stays' nights add up to the nights said; every night has a place. Day 1 = the day they arrive. place is one of the trip's stops ("Tromsø"), the nearest stop for a special place outside town. country_code: the stop's ISO 3166-1 alpha-2 code.
 3. One way per leg. A rental car (car_rental) covers the airport legs too: no transfer besides it. A leg on every day they change places.
 4. Anchor budget: at most 1 per 2 nights, 3 in all, the traveller's wishes included. A special stay is not an anchor. The other days stay free.
-5. rationale: 2-3 sentences. facts: at most 3 short facts about the place.
+5. rationale: 2-3 sentences to the traveller ("you"), the first the reason for the biggest decision ("By land, as you're backpacking: …"); they read it. facts: at most 3 short facts about the place.
 6. question: (topic: what it is about) the one question that shapes the trip's biggest card (the experience it is for, the main stay, the flights) and makes the traveller's intent clearer, 2-4 short choices. Never what you decided yourself (how the nights split, where the special stay goes, the ways): say those in rationale.
 7. wishes: what the traveller asked for in THEIR OWN words, with its place and kind ("somewhere facing the jungle in Ubud" → place "Ubud", about "stay", text "facing the jungle"). Short, their words; nothing of yours. An empty list when none.
 8. A rental (car, motorbike, bike) belongs to one stop: when the stops are far apart, a transfer joins them and each stop gets its own rental days. None when the trip's kind doesn't suit it (a honeymoon, an elderly family, a first visit).
