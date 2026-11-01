@@ -180,3 +180,11 @@ it("the summary says why, in the advisor's first sentence: the traveller sees it
   expect(spineSummary(creationOf(s)!, s)).toContain("🧭 Sırt çantasıyla kara yolunu seçtim: gece treni ve Mekong teknesi.");
   expect(spineSummary(creationOf(s)!, s)).not.toContain("Kampot'ta dinlenirsin");
 });
+
+it("a stop is a real place: its country's name with words around it is sent back (Maldivler Resort Atolü)", () => {
+  setLang("tr");
+  const mv: Advice = { ...base, stays: [stay("Malé", 1, "MV"), stay("Maldivler Resort Atolü", 7, "MV")], legs: [leg("Malé", "Maldivler Resort Atolü", 2, "ferry")] };
+  expect(routeFaults(mv, "Maldivler 8 gece su üstü villa", 8, "İstanbul")).toContain('"Maldivler Resort Atolü" gerçek bir yer adı değil: atolün, adanın ya da kasabanın adını yaz (ör. Baa Atolü)');
+  const real: Advice = { ...mv, stays: [stay("Malé", 1, "MV"), stay("Baa Atolü", 7, "MV")], legs: [leg("Malé", "Baa Atolü", 2, "ferry")] };
+  expect(routeFaults(real, "Maldivler 8 gece su üstü villa", 8, "İstanbul")).toEqual([]);
+});

@@ -12,7 +12,7 @@ import { anthropicProvider } from "./llm/anthropic";
 import { geminiProvider } from "./llm/gemini";
 import type { LlmProvider } from "./llm/types";
 import { cityKeyOf } from "./plan";
-import { acceptRoute, asksDecided, circuitRoute, countriesNamed, maxStops, totalNights, QUESTION_TOPICS, type SpecialStay, type StartRoute, type StartState, type WantedActivity } from "./startTrip";
+import { acceptRoute, asksDecided, circuitRoute, countriesNamed, knownPlaceOf, maxStops, regionName, totalNights, QUESTION_TOPICS, type SpecialStay, type StartRoute, type StartState, type WantedActivity } from "./startTrip";
 
 // (Sonnet, not Haiku, Tur 22: the spine is drawn here once a trip, the route too; Haiku flew a backpacker between every
 // stop and zigzagged Bangkok → Siem Reap → Luang Prabang → Chiang Mai → Krabi)
@@ -178,8 +178,15 @@ export function routeFaults(a: Pick<Advice, "stays" | "legs"> & Partial<Pick<Adv
   if (sum !== nights) out.push(L(`gecelerin toplamı ${sum}, olmalı ${nights}`, `the nights add up to ${sum}, they must be ${nights}`));
   const codes = new Set(stops.map((x) => x.code));
   for (const [code, name] of countriesNamed(said, home)) if (!codes.has(code)) out.push(L(`söylenen ülke rotada yok: ${name}`, `a country named is not on the route: ${name}`));
+  // A stop is a real place (Tur 24: "Maldivler Resort Atolü", no place at all, never matched the villa saved for it):
+  // never its country's name with words around it; a known city named after its country (Kuveyt, Singapur) is one.
+  for (const x of stops) {
+    const names = [regionName(x.code, "tr"), regionName(x.code, "en")].filter((n): n is string => Boolean(n)).map((n) => n.toLocaleLowerCase("tr"));
+    if (!knownPlaceOf(x.city)?.city && names.some((n) => x.city.toLocaleLowerCase("tr").includes(n))) out.push(L(`"${x.city}" gerçek bir yer adı değil: atolün, adanın ya da kasabanın adını yaz (ör. Baa Atolü)`, `"${x.city}" is no real place: name the atoll, island or town (e.g. Baa Atoll)`));
+  }
   if (stops.length > maxStops(nights)) out.push(L(`${stops.length} durak, bu gece sayısına en fazla ${maxStops(nights)}`, `${stops.length} stops, at most ${maxStops(nights)} for these nights`));
-  if (stops.length > 1) for (const x of stops) if (!x.user && x.nights * 2 > nights) out.push(L(`${x.city} gezinin yarısından fazlası (${x.nights} gece)`, `${x.city} takes more than half the trip (${x.nights} nights)`));
+  // (a night on the way, Malé before the seaplane, is no stop of its own here: 1 + 7 at a resort is one stay)
+  if (stops.filter((x) => x.nights >= 2).length > 1) for (const x of stops) if (!x.user && x.nights * 2 > nights) out.push(L(`${x.city} gezinin yarısından fazlası (${x.nights} gece)`, `${x.city} takes more than half the trip (${x.nights} nights)`));
   const k = (t: string) => cityKeyOf(t);
   for (const [n, x] of stops.entries()) if (stops.findIndex((y) => k(y.city) === k(x.city)) < n) out.push(L(`${x.city} rotada iki kez geçiyor (dönüş uçuşu için departure_airport_city yeter)`, `${x.city} is on the route twice (departure_airport_city says the flight home)`));
   for (let n = 1; n < stops.length; n++) {
