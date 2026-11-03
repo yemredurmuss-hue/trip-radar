@@ -1,0 +1,683 @@
+<title>Hadi Paket 7 Sohbet</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@700;800&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Düzen: Paket 5-6 ile aynı belge: özet, Layla'dan alınanlar, iki sütun yan yana (Bugün / Sonra), sonra her karar kendi bölümünde canlı parçayla. */
+:root{
+  --pg-bg:#fff;--pg-fg:#0a0a0a;--pg-soft:#737373;--pg-line:#ebebeb;--pg-card:#fff;--pg-tint:#f7f7f7;
+  --a50:#f5f3ff;--a100:#ece8ff;--a500:#5b45e0;--a600:#4a36c9;
+  --ok:#1f7a45;--oks:#e3f4ea;--warn:#a15c00;--warns:#fff1d6;
+  --sh-xs:0 1px 2px 0 rgb(0 0 0/.05);
+  --sh-pop:0 1px 1px 0 rgb(0 0 0/.04),0 4px 4px 0 rgb(0 0 0/.02),0 8px 16px -4px rgb(0 0 0/.06);
+  --ring:0 0 0 2px var(--pg-bg),0 0 0 4px var(--a500);
+  --ez:cubic-bezier(.4,0,.2,1);
+  --f:Inter,system-ui,sans-serif;--fd:"Plus Jakarta Sans",Inter,sans-serif;--mono:"JetBrains Mono",ui-monospace,monospace;
+  /* Hadi ürün renkleri (Paket 6, DESIGN.md): sahnede kullanılır, sayfa temasından bağımsız */
+  --h-ink:#1c1a33;--h-ink2:#34304d;--h-mut:#5d5a78;--h-line:#e7e4ef;--h-soft:#f7f6fb;--h-acc:#5b45e0;--h-acc-s:#efecff;--h-acc-d:#4a36c9;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--pg-bg:#141414;--pg-fg:#f2f2f2;--pg-soft:#a3a3aa;--pg-line:#2a2a2a;--pg-card:#1b1b1b;--pg-tint:#1f1f1f;--a50:#2a2450;--a100:#352c66;--a500:#a497ff;--a600:#b8aaff;--oks:#173a27;--ok:#3fb675;--warns:#3a3020;--warn:#e0a84a;color-scheme:dark}}
+:root[data-theme="dark"]{--pg-bg:#141414;--pg-fg:#f2f2f2;--pg-soft:#a3a3aa;--pg-line:#2a2a2a;--pg-card:#1b1b1b;--pg-tint:#1f1f1f;--a50:#2a2450;--a100:#352c66;--a500:#a497ff;--a600:#b8aaff;--oks:#173a27;--ok:#3fb675;--warns:#3a3020;--warn:#e0a84a;color-scheme:dark}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--pg-bg);color:var(--pg-fg);font:400 15px/24px var(--f);-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer}
+code{font-family:var(--mono);font-size:.88em}
+:focus-visible{outline:none;box-shadow:var(--ring)}
+.wrap{max-width:1120px;margin:0 auto;padding-block:48px 96px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font:800 30px/38px var(--fd);letter-spacing:-.02em;margin:0 0 12px;text-wrap:balance}
+.lead{margin:0;max-width:720px;color:var(--pg-soft)}
+.lead b,.why b,.same b,.c>p b,.fig figcaption b,.lay b{color:var(--pg-fg);font-weight:600}
+
+/* özet */
+.sum{margin-top:28px;border:1px solid var(--pg-line);border-radius:16px;overflow:hidden;background:var(--pg-card)}
+.sum-h{padding:14px 20px;background:var(--pg-tint);border-bottom:1px solid var(--pg-line);font-weight:600}
+.sum ol{list-style:none;margin:0;padding:0}
+.sum li{display:grid;grid-template-columns:28px minmax(0,1fr) minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:center;padding:14px 20px;border-top:1px solid var(--pg-line)}
+.sum li:first-child{border-top:0}
+.n{width:24px;height:24px;border-radius:6px;background:var(--a50);color:var(--a600);font-size:13px;font-weight:600;display:grid;place-items:center;flex:none}
+.n.ok{background:var(--oks);color:var(--ok)}
+.sum .w{font-weight:600}
+.sum .was,.sum .will{font-size:14px;line-height:20px}
+.sum .was{color:var(--pg-soft)}
+.sum .was::before{content:"Bugün: ";opacity:.7}
+.sum .will::before{content:"Sonra: ";color:var(--pg-soft)}
+.same{margin:12px 2px 0;color:var(--pg-soft);font-size:14px;line-height:20px}
+
+/* Layla'dan alınanlar */
+.lay{margin-top:32px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.lay>div{border:1px solid var(--pg-line);border-radius:16px;padding:16px 18px;font-size:14px;line-height:20px;color:var(--pg-soft);background:var(--pg-card)}
+.lay h3{margin:0 0 8px;font:600 15px/22px var(--f);color:var(--pg-fg)}
+.lay ul{margin:0;padding-left:18px;display:grid;gap:6px}
+
+/* bölümler */
+.c{margin-top:64px}
+.c h2{font:600 20px/28px var(--f);margin:0 0 6px;letter-spacing:-.01em;display:flex;align-items:center;gap:10px}
+.c h2 .n{width:28px;height:28px;border-radius:8px;font-size:14px}
+.c>p{margin:0 0 16px;color:var(--pg-soft);max-width:760px}
+.cmp{display:grid;gap:12px}
+.cmp.cols{grid-template-columns:repeat(var(--k,2),minmax(0,1fr))}
+.fig{margin:0;border:1px solid var(--pg-line);border-radius:16px;overflow:hidden;background:var(--pg-card);display:flex;flex-direction:column;min-width:0}
+.fig.rec{border-color:var(--a500);box-shadow:0 0 0 1px var(--a500)}
+.fig-h{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--pg-line);font-size:14px;line-height:20px}
+.fig-h b{font-weight:600}
+.fig-h .t{margin-left:auto;height:24px;padding:2px 8px;border-radius:6px;font-size:13px;line-height:20px;font-weight:500;white-space:nowrap}
+.t.now{background:var(--pg-tint);color:var(--pg-soft)}
+.t.my{background:var(--a500);color:#fff}
+.t.ref{background:var(--pg-tint);color:var(--pg-soft)}
+.fig figcaption{padding:10px 14px;border-top:1px solid var(--pg-line);font-size:14px;line-height:20px;color:var(--pg-soft)}
+.st{background:#edebf3;padding:20px;display:flex;justify-content:center;align-items:flex-start;overflow:auto;flex:1}
+.st.tight{padding:14px}
+.why{margin:14px 2px 0;padding:14px 16px;border-radius:12px;background:var(--pg-tint);font-size:14px;line-height:22px;color:var(--pg-soft)}
+.big{margin-top:16px;border:1px solid var(--pg-line);border-radius:16px;overflow:hidden;background:var(--pg-card)}
+.big-top{display:flex;align-items:center;gap:12px;padding:10px 12px 10px 20px;border-bottom:1px solid var(--pg-line);flex-wrap:wrap}
+.big-top b{font-weight:600}
+.big-top span{color:var(--pg-soft);font-size:14px}
+.both{display:grid;grid-template-columns:auto auto;gap:24px;justify-content:center;align-items:start;padding:24px;background:#edebf3;overflow:auto}
+.both>div{display:grid;gap:8px;justify-items:center}
+.both .cap{font-size:13px;line-height:18px;color:#5d5a78;font-weight:500}
+.cap em{font-style:normal;font-family:var(--mono);font-size:12px}
+.tech{border:1px solid var(--pg-line);border-radius:16px;overflow:hidden;background:var(--pg-card)}
+.tech>div{display:grid;grid-template-columns:170px minmax(0,1fr) minmax(0,1fr);gap:16px;padding:14px 20px;border-top:1px solid var(--pg-line);font-size:14px;line-height:20px;align-items:start}
+.tech>div:first-child{border-top:0;background:var(--pg-tint);font-weight:600;color:var(--pg-soft);font-size:13px}
+.tech b{font-weight:600}.tech span{color:var(--pg-soft)}
+.tech em{font-style:normal;font-family:var(--mono);font-size:12px;line-height:16px;padding:2px 6px;border-radius:4px;background:var(--a50);color:var(--a600)}
+.rule{border:1px solid var(--pg-line);border-radius:16px;overflow:hidden;background:var(--pg-card);font-size:14px;line-height:20px}
+.rule>div{display:grid;grid-template-columns:140px minmax(0,1fr) minmax(0,1fr);gap:16px;padding:12px 20px;border-top:1px solid var(--pg-line)}
+.rule>div:first-child{border-top:0;background:var(--pg-tint);font-weight:600;color:var(--pg-soft);font-size:13px}
+.rule b{font-weight:600}.rule span{color:var(--pg-soft)}
+.rule .new{color:var(--a600);font-weight:600;font-size:12px;margin-left:6px}
+.prompt{margin-top:12px;border:1px solid var(--pg-line);border-radius:16px;overflow:hidden;background:var(--pg-card)}
+.prompt-h{display:flex;align-items:center;gap:8px;padding:10px 12px 10px 20px;border-bottom:1px solid var(--pg-line);font-weight:600}
+.prompt-h button{margin-left:auto;height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--pg-line);background:var(--pg-card);font-size:14px;font-weight:500;display:inline-flex;align-items:center;gap:6px}
+.prompt-h button:hover{background:var(--pg-tint)}
+.prompt pre{margin:0;padding:16px 20px;white-space:pre-wrap;font:400 14px/22px var(--f);color:var(--pg-fg)}
+.prompt pre mark{background:var(--a50);color:var(--a600);padding:0 2px;border-radius:3px}
+.a11y{border:1px solid var(--pg-line);border-radius:16px;overflow:hidden;background:var(--pg-card);font-size:14px;line-height:20px}
+.a11y>div{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) 90px;gap:16px;padding:12px 20px;border-top:1px solid var(--pg-line);align-items:center}
+.a11y>div:first-child{border-top:0;background:var(--pg-tint);font-weight:600;color:var(--pg-soft);font-size:13px}
+.a11y span{color:var(--pg-soft)}
+.a11y .p{font-variant-numeric:tabular-nums;font-weight:600;color:var(--ok)}
+.seg{display:inline-flex;padding:2px;border-radius:10px;background:var(--pg-tint);border:1px solid var(--pg-line);gap:2px;margin-left:auto}
+.seg button{height:32px;padding:0 14px;border:0;border-radius:8px;background:transparent;color:var(--pg-soft);font-weight:500;font-size:14px;transition:background 120ms var(--ez),color 120ms var(--ez)}
+.seg button[aria-pressed="true"]{background:var(--pg-card);color:var(--pg-fg);box-shadow:var(--sh-xs)}
+
+/* ===================== Hadi sohbet parçaları (ürün ölçüleri, Paket 6) ===================== */
+.k{font-family:var(--f);font-size:15px;line-height:24px;color:var(--h-ink);-webkit-font-smoothing:antialiased}
+:where(.k) *{box-sizing:border-box}
+:where(.k) button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+.k :focus-visible{outline:none;box-shadow:0 0 0 2px #fff,0 0 0 4px var(--h-acc)}
+.k svg{display:block;flex:none}
+.k b{font-weight:600}
+.chat{position:relative;display:flex;flex-direction:column;background:var(--h-soft);border:1px solid var(--h-line);border-radius:16px;overflow:hidden;height:660px;max-width:100%}
+.chat.old{width:332px;font-size:15px;line-height:22.5px}
+.chat.new{width:432px;color:var(--h-ink2)}
+.chat.new .top{position:sticky;top:0;z-index:2;height:56px;display:flex;align-items:center;gap:8px;padding:0 16px 0 20px;background:linear-gradient(var(--h-soft) 60%,rgb(247 246 251/0));margin-bottom:-8px}
+.chat .top .logo{font:800 18px/24px var(--fd);letter-spacing:-.02em;color:var(--h-ink)}
+.chat .top .ib{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;color:var(--h-mut);transition:background-color 120ms var(--ez)}
+.chat .top .ib:hover{background:#edebf3;color:var(--h-ink)}
+.chat .top .sp{flex:1}
+.chat.old .top{height:48px;display:flex;align-items:center;gap:8px;padding:0 16px;font-weight:600;color:var(--h-ink);font-size:16px}
+.msgs{flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:16px;scrollbar-width:thin}
+.chat.new .msgs{padding:12px 20px 8px}
+.day{align-self:center;font-size:12px;line-height:16px;font-weight:500;color:var(--h-mut);background:#fff;border:1px solid var(--h-line);border-radius:999px;padding:2px 10px}
+.me{align-self:flex-end;max-width:85%;background:#fff;border-radius:16px;padding:10px 14px;box-shadow:var(--sh-xs);color:var(--h-ink)}
+.ai{display:grid;gap:12px;color:inherit}
+.ai p{margin:0}
+.ai a{color:var(--h-acc-d);font-weight:500;text-decoration:none}
+.ai .pnr{font-family:var(--mono);font-size:13px;line-height:20px;background:#fff;border:1px solid var(--h-line);border-radius:6px;padding:0 6px;color:var(--h-ink)}
+.ai ul{margin:0;padding:0;list-style:none;display:grid;gap:6px}
+.ai li{position:relative;padding-left:16px}
+.ai li::before{content:"";position:absolute;left:3px;top:10px;width:5px;height:5px;border-radius:999px;background:var(--h-mut)}
+.ai li b{color:var(--h-ink)}
+.ai .src{font-size:13px;line-height:18px;color:var(--h-mut)}
+.acts{display:flex;gap:4px;margin:-4px 0 0 -6px}
+.acts button{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;color:var(--h-mut)}
+.acts button:hover{background:#edebf3;color:var(--h-ink)}
+/* bugünkü hızlı cevaplar: mesaj altında, sarar */
+.qr{display:flex;flex-wrap:wrap;gap:8px}
+.qr button{height:32px;border-radius:999px;background:#fff;padding:0 12px;font-weight:500;font-size:14px;box-shadow:var(--sh-xs),0 0 0 1px var(--h-line);color:var(--h-ink)}
+/* sonra: yapışık öneri satırı */
+.sug{position:relative;display:flex;gap:8px;padding:12px 20px 10px;overflow-x:auto;scrollbar-width:none;scroll-snap-type:x proximity;scroll-padding-inline:20px;-webkit-mask:linear-gradient(90deg,#000 calc(100% - 32px),transparent);mask:linear-gradient(90deg,#000 calc(100% - 32px),transparent)}
+.sug::-webkit-scrollbar{display:none}
+.sug::after{content:"";flex:none;width:12px}
+.sug button{flex:none;height:32px;border-radius:999px;background:#fff;border:1px solid var(--h-line);padding:0 12px;font-weight:500;font-size:14px;color:var(--h-ink);scroll-snap-align:start;transition:background-color 120ms var(--ez),border-color 120ms var(--ez)}
+.sug button:hover{background:var(--h-acc-s);border-color:var(--h-acc-s);color:var(--h-acc-d)}
+.sug button.rec{background:var(--h-acc-s);border-color:var(--h-acc-s);color:var(--h-acc-d)}
+/* yazı kutusu */
+.comp{margin:0 16px 16px;background:#fff;border:1px solid var(--h-line);border-radius:20px;padding:12px 12px 10px 16px;box-shadow:var(--sh-xs)}
+.chat.new .comp{margin:0 20px 8px;padding:12px 10px 10px 16px}
+.comp .ta{min-height:24px;color:var(--h-mut)}
+.comp .tb{display:flex;align-items:center;gap:4px;margin:10px 0 0 -8px}
+.comp .r36{width:36px;height:36px;border-radius:999px;display:grid;place-items:center;color:var(--h-mut)}
+.comp .r36:hover{background:#f3f1f8;color:var(--h-ink)}
+.comp .snd{margin-left:auto;margin-right:-2px;background:var(--h-acc-s);color:var(--h-acc-d)}
+.comp.typing .snd,.comp .snd.on{background:var(--h-acc);color:#fff}
+.comp.focus{border-color:var(--h-acc);box-shadow:var(--sh-xs),0 0 0 1px var(--h-acc)}
+.comp .ta.txt{color:var(--h-ink)}
+.caret{display:inline-block;width:2px;height:18px;background:var(--h-acc);vertical-align:-3px;margin-left:1px;animation:blink 1s steps(2) infinite}
+@keyframes blink{to{opacity:0}}
+.comp .stop{margin-left:auto;margin-right:-2px;background:var(--h-ink);color:#fff}
+.think{display:flex;align-items:center;gap:8px;margin:0 20px 8px;font-size:13px;line-height:18px;font-weight:500;color:var(--h-mut)}
+.think i{width:8px;height:8px;border-radius:999px;background:var(--h-acc);animation:blink 1.2s steps(2) infinite}
+.think time{font-family:var(--mono);font-size:12px;color:#9a97b3}
+.comp .snd:hover{background:var(--h-acc-d);color:#fff}
+.hint{margin:0 20px 12px;text-align:center;font-size:12px;line-height:16px;color:var(--h-mut)}
+.hint a{color:inherit;text-decoration:underline;text-underline-offset:2px}
+.down{position:absolute;right:20px;bottom:216px;width:32px;height:32px;border-radius:999px;background:#fff;border:1px solid var(--h-line);box-shadow:var(--sh-pop);display:grid;place-items:center;color:var(--h-ink);z-index:1}
+/* sohbet içi kart */
+.card{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--h-line);border-radius:16px;padding:8px;box-shadow:var(--sh-xs)}
+.card .th{width:64px;height:64px;border-radius:12px;flex:none;background:linear-gradient(135deg,#c9dcef 0%,#8fb3d9 55%,#f2dcc0 100%)}
+.card .th.b{background:linear-gradient(160deg,#f2dcc0,#d9a77a 60%,#8fb3d9)}
+.card .tx{flex:1;min-width:0;display:grid;gap:2px}
+.card .tx b{font-weight:600;color:var(--h-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .tx span{font-size:13px;line-height:18px;color:var(--h-mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .go{width:36px;height:36px;border-radius:999px;background:var(--h-acc-s);color:var(--h-acc-d);display:grid;place-items:center;flex:none;transition:background-color 120ms var(--ez)}
+.card .go:hover{background:#e2dcff}
+/* bugünkü yoğun kart */
+.ocard{background:#fff;border:1px solid var(--h-line);border-radius:12px;padding:12px;display:grid;gap:4px;font-size:14px;line-height:20px}
+.ocard .r{display:flex;justify-content:space-between;gap:8px}
+.ocard .r b{font-weight:600}
+.ocard .r span{color:var(--h-mut)}
+.ocard .pr{font-weight:700;color:var(--h-ink);font-variant-numeric:tabular-nums}
+.ocard .chip{display:inline-block;font-size:12px;line-height:16px;padding:2px 6px;border-radius:4px;background:var(--oks);color:var(--ok);font-weight:600}
+.ocard .btn{height:32px;border-radius:8px;background:var(--h-acc);color:#fff;font-weight:600;font-size:14px;margin-top:6px}
+/* yazı örnekleri */
+.para{width:100%;max-width:392px;background:var(--h-soft);padding:16px;border-radius:12px}
+.para p{margin:0 0 12px}.para p:last-child{margin:0}
+.para.v1{font:400 15px/24px var(--f);color:var(--h-ink)}
+.para.v2{font:400 15px/24px var(--f);color:var(--h-ink2)}
+.para.v3{font:400 14px/22px var(--f);color:var(--h-ink2)}
+.para b{font-weight:600;color:var(--h-ink)}
+.sw{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:4px;border:1px solid rgb(0 0 0/.08)}
+/* üst çubuk örnekleri */
+.tb-ex{width:100%;max-width:392px;background:var(--h-soft);border:1px solid var(--h-line);border-radius:12px;overflow:hidden}
+.tb-ex .top{height:48px;display:flex;align-items:center;gap:8px;padding:0 16px 0 20px}
+.tb-ex .top .logo{font:800 18px/24px var(--fd);letter-spacing:-.02em;color:var(--h-ink)}
+.tb-ex .top .ib{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;color:var(--h-mut)}
+.tb-ex .top .sp{flex:1}
+.tb-ex .top .trip{font-size:14px;color:var(--h-mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tb-ex .ph{padding:16px;color:var(--h-mut);font-size:14px;line-height:20px}
+.tb-ex.old .top{padding:0 16px;font-weight:600;color:var(--h-ink);font-size:16px;border-bottom:0}
+.tb-ex.old .top .ib{width:28px;height:28px;border-radius:6px}
+.tb-ex.old .gap{height:24px}
+
+/* rev2 */
+.rev{display:inline-block;margin-left:8px;height:20px;padding:0 6px;border-radius:5px;background:var(--warns);color:var(--warn);font-size:12px;line-height:20px;font-weight:600;vertical-align:3px;letter-spacing:.01em}
+.chat.new{font-size:14px;line-height:22px}
+.chat.new .me{font-size:14px;line-height:22px}
+.chat.new .ai .src{font-size:12px;line-height:16px}
+.chat.new.f15{font-size:15px;line-height:24px}
+.chat.new.f15 .me{font-size:15px;line-height:24px}
+.hint{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0 20px 10px}
+.av{width:32px;height:32px;border-radius:999px;background:linear-gradient(135deg,#f2dcc0,#d9a77a);display:grid;place-items:center;font:600 13px/1 var(--f);color:#5a3b1c;flex:none}
+.chat .top .avb,.tb-ex .top .avb{display:inline-flex;align-items:center;gap:4px;height:40px;padding:0 4px 0 4px;border-radius:999px;transition:background-color 120ms var(--ez)}
+.chat .top .avb:hover,.tb-ex .top .avb:hover{background:#edebf3}
+.chat .top .avb svg,.tb-ex .top .avb svg{color:var(--h-mut)}
+.chat .top .nc,.tb-ex .top .nc{width:36px;height:36px;border-radius:999px;background:#fff;border:1px solid var(--h-line);display:grid;place-items:center;color:var(--h-ink);box-shadow:var(--sh-xs)}
+/* avatar menüsü */
+.menu{width:220px;padding:8px;border-radius:16px;border:1px solid var(--h-line);background:#fff;box-shadow:var(--sh-pop);display:grid;gap:2px}
+.menu .mh{display:flex;align-items:center;gap:10px;padding:8px 8px 10px;border-bottom:1px solid var(--h-line);margin-bottom:4px}
+.menu .mh b{display:block;font-weight:600;color:var(--h-ink);font-size:14px;line-height:20px}
+.menu .mh span{font-size:12px;line-height:16px;color:var(--h-mut)}
+.menu .mi{display:flex;align-items:center;gap:8px;height:36px;padding:0 8px;border-radius:10px;font-size:14px;font-weight:500;color:var(--h-ink);width:100%;text-align:left}
+.menu .mi svg{color:var(--h-mut)}
+.menu .mi:hover{background:var(--h-soft)}
+.menu .mi.q{color:var(--h-mut)}
+/* kart: plana al */
+.card{cursor:pointer}
+.card .pa{height:32px;padding:0 12px;border-radius:999px;background:var(--h-acc-s);color:var(--h-acc-d);font-size:14px;font-weight:600;white-space:nowrap;flex:none;display:inline-flex;align-items:center;gap:6px;transition:background-color 120ms var(--ez)}
+.card .pa:hover{background:#e2dcff}
+.card .pa.in{background:var(--oks);color:var(--ok)}
+.card .tx span.more{color:var(--h-acc-d);font-weight:500}
+/* yoğun cevap karşılaştırması */
+.dense{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.dense .chat{height:680px;width:100%}
+.dense .chat .msgs{padding:16px 20px}
+.ai .dh{font-weight:600;color:var(--h-ink);margin-top:4px}
+.fit{position:relative;width:100%}
+.scr{position:absolute;left:0;top:0;transform-origin:0 0;display:grid;grid-template-columns:432px minmax(0,1fr);background:#fff;font-family:var(--f);color:var(--h-ink)}
+.scr .chat{height:100%;border:0;border-right:1px solid var(--h-line);border-radius:0}
+.rail{width:56px;height:100%;border-right:1px solid var(--h-line);background:var(--h-soft);display:flex;flex-direction:column;align-items:center;gap:12px;padding:16px 0}
+.rail .rb{position:relative;width:36px;height:36px;border-radius:10px;background:#fff;border:1px solid var(--h-line);display:grid;place-items:center;color:var(--h-ink);box-shadow:var(--sh-xs)}
+.rail .rb i{position:absolute;top:-3px;right:-3px;width:10px;height:10px;border-radius:999px;background:var(--h-acc);box-shadow:0 0 0 2px #fff}
+.scr.col .chat{display:none}
+.pano{background:#fff;display:flex;flex-direction:column;min-width:0}
+.pano .ph{height:48px;display:flex;align-items:center;gap:12px;padding:0 24px;border-bottom:1px solid var(--h-line);font-size:14px;color:var(--h-mut)}
+.pano .ph b{color:var(--h-ink);font-weight:600}
+.pano .ph .tabs{margin-left:auto;display:flex;gap:4px}
+.pano .ph .tabs span{height:32px;padding:0 12px;border-radius:8px;display:inline-flex;align-items:center;font-weight:500;color:var(--h-mut)}
+.pano .ph .tabs span.on{background:var(--h-soft);color:var(--h-ink)}
+.pano .body{padding:24px;display:grid;gap:20px;overflow:hidden}
+.cover{height:200px;border-radius:20px;background:linear-gradient(120deg,#d9c7b8 0%,#8fb3d9 50%,#4f6f9e 100%);position:relative;padding:20px;display:flex;align-items:flex-end;color:#fff}
+.cover h3{margin:0;font:800 34px/40px var(--fd);letter-spacing:-.02em;text-shadow:0 1px 2px rgb(0 0 0/.25)}
+.cover .dates{position:absolute;top:16px;right:20px;font:600 14px/20px var(--f);background:rgb(255 255 255/.85);color:var(--h-ink);padding:4px 10px;border-radius:999px}
+.facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;background:var(--h-soft);border-radius:16px;padding:4px}
+.facts div{background:#fff;border-radius:12px;padding:10px 14px;display:grid}
+.facts b{font-weight:600;font-size:16px;line-height:22px;font-variant-numeric:tabular-nums}
+.facts span{font-size:12px;line-height:16px;color:var(--h-mut)}
+.cats{display:grid;gap:8px}
+.cat{display:flex;align-items:center;gap:12px;height:56px;padding:0 12px;border:1px solid var(--h-line);border-radius:12px;background:#fff}
+.cat i{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;color:var(--c);background:color-mix(in srgb,var(--c) 12%,#fff);flex:none}
+.cat b{font:700 15px/20px var(--f)}
+.cat span{font-size:13px;color:var(--h-mut)}
+.cat .pr{margin-left:auto;font-weight:700;font-variant-numeric:tabular-nums}
+.cat .pill{font-size:12px;line-height:16px;padding:2px 8px;border-radius:999px;background:var(--oks);color:var(--ok);font-weight:600}
+.cat .pill.w{background:var(--warns);color:var(--warn)}
+.scr-top{display:flex;align-items:center;gap:12px;padding:10px 12px 10px 20px;border-bottom:1px solid var(--pg-line);flex-wrap:wrap}
+.scr-top b{font-weight:600}
+.scr-top span.m{color:var(--pg-soft);font-size:14px}
+@media (max-width:900px){.dense{grid-template-columns:minmax(0,1fr)}}
+
+@media (prefers-reduced-motion:reduce){*{transition-duration:0ms!important;animation-duration:1ms!important}}
+@media (max-width:900px){
+  .both{grid-template-columns:minmax(0,1fr);justify-items:center}
+  .lay{grid-template-columns:minmax(0,1fr)}
+  .cmp.cols{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:820px){
+  .wrap{padding-block:32px 72px}
+  h1{font-size:24px;line-height:32px}
+  .sum li{grid-template-columns:28px minmax(0,1fr)}
+  .sum .was,.sum .will{grid-column:2}
+  .tech>div,.rule>div{grid-template-columns:minmax(0,1fr)}
+  .tech>div:first-child,.rule>div:first-child,.a11y>div:first-child{display:none}
+  .a11y>div{grid-template-columns:minmax(0,1fr) 60px}
+  .chat.new,.chat.old{width:100%}
+  .both{padding:16px}
+  .seg{margin-left:0}
+}
+</style>
+
+<div class="wrap">
+<h1>Paket 7: Sohbet sütunu, Layla’dan ders alarak</h1>
+<p class="lead">Layla.ai’nin sohbetinde iyi çalışan şeyleri Hadi’nin kendi diline çevirdim. <b>Paket 5 ve 6’daki kararlar temel olarak duruyor</b>: mor vurgu, Inter 15/24, balonsuz asistan, akış durumları, PNR hapı, tablo yok, emoji yok. Bu paket o temelin üstüne 7 değişiklik koyuyor; turlarda değişenler turuncu etiketli. <b>4. turda onaylandı;</b> geliştirici ölçüleri repoda <code>docs/tasarim/paket-7-sohbet.md</code>. Sağdaki ve soldaki sütunlar çizim değil, canlı parça; metinler Portekiz örnek gezisinden.</p>
+
+<div class="sum">
+  <div class="sum-h">Ekranda değişecek 7 şey <span class="rev" style="background:var(--oks);color:var(--ok)">onaylandı · 3 Kasım 2026, 4. tur</span></div>
+  <ol>
+    <li><span class="n">1</span><span class="w">Sütun genişliği</span><span class="was">332 px, satırda ~38 karakter</span><span class="will">432 px, satırda ~56 karakter</span></li>
+    <li><span class="n">2</span><span class="w">Gövde yazısı <span class="rev">değişti</span></span><span class="was">15/24, koyu mürekkep</span><span class="will">14/22, bir ton yumuşak; telefonda 16/24 kalır</span></li>
+    <li><span class="n">3</span><span class="w">Üst çubuk <span class="rev">değişti</span></span><span class="was">“Asistan” başlığı, üstte boşluk</span><span class="will">48 px çubuk: logo solda, profil sağda; yeni sohbet ve ayarlar profil menüsünde</span></li>
+    <li><span class="n">4</span><span class="w">Öneri düğmeleri</span><span class="was">son mesajın altında, sarar</span><span class="will">yazı kutusunun hemen üstünde tek sıra, yana kayar</span></li>
+    <li><span class="n">5</span><span class="w">Sohbet içi kart <span class="rev">değişti</span></span><span class="was">fiyat, mesafe, çip, düğme: 6 satır</span><span class="will">görsel, ad, tek satır bilgi, “Plana al” düğmesi: 1 satır; karta basınca panoda açılır</span></li>
+    <li><span class="n">6</span><span class="w">Etiketli madde</span><span class="was">yalnız düz madde</span><span class="will">“<b>Gidiş (1 Kasım):</b> SAW → SSH” biçimi; model de böyle yazar</span></li>
+    <li><span class="n">7</span><span class="w">Yoğun bilgi <span class="rev">yeni</span></span><span class="was">uzun cevap düz paragraf, 12 satırda solar</span><span class="will">gün ve konu başlıkları etiketli madde; 7 günlük özet tek ekrana sığar</span></li>
+  </ol>
+</div>
+<p class="same"><b>Değişmeyen:</b> mor vurgu, Inter ve Jakarta, kalınlıklar 400 · 600 · 700, kullanıcı balonu sağda beyaz, asistan balonsuz, “Düşünüyor… / Web’de arıyorum…”, adım adım ilerleme, 4+ değişiklik tek düğmede, PNR hapı, tablo yok (kart yapar), emoji yok, €1.250 biçimi, Kopyala / Yeniden yaz, “Gönderilemedi · Tekrar dene”.</p>
+
+<div class="lay">
+  <div><h3>Layla’da iyi çalışan</h3><ul>
+    <li>Sütun geniş: bir cümle iki satırda bitiyor, göz az zıplıyor.</li>
+    <li>Kart tek iş yapıyor: görsel, ad, ok. Ayrıntı yan paneldeki haritada.</li>
+    <li>Öneriler el ne yazacaksa oraya en yakın yerde.</li>
+    <li>Üstte boşluk yok; sohbet tarayıcının altından başlıyor.</li>
+    <li>“<b>Gidiş (01.11):</b> …” etiketli maddeler: bir bakışta taranıyor.</li>
+    <li>Yazı ince hissediliyor.</li>
+  </ul></div>
+  <div><h3>Neden çalışıyor</h3><ul>
+    <li>45-75 karakterlik satır okuma araştırmalarında en rahat aralık; Layla ~60’ta.</li>
+    <li>Kart bir bağlantıdır, içerik değil: içerik panoda. Hadi’nin “tablo yok, kartlar yapar” kuralıyla aynı mantık.</li>
+    <li>Öneri satırı imlecin yanında: Fitts yasası, kısa yol.</li>
+    <li>Yazı 16 px ve kalınlık 400; incelik boydan değil renk ve kalınlıktan.</li>
+    <li>İki nokta öncesi kalın etiket, sonrası düz: ikisi birlikte sütun gibi okunuyor.</li>
+  </ul></div>
+  <div><h3>Almadıklarım</h3><ul>
+    <li>Lila kullanıcı balonu: bizde mor vurgu için saklı, balon beyaz kalır.</li>
+    <li>“Connect email” kutu içi düğmesi: bizde böyle bir akış yok.</li>
+    <li>Para / bayrak / derece seçici üst çubukta: Hadi’de ayarlarda.</li>
+    <li>Emoji ile selam (“🙂”): Paket 5 kuralı, asistan emoji kullanmaz.</li>
+    <li>Pazarlama cümlesi (“uzmanlarımız senin adına tamamlayabilir”): Hadi satmaz, planlar.</li>
+  </ul></div>
+</div>
+
+<!-- hepsi birlikte -->
+<div class="big">
+  <div class="big-top"><b>Hepsi birlikte</b><span>aynı konuşma, iki ölçü; sağdaki 2. tur kararlarıyla</span></div>
+  <div class="both">
+    <div>
+      <div class="k chat old" aria-label="Bugünkü sohbet sütunu">
+        <div class="top">Asistan</div>
+        <div class="msgs">
+          <span class="day">Bugün</span>
+          <div class="me">Porto’da merkezi ama sessiz bir otel lazım, gecelik 100 € altında 🙂</div>
+          <div class="ai">
+            <p><b>Jardim Stay</b> öne çıkıyor: kaydettiğin yerlere birkaç dakika yürüme ve ücretsiz iptal var. Casa Azul €45 daha ucuz ama merkeze yokuş yukarı 25 dk. İkisi de bütçenin altında. Jardim’i planına alalım mı?</p>
+            <div class="ocard">
+              <div class="r"><b>Jardim Stay</b><span class="pr">€95</span></div>
+              <div class="r"><span>Baixa · 8 dk yürüme</span><span>gecelik</span></div>
+              <div class="r"><span>9,1 · 1.240 yorum</span><span class="chip">Ücretsiz iptal</span></div>
+              <button class="btn">Plana al</button>
+            </div>
+            <p class="src">Kaynak: Booking.com</p>
+            <div class="qr"><button>Evet, ekleyelim</button><button>Diğerlerini konuşalım</button><button>Fiyatları göster</button></div>
+          </div>
+          <div class="me">Uçuş bacaklarını bir daha yazar mısın?</div>
+          <div class="ai">
+            <p>Uçuş bacaklarını güncelledim.</p>
+            <ul><li>Gidiş 1 Kasım: SAW → OPO, İstanbul Sabiha Gökçen - Porto</li><li>Dönüş 7 Kasım: LIS → IST, Lizbon - İstanbul Havalimanı</li></ul>
+            <p>Rezervasyon kodun <span class="pnr">X7K2LM</span>; check-in kalkıştan 24 saat önce açılır.</p>
+            <div class="acts"><button aria-label="Kopyala"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a1 1 0 0 1 1-1h10"/></svg></button><button aria-label="Yeniden yaz"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></button></div>
+          </div>
+        </div>
+        <div class="comp"><div class="ta">Mesaj yaz…</div><div class="tb"><button class="r36" aria-label="Dosya ekle"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 12-8.5 8.5a5 5 0 0 1-7-7L14 5a3.3 3.3 0 0 1 4.7 4.7L10 18.4a1.7 1.7 0 0 1-2.4-2.4L15.5 8"/></svg></button><button class="r36 snd" aria-label="Gönder"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg></button></div></div>
+      </div>
+      <div class="cap">Bugün · <em>332 px</em> · 15/22,5 · koyu mürekkep</div>
+    </div>
+    <div>
+      <div class="k chat new" id="chatNew" aria-label="Önerilen sohbet sütunu">
+        <div class="top"><span class="logo">Hadi</span><span class="sp"></span><button class="avb" aria-label="Profil menüsü" aria-haspopup="menu"><span class="av">E</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button></div>
+        <div class="msgs">
+          <span class="day">Bugün</span>
+          <div class="me">Porto’da merkezi ama sessiz bir otel lazım, gecelik 100 € altında 🙂</div>
+          <div class="ai">
+            <p><b>Jardim Stay</b> öne çıkıyor: kaydettiğin yerlere birkaç dakika yürüme ve ücretsiz iptal var. Casa Azul €45 daha ucuz ama merkeze yokuş yukarı 25 dk. İkisi de bütçenin altında. Jardim’i planına alalım mı?</p>
+            <div class="card" role="button" tabindex="0" aria-label="Jardim Stay, panoda aç"><div class="th" role="img" aria-label="Jardim Stay fotoğrafı"></div><div class="tx"><b>Jardim Stay</b><span>Baixa · 8 dk yürüme · €95 gecelik</span></div><button class="pa" aria-label="Jardim Stay’i plana al">Plana al</button></div>
+            <p class="src">Kaynak: Booking.com</p>
+          </div>
+          <div class="me">Uçuş bacaklarını bir daha yazar mısın?</div>
+          <div class="ai">
+            <p>Uçuş bacaklarını güncelledim.</p>
+            <ul><li><b>Gidiş (1 Kasım):</b> SAW → OPO, İstanbul Sabiha Gökçen - Porto</li><li><b>Dönüş (7 Kasım):</b> LIS → IST, Lizbon - İstanbul Havalimanı</li></ul>
+            <p>Rezervasyon kodun <span class="pnr">X7K2LM</span>; check-in kalkıştan 24 saat önce açılır.</p>
+            <div class="acts"><button aria-label="Kopyala"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a1 1 0 0 1 1-1h10"/></svg></button><button aria-label="Yeniden yaz"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></button></div>
+          </div>
+        </div>
+        
+        <div class="sug" role="group" aria-label="Hızlı cevaplar"><button class="rec">Evet, ekleyelim</button><button>Diğerlerini konuşalım</button><button>Fiyatları göster</button><button>Alternatifler var mı?</button></div>
+        <div class="comp"><div class="ta">Mesaj yaz…</div><div class="tb"><button class="r36" aria-label="Dosya ekle"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 12-8.5 8.5a5 5 0 0 1-7-7L14 5a3.3 3.3 0 0 1 4.7 4.7L10 18.4a1.7 1.7 0 0 1-2.4-2.4L15.5 8"/></svg></button><button class="r36" aria-label="Sesle yaz"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4"/></svg></button><button class="r36 snd" aria-label="Gönder"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg></button></div></div>
+        <p class="hint">Yapay zekâ planlar; fiyat ve saatleri bir kez <a href="#">kontrol et</a>.</p>
+      </div>
+      <div class="cap">Sonra · <em>432 px</em> · 14/22 · yumuşak mürekkep · logo + profil · hizalı kenarlar · yapışık öneriler · “Plana al” kartı · etiketli madde</div>
+    </div>
+  </div>
+</div>
+
+
+<!-- tüm ekran -->
+<section class="c" id="s0">
+  <h2><span class="n">0</span>Tüm ekranda ne kadar yer kaplıyor <span class="rev">yeni</span></h2>
+  <p><b>Genişliği sen seçmiyorsun;</b> pencereye göre kendiliğinden. Buradaki 1440 / 1280 / 1024 seçici yalnız bu sayfada göstermek için. Kural (3. turda düzeltildi): <b>1280 ve üstünde</b> sütun ekranın %30’u, 384 ile 432 arasında; <b>1024-1279</b> arasında 336 px (1024’te %33) ve <b>daraltılabilir</b>: üst çubuktaki ok ile 56 px’lik şeride iner, pano %95 olur; yeni cevap gelince şeritte mor nokta yanar, basınca açılır. <b>1024 altında</b> pano tam genişlik, sohbet soldan açılan 336 px panel; telefonda sekme. Pano buradaki haliyle örnek: kapak, dört sayı ve kategori satırları (Paket 1-6).</p>
+  <div class="big">
+    <div class="scr-top"><b>Ekran</b><span class="m">sohbet sütunu solda, pano sağda</span>
+      <div class="seg" role="group" aria-label="Ekran genişliği"><button aria-pressed="true" data-w="1440">1440</button><button aria-pressed="false" data-w="1280">1280</button><button aria-pressed="false" data-w="1024">1024</button><button aria-pressed="false" data-w="1024" data-c="1">1024 daraltılmış</button></div></div>
+    <div class="fit" id="fit" style="overflow:hidden;background:#edebf3;padding:0">
+      <div class="scr k" id="scr" style="width:1440px;height:900px">
+        <div id="scrChat"></div><div class="rail" id="rail" hidden><span class="logo" style="font:800 18px/24px var(--fd);letter-spacing:-.02em">H</span><button class="rb" aria-label="Sohbeti aç, 1 yeni cevap"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-8 8H7l-4 3V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8Z"/></svg><i></i></button><span class="sp" style="flex:1"></span><span class="av" style="width:28px;height:28px;font-size:12px">E</span></div>
+        <div class="pano">
+          <div class="ph"><b>Porto ve Lizbon</b><span>1-7 Kasım · 2 kişi</span><div class="tabs"><span class="on">Plan</span><span>Pano</span><span>Bütçe</span><span>Belgeler</span></div></div>
+          <div class="body">
+            <div class="cover"><h3>Porto ve Lizbon</h3><span class="dates">1-7 Kasım 2026</span></div>
+            <div class="facts"><div><b>7 gün</b><span>süre</span></div><div><b>€1.180</b><span>harcanan / €1.500</span></div><div><b>5 / 6</b><span>gece alındı</span></div><div><b>2</b><span>karar bekliyor</span></div></div>
+            <div class="cats">
+              <div class="cat" style="--c:#5b45e0"><i>✈</i><div><b>Uçuş</b><br><span>SAW → OPO 1 Kas · LIS → IST 7 Kas</span></div><span class="pill">Alındı</span><span class="pr">€412</span></div>
+              <div class="cat" style="--c:#1f8a8a"><i>⌂</i><div><b>Konaklama</b><br><span>Jardim Stay 4 gece · Lizbon 1 gece · 5 Kasım boş</span></div><span class="pill w">1 gece eksik</span><span class="pr">€540</span></div>
+              <div class="cat" style="--c:#2a6fdb"><i>▭</i><div><b>Ulaşım</b><br><span>Porto → Lizbon treni 5 Kas 10:05</span></div><span class="pill">Alındı</span><span class="pr">€38</span></div>
+              <div class="cat" style="--c:#c0256b"><i>★</i><div><b>Etkinlik</b><br><span>Livraria Lello · Fado · Pena Sarayı</span></div><span class="pill w">1 karar</span><span class="pr">€94</span></div>
+              <div class="cat" style="--c:#1f7a45"><i>✦</i><div><b>Yeme içme</b><br><span>3 rezervasyon</span></div><span class="pr">€96</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="why"><b>Neden genişlik değil daraltma:</b> 1024’te okunur bir sohbet en az 320-340 px ister, bu da ekranın üçte biri; daha dar yapınca satır 40 karakterin altına düşüyor (Paket 5’teki şikâyet). O yüzden küçük ekranda çözüm sütunu küçültmek değil, <b>istenince kaldırmak</b>: kullanıcı panoda çalışırken sohbeti şeride indirir, soru soracağı zaman açar. Şerit 56 px: Hadi işareti, sohbet düğmesi (yeni cevapta nokta), altta avatar. Daraltma yalnız 1280 altında görünür; büyük ekranda gerek yok. Sürükleme kolu yalnız 1280 ve üstünde, 384-520 arası.</p>
+</section>
+
+<!-- 1 -->
+<section class="c" id="s1">
+  <h2><span class="n">1</span>Sütun genişliği: 332’den 432’ye</h2>
+  <p>Paket 5’te satırı ~38 karakter ölçmüştük. Layla ~60 karakterde; okuma araştırmaları 45-75 arasını rahat buluyor. <b>Değişen:</b> sütun 100 px genişler, aynı cümle 3 yerine 2 satırda biter. <b>Değişmeyen:</b> pano yanda; 1440 px ekranda panoya 1.000 px kalıyor, 1280’de 850.</p>
+  <div class="cmp cols" style="--k:3">
+    <figure class="fig"><div class="fig-h"><b>Bugün</b><span class="t now">332 · ~38 karakter</span></div><div class="st tight"><div class="k para v1" style="max-width:300px;line-height:22.5px"><p>Jardim Stay öne çıkıyor: kaydettiğin yerlere birkaç dakika yürüme ve ücretsiz iptal var. Casa Azul €45 daha ucuz ama merkeze yokuş yukarı 25 dk.</p></div></div><figcaption>4 satır; gözün sağdan sola dönüşü sık.</figcaption></figure>
+    <figure class="fig rec"><div class="fig-h"><b>Sonra</b><span class="t my">Önerim · 432 · ~56</span></div><div class="st tight"><div class="k para v2"><p>Jardim Stay öne çıkıyor: kaydettiğin yerlere birkaç dakika yürüme ve ücretsiz iptal var. Casa Azul €45 daha ucuz ama merkeze yokuş yukarı 25 dk.</p></div></div><figcaption>3 satır. Telefonda zaten tam genişlik; orada değişiklik yok.</figcaption></figure>
+    <figure class="fig"><div class="fig-h"><b>Layla</b><span class="t ref">referans · ~640 · ~60</span></div><div class="st tight"><div class="k para v3" style="max-width:100%;font-size:15px;line-height:24px"><p>Layla sohbeti ekranın %40’ını alıyor ve yazı 16 px. Bizde pano daha yoğun (plan satırları, bütçe, harita); sütunu o kadar açmak panoyu sıkıştırır.</p></div></div><figcaption>Aynı satır uzunluğuna daha küçük yazı ve daha dar sütunla ulaşıyoruz.</figcaption></figure>
+  </div>
+  <p class="why"><b>Neden 432, 480 değil:</b> 432 px’te 15 px Inter ile satır 56 karakter; 480’de 63. Aradaki fark okumada hissedilmiyor ama panodan 48 px daha alıyor. Kullanıcı sütunu kenarından 400-520 arasında çekebilir (sürükleme kolu, Paket 3’teki yan menü gibi); 432 varsayılan.</p>
+</section>
+
+<!-- 2 -->
+<section class="c" id="s2">
+  <h2><span class="n">2</span>Gövde yazısı: 14/22, bir ton yumuşak <span class="rev">değişti</span></h2>
+  <p>Paket 6’da 14 px’i reddetmiştin; o zaman sütun 332’ydi ve 14 px satırı sıkışık gösteriyordu. Şimdi sütun 432 ve ilke değişti: <b>bilgi geldiğinde tek ekranda okunsun.</b> 14/22 ile aynı yere 2 satır daha sığıyor, 7 günlük özet kaydırmasız görünüyor (7. bölüm). <b>Değişen:</b> asistan ve kullanıcı metni 15/24’ten 14/22’ye, rengi mürekkep-2. <b>Değişmeyen:</b> telefonda 16/24; kalın bilgi ve etiketler koyu mürekkep; kart adı 14/20 600.</p>
+  <div class="cmp cols" style="--k:3">
+    <figure class="fig"><div class="fig-h"><b>Bugün</b><span class="t now">15/24 · <i class="sw" style="background:#1c1a33"></i>mürekkep</span></div><div class="st tight"><div class="k para v1"><p><b>Jardim Stay</b> öne çıkıyor: kaydettiğin yerlere birkaç dakika yürüme ve ücretsiz iptal var.</p><p>Casa Azul €45 daha ucuz ama merkeze yokuş yukarı 25 dk. İkisi de bütçenin altında.</p></div></div><figcaption>Kalın ve düz aynı renk; satırda 56 karakter.</figcaption></figure>
+    <figure class="fig rec"><div class="fig-h"><b>Sonra</b><span class="t my">Önerim · 14/22 · <i class="sw" style="background:#34304d"></i>mürekkep-2</span></div><div class="st tight"><div class="k para v3"><p><b>Jardim Stay</b> öne çıkıyor: kaydettiğin yerlere birkaç dakika yürüme ve ücretsiz iptal var.</p><p>Casa Azul €45 daha ucuz ama merkeze yokuş yukarı 25 dk. İkisi de bütçenin altında.</p></div></div><figcaption>Satırda 60 karakter; gövde #34304d (12,5:1), kalın #1c1a33. Layla’nın hissi: boy küçük, renk yumuşak.</figcaption></figure>
+    <figure class="fig"><div class="fig-h"><b>Daha küçük</b><span class="t ref">13/20 · mürekkep-2</span></div><div class="st tight"><div class="k para v3" style="font-size:13px;line-height:20px"><p><b>Jardim Stay</b> öne çıkıyor: kaydettiğin yerlere birkaç dakika yürüme ve ücretsiz iptal var.</p><p>Casa Azul €45 daha ucuz ama merkeze yokuş yukarı 25 dk. İkisi de bütçenin altında.</p></div></div><figcaption>Satırda 65 karakter ama 13 px uzun okumada yorar; Hadi’de 13 yalnız ikincil satır boyu. Önermiyorum.</figcaption></figure>
+  </div>
+  <p class="why"><b>“Daha ince” için kalınlık değil renk:</b> Inter 300’ü denedim; 14 px’te düşük çözünürlüklü ekranda harfler kırılıyor ve kontrast 4,5’in altına iniyor. İnce hissi mürekkep-2 (#34304d) ve 400 kalınlıkla geliyor; Layla da 400 kullanıyor. Kullanıcı balonu da 14/22’ye iner ama koyu mürekkepte kalır, böylece kim konuşuyor belli.</p>
+</section>
+
+<!-- 3 -->
+<section class="c" id="s3">
+  <h2><span class="n">3</span>Üst çubuk: logo solda, profil sağda <span class="rev">3. tur</span></h2>
+  <p>Layla’ya bir daha baktım: solda logo ve yuvarlak “yeni sohbet” düğmesi, sağda birim seçici ve <b>profil avatarı</b>. Dişliyi kaldırdım; “Ayarlar”a basınca ne çıkacağı belirsizdi. Hadi’de bugün profil hiçbir yerde yok; burası onun giriş kapısı olur. <b>Değişen:</b> çubuk değil, zemin üstünde serbest duran iki öğe: solda Hadi işareti, sağda avatar ve ok; zemin ve çizgi yok, kayan metin altında solarak kaybolur. Yeni sohbet avatar menüsünün ilk satırı (kısayol ⌘N); altında Profil, Ayarlar, Nasıl çalışır, Çıkış. Kalemi 3. turda kaldırdım: yeni sohbet günde bir kez basılan bir şey, çubukta sürekli durmasına gerek yok. <b>Değişmeyen:</b> birim seçici (para, derece) çubuğa gelmez, ayarlarda kalır; gezi adı panoda.</p>
+  <div class="cmp cols" style="--k:3">
+    <figure class="fig"><div class="fig-h"><b>Bugün</b><span class="t now">başlık + boşluk</span></div><div class="st tight"><div class="k tb-ex old"><div class="top">Asistan<span class="sp"></span><span class="ib"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></div><div class="gap"></div><div class="ph">Bugün<br>Porto’da merkezi ama sessiz bir otel lazım…</div></div></div></figure>
+    <figure class="fig rec"><div class="fig-h"><b>Sonra</b><span class="t my">Önerim</span></div><div class="st tight"><div class="k tb-ex"><div class="top"><span class="logo">Hadi</span><span class="sp"></span><span class="avb"><span class="av">E</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span></div><div class="ph">Bugün<br>Porto’da merkezi ama sessiz bir otel lazım…</div></div></div><figcaption>Soldaki “Hadi” yazısı yer tutucu; gerçek işaret (saydam zeminli logo) oraya 24 px boyunda girer. Logo mesaj kenarıyla aynı hizada (20 px).</figcaption></figure>
+    <figure class="fig"><div class="fig-h"><b>1. turdaki</b><span class="t ref">dişli</span></div><div class="st tight"><div class="k tb-ex"><div class="top"><span class="logo">Hadi</span><span class="sp"></span><span class="ib"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span><span class="ib"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg></span></div><div class="ph">Bugün<br>Porto’da merkezi ama sessiz bir otel lazım…</div></div></div><figcaption>Dişli ne açacağı belli olmayan bir kapı; profil daha çok şey taşır.</figcaption></figure>
+  </div>
+  <div class="cmp cols" style="--k:2;max-width:820px;margin-top:12px">
+    <figure class="fig rec"><div class="fig-h"><b>Avatara basınca</b><span class="t my">Önerim · profil menüsü</span></div><div class="st tight"><div class="k menu" role="menu"><div class="mh"><span class="av">E</span><div><b>Emre Durmuş</b><span>info@emredurmus.net</span></div></div><button class="mi" role="menuitem"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Yeni sohbet<span style="margin-left:auto;font-size:12px;color:var(--h-mut)">⌘N</span></button><button class="mi" role="menuitem"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Profil</button><button class="mi" role="menuitem"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>Ayarlar<span style="margin-left:auto;font-size:12px;color:var(--h-mut)">€ · °C · TR</span></button><button class="mi" role="menuitem"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7"/><path d="M12 17h.01"/></svg>Nasıl çalışır</button><button class="mi q" role="menuitem"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/><path d="M12 3h7a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1h-7"/></svg>Çıkış</button></div></div><figcaption>Paket 5’teki açılır menü ölçüleri (220 px, köşe 16, satır 36). Birim seçimi Ayarlar satırında özetlenir.</figcaption></figure>
+    <figure class="fig"><div class="fig-h"><b>Layla</b><span class="t ref">referans</span></div><div class="st tight"><div class="k" style="width:100%;max-width:392px;background:#f7f6f2;border-radius:12px;padding:12px;display:flex;align-items:center;gap:10px"><span style="font:800 20px/24px var(--fd);letter-spacing:-.02em">Layla<sup style="font-size:10px">✦</sup></span><span class="nc"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span><span style="flex:1"></span><span style="height:40px;padding:0 12px;border-radius:999px;background:#fff;display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600">$ · 🇺🇸 · °C</span><span class="avb"><span class="av" style="background:linear-gradient(135deg,#c9dcef,#8fb3d9);color:#1c1a33">L</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span></div></div><figcaption>Aldığım: logo solda, avatar + ok sağda. Almadığım: birim hapı ve kalem.</figcaption></figure>
+  </div>
+  <p class="why"><b>Neden profil burada:</b> sohbet sütunu Hadi’nin “kişisi”; kullanıcı da burada kendini görür. Pano gezinindir, sohbet senindir. Profil sayfasının kendisi bu pakette yok; menü girişi var, içerik ayrı paket.</p>
+</section>
+
+
+<!-- hizalama -->
+<section class="c" id="s3b">
+  <h2><span class="n ok"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9.9997 15.1709L19.1921 5.97852L20.6063 7.39273L9.9997 17.9993L3.63574 11.6354L5.04996 10.2212L9.9997 15.1709Z"/></svg></span>Hizalama kontrolü: her şey 20 px’lik tek kenara oturur <span class="rev">3. tur</span></h2>
+  <p>“Baloncuklar kenara yapışmış” hissi iki yerden geliyordu: öneri satırının üstünde ve altında 8 px vardı, ve ikon düğmeleri (kopyala, ataş) metinden 6-9 px içeride başlıyordu. Sütunda tek bir sol kenar var: <b>20 px</b>. Aşağıdaki her öğe o kenara, sağdakiler de 20 px’lik sağ kenara oturur; ikonlar düğmenin değil çizginin kenarıyla hizalanır.</p>
+  <div class="tech">
+    <div><span>Öğe</span><span>Bugün (2. tur)</span><span>Sonra</span></div>
+    <div><b>Logo</b><span>16 px’ten başlıyordu, çizgili çubukta</span><span>sol <em>20</em>; mesajlarla aynı hizada; çubuk zemini ve çizgisi yok</span></div>
+    <div><b>Avatar ve ok</b><span>sağ 8 + 4 iç boşluk</span><span>okun sağ kenarı <em>20</em>; dokunma alanı 40 px çizginin dışına taşar</span></div>
+    <div><b>Asistan metni ve kart</b><span>20</span><span><em>20</em>, aynı</span></div>
+    <div><b>Kopyala / Yeniden yaz</b><span>ikon 26’dan başlıyordu (28 px düğmenin içinde)</span><span>düğme <em>-6</em> kaydı; ikonun çizgisi metinle <em>20</em>’de</span></div>
+    <div><b>Öneri satırı</b><span>ilk hap sütunun kenarına yapışıyordu: kodda <em>scroll-snap</em> iç boşluğu yutuyordu</span><span><em>scroll-padding</em> ile ilk hap <em>20</em>’de, kutunun sol kenarıyla aynı çizgide; üst <em>12</em>, alt <em>10</em></span></div>
+    <div><b>Yazı kutusu</b><span>20</span><span><em>20</em>; içeride metin 16, ataş ikonu metinle aynı <em>16</em>’da, gönder düğmesi sağ <em>12</em></span></div>
+    <div><b>Uyarı satırı</b><span>ortalı</span><span>ortalı, kutuya <em>8</em>; aynı</span></div>
+    <div><b>Dikey ritim</b><span>mesaj arası 16, asistan içi 12</span><span>aynı; mesaj alanı altı <em>8</em> + öneri üstü <em>12</em> = 20, kenarla aynı sayı</span></div>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="c" id="s4">
+  <h2><span class="n">4</span>Öneri düğmeleri: yazı kutusunun hemen üstünde</h2>
+  <p>Bugün hızlı cevaplar son mesajın altında sarıyor; cevap uzunsa kutudan 300 px uzakta kalıyor, kaydırınca kayboluyor. Layla’da tek sıra, kutunun hemen üstünde, sağa doğru kayıyor. <b>Değişen:</b> öneriler kutuya yapışır, tek sıra, yana kayar, sağ kenar solarak “devamı var” der. <b>Değişmeyen:</b> hap biçimi, 32 px, önerilen cevap mor zeminde (Paket 2).</p>
+  <div class="cmp cols" style="--k:2;max-width:820px">
+    <figure class="fig"><div class="fig-h"><b>Bugün</b><span class="t now">mesaj altında, sarar</span></div><div class="st tight"><div class="k" style="width:100%;max-width:300px;display:grid;gap:12px"><div class="ai" style="line-height:22.5px"><p>…Jardim’i planına alalım mı?</p><div class="qr"><button>Evet, ekleyelim</button><button>Diğerlerini konuşalım</button><button>Fiyatları göster</button></div></div><div style="height:80px;border-top:1px dashed #c9c5d6;color:#5d5a78;font-size:13px;padding-top:8px">… 2 mesaj daha …</div><div class="comp" style="margin:0"><div class="ta">Mesaj yaz…</div></div></div></div><figcaption>Öneri ile kutu arasında bütün mesajlar.</figcaption></figure>
+    <figure class="fig rec"><div class="fig-h"><b>Sonra</b><span class="t my">Önerim · kutuya yapışık</span></div><div class="st tight"><div class="k chat new" style="height:auto;width:100%;max-width:392px"><div class="msgs" style="padding:16px 20px 8px"><div class="ai"><p>…Jardim’i planına alalım mı?</p></div><div class="me">Peki ya ulaşım?</div></div><div class="sug" role="group" aria-label="Hızlı cevaplar"><button class="rec">Evet, ekleyelim</button><button>Diğerlerini konuşalım</button><button>Fiyatları göster</button><button>Alternatifler var mı?</button></div><div class="comp" style="margin:0 20px 12px"><div class="ta">Mesaj yaz…</div></div></div></div><figcaption>Öneriler her zaman kutunun 8 px üstünde. Yeni cevap gelince satır yenilenir; kullanıcı yazmaya başlayınca kaybolur.</figcaption></figure>
+  </div>
+  <p class="why"><b>Klavye:</b> satır tek sekme durağı; ok tuşlarıyla gezilir, Enter seçer, Escape kutuya döner (Paket 5’teki segment kuralı). Ekran okuyucuya “Hızlı cevaplar, 4 seçenek”. Sağ kenardaki solma yalnız görsel; son düğme odaklanınca satır kayar. <b>Sınır:</b> en fazla 4 öneri; beşinci gelirse modele değil arayüze kural: ilk 4.</p>
+</section>
+
+
+<!-- yazı kutusu durumları -->
+<section class="c" id="s4b">
+  <h2><span class="n">4b</span>Yazı kutusu: dört durum <span class="rev">yeni</span></h2>
+  <p>Kutuya basınca ne olacağı çizilmemişti. <b>Kural:</b> Enter gönderir, Shift+Enter yeni satır; kutu 5 satıra kadar büyür (120 px), sonrası içinde kaydırır. Gönder düğmesi boşken açık mor, yazı girince koyu mor; cevap gelirken kare “Durdur” olur. Öneriler kutuya odaklanınca durur (hâlâ seçilebilir), ilk harf yazılınca kaybolur, cevap gelince yenileriyle döner.</p>
+  <div class="cmp cols" style="--k:2">
+    <figure class="fig"><div class="fig-h"><b>1 · Boş</b><span class="t now">varsayılan</span></div><div class="st tight"><div class="k chat new" style="height:auto;width:100%;max-width:392px"><div class="sug" role="group" aria-label="Hızlı cevaplar"><button class="rec">Evet, ekleyelim</button><button>Diğerlerini konuşalım</button><button>Fiyatları göster</button><button>Alternatifler var mı?</button></div><div class="comp"><div class="ta">Mesaj yaz…</div><div class="tb"><button class="r36" aria-label="Dosya ekle"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 12-8.5 8.5a5 5 0 0 1-7-7L14 5a3.3 3.3 0 0 1 4.7 4.7L10 18.4a1.7 1.7 0 0 1-2.4-2.4L15.5 8"/></svg></button><button class="r36" aria-label="Sesle yaz"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4"/></svg></button><button class="r36 snd" aria-label="Gönder"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg></button></div></div><p class="hint">Yapay zekâ planlar; fiyat ve saatleri bir kez <a href="#">kontrol et</a>.</p></div></div><figcaption>Yer tutucu gri, gönder açık mor (basılamaz), öneriler görünür.</figcaption></figure>
+    <figure class="fig rec"><div class="fig-h"><b>2 · Odaklı</b><span class="t my">imleç</span></div><div class="st tight"><div class="k chat new" style="height:auto;width:100%;max-width:392px"><div class="sug" role="group" aria-label="Hızlı cevaplar"><button class="rec">Evet, ekleyelim</button><button>Diğerlerini konuşalım</button><button>Fiyatları göster</button><button>Alternatifler var mı?</button></div><div class="comp focus"><div class="ta"><span class="caret" aria-hidden="true"></span><span style="color:var(--h-mut)">Mesaj yaz…</span></div><div class="tb"><button class="r36" aria-label="Dosya ekle"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 12-8.5 8.5a5 5 0 0 1-7-7L14 5a3.3 3.3 0 0 1 4.7 4.7L10 18.4a1.7 1.7 0 0 1-2.4-2.4L15.5 8"/></svg></button><button class="r36" aria-label="Sesle yaz"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4"/></svg></button><button class="r36 snd" aria-label="Gönder"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg></button></div></div><p class="hint">Enter gönderir · Shift+Enter yeni satır</p></div></div><figcaption>Kutu kenarı 1 px mor, imleç 2 px mor ve yanıp söner, yer tutucu kalır. Alt satır ipucuna döner: “Enter gönderir”. Öneriler durur.</figcaption></figure>
+    <figure class="fig rec"><div class="fig-h"><b>3 · Yazarken</b><span class="t my">öneriler gider</span></div><div class="st tight"><div class="k chat new" style="height:auto;width:100%;max-width:392px"><div class="comp focus typing" style="margin-top:12px"><div class="ta txt">Jardim’i al, Casa Azul’u ele; dönüşü de Lizbon’dan yap<span class="caret" aria-hidden="true"></span></div><div class="tb"><button class="r36" aria-label="Dosya ekle"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 12-8.5 8.5a5 5 0 0 1-7-7L14 5a3.3 3.3 0 0 1 4.7 4.7L10 18.4a1.7 1.7 0 0 1-2.4-2.4L15.5 8"/></svg></button><button class="r36" aria-label="Sesle yaz"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4"/></svg></button><button class="r36 snd" aria-label="Gönder"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg></button></div></div><p class="hint">Enter gönderir · Shift+Enter yeni satır</p></div></div><figcaption>İlk harfle öneri satırı kapanır, kutu yukarı doğru büyür (mesajlar yerinde kalır), gönder koyu mor.</figcaption></figure>
+    <figure class="fig"><div class="fig-h"><b>4 · Cevap gelirken</b><span class="t now">Paket 5 durumu</span></div><div class="st tight"><div class="k chat new" style="height:auto;width:100%;max-width:392px"><div class="msgs" style="padding:12px 20px 8px"><div class="me">Jardim’i al, Casa Azul’u ele; dönüşü de Lizbon’dan yap</div></div><div class="think" role="status"><i></i>Panoda düzenliyorum<time>2.4s</time></div><div class="comp"><div class="ta">Mesaj yaz…</div><div class="tb"><button class="r36" aria-label="Dosya ekle"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 12-8.5 8.5a5 5 0 0 1-7-7L14 5a3.3 3.3 0 0 1 4.7 4.7L10 18.4a1.7 1.7 0 0 1-2.4-2.4L15.5 8"/></svg></button><button class="r36" aria-label="Sesle yaz"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4"/></svg></button><button class="r36 stop" aria-label="Durdur"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="3"/></svg></button></div></div><p class="hint">Yapay zekâ planlar; fiyat ve saatleri bir kez <a href="#">kontrol et</a>.</p></div></div><figcaption>Kutu boşalır, üstünde durum satırı (Paket 5), gönder yerine “Durdur”. Bitince öneriler yeni cevaba göre gelir.</figcaption></figure>
+  </div>
+  <p class="why"><b>Neden odakta öneriler durur:</b> Layla’da da öyle; kullanıcı kutuya tıklayıp sonra “ya şunu seçsem” diyebiliyor. Yazmaya başlayınca niyet belli, satır yer açar. Odak kenarı mor ama klavye odak halkası (Paket 6, beyaz + mor çift halka) yalnız sekmeyle gelince; tıklamada tek ince mor çizgi.</p>
+</section>
+
+<!-- 5 -->
+<section class="c" id="s5">
+  <h2><span class="n">5</span>Sohbet içi kart: “Plana al” düğmesi, karta basınca pano <span class="rev">değişti</span></h2>
+  <p>1. turda sağdaki ok ne yapacağını söylemiyordu: plana mı alıyor, panoda mı açıyor? Bugünkü “Plana al” en azından açıktı. <b>Değişen:</b> iki eylem iki yere ayrıldı. Sağdaki düğme <b>Plana al</b> yazar ve karar verir; kartın kendisine basınca panoda ilgili satır açılır ve işaretlenir. Plana alınca düğme yeşil “Planda” olur. <b>Değişmeyen:</b> kart tek satır, 80 px; fiyat ve ayrıntı tekrar edilmez.</p>
+  <div class="cmp cols" style="--k:2;max-width:820px">
+    <figure class="fig"><div class="fig-h"><b>Bugün</b><span class="t now">6 satır · 176 px</span></div><div class="st tight"><div class="k" style="width:100%;max-width:300px"><div class="ocard"><div class="r"><b>Jardim Stay</b><span class="pr">€95</span></div><div class="r"><span>Baixa · 8 dk yürüme</span><span>gecelik</span></div><div class="r"><span>9,1 · 1.240 yorum</span><span class="chip">Ücretsiz iptal</span></div><button class="btn">Plana al</button></div></div></div><figcaption>Eylem net ama kart pano satırını kopyalıyor.</figcaption></figure>
+    <figure class="fig rec"><div class="fig-h"><b>Sonra</b><span class="t my">Önerim · 3 durum</span></div><div class="st tight"><div class="k" style="width:100%;max-width:392px;display:grid;gap:12px">
+      <div class="card" role="button" tabindex="0" aria-label="Jardim Stay, panoda aç"><div class="th" role="img" aria-label="Jardim Stay fotoğrafı"></div><div class="tx"><b>Jardim Stay</b><span>Baixa · 8 dk yürüme · €95 gecelik</span></div><button class="pa" aria-label="Jardim Stay’i plana al">Plana al</button></div>
+      <div class="card" role="button" tabindex="0" aria-label="Jardim Stay, panoda aç" style="box-shadow:0 0 0 2px var(--h-acc-s)"><div class="th" role="img" aria-label="Jardim Stay fotoğrafı"></div><div class="tx"><b>Jardim Stay</b><span class="more">Panoda aç ›</span></div><button class="pa" aria-label="Jardim Stay’i plana al">Plana al</button></div>
+      <div class="card" role="button" tabindex="0" aria-label="Jardim Stay, panoda aç"><div class="th" role="img" aria-label="Jardim Stay fotoğrafı"></div><div class="tx"><b>Jardim Stay</b><span>Baixa · 8 dk yürüme · €95 gecelik</span></div><span class="pa in"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Planda</span></div>
+    </div></div><figcaption>Üstten alta: varsayılan; üzerine gelince ikinci satır “Panoda aç ›” olur; plana alınınca düğme yeşil “Planda”, basınca geri alır.</figcaption></figure>
+  </div>
+  <p class="why"><b>Neden düğme hapta, kartta ok yok:</b> “Plana al” Hadi’nin en sık kararı; metinle yazılınca okunması gerekmiyor, tanınıyor. Mor zemin Paket 2’deki önerilen hızlı cevapla aynı dil: “bu, beklenen eylem”. Kart gövdesi bütünüyle basılabilir; ok eklemek iki hedef yaratıp eli şaşırtıyordu. Tek satır bilgide: konaklamada semt · yürüme · fiyat; uçuşta saat · süre · fiyat; etkinlikte gün · saat · fiyat.</p>
+</section>
+
+<!-- 6 -->
+<section class="c" id="s6">
+  <h2><span class="n">6</span>Etiketli madde: “<b>Konu:</b> açıklama”</h2>
+  <p>Layla’nın en taranabilir yanı bu: madde kalın bir etiketle başlıyor, iki nokta, sonra düz bilgi. Bugün modelimiz düz madde yazıyor, çözücü de yalnız kalın ve bağlantıyı tanıyor. <b>Değişen:</b> model ve çözücü aynı kuralı öğrenir: madde “**Etiket:** metin” biçimindeyse etiket koyu mürekkepte, gerisi gövde renginde. Etiketler Paket 5’teki “en fazla 2 kalın” sınırına sayılmaz. <b>Değişmeyen:</b> madde sayısı 3-5, tek satırlık, iç içe yok.</p>
+  <div class="cmp cols" style="--k:2;max-width:820px">
+    <figure class="fig"><div class="fig-h"><b>Bugün</b><span class="t now">düz madde</span></div><div class="st tight"><div class="k para v1" style="line-height:22.5px"><p>Uçuş bacaklarını güncelledim.</p><ul style="margin:0;padding:0;list-style:none;display:grid;gap:6px"><li style="position:relative;padding-left:16px"><span style="position:absolute;left:3px;top:9px;width:5px;height:5px;border-radius:999px;background:#5d5a78"></span>Gidiş 1 Kasım: SAW → OPO, İstanbul Sabiha Gökçen - Porto</li><li style="position:relative;padding-left:16px"><span style="position:absolute;left:3px;top:9px;width:5px;height:5px;border-radius:999px;background:#5d5a78"></span>Dönüş 7 Kasım: LIS → IST, Lizbon - İstanbul Havalimanı</li></ul></div></div><figcaption>Gidiş ile dönüşü bulmak için satırı okumak gerekiyor.</figcaption></figure>
+    <figure class="fig rec"><div class="fig-h"><b>Sonra</b><span class="t my">Önerim · etiketli madde</span></div><div class="st tight"><div class="k para v2"><p>Uçuş bacaklarını güncelledim.</p><div class="ai"><ul><li><b>Gidiş (1 Kasım):</b> SAW → OPO, İstanbul Sabiha Gökçen - Porto</li><li><b>Dönüş (7 Kasım):</b> LIS → IST, Lizbon - İstanbul Havalimanı</li><li><b>Bagaj:</b> 1 kabin, 1 bavul 23 kg</li></ul></div></div></div><figcaption>Etiket koyu, metin yumuşak: iki renk tek satırda sütun gibi çalışır.</figcaption></figure>
+  </div>
+  <div class="rule" style="margin-top:14px">
+    <div><span>Öğe</span><span>Karar</span><span>Modele talimat</span></div>
+    <div><b>Etiketli madde <span class="new">yeni</span></b><span>Madde “**Etiket:** metin” ile başlarsa etiket <code>--h-ink</code> 600, metin <code>--h-ink2</code> 400. Etiket en fazla 3 kelime. Başka biçimde kalın gelirse olduğu gibi kalın.</span><span>Birden çok bilgiyi sıralarken her maddeyi kısa kalın bir etiketle başlat, iki nokta koy: **Gidiş (1 Kasım):** SAW → OPO</span></div>
+    <div><b>Kalın sınırı <span class="new">güncellendi</span></b><span>Paragraf içinde en fazla 2 kalın (Paket 5). Madde etiketleri sayılmaz.</span><span>Paragrafta kararı değiştiren tek bilgiyi en fazla 2 kez kalın yap; madde etiketleri bu sayıya girmez</span></div>
+    <div><b>Liste <span class="new">aynı</span></b><span>3-5 madde, tek satır, iç içe yok; numara yalnız sıra önemliyse.</span><span>3+ öğede tire ile en fazla 5 madde</span></div>
+    <div><b>Çözücü</b><span>Bugün: kalın, bağlantı. Paket 5 ekledi: paragraf, liste, PNR. Paket 7 ekler: etiketli madde. Model izinli öğeleri ve çözücünün tanıdıkları aynı listeden üretilir.</span><span>-</span></div>
+  </div>
+</section>
+
+
+<!-- 7 yoğun bilgi -->
+<section class="c" id="s7b">
+  <h2><span class="n">7</span>Yoğun bilgi geldiğinde: tek ekranda, taranabilir <span class="rev">yeni</span></h2>
+  <p>Senin ilkeni kural yaptım: <b>bilgi geldiğinde açık ve okunur olsun.</b> Bunu sağlayan boy değil yapı: gün ve konu başlıkları etiketli madde, kararı değiştiren tek bilgi kalın, gerisi düz. Aşağıda aynı 7 günlük özet iki boyda, sütun 432, mesaj alanı 566 px (13″ dizüstünde tarayıcı çubuğu düşülünce sohbetin gördüğü alan). <b>Değişen:</b> uzun cevapta “12 satırdan sonra solar” kuralı (Paket 5) etiketli listelere uygulanmaz; liste bütün görünür. <b>Değişmeyen:</b> paragraf en fazla 3 cümle; liste en fazla 7 madde (gün sayısı), onun üstü panoya yönlendirir.</p>
+  <div class="dense">
+    <figure class="fig"><div class="fig-h"><b>15/24</b><span class="t now">1. tur</span></div><div class="st tight" style="padding:14px"><div class="k chat new f15" aria-label="15 px ile yoğun cevap"><div class="msgs">
+          <div class="me">Porto’da merkezi ama sessiz bir otel lazım, gecelik 100 € altında</div>
+          <div class="ai"><p><b>Jardim Stay</b> öne çıkıyor: kaydettiğin yerlere birkaç dakika yürüme ve ücretsiz iptal var.</p>
+          <div class="card" role="button" tabindex="0" aria-label="Jardim Stay, panoda aç"><div class="th" role="img" aria-label="Jardim Stay fotoğrafı"></div><div class="tx"><b>Jardim Stay</b><span>Baixa · 8 dk yürüme · €95 gecelik</span></div><button class="pa" aria-label="Jardim Stay’i plana al">Plana al</button></div></div>
+          <div class="me">7 günü özetler misin?</div>
+          <div class="ai">
+            <p>Planın özeti. Eksik tek şey <b>5 Kasım gecesi konaklama</b>.</p>
+            <ul>
+              <li><b>1 Kasım, Cumartesi:</b> SAW → OPO 09:40, Jardim Stay’e giriş</li>
+              <li><b>2 Kasım:</b> Ribeira yürüyüşü, Livraria Lello 11:00</li>
+              <li><b>3 Kasım:</b> Douro vadisi, tren 08:15</li>
+              <li><b>4 Kasım:</b> Serralves, akşam Fado 21:00</li>
+              <li><b>5 Kasım:</b> Porto → Lizbon treni 10:05, gece boş</li>
+              <li><b>6 Kasım:</b> Sintra, Pena Sarayı 10:30</li>
+              <li><b>7 Kasım, Cuma:</b> LIS → IST 15:20</li>
+            </ul>
+            <p>Bütçe <b>€1.180 / €1.500</b>; Lizbon gecesi €80-120 arası tutar. Bakayım mı?</p>
+            <div class="acts"><button aria-label="Kopyala"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a1 1 0 0 1 1-1h10"/></svg></button><button aria-label="Yeniden yaz"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></button></div>
+          </div>
+        </div>
+        <div class="sug" role="group" aria-label="Hızlı cevaplar"><button class="rec">Lizbon’a otel bak</button><button>Bütçeyi aç</button><button>Fado’yu iptal et</button></div>
+        <div class="comp"><div class="ta">Mesaj yaz…</div></div></div></div><figcaption>Özet son günlerde kesiliyor; bütçe ve “Bakayım mı?” kaydırmanın altında (içerik 618 px, alan 574).</figcaption></figure>
+    <figure class="fig rec"><div class="fig-h"><b>14/22</b><span class="t my">Önerim</span></div><div class="st tight" style="padding:14px"><div class="k chat new" aria-label="14 px ile yoğun cevap"><div class="msgs">
+          <div class="me">Porto’da merkezi ama sessiz bir otel lazım, gecelik 100 € altında</div>
+          <div class="ai"><p><b>Jardim Stay</b> öne çıkıyor: kaydettiğin yerlere birkaç dakika yürüme ve ücretsiz iptal var.</p>
+          <div class="card" role="button" tabindex="0" aria-label="Jardim Stay, panoda aç"><div class="th" role="img" aria-label="Jardim Stay fotoğrafı"></div><div class="tx"><b>Jardim Stay</b><span>Baixa · 8 dk yürüme · €95 gecelik</span></div><button class="pa" aria-label="Jardim Stay’i plana al">Plana al</button></div></div>
+          <div class="me">7 günü özetler misin?</div>
+          <div class="ai">
+            <p>Planın özeti. Eksik tek şey <b>5 Kasım gecesi konaklama</b>.</p>
+            <ul>
+              <li><b>1 Kasım, Cumartesi:</b> SAW → OPO 09:40, Jardim Stay’e giriş</li>
+              <li><b>2 Kasım:</b> Ribeira yürüyüşü, Livraria Lello 11:00</li>
+              <li><b>3 Kasım:</b> Douro vadisi, tren 08:15</li>
+              <li><b>4 Kasım:</b> Serralves, akşam Fado 21:00</li>
+              <li><b>5 Kasım:</b> Porto → Lizbon treni 10:05, gece boş</li>
+              <li><b>6 Kasım:</b> Sintra, Pena Sarayı 10:30</li>
+              <li><b>7 Kasım, Cuma:</b> LIS → IST 15:20</li>
+            </ul>
+            <p>Bütçe <b>€1.180 / €1.500</b>; Lizbon gecesi €80-120 arası tutar. Bakayım mı?</p>
+            <div class="acts"><button aria-label="Kopyala"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a1 1 0 0 1 1-1h10"/></svg></button><button aria-label="Yeniden yaz"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></button></div>
+          </div>
+        </div>
+        <div class="sug" role="group" aria-label="Hızlı cevaplar"><button class="rec">Lizbon’a otel bak</button><button>Bütçeyi aç</button><button>Fado’yu iptal et</button></div>
+        <div class="comp"><div class="ta">Mesaj yaz…</div></div></div></div><figcaption>7 gün, bütçe ve soru tek ekranda (içerik 566 px, alan 574). Gün etiketleri koyu, satırlar yumuşak: göz günleri sütun gibi tarıyor.</figcaption></figure>
+  </div>
+  <p class="why"><b>Yoğun cevap kuralı (modele ve çözücüye):</b> 4’ten fazla bilgi gelirse düz paragraf değil etiketli liste; etiket gün, saat ya da konu; her madde tek satır, sığmazsa ikinci satıra sarar ama üçüncüye geçmez. Sayı ve saat tabular rakamla hizalı. Bir maddede ikiden fazla şey varsa o madde pano kartına yönlendirir (“Panoda aç”).</p>
+</section>
+
+<!-- küçük eklemeler -->
+<section class="c" id="s7">
+  <h2><span class="n ok"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9.9997 15.1709L19.1921 5.97852L20.6063 7.39273L9.9997 17.9993L3.63574 11.6354L5.04996 10.2212L9.9997 15.1709Z"/></svg></span>İki küçük ekleme (itirazın yoksa girer)</h2>
+  <p>Layla’da senin saymadığın, ben de önerdiğim iki parça. İkisi de BoardUI ölçüleriyle, yeni değer yok.</p>
+  <div class="cmp cols" style="--k:2;max-width:820px">
+    <figure class="fig rec"><div class="fig-h"><b>En son mesaja in</b><span class="t my">Önerim</span></div><div class="st tight"><div class="k" style="position:relative;width:100%;max-width:392px;height:120px;background:var(--h-soft);border-radius:12px"><div style="padding:16px;color:#5d5a78;font-size:13px">yukarı kaydırılmış sohbet…</div><button class="down" style="bottom:16px" aria-label="En son mesaja in"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m5 12 7 7 7-7"/></svg></button></div></div><figcaption>32 px, beyaz, açılır menü gölgesi. Yalnız sohbet 200 px’ten fazla yukarı kaydırılmışken görünür; yeni cevap gelirse üstüne mor nokta.</figcaption></figure>
+    <figure class="fig rec"><div class="fig-h"><b>Kutunun altındaki uyarı</b><span class="t my">Önerim</span></div><div class="st tight"><div class="k" style="width:100%;max-width:392px;display:grid;gap:8px"><div class="comp" style="margin:0"><div class="ta">Mesaj yaz…</div></div><p class="hint" style="margin:0">Yapay zekâ planlar; fiyat ve saatleri bir kez <a href="#">kontrol et</a>.</p></div></div><figcaption>12/16 gri, ortalı. Layla’daki “Check important info” yerine ne yapılacağını söyler. Bağlantı “Nasıl çalışır” sayfasına.</figcaption></figure>
+  </div>
+</section>
+
+<!-- sistem istemi -->
+<section class="c" id="s8">
+  <h2><span class="n">8</span>Sistem istemine girecek blok (Paket 5’in güncellenmişi)</h2>
+  <p>Paket 5’teki bloğun üstüne iki cümle geldi; işaretli. Geri kalanı aynen.</p>
+  <div class="prompt">
+    <div class="prompt-h">Biçim talimatı<button type="button" id="cp"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a1 1 0 0 1 1-1h10"/></svg><span>Kopyala</span></button></div>
+    <pre id="ptxt">Yanıtların orta genişlikte bir sohbet sütununda, küçük yazıyla okunur. Bir arkadaşın yazdığı gibi kısa, düz paragraflarla yaz: genelde iki ile dört cümle, en fazla iki paragraf, paragraflar arasında bir boş satır. Paragraf içinde kararı değiştiren tek bilgiyi iki yıldızla kalın yapabilirsin, bir yanıtta en fazla iki kez. Üç ya da daha fazla ayrı öğeyi sayman gerekirse tire ile en fazla beş kısa maddelik bir liste kur; sırası önemli adımlarda numara kullan; iki öğeyi cümle içinde say. <mark>Birden çok bilgiyi sıralarken her maddeyi en fazla üç kelimelik kalın bir etiketle başlat ve iki nokta koy, örneğin **Gidiş (1 Kasım):** SAW → OPO; bu etiketler kalın sayısına girmez. Dörtten fazla bilgi veriyorsan paragraf değil etiketli liste kur; etiket gün, saat ya da konu olsun; her madde tek satır.</mark> Rezervasyon kodu ve PNR’ı ters tırnak içine al. Seçenekleri karşılaştırırken farkı tek cümleyle söyle, çünkü ayrıntıyı kartlar gösterir. <mark>Bir seçenekten söz ederken adını plandaki yazılışıyla aynen yaz; arayüz onu kart olarak gösterir, sen fiyat ve mesafeyi tekrar etme.</mark> Dış bağlantıyı yalnız sana verilen kaynaklardan, sitenin adını bağlantı metni yaparak ver. Fiyatı simge önde ve kuruşsuz yaz (€1.250), tarihi “12 Mart Perşembe” biçiminde yaz, sayıları yalnız araç sonuçlarından al. Sıcaklığı kelime seçiminle ver, emoji kullanma; biçim olarak yalnız paragraf, kalın, etiketli madde, liste ve ters tırnak kullan.</pre>
+  </div>
+</section>
+
+<!-- erişilebilirlik -->
+<section class="c" id="s9">
+  <h2><span class="n ok"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9.9997 15.1709L19.1921 5.97852L20.6063 7.39273L9.9997 17.9993L3.63574 11.6354L5.04996 10.2212L9.9997 15.1709Z"/></svg></span>Erişilebilirlik denetimi (WCAG 2.2 AA)</h2>
+  <p>Yeni parçaların hepsi sınırın üstünde; ikisi için kural yazıldı.</p>
+  <div class="a11y">
+    <div><span>Öğe</span><span>Ölçüm</span><span>Sonuç</span></div>
+    <div><b>Gövde yazısı #34304d, beyaz ve #f7f6fb üstünde</b><span>12,5:1 ve 11,7:1; sınır 4,5</span><span class="p">geçer</span></div>
+    <div><b>Gri yazı #5d5a78 (kart ikinci satırı, uyarı)</b><span>6,6:1; 12 px uyarı için de 4,5 sınırının üstünde</span><span class="p">geçer</span></div>
+    <div><b>Mor ok düğmesi #4a36c9, mor zemin #efecff</b><span>7,2:1; ikon kontrastı sınırı 3</span><span class="p">geçer</span></div>
+    <div><b>Öneri düğmeleri 32 px</b><span>Hedef 24 px sınırının üstünde (2.5.8); telefonda satır 44 px</span><span class="p">geçer</span></div>
+    <div><b>Öneri satırı klavye</b><span>role=group, ok tuşları, Escape kutuya; sağ solma yalnız görsel</span><span class="p">kural</span></div>
+    <div><b>“En son mesaja in”</b><span>aria-label; yeni cevap noktası aria-live=polite ile “Yeni cevap”</span><span class="p">kural</span></div>
+    <div><b>Kart görseli</b><span>role=img ve ad; ok düğmesi “… kartını panoda aç”</span><span class="p">kural</span></div>
+    <div><b>Üst çubuk: avatar hedefi 40 px</b><span>“Profil menüsü” adlı, aria-haspopup=menu; Yeni sohbet menüde ve ⌘N; sticky çubuk odak sırasını bozmaz</span><span class="p">geçer</span></div>
+    <div><b>Kart: gövde role=button, “Plana al” hap 32 px</b><span>İki ayrı odak durağı; hap içinde Enter karta yayılmaz (stopPropagation); planda durumu aria-pressed</span><span class="p">kural</span></div>
+    <div><b>14 px gövde #34304d</b><span>12,5:1; 14 px normal metin sınırı 4,5</span><span class="p">geçer</span></div>
+  </div>
+</section>
+
+<!-- teknik -->
+<section class="c" id="s10">
+  <h2><span class="n">9</span>Koda girecek ölçüler (geliştirici için)</h2>
+  <p>Hepsi Paket 6’nın basamaklarından; yeni basamak yok, yalnız bir yeni renk tokenı.</p>
+  <div class="tech">
+    <div><span>Ne</span><span>Değer</span><span>Not</span></div>
+    <div><b>Sütun</b><span>≥1280: <em>clamp(384px, 30vw, 432px)</em>, sürüklenince <em>384-520</em>; 1024-1279: <em>336</em> + şerit <em>56</em>; &lt;1024: panel <em>336</em>; telefon sekme</span><span>kendiliğinden; daraltma kullanıcıda, tercih hatırlanır</span></div>
+    <div><b>Yeni renk</b><span><em>--h-ink2: #34304d</em></span><span>asistan gövdesi, kart 2. satırı; kalın ve başlık <em>--h-ink</em></span></div>
+    <div><b>Yazı</b><span><em>14/22</em> masaüstü, <em>16/24</em> telefon; paragraf arası <em>12</em>; kaynak satırı <em>12/16</em></span><span>Paket 6’daki 15/24 yalnız pano gövdesinde kalır</span></div>
+    <div><b>Üst çubuk</b><span>zemin yok, çizgi yok; yükseklik <em>56</em>, altına doğru zemin rengi solar (<em>%60 → 0</em>) ki kayan metin logonun altında okunmasın; sol <em>20</em>, sağ <em>20</em>; logo işareti <em>24</em>; avatar <em>32</em> + ok, hedef <em>40</em>; 1280 altında solda daraltma oku</span><span>sticky top 0; avatar menüsü 220 px, köşe 16, satır 36; Yeni sohbet ⌘N</span></div>
+    <div><b>Mesaj alanı</b><span>iç boşluk <em>20</em> yan, <em>20/12</em> üst-alt; mesaj arası <em>16</em></span><span>bugün 16 yan</span></div>
+    <div><b>Öneri satırı</b><span>hap <em>32</em>, boşluk <em>8</em>, yan <em>20</em>; <em>overflow-x: auto</em>, <em>scroll-snap</em> + <em>scroll-padding-inline: 20px</em> (yoksa ilk hap kenara yapışır); sağ 32 px mask</span><span>en fazla 4; kutuya 10 px; odakta durur, ilk harfte kapanır</span></div>
+    <div><b>Kart</b><span>yükseklik <em>80</em>; iç <em>8</em>; görsel <em>64</em> köşe <em>12</em>; kart köşe <em>16</em>; “Plana al” hap <em>32</em>, zemin <em>--h-acc-s</em>, planda <em>--oks</em></span><span>kart gövdesi role=button → panoda aç; üzerine gelince 2. satır “Panoda aç ›”</span></div>
+    <div><b>Etiketli madde</b><span><code>li &gt; b:first-child</code> + “:” → etiket <em>--h-ink 600</em>, metin <em>--h-ink2 400</em>; nokta <em>5px</em> <em>--h-mut</em></span><span>çözücü: <code>^\*\*[^*]{1,40}:\*\*\s</code></span></div>
+    <div><b>Yazı kutusu</b><span>köşe <em>20</em>, iç <em>12 10 10 16</em>; düğmeler <em>36</em> yuvarlak; gönder boşken <em>--h-acc-s</em>, doluyken <em>--h-acc</em>; odak kenarı <em>1px --h-acc</em>; imleç <em>2px --h-acc</em>; en çok <em>120</em> px, Enter gönder, Shift+Enter satır</span><span>cevap gelirken Durdur <em>--h-ink</em> kare</span></div>
+    <div><b>Uyarı satırı</b><span><em>12/16</em> <em>--h-mut</em>, ortalı, tek satır (<em>nowrap</em>), kutuya <em>8</em></span><span>“Yapay zekâ planlar; fiyat ve saatleri bir kez kontrol et.” 57 karakter</span></div>
+    <div><b>En son mesaja in</b><span><em>32</em> yuvarlak, beyaz, <em>--h-sh-pop</em>; sağ <em>20</em>, öneri satırının <em>12</em> üstü</span><span>eşik 200 px; geçiş <em>150ms</em></span></div>
+  </div>
+</section>
+</div>
+<script>
+(function(){
+  var src=document.getElementById('chatNew'),slot=document.getElementById('scrChat'),fit=document.getElementById('fit'),scr=document.getElementById('scr');
+  if(!src||!slot||!fit||!scr)return;
+  var c=src.cloneNode(true);c.removeAttribute('id');c.setAttribute('aria-hidden','true');
+  c.querySelectorAll('[tabindex],button,a').forEach(function(e){e.setAttribute('tabindex','-1')});
+  slot.replaceWith(c);
+  var W=1440,COL=false;
+  function lay(){
+    var cw=fit.clientWidth,s=cw/W;scr.style.width=W+'px';scr.style.transform='scale('+s+')';fit.style.height=Math.round(900*s)+'px';
+    var ch=scr.querySelector('.chat'),rail=document.getElementById('rail');var w=W>=1280?Math.min(432,Math.max(384,Math.round(W*.3))):336;if(COL)w=56;scr.classList.toggle('col',COL);if(rail)rail.hidden=!COL;scr.style.gridTemplateColumns=w+'px minmax(0,1fr)';if(ch)ch.style.width=w+'px';
+  }
+  document.querySelectorAll('#s0 .seg button').forEach(function(b){b.addEventListener('click',function(){
+    document.querySelectorAll('#s0 .seg button').forEach(function(x){x.setAttribute('aria-pressed',String(x===b))});W=+b.dataset.w;COL=!!b.dataset.c;lay();
+  })});
+  window.addEventListener('resize',lay);lay();
+})();
+(function(){
+  var b=document.getElementById('cp'),t=document.getElementById('ptxt');
+  if(!b||!t)return;
+  b.addEventListener('click',function(){
+    var s=t.textContent,l=b.querySelector('span');
+    function ok(){l.textContent='Kopyalandı';setTimeout(function(){l.textContent='Kopyala'},1600)}
+    function fb(){var r=document.createRange();r.selectNodeContents(t);var sel=window.getSelection();sel.removeAllRanges();sel.addRange(r);l.textContent='Seçildi, ⌘C'}
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(s).then(ok,fb)}else fb();
+  });
+})();
+</script>
